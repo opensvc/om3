@@ -799,146 +799,6 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		t.cleanCommand()
 		return
 	}
-	clusterAction := func(args []string) {
-		switch args[0] {
-		case "freeze":
-			t.actionClusterFreeze()
-		case "unfreeze", "thaw":
-			t.actionClusterUnfreeze()
-		default:
-			t.errorf("unknown cluster action: %s", args[0])
-		}
-	}
-	objectAction := func(args []string, paths map[string]any) {
-		switch args[0] {
-		case "stop":
-			t.confirmAction(func() {
-				t.actionStop(paths)
-			}, serviceInterruptionMessage)
-		case "start":
-			t.actionStart(paths)
-		case "provision":
-			t.actionProvision(paths)
-		case "unprovision":
-			t.confirmAction(func() {
-				t.actionUnprovision(paths)
-			}, dataLostMessage, serviceInterruptionMessage)
-		case "freeze":
-			t.actionFreeze(paths)
-		case "unfreeze", "thaw":
-			t.actionUnfreeze(paths)
-		case "switch":
-			t.confirmAction(func() {
-				t.actionSwitch(paths, args[1:])
-			}, serviceInterruptionMessage)
-		case "giveback":
-			t.confirmAction(func() {
-				t.actionGiveback(paths)
-			}, serviceInterruptionMessage)
-		case "abort":
-			t.actionAbort(paths)
-		case "purge":
-			t.confirmAction(func() {
-				t.actionPurge(paths)
-			}, dataLostMessage, confLostMessage, serviceInterruptionMessage)
-		case "delete":
-			t.confirmAction(func() {
-				t.actionDelete(paths)
-			}, confLostMessage)
-		case "resize":
-			t.actionResize(paths, args[1:])
-		case "restart":
-			t.confirmAction(func() {
-				t.actionRestart(paths)
-			}, serviceInterruptionMessage)
-		default:
-			t.errorf("unknown object action: %s", args[0])
-		}
-	}
-	resourceAction := func(args []string, keys map[[3]string]any) {
-		switch args[0] {
-		case "stop":
-			t.confirmAction(func() {
-				t.actionResourceStop(keys, args[1:])
-			}, serviceInterruptionMessage)
-		case "start":
-			t.actionResourceStart(keys, args[1:])
-		case "provision":
-			t.actionResourceProvision(keys, args[1:])
-		case "unprovision":
-			t.confirmAction(func() {
-				t.actionResourceUnprovision(keys, args[1:])
-			}, unprovisionMessages(args[1:])...)
-		case "restart":
-			t.confirmAction(func() {
-				t.actionResourceRestart(keys)
-			}, serviceInterruptionMessage)
-		case "run":
-			t.actionResourceRun(keys)
-		case "enable":
-			t.actionResourceEnable(keys)
-		case "disable":
-			t.confirmAction(func() {
-				t.actionResourceDisable(keys)
-			}, serviceInterruptionMessage)
-		default:
-			t.errorf("unknown resource action: %s", args[0])
-		}
-	}
-	instanceAction := func(args []string, keys map[[2]string]any) {
-		switch args[0] {
-		case "clear":
-			t.actionInstanceClear(keys)
-		case "stop":
-			t.confirmAction(func() {
-				t.actionInstanceStop(keys, args[1:])
-			}, serviceInterruptionMessage)
-		case "start":
-			t.actionInstanceStart(keys)
-		case "provision":
-			t.actionInstanceProvision(keys, args[1:])
-		case "unprovision":
-			t.confirmAction(func() {
-				t.actionInstanceUnprovision(keys, args[1:])
-			}, unprovisionMessages(args[1:])...)
-		case "freeze":
-			t.actionInstanceFreeze(keys)
-		case "unfreeze", "thaw":
-			t.actionInstanceUnfreeze(keys)
-		case "restart":
-			t.confirmAction(func() {
-				t.actionInstanceRestart(keys)
-			}, serviceInterruptionMessage)
-		case "refresh":
-			t.actionInstanceRefresh(keys)
-		case "switch", "takeover":
-			t.confirmAction(func() {
-				t.actionInstanceSwitch(keys, args[1:])
-			}, serviceInterruptionMessage)
-		default:
-			t.errorf("unknown instance action: %s", args[0])
-		}
-	}
-	nodeAction := func(args []string, nodes map[string]any) {
-		switch args[0] {
-		case "daemon":
-			if len(args) < 2 {
-				return
-			}
-			switch args[1] {
-			case "restart":
-				t.actionNodeDaemonRestart(nodes)
-			}
-		case "freeze":
-			t.actionNodeFreeze(nodes)
-		case "unfreeze", "thaw":
-			t.actionNodeUnfreeze(nodes)
-		case "drain":
-			t.actionNodeDrain(nodes)
-		default:
-			t.errorf("unknown node action: %s", args[0])
-		}
-	}
 	mainStyle := tcell.StyleDefault.Background(colorHead2).Foreground(tcell.ColorWhite)
 	selectedStyle := tcell.StyleDefault.Background(tcell.ColorWhite).Foreground(colorHead2)
 	t.command = tview.NewInputField().
@@ -1018,13 +878,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					t.cleanCommand()
 					switch {
 					case len(t.selectedRIDs) > 0:
-						resourceAction(args[1:], t.selectedRIDs)
+						runDo(t, "resource", doResource, args[1:], t.selectedRIDs)
 					case len(t.selectedPaths) > 0:
-						objectAction(args[1:], t.selectedPaths)
+						runDo(t, "object", doObject, args[1:], t.selectedPaths)
 					case len(t.selectedInstances) > 0:
-						instanceAction(args[1:], t.selectedInstances)
+						runDo(t, "instance", doInstance, args[1:], t.selectedInstances)
 					case len(t.selectedNodes) > 0:
-						nodeAction(args[1:], t.selectedNodes)
+						runDo(t, "node", doNode, args[1:], t.selectedNodes)
 					default:
 						row, col := t.objects.GetSelection()
 						switch {
@@ -1034,26 +894,26 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 								rid := table.GetCell(row, col).Text
 								selection := make(map[[3]string]any)
 								selection[[3]string{t.viewPath.String(), t.viewNode, rid}] = nil
-								resourceAction(args[1:], selection)
+								runDo(t, "resource", doResource, args[1:], selection)
 							}
 						case row == 0 && col == 1:
-							clusterAction(args[1:])
+							runDo(t, "cluster", doCluster, args[1:], selCluster{})
 						case row == 0 && col >= t.firstInstanceCol:
 							node := t.nodeByCol(col)
 							selection := make(map[string]any)
 							selection[node] = nil
-							nodeAction(args[1:], selection)
+							runDo(t, "node", doNode, args[1:], selection)
 						case row >= t.firstObjectRow && col == 0:
 							path := t.objects.GetCell(row, 0).Text
 							selection := make(map[string]any)
 							selection[path] = nil
-							objectAction(args[1:], selection)
+							runDo(t, "object", doObject, args[1:], selection)
 						case row >= t.firstObjectRow && col >= t.firstInstanceCol:
 							path := t.objects.GetCell(row, 0).Text
 							node := t.nodeByCol(col)
 							selection := make(map[[2]string]any)
 							selection[[2]string{path, node}] = nil
-							instanceAction(args[1:], selection)
+							runDo(t, "instance", doInstance, args[1:], selection)
 						}
 					}
 				default:
@@ -1280,7 +1140,12 @@ func (t *App) askInput(title string, onEnter func(inputValues ...string) bool, i
 	t.app.SetFocus(flex)
 }
 
-func (t *App) actionNodeDaemonRestart(nodes map[string]any) {
+// actionNodeDaemon runs the daemon subcommand named by the first word.
+func (t *App) actionNodeDaemon(nodes map[string]any, words []string) {
+	if len(words) != 1 || words[0] != "restart" {
+		t.errorf("unknown node daemon action: %s", strings.Join(words, " "))
+		return
+	}
 	ctx := context.Background()
 	for node, _ := range nodes {
 		_, _ = t.client.PostDaemonRestart(ctx, node)
@@ -1319,14 +1184,14 @@ func (t *App) actionAbort(paths map[string]any) {
 	}
 }
 
-func (t *App) actionRestart(paths map[string]any) {
+func (t *App) actionRestart(paths map[string]any, body *api.PostObjectActionRestart) {
 	ctx := context.Background()
 	for path := range paths {
 		p, err := naming.ParsePath(path)
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, api.PostObjectActionRestart{})
+		_, _ = t.client.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, *body)
 	}
 }
 
@@ -1343,7 +1208,7 @@ func (t *App) actionInstanceRefresh(keys map[[2]string]any) {
 	}
 }
 
-func (t *App) actionInstanceRestart(keys map[[2]string]any) {
+func (t *App) actionInstanceRestart(keys map[[2]string]any, params *api.PostInstanceActionRestartParams) {
 	ctx := context.Background()
 	for key := range keys {
 		path := key[0]
@@ -1352,11 +1217,11 @@ func (t *App) actionInstanceRestart(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionRestartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		_, _ = t.client.PostInstanceActionRestartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
-func (t *App) actionInstanceStart(keys map[[2]string]any) {
+func (t *App) actionInstanceStart(keys map[[2]string]any, params *api.PostInstanceActionStartParams) {
 	ctx := context.Background()
 	for key := range keys {
 		path := key[0]
@@ -1365,7 +1230,7 @@ func (t *App) actionInstanceStart(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionStartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		_, _ = t.client.PostInstanceActionStartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
@@ -1382,7 +1247,7 @@ func (t *App) actionInstanceClear(keys map[[2]string]any) {
 	}
 }
 
-func (t *App) actionInstanceStop(keys map[[2]string]any, args []string) {
+func (t *App) actionInstanceStop(keys map[[2]string]any, params *api.PostInstanceActionStopParams) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1391,19 +1256,11 @@ func (t *App) actionInstanceStop(keys map[[2]string]any, args []string) {
 		if err != nil {
 			continue
 		}
-		params := api.PostInstanceActionStopParams{}
-		for _, arg := range args {
-			switch {
-			case arg == "--force":
-				v := true
-				params.Force = &v
-			}
-		}
-		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
-func (t *App) actionInstanceProvision(keys map[[2]string]any, args []string) {
+func (t *App) actionInstanceProvision(keys map[[2]string]any, params *api.PostInstanceActionProvisionParams) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1412,28 +1269,11 @@ func (t *App) actionInstanceProvision(keys map[[2]string]any, args []string) {
 		if err != nil {
 			continue
 		}
-		params := api.PostInstanceActionProvisionParams{}
-		for _, arg := range args {
-			switch {
-			case arg == "--leader":
-				v := true
-				params.Leader = &v
-			case arg == "--disable-rollback":
-				v := true
-				params.DisableRollback = &v
-			case arg == "--state-only":
-				v := true
-				params.StateOnly = &v
-			default:
-				t.errorf("unsupported option: %s", arg)
-				return
-			}
-		}
-		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
-func (t *App) actionInstanceUnprovision(keys map[[2]string]any, args []string) {
+func (t *App) actionInstanceUnprovision(keys map[[2]string]any, params *api.PostInstanceActionUnprovisionParams) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1442,25 +1282,11 @@ func (t *App) actionInstanceUnprovision(keys map[[2]string]any, args []string) {
 		if err != nil {
 			continue
 		}
-		params := api.PostInstanceActionUnprovisionParams{}
-		for _, arg := range args {
-			switch {
-			case arg == "--leader":
-				v := true
-				params.Leader = &v
-			case arg == "--state-only":
-				v := true
-				params.StateOnly = &v
-			default:
-				t.errorf("unsupported option: %s", arg)
-				return
-			}
-		}
-		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
+		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
-func (t *App) actionInstanceFreeze(keys map[[2]string]any) {
+func (t *App) actionInstanceFreeze(keys map[[2]string]any, params *api.PostInstanceActionFreezeParams) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1469,11 +1295,11 @@ func (t *App) actionInstanceFreeze(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionFreezeWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		_, _ = t.client.PostInstanceActionFreezeWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
-func (t *App) actionInstanceUnfreeze(keys map[[2]string]any) {
+func (t *App) actionInstanceUnfreeze(keys map[[2]string]any, params *api.PostInstanceActionUnfreezeParams) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1482,11 +1308,13 @@ func (t *App) actionInstanceUnfreeze(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionUnfreezeWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		_, _ = t.client.PostInstanceActionUnfreezeWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
-func (t *App) actionInstanceSwitch(keys map[[2]string]any, args []string) {
+// actionInstanceSwitch switches the objects to the instances selected, which
+// is what a takeover is too.
+func (t *App) actionInstanceSwitch(keys map[[2]string]any, flags *api.PostObjectActionSwitch) {
 	ctx := context.Background()
 	m := make(map[string][]string)
 	for key, _ := range keys {
@@ -1505,15 +1333,8 @@ func (t *App) actionInstanceSwitch(keys map[[2]string]any, args []string) {
 		if err != nil {
 			continue
 		}
-		body := api.PostObjectActionSwitch{
-			Destination: nodes,
-		}
-		for _, arg := range args {
-			switch {
-			case arg == "--live":
-				body.Live = true
-			}
-		}
+		body := *flags
+		body.Destination = nodes
 		_, _ = t.client.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, body)
 	}
 }
@@ -1534,7 +1355,7 @@ func groupByInstance(in map[[3]string]any) map[[2]string][]string {
 	return out
 }
 
-func (t *App) actionResourceRestart(keys map[[3]string]any) {
+func (t *App) actionResourceRestart(keys map[[3]string]any, flags *api.PostInstanceActionRestartParams) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1544,7 +1365,8 @@ func (t *App) actionResourceRestart(keys map[[3]string]any) {
 			continue
 		}
 		rid := strings.Join(rids, ",")
-		params := api.PostInstanceActionRestartParams{Rid: &rid}
+		params := *flags
+		params.Rid = &rid
 		_, _ = t.client.PostInstanceActionRestartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
@@ -1583,7 +1405,9 @@ func (t *App) actionResourceDisable(keys map[[3]string]any) {
 	}
 }
 
-func (t *App) actionResourceRun(keys map[[3]string]any) {
+// actionResourceRun runs the tasks selected. The run is confirmed for the
+// task asking a confirmation, the TUI having no prompt to answer it with.
+func (t *App) actionResourceRun(keys map[[3]string]any, flags *api.PostInstanceActionRunParams) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1594,7 +1418,9 @@ func (t *App) actionResourceRun(keys map[[3]string]any) {
 		}
 		rid := strings.Join(rids, ",")
 		confirm := true
-		params := api.PostInstanceActionRunParams{Rid: &rid, Confirm: &confirm}
+		params := *flags
+		params.Rid = &rid
+		params.Confirm = &confirm
 		_, _ = t.client.PostInstanceActionRunWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
@@ -1602,17 +1428,7 @@ func (t *App) actionResourceRun(keys map[[3]string]any) {
 // actionResourceProvision provisions the resources selected. With
 // --state-only, it only marks them provisioned, for resources a sysadmin
 // provisioned by hand.
-func (t *App) actionResourceProvision(keys map[[3]string]any, args []string) {
-	var stateOnly bool
-	for _, arg := range args {
-		switch arg {
-		case "--state-only":
-			stateOnly = true
-		default:
-			t.errorf("unsupported option: %s", arg)
-			return
-		}
-	}
+func (t *App) actionResourceProvision(keys map[[3]string]any, flags *api.PostInstanceActionProvisionParams) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1622,37 +1438,15 @@ func (t *App) actionResourceProvision(keys map[[3]string]any, args []string) {
 			continue
 		}
 		rid := strings.Join(rids, ",")
-		params := api.PostInstanceActionProvisionParams{Rid: &rid}
-		if stateOnly {
-			params.StateOnly = &stateOnly
-		}
+		params := *flags
+		params.Rid = &rid
 		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-// unprovisionMessages are what the user confirms an unprovision with: a
-// state only one destroys nothing and stops nothing, it only marks the
-// resources unprovisioned.
-func unprovisionMessages(args []string) []string {
-	if slices.Contains(args, "--state-only") {
-		return []string{stateOnlyUnprovisionMessage}
-	}
-	return []string{dataLostMessage, serviceInterruptionMessage}
-}
-
 // actionResourceUnprovision unprovisions the resources selected. With
 // --state-only, it only marks them unprovisioned.
-func (t *App) actionResourceUnprovision(keys map[[3]string]any, args []string) {
-	var stateOnly bool
-	for _, arg := range args {
-		switch arg {
-		case "--state-only":
-			stateOnly = true
-		default:
-			t.errorf("unsupported option: %s", arg)
-			return
-		}
-	}
+func (t *App) actionResourceUnprovision(keys map[[3]string]any, flags *api.PostInstanceActionUnprovisionParams) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1663,15 +1457,13 @@ func (t *App) actionResourceUnprovision(keys map[[3]string]any, args []string) {
 		}
 
 		rid := strings.Join(rids, ",")
-		params := api.PostInstanceActionUnprovisionParams{Rid: &rid}
-		if stateOnly {
-			params.StateOnly = &stateOnly
-		}
+		params := *flags
+		params.Rid = &rid
 		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-func (t *App) actionResourceStart(keys map[[3]string]any, args []string) {
+func (t *App) actionResourceStart(keys map[[3]string]any, flags *api.PostInstanceActionStartParams) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1681,19 +1473,13 @@ func (t *App) actionResourceStart(keys map[[3]string]any, args []string) {
 			continue
 		}
 		rid := strings.Join(rids, ",")
-		params := api.PostInstanceActionStartParams{Rid: &rid}
-		for _, arg := range args {
-			switch {
-			case arg == "--force":
-				v := true
-				params.Force = &v
-			}
-		}
+		params := *flags
+		params.Rid = &rid
 		_, _ = t.client.PostInstanceActionStartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-func (t *App) actionResourceStop(keys map[[3]string]any, args []string) {
+func (t *App) actionResourceStop(keys map[[3]string]any, flags *api.PostInstanceActionStopParams) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1703,26 +1489,20 @@ func (t *App) actionResourceStop(keys map[[3]string]any, args []string) {
 			continue
 		}
 		rid := strings.Join(rids, ",")
-		params := api.PostInstanceActionStopParams{Rid: &rid}
-		for _, arg := range args {
-			switch {
-			case arg == "--force":
-				v := true
-				params.Force = &v
-			}
-		}
+		params := *flags
+		params.Rid = &rid
 		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-func (t *App) actionStop(paths map[string]any) {
+func (t *App) actionStop(paths map[string]any, params *api.PostObjectActionStopParams) {
 	ctx := context.Background()
 	for path, _ := range paths {
 		p, err := naming.ParsePath(path)
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
+		_, _ = t.client.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name, params)
 	}
 }
 
@@ -1803,21 +1583,14 @@ func (t *App) actionUnfreeze(paths map[string]any) {
 	}
 }
 
-func (t *App) actionSwitch(paths map[string]any, args []string) {
+func (t *App) actionSwitch(paths map[string]any, body *api.PostObjectActionSwitch) {
 	ctx := context.Background()
 	for path, _ := range paths {
 		p, err := naming.ParsePath(path)
 		if err != nil {
 			continue
 		}
-		body := api.PostObjectActionSwitch{}
-		for _, arg := range args {
-			switch {
-			case arg == "--live":
-				body.Live = true
-			}
-		}
-		_, _ = t.client.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, body)
+		_, _ = t.client.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, *body)
 	}
 }
 
@@ -1895,21 +1668,21 @@ func (t *App) actionClusterUnfreeze() {
 func (t *App) onRuneH(event *tcell.EventKey) {
 	help := `
  Command mode Shortcuts
- 
+
    :                    Enter command mode
    /                    Enter filter expression
    ESC                  Exit command mode
    Enter                Apply command to the selected cells
- 
+
  Selection Shortcuts
- 
+
    Up,Right,Down,Left   Move cursor
    SPACE                Select the cell
    ESC                  Reset selection
    Ctrl-a               Invert object selection
- 
+
  Misc Shortcuts
- 
+
    c                    Show cluster, node or object configuration
    e                    Edit cluster, node or object configuration
    h                    Show this help

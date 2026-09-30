@@ -10,85 +10,14 @@ import (
 type node map[string]node
 
 var (
-	nodeDoCluster = node{
-		"freeze":   nil,
-		"unfreeze": nil,
-	}
-	nodeDoObject = node{
-		"abort":     nil,
-		"freeze":    nil,
-		"giveback":  nil,
-		"provision": nil,
-		"purge":     nil,
-		"resize":    nil,
-		"restart":   nil,
-		"start":     nil,
-		"stop":      nil,
-		"switch": node{
-			"--live": nil,
-		},
-		"unfreeze":    nil,
-		"unprovision": nil,
-	}
-	nodeDoInstance = node{
-		"clear":  nil,
-		"delete": nil,
-		"freeze": nil,
-		"provision": node{
-			"--disable-rollback": nil,
-			"--leader":           nil,
-			"--state-only":       nil,
-		},
-		"refresh": nil,
-		"restart": nil,
-		"start":   nil,
-		"stop": node{
-			"--force": nil,
-		},
-		"switch": node{
-			"--live": nil,
-		},
-		"takeover": node{
-			"--live": nil,
-		},
-		"unfreeze": nil,
-		"unprovision": node{
-			"--leader":     nil,
-			"--state-only": nil,
-		},
-	}
-	nodeDoResource = node{
-		"disable": nil,
-		"enable":  nil,
-		"provision": node{
-			"--state-only": nil,
-		},
-		"run": nil,
-		"start": node{
-			"--force": nil,
-		},
-		"stop": node{
-			"--force": nil,
-		},
-		"unprovision": node{
-			"--state-only": nil,
-		},
-	}
-	nodeDoTask = node{
-		"abort": nil,
-		"run":   nil,
-	}
-	nodeDoNode = node{
-		"drain":    nil,
-		"freeze":   nil,
-		"unfreeze": nil,
-	}
 	nodeRoot = node{
 		"do":      nil,
 		"connect": nil,
 		"go": node{
 			"sec":   nil,
 			"cfg":   nil,
+			"usr":   nil,
+			"svc":   nil,
 			"vol":   nil,
 			"pool":  nil,
 			"net":   nil,
@@ -119,27 +48,27 @@ func (t *App) getDo() node {
 
 	if t.focus() == viewInstance && row > 1 {
 		if _, ok := t.flex.GetItem(2).(*tview.Table); ok {
-			return nodeDoResource
+			return doResource.node()
 		}
 		return nil
 	}
 
 	if row == 0 {
 		if col == 1 {
-			return nodeDoCluster
+			return doCluster.node()
 		}
 		if col >= t.firstInstanceCol {
-			return nodeDoNode
+			return doNode.node()
 		}
 		return nil
 	}
 
 	if row >= t.firstObjectRow {
 		if col == 0 {
-			return nodeDoObject
+			return doObject.node()
 		}
 		if col >= t.firstInstanceCol {
-			return nodeDoInstance
+			return doInstance.node()
 		}
 	}
 
