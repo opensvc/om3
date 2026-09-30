@@ -134,8 +134,17 @@ func (t Table) DeepCopy() *Table {
 }
 
 func (t Entry) GetNext() (time.Time, time.Duration, error) {
+	return t.GetNextAt(time.Now())
+}
+
+// GetNextAt returns the next time the entry is allowed to run after tm, given
+// its last run, and the duration it stays allowed.
+//
+// A caller computing a delay from a time it read passes that time, so the
+// delay and the next date are computed from the same clock reading.
+func (t Entry) GetNextAt(tm time.Time) (time.Time, time.Duration, error) {
 	sc := usched.New(t.Schedule)
-	return sc.Next(usched.NextWithLast(t.LastRunAt))
+	return sc.Next(usched.NextWithLast(t.LastRunAt), usched.NextWithTime(tm))
 }
 
 func (t Entry) LogPrefix() string {

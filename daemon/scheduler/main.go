@@ -42,9 +42,18 @@ type (
 		databus   *daemondata.T
 		publisher pubsub.Publisher
 
-		jobs        Jobs
-		events      chan any
-		enabled     bool
+		jobs    jobs
+		enabled bool
+
+		// timer wakes the loop when the soonest job is due, or after
+		// maxSleep at most.
+		timer *time.Timer
+
+		// now and exec are the clock and the job runner, which the tests
+		// replace.
+		now  func() time.Time
+		exec func(schedule.Entry) error
+
 		provisioned map[naming.Path]bool
 		failover    map[naming.Path]bool
 
@@ -61,6 +70,9 @@ type (
 		isCollectorJoinable bool
 
 		wg sync.WaitGroup
+
+		// running counts the jobs running in the background.
+		running sync.WaitGroup
 
 		subQS pubsub.QueueSizer
 
@@ -87,27 +99,26 @@ type (
 
 	Schedules map[naming.Path]map[string]schedule.Entry
 
-	// Job is a schedule entries with alarms set.
-	Job struct {
-		CreatedAt time.Time
-		LastRunAt time.Time
-		schedule  schedule.Entry
-		cancel    []func()
-	}
+	// pathKeyMap holds a value per object and schedule key.
+	pathKeyMap[V any] map[naming.Path]map[string]V
 
-	// Jobs is a map of Job
-	Jobs map[string]Job
+	timeMap = pathKeyMap[time.Time]
+	errMap  = pathKeyMap[error]
+)
 
-	eventJobAlarm struct {
-		schedule schedule.Entry
-	}
-	eventJobDone struct {
-		schedule schedule.Entry
-		end      time.Time
-	}
+const (
+	// maxSleep is the longest the loop sleeps without looking at the
+	// clock. The timers count the time elapsed, which a suspend or a step
+	// of the wall clock leaves behind: a job due at a wall time is taken
+	// within maxSleep of it whatever happened to the clock meanwhile.
+	maxSleep = time.Minute
 
-	timeMap map[string]time.Time
-	errMap  map[string]error
+	// lateTolerance is how late a job is taken and still counts as on
+	// time. The next run of a job taken on time is planned from the time
+	// it was due, so its runs do not drift. The next run of a job taken
+	// later is planned from the time it is taken: the runs it missed, while
+	// the node was suspended for example, are not made up in a burst.
+	lateTolerance = 10 * time.Second
 )
 
 var (
@@ -197,8 +208,8 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	t := &T{
 		log:               plog.NewDefaultLogger().Attr("pkg", "daemon/scheduler").WithPrefix("daemon: scheduler: "),
 		localhost:         hostname.Hostname(),
-		events:            make(chan any),
-		jobs:              make(Jobs),
+		jobs:              newJobs(),
+		now:               time.Now,
 		schedules:         make(Schedules),
 		failover:          make(map[naming.Path]bool),
 		provisioned:       make(map[naming.Path]bool),
@@ -213,125 +224,12 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			MaxRunning: 5,
 		},
 	}
+	t.exec = t.action
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
 		return nil
 	}
 	return t
-}
-
-func newJobId(e schedule.Entry) string {
-	return fmt.Sprintf("%s:%s", e.Path, e.Key)
-}
-
-func splitJobId(s string) (naming.Path, string) {
-	pathS, key, _ := strings.Cut(s, ":")
-	path, _ := naming.ParsePath(pathS)
-	return path, key
-}
-
-func (t Jobs) PathIds(path naming.Path) []string {
-	var l []string
-	for id, job := range t {
-		if job.schedule.Path == path {
-			l = append(l, id)
-		}
-	}
-	return l
-}
-
-func (t Jobs) Table(path naming.Path) schedule.Table {
-	table := make(schedule.Table, 0)
-	for _, job := range t {
-		if job.schedule.Path == path {
-			table = append(table, job.schedule)
-		}
-	}
-	return table
-}
-
-func (t Jobs) Add(e schedule.Entry, delay time.Duration, bus chan any) {
-	tmr := time.AfterFunc(delay, func() {
-		bus <- eventJobAlarm{
-			schedule: e,
-		}
-	})
-	cancel := func() {
-		if tmr == nil {
-			return
-		}
-		tmr.Stop()
-	}
-	jobId := newJobId(e)
-	job, ok := t[jobId]
-	if !ok {
-		job = Job{
-			CreatedAt: time.Now(),
-		}
-	}
-	job.schedule = e
-	job.cancel = append(job.cancel, cancel)
-	t[jobId] = job
-}
-
-func (t Jobs) Done(e schedule.Entry) Job {
-	jobId := newJobId(e)
-	job, ok := t[jobId]
-	if !ok {
-		return Job{}
-	}
-	job.Cancel()
-	t[jobId] = job
-	return job
-}
-
-func (t Jobs) DelId(jobId string) {
-	job, ok := t[jobId]
-	if !ok {
-		return
-	}
-	job.Cancel()
-	delete(t, jobId)
-}
-
-func (t Jobs) Del(e schedule.Entry) {
-	jobId := newJobId(e)
-	t.DelId(jobId)
-}
-
-func (t Jobs) DelPath(p naming.Path) {
-	for _, e := range t {
-		if e.schedule.Path != p {
-			continue
-		}
-		t.Del(e.schedule)
-	}
-}
-
-func (t Jobs) Purge() {
-	for k, e := range t {
-		e.Cancel()
-		delete(t, k)
-	}
-}
-
-func (t Jobs) Has(e schedule.Entry) bool {
-	jobId := newJobId(e)
-	_, ok := t[jobId]
-	return ok
-}
-
-func (t Jobs) Get(e schedule.Entry) (Job, bool) {
-	jobId := newJobId(e)
-	job, ok := t[jobId]
-	return job, ok
-}
-
-func (t Job) Cancel() {
-	for _, cancel := range t.cancel {
-		cancel()
-	}
-	t.cancel = nil
 }
 
 func (t *T) peerInstanceLastRun(e schedule.Entry) time.Time {
@@ -357,55 +255,6 @@ func (t *T) peerInstanceLastRun(e schedule.Entry) time.Time {
 	return lastRunOnAllPeers
 }
 
-func (t *T) createJob(e schedule.Entry) {
-	if !t.enabled {
-		return
-	}
-	if e.RequireCollector && !t.isCollectorJoinable {
-		return
-	}
-	if e.Require != "" {
-		if satisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); !ok || satisfied != nil {
-			return
-		}
-	}
-
-	logger := t.jobLogger(e)
-	if e.LastRunAt.IsZero() {
-		// after daemon start: initialize the schedule's LastRunAt from LastRunFile
-		e.LastRunAt = e.GetLastRun()
-	}
-
-	if tm := t.peerInstanceLastRun(e); e.LastRunAt.Before(tm) {
-		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, tm)
-		e.LastRunAt = tm
-	}
-
-	now := time.Now() // keep before GetNext call
-	next, _, err := e.GetNext()
-	if err != nil {
-		logger.Warnf("failed to find a next date: %s", err)
-		t.jobs.Del(e)
-		return
-	}
-	if next.IsZero() {
-		t.jobs.Del(e)
-		return
-	}
-	if next.Before(now) {
-		logger.Warnf("next %s is in the past", next)
-		t.jobs.Del(e)
-		return
-	}
-	e.NextRunAt = next
-	delay := next.Sub(now)
-	if e.LastRunAt.IsZero() || delay >= time.Second {
-		logger.Tracef("next at %s (in %s)", next, delay)
-	}
-	t.jobs.Add(e, delay, t.events)
-	return
-}
-
 func (t *T) jobLogger(e schedule.Entry) *plog.Logger {
 	logger := naming.LogWithPath(t.log, e.Path)
 	return logger.AddPrefix(e.LogPrefix())
@@ -421,109 +270,221 @@ func (t *T) isProvisioned(path naming.Path) bool {
 	return hasProvisioned && isProvisioned
 }
 
-func (t *T) onJobAlarm(c eventJobAlarm) {
-	logger := t.jobLogger(c.schedule)
-	e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
+// planJob plans the entry to run at the next time its schedule allows after
+// its last run, in place of the job planned for its key.
+//
+// An entry that can not be planned, whose schedule has no next date or can
+// not be read, is unplanned rather than left planned for a time that never
+// comes: a job planned is a job that will be taken.
+func (t *T) planJob(e schedule.Entry, now time.Time) {
+	logger := t.jobLogger(e)
+	if e.LastRunAt.IsZero() {
+		// after daemon start: the last run is read from the last run file
+		e.LastRunAt = e.GetLastRun()
+	}
+	if tm := t.peerInstanceLastRun(e); e.LastRunAt.Before(tm) {
+		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, tm)
+		e.LastRunAt = tm
+	}
+	next, _, err := e.GetNextAt(now)
+	switch {
+	case err != nil:
+		logger.Warnf("unschedule (failed to find a next date: %s)", err)
+		t.jobs.del(e.Path, e.Key)
+		return
+	case next.IsZero():
+		logger.Infof("unschedule (no next date)")
+		t.jobs.del(e.Path, e.Key)
+		return
+	}
+	if !e.LastRunAt.IsZero() && !next.After(e.LastRunAt) {
+		// A schedule answering its last run as its next one would have
+		// the loop take the job again and again without sleeping.
+		next = e.LastRunAt.Add(time.Second)
+	}
+	if next.Before(now) {
+		// A date already past is taken as soon as possible, not dropped.
+		next = now
+	}
+	e.NextRunAt = next
+	t.jobs.set(e, now)
+	logger.Tracef("next at %s (in %s)", next, next.Sub(now))
+}
+
+// onTick takes the jobs that are due.
+func (t *T) onTick() {
+	now := t.now()
+	for _, j := range t.jobs.popDue(now) {
+		t.onJobDue(j, now)
+	}
+}
+
+// armTimer sets the timer to wake the loop when the soonest job is due, and
+// after maxSleep at most.
+func (t *T) armTimer() {
+	if t.timer == nil {
+		return
+	}
+	d, ok := t.nextWake(t.now())
 	if !ok {
-		logger.Infof("abort (schedule deleted)")
+		t.timer.Stop()
 		return
 	}
-	if e.RequireCollector && !t.isCollectorJoinable {
-		logger.Infof("abort (collector not joinable)")
-		return
-	}
-	if !e.Path.IsZero() {
-		if e.RequireProvisioned && !t.isProvisioned(e.Path) {
-			logger.Infof("abort (no longer provisioned)")
-			return
-		}
-		if e.RequireReplicationSource {
-			if reason := t.notSource[e.Path]; reason != "" {
-				logger.Infof("abort (no longer the replication source: %s)", reason)
-				return
-			}
-			// A sync started while the object is being stopped or
-			// switched holds the object lock the stop needs, and may
-			// be sending when the peer takes over. The next period
-			// syncs, if this node is still the source.
-			if mon := instance.MonitorData.GetByPathAndNode(e.Path, t.localhost); mon != nil && mon.GlobalExpect != instance.MonitorGlobalExpectNone && mon.GlobalExpect != instance.MonitorGlobalExpectInit {
-				logger.Infof("skip (orchestration %s in progress)", mon.GlobalExpect)
-				return
-			}
-			// A node being drained shuts its instances down without
-			// waiting for the syncs, and interrupts the ones running: a
-			// sync started meanwhile would be sending while a peer
-			// takes over.
-			if mon := node.MonitorData.GetByNode(t.localhost); mon != nil && mon.LocalExpect == node.MonitorLocalExpectDrained {
-				logger.Infof("skip (node draining)")
-				return
-			}
-		}
-		if satisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); ok {
-			if satisfied != nil {
-				logger.Infof("abort (requirements no longer met)")
-				return
-			}
-		} else if e.Require != "" {
-			logger.Infof("abort (requirements not yet evaluated)")
-			return
-		}
-	}
+	t.timer.Reset(d)
+}
 
-	if tm := t.peerInstanceLastRun(e); c.schedule.LastRunAt.Before(tm) {
-		logger.Infof("abort (job ran on peer at %s)", tm)
-		t.recreateJobFrom(e, tm)
+// nextWake returns how long the loop may sleep before a job is due, and
+// false when no job is planned.
+func (t *T) nextWake(now time.Time) (time.Duration, bool) {
+	j := t.jobs.first()
+	if j == nil {
+		return 0, false
+	}
+	return max(0, min(j.entry.NextRunAt.Sub(now), maxSleep)), true
+}
+
+// onJobDue takes a job that is due: it plans the next run of the job, then
+// runs it, unless something says to skip this run.
+//
+// The next run is planned before anything else, so that no reason to skip
+// this run leaves the job unplanned: a job skipped because a sync conflicted
+// with an orchestration, or because its node was being drained, runs again
+// at its next period.
+func (t *T) onJobDue(j *job, now time.Time) {
+	due := j.entry
+	e, ok := t.schedules.Get(due.Path, due.Key)
+	if !ok {
+		t.jobLogger(due).Infof("unschedule (schedule deleted)")
+		t.jobs.del(due.Path, due.Key)
+		return
+	}
+	logger := t.jobLogger(e)
+
+	if tm := t.peerInstanceLastRun(e); due.LastRunAt.Before(tm) {
+		logger.Infof("skip (ran on a peer at %s)", tm)
+		e.LastRunAt = tm
+		t.planJob(e, now)
+		t.updateExposedSchedules(e.Path)
 		return
 	}
 
-	// plan the next run before exec, so another exec can be done
-	// even if another is running
-	e.LastRunAt = c.schedule.LastRunAt
-	e.NextRunAt = c.schedule.NextRunAt
-	t.recreateJobFrom(e, c.schedule.NextRunAt)
+	last := due.NextRunAt
+	if now.Sub(last) > lateTolerance {
+		last = now
+	}
+	e.LastRunAt = last
+	t.planJob(e, now)
+	t.updateExposedSchedules(e.Path)
 
+	if reason := t.skipReason(e); reason != "" {
+		logger.Infof("skip (%s)", reason)
+		return
+	}
 	if n, err := t.runningCount(e); err != nil {
-		logger.Warnf("%s", err)
+		logger.Warnf("skip (%s)", err)
 		return
 	} else if n >= e.MaxParallel {
-		logger.Infof("abort (%d/%d jobs already running)", n, e.MaxParallel)
+		logger.Infof("skip (%d/%d jobs already running)", n, e.MaxParallel)
 		return
 	}
 
 	// Update the by-node last run cache
-	t.lastRunOnAllPeers.Set(e.Path, e.Key, e.NextRunAt)
+	t.lastRunOnAllPeers.Set(e.Path, e.Key, last)
 
-	// Update the job last run date
-	jobId := newJobId(e)
-	job, ok := t.jobs[jobId]
-	if ok {
-		job.LastRunAt = c.schedule.NextRunAt
-		t.jobs[jobId] = job
+	t.run(e, last, logger)
+}
+
+// run runs the job in the background.
+//
+// The last run is recorded before the run starts, so a daemon restarted
+// while the job runs does not run it again at once. The last success is
+// recorded once it succeeded.
+func (t *T) run(e schedule.Entry, last time.Time, logger *plog.Logger) {
+	if err := e.SetLastRun(last); err != nil {
+		logger.Errorf("on update last run: %s", err)
 	}
-
+	jobRunCount.WithLabelValues(e.Action).Inc()
+	jobRunByPathCount.WithLabelValues(e.Action, e.Path.String()).Inc()
+	jobRunByPathKeyCount.WithLabelValues(e.Action, e.Path.String(), e.Key).Inc()
+	t.running.Add(1)
 	go func() {
-		jobRunCount.WithLabelValues(e.Action).Inc()
-		jobRunByPathCount.WithLabelValues(e.Action, e.Path.String()).Inc()
-		jobRunByPathKeyCount.WithLabelValues(e.Action, e.Path.String(), e.Key).Inc()
-		if err := t.action(e); err != nil {
+		defer t.running.Done()
+		if err := t.exec(e); err != nil {
 			logger.Errorf("on exec: %s", err)
-		} else {
+		} else if err := e.SetLastSuccess(last); err != nil {
 			// remember last success, for users benefit
-			if err := e.SetLastSuccess(c.schedule.NextRunAt); err != nil {
-				logger.Errorf("on update last success: %s", err)
-			}
-		}
-
-		// remember last run, to not run the job too soon after a daemon restart
-		if err := e.SetLastRun(c.schedule.NextRunAt); err != nil {
-			logger.Errorf("on update last run: %s", err)
-		}
-
-		t.events <- eventJobDone{
-			schedule: e,
-			end:      time.Now(),
+			logger.Errorf("on update last success: %s", err)
 		}
 	}()
+}
+
+// blockReason says why the entry can not be scheduled, "" when it can.
+//
+// These are the conditions the scheduler follows from the events: a job is
+// planned when they are met and unplanned when one is not. They are checked
+// again when the job is due, to skip a run an event not yet received would
+// have unplanned.
+func (t *T) blockReason(e schedule.Entry) string {
+	if e.RequireCollector && !t.isCollectorJoinable {
+		return "collector not joinable"
+	}
+	if e.Path.IsZero() {
+		return ""
+	}
+	if e.RequireReplicationSource {
+		reason, ok := t.notSource[e.Path]
+		switch {
+		case !ok:
+			return "replication source not yet evaluated"
+		case reason != "":
+			return "not the replication source: " + reason
+		}
+	}
+	if e.RequireProvisioned {
+		isProvisioned, ok := t.provisioned[e.Path]
+		switch {
+		case !ok:
+			return "instance provisioned state is still unknown"
+		case !isProvisioned:
+			return "instance not provisioned"
+		}
+	}
+	if e.Require != "" {
+		satisfied, ok := t.reqSatisfied.Get(e.Path, e.Key)
+		switch {
+		case !ok:
+			return fmt.Sprintf("require %s not yet evaluated", e.Require)
+		case satisfied != nil:
+			return satisfied.Error()
+		}
+	}
+	return ""
+}
+
+// skipReason says why the job due now does not run, "" when it runs.
+//
+// It is blockReason, and the conditions that only last a while and do not
+// unplan the job: the next period runs if they are gone.
+func (t *T) skipReason(e schedule.Entry) string {
+	if reason := t.blockReason(e); reason != "" {
+		return reason
+	}
+	if e.Path.IsZero() || !e.RequireReplicationSource {
+		return ""
+	}
+	// A sync started while the object is being stopped or switched holds
+	// the object lock the stop needs, and may be sending when the peer
+	// takes over.
+	if mon := instance.MonitorData.GetByPathAndNode(e.Path, t.localhost); mon != nil && mon.GlobalExpect != instance.MonitorGlobalExpectNone && mon.GlobalExpect != instance.MonitorGlobalExpectInit {
+		return fmt.Sprintf("orchestration %s in progress", mon.GlobalExpect)
+	}
+	// A node being drained shuts its instances down without waiting for
+	// the syncs, and interrupts the ones running: a sync started meanwhile
+	// would be sending while a peer takes over.
+	if mon := node.MonitorData.GetByNode(t.localhost); mon != nil && mon.LocalExpect == node.MonitorLocalExpectDrained {
+		return "node draining"
+	}
+	return ""
 }
 
 func (t *T) runningCount(e schedule.Entry) (int, error) {
@@ -590,6 +551,9 @@ func (t *T) loop() {
 		}
 	}()
 
+	t.timer = time.NewTimer(maxSleep)
+	defer t.timer.Stop()
+
 	// The NodeMonitorUpdated event can be fired before our subscription.
 	// As this event enables the scheduler, we can't afford missing it.
 	// Read the NodeMonitor state from cache.
@@ -608,6 +572,10 @@ func (t *T) loop() {
 			t.log.Warnf("ignore node config with MaxParallel value 0")
 		}
 	}
+
+	// The jobs planned above, at start, are taken when due, not at the
+	// first wake of a timer set before they were planned.
+	t.armTimer()
 
 	for {
 		select {
@@ -630,36 +598,16 @@ func (t *T) loop() {
 			case *msgbus.DaemonCollectorUpdated:
 				t.onDaemonCollectorUpdated(c)
 			}
-		case ev := <-t.events:
-			switch c := ev.(type) {
-			case eventJobAlarm:
-				t.onJobAlarm(c)
-			case eventJobDone:
-				t.onJobDone(c)
-			default:
-				t.log.Errorf("received an unsupported event: %#v", c)
-			}
+		case <-t.timer.C:
+			t.onTick()
 		case <-t.ctx.Done():
-			t.jobs.Purge()
+			t.jobs.purge()
 			return
 		}
+		// Whatever was handled may have planned a job sooner than the
+		// timer is set to wake, or unplanned the one it waits for.
+		t.armTimer()
 	}
-}
-
-func (t *T) onJobDone(c eventJobDone) {
-	job := t.jobs.Done(c.schedule)
-	t.recreateJobFrom(c.schedule, job.LastRunAt)
-}
-
-func (t *T) recreateJobFrom(prev schedule.Entry, lastRunAt time.Time) {
-	e, ok := t.schedules.Get(prev.Path, prev.Key)
-	if !ok {
-		// no longer scheduled
-		return
-	}
-	e.LastRunAt = lastRunAt
-	t.createJob(e)
-	t.updateExposedSchedules(prev.Path)
 }
 
 func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
@@ -755,10 +703,10 @@ func (t *T) onPeerInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 		default:
 			continue
 		}
-		if _, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid); !ok {
+		if _, ok := t.lastRunOnAllPeers.Get(c.Path, ridScheduleKey(rid)); !ok {
 			if tm, nodename, err := t.readLastRunOnFile(c.Path, rid); err == nil {
 				log.Infof("initialize last run at %s on %s", tm, nodename)
-				t.lastRunOnAllPeers.SetWithRID(c.Path, rid, tm)
+				t.lastRunOnAllPeers.Set(c.Path, ridScheduleKey(rid), tm)
 			}
 		}
 		i, ok := r.Info["last_run_at"]
@@ -783,11 +731,11 @@ func (t *T) onPeerInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 			log.Warnf("write last run on file: %s", err)
 		}
 
-		lastestRunAtOnPeer, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid)
+		lastestRunAtOnPeer, ok := t.lastRunOnAllPeers.Get(c.Path, ridScheduleKey(rid))
 
 		if !ok || lastRunAtOnPeer.After(lastestRunAtOnPeer) {
 			log.Tracef("last run on peer %s at %s", c.Node, lastRunAtOnPeer)
-			t.lastRunOnAllPeers.SetWithRID(c.Path, rid, lastRunAtOnPeer)
+			t.lastRunOnAllPeers.Set(c.Path, ridScheduleKey(rid), lastRunAtOnPeer)
 		}
 	}
 	return false
@@ -823,7 +771,10 @@ func (t *T) readLastRunOnFile(path naming.Path, rid string) (time.Time, string, 
 func (t *T) updateLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
 	lastTm, err := t.lastRunOnFileModTime(path, rid)
 	if errors.Is(err, os.ErrNotExist) {
-		return os.MkdirAll(filepath.Dir(t.lastRunOnFile(path, rid)), 755)
+		if err := os.MkdirAll(filepath.Dir(t.lastRunOnFile(path, rid)), 0755); err != nil {
+			return err
+		}
+		return t.writeLastRunOnFile(path, rid, nodename, tm)
 	} else if err != nil {
 		return err
 	}
@@ -839,10 +790,14 @@ func (t *T) writeLastRunOnFile(path naming.Path, rid, nodename string, tm time.T
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	fmt.Fprintf(f, "%s\n", nodename)
-	os.Chtimes(p, tm, tm)
-	return nil
+	if _, err := fmt.Fprintf(f, "%s\n", nodename); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Chtimes(p, tm, tm)
 }
 
 func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
@@ -858,7 +813,6 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 		t.isCollectorJoinable = false
 		if previousIsCollectorJoinable {
 			t.log.Infof("disable jobs requiring a joinable collector")
-			t.unscheduleRequireCollector()
 			t.scheduleAll()
 		}
 	}
@@ -989,7 +943,7 @@ func (t *T) toggleEnabled(state node.MonitorState) {
 	switch {
 	case !isNodeStateCompatible && t.enabled:
 		t.log.Infof("disable scheduling (node monitor status is now %s)", state)
-		t.jobs.Purge()
+		t.jobs.purge()
 		t.enabled = false
 	case isNodeStateCompatible && !t.enabled:
 		t.log.Infof("enable scheduling (node monitor status is now %s)", state)
@@ -998,17 +952,8 @@ func (t *T) toggleEnabled(state node.MonitorState) {
 	}
 }
 
-func (t *T) hasAnyJob(p naming.Path) bool {
-	for _, job := range t.jobs {
-		if job.schedule.Path == p {
-			return true
-		}
-	}
-	return false
-}
-
 func (t *T) scheduleAll() {
-	for p, _ := range instance.StatusData.GetByNode(t.localhost) {
+	for p := range instance.StatusData.GetByNode(t.localhost) {
 		t.scheduleObject(p)
 	}
 	t.scheduleNode()
@@ -1019,159 +964,56 @@ func (t *T) scheduleNode() {
 		return
 	}
 	nodeConfig := node.ConfigData.GetByNode(t.localhost)
-	if nodeConfig == nil || nodeConfig.Schedules == nil || len(nodeConfig.Schedules) == 0 {
+	if nodeConfig == nil {
 		return
 	}
-
-	path := naming.Path{}
-	jobIds := make(map[string]any)
-
-	scheduleOne := func(scheduleConfig schedule.Config) {
-		e := schedule.Entry{
-			Node:   t.localhost,
-			Config: scheduleConfig,
-		}
-
-		// Remember we saw that job id, so we can purge unconfigured jobs after this loop
-		jobIds[newJobId(e)] = nil
-
-		log := t.jobLogger(e)
-		prevSchedule, hasSchedule := t.schedules.Get(path, e.Key)
-		hasJob := t.jobs.Has(e)
-		t.schedules.Add(path, e)
-		var validated []string
-		var skipped string
-
-		if hasSchedule && (scheduleConfig.Schedule != prevSchedule.Config.Schedule) {
-			if hasJob {
-				if e.Schedule == "" || e.Schedule == "@0" {
-					log.Infof("unschedule (schedule is now @0)")
-					t.jobs.Del(e)
-					return
-				} else {
-					// At the end of this func, if we did not recreate the job,
-					// log it as unscheduled
-					defer func() {
-						if !t.jobs.Has(e) {
-							log.Infof("unschedule on config change, skip reschedule (%s)", skipped)
-						}
-					}()
-					t.jobs.Del(e)
-				}
-			} else {
-				if e.Schedule == "" || e.Schedule == "@0" {
-					return
-				}
-			}
-		} else if e.Schedule == "" || e.Schedule == "@0" {
-			return
-		}
-		validated = append(validated, e.Schedule)
-
-		if e.RequireCollector && !t.isCollectorJoinable {
-			if hasJob {
-				log.Infof("unschedule (collector unjoignable)")
-				t.jobs.Del(e)
-			} else {
-				skipped = "collector unjoignable"
-			}
-			return
-		}
-
-		if !t.jobs.Has(e) {
-			log.Infof("schedule (%s)", strings.Join(validated, ", "))
-			t.createJob(e)
-		}
-	}
-
-	for _, scheduleConfig := range nodeConfig.Schedules {
-		scheduleOne(scheduleConfig)
-	}
-
-	// Purge unconfigured jobs
-	for _, id := range t.jobs.PathIds(path) {
-		if _, ok := jobIds[id]; !ok {
-			job := t.jobs[id]
-			t.jobLogger(job.schedule).Infof("unschedule (no longer configured)")
-			t.jobs.DelId(id)
-			_, key := splitJobId(id)
-			t.schedules.Del(path, key)
-		}
-	}
-
-	t.updateExposedSchedules(path)
+	t.scheduleEntries(naming.Path{}, nodeConfig.Schedules)
 }
 
 func (t *T) scheduleObject(path naming.Path) {
 	if !t.enabled {
 		return
 	}
-
 	instanceConfig := instance.ConfigData.GetByPathAndNode(path, t.localhost)
-	if instanceConfig == nil || instanceConfig.ActorConfig == nil || instanceConfig.Schedules == nil || len(instanceConfig.Schedules) == 0 {
+	if instanceConfig == nil || instanceConfig.ActorConfig == nil {
 		// only actor objects have scheduled actions
 		return
 	}
+	t.scheduleEntries(path, instanceConfig.Schedules)
+}
 
-	isProvisioned, hasProvisioned := t.provisioned[path]
-	jobIds := make(map[string]any)
-
-	scheduleOne := func(scheduleConfig schedule.Config) {
+// scheduleEntries plans the jobs of the schedules of the node or an object,
+// the ones not planned yet and the ones whose schedule changed, and unplans
+// the ones that can no longer run and the ones no longer configured.
+func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
+	now := t.now()
+	seen := make(map[string]bool, len(configs))
+	for _, config := range configs {
 		e := schedule.Entry{
 			Node:   t.localhost,
 			Path:   path,
-			Config: scheduleConfig,
+			Config: config,
 		}
-
-		// Remember we saw that job id, so we can purge unconfigured jobs after this loop
-		jobIds[newJobId(e)] = nil
-
-		log := t.jobLogger(e)
-		prevSchedule, hasSchedule := t.schedules.Get(path, e.Key)
-		hasJob := t.jobs.Has(e)
+		seen[e.Key] = true
+		prev, hadSchedule := t.schedules.Get(path, e.Key)
 		t.schedules.Add(path, e)
-		var validated []string
-		var skipped string
-
-		if hasSchedule && (scheduleConfig.Schedule != prevSchedule.Config.Schedule) {
+		j, hasJob := t.jobs.get(path, e.Key)
+		logger := t.jobLogger(e)
+		unschedule := func(reason string) {
 			if hasJob {
-				if e.Schedule == "" || e.Schedule == "@0" {
-					log.Infof("unschedule (schedule is now @0)")
-					t.jobs.Del(e)
-					return
-				} else {
-					// At the end of this func, if we did not recreate the job,
-					// log it as unscheduled
-					defer func() {
-						if !t.jobs.Has(e) {
-							log.Infof("unschedule on config change, skip reschedule (%s)", skipped)
-						}
-					}()
-					t.jobs.Del(e)
-				}
-			} else {
-				if e.Schedule == "" || e.Schedule == "@0" {
-					return
-				}
+				logger.Infof("unschedule (%s)", reason)
+				t.jobs.del(path, e.Key)
 			}
-		} else if e.Schedule == "" || e.Schedule == "@0" {
-			return
 		}
-		validated = append(validated, e.Schedule)
 
-		if e.RequireCollector && !t.isCollectorJoinable {
-			if hasJob {
-				log.Infof("unschedule (collector unjoignable)")
-				t.jobs.Del(e)
-			} else {
-				skipped = "collector unjoignable"
-			}
-			return
+		if e.Schedule == "" || e.Schedule == "@0" {
+			unschedule("schedule is @0")
+			continue
 		}
 
 		// The requirements not evaluated yet are evaluated from the last
 		// status of the instance, when one came before the schedules.
-		if st, ok := t.localStatus[path]; ok {
+		if st, ok := t.localStatus[path]; ok && !path.IsZero() {
 			if _, ok := t.notSource[path]; !ok && e.RequireReplicationSource {
 				t.updateNotSource(path, st)
 			}
@@ -1179,83 +1021,37 @@ func (t *T) scheduleObject(path naming.Path) {
 				t.updateReqSatisfied(path, e, st)
 			}
 		}
-		if e.RequireReplicationSource {
-			reason, ok := t.notSource[path]
-			switch {
-			case !ok:
-				reason = "replication source not yet evaluated"
-			case reason != "":
-				reason = "not the replication source: " + reason
-			}
-			if reason != "" {
-				if hasJob {
-					log.Infof("unschedule (%s)", reason)
-					t.jobs.Del(e)
-				} else {
-					skipped = reason
-				}
-				return
-			}
-			validated = append(validated, "replication source")
+		if reason := t.blockReason(e); reason != "" {
+			unschedule(reason)
+			continue
 		}
-		if e.RequireProvisioned {
-			if !hasProvisioned {
-				if hasJob {
-					log.Infof("unschedule (instance provisioned state is still unknown)")
-					t.jobs.Del(e)
-				} else {
-					skipped = "instance provisioned state is still unknown"
-				}
-				return
+
+		switch {
+		case !hasJob:
+			t.planJob(e, now)
+			if j, ok := t.jobs.get(path, e.Key); ok {
+				logger.Infof("schedule (next at %s)", j.entry.NextRunAt.Format(time.RFC3339))
 			}
-			if !isProvisioned {
-				if hasJob {
-					log.Infof("unschedule (instance no longer provisionned)")
-					t.jobs.Del(e)
-				} else {
-					skipped = "instance no longer provisionned"
-				}
-				return
+		case hadSchedule && prev.Schedule != e.Schedule:
+			// The job keeps its last run: the new schedule counts from it.
+			e.LastRunAt = j.entry.LastRunAt
+			t.planJob(e, now)
+			if j, ok := t.jobs.get(path, e.Key); ok {
+				logger.Infof("reschedule (schedule changed from %s, next at %s)", prev.Schedule, j.entry.NextRunAt.Format(time.RFC3339))
 			}
-			validated = append(validated, "provisioned")
-		}
-		if satisfied, ok := t.reqSatisfied.Get(path, e.Key); ok {
-			if satisfied != nil {
-				if hasJob {
-					log.Infof("unschedule (%s)", satisfied)
-					t.jobs.Del(e)
-				} else {
-					skipped = satisfied.Error()
-				}
-				return
-			}
-			validated = append(validated, fmt.Sprintf("require %s is satisfied", e.Require))
-		} else if e.Require != "" {
-			if hasJob {
-				log.Infof("unschedule (require %s not yet evaluated)", e.Require)
-				t.jobs.Del(e)
-			} else {
-				skipped = fmt.Sprintf("require %s not yet evaluated", e.Require)
-			}
-			return
-		}
-		if !t.jobs.Has(e) {
-			log.Infof("schedule (%s)", strings.Join(validated, ", "))
-			t.createJob(e)
 		}
 	}
 
-	for _, scheduleConfig := range instanceConfig.Schedules {
-		scheduleOne(scheduleConfig)
+	// Unplan the jobs, and forget the schedules, no longer configured.
+	for _, key := range t.jobs.keys(path) {
+		if !seen[key] {
+			j, _ := t.jobs.get(path, key)
+			t.jobLogger(j.entry).Infof("unschedule (no longer configured)")
+			t.jobs.del(path, key)
+		}
 	}
-
-	// Purge unconfigured jobs
-	for _, id := range t.jobs.PathIds(path) {
-		if _, ok := jobIds[id]; !ok {
-			job := t.jobs[id]
-			t.jobLogger(job.schedule).Infof("unschedule (no longer configured)")
-			t.jobs.DelId(id)
-			_, key := splitJobId(id)
+	for key := range t.schedules[path] {
+		if !seen[key] {
 			t.schedules.Del(path, key)
 		}
 	}
@@ -1268,17 +1064,8 @@ func (t *T) updateExposedSchedules(path naming.Path) {
 	if table == nil {
 		return
 	}
-	table = table.Merge(t.jobs.Table(path))
+	table = table.Merge(t.jobs.table(path))
 	schedule.TableData.Set(path, &table)
-}
-
-func (t *T) unscheduleRequireCollector() {
-	for key, job := range t.jobs {
-		if job.schedule.RequireCollector {
-			job.Cancel()
-			delete(t.jobs, key)
-		}
-	}
 }
 
 func (t *T) unschedule(path naming.Path) {
@@ -1286,7 +1073,8 @@ func (t *T) unschedule(path naming.Path) {
 	delete(t.notSource, path)
 	delete(t.localStatus, path)
 	t.schedules.DelPath(path)
-	t.jobs.DelPath(path)
+	t.jobs.delPath(path)
+	schedule.TableData.Unset(path)
 }
 
 func (t *T) publishUpdate() {
@@ -1295,68 +1083,32 @@ func (t *T) publishUpdate() {
 	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
 
-func (t errMap) key(path naming.Path, s string) string {
-	return fmt.Sprintf("%s:%s", path.String(), s)
-}
-
-func (t errMap) Get(path naming.Path, s string) (error, bool) {
-	id := t.key(path, s)
-	v, ok := t[id]
+func (t pathKeyMap[V]) Get(path naming.Path, key string) (V, bool) {
+	v, ok := t[path][key]
 	return v, ok
 }
 
-func (t errMap) Set(path naming.Path, s string, err error) {
-	id := t.key(path, s)
-	t[id] = err
+func (t pathKeyMap[V]) Set(path naming.Path, key string, v V) {
+	m, ok := t[path]
+	if !ok {
+		m = make(map[string]V)
+		t[path] = m
+	}
+	m[key] = v
 }
 
-func (t errMap) Unset(path naming.Path, s string) {
-	id := t.key(path, s)
-	delete(t, id)
-}
-
-func (t errMap) UnsetPath(path naming.Path) {
-	prefix := t.key(path, "")
-	for k, _ := range t {
-		if strings.HasPrefix(k, prefix) {
-			t.Unset(path, k)
-		}
+func (t pathKeyMap[V]) Unset(path naming.Path, key string) {
+	delete(t[path], key)
+	if len(t[path]) == 0 {
+		delete(t, path)
 	}
 }
 
-func (t timeMap) key(path naming.Path, s string) string {
-	return fmt.Sprintf("%s:%s", path.String(), s)
+func (t pathKeyMap[V]) UnsetPath(path naming.Path) {
+	delete(t, path)
 }
 
-func (t timeMap) Get(path naming.Path, s string) (time.Time, bool) {
-	id := t.key(path, s)
-	tm, ok := t[id]
-	return tm, ok
-}
-
-func (t timeMap) Set(path naming.Path, s string, tm time.Time) {
-	id := t.key(path, s)
-	t[id] = tm
-}
-
-func (t timeMap) UnsetPath(path naming.Path) {
-	prefix := t.key(path, "")
-	for k, _ := range t {
-		if strings.HasPrefix(k, prefix) {
-			t.Unset(path, k)
-		}
-	}
-}
-
-func (t timeMap) Unset(path naming.Path, s string) {
-	id := t.key(path, s)
-	delete(t, id)
-}
-
-func (t timeMap) GetWithRID(path naming.Path, s string) (time.Time, bool) {
-	return t.Get(path, s+".schedule")
-}
-
-func (t timeMap) SetWithRID(path naming.Path, s string, tm time.Time) {
-	t.Set(path, s+".schedule", tm)
+// ridScheduleKey is the key of the last run of the schedule of a resource.
+func ridScheduleKey(rid string) string {
+	return rid + ".schedule"
 }
