@@ -33,3 +33,24 @@ func TestIsExact(t *testing.T) {
 		})
 	}
 }
+
+// A resource section is <group>#<index>: a bare name, or half of the pair,
+// is not one.
+func TestIsIndexed(t *testing.T) {
+	for s, want := range map[string]bool{
+		"fs#1":    true,
+		"foo#bar": true,
+		"node":    false,
+		"fs":      false,
+		"fs#":     false,
+		"#1":      false,
+	} {
+		rid, err := Parse(s)
+		if err != nil {
+			t.Fatalf("%s: %s", s, err)
+		}
+		if got := rid.IsIndexed(); got != want {
+			t.Errorf("%s: got %v, want %v", s, got, want)
+		}
+	}
+}

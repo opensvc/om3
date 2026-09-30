@@ -64,6 +64,12 @@ type (
 		DRPNodes() ([]string, error)
 	}
 
+	// resourceSectioner is a referrer whose configuration sections are
+	// resources, as an object with resources is, and the node is not.
+	resourceSectioner interface {
+		HasResourceSections() bool
+	}
+
 	encapNodeser interface {
 		// for scoping
 		EncapNodes() ([]string, error)

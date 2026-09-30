@@ -37,6 +37,7 @@ const (
 	alertKindScoping AlertKind = iota
 	alertKindUnknown
 	alertKindUnknownDriver
+	alertKindUnknownSection
 	alertKindEval
 	alertKindCandidates
 	alertKindDeprecated
@@ -57,6 +58,7 @@ var (
 		alertLevelErrorStr: alertLevelError,
 	}
 	alertKindUnknownDriverStr   = "unknown driver"
+	alertKindUnknownSectionStr  = "unknown section"
 	alertKindScopingStr         = "unscopable keyword"
 	alertKindUnknownStr         = "unknown keyword"
 	alertKindEvalStr            = "evaluation error"
@@ -69,6 +71,7 @@ var (
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
 		alertKindUnknownDriver:   alertKindUnknownDriverStr,
+		alertKindUnknownSection:  alertKindUnknownSectionStr,
 		alertKindEval:            alertKindEvalStr,
 		alertKindCandidates:      alertKindCandidatesStr,
 		alertKindDeprecated:      alertKindDeprecatedStr,
@@ -80,6 +83,7 @@ var (
 		alertKindScopingStr:         alertKindScoping,
 		alertKindUnknownStr:         alertKindUnknown,
 		alertKindUnknownDriverStr:   alertKindUnknownDriver,
+		alertKindUnknownSectionStr:  alertKindUnknownSection,
 		alertKindEvalStr:            alertKindEval,
 		alertKindCandidatesStr:      alertKindCandidates,
 		alertKindDeprecatedStr:      alertKindDeprecated,
@@ -106,6 +110,40 @@ func (t T) NewAlertUnknownDriver(k key.T, did driver.ID) Alert {
 		Level:  alertLevelWarn,
 		Key:    k,
 		Driver: did,
+	}
+}
+
+// NewAlertUnsupportedSection says a section is a resource of a driver group
+// this agent does not have, in the words the instance status says it: the
+// status warns of a resource it ignores, and the validation of the
+// configuration is where what to fix is looked for.
+//
+// The section has no driver to name in the alert, so the group it names is
+// in the comment.
+func (t T) NewAlertUnsupportedSection(section, sectionType string) Alert {
+	drv, _, _ := strings.Cut(section, "#")
+	if sectionType != "" {
+		drv += "." + sectionType
+	}
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindUnknownDriver,
+		Level:   alertLevelWarn,
+		Key:     key.T{Section: section},
+		Comment: fmt.Sprintf("the %s driver is not supported by this agent: the resource is ignored", drv),
+	}
+}
+
+// NewAlertUnknownSection says a section is neither a resource nor a section
+// an object reads, so nothing uses it: the status has no resource to show it
+// by, and the validation is the only place it is reported.
+func (t T) NewAlertUnknownSection(section string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindUnknownSection,
+		Level:   alertLevelWarn,
+		Key:     key.T{Section: section},
+		Comment: "the section is no resource and no section an object reads: it is ignored",
 	}
 }
 
@@ -333,6 +371,14 @@ func (t T) Validate() (Alerts, error) {
 		section := s.Name()
 		sectionType := t.GetString(key.New(section, "type"))
 		if rid, err := resourceid.Parse(section); err == nil {
+			if rid.DriverGroup() == driver.GroupUnknown && t.hasResourceSections() {
+				if rid.IsIndexed() {
+					alerts = append(alerts, t.NewAlertUnsupportedSection(section, sectionType))
+				} else {
+					alerts = append(alerts, t.NewAlertUnknownSection(section))
+				}
+				continue
+			}
 			did = driver.NewID(rid.DriverGroup(), sectionType)
 			if did.Name != "" {
 				if sectionType == "" {
@@ -418,6 +464,14 @@ func (t T) Validate() (Alerts, error) {
 		}
 	}
 	return alerts, nil
+}
+
+// hasResourceSections reports whether the sections of the configuration are
+// resources, so that one naming no driver group is a resource ignored rather
+// than a section of another purpose.
+func (t T) hasResourceSections() bool {
+	i, ok := t.Referrer.(resourceSectioner)
+	return ok && i.HasResourceSections()
 }
 
 // validateLine says whether the value a line of the configuration holds is
