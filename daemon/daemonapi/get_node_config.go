@@ -65,8 +65,11 @@ func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.
 				Node:    nodename,
 				Keyword: k.String(),
 			}
-			if s, err := conf.GetStrict(k); err != nil {
-				continue
+			// The value is the one that applies to the node, from its
+			// configuration or the cluster's, and none when neither sets
+			// it: a keyword set nowhere still evaluates, to its default.
+			if s, err := oc.MergedConfig().GetStrict(k); err != nil {
+				item.Value = ""
 			} else {
 				item.Value = s
 			}
