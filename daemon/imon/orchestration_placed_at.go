@@ -260,16 +260,54 @@ func (t *Manager) orchestrateFailoverPlacedStartFromStopped() {
 	case status.Down:
 		t.placedStart()
 	case status.Warn, status.Up, status.StandbyUp:
-		if t.orchestrationIsDoneOnPeers() {
-			t.loggerWithState().Warnf("orchestration %s start fails, set done and idle: all peer orchestrations are done but object avail is %s",
-				t.state.GlobalExpect, t.objStatus.Avail)
-			t.transitionTo(instance.MonitorStateIdle)
-			t.done()
-			t.clearPending()
+		if !t.orchestrationIsDoneOnPeers() {
+			return
 		}
+		if !t.isUpOnPeers() {
+			// The object is up here, or partly: a live move brings the
+			// container here running, with no start, and the source
+			// stopped what it left behind. What is left to do is the
+			// local instance's to say.
+			t.placedStartAfterMove()
+			return
+		}
+		t.loggerWithState().Warnf("orchestration %s start fails, set done and idle: all peer orchestrations are done but object avail is %s",
+			t.state.GlobalExpect, t.objStatus.Avail)
+		t.transitionTo(instance.MonitorStateIdle)
+		t.done()
+		t.clearPending()
 	default:
 		return
 	}
+}
+
+// isUpOnPeers says whether a peer holds the object up, its instance up or
+// partly up. A standby up is not: a standby resource is up on every node.
+func (t *Manager) isUpOnPeers() bool {
+	for nodename, instStatus := range t.instStatus {
+		if nodename == t.localhost {
+			continue
+		}
+		if instStatus.Avail.Is(status.Up, status.Warn) {
+			return true
+		}
+	}
+	return false
+}
+
+// placedStartAfterMove ends a placement the source handed the object over
+// to this node for. An instance up is done. One partly up, as read in the
+// middle of a live move, is started: a start leaves alone what runs, and
+// ends on a status read once everything has landed.
+func (t *Manager) placedStartAfterMove() {
+	if t.orchestratePlacedAtSetWaitParents() {
+		return
+	}
+	if t.instStatus[t.localhost].Avail.Is(status.Up) {
+		t.skipPlacedStart()
+		return
+	}
+	t.doPlacedStart()
 }
 
 func (t *Manager) orchestrateFailoverPlacedStartFromStarted() {
