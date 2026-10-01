@@ -196,6 +196,57 @@ func TestFWRulesetSkipsADeviceNamedPastTheKernelLimit(t *testing.T) {
 	require.NoErrorf(t, err, "nft refused the ruleset: %s", b)
 }
 
+// TestFWRulesetMasqueradesWhatLeavesANodeLocalNetwork pins the rule of v2: the
+// traffic leaving a node local network, as the default bridge network, is
+// masqueraded unless it stays in it, the other om networks included. Its
+// addresses are the same on every node, so a node holding a routed_bridge
+// address it reaches would answer into a bridge of its own. The traffic of a
+// routed network to the other om networks is still not masqueraded.
+func TestFWRulesetMasqueradesWhatLeavesANodeLocalNetwork(t *testing.T) {
+	got, err := fwRuleset([]fwNetwork{
+		{CIDR: "10.22.0.0/16", Dev: "obr_default", NodeLocal: true},
+		{CIDR: "10.62.0.0/16", Dev: "obr_s18"},
+	}, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, `table ip osvc { }
+delete table ip osvc
+table ip osvc {
+	chain osvc-masq {
+		ip daddr 10.22.0.0/16 counter return
+		ip daddr 10.62.0.0/16 counter return
+		ip daddr 224.0.0.0/8 counter return
+		masquerade
+	}
+	chain osvc-masq-local {
+		ip daddr 224.0.0.0/8 counter return
+		masquerade
+	}
+	chain osvc-postrouting {
+		type nat hook postrouting priority 100; policy accept;
+		ip saddr 10.22.0.0/16 ip daddr 10.22.0.0/16 counter return
+		ip saddr 10.22.0.0/16 counter jump osvc-masq-local
+		ip saddr 10.62.0.0/16 counter jump osvc-masq
+	}
+	chain osvc-forward {
+		type filter hook forward priority 0; policy accept;
+		iifname "obr_default" counter accept
+		oifname "obr_default" counter accept
+		iifname "obr_s18" counter accept
+		oifname "obr_s18" counter accept
+	}
+}
+`, got)
+
+	if _, err := exec.LookPath("nft"); err != nil {
+		t.Skip("nft is not installed")
+	}
+	cmd := exec.Command("nft", "--check", "-f", "-")
+	cmd.Stdin = strings.NewReader(got)
+	b, err := cmd.CombinedOutput()
+	require.NoErrorf(t, err, "nft refused the ruleset: %s", b)
+}
+
 // A failed apply says what nft refused: the line of its output that says an
 // error, else its first line.
 func TestNFTError(t *testing.T) {

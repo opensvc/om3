@@ -118,6 +118,14 @@ func (t *T) AllocatableRange(_ string) (*net.IPNet, error) {
 	return t.IPNet()
 }
 
+// IsNodeLocal says the addresses of a bridge network are node local: every
+// node holds the whole subnet on a bridge of its own, and nothing routes it
+// between them. The traffic leaving it for another network is masqueraded,
+// for the answers to come back.
+func (t *T) IsNodeLocal() bool {
+	return true
+}
+
 func (t *T) bridgeIP() (net.IP, error) {
 	subnetStr := t.Network()
 	if subnetStr == "" {

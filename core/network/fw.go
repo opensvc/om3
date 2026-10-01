@@ -24,6 +24,13 @@ type (
 	backendDevNamer interface {
 		BackendDevName() string
 	}
+
+	// nodeLocaler is implemented by a network whose addresses are node
+	// local: every node holds the whole subnet on a bridge of its own, and
+	// nothing routes it between them.
+	nodeLocaler interface {
+		IsNodeLocal() bool
+	}
 )
 
 // fwTableName is the table om adds its rules to.
@@ -46,6 +53,7 @@ const (
 
 	fwChainPostrouting = "osvc-postrouting"
 	fwChainMasq        = "osvc-masq"
+	fwChainMasqLocal   = "osvc-masq-local"
 	fwChainForward     = "osvc-forward"
 )
 
@@ -187,10 +195,12 @@ func ipFamily(ip net.IP) nftables.TableFamily {
 }
 
 // fwNetwork is what the ruleset needs to know about a network: the addresses
-// it holds, and the device its backend traffic goes through when it has one.
+// it holds, the device its backend traffic goes through when it has one, and
+// whether its addresses are node local.
 type fwNetwork struct {
-	CIDR string
-	Dev  string
+	CIDR      string
+	Dev       string
+	NodeLocal bool
 }
 
 // legacyChain names a chain om left in a table it no longer writes to.
@@ -229,6 +239,9 @@ func fwNetworks(nws []Networker) []fwNetwork {
 	l := make([]fwNetwork, 0, len(nws))
 	for _, nw := range nws {
 		n := fwNetwork{CIDR: nw.Network()}
+		if i, ok := nw.(nodeLocaler); ok {
+			n.NodeLocal = i.IsNodeLocal()
+		}
 		if i, ok := nw.(backendDevNamer); ok {
 			n.Dev = i.BackendDevName()
 			if n.Dev != "" && !isDevNameValid(n.Dev) {
@@ -285,8 +298,17 @@ func fwRuleset(networks []fwNetwork, legacy []legacyChain) (string, error) {
 // transaction: a single network whose setup failed would leave the node with
 // no firewall at all. An index also goes stale when a bridge is recreated,
 // where a name does not.
+//
+// The traffic leaving a network for a destination outside every om network is
+// masqueraded. The traffic between om networks is not, as their addresses are
+// routed between the nodes, except when it leaves a node local network: its
+// addresses are the same on every node, so a node holding the destination
+// would answer into a bridge of its own, and the answer would never come back.
+// Traffic leaving such a network is masqueraded unless it stays in it, which
+// is what v2 did, its bridge network asking the cni plugin to masquerade it.
 func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) {
 	var returns, jumps, devs []string
+	var hasNodeLocal bool
 	name := fmtFamily(family)
 	for _, nw := range networks {
 		ip, ipnet, err := net.ParseCIDR(nw.CIDR)
@@ -300,7 +322,15 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 		if !isDevNameValid(nw.Dev) {
 			continue
 		}
-		jumps = append(jumps, fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasq))
+		if nw.NodeLocal {
+			jumps = append(jumps,
+				fmt.Sprintf("\t\t%s saddr %s %s daddr %s counter return\n", name, ipnet, name, ipnet),
+				fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasqLocal),
+			)
+			hasNodeLocal = true
+		} else {
+			jumps = append(jumps, fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasq))
+		}
 		devs = append(devs, nw.Dev)
 	}
 	if len(returns) == 0 {
@@ -318,6 +348,14 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 		sb.WriteString(rule)
 	}
 	sb.WriteString("\t\tmasquerade\n\t}\n")
+
+	if hasNodeLocal {
+		fmt.Fprintf(&sb, "\tchain %s {\n", fwChainMasqLocal)
+		if family == nftables.TableFamilyIPv4 {
+			fmt.Fprintf(&sb, "\t\tip daddr %s counter return\n", multicastCIDR)
+		}
+		sb.WriteString("\t\tmasquerade\n\t}\n")
+	}
 
 	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainPostrouting)
 	fmt.Fprintf(&sb, "\t\ttype nat hook postrouting priority %d; policy accept;\n", fwPrioritySrcNAT)
