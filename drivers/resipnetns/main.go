@@ -249,29 +249,59 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 	return nil
 }
 
+// startRoutes gives the network namespace a default route through the
+// address, unless it has one already.
+//
+// This is the rule of v2. The namespace is often shared with another ip
+// resource, as an ip.cni one of the same container, which installs the
+// default route of its network through its own interface: replacing it sent
+// the traffic the container routes through that network out of this
+// interface, and broke it. So a default route through a gateway is kept,
+// whatever the gateway keyword says, and a default route through an
+// interface is kept unless the gateway keyword asks for one through a
+// gateway. The default route of the family of the address is the one looked
+// at, and set.
 func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
-	if t.Gateway == "" {
-		if v, err := t.hasRouteDevIn("default", guestDev, netns.Path()); err != nil {
-			return err
-		} else if v {
-			t.Log().Infof("route already added: default dev %s", guestDev)
-			return nil
-		}
-		if err := t.routeAddDevIn("default", guestDev, netns.Path()); err != nil {
-			return err
-		}
-	} else {
-		if v, err := t.hasRouteViaIn("default", t.Gateway, netns.Path()); err != nil {
-			return err
-		} else if v {
-			t.Log().Infof("route already added: default via %s", t.Gateway)
-			return nil
-		}
-		if err := t.routeAddViaIn("default", t.Gateway, netns.Path()); err != nil {
-			return err
-		}
+	v6 := t.isIPv6()
+	defaults, err := t.listDefaultRoutesIn(netns.Path(), v6)
+	if err != nil {
+		return err
 	}
-	return nil
+	route := defaultRouteToSet(defaults, t.Gateway, guestDev)
+	if route == nil {
+		t.Log().Infof("keep the default route: %s", firstLine(defaults))
+		return nil
+	}
+	return t.routeReplaceIn(netns.Path(), v6, route...)
+}
+
+// defaultRouteToSet returns the default route to set, as the arguments of
+// "ip route replace", given the default routes the namespace lists, or nil
+// when the namespace keeps the one it has. See startRoutes.
+func defaultRouteToSet(defaults, gateway, guestDev string) []string {
+	current := firstLine(defaults)
+	switch {
+	case strings.HasPrefix(current, "default via"):
+		return nil
+	case strings.HasPrefix(current, "default dev") && gateway == "":
+		return nil
+	case gateway != "":
+		return []string{"default", "via", gateway}
+	default:
+		return []string{"default", "dev", guestDev}
+	}
+}
+
+func firstLine(s string) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
+	return strings.TrimSpace(line)
+}
+
+// isIPv6 says whether the address is an ipv6 one, which is the family of the
+// routes set for it.
+func (t *T) isIPv6() bool {
+	ip := t.ipaddr()
+	return ip != nil && ip.To4() == nil
 }
 
 func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string) error {
