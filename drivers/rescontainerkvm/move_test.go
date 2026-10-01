@@ -3,6 +3,7 @@ package rescontainerkvm
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,4 +63,15 @@ func TestMigrateArgs(t *testing.T) {
 	assert.Equal(t,
 		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "vm1", "qemu+ssh://n2/system"},
 		migrateArgs("vm1", "qemu+ssh://n2/system", []string{"vda", "vdb"}))
+}
+
+// A migration copying no disk is bounded by the stop_timeout of the guest, as
+// before. One copying disks takes the time to copy them, and is bounded by the
+// stop action only. migrate_timeout, when set, bounds both.
+func TestMigrateTimeout(t *testing.T) {
+	stop, migrate := 2*time.Minute, 30*time.Minute
+	assert.Equal(t, stop, migrateTimeout(nil, &stop, false), "shared storage")
+	assert.Equal(t, time.Duration(0), migrateTimeout(nil, &stop, true), "copied disks")
+	assert.Equal(t, migrate, migrateTimeout(&migrate, &stop, false))
+	assert.Equal(t, migrate, migrateTimeout(&migrate, &stop, true))
 }

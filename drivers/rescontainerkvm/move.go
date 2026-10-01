@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/antchfx/xmlquery"
 
@@ -137,4 +138,24 @@ func migrateArgs(name, toURI string, copyDisks []string) []string {
 		args = append(args, "--copy-storage-all", "--migrate-disks", strings.Join(copyDisks, ","))
 	}
 	return append(args, name, toURI)
+}
+
+// migrateTimeout returns the longest a migration may take, zero for no limit
+// of its own. See the migrate_timeout keyword.
+//
+// A migration copying disks takes the time to copy them, which the
+// stop_timeout of a guest, meant for its shutdown and two minutes by default,
+// has nothing to say about: a guest with large disks would see its move
+// cancelled and rolled back. The stop action of the object still bounds it.
+func migrateTimeout(migrate, stop *time.Duration, copiesDisks bool) time.Duration {
+	switch {
+	case migrate != nil:
+		return *migrate
+	case copiesDisks:
+		return 0
+	case stop != nil:
+		return *stop
+	default:
+		return 0
+	}
 }

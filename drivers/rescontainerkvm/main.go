@@ -72,6 +72,7 @@ type (
 		RCmd                []string       `json:"rcmd"`
 		StartTimeout        *time.Duration `json:"start_timeout"`
 		StopTimeout         *time.Duration `json:"stop_timeout"`
+		MigrateTimeout      *time.Duration `json:"migrate_timeout"`
 		VirtInst            []string       `json:"virtinst"`
 		QGA                 bool           `json:"qga"`
 		QGAOperationalDelay *time.Duration `json:"qga_operational_delay"`
@@ -258,7 +259,7 @@ func (t *T) migrate(ctx context.Context, to string, copyDisks []string) error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(*t.StopTimeout),
+		command.WithTimeout(migrateTimeout(t.MigrateTimeout, t.StopTimeout, len(copyDisks) > 0)),
 	)
 	return cmd.Run()
 }
