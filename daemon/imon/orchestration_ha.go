@@ -185,7 +185,7 @@ func (t *Manager) clearStoppedFlagWhenUp() {
 	if !t.isStopped() {
 		return
 	}
-	reason := stoppedFlagLoweredBy(t.instStatus[t.localhost].Avail, t.objStatus.ActorStatus != nil && t.isStarted())
+	reason := stoppedFlagLoweredBy(t.state.State, t.instStatus[t.localhost], t.objStatus.ActorStatus != nil && t.isStarted())
 	if reason == "" {
 		return
 	}
@@ -210,9 +210,25 @@ func (t *Manager) clearStoppedFlagWhenUp() {
 // A flex object short of its target is up too, and that lowers nothing: the
 // instance an operator stopped would be the best placed candidate again, and
 // start back in the place of the next one, as if the stop had not been asked.
-func stoppedFlagLoweredBy(localAvail status.T, isObjectStarted bool) string {
+//
+// Nothing lowers it on a status that can not tell what the stop left. A stop
+// raises the flag before it stops its first resource, and the instance looks
+// up until its last one is down: lowered then, the flag let the daemon start
+// the instance back once the stop was over. So it stays raised:
+//
+//   - while an action runs on the instance, as the status is then the one of
+//     resources in the middle of it,
+//
+//   - on a status not updated since the flag was raised, which is the update
+//     raising it, or one evaluated before: the stop says it is coming to the
+//     daemon as it raises the flag, and the flag can be seen first.
+func stoppedFlagLoweredBy(state instance.MonitorState, local instance.Status, isObjectStarted bool) string {
 	switch {
-	case localAvail.Is(status.Up, status.StandbyUp):
+	case state.IsDoing():
+		return ""
+	case !local.UpdatedAt.After(local.StoppedAt):
+		return ""
+	case local.Avail.Is(status.Up, status.StandbyUp):
 		return "the instance is up"
 	case isObjectStarted:
 		return "the object runs all it should"
