@@ -214,6 +214,7 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	}
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
 		command.WithStdoutLogLevel(zerolog.Disabled),
 		command.WithStderrLogLevel(zerolog.Disabled),
 		command.WithTimeout(t.GetTimeout("check")),
@@ -225,7 +226,6 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	}
 	cmd := command.New(opts...)
 
-	t.Log().Tracef("status running command: %s", cmd.String())
 	if err = cmd.Start(); err != nil {
 		return status.Undef
 	}
@@ -385,6 +385,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 
 	opts = append(opts,
 		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
 		command.WithTimeout(t.GetTimeout("info")),
 		command.WithBufferedStdout(),
 	)
