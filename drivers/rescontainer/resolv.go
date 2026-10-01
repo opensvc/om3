@@ -86,10 +86,15 @@ func (t ResolvConf) String() string {
 	return sb.String()
 }
 
-// IsZero returns true when the resolver configuration would say nothing, and
-// the container is better left with the one its image carries.
+// IsZero returns true when the resolver configuration names no nameserver,
+// and the container is better left with the resolver its engine gives it.
+//
+// A search list alone is no resolver: the domains of an object are the ones
+// the cluster dns serves, so without a nameserver they name nothing, and a
+// file holding them alone leaves the container resolving no name at all,
+// where the engine would have given it the nameservers of the host.
 func (t ResolvConf) IsZero() bool {
-	return len(t.Nameservers) == 0 && len(t.Searches) == 0
+	return len(t.Nameservers) == 0
 }
 
 // WriteResolvConf writes the resolver configuration to path and returns it.
