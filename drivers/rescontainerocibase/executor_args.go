@@ -355,7 +355,8 @@ func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 }
 
 // resolvConfMount writes the resolver of the container and returns the option
-// mounting it, or an empty string when there is nothing to say to it.
+// mounting it, or an empty string when no nameserver is named: the container
+// then keeps the resolver its engine gives it, the host's on the host network.
 //
 // The nameservers are the ones of the cluster, then the ones the dns keyword
 // adds. The search list is the domain of the object and each of its parents,

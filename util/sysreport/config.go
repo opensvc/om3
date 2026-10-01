@@ -22,8 +22,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
 
-	"github.com/opensvc/om3/v3/core/collector"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -33,14 +31,14 @@ import (
 
 type (
 	T struct {
-		includes        []string
-		excludes        []string
-		commands        []string
-		varDir          string
-		etcDir          string
-		configReader    io.Reader
-		collectorClient *collector.Client
-		force           bool
+		includes     []string
+		excludes     []string
+		commands     []string
+		varDir       string
+		etcDir       string
+		configReader io.Reader
+		sender       Sender
+		force        bool
 
 		// variable
 		changed      map[string]interface{}
@@ -56,23 +54,37 @@ type (
 	}
 )
 
+// Sender sends a report to the collector.
+type Sender interface {
+	// SendSysreport sends the tar archive of the files and command outputs
+	// changed since the last report, "" when none changed, and the tracked
+	// files deleted, as their path on the node. Full says the archive holds
+	// every file and command output the node tracks, for the collector to
+	// forget the ones it holds and the archive does not.
+	SendSysreport(archive string, deleted []string, full bool) error
+}
+
 var (
 	srLog   zerolog.Logger
 	rootUID = 0
 	rootGID = 0
 )
 
-func New() *T {
+// New returns a sysreport of the agent installed with its configuration in
+// etcDir and its variable data in varDir: the configuration files of the
+// agent are tracked, and the sysreport.conf.d directory of etcDir says what
+// else to track.
+func New(etcDir, varDir string) *T {
 	srLog = log.With().Str("c", "sysreport").Logger()
 	t := &T{
-		etcDir:   filepath.Join(rawconfig.Paths.Etc, "sysreport.conf.d"),
-		varDir:   filepath.Join(rawconfig.Paths.Var),
+		etcDir:   filepath.Join(etcDir, "sysreport.conf.d"),
+		varDir:   varDir,
 		excludes: []string{},
 		commands: []string{},
 		includes: []string{
-			filepath.Join(rawconfig.Paths.Etc, "*.conf"),
-			filepath.Join(rawconfig.Paths.Etc, "namespaces", "*", "*", "*.conf"),
-			filepath.Join(rawconfig.Paths.Etc, "sysreport.conf.d"),
+			filepath.Join(etcDir, "*.conf"),
+			filepath.Join(etcDir, "namespaces", "*", "*", "*.conf"),
+			filepath.Join(etcDir, "sysreport.conf.d"),
 		},
 	}
 	return t
@@ -90,8 +102,8 @@ func (t *T) SetConfigDir(path string) {
 	t.etcDir = path
 }
 
-func (t *T) SetCollectorClient(c *collector.Client) {
-	t.collectorClient = c
+func (t *T) SetSender(sender Sender) {
+	t.sender = sender
 }
 
 func (t T) sysreportDir() string {
@@ -225,7 +237,7 @@ func (t *T) collectFile(path string) error {
 	if err := file.CopyMeta(path, dest); err != nil {
 		return err
 	}
-	if err := t.pushStat(dest); err != nil {
+	if err := t.pushSourceStat(path); err != nil {
 		return err
 	}
 
@@ -453,86 +465,57 @@ func expand(in []string, excludes map[string]string) map[string]string {
 	return out
 }
 
-func (t T) filterLstree(lstreeData []string) []string {
-	filtered := make([]string, 0)
-	for _, path := range lstreeData {
-		if path == "/stat" {
-			continue
-		}
-		if _, ok := t.full[path]; ok {
-			continue
-		}
-	}
-	sort.Strings(filtered)
-	return filtered
-}
-
-func (t T) getLstree() ([]string, error) {
-	response, err := t.collectorClient.Call("sysreport_lstree")
-	if err != nil {
-		return nil, fmt.Errorf("collector sysreport_lstree call: %w", err)
-	}
-	if response.Error != nil {
-		return nil, fmt.Errorf("collector sysreport_lstree response: %w", response.Error)
-	}
-	switch l := response.Result.(type) {
-	case []interface{}:
-		sl := make([]string, 0)
-		for _, i := range l {
-			if s, ok := i.(string); ok {
-				sl = append(sl, s)
-			}
-		}
-		return sl, nil
-	case []string:
-		return l, nil
-	default:
-		return nil, fmt.Errorf("unexpected sysreport_lstree rpc result: %+v", response.Result)
-	}
-}
-
+// send sends what changed since the last report, or everything the node
+// tracks when forced. A forced report is a full one, for the collector to
+// forget what the node no longer tracks, rather than a list of deletions
+// computed from what the collector says it holds.
 func (t T) send() error {
-	var toSend []string
-	var deleted []string
-	if t.force {
+	if t.sender == nil {
+		return fmt.Errorf("no collector to send the sysreport to")
+	}
+	var (
+		toSend  []string
+		deleted []string
+		full    = t.force
+	)
+	if full {
 		toSend = sortedKeys(t.full)
-		lstreeData, err := t.getLstree()
-		if err != nil {
-			return fmt.Errorf("can not get lstree from collector: %w", err)
-		}
-		deleted = t.filterLstree(lstreeData)
 	} else {
 		toSend = sortedKeys(t.changed)
 		deleted = t.deleted
 	}
-
-	if len(toSend) == 0 && len(deleted) == 0 {
-		srLog.Info().Msg("No change to report")
-		return nil
+	for _, path := range deleted {
+		srLog.Info().Msgf("Report deleted file %s", path)
 	}
 
-	var tmpf string
-	var err error
+	var archive string
 	if len(toSend) > 0 {
-		tmpf, err = t.archive(toSend)
-		defer t.unlink(tmpf)
+		var (
+			n   int
+			err error
+		)
+		archive, n, err = t.archive(toSend)
+		if archive != "" {
+			defer t.unlink(archive)
+		}
 		if err != nil {
 			return err
 		}
+		if n == 0 {
+			archive = ""
+		}
 	}
-
-	b, err := os.ReadFile(tmpf)
-	if err != nil {
-		return err
+	if archive == "" && len(deleted) == 0 {
+		srLog.Info().Msg("No change to report")
+		return nil
 	}
-	response, err := t.collectorClient.Call("send_sysreport", filepath.Base(tmpf), b, deleted)
-	if err != nil {
-		return fmt.Errorf("send_sysreport call: %w", err)
+	if archive == "" && full {
+		return fmt.Errorf("a full report has nothing to send")
 	}
-	if response.Error != nil {
-		return fmt.Errorf("send_sysreport response: %w", response.Error)
+	if err := t.sender.SendSysreport(archive, deleted, full); err != nil {
+		return fmt.Errorf("send sysreport: %w", err)
 	}
-	srLog.Info().Int("size", len(b)).Msg("Report sent")
+	srLog.Info().Msg("Report sent")
 	return nil
 }
 
@@ -570,15 +553,17 @@ func doStat(path string) (Stat, error) {
 	return stat, nil
 }
 
-func (t *T) pushStat(path string) error {
+// pushSourceStat records the metadata of the tracked file at path, as v2
+// did. The collected copy is not the one to stat: its change time moves at
+// each collection, which copies the metadata of the source onto it, and a
+// stats file changing at each report has the collector commit a change every
+// time.
+func (t *T) pushSourceStat(path string) error {
 	stat, err := doStat(path)
 	if err != nil {
 		return err
 	}
-	stat.Path = relPath(t.collectFileDir(), stat.Path)
-	stat.RealPath = relPath(t.collectFileDir(), stat.RealPath)
-	t.statsAdd(stat.Path, stat)
-	return nil
+	return t.statsAdd(stat.Path, stat)
 }
 
 func (t *T) statsAdd(path string, stat Stat) error {
@@ -634,52 +619,109 @@ func (t T) statsGet(path string) (Stat, error) {
 	}
 }
 
-func (t T) archive(l []string) (string, error) {
+// archive writes the collected files of l in a tar, named relative to the
+// sysreport directory, as <nodename>/file/<path> and <nodename>/cmd/<name>,
+// and returns its path and the number of files it holds.
+func (t T) archive(l []string) (string, int, error) {
 	f, err := os.CreateTemp(t.collectDir(), "sysreport.*.tar")
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
+	defer f.Close()
 	tw := tar.NewWriter(f)
 	sysreportDir := t.sysreportDir()
 	n := len(sysreportDir) + 1
+	count := 0
 	for _, path := range l {
 		if !strings.HasPrefix(path, sysreportDir) {
 			continue
 		}
-		srLog.Info().Str("path", path).Msg("Add changed file to archive")
+		srLog.Debug().Msgf("Add %s to the archive", path)
 		statPath := relPath(t.collectFileDir(), path)
 		stat, err := t.statsGet(statPath)
 		if err != nil {
-			return f.Name(), fmt.Errorf("%w", err)
+			return f.Name(), count, fmt.Errorf("%w", err)
 		}
-		r, err := os.Open(path)
-		if err != nil {
-			return f.Name(), fmt.Errorf("%w", err)
+		if err := addToArchive(tw, path, path[n:], stat); err != nil {
+			return f.Name(), count, err
 		}
-		defer r.Close()
-		hdr := &tar.Header{
-			Name:    path[n:],
-			Mode:    int64(stat.Mode),
-			Size:    stat.Size,
-			ModTime: stat.MTime.Time(),
-		}
-		if err := tw.WriteHeader(hdr); err != nil {
-			return f.Name(), fmt.Errorf("%w", err)
-		}
-		if _, err = io.Copy(tw, r); err != nil {
-			return f.Name(), fmt.Errorf("%w", err)
-		}
+		count++
 	}
 	if err := tw.Close(); err != nil {
-		return f.Name(), fmt.Errorf("%w", err)
+		return f.Name(), count, fmt.Errorf("%w", err)
 	}
-	return f.Name(), nil
+	srLog.Info().Msgf("Archive %d changed files and command outputs", count)
+	return f.Name(), count, nil
 }
 
+// addToArchive adds the file at path to the archive as name, and closes it
+// once added.
+//
+// The size is the one of the file written, not the cached one: the cache
+// keeps a stat equal to the new one but for its size, which it does not
+// compare, times to the second alike, and a stats cache written by v2 holds
+// no size at all. A header announcing fewer bytes than the file holds fails
+// the archive.
+func addToArchive(tw *tar.Writer, path, name string, stat Stat) error {
+	r, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	defer r.Close()
+	info, err := r.Stat()
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	hdr := &tar.Header{
+		Name:    name,
+		Mode:    int64(stat.Mode),
+		Size:    info.Size(),
+		ModTime: stat.MTime.Time(),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	if _, err = io.Copy(tw, r); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
+// Do collects the tracked files and command outputs, and reports what
+// changed since the last report the collector accepted.
+//
+// The local cache records the files as reported when it collects them,
+// before the report is sent: a report the collector does not accept would
+// leave them unreported, and the next report would not see them as changed.
+// So the report is a full one while the sent marker is absent: at the first
+// report, and after one that failed, which removes the marker.
 func (t *T) Do() error {
 	if err := t.init(); err != nil {
 		return err
 	}
+	if !t.force && !file.Exists(t.sentMarker()) {
+		srLog.Info().Msg("No report accepted by the collector since the cache was last changed: send a full report")
+		t.force = true
+	}
+	if err := t.collectAndSend(); err != nil {
+		if rmErr := os.Remove(t.sentMarker()); rmErr != nil && !os.IsNotExist(rmErr) {
+			srLog.Warn().Err(rmErr).Msg("Remove the sent marker")
+		}
+		return err
+	}
+	if err := file.Touch(t.sentMarker(), time.Now()); err != nil {
+		srLog.Warn().Err(err).Msg("Touch the sent marker")
+	}
+	return nil
+}
+
+// sentMarker is the file whose presence says the last report was accepted by
+// the collector.
+func (t T) sentMarker() string {
+	return filepath.Join(t.collectDir(), "sent")
+}
+
+func (t *T) collectAndSend() error {
 	if err := t.collectFiles(); err != nil {
 		return err
 	}
@@ -695,10 +737,7 @@ func (t *T) Do() error {
 	if err := t.updateStatsStat(); err != nil {
 		return err
 	}
-	if err := t.send(); err != nil {
-		return err
-	}
-	return nil
+	return t.send()
 }
 
 func (t *T) collectFiles() error {

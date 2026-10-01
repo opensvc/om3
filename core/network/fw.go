@@ -24,6 +24,13 @@ type (
 	backendDevNamer interface {
 		BackendDevName() string
 	}
+
+	// nodeLocaler is implemented by a network whose addresses are node
+	// local: every node holds the whole subnet on a bridge of its own, and
+	// nothing routes it between them.
+	nodeLocaler interface {
+		IsNodeLocal() bool
+	}
 )
 
 // fwTableName is the table om adds its rules to.
@@ -46,7 +53,20 @@ const (
 
 	fwChainPostrouting = "osvc-postrouting"
 	fwChainMasq        = "osvc-masq"
+	fwChainMasqLocal   = "osvc-masq-local"
 	fwChainForward     = "osvc-forward"
+)
+
+// The priorities of the base chains, written as the numbers the "srcnat" and
+// "filter" names stand for in the ip and ip6 families. The names are an alias
+// the nft command resolves while parsing, and the kernel stores the number,
+// which a recent nft lists back by its name: a chain loaded either way is the
+// same chain. nftables 0.8, the version el7 ships, knows no name, and refused
+// the whole ruleset. The values differ in the bridge family, where "srcnat"
+// is 300 and "filter" -200: they are not to be reused for a bridge table.
+const (
+	fwPrioritySrcNAT = 100
+	fwPriorityFilter = 0
 )
 
 var (
@@ -175,10 +195,12 @@ func ipFamily(ip net.IP) nftables.TableFamily {
 }
 
 // fwNetwork is what the ruleset needs to know about a network: the addresses
-// it holds, and the device its backend traffic goes through when it has one.
+// it holds, the device its backend traffic goes through when it has one, and
+// whether its addresses are node local.
 type fwNetwork struct {
-	CIDR string
-	Dev  string
+	CIDR      string
+	Dev       string
+	NodeLocal bool
 }
 
 // legacyChain names a chain om left in a table it no longer writes to.
@@ -217,6 +239,9 @@ func fwNetworks(nws []Networker) []fwNetwork {
 	l := make([]fwNetwork, 0, len(nws))
 	for _, nw := range nws {
 		n := fwNetwork{CIDR: nw.Network()}
+		if i, ok := nw.(nodeLocaler); ok {
+			n.NodeLocal = i.IsNodeLocal()
+		}
 		if i, ok := nw.(backendDevNamer); ok {
 			n.Dev = i.BackendDevName()
 			if n.Dev != "" && !isDevNameValid(n.Dev) {
@@ -273,8 +298,17 @@ func fwRuleset(networks []fwNetwork, legacy []legacyChain) (string, error) {
 // transaction: a single network whose setup failed would leave the node with
 // no firewall at all. An index also goes stale when a bridge is recreated,
 // where a name does not.
+//
+// The traffic leaving a network for a destination outside every om network is
+// masqueraded. The traffic between om networks is not, as their addresses are
+// routed between the nodes, except when it leaves a node local network: its
+// addresses are the same on every node, so a node holding the destination
+// would answer into a bridge of its own, and the answer would never come back.
+// Traffic leaving such a network is masqueraded unless it stays in it, which
+// is what v2 did, its bridge network asking the cni plugin to masquerade it.
 func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) {
 	var returns, jumps, devs []string
+	var hasNodeLocal bool
 	name := fmtFamily(family)
 	for _, nw := range networks {
 		ip, ipnet, err := net.ParseCIDR(nw.CIDR)
@@ -288,7 +322,15 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 		if !isDevNameValid(nw.Dev) {
 			continue
 		}
-		jumps = append(jumps, fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasq))
+		if nw.NodeLocal {
+			jumps = append(jumps,
+				fmt.Sprintf("\t\t%s saddr %s %s daddr %s counter return\n", name, ipnet, name, ipnet),
+				fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasqLocal),
+			)
+			hasNodeLocal = true
+		} else {
+			jumps = append(jumps, fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasq))
+		}
 		devs = append(devs, nw.Dev)
 	}
 	if len(returns) == 0 {
@@ -307,15 +349,23 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 	}
 	sb.WriteString("\t\tmasquerade\n\t}\n")
 
+	if hasNodeLocal {
+		fmt.Fprintf(&sb, "\tchain %s {\n", fwChainMasqLocal)
+		if family == nftables.TableFamilyIPv4 {
+			fmt.Fprintf(&sb, "\t\tip daddr %s counter return\n", multicastCIDR)
+		}
+		sb.WriteString("\t\tmasquerade\n\t}\n")
+	}
+
 	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainPostrouting)
-	sb.WriteString("\t\ttype nat hook postrouting priority srcnat; policy accept;\n")
+	fmt.Fprintf(&sb, "\t\ttype nat hook postrouting priority %d; policy accept;\n", fwPrioritySrcNAT)
 	for _, rule := range jumps {
 		sb.WriteString(rule)
 	}
 	sb.WriteString("\t}\n")
 
 	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainForward)
-	sb.WriteString("\t\ttype filter hook forward priority filter; policy accept;\n")
+	fmt.Fprintf(&sb, "\t\ttype filter hook forward priority %d; policy accept;\n", fwPriorityFilter)
 	for _, dev := range devs {
 		fmt.Fprintf(&sb, "\t\tiifname \"%s\" counter accept\n", dev)
 		fmt.Fprintf(&sb, "\t\toifname \"%s\" counter accept\n", dev)
@@ -349,23 +399,53 @@ func (t *nftHandle) legacyChains() ([]legacyChain, error) {
 
 // apply hands the document to nft, which reads a ruleset from stdin and
 // applies it as one transaction.
+//
+// The ruleset is read from /dev/stdin rather than from "-", which nftables
+// 0.8, the version el7 ships, takes for a file name. The failure carries the
+// first error nft printed, which says what it refused.
 func (t *nftHandle) apply(ruleset string) error {
 	if ruleset == "" {
 		return nil
 	}
 	cmd := command.New(
 		command.WithName("nft"),
-		command.WithVarArgs("-f", "-"),
+		command.WithVarArgs("-f", "/dev/stdin"),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithBufferedStderr(),
 	)
 	cmd.Cmd().Stdin = strings.NewReader(ruleset)
 	if t.log != nil {
 		t.log.Attr("ruleset", ruleset).Infof("apply the nft ruleset of the om networks")
 	}
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		if msg := nftError(cmd.Stderr()); msg != "" {
+			return fmt.Errorf("%w: %s", err, msg)
+		}
+		return err
+	}
+	return nil
+}
+
+// nftError returns the first line of what nft printed on stderr that says an
+// error, or else its first line that says something.
+func nftError(stderr []byte) string {
+	var first string
+	for _, line := range strings.Split(string(stderr), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, "Error:") {
+			return line
+		}
+		if first == "" {
+			first = line
+		}
+	}
+	return first
 }
 
 func setupFW(n logger, nws []Networker) error {

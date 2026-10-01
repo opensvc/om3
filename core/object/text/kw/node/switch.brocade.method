@@ -1,7 +1,15 @@
-The method to use to connect to the switch. 
+The method to use to connect to the switch.
 
 * `ssh`
-  Use `key` to provide a ssh key, or use the `sshpass` program.
+  Log in with the private key `key` points to, or with the password of the
+  `password` secret.
 
 * `telnet`
-  Set `username` and `password` with this method.
+  Refused: telnet sends the password in clear, and the switches have it
+  disabled by default. The value is accepted in the configuration of a node
+  upgraded from v2, and the inventory of the switch fails with a message
+  asking for `ssh`.
+
+The key of the switch is trusted on the first connection, and recorded in
+the known hosts of the root user: a later connection presenting another key
+is refused.

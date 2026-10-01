@@ -313,42 +313,6 @@ func (t *T) hasLinkIn(dev, path string) (bool, error) {
 	return false, nil
 }
 
-func (t *T) hasRouteDevIn(dest, dev, path string) (bool, error) {
-	args := []string{"nsenter", "--net=" + path, "ip", "route", "list", dest, "dev", dev}
-	cmd := command.New(
-		command.WithName(args[0]),
-		command.WithArgs(args[1:]),
-		command.WithLogger(t.Log()),
-		command.WithBufferedStdout(),
-		command.WithIgnoredExitCodes(0, 1),
-	)
-	if err := cmd.Run(); err != nil {
-		return false, err
-	}
-	if len(cmd.Stdout()) != 0 {
-		return true, nil
-	}
-	return false, nil
-}
-
-func (t *T) hasRouteViaIn(dest, gw, path string) (bool, error) {
-	args := []string{"nsenter", "--net=" + path, "ip", "route", "list", dest, "gw", gw}
-	cmd := command.New(
-		command.WithName(args[0]),
-		command.WithArgs(args[1:]),
-		command.WithLogger(t.Log()),
-		command.WithBufferedStdout(),
-		command.WithIgnoredExitCodes(0, 1),
-	)
-	if err := cmd.Run(); err != nil {
-		return false, err
-	}
-	if len(cmd.Stdout()) != 0 {
-		return true, nil
-	}
-	return false, nil
-}
-
 func (t *T) routeDelDevIn(dest, dev, path string) error {
 	args := []string{"nsenter", "--net=" + path, "ip", "route", "del", dest, "dev", dev}
 	return command.New(
@@ -361,20 +325,35 @@ func (t *T) routeDelDevIn(dest, dev, path string) error {
 	).Run()
 }
 
-func (t *T) routeAddDevIn(dest, dev, path string) error {
-	args := []string{"nsenter", "--net=" + path, "ip", "route", "replace", dest, "dev", dev}
-	return command.New(
+// listDefaultRoutesIn returns the default routes of the network namespace at
+// path, of the ipv6 family with v6, one per line.
+func (t *T) listDefaultRoutesIn(path string, v6 bool) (string, error) {
+	args := []string{"nsenter", "--net=" + path, "ip"}
+	if v6 {
+		args = append(args, "-6")
+	}
+	args = append(args, "route", "list", "default")
+	cmd := command.New(
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	).Run()
+		command.WithBufferedStdout(),
+	)
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return string(cmd.Stdout()), nil
 }
 
-func (t *T) routeAddViaIn(dest, gw, path string) error {
-	args := []string{"nsenter", "--net=" + path, "ip", "route", "replace", dest, "via", gw}
+// routeReplaceIn sets the route of the network namespace at path, of the
+// ipv6 family with v6.
+func (t *T) routeReplaceIn(path string, v6 bool, route ...string) error {
+	args := []string{"nsenter", "--net=" + path, "ip"}
+	if v6 {
+		args = append(args, "-6")
+	}
+	args = append(args, "route", "replace")
+	args = append(args, route...)
 	return command.New(
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),

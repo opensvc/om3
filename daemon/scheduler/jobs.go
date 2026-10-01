@@ -27,23 +27,23 @@ var (
 		"pushasset",
 		"pushdisks",
 		"pushpkg",
+		"pushswitch",
 		"sysreport",
 	}
 
 	// PlaceholderActions are the actions a schedule entry can carry that no om
 	// command implements yet.
 	//
-	// The node configuration schedules one per switch and per backup section,
-	// as it does per array section, and nothing pushes those two yet. Naming
-	// them here says the entry is known and unimplemented, rather than letting
-	// it fall through as an action nobody has heard of, and wiring one later
-	// is a case in CmdArgs and a move to NodeActions.
+	// The node configuration schedules one per backup section, as it does per
+	// array and per switch section, and nothing pushes it yet. Naming it here
+	// says the entry is known and unimplemented, rather than letting it fall
+	// through as an action nobody has heard of, and wiring it later is a case
+	// in CmdArgs and a move to NodeActions.
 	//
-	// None of the three has a default schedule, so an entry only exists where
-	// a configuration wrote one.
+	// It has no default schedule, so an entry only exists where a
+	// configuration wrote one.
 	PlaceholderActions = []string{
 		"pushbackup",
-		"pushswitch",
 	}
 	ObjectActions = []string{
 		"info",
@@ -89,6 +89,9 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 	case "pusharray":
 		// The array is the section the schedule was read from.
 		tail = []string{"push", "array", e.RID()}
+	case "pushswitch":
+		// The switch is the section the schedule was read from.
+		tail = []string{"push", "switch", e.RID()}
 	case "pushdisks":
 		tail = []string{"push", "disk"}
 	case "pushpkg":

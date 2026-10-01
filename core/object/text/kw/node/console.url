@@ -1,0 +1,5 @@
+The url clients open the console sessions on, when it is not the console port of the node they reach the api on.
+
+Set it to the address a site access proxy publishes the console listener at. Any node accepts the sessions of any node, and relays the ones it does not serve itself, so the proxy can forward to whichever node it reaches.
+
+The proxy has to forward the websocket upgrade and the query string, which holds the session ticket.

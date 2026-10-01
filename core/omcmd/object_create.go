@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -49,6 +51,11 @@ var (
 	schemeObject   string = "object://"
 )
 
+// objectKnownTimeout bounds how long a create holds for the daemon to know
+// the object. The daemon learns of it in a moment, so this only matters when
+// something is wrong.
+var objectKnownTimeout = 30 * time.Second
+
 func (t *CmdObjectCreate) Run(kind string) error {
 	for _, e := range t.Env {
 		t.Keywords = append(t.Keywords, "env."+e)
@@ -73,19 +80,31 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 	defer cancel()
 
+	// The daemon learns of the object a moment after its configuration file
+	// is written, and a command run in that moment is told the object does
+	// not exist. So the create holds until the daemon knows it, and with
+	// --wait or --provision, until every node of the object watches it.
+	waitAll := t.Wait || t.Provision
 	needWait, err := func() (bool, error) {
-		if !t.Wait && !t.Provision {
+		if exists, err := objectExists(t.path); err != nil {
+			return false, err
+		} else if exists {
 			return false, nil
 		}
-		if t.path.Exists() {
-			return false, nil
+		timeout := t.Time
+		if !waitAll {
+			timeout = objectKnownTimeout
 		}
 		// need dedicated client that overrides default client timeout with t.Time (zero means no timeout).
-		c, err := client.New(client.WithTimeout(t.Time))
+		c, err := client.New(client.WithTimeout(timeout))
 		if err != nil {
 			return false, err
 		}
-		err = commoncmd.WaitAllInstanceMonitor(ctx, c, t.path, t.Time, errC)
+		if waitAll {
+			err = commoncmd.WaitAllInstanceMonitor(ctx, c, t.path, timeout, errC)
+		} else {
+			err = commoncmd.WaitObjectKnown(ctx, c, t.path, timeout, errC)
+		}
 		if err != nil {
 			// Wait until all instance monitors are registered before continuing, otherwise the next orchestration
 			// step may return early due to missing cluster monitors.
@@ -108,8 +127,15 @@ func (t *CmdObjectCreate) Run(kind string) error {
 
 	if needWait {
 		err := <-errC
-		if err != nil {
+		switch {
+		case err == nil:
+		case waitAll:
 			return err
+		default:
+			// The object is created, which is what was asked. That the
+			// daemon does not know it yet is worth saying, as the next
+			// command may not find it, and not worth failing the create.
+			fmt.Fprintf(os.Stderr, "%s is created, and not known to the daemon after %s: %s\n", t.path, objectKnownTimeout, err)
 		}
 	}
 
@@ -245,8 +271,12 @@ func (t *CmdObjectCreate) dataFromConfig() ([]byte, error) {
 }
 
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	if !t.Force && !t.Restore && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
+	if !t.Force && !t.Restore {
+		if exists, err := objectExists(p); err != nil {
+			return err
+		} else if exists {
+			return fmt.Errorf("%s already exists", p)
+		}
 	}
 	oc, err := object.NewConfigurer(p, object.WithConfigData(b))
 	if err != nil {
@@ -324,8 +354,12 @@ func (t *CmdObjectCreate) reportConfigWarnings(p naming.Path, oc object.Configur
 }
 
 func (t *CmdObjectCreate) localEmpty(p naming.Path) error {
-	if !t.Force && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
+	if !t.Force {
+		if exists, err := objectExists(p); err != nil {
+			return err
+		} else if exists {
+			return fmt.Errorf("%s already exists", p)
+		}
 	}
 	o, err := object.New(p)
 	if err != nil {
@@ -342,4 +376,21 @@ func (t *CmdObjectCreate) localEmpty(p naming.Path) error {
 		return err
 	}
 	return oc.Config().Commit()
+}
+
+// objectExists says whether the configuration file of p exists, and why it
+// can not tell.
+//
+// A configuration file this user can not look at was taken for one that
+// exists: a user that is not root was told an object root knows nothing of
+// already existed.
+func objectExists(p naming.Path) (bool, error) {
+	exists, err := file.ExistsNotDir(p.ConfigFile())
+	switch {
+	case errors.Is(err, fs.ErrPermission):
+		return false, fmt.Errorf("can not tell whether %s exists: %w: om creates an object as root, ox through the api with a user it grants", p, err)
+	case err != nil:
+		return false, fmt.Errorf("can not tell whether %s exists: %w", p, err)
+	}
+	return exists, nil
 }

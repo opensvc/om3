@@ -105,7 +105,9 @@ type (
 		// Minimal force the keyword to be included in the minimal configlet of the driver doc.
 		Minimal bool
 
-		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
+		// RedactSecret means the keyword value is a secret: it is hidden on
+		// config show with the flag --redact-secrets, and an object
+		// configuration can not reference the one of the node.
 		RedactSecret bool
 
 		// DeprecatedValue is a regular expression matching the values om

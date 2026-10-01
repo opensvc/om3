@@ -601,24 +601,48 @@ func (t *T) Configure() error {
 	return nil
 }
 
+// moveResource returns the resource of the volume a move of the container
+// using it is about: the one exposing the device the container uses. The
+// others are under it, as the logical volume or the zvol a drbd replicates,
+// and are moved by moving it: asked to move themselves, the zvol under a drbd
+// would send itself to a destination holding a replica of its own.
+func (t *T) moveResource(ctx context.Context) (resource.Driver, error) {
+	volume, err := t.Volume()
+	if err != nil {
+		t.Log().Errorf("%s", err)
+		return nil, fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
+	}
+	r := volume.ExposedDeviceResource(ctx)
+	if r == nil || r.IsDisabled() {
+		return nil, nil
+	}
+	return r, nil
+}
+
+// MoveCopiesStorage implements resource.MoveStorageCopier, saying what the
+// resource exposing the device of the volume says.
+func (t *T) MoveCopiesStorage() bool {
+	if t.IsDisabled() {
+		return false
+	}
+	r, err := t.moveResource(context.Background())
+	if err != nil || r == nil {
+		return false
+	}
+	i, ok := r.(resource.MoveStorageCopier)
+	return ok && i.MoveCopiesStorage()
+}
+
 func (t *T) PreMove(ctx context.Context, to string) error {
 	if t.IsDisabled() {
 		return nil
 	}
-	volume, err := t.Volume()
+	r, err := t.moveResource(ctx)
 	if err != nil {
-		t.Log().Errorf("%s", err)
-		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
+		return err
 	}
-	for _, r := range volume.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		if i, ok := r.(resource.PreMover); ok {
-			if err := i.PreMove(ctx, to); err != nil {
-				return err
-			}
-		}
+	if i, ok := r.(resource.PreMover); ok {
+		return i.PreMove(ctx, to)
 	}
 	return nil
 }
@@ -627,20 +651,12 @@ func (t *T) PreMoveRollback(ctx context.Context, to string) error {
 	if t.IsDisabled() {
 		return nil
 	}
-	volume, err := t.Volume()
+	r, err := t.moveResource(ctx)
 	if err != nil {
-		t.Log().Errorf("%s", err)
-		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
+		return err
 	}
-	for _, r := range volume.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		if i, ok := r.(resource.PreMoveRollbacker); ok {
-			if err := i.PreMoveRollback(ctx, to); err != nil {
-				return err
-			}
-		}
+	if i, ok := r.(resource.PreMoveRollbacker); ok {
+		return i.PreMoveRollback(ctx, to)
 	}
 	return nil
 }
@@ -649,20 +665,12 @@ func (t *T) PostMove(ctx context.Context, to string) error {
 	if t.IsDisabled() {
 		return nil
 	}
-	volume, err := t.Volume()
+	r, err := t.moveResource(ctx)
 	if err != nil {
-		t.Log().Errorf("%s", err)
-		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
+		return err
 	}
-	for _, r := range volume.Resources() {
-		if r.IsDisabled() {
-			continue
-		}
-		if i, ok := r.(resource.PostMover); ok {
-			if err := i.PostMove(ctx, to); err != nil {
-				return err
-			}
-		}
+	if i, ok := r.(resource.PostMover); ok {
+		return i.PostMove(ctx, to)
 	}
 	return nil
 }

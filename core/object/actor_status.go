@@ -43,18 +43,10 @@ func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
 // MonitorStatus returns the service status dataset with monitored resources
 // refreshed and non-monitore resources loaded from cache
 func (t *actor) MonitorStatus(ctx context.Context) (instance.Status, error) {
-	var (
-		data instance.Status
-		err  error
-	)
 	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
-	data, err = t.statusLoad()
-	if err != nil {
-		return t.FreshStatus(ctx)
-	}
-	return t.monitorStatusEval(ctx, data)
+	return t.monitorStatusEval(ctx)
 }
 
 // Status returns the service status dataset
@@ -82,17 +74,31 @@ func (t *actor) postActionStatusEval(ctx context.Context) {
 	}
 }
 
-func (t *actor) monitorStatusEval(ctx context.Context, data instance.Status) (instance.Status, error) {
-	unlock, err := t.lockAction(ctx)
+// monitorStatusEval refreshes the monitored resources, and takes the status
+// of the others from the last status written.
+//
+// That status is read under the status lock, the same as the refresh. Read
+// before it, it can be the one the status evaluation holding the lock is
+// about to replace, as the one closing an action does: the refresh waits for
+// it, then posts what the resources it did not evaluate were before the
+// action, dated after the status the action closed on. A stop is undone that
+// way, the instance reported up with nothing running, and every later refresh
+// reads that status back, until a full one.
+func (t *actor) monitorStatusEval(ctx context.Context) (instance.Status, error) {
+	unlock, err := t.lockStatus(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}
 	defer unlock()
+	data, err := t.statusLoad()
+	if err != nil {
+		return t.lockedStatusEval(ctx)
+	}
 	return t.lockedMonitorStatusEval(ctx, data)
 }
 
 func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
-	unlock, err := t.lockAction(ctx)
+	unlock, err := t.lockStatus(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}

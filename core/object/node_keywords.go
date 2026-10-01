@@ -253,30 +253,18 @@ var (
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	}
-	kwNodeConsoleMaxGreetTimeout = keywords.Keyword{
-		Converter: converters.Duration,
-		Option:    "max_greet_timeout",
-		Section:   "console",
-		Default:   "20s",
-		Text:      keywords.NewText(fs, "text/kw/node/console.max_greet_timeout"),
-	}
-	kwNodeConsoleMaxSeats = keywords.Keyword{
+	kwNodeConsolePort = keywords.Keyword{
 		Converter: converters.Int,
-		Option:    "max_seats",
+		Option:    "port",
 		Section:   "console",
-		Default:   "1",
-		Text:      keywords.NewText(fs, "text/kw/node/console.max_seats"),
+		Default:   "1216",
+		Text:      keywords.NewText(fs, "text/kw/node/console.port"),
 	}
-	kwNodeConsoleInsecure = keywords.Keyword{
-		Converter: converters.Bool,
-		Option:    "insecure",
-		Section:   "console",
-		Text:      keywords.NewText(fs, "text/kw/node/console.insecure"),
-	}
-	kwNodeConsoleServer = keywords.Keyword{
-		Option:  "server",
+	kwNodeConsoleURL = keywords.Keyword{
+		Option:  "url",
 		Section: "console",
-		Text:    keywords.NewText(fs, "text/kw/node/console.server"),
+		Example: "wss://access.example.com/opensvc-console/",
+		Text:    keywords.NewText(fs, "text/kw/node/console.url"),
 	}
 	kwNodeMaxParallel = keywords.Keyword{
 		Converter: converters.Int,
@@ -1758,10 +1746,8 @@ var (
 		&kwNodeMinAvailMemPct,
 		&kwNodeMinAvailSwapPct,
 		&kwNodeEnv,
-		&kwNodeConsoleMaxGreetTimeout,
-		&kwNodeConsoleMaxSeats,
-		&kwNodeConsoleInsecure,
-		&kwNodeConsoleServer,
+		&kwNodeConsolePort,
+		&kwNodeConsoleURL,
 		&kwNodeMaxParallel,
 		&kwNodeMaxKeySize,
 		&kwNodeAllowedNetworks,

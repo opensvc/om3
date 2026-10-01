@@ -1287,8 +1287,11 @@ func lineHasLocalSource(words []string) bool {
 		}
 		switch word {
 		case "source":
+			// The test the install runs to choose between a fetch and a
+			// local read, so a source it reads locally, as "http:///etc/x"
+			// with no host, is never taken for a fetch here.
 			word, words = Pop(words)
-			if !strings.HasPrefix(word, "http://") && !strings.HasPrefix(word, "https://") {
+			if !uri.IsValidHttp(word) {
 				return true
 			}
 		}

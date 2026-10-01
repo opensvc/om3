@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/object"
+	daemonconsole "github.com/opensvc/om3/v3/daemon/console"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
@@ -98,6 +100,16 @@ func (t *T) Start(ctx context.Context) error {
 			return err
 		}
 		t.stopFunc = append(t.stopFunc, lsnr.Stop)
+	}
+
+	// The console listener is started last and is not one the daemon
+	// depends on: a console port that can not be listened on leaves the
+	// node without consoles, not without its api.
+	consoleListener := daemonconsole.NewListener(net.JoinHostPort(clusterConfig.Listener.Addr, fmt.Sprint(daemonconsole.Port())))
+	if err := consoleListener.Start(ctx); err != nil {
+		t.log.Errorf("start console listener: %s", err)
+	} else {
+		t.stopFunc = append(t.stopFunc, consoleListener.Stop)
 	}
 
 	t.log.Infof("listeners started")

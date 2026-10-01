@@ -62,6 +62,18 @@ type (
 		PostMove(ctx context.Context, to string) error
 	}
 
+	// MoveStorageCopier is implemented by a resource holding disks of a
+	// moveable driver (eg container.kvm) that the destination of a move
+	// can not reach, as a zfs dataset is imported on one node at a time.
+	// The move then mirrors the content of those disks to the destination
+	// while the container runs, onto the copy PreMove made there.
+	//
+	// The disks of the other resources are shared, as on a drbd in dual
+	// primary, and copying them would write each block onto itself.
+	MoveStorageCopier interface {
+		MoveCopiesStorage() bool
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes

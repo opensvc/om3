@@ -84,12 +84,14 @@ nameserver 10.29.0.13
 `, resolvConf.String())
 }
 
-// TestResolvConfIsZero pins that a container is left with the resolver of its
-// image rather than an empty file, when the cluster names none.
+// TestResolvConfIsZero pins that a container is left with the resolver its
+// engine gives it, rather than a file naming no nameserver, when neither the
+// cluster nor the dns keyword names one. The search list of the object does
+// not change that: without the cluster dns, its domains name nothing.
 func TestResolvConfIsZero(t *testing.T) {
 	assert.True(t, ResolvConf{Options: ResolvConfOptions}.IsZero())
+	assert.True(t, ResolvConf{Searches: []string{"svc.cluster1"}, Options: ResolvConfOptions}.IsZero())
 	assert.False(t, ResolvConf{Nameservers: []string{"10.29.0.11"}}.IsZero())
-	assert.False(t, ResolvConf{Searches: []string{"svc.cluster1"}}.IsZero())
 }
 
 func TestWriteResolvConfCreatesItsDir(t *testing.T) {

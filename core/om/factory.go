@@ -3,14 +3,17 @@ package om
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	commands "github.com/opensvc/om3/v3/core/omcmd"
+	daemonconsole "github.com/opensvc/om3/v3/daemon/console"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -103,6 +106,21 @@ func newCmdDaemonRestart() *cobra.Command {
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
+}
+
+// newCmdDaemonConsole is the command the daemon hands a console connection
+// to. It is run by the daemon, with the connection as an inherited file
+// descriptor, and is of no use run by hand.
+func newCmdDaemonConsole() *cobra.Command {
+	return &cobra.Command{
+		Use:    "console",
+		Short:  "serve the console session of a connection inherited from the daemon",
+		Hidden: true,
+		Args:   cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return daemonconsole.ServeInherited()
+		},
+	}
 }
 
 func newCmdDaemonRun() *cobra.Command {
@@ -936,7 +954,7 @@ func newCmdNodeConfigEval() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
@@ -996,7 +1014,7 @@ func newCmdNodeConfigGet() *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -1259,6 +1277,35 @@ pushed with the collector method exported for its type.`,
 	// and naming the array twice is refused.
 	flags.StringVar(&options.Array, "array", "", "the array to push, deprecated by the NAME argument")
 	flags.MarkHidden("array")
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
+	return cmd
+}
+
+func newCmdNodePushSwitch() *cobra.Command {
+	var options commands.CmdNodePushSwitches
+	cmd := &cobra.Command{
+		Use:   "switch [NAME]",
+		Short: "push the SAN switch configurations to the collector",
+		Long: `The switches are the ones the node and cluster configuration name, in
+"switch#<name>" sections. Each is inventoried with the driver of its type, and
+its configuration reported to the collector, which indexes its ports, zones
+and aliases.`,
+		Example: `  om node push switch sansw1
+  om node push switch switch#sansw1
+  om node push switch`,
+		Aliases: []string{"switches"},
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Switch = args[0]
+			}
+			return options.Run()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `NAME  The switch to push, named by its section with or without the "switch#" prefix. Every switch when not set.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
@@ -2135,7 +2182,7 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 		Long:  "Enter any container resource.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
@@ -2143,6 +2190,23 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	addFlagObject(flags, &options.ObjectSelector)
 	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
 	return cmd
+}
+
+// quietExitStatus keeps the exit status of the shell a command ran from
+// being reported as an error of the command.
+//
+// A shell exits with the status of the last command typed in it, so leaving
+// one after a command that failed, or was interrupted, is no failure of
+// entering the container. The status is still the exit status of the
+// command, as it is of ssh, and nothing is printed about it. An error that is
+// not the status of the shell, as a container that is not running, is
+// reported as any other.
+func quietExitStatus(cmd *cobra.Command, err error) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		cmd.SilenceErrors = true
+	}
+	return err
 }
 
 func newCmdObjectContainerLogs(kind string) *cobra.Command {
@@ -2724,7 +2788,7 @@ func newCmdObjectConfigEval(kind string) *cobra.Command {
 	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	flagLocal(flags, &options.Local)
 	return cmd
@@ -2763,7 +2827,7 @@ func newCmdObjectConfigGet(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
@@ -3844,6 +3908,7 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagLive(flags, &options.Live)
+	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	return cmd
 }
 
@@ -4360,7 +4425,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource. Use --rid to specify which container to enter.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	flags := cmd.Flags()

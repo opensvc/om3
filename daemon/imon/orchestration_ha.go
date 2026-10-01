@@ -173,10 +173,11 @@ func (t *Manager) clearBootFailed() {
 	t.transitionTo(instance.MonitorStateIdle)
 }
 
-// clearStoppedFlagWhenUp lowers the stopped flag when the instance is up.
+// clearStoppedFlagWhenUp lowers the stopped flag when the instance is up, or
+// when the object runs all it should.
 //
-// Whoever started it wants it up, so the daemon may keep it up: this is what
-// re-arms an instance started outside of an orchestration, with
+// Whoever started the instance wants it up, so the daemon may keep it up:
+// this is what re-arms an instance started outside of an orchestration, with
 // "om <path> start --local" on a node whose daemon is down, for example. It
 // mirrors the resource restart, which is re-armed when the resource is seen
 // up again.
@@ -184,21 +185,55 @@ func (t *Manager) clearStoppedFlagWhenUp() {
 	if !t.isStopped() {
 		return
 	}
-	switch {
-	case t.instStatus[t.localhost].Avail.Is(status.Up, status.StandbyUp):
-		t.log.Infof("clear the stopped flag: the instance is up")
-	case t.objectAvail().Is(status.Up):
-		// The object is up, so it is wanted up, and this instance missed the
-		// request that said so: its node was down when the object was
-		// started, or it was started on one node alone. An instance left
-		// flagged is not a candidate, and the object would have nowhere to
-		// go the day the one running it fails.
-		t.log.Infof("clear the stopped flag: the object is up")
-	default:
+	reason := stoppedFlagLoweredBy(t.state.State, t.instStatus[t.localhost], t.objStatus.ActorStatus != nil && t.isStarted())
+	if reason == "" {
 		return
 	}
+	t.log.Infof("clear the stopped flag: %s", reason)
 	if err := t.unsetStopped(); err != nil {
 		t.log.Errorf("clear the stopped flag: %s", err)
+	}
+}
+
+// stoppedFlagLoweredBy says what lowers the stopped flag of an instance, and
+// "" when nothing does.
+//
+// An instance that is up was started by someone, who wants it up.
+//
+// An object that runs all it should, up for a failover object and as many up
+// instances as its target for a flex one, is wanted up, and no longer needs
+// this instance: the instance missed the request that said so, its node being
+// down when the object was started, or it was stopped alone and another took
+// over. Left flagged, it would not be a candidate the day one of the
+// instances running the object fails.
+//
+// A flex object short of its target is up too, and that lowers nothing: the
+// instance an operator stopped would be the best placed candidate again, and
+// start back in the place of the next one, as if the stop had not been asked.
+//
+// Nothing lowers it on a status that can not tell what the stop left. A stop
+// raises the flag before it stops its first resource, and the instance looks
+// up until its last one is down: lowered then, the flag let the daemon start
+// the instance back once the stop was over. So it stays raised:
+//
+//   - while an action runs on the instance, as the status is then the one of
+//     resources in the middle of it,
+//
+//   - on a status not updated since the flag was raised, which is the update
+//     raising it, or one evaluated before: the stop says it is coming to the
+//     daemon as it raises the flag, and the flag can be seen first.
+func stoppedFlagLoweredBy(state instance.MonitorState, local instance.Status, isObjectStarted bool) string {
+	switch {
+	case state.IsDoing():
+		return ""
+	case !local.UpdatedAt.After(local.StoppedAt):
+		return ""
+	case local.Avail.Is(status.Up, status.StandbyUp):
+		return "the instance is up"
+	case isObjectStarted:
+		return "the object runs all it should"
+	default:
+		return ""
 	}
 }
 

@@ -1,5 +1,7 @@
 The dataset `quota` property value to set on provision.
 
+The property bounds what the dataset holds with its descendants and its snapshots. Set it, to `x1` or more, to cap sub-datasets too: a `refquota` does not.
+
 The value can be:
 
 * `none`
@@ -7,3 +9,7 @@ The value can be:
 * A size expression
 
 * A multiplier of the `size` keyword value (ex: `x2`), the `size` parameter must be explicitly defined.
+
+A resize sets a multiplier again from the new size, and moves with the size
+a property that was equal to it. A property set to a size of its own is left
+alone.

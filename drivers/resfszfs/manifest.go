@@ -40,6 +40,7 @@ var (
 		},
 		{
 			Attr:         "RefQuota",
+			DefaultText:  keywords.NewText(fs, "text/kw/refquota.default"),
 			Option:       "refquota",
 			Provisioning: true,
 			Required:     false,

@@ -1,0 +1,5 @@
+The port the console listener of the node listens on, on the address the api listens on.
+
+A console session is a websocket opened on this port with a ticket the api issued. The sessions are not served through the api port: each is a process of its own, which a daemon restart does not interrupt.
+
+The nodes of a cluster reach each other's console on the same port, so the keyword is best set in the cluster configuration.

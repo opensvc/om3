@@ -24,10 +24,15 @@ const (
 type (
 	T struct {
 		resdisk.T
+		resource.SSH
 		Name          string   `json:"name"`
 		Size          *int64   `json:"size"`
 		BlockSize     *int64   `json:"blocksize"`
 		CreateOptions []string `json:"create_options"`
+
+		// moveSnapshot is the snapshot PreMove sent, which PostMove
+		// keeps as the base of the next move.
+		moveSnapshot string
 	}
 )
 

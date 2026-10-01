@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/configkeywords"
 	"github.com/opensvc/om3/v3/core/nodeselector"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -29,19 +27,56 @@ type (
 )
 
 func (t *CmdNodeConfigGet) Run() error {
+	var (
+		l   api.KeywordItems
+		err error
+	)
 	if t.Local {
-		return t.doNodeAction()
+		l, err = t.localItems()
+	} else if l, err = t.daemonItems(); client.IsDaemonDown(err) && t.isLocalNodeOnly() {
+		// om runs where the configuration is: with the daemon down, it
+		// reads it itself, and answers what the daemon would have. The
+		// configuration of another node is the daemon's to fetch.
+		l, err = t.localItems()
 	}
-	c, err := client.New()
 	if err != nil {
 		return err
+	}
+	return t.render(l)
+}
+
+// isLocalNodeOnly says the selection is the local node alone.
+func (t *CmdNodeConfigGet) isLocalNodeOnly() bool {
+	switch t.NodeSelector {
+	case "", hostname.Hostname(), "localhost":
+		return true
+	default:
+		return false
+	}
+}
+
+// localItems answers the keywords from the configuration files of this node,
+// as the daemon does.
+func (t *CmdNodeConfigGet) localItems() (api.KeywordItems, error) {
+	return configkeywords.Node(hostname.Hostname(), configkeywords.Options{
+		Keywords:    t.Keywords,
+		Evaluate:    t.Eval,
+		Impersonate: t.Impersonate,
+	})
+}
+
+// daemonItems asks the daemon for the keywords of the selected nodes.
+func (t *CmdNodeConfigGet) daemonItems() (api.KeywordItems, error) {
+	c, err := client.New()
+	if err != nil {
+		return nil, err
 	}
 
 	nodenames := []string{hostname.Hostname()}
 	if t.NodeSelector != "" {
 		sel := nodeselector.New(t.NodeSelector)
 		if l, err := sel.Expand(); err != nil {
-			return err
+			return nil, err
 		} else {
 			nodenames = l
 		}
@@ -61,35 +96,41 @@ func (t *CmdNodeConfigGet) Run() error {
 		}
 		response, err := c.GetNodeConfigWithResponse(context.Background(), nodename, &params)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		switch {
 		case response.JSON200 != nil:
 			l = append(l, response.JSON200.Items...)
 		case response.JSON400 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON400)
+			return nil, fmt.Errorf("%s: %s", nodename, *response.JSON400)
 		case response.JSON401 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON401)
+			return nil, fmt.Errorf("%s: %s", nodename, *response.JSON401)
 		case response.JSON403 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON403)
+			return nil, fmt.Errorf("%s: %s", nodename, *response.JSON403)
 		case response.JSON500 != nil:
-			return fmt.Errorf("%s: %s", nodename, *response.JSON500)
+			return nil, fmt.Errorf("%s: %s", nodename, *response.JSON500)
 		default:
-			return fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
+			return nil, fmt.Errorf("%s: unexpected response: %s", nodename, response.Status())
 		}
 	}
+	return l, nil
+}
 
+func (t *CmdNodeConfigGet) render(l api.KeywordItems) error {
 	var defaultOutput string
+	// A pattern answers a list whatever the number of keys it matched: a
+	// bare value would not say which key it is the value of.
+	listed := len(l) > 1 || configkeywords.HasPattern(t.Keywords)
 	if t.Eval {
 		if hasEvalError(l) {
-			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
-		} else if len(l) > 1 {
-			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as,ERROR:error"
+		} else if listed {
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as"
 		} else {
-			defaultOutput = "tab=evaluated"
+			defaultOutput = "tab=evaluated_text"
 		}
 	} else {
-		if len(l) > 1 {
+		if listed {
 			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value"
 		} else {
 			defaultOutput = "tab=value"
@@ -101,33 +142,7 @@ func (t *CmdNodeConfigGet) Run() error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Data:          api.KeywordList{Items: api.WithEvaluatedText(l), Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-}
-
-func (t *CmdNodeConfigGet) doNodeAction() error {
-	return nodeaction.New(
-		nodeaction.WithLocal(t.Local),
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			ctx := context.Background()
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			for _, s := range t.Keywords {
-				if t.Eval {
-					return n.EvalAs(ctx, s, t.Impersonate)
-				} else {
-					return n.Get(ctx, s)
-				}
-			}
-			return nil, nil
-		}),
-	).Do()
 }

@@ -221,6 +221,17 @@ func TestPushArrayArgvNamesTheArray(t *testing.T) {
 	assert.Equal(t, []string{"node", "push", "array", "array#baie1"}, args)
 }
 
+// The switch a "pushswitch" entry pushes is the section its schedule was read
+// from, as for an array.
+func TestPushSwitchArgvNamesTheSwitch(t *testing.T) {
+	args, err := scheduler.CmdArgs(schedule.Entry{
+		Config: schedule.Config{Action: "pushswitch", Key: "switch#sansw1.schedule"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"node", "push", "switch", "switch#sansw1"}, args)
+	requireResolves(t, args)
+}
+
 // The array is named as an argument, which is the documented form, and with
 // --array, which is the form the command was born with. Naming it twice is a
 // mistake rather than a precedence question.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/configkeywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
@@ -72,16 +73,19 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 	}
 
 	var defaultOutput string
+	// A pattern answers a list whatever the number of keys it matched: a
+	// bare value would not say which key it is the value of.
+	listed := len(l) > 1 || configkeywords.HasPattern(t.Keywords)
 	if t.Eval {
 		if hasEvalError(l) {
-			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
-		} else if len(l) > 1 {
-			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as,ERROR:error"
+		} else if listed {
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as"
 		} else {
-			defaultOutput = "tab=evaluated"
+			defaultOutput = "tab=evaluated_text"
 		}
 	} else {
-		if len(l) > 1 {
+		if listed {
 			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value"
 		} else {
 			defaultOutput = "tab=value"
@@ -93,7 +97,7 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Data:          api.KeywordList{Items: api.WithEvaluatedText(l), Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 }

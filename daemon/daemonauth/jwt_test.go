@@ -11,6 +11,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/console"
 )
 
 func testKey(t *testing.T) *rsa.PrivateKey {
@@ -169,4 +171,23 @@ func TestCreateNodeTokenIsAcceptedByTheJWTStrategy(t *testing.T) {
 	assert.Equal(t, []string{"root"}, info.Grants)
 	assert.NotEmpty(t, info.Username)
 	assert.Equal(t, info.Username, info.Issuer, "a node token is issued by the node it is about")
+}
+
+// A console ticket is signed with the key the access tokens are signed
+// with, and is no credential of the api.
+func TestConsoleTicketIsNoAPICredential(t *testing.T) {
+	key := testKey(t)
+	jwtSignKey.Store(key)
+	t.Cleanup(func() { jwtSignKey.Store(nil) })
+	ticket, err := console.NewTicket("alice", "n1", console.Target{Node: "n1", Path: "ns1/svc/web", Kind: console.KindTTY})
+	require.NoError(t, err)
+	tk, _, err := (&JWTCreator{}).CreateToken(console.TicketDuration, ticket.Claims())
+	require.NoError(t, err)
+
+	// The ticket is one the console accepts.
+	_, err = console.ParseTicket(tk, &key.PublicKey)
+	require.NoError(t, err)
+
+	_, err = (&jwtStrategy{verifyKey: &key.PublicKey}).Authenticate(context.Background(), bearerRequest(t, tk))
+	assert.ErrorContains(t, err, "console ticket")
 }

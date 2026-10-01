@@ -17,7 +17,9 @@ import (
 
 // A section of a driver this agent does not have is not configured, and is
 // recorded to be reported by the status: a driver of a known group, and a
-// group this agent does not know. A subset section is no resource.
+// group this agent does not know. A subset section is no resource, and
+// neither is a section without the shape of a resource id, as the empty node
+// section a past bug left in object configurations.
 func TestConfigureResourcesRecordsTheUnsupportedSections(t *testing.T) {
 	testhelper.Setup(t)
 	p, err := naming.ParsePath("test/svc/ghost")
@@ -37,6 +39,8 @@ subset = g1
 
 [subset#g1]
 parallel = false
+
+[node]
 `)), WithVolatile(true))
 	require.NoError(t, err)
 	a := o.(*svc)

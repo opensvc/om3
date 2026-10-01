@@ -813,12 +813,24 @@ func (t *Manager) isStartable() (bool, string) {
 	return true, "object is startable"
 }
 
+// isStarted says the object runs all it should.
 func (t *Manager) isStarted() bool {
-	switch t.objStatus.Topology {
+	target := 0
+	if t.objStatus.Flex != nil {
+		target = t.objStatus.Flex.Target
+	}
+	return isObjectStarted(t.objStatus.Topology, t.objStatus.Avail, t.objStatus.UpInstancesCount, target)
+}
+
+// isObjectStarted says an object runs all it should: up for a failover
+// object, and as many up instances as its target for a flex one, which is up
+// from its first instance on.
+func isObjectStarted(topo topology.T, avail status.T, upInstancesCount, flexTarget int) bool {
+	switch topo {
 	case topology.Flex:
-		return t.objStatus.UpInstancesCount >= t.objStatus.Flex.Target
+		return upInstancesCount >= flexTarget
 	case topology.Failover:
-		return t.objStatus.Avail == status.Up
+		return avail == status.Up
 	default:
 		return false
 	}
@@ -1617,6 +1629,23 @@ func (t *Manager) onDrbdResourceUpdated(c *msgbus.DrbdResourceUpdated) {
 	}
 }
 
+// canRefreshOnEvent says whether a system event touching a resource of the
+// instance, as a mount or an address, is worth a status refresh.
+//
+// It is not while an action of the object runs, here or on a peer. The
+// action evaluates the status it ends on, and the event is likely its own
+// doing, read half way: a live move mounts the dataset on the destination
+// before the container gets there, and the status read then has the instance
+// warn with the move still in flight, which the orchestration placing the
+// object here takes for a start it can not make.
 func (t *Manager) canRefreshOnEvent() bool {
-	return !t.state.State.IsDoing()
+	if t.state.State.IsDoing() {
+		return false
+	}
+	for _, instMon := range t.instMonitor {
+		if instMon.State.IsDoing() {
+			return false
+		}
+	}
+	return true
 }

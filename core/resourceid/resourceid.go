@@ -65,6 +65,16 @@ func (t *T) Index() string {
 	return t.index
 }
 
+// IsIndexed reports whether the id has the <group>#<index> shape a resource
+// section has.
+//
+// A section without it, as a bare "node", names no resource, whatever its
+// group: it is a section of another purpose, or of none.
+func (t *T) IsIndexed() bool {
+	group, index, _ := strings.Cut(t.Name, "#")
+	return group != "" && index != ""
+}
+
 func (t T) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.Name)
 }

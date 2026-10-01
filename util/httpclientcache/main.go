@@ -100,41 +100,47 @@ func server() {
 	}
 }
 
-func newClient(o Options) (cli *http.Client, err error) {
-	tp := &http.Transport{
-		TLSClientConfig: &tls.Config{},
-	}
+// TLSConfig returns the tls configuration of the clients of the options.
+//
+// It is what the http clients are made with, and what anything opened beside
+// them, as a console session, has to be opened with for the two to trust the
+// same servers.
+func TLSConfig(o Options) (*tls.Config, error) {
+	config := &tls.Config{}
 	if o.CertFile != "" && o.KeyFile != "" {
-		var (
-			cert tls.Certificate
-		)
-		if cert, err = tls.LoadX509KeyPair(o.CertFile, o.KeyFile); err != nil {
-			return
+		cert, err := tls.LoadX509KeyPair(o.CertFile, o.KeyFile)
+		if err != nil {
+			return nil, err
 		}
-		tp.TLSClientConfig.Certificates = []tls.Certificate{cert}
-		tp.TLSClientConfig.InsecureSkipVerify = o.InsecureSkipVerify
+		config.Certificates = []tls.Certificate{cert}
+		config.InsecureSkipVerify = o.InsecureSkipVerify
 	} else {
-		tp.TLSClientConfig.InsecureSkipVerify = true
+		config.InsecureSkipVerify = true
 	}
 	if o.RootCA != "" {
-		var (
-			certPool *x509.CertPool
-			b        []byte
-		)
-		if certPool, err = x509.SystemCertPool(); err != nil {
-			return
+		certPool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, err
 		}
-		if b, err = os.ReadFile(o.RootCA); err != nil {
-			return
+		b, err := os.ReadFile(o.RootCA)
+		if err != nil {
+			return nil, err
 		}
 		if !certPool.AppendCertsFromPEM(b) {
-			err = errors.New("can't append RootCAs from RootCA " + o.RootCA)
-			return
+			return nil, errors.New("can't append RootCAs from RootCA " + o.RootCA)
 		}
-		tp.TLSClientConfig.RootCAs = certPool
-		tp.TLSClientConfig.InsecureSkipVerify = false
+		config.RootCAs = certPool
+		config.InsecureSkipVerify = false
 	}
-	cli = &http.Client{Transport: tp}
+	return config, nil
+}
+
+func newClient(o Options) (cli *http.Client, err error) {
+	config, err := TLSConfig(o)
+	if err != nil {
+		return nil, err
+	}
+	cli = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
 	if o.Timeout > 0 {
 		cli.Timeout = o.Timeout
 	}

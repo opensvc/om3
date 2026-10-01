@@ -49,7 +49,20 @@ const (
 	// minimumSlot represents the minimum slot value in the system, used as the
 	// base or default starting slot.
 	minimumSlot = 1
+
+	// DefaultTimeout is the timeout of a disk heartbeat not setting one.
+	DefaultTimeout = 9 * time.Second
+
+	// DefaultInterval is the interval of a disk heartbeat not setting one.
+	DefaultInterval = 4 * time.Second
 )
+
+// MinTimeout is the shortest timeout of a disk heartbeat writing every
+// interval: a timeout shorter would count a peer dead between two of its
+// writes.
+func MinTimeout(interval time.Duration) time.Duration {
+	return 2*interval + time.Second
+}
 
 func New() hbcfg.Confer {
 	t := &T{}
@@ -65,11 +78,11 @@ func init() {
 func (t *T) Configure(ctx context.Context) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: disk: " + t.Name() + ": configure:")
 	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
-	timeout := t.GetDuration("timeout", 9*time.Second)
-	interval := t.GetDuration("interval", 4*time.Second)
-	if timeout < 2*interval+1*time.Second {
+	timeout := t.GetDuration("timeout", DefaultTimeout)
+	interval := t.GetDuration("interval", DefaultInterval)
+	if timeout < MinTimeout(interval) {
 		oldTimeout := timeout
-		timeout = interval*2 + 1*time.Second
+		timeout = MinTimeout(interval)
 		log.Warnf("readjust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 

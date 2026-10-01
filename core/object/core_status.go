@@ -46,7 +46,7 @@ func (t *core) Status(ctx context.Context) (instance.Status, error) {
 
 func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
-	unlock, err := t.lockAction(ctx)
+	unlock, err := t.lockStatus(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}

@@ -3,6 +3,8 @@ package object
 import (
 	"embed"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -1057,13 +1059,27 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 	var drivers driver.Registry
 	if k.Section == "*" && driverGroup == driver.GroupUnknown {
 		drivers = driver.All
-	} else if sectionType != "" {
+	} else if sectionType != "" || driver.DefaultDriver[driverGroup] != "" {
+		// A section naming no type is a resource of the default driver
+		// of its group, so its keywords are the ones of that driver:
+		// the drivers of a group do not all give a keyword the same
+		// default, and do not all have it.
 		drivers = driver.All.WithID(driverGroup, sectionType)
 	} else {
 		drivers = driver.All.WithGroup(driverGroup)
 	}
 
-	for _, i := range drivers {
+	// The drivers are asked in a fixed order: a registry is a map, and the
+	// first driver found to have the keyword would otherwise change from
+	// one call to the next, and the keyword with it.
+	ids := make(driver.IDs, 0, len(drivers))
+	for id := range drivers {
+		ids = append(ids, id)
+	}
+	sort.Sort(ids)
+
+	for _, id := range ids {
+		i := drivers[id]
 		allocator, ok := i.Allocator.(func() resource.Driver)
 		if !ok {
 			continue
@@ -1083,6 +1099,47 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 	}
 
 	return nil
+}
+
+// KeywordOptions returns the options of the keywords a section of a
+// configuration of kind may hold, sorted, each once: the ones the drivers of
+// its group declare, and the ones of the store of the kind. The node
+// configuration is the kind naming.KindInvalid.
+//
+// It is a superset. Which of them a section holds depends on the driver its
+// type names, and on keywords limited to other kinds or sections, which is
+// what the keyword lookup of the configuration says of each.
+func KeywordOptions(kind naming.Kind, section string) []string {
+	store := keywordStore
+	switch kind {
+	case naming.KindInvalid:
+		store = NodeKeywordStore
+	case naming.KindCcfg:
+		store = ccfgKeywordStore
+	}
+	seen := make(map[string]bool)
+	add := func(kws []*keywords.Keyword) {
+		for _, kw := range kws {
+			if kw.Option != "" && kw.Option != "*" {
+				seen[kw.Option] = true
+			}
+		}
+	}
+	add(store)
+	group, _, _ := strings.Cut(section, "#")
+	if g := driver.NewGroup(group); g.IsValid() {
+		for _, i := range driver.All.WithGroup(g) {
+			if allocator, ok := i.Allocator.(func() resource.Driver); ok {
+				add(manifest.Get(allocator()).Keywords())
+			}
+		}
+	}
+	l := make([]string, 0, len(seen))
+	for option := range seen {
+		l = append(l, option)
+	}
+	sort.Strings(l)
+	return l
 }
 
 // KeywordStoreWithDrivers return the keywords supported by a specific

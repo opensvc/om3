@@ -3,11 +3,13 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/console"
 	commands "github.com/opensvc/om3/v3/core/oxcmd"
 	"github.com/opensvc/om3/v3/core/tui"
 	"github.com/opensvc/om3/v3/util/duration"
@@ -1056,7 +1058,7 @@ func newCmdNodeConfigEval() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
@@ -1077,7 +1079,7 @@ func newCmdNodeConfigGet() *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
@@ -1574,7 +1576,7 @@ func newCmdObjectConfigEval(kind string) *cobra.Command {
 	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	return cmd
 }
@@ -1594,7 +1596,7 @@ func newCmdObjectConfigGet(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	return cmd
 }
 
@@ -2801,6 +2803,7 @@ func newCmdObjectGroupRun(kind, group string) *cobra.Command {
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagConfirm(flags, &options.Confirm)
 	commoncmd.FlagCron(flags, &options.Cron)
+	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagEnv(flags, &options.Env)
 	return cmd
@@ -3064,15 +3067,30 @@ func newCmdObjectContainer(kind string) *cobra.Command {
 	return cmd
 }
 
+// quietExitStatus keeps the exit status of the shell of a console session
+// from being reported as an error of the command: it is the exit status of
+// the command, as it is of ssh, and nothing is printed about it.
+func quietExitStatus(cmd *cobra.Command, err error) error {
+	var exitStatus console.ExitStatus
+	if errors.As(err, &exitStatus) {
+		cmd.SilenceErrors = true
+	}
+	return err
+}
+
 func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerEnter
 	cmd := &cobra.Command{
 		Use:   "enter [PATTERN]...",
 		Short: "open a shell in a container resource",
-		Long:  "Enter any container resource.",
+		Long: `Enter any container resource.
+
+Without --node, the container is entered on the node it runs on, when it runs
+on one node only. A container running on several nodes is entered on the node
+--node names.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
@@ -3640,8 +3658,8 @@ A resize only grows.`,
 func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{
-		Use:   "orchestrate restart",
-		Short: "restart the selected objects, instances or resources",
+		Use:   "restart",
+		Short: "orchestrate restart",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -3650,6 +3668,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagForce(flags, &options.Force)
 	return cmd
 }
 
@@ -3811,6 +3830,7 @@ func newCmdObjectInstanceRun(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagConfirm(flags, &options.Confirm)
 	commoncmd.FlagCron(flags, &options.Cron)
+	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagEnv(flags, &options.Env)
 	return cmd
@@ -3997,6 +4017,7 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagLive(flags, &options.Live)
+	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	return cmd
 }
 
@@ -4788,7 +4809,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource. Use --rid to specify which container to enter.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	flags := cmd.Flags()

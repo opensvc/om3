@@ -52,5 +52,5 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	log.Tracef("%s: rbac passed", p)
 
-	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait)
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, true)
 }

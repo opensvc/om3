@@ -1129,6 +1129,24 @@ type ComputeClaim struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
+// ConsoleTicket defines model for ConsoleTicket.
+type ConsoleTicket struct {
+	// ExpiredAt When the ticket stops being accepted.
+	ExpiredAt time.Time `json:"expired_at"`
+
+	// Port The console port of the cluster nodes.
+	Port int `json:"port"`
+
+	// Ticket The ticket to open the console session with, in the `ticket`
+	// query parameter of the websocket url.
+	Ticket string `json:"ticket"`
+
+	// Url The url of the console endpoint, when the cluster configures
+	// one. When it does not, the endpoint is the console port of the
+	// node the api is reached on.
+	Url *string `json:"url,omitempty"`
+}
+
 // DNSRecord defines model for DNSRecord.
 type DNSRecord struct {
 	Class string `json:"class"`
@@ -1584,13 +1602,22 @@ type KeywordDefinitionListKind string
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
 	// Error The reason the keyword could not be evaluated. Only set when the whole configuration is evaluated, where a single unresolvable key must not fail the request. When a keyword selection is passed, an unresolvable key is reported as a 400 instead.
-	Error       *string `json:"error,omitempty"`
-	Evaluated   *any    `json:"evaluated,omitempty"`
-	EvaluatedAs string  `json:"evaluated_as"`
-	Keyword     string  `json:"keyword"`
-	Node        string  `json:"node"`
-	Object      string  `json:"object"`
-	Value       string  `json:"value"`
+	Error *string `json:"error,omitempty"`
+
+	// Evaluated The evaluated value, converted to the type of the keyword: a
+	// duration as a number of nanoseconds, a size as a number of bytes,
+	// a list as an array.
+	Evaluated   *any   `json:"evaluated,omitempty"`
+	EvaluatedAs string `json:"evaluated_as"`
+
+	// EvaluatedText The evaluated value written the way a configuration writes it: a
+	// duration as 2m, a size as 5g, a list as its words. It converts
+	// back to the same value.
+	EvaluatedText *string `json:"evaluated_text,omitempty"`
+	Keyword       string  `json:"keyword"`
+	Node          string  `json:"node"`
+	Object        string  `json:"object"`
+	Value         string  `json:"value"`
 }
 
 // KeywordItems defines model for KeywordItems.
@@ -2797,9 +2824,6 @@ type States = []string
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
 
-// InQueryGreetTimeout defines model for inQueryGreetTimeout.
-type InQueryGreetTimeout = string
-
 // InQueryHBA defines model for inQueryHBA.
 type InQueryHBA = string
 
@@ -2862,9 +2886,6 @@ type InQueryResourceFileRid = string
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
-
-// InQuerySeats defines model for inQuerySeats.
-type InQuerySeats = int
 
 // InQuerySection defines model for inQuerySection.
 type InQuerySection = string
@@ -2993,7 +3014,9 @@ type PostAuthTokenParams struct {
 type GetClusterConfigParams struct {
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+
+	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
+	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
 // PatchClusterConfigParams defines parameters for PatchClusterConfig.
@@ -3131,6 +3154,7 @@ type PostPeerActionUnfreezeParams struct {
 
 // GetNodeConfigParams defines parameters for GetNodeConfig.
 type GetNodeConfigParams struct {
+	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
 	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
@@ -3262,6 +3286,11 @@ type GetDaemonExecParams struct {
 	// A request held until the wait expires is answered 408, which says the
 	// thing is still running, and is not an error of the request.
 	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
+// PostDaemonHeartbeatWipeParams defines parameters for PostDaemonHeartbeatWipe.
+type PostDaemonHeartbeatWipeParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // GetDaemonOrchestrationsParams defines parameters for GetDaemonOrchestrations.
@@ -3945,9 +3974,7 @@ type PostInstanceActionUpdateParams struct {
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
 type PostInstanceResourceConsoleParams struct {
 	// Rid a resource selector expression
-	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
-	GreetTimeout *InQueryGreetTimeout `form:"greet_timeout,omitempty" json:"greet_timeout,omitempty"`
-	Seats        *InQuerySeats        `form:"seats,omitempty" json:"seats,omitempty"`
+	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 }
 
 // GetInstanceContainerLogParams defines parameters for GetInstanceContainerLog.
@@ -4079,7 +4106,9 @@ type PostObjectActionStopParams struct {
 type GetObjectConfigParams struct {
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+
+	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
+	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
 // PatchObjectConfigParams defines parameters for PatchObjectConfig.

@@ -82,6 +82,12 @@ func (e *Executor) Enter(ctx context.Context) error {
 		return fmt.Errorf("the container is not running")
 	}
 	pid := inspect.PID()
+	if pid == 0 {
+		// A container that exists and does not run has no process to
+		// enter the namespaces of.
+		cancel()
+		return fmt.Errorf("the container is not running")
+	}
 	env, err := enterEnv(inspect, pid)
 	if err != nil {
 		cancel()

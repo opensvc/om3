@@ -331,9 +331,12 @@ func (t *actor) ConfigureResources() {
 		typeKey := key.New(k, "type")
 		driverName := t.config.GetString(typeKey)
 		if driverGroup == driver.GroupUnknown {
-			// A subset section configures the resources of a subset,
-			// and is no resource.
-			if name, _, _ := strings.Cut(k, "#"); name != "subset" {
+			// Only a section shaped as a resource id is a resource this
+			// agent has no driver for. A bare one, as the empty "node" a
+			// past bug left in object configurations, is no resource, and
+			// is the validation of the configuration's to report.
+			if rid.IsIndexed() {
+				name, _, _ := strings.Cut(k, "#")
 				unsupported[k] = unsupportedDriverName(name, driverName)
 			}
 			continue
@@ -665,6 +668,14 @@ func (t *actor) ResourceHandlingFile(ctx context.Context, filename string) (reso
 		}
 	}
 	return longestHeadDriver, nil
+}
+
+// HasResourceSections tells the validation of the configuration that a
+// section is a resource, so it reports the ones ConfigureResources ignores:
+// the resource of a driver group this agent does not have, and the section
+// that is no resource at all.
+func (t *actor) HasResourceSections() bool {
+	return true
 }
 
 // unsupportedDriverName names the driver of a section whose driver group this

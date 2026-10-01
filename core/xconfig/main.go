@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -62,6 +63,12 @@ type (
 		// for scoping
 		Nodes() ([]string, error)
 		DRPNodes() ([]string, error)
+	}
+
+	// resourceSectioner is a referrer whose configuration sections are
+	// resources, as an object with resources is, and the node is not.
+	resourceSectioner interface {
+		HasResourceSections() bool
 	}
 
 	encapNodeser interface {
@@ -910,6 +917,48 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	return t.EvalKeywordAs(k, kw, impersonate)
 }
 
+// EvaluatedText writes a value EvalAs answered for the key the way a
+// configuration writes it: a duration as 2m, a size as 5g, a list as its
+// words. The converter of the keyword writes it, so a value computed by an
+// arithmetic, which is a count of bytes before it is converted, reads as a
+// size too.
+func (t *T) EvaluatedText(k key.T, v any) string {
+	kw, err := t.getKeyword(k)
+	if err != nil {
+		return converters.Format(nil, v)
+	}
+	return converters.Format(kw.Converter, v)
+}
+
+// Evaluated is a value EvalAs answered, with its text: printed, it is the
+// text a person reads, and in json the value a program reads.
+type Evaluated struct {
+	Value any
+	Text  string
+}
+
+// NewEvaluated returns the value EvalAs answered for the key, with its text.
+func (t *T) NewEvaluated(k key.T, v any) Evaluated {
+	return Evaluated{Value: v, Text: t.EvaluatedText(k, v)}
+}
+
+func (t Evaluated) String() string {
+	return t.Text
+}
+
+// Render is the text as a command prints it, on a line of its own, and
+// nothing for a value that is not set.
+func (t Evaluated) Render() string {
+	if t.Text == "" {
+		return ""
+	}
+	return t.Text + "\n"
+}
+
+func (t Evaluated) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Value)
+}
+
 func (t *T) getKeyword(k key.T) (*keywords.Keyword, error) {
 	switch k.Section {
 	case "env":
@@ -1477,6 +1526,14 @@ func (t T) dereferenceNodeKey(ref string, impersonate string, count bool) (strin
 	default:
 		// deny
 		return ref, fmt.Errorf("denied reference to node key %s", ref)
+	}
+
+	// A secret of the node, as the uuid it authenticates to the collector
+	// with, is the node's own: an object referencing it would hand it to
+	// whoever reads the object configuration evaluated, or the files it
+	// renders from it, as an install template does.
+	if kw.RedactSecret {
+		return ref, fmt.Errorf("denied reference to secret node key %s", ref)
 	}
 
 	val, err := t.NodeReferrer.Config().evalStringAs(nodeKey, kw, impersonate, count, newDereferenceTrace())
