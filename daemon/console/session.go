@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -155,20 +156,35 @@ func Serve(conn net.Conn, cfg Config) error {
 		NextProtos: []string{"http/1.1"},
 	})
 	listener := &oneConnListener{conn: tlsConn, done: make(chan struct{})}
+	var hijacked atomic.Bool
 	server := &http.Server{
 		ReadHeaderTimeout: handshakeTimeout,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer listener.Close()
 			cfg.handle(w, r, conn)
+			// A session took the connection from the server, and is over
+			// when this returns. An answer that is no session is not sent
+			// yet: the server writes it once this returns, then closes the
+			// connection, which is when the process may end. Ending it
+			// here closed the connection under the answer, and the client
+			// read an EOF where it was told why it was refused.
+			if hijacked.Load() {
+				_ = listener.Close()
+			}
 		}),
-		// A connection closed before it asked for anything, or after an
-		// answer that is no session, ends the process too.
 		ConnState: func(_ net.Conn, state http.ConnState) {
-			if state == http.StateClosed {
+			switch state {
+			case http.StateHijacked:
+				hijacked.Store(true)
+			case http.StateClosed:
+				// A connection closed before it asked for anything, or
+				// after an answer that is no session.
 				_ = listener.Close()
 			}
 		},
 	}
+	// One connection carries one request: the server closes it after an
+	// answer that is no session, rather than waiting for another request.
+	server.SetKeepAlivesEnabled(false)
 	err := server.Serve(listener)
 	_ = tlsConn.Close()
 	if errors.Is(err, net.ErrClosed) || errors.Is(err, http.ErrServerClosed) {
