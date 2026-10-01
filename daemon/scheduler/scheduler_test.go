@@ -139,6 +139,45 @@ func TestSkippedJobIsPlannedAgain(t *testing.T) {
 	}
 }
 
+// A job whose eligibility is read from the status of its instance is held
+// while an action of the instance runs, and tried again a moment later rather
+// than at its next period: a provision off the leader starts the resources
+// and stops them, and a task requiring one up ran in the instant it was.
+func TestJobIsHeldDuringAnActionOfItsInstance(t *testing.T) {
+	s := newTestScheduler(t)
+	e := s.entry(testPath, "task#1.schedule", "@1d")
+	e.Require = "fs#1(up)"
+	s.schedules.Add(e.Path, e)
+	s.reqSatisfied.Set(e.Path, e.Key, nil)
+	s.planJob(e, s.clock)
+	due := s.job(t, e).entry.NextRunAt
+
+	instance.MonitorData.Set(e.Path, s.localhost, &instance.Monitor{State: instance.MonitorStateProvisionProgress})
+	t.Cleanup(func() { instance.MonitorData.Unset(e.Path, s.localhost) })
+	s.clock = due
+	s.onTick()
+	require.Equal(t, 0, s.ranCount(), "held while the instance provisions")
+	assert.Equal(t, due.Add(holdRetryDelay), s.job(t, e).entry.NextRunAt, "tried again in a moment, not tomorrow")
+
+	instance.MonitorData.Set(e.Path, s.localhost, &instance.Monitor{State: instance.MonitorStateIdle})
+	s.clock = due.Add(holdRetryDelay)
+	s.onTick()
+	require.Equal(t, 1, s.ranCount(), "runs once the action is over")
+}
+
+// A job reading nothing of the instance status is not held by its actions.
+func TestJobWithoutRequirementIsNotHeld(t *testing.T) {
+	s := newTestScheduler(t)
+	e := s.entry(testPath, "status.schedule", "@10m")
+	s.planJob(e, s.clock)
+	due := s.job(t, e).entry.NextRunAt
+	instance.MonitorData.Set(e.Path, s.localhost, &instance.Monitor{State: instance.MonitorStateStartProgress})
+	t.Cleanup(func() { instance.MonitorData.Unset(e.Path, s.localhost) })
+	s.clock = due
+	s.onTick()
+	require.Equal(t, 1, s.ranCount())
+}
+
 // A job due runs once, and its next run is planned from the time it was due,
 // not from the time it was taken, so its runs do not drift.
 func TestDueJobRunsAndDoesNotDrift(t *testing.T) {

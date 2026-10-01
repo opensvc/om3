@@ -119,6 +119,10 @@ const (
 	// later is planned from the time it is taken: the runs it missed, while
 	// the node was suspended for example, are not made up in a burst.
 	lateTolerance = 10 * time.Second
+
+	// holdRetryDelay is how soon a job held back by an action of its
+	// instance is tried again.
+	holdRetryDelay = time.Second
 )
 
 var (
@@ -368,6 +372,18 @@ func (t *T) onJobDue(j *job, now time.Time) {
 		return
 	}
 
+	if reason := t.holdReason(e); reason != "" {
+		// The action ends in moments, and the job is due: it is tried
+		// again then, not at its next period, which for a daily job
+		// due during a start would skip a day.
+		logger.Infof("hold (%s)", reason)
+		e.LastRunAt = due.LastRunAt
+		e.NextRunAt = now.Add(holdRetryDelay)
+		t.jobs.set(e, now)
+		t.updateExposedSchedules(e.Path)
+		return
+	}
+
 	last := due.NextRunAt
 	if now.Sub(last) > lateTolerance {
 		last = now
@@ -459,6 +475,26 @@ func (t *T) blockReason(e schedule.Entry) string {
 		}
 	}
 	return ""
+}
+
+// holdReason says why a job due now is held back for a moment, "" when it is
+// not.
+//
+// A job whose eligibility is read from the status of the instance, its
+// requirements or its provisioned state, is held while an action of the
+// instance runs: the status is in flux then. A provision off the leader
+// starts the resources and stops them at once, and a task requiring one of
+// them up was started in the instant it was, to run on a node it was not to
+// run on.
+func (t *T) holdReason(e schedule.Entry) string {
+	if e.Path.IsZero() || (e.Require == "" && !e.RequireProvisioned) {
+		return ""
+	}
+	mon := instance.MonitorData.GetByPathAndNode(e.Path, t.localhost)
+	if mon == nil || !mon.State.IsDoing() {
+		return ""
+	}
+	return fmt.Sprintf("instance %s", mon.State)
 }
 
 // skipReason says why the job due now does not run, "" when it runs.
