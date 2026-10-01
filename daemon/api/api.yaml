@@ -2042,11 +2042,16 @@ paths:
   /api/node/name/{nodename}/daemon/hb/name/{name}/action/wipe:
     post:
       description: |
-        Wipe a heartbeat disk
+        Wipe a heartbeat disk.
+
+        The wipe is refused with a 409 while nodes outside the heartbeat
+        write to the disk, as the heartbeats of another cluster sharing it
+        would lose the signature too. The `force` parameter wipes anyway.
       operationId: PostDaemonHeartbeatWipe
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
+        - $ref: '#/components/parameters/inQueryForce'
       tags:
         - node / daemon
       security:
@@ -2061,6 +2066,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
 

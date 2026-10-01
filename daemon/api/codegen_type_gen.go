@@ -3288,6 +3288,11 @@ type GetDaemonExecParams struct {
 	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
 }
 
+// PostDaemonHeartbeatWipeParams defines parameters for PostDaemonHeartbeatWipe.
+type PostDaemonHeartbeatWipeParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
+}
+
 // GetDaemonOrchestrationsParams defines parameters for GetDaemonOrchestrations.
 type GetDaemonOrchestrationsParams struct {
 	States *States `form:"state,omitempty" json:"state,omitempty"`
