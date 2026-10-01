@@ -1,0 +1,371 @@
+{
+ "sysstat": {
+  "hosts": [
+   {
+    "nodename": "node1",
+    "sysname": "Linux",
+    "release": "6.8.0-142-generic",
+    "machine": "x86_64",
+    "number-of-cpus": 2,
+    "file-date": "2026-10-01",
+    "file-utc-time": "22:00:03",
+    "timezone": "CET",
+    "statistics": [
+     {
+      "timestamp": {
+       "date": "2026-09-30",
+       "time": "22:10:03",
+       "utc": 1,
+       "interval": 600
+      },
+      "cpu-load": [
+       {
+        "cpu": "all",
+        "usr": 7.87,
+        "nice": 0.99,
+        "sys": 6.24,
+        "iowait": 0.47,
+        "steal": 0.06,
+        "irq": 0.0,
+        "soft": 0.82,
+        "guest": 0.16,
+        "gnice": 0.0,
+        "idle": 83.4
+       },
+       {
+        "cpu": "0",
+        "usr": 7.38,
+        "nice": 0.99,
+        "sys": 6.29,
+        "iowait": 0.49,
+        "steal": 0.08,
+        "irq": 0.0,
+        "soft": 0.77,
+        "guest": 0.17,
+        "gnice": 0.0,
+        "idle": 83.83
+       },
+       {
+        "cpu": "1",
+        "usr": 8.35,
+        "nice": 0.99,
+        "sys": 6.19,
+        "iowait": 0.44,
+        "steal": 0.03,
+        "irq": 0.0,
+        "soft": 0.87,
+        "guest": 0.16,
+        "gnice": 0.0,
+        "idle": 82.98
+       }
+      ],
+      "io": {
+       "tps": 122.98,
+       "io-reads": {
+        "rtps": 17.63,
+        "bread": 624.03
+       },
+       "io-writes": {
+        "wtps": 105.34,
+        "bwrtn": 3047.39
+       },
+       "io-discard": {
+        "dtps": 0.0,
+        "bdscd": 0.0
+       }
+      },
+      "memory": {
+       "memfree": 240332,
+       "avail": 1911320,
+       "memused": 3621736,
+       "memused-percent": 59.74,
+       "buffers": 275668,
+       "cached": 1447172,
+       "commit": 12009372,
+       "commit-percent": 198.08,
+       "active": 2776264,
+       "inactive": 2273292,
+       "dirty": 712,
+       "swpfree": 0,
+       "swpused": 0,
+       "swpused-percent": 0.0,
+       "swpcad": 0,
+       "swpcad-percent": 0.0
+      },
+      "queue": {
+       "runq-sz": 1,
+       "plist-sz": 1094,
+       "ldavg-1": 0.48,
+       "ldavg-5": 0.4,
+       "ldavg-15": 0.43,
+       "blocked": 0
+      },
+      "disk": [
+       {
+        "disk-device": "vda",
+        "tps": 64.56,
+        "rd_sec": 42.0,
+        "wr_sec": 2558.76,
+        "dc_sec": 0.0,
+        "rkB": 21.0,
+        "wkB": 1279.38,
+        "dkB": 0.0,
+        "avgrq-sz": 40.28,
+        "areq-sz": 20.14,
+        "avgqu-sz": 0.04,
+        "aqu-sz": 0.04,
+        "await": 0.55,
+        "util-percent": 0.61
+       },
+       {
+        "disk-device": "root-root",
+        "tps": 97.88,
+        "rd_sec": 30.48,
+        "wr_sec": 2558.76,
+        "dc_sec": 0.0,
+        "rkB": 15.24,
+        "wkB": 1279.38,
+        "dkB": 0.0,
+        "avgrq-sz": 26.45,
+        "areq-sz": 13.23,
+        "avgqu-sz": 0.04,
+        "aqu-sz": 0.04,
+        "await": 0.45,
+        "util-percent": 0.78
+       }
+      ],
+      "network": {
+       "net-dev": [
+        {
+         "iface": "lo",
+         "rxpck": 2.36,
+         "txpck": 2.36,
+         "rxkB": 0.17,
+         "txkB": 0.17,
+         "rxcmp": 0.0,
+         "txcmp": 0.0,
+         "rxmcst": 0.0,
+         "ifutil-percent": 0.0
+        },
+        {
+         "iface": "enp1s0",
+         "rxpck": 73.87,
+         "txpck": 78.74,
+         "rxkB": 255.86,
+         "txkB": 155.89,
+         "rxcmp": 0.0,
+         "txcmp": 0.0,
+         "rxmcst": 0.0,
+         "ifutil-percent": 0.0
+        }
+       ],
+       "net-edev": [
+        {
+         "iface": "lo",
+         "rxerr": 0.0,
+         "txerr": 0.0,
+         "coll": 0.0,
+         "rxdrop": 0.0,
+         "txdrop": 0.0,
+         "txcarr": 0.0,
+         "rxfram": 0.0,
+         "rxfifo": 0.0,
+         "txfifo": 0.0
+        },
+        {
+         "iface": "enp1s0",
+         "rxerr": 0.0,
+         "txerr": 0.0,
+         "coll": 0.0,
+         "rxdrop": 0.0,
+         "txdrop": 0.0,
+         "txcarr": 0.0,
+         "rxfram": 0.0,
+         "rxfifo": 0.0,
+         "txfifo": 0.0
+        }
+       ]
+      }
+     },
+     {
+      "timestamp": {
+       "date": "2026-09-30",
+       "time": "22:20:03",
+       "utc": 1,
+       "interval": 600
+      },
+      "cpu-load": [
+       {
+        "cpu": "all",
+        "usr": 11.07,
+        "nice": 2.75,
+        "sys": 9.45,
+        "iowait": 0.52,
+        "steal": 0.05,
+        "irq": 0.0,
+        "soft": 1.13,
+        "guest": 0.14,
+        "gnice": 0.0,
+        "idle": 74.9
+       },
+       {
+        "cpu": "0",
+        "usr": 12.94,
+        "nice": 2.63,
+        "sys": 11.64,
+        "iowait": 0.6,
+        "steal": 0.06,
+        "irq": 0.0,
+        "soft": 0.73,
+        "guest": 0.13,
+        "gnice": 0.0,
+        "idle": 71.26
+       },
+       {
+        "cpu": "1",
+        "usr": 9.19,
+        "nice": 2.87,
+        "sys": 7.25,
+        "iowait": 0.44,
+        "steal": 0.04,
+        "irq": 0.0,
+        "soft": 1.53,
+        "guest": 0.15,
+        "gnice": 0.0,
+        "idle": 78.53
+       }
+      ],
+      "io": {
+       "tps": 145.71,
+       "io-reads": {
+        "rtps": 38.5,
+        "bread": 2911.21
+       },
+       "io-writes": {
+        "wtps": 107.2,
+        "bwrtn": 3316.55
+       },
+       "io-discard": {
+        "dtps": 0.0,
+        "bdscd": 0.0
+       }
+      },
+      "memory": {
+       "memfree": 179804,
+       "avail": 1815932,
+       "memused": 3717000,
+       "memused-percent": 61.31,
+       "buffers": 248180,
+       "cached": 1435916,
+       "commit": 12168100,
+       "commit-percent": 200.7,
+       "active": 2412044,
+       "inactive": 2670448,
+       "dirty": 1500,
+       "swpfree": 0,
+       "swpused": 0,
+       "swpused-percent": 0.0,
+       "swpcad": 0,
+       "swpcad-percent": 0.0
+      },
+      "queue": {
+       "runq-sz": 2,
+       "plist-sz": 1116,
+       "ldavg-1": 0.73,
+       "ldavg-5": 0.67,
+       "ldavg-15": 0.53,
+       "blocked": 0
+      },
+      "disk": [
+       {
+        "disk-device": "vda",
+        "tps": 84.88,
+        "rd_sec": 2280.04,
+        "wr_sec": 2811.08,
+        "dc_sec": 0.0,
+        "rkB": 1140.02,
+        "wkB": 1405.54,
+        "dkB": 0.0,
+        "avgrq-sz": 59.98,
+        "areq-sz": 29.99,
+        "avgqu-sz": 0.04,
+        "aqu-sz": 0.04,
+        "await": 0.47,
+        "util-percent": 1.1
+       },
+       {
+        "disk-device": "root-root",
+        "tps": 121.55,
+        "rd_sec": 2263.82,
+        "wr_sec": 2811.08,
+        "dc_sec": 0.0,
+        "rkB": 1131.91,
+        "wkB": 1405.54,
+        "dkB": 0.0,
+        "avgrq-sz": 41.75,
+        "areq-sz": 20.88,
+        "avgqu-sz": 0.05,
+        "aqu-sz": 0.05,
+        "await": 0.41,
+        "util-percent": 1.59
+       }
+      ],
+      "network": {
+       "net-dev": [
+        {
+         "iface": "lo",
+         "rxpck": 2.73,
+         "txpck": 2.73,
+         "rxkB": 0.25,
+         "txkB": 0.25,
+         "rxcmp": 0.0,
+         "txcmp": 0.0,
+         "rxmcst": 0.0,
+         "ifutil-percent": 0.0
+        },
+        {
+         "iface": "enp1s0",
+         "rxpck": 95.67,
+         "txpck": 100.17,
+         "rxkB": 277.37,
+         "txkB": 182.34,
+         "rxcmp": 0.0,
+         "txcmp": 0.0,
+         "rxmcst": 0.0,
+         "ifutil-percent": 0.0
+        }
+       ],
+       "net-edev": [
+        {
+         "iface": "lo",
+         "rxerr": 0.0,
+         "txerr": 0.0,
+         "coll": 0.0,
+         "rxdrop": 0.0,
+         "txdrop": 0.0,
+         "txcarr": 0.0,
+         "rxfram": 0.0,
+         "rxfifo": 0.0,
+         "txfifo": 0.0
+        },
+        {
+         "iface": "enp1s0",
+         "rxerr": 0.0,
+         "txerr": 0.0,
+         "coll": 0.0,
+         "rxdrop": 0.0,
+         "txdrop": 0.0,
+         "txcarr": 0.0,
+         "rxfram": 0.0,
+         "rxfifo": 0.0,
+         "txfifo": 0.0
+        }
+       ]
+      }
+     }
+    ],
+    "restarts": []
+   }
+  ]
+ }
+}

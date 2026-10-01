@@ -61,6 +61,7 @@ func (t *Node) Schedules() schedule.Table {
 		t.newScheduleEntry("compliance_auto", "compliance", "", "comp_check"),
 		t.newScheduleEntry("pushdisks", "disks", "", "disks_push"),
 		t.newScheduleEntry("pushpkg", "packages", "", "packages_push"),
+		t.newScheduleEntry("pushstats", "stats", "", "stats_push"),
 		t.newScheduleEntry("sysreport", "sysreport", "", "sysreport_push"),
 	)
 	// The merged configuration and not the node one: an array, a switch and a

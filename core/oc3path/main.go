@@ -14,6 +14,7 @@ const (
 	FeedInstanceStatus  = "/api/instance/status"
 
 	FeedNodeDisk      = "/api/node/disk"
+	FeedNodeStats     = "/api/node/stats"
 	FeedNodeSysreport = "/api/node/sysreport"
 	FeedNodeSystem    = "/api/node/system"
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	commands "github.com/opensvc/om3/v3/core/omcmd"
@@ -1377,6 +1378,52 @@ func newCmdNodePushPkg() *cobra.Command {
 	flagLocal(flags, &options.Local)
 	commoncmd.FlagDryRun(flags, &options.DryRun)
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
+	return cmd
+}
+
+func addFlagsNodePushStats(flags *pflag.FlagSet, options *commands.CmdNodePushStats) {
+	flags.StringVar(&options.Begin, "begin", "", "the start of the statistics to push, RFC 3339 or YYYY-MM-DD[ HH:MM[:SS]] in local time; by default, where the last scheduled push left, within 21 minutes and a day")
+	flags.StringVar(&options.End, "end", "", "the end of the statistics to push; now by default")
+	flags.StringVar(&options.StatsDir, "stats-dir", "", "the sysstat data directory; /var/log/sysstat, else /var/log/sa, by default")
+}
+
+func newCmdNodePushStats() *cobra.Command {
+	var options commands.CmdNodePushStats
+	cmd := &cobra.Command{
+		Use:   "stats",
+		Short: "push the node performance statistics to the collector",
+		Long: `Read the cpu, memory, swap, load, block and network i/o statistics sysstat
+collected on the node, and the file system usage, and push them to the
+collector, which keeps their history. The stats.disable keyword lists the
+groups not to push. The sysstat collection must be enabled on the node.`,
+		Example: `  om node push stats
+  om node push stats --begin "2026-10-01 00:00" --end "2026-10-01 12:00"
+  om node push stats --dry-run`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsNodePushStats(flags, &options)
+	flags.BoolVar(&options.DryRun, "dry-run", false, "read the statistics and print what would be pushed, without pushing")
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
+	return cmd
+}
+
+func newCmdNodePushstats() *cobra.Command {
+	var options commands.CmdNodePushStats
+	cmd := &cobra.Command{
+		Use:    "pushstats",
+		Hidden: true,
+		Short:  "push the node performance statistics to the collector",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	addFlagsNodePushStats(flags, &options)
 	return cmd
 }
 

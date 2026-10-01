@@ -513,6 +513,19 @@ var (
 		Section: "packages",
 		Text:    keywords.NewText(fs, "text/kw/node/packages.schedule"),
 	}
+	kwNodeStatsSchedule = keywords.Keyword{
+		Default: "~00:00-06:00",
+		Option:  "schedule",
+		Section: "stats",
+		Text:    keywords.NewText(fs, "text/kw/node/stats.schedule"),
+	}
+	kwNodeStatsDisable = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "blockdev mem_u",
+		Option:    "disable",
+		Section:   "stats",
+		Text:      keywords.NewText(fs, "text/kw/node/stats.disable"),
+	}
 	kwNodeAssetSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
@@ -1788,6 +1801,8 @@ var (
 		&kwNodeComplianceAutoUpdate,
 		&kwNodeChecksSchedule,
 		&kwNodePackagesSchedule,
+		&kwNodeStatsSchedule,
+		&kwNodeStatsDisable,
 		&kwNodeAssetSchedule,
 		&kwNodeDisksSchedule,
 		&kwNodeListenerCRL,
