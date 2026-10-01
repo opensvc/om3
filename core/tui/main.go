@@ -951,10 +951,6 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			text := strings.TrimSpace(t.command.GetText())
 			var action string
 			args := strings.Fields(text)
-			/*if len(args) == 0 {
-				clean()
-				return
-			}*/
 			if len(args) > 0 {
 				action = args[0]
 			}
@@ -962,6 +958,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			switch key {
 			case tcell.KeyEnter:
 				switch action {
+				case "":
+					t.cleanCommand()
 				case "quit", "q":
 					t.stop()
 				case "connect":
@@ -1004,6 +1002,10 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					case "relay":
 						t.cleanCommand()
 						t.nav(viewRelay)
+						return
+					default:
+						t.cleanCommand()
+						t.errorf("unknown go target: %s", args[1])
 						return
 					}
 				case "do":
@@ -1053,11 +1055,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						}
 					}
 				default:
-					if action[0] == '/' {
+					if strings.HasPrefix(action, "/") {
 						t.cleanCommand()
 						t.setFilter(action[1:])
 						return
 					}
+					t.cleanCommand()
+					t.errorf("unknown command: %s", action)
 				}
 			case tcell.KeyEscape:
 				t.cleanCommand()
