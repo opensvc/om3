@@ -245,21 +245,26 @@ func (t *T) undefine(ctx context.Context) error {
 }
 
 // migrate moves the running domain to the node to, mirroring the content of
-// the disks named in copyDisks, by their target, to the destination.
-func (t *T) migrate(ctx context.Context, to string, copyDisks []string) error {
+// the copied disks to the destination: the overlays over them when overlaid,
+// the whole disks otherwise.
+func (t *T) migrate(ctx context.Context, to string, copied []moveDisk, overlaid bool) error {
 	toUri := fmt.Sprintf("qemu+ssh://%s/system", to)
 	if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
 		toUri += fmt.Sprintf("?keyfile=%s", sshKeyFile)
 	}
+	targets := make([]string, len(copied))
+	for i, d := range copied {
+		targets[i] = d.Target
+	}
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("virsh"),
-		command.WithArgs(migrateArgs(t.Name, toUri, copyDisks, len(copyDisks) > 0 && virshHasSyncWrites(ctx))),
+		command.WithArgs(migrateArgs(t.Name, toUri, targets, overlaid, len(targets) > 0 && virshHasSyncWrites(ctx))),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(migrateTimeout(t.MigrateTimeout, t.StopTimeout, len(copyDisks) > 0)),
+		command.WithTimeout(migrateTimeout(t.MigrateTimeout, t.StopTimeout, len(targets) > 0)),
 	)
 	return cmd.Run()
 }
@@ -365,22 +370,47 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
+// Move migrates the running guest to the node to.
+//
+// The disks the destination can not reach, held by fs.zfs and disk.zvol
+// resources, are copied. The guest first writes them to overlays, under
+// which they no longer change, so the resources holding them send to the
+// destination a copy that is the disks as the guest left them, from the
+// newest snapshot both nodes hold. What the migration has left to copy is
+// what the guest wrote since: the overlays, into overlays the destination
+// puts over its copy. The destination then merges its overlays into the
+// disks and puts the guest back on them.
+//
+// A move that fails before the guest runs on the destination merges the
+// overlays back on this node, so the guest runs on its disks as it did. One
+// that fails after it is done all the same: the guest runs on the
+// destination, and undoing the steps that brought it there would take its
+// storage from under it.
 func (t *T) Move(ctx context.Context, to string) (err error) {
-	postMovers := make([]resource.PostMover, 0)
-	onFailureRollbackers := make([]resource.PreMoveRollbacker, 0)
+	var (
+		postMovers  []resource.PostMover
+		rollbackers []resource.PreMoveRollbacker
+		overlays    []moveOverlay
+		definition  []byte
+		migrated    bool
+	)
 
 	defer func() {
-		if err != nil {
-			// best effort to revert the pre-move action when something bad happens
-			for _, r := range onFailureRollbackers {
-				if err := r.PreMoveRollback(ctx, to); err != nil {
-					t.Log().Warnf("pre-move rollback action failed: %s", err)
-				}
+		if err == nil || migrated {
+			return
+		}
+		if len(overlays) > 0 {
+			t.undoOverlays(ctx, to, overlays, definition)
+		}
+		// best effort to revert the pre-move action when something bad happens
+		for _, r := range rollbackers {
+			if err := r.PreMoveRollback(ctx, to); err != nil {
+				t.Log().Warnf("pre-move rollback action failed: %s", err)
 			}
 		}
 	}()
 
-	resources, copyDisks, err := t.moveResources(ctx)
+	resources, copied, err := t.moveResources(ctx)
 	if err != nil {
 		return err
 	}
@@ -388,12 +418,26 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 		if err := resource.PRStop(ctx, r); err != nil {
 			return err
 		}
+	}
+
+	if len(copied) > 0 {
+		if definition, err = t.inactiveDefinition(ctx); err != nil {
+			return err
+		}
+		l := newMoveOverlays(t.Name, copied)
+		if err := t.putOverlays(ctx, l); err != nil {
+			return fmt.Errorf("put the overlays over the copied disks: %w", err)
+		}
+		overlays = l
+	}
+
+	for _, r := range resources {
 		if i, ok := r.(resource.PreMover); ok {
 			if err := i.PreMove(ctx, to); err != nil {
 				return err
 			}
 			if i, ok := r.(resource.PreMoveRollbacker); ok {
-				onFailureRollbackers = append(onFailureRollbackers, i)
+				rollbackers = append(rollbackers, i)
 			}
 		}
 		if i, ok := r.(resource.PostMover); ok {
@@ -401,10 +445,21 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 		}
 	}
 
+	for _, o := range overlays {
+		if err := t.remote(ctx, to, overlayCreateCmdline(o), nil); err != nil {
+			return fmt.Errorf("create the overlay of %s on %s: %w", o.Target, to, err)
+		}
+	}
+
 	t.Log().Infof("migrating container %s to %s", t.Name, to)
-	if err := t.migrate(ctx, to, copyDisks); err != nil {
+	if err := t.migrate(ctx, to, copied, len(overlays) > 0); err != nil {
 		t.Log().Warnf("migrate container %s to %s: %s", t.Name, to, err)
 		return fmt.Errorf("migrate container: %w", err)
+	}
+	migrated = true
+
+	if len(overlays) > 0 {
+		t.finishOverlays(ctx, to, overlays, definition)
 	}
 
 	// Reverse the order of post-move actions, so that the first one is executed first.
@@ -416,6 +471,59 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 	}
 
 	return nil
+}
+
+// finishOverlays ends a move that copied the overlays: the destination merges
+// them into its disks and puts the guest back on them, and both nodes get the
+// definition the guest had before the move back, and lose the overlay files.
+//
+// A destination failing to merge keeps the guest on its overlays, which hold
+// what it wrote during the move: the overlays and the definition naming them
+// are left there, as the guest needs them, and the error says how to merge
+// them by hand. This node gets its definition back either way: the guest no
+// longer runs here, and a definition naming the overlays would start it on a
+// stale one.
+func (t *T) finishOverlays(ctx context.Context, to string, overlays []moveOverlay, definition []byte) {
+	var commitErrs []string
+	for _, o := range overlays {
+		cmdline := "virsh " + strings.Join(blockcommitArgs(t.Name, o.Target), " ")
+		if err := t.remote(ctx, to, cmdline, nil); err != nil {
+			commitErrs = append(commitErrs, err.Error())
+		}
+	}
+	if len(commitErrs) > 0 {
+		t.Log().Errorf("the guest runs on %s on overlays its disks %s are not merged with, until 'virsh blockcommit %s <disk> --active --pivot' is run there for each: %s",
+			to, overlayTargets(overlays), t.Name, strings.Join(commitErrs, "; "))
+	} else {
+		if err := t.remote(ctx, to, "virsh define /dev/stdin", definition); err != nil {
+			t.Log().Warnf("restore the definition of %s on %s: %s", t.Name, to, err)
+		}
+		if err := t.remote(ctx, to, removeOverlaysCmdline(overlays), nil); err != nil {
+			t.Log().Warnf("remove the overlays on %s: %s", to, err)
+		}
+	}
+	if err := t.defineFrom(ctx, definition); err != nil {
+		t.Log().Warnf("restore the definition of %s: %s", t.Name, err)
+	}
+	removeOverlays(overlays)
+}
+
+// undoOverlays puts the guest still running here back on its disks after a
+// move that failed: the overlays are merged into the disks, the definition is
+// the one it had before, and the overlay files are removed on both nodes.
+func (t *T) undoOverlays(ctx context.Context, to string, overlays []moveOverlay, definition []byte) {
+	if err := t.commitOverlays(ctx, overlays); err != nil {
+		t.Log().Errorf("the guest runs on overlays its disks %s are not merged with, until 'virsh blockcommit %s <disk> --active --pivot' is run for each: %s",
+			overlayTargets(overlays), t.Name, err)
+		return
+	}
+	if err := t.defineFrom(ctx, definition); err != nil {
+		t.Log().Warnf("restore the definition of %s: %s", t.Name, err)
+	}
+	removeOverlays(overlays)
+	if err := t.remote(ctx, to, removeOverlaysCmdline(overlays), nil); err != nil {
+		t.Log().Warnf("remove the overlays on %s: %s", to, err)
+	}
 }
 
 func (t *T) Stop(ctx context.Context) error {

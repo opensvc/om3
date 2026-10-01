@@ -21,6 +21,7 @@ func TestParseMoveDisks(t *testing.T) {
       <target dev='vda' bus='virtio'/>
     </disk>
     <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
       <source file='/srv/vm1/data.qcow2'/>
       <target dev='vdb' bus='virtio'/>
     </disk>
@@ -48,7 +49,7 @@ func TestParseMoveDisks(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []moveDisk{
 		{Target: "vda", Source: "/dev/zvol/tank/vm1", Copyable: true},
-		{Target: "vdb", Source: "/srv/vm1/data.qcow2", IsFile: true, Copyable: true},
+		{Target: "vdb", Source: "/srv/vm1/data.qcow2", IsFile: true, Copyable: true, Format: "qcow2"},
 		{Target: "sda", Source: "/srv/vm1/install.iso", IsFile: true, Copyable: false},
 		{Target: "vdc", Source: "/dev/drbd1", Copyable: false},
 	}, l)
@@ -57,16 +58,21 @@ func TestParseMoveDisks(t *testing.T) {
 // A migration mirrors the disks it is told to and only those, and mirrors
 // nothing when the storage is shared.
 func TestMigrateArgs(t *testing.T) {
+	const uri = "qemu+ssh://n2/system"
 	assert.Equal(t,
-		[]string{"migrate", "--live", "--persistent", "vm1", "qemu+ssh://n2/system"},
-		migrateArgs("vm1", "qemu+ssh://n2/system", nil, true),
+		[]string{"migrate", "--live", "--persistent", "vm1", uri},
+		migrateArgs("vm1", uri, nil, false, true),
 		"shared storage: nothing is mirrored, so writes have nothing to wait for")
 	assert.Equal(t,
-		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "--copy-storage-synchronous-writes", "vm1", "qemu+ssh://n2/system"},
-		migrateArgs("vm1", "qemu+ssh://n2/system", []string{"vda", "vdb"}, true))
+		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "--copy-storage-synchronous-writes", "vm1", uri},
+		migrateArgs("vm1", uri, []string{"vda", "vdb"}, false, true))
 	assert.Equal(t,
-		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "vm1", "qemu+ssh://n2/system"},
-		migrateArgs("vm1", "qemu+ssh://n2/system", []string{"vda", "vdb"}, false),
+		[]string{"migrate", "--live", "--persistent", "--copy-storage-inc", "--migrate-disks", "vda,vdb", "--copy-storage-synchronous-writes", "vm1", uri},
+		migrateArgs("vm1", uri, []string{"vda", "vdb"}, true, true),
+		"overlaid: only the overlays are copied, the destination holds the disks under them")
+	assert.Equal(t,
+		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "vm1", uri},
+		migrateArgs("vm1", uri, []string{"vda", "vdb"}, false, false),
 		"a virsh older than libvirt 8.0 does not know the option")
 }
 

@@ -25,6 +25,10 @@ type (
 		Source string
 		IsFile bool
 
+		// Format is the format of the image the source holds, raw when
+		// the definition says none.
+		Format string
+
 		// Copyable says the disk can be mirrored by a migration: a
 		// read-only disk, a cdrom image among them, or a disk shared
 		// with other domains is not.
@@ -48,6 +52,9 @@ func parseMoveDisks(r io.Reader) ([]moveDisk, error) {
 		d := moveDisk{Copyable: true}
 		if target := xmlquery.FindOne(e, "target"); target != nil {
 			d.Target = target.SelectAttr("dev")
+		}
+		if driver := xmlquery.FindOne(e, "driver"); driver != nil {
+			d.Format = driver.SelectAttr("type")
 		}
 		if source := xmlquery.FindOne(e, "source"); source != nil {
 			if v := source.SelectAttr("dev"); v != "" {
@@ -81,13 +88,12 @@ func (t *T) moveDisks() ([]moveDisk, error) {
 }
 
 // moveResources returns the resources holding the disks of the domain, each
-// once, in the order of the disks, and the targets of the disks a migration
-// copies: the ones on a resource whose storage the destination can not
-// reach.
+// once, in the order of the disks, and the disks a migration copies: the ones
+// on a resource whose storage the destination can not reach.
 //
 // A disk on a device is held by the resource exposing that device, as a
 // drbd or a zvol. A disk in a file is held by the filesystem it is in.
-func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []string, error) {
+func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []moveDisk, error) {
 	disks, err := t.moveDisks()
 	if err != nil {
 		return nil, nil, fmt.Errorf("read the disks of %s: %w", t.Name, err)
@@ -99,7 +105,7 @@ func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []string, err
 	actor := obj.(object.Actor)
 	var (
 		resources []resource.Driver
-		copyDisks []string
+		copyDisks []moveDisk
 		seen      = make(map[string]bool)
 	)
 	for _, d := range disks {
@@ -119,7 +125,7 @@ func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []string, err
 			if !d.Copyable {
 				t.Log().Infof("disk %s is not mirrored by the migration: %s is read-only or shared, and is copied as a file of %s", d.Target, d.Source, r.RID())
 			} else {
-				copyDisks = append(copyDisks, d.Target)
+				copyDisks = append(copyDisks, d)
 			}
 		}
 		if seen[r.RID()] {
@@ -140,10 +146,18 @@ func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []string, err
 // faster than the link carries otherwise keeps the mirror from ever catching
 // up, and the migration from ending. Proxmox switches its mirrors the same
 // way.
-func migrateArgs(name, toURI string, copyDisks []string, syncWrites bool) []string {
+//
+// With overlaid, the copied disks are overlays over a copy of the disk the
+// destination already holds, and only the overlays are copied.
+func migrateArgs(name, toURI string, copyDisks []string, overlaid, syncWrites bool) []string {
 	args := []string{"migrate", "--live", "--persistent"}
 	if len(copyDisks) > 0 {
-		args = append(args, "--copy-storage-all", "--migrate-disks", strings.Join(copyDisks, ","))
+		if overlaid {
+			args = append(args, "--copy-storage-inc")
+		} else {
+			args = append(args, "--copy-storage-all")
+		}
+		args = append(args, "--migrate-disks", strings.Join(copyDisks, ","))
 		if syncWrites {
 			args = append(args, "--copy-storage-synchronous-writes")
 		}
