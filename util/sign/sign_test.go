@@ -94,3 +94,29 @@ func TestLegacySignatureDisk(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte(HBDiskSignature), sig)
 }
+
+// A filesystem refusing direct i/o, as tmpfs, is signed and wiped with
+// synchronous i/o: a device never refuses it, and the files the tests sign
+// may live on one.
+func TestSignOnAFilesystemRefusingDirectIO(t *testing.T) {
+	dir, err := os.MkdirTemp("/dev/shm", "sign-test-")
+	if err != nil {
+		t.Skip("no tmpfs at /dev/shm")
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	diskPath := filepath.Join(dir, "disk.img")
+	f, err := os.Create(diskPath)
+	require.NoError(t, err)
+	require.NoError(t, f.Truncate(PageSizeInt64*2))
+	require.NoError(t, f.Close())
+
+	require.NoError(t, CreateAndFillDisk(diskPath))
+	hasSig, err := EnsureSignature(diskPath)
+	require.NoError(t, err)
+	require.True(t, hasSig)
+
+	require.NoError(t, RemoveHeaderFromDisk(diskPath))
+	hasSig, err = EnsureSignature(diskPath)
+	require.NoError(t, err)
+	require.False(t, hasSig)
+}

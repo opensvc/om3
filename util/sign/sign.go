@@ -1,12 +1,14 @@
 package sign
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"os"
+	"syscall"
 
 	"github.com/google/uuid"
 	"github.com/ncw/directio"
@@ -73,17 +75,9 @@ func VerifyHeader(block []byte) error {
 	return ErrWrongSignature
 }
 
+// CreateAndFillDisk writes the heartbeat header on the disk at path, and
+// returns once the disk holds it.
 func CreateAndFillDisk(path string) error {
-	f, err := os.OpenFile(path, os.O_RDWR, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seek start: %s", err)
-	}
-
 	block := directio.AlignedBlock(PageSize)
 	if len(block) < HBHeaderSize {
 		return fmt.Errorf("block size %d is too small for heartbeat disk header", len(block))
@@ -100,36 +94,62 @@ func CreateAndFillDisk(path string) error {
 	checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
 	binary.LittleEndian.PutUint32(block[HBCrcOffset:], checksum)
 
-	n, err := f.Write(block)
-	if err != nil {
-		return fmt.Errorf("write signature block: %s", err)
+	if err := writeHeaderBlock(path, block); err != nil {
+		return fmt.Errorf("write signature block: %w", err)
 	}
-	if n != len(block) {
-		return io.ErrShortWrite
-	}
-
 	return nil
 }
 
-func RemoveHeaderFromDisk(path string) error {
-	_, err := os.Stat(path)
-	if err != nil {
-		return err
+// writeHeaderBlock writes block at the start of the disk at path the way the
+// heartbeats read it, with direct and synchronous i/o, and reads it back from
+// the disk, so it returns once the disk holds it.
+//
+// It used to be written through the page cache, and the write returned before
+// the disk held it. The heartbeats read the disk with direct i/o, and the
+// peers read it from another node: a signature that did not reach the disk
+// left them reading none, and failing to start, after a sign that said it was
+// done.
+//
+// A filesystem refusing direct i/o, which no device does, is written to with
+// synchronous i/o.
+func writeHeaderBlock(path string, block []byte) error {
+	f, err := directio.OpenFile(path, os.O_RDWR|os.O_SYNC, 0644)
+	if errors.Is(err, syscall.EINVAL) {
+		f, err = os.OpenFile(path, os.O_RDWR|os.O_SYNC, 0644)
 	}
-	f, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seek start: %s", err)
+	n, err := f.WriteAt(block, 0)
+	if err != nil {
+		return err
 	}
+	if n != len(block) {
+		return io.ErrShortWrite
+	}
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("sync: %w", err)
+	}
+	readBack := directio.AlignedBlock(len(block))
+	if _, err := f.ReadAt(readBack, 0); err != nil {
+		return fmt.Errorf("read back: %w", err)
+	}
+	if !bytes.Equal(readBack, block) {
+		return fmt.Errorf("%s does not hold the block written: the write did not reach the disk", path)
+	}
+	return nil
+}
 
-	emptyBlock := directio.AlignedBlock(PageSize)
-
-	if _, err := f.Write(emptyBlock); err != nil {
-		return fmt.Errorf("write empty block: %s", err)
+// RemoveHeaderFromDisk erases the heartbeat header of the disk at path, and
+// returns once the disk no longer holds it.
+func RemoveHeaderFromDisk(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		return err
+	}
+	if err := writeHeaderBlock(path, directio.AlignedBlock(PageSize)); err != nil {
+		return fmt.Errorf("write empty block: %w", err)
 	}
 	return nil
 }
