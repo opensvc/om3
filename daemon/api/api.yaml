@@ -9975,12 +9975,21 @@ components:
     inQueryKeywords:
       in: query
       name: kw
+      description: >
+        The keywords to answer, all the keys the configuration sets when
+        none. A keyword is [<section>.]<option>. A driver group or a
+        pattern as section, as container or cont*, matches the resource
+        sections it names, the same as a resource selector element, and
+        a pattern as option, as stop_*, matches the keywords of the section,
+        set or not. A pattern filters: a section without the keyword is
+        skipped, and matching nothing is no error. A keyword naming one
+        key that does not exist is an error.
       schema:
         type: array
         items:
           type: string
-          description: A keyword to remove.
-          example: env.unwanted
+          description: A keyword, or a pattern of keywords.
+          example: container.stop_timeout
 
     inQueryLeader:
       in: query

@@ -17,6 +17,10 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/hostname"
+
+	_ "github.com/opensvc/om3/v3/drivers/resappsimple"
+	_ "github.com/opensvc/om3/v3/drivers/resfsflag"
+	_ "github.com/opensvc/om3/v3/drivers/ressyncrsync"
 )
 
 func writeConfig(t *testing.T, p string, s string) {
@@ -151,4 +155,145 @@ func TestNode(t *testing.T) {
 
 	_, err = Node("n1", Options{Keywords: []string{"node.bogus"}, Evaluate: true})
 	require.True(t, errors.Is(err, xconfig.ErrNoKeyword), "%v", err)
+}
+
+// The section of a keyword is a resource selector element when it is a driver
+// group or a pattern, and the option is a pattern when it holds one. A
+// keyword naming one key is not a pattern.
+func TestIsPattern(t *testing.T) {
+	for s, want := range map[string]bool{
+		"container#1.stop_timeout": false,
+		"DEFAULT.nodes":            false,
+		"env.foo":                  false,
+		"nodes":                    false,
+		"container.stop_timeout":   true,
+		"cont*.stop_timeout":       true,
+		"*.stop_timeout":           true,
+		"container#1.*":            true,
+		"container#1.stop_*":       true,
+		"hb#*.timeout":             true,
+	} {
+		assert.Equal(t, want, IsPattern(s), s)
+	}
+	assert.True(t, HasPattern([]string{"DEFAULT.nodes", "app.stop_timeout"}))
+	assert.False(t, HasPattern([]string{"DEFAULT.nodes", "app#1.stop_timeout"}))
+}
+
+// A driver group or a pattern in the section answers the keyword of every
+// resource it matches, set or not, and skips the resources whose driver does
+// not have it. A pattern in the option answers every keyword of the section
+// it matches, set or not.
+func TestObjectPattern(t *testing.T) {
+	testhelper.Setup(t)
+	p, err := naming.ParsePath("test/svc/kw")
+	require.NoError(t, err)
+	writeConfig(t, p.ConfigFile(), `[DEFAULT]
+nodes = *
+
+[app#1]
+type = simple
+start = /bin/true
+stop_timeout = 5s
+
+[app#2]
+type = simple
+start = /bin/true
+
+[fs#1]
+type = flag
+
+[sync#1]
+type = rsync
+src = fs#1
+dst = /tmp/x
+
+[env]
+foo = bar
+fob = baz
+`)
+
+	keywords := func(items api.KeywordItems) []string {
+		l := make([]string, len(items))
+		for i, item := range items {
+			l[i] = item.Keyword
+		}
+		return l
+	}
+
+	t.Run("a driver group", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"app.stop_timeout"}, Evaluate: true})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"app#1.stop_timeout", "app#2.stop_timeout"}, keywords(items))
+		m := byKeyword(items)
+		assert.Equal(t, "5s", text(m["app#1.stop_timeout"]))
+		assert.Equal(t, "", m["app#2.stop_timeout"].Value, "set nowhere")
+		assert.NotEqual(t, "<nil>", text(m["app#2.stop_timeout"]), "evaluated to its default")
+	})
+
+	t.Run("a pattern skips the resources without the keyword", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"*.src"}, Evaluate: true})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"sync#1.src"}, keywords(items))
+	})
+
+	t.Run("a pattern matching nothing", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"container.stop_timeout"}, Evaluate: true})
+		require.NoError(t, err)
+		assert.Empty(t, items)
+	})
+
+	t.Run("a pattern does not match the sections that are no resource", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"*.foo"}})
+		require.NoError(t, err)
+		assert.Empty(t, items)
+	})
+
+	t.Run("an option pattern answers the keywords set or not", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"app#2.stop*"}, Evaluate: true})
+		require.NoError(t, err)
+		m := byKeyword(items)
+		assert.Contains(t, m, "app#2.stop_timeout")
+		assert.Contains(t, m, "app#2.stop")
+		assert.NotContains(t, m, "app#2.start", "not matched")
+		for k := range m {
+			assert.Contains(t, k, "app#2.stop", "only the section asked")
+		}
+	})
+
+	t.Run("an option pattern in a section holding any option", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"env.fo*"}, Evaluate: true})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"env.fob", "env.foo"}, keywords(items))
+	})
+
+	t.Run("a key matched twice is answered once", func(t *testing.T) {
+		items, err := Object(p, Options{Keywords: []string{"app#1.stop_timeout", "app.stop_timeout"}})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"app#1.stop_timeout", "app#2.stop_timeout"}, keywords(items))
+	})
+
+	t.Run("a key named is still selected", func(t *testing.T) {
+		_, err := Object(p, Options{Keywords: []string{"app#1.bogus"}, Evaluate: true})
+		require.True(t, errors.Is(err, xconfig.ErrNoKeyword), "%v", err)
+	})
+}
+
+// A pattern matches the sections of the node and of the cluster
+// configurations, as a heartbeat is configured in the cluster's.
+func TestNodePattern(t *testing.T) {
+	testhelper.Setup(t)
+	writeConfig(t, rawconfig.NodeConfigFile(), "[node]\nmax_parallel = 7\n")
+	writeConfig(t, rawconfig.ClusterConfigFile(), "[cluster]\nname = c1\n\n[hb#1]\ntype = unicast\ntimeout = 20s\n\n[hb#2]\ntype = multicast\n")
+
+	items, err := Node("n1", Options{Keywords: []string{"hb#*.timeout"}, Evaluate: true})
+	require.NoError(t, err)
+	m := byKeyword(items)
+	require.Len(t, m, 2)
+	assert.Equal(t, "20s", text(m["hb#1.timeout"]))
+	assert.NotEqual(t, "<nil>", text(m["hb#2.timeout"]), "evaluated to its default")
+
+	items, err = Node("n1", Options{Keywords: []string{"node.max_par*"}, Evaluate: true})
+	require.NoError(t, err)
+	m = byKeyword(items)
+	assert.Equal(t, "7", text(m["node.max_parallel"]))
 }

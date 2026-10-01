@@ -3014,7 +3014,9 @@ type PostAuthTokenParams struct {
 type GetClusterConfigParams struct {
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+
+	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
+	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
 // PatchClusterConfigParams defines parameters for PatchClusterConfig.
@@ -3152,6 +3154,7 @@ type PostPeerActionUnfreezeParams struct {
 
 // GetNodeConfigParams defines parameters for GetNodeConfig.
 type GetNodeConfigParams struct {
+	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
 	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
@@ -4098,7 +4101,9 @@ type PostObjectActionStopParams struct {
 type GetObjectConfigParams struct {
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+
+	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
+	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
 // PatchObjectConfigParams defines parameters for PatchObjectConfig.

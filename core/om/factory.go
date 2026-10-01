@@ -954,7 +954,7 @@ func newCmdNodeConfigEval() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
@@ -1014,7 +1014,7 @@ func newCmdNodeConfigGet() *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -2788,7 +2788,7 @@ func newCmdObjectConfigEval(kind string) *cobra.Command {
 	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	flagLocal(flags, &options.Local)
 	return cmd
@@ -2827,7 +2827,7 @@ func newCmdObjectConfigGet(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagKeywordSelection(flags, &options.Keywords)
 	flagLocal(flags, &options.Local)
 	return cmd
 }

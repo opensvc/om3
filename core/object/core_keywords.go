@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -1098,6 +1099,47 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 	}
 
 	return nil
+}
+
+// KeywordOptions returns the options of the keywords a section of a
+// configuration of kind may hold, sorted, each once: the ones the drivers of
+// its group declare, and the ones of the store of the kind. The node
+// configuration is the kind naming.KindInvalid.
+//
+// It is a superset. Which of them a section holds depends on the driver its
+// type names, and on keywords limited to other kinds or sections, which is
+// what the keyword lookup of the configuration says of each.
+func KeywordOptions(kind naming.Kind, section string) []string {
+	store := keywordStore
+	switch kind {
+	case naming.KindInvalid:
+		store = NodeKeywordStore
+	case naming.KindCcfg:
+		store = ccfgKeywordStore
+	}
+	seen := make(map[string]bool)
+	add := func(kws []*keywords.Keyword) {
+		for _, kw := range kws {
+			if kw.Option != "" && kw.Option != "*" {
+				seen[kw.Option] = true
+			}
+		}
+	}
+	add(store)
+	group, _, _ := strings.Cut(section, "#")
+	if g := driver.NewGroup(group); g.IsValid() {
+		for _, i := range driver.All.WithGroup(g) {
+			if allocator, ok := i.Allocator.(func() resource.Driver); ok {
+				add(manifest.Get(allocator()).Keywords())
+			}
+		}
+	}
+	l := make([]string, 0, len(seen))
+	for option := range seen {
+		l = append(l, option)
+	}
+	sort.Strings(l)
+	return l
 }
 
 // KeywordStoreWithDrivers return the keywords supported by a specific

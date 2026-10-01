@@ -131,16 +131,19 @@ func (t *CmdObjectConfigGet) daemonItems(mergedSelector string) (api.KeywordItem
 
 func (t *CmdObjectConfigGet) render(l api.KeywordItems) error {
 	var defaultOutput string
+	// A pattern answers a list whatever the number of keys it matched: a
+	// bare value would not say which key it is the value of.
+	listed := len(l) > 1 || configkeywords.HasPattern(t.Keywords)
 	if t.Eval {
 		if hasEvalError(l) {
 			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as,ERROR:error"
-		} else if len(l) > 1 {
+		} else if listed {
 			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as"
 		} else {
 			defaultOutput = "tab=evaluated_text"
 		}
 	} else {
-		if len(l) > 1 {
+		if listed {
 			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value"
 		} else {
 			defaultOutput = "tab=value"

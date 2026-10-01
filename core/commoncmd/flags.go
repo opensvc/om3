@@ -286,6 +286,12 @@ func FlagKeywordOps(flags *pflag.FlagSet, p *[]string) {
 	RawStringSliceVar(flags, p, "kw", []string{}, "a configuration keyword operation: [<section>.]<option><op><value>, with op in = |= += -= ^=")
 }
 
+// FlagKeywordSelection declares the --kw of the commands reading keywords,
+// which take patterns: see configkeywords.IsPattern.
+func FlagKeywordSelection(flags *pflag.FlagSet, p *[]string) {
+	RawStringSliceVar(flags, p, "kw", []string{}, "a configuration keyword: [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resources it names, and a pattern as option, as stop_*, the keywords of the section, set or not")
+}
+
 func FlagKeywords(flags *pflag.FlagSet, p *[]string) {
 	RawStringSliceVar(flags, p, "kw", []string{}, "a configuration keyword: [<section>.]<option>")
 }
