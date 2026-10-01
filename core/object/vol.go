@@ -38,6 +38,7 @@ type (
 		PoolName() (string, error)
 		ExposedDevice(context.Context) *device.T
 		ExposedDevices(context.Context) device.L
+		ExposedDeviceResource(context.Context) resource.Driver
 		SubDevice(context.Context) *device.T
 		SubDevices(context.Context) device.L
 		HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error)
@@ -189,6 +190,14 @@ func (t *vol) ExposedDevice(ctx context.Context) *device.T {
 		return nil
 	}
 	return &devs[0]
+}
+
+// ExposedDeviceResource returns the resource the volume exposes its device
+// through, nil when there is none: the drbd of a drbd volume, not the logical
+// volume or the zvol it replicates.
+func (t *vol) ExposedDeviceResource(ctx context.Context) resource.Driver {
+	r, _ := t.exposedDeviceResource(ctx)
+	return r
 }
 
 // exposedDeviceResource returns the resource the volume exposes a device
