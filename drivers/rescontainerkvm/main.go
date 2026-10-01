@@ -254,7 +254,7 @@ func (t *T) migrate(ctx context.Context, to string, copyDisks []string) error {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("virsh"),
-		command.WithArgs(migrateArgs(t.Name, toUri, copyDisks)),
+		command.WithArgs(migrateArgs(t.Name, toUri, copyDisks, len(copyDisks) > 0 && virshHasSyncWrites(ctx))),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),

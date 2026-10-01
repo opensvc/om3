@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/antchfx/xmlquery"
@@ -132,12 +134,41 @@ func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []string, err
 // migrateArgs returns the virsh arguments migrating the domain name to
 // toURI. The disks named in copyDisks are mirrored to the destination while
 // the domain runs, and only those: the others are shared with it.
-func migrateArgs(name, toURI string, copyDisks []string) []string {
+//
+// With syncWrites, a mirrored disk is written on both nodes before the guest
+// is told its write is done, once the mirror has caught up. A guest writing
+// faster than the link carries otherwise keeps the mirror from ever catching
+// up, and the migration from ending. Proxmox switches its mirrors the same
+// way.
+func migrateArgs(name, toURI string, copyDisks []string, syncWrites bool) []string {
 	args := []string{"migrate", "--live", "--persistent"}
 	if len(copyDisks) > 0 {
 		args = append(args, "--copy-storage-all", "--migrate-disks", strings.Join(copyDisks, ","))
+		if syncWrites {
+			args = append(args, "--copy-storage-synchronous-writes")
+		}
 	}
 	return append(args, name, toURI)
+}
+
+var (
+	virshSyncWritesOnce sync.Once
+	virshSyncWrites     bool
+)
+
+// virshHasSyncWrites says whether virsh migrate takes
+// --copy-storage-synchronous-writes, which libvirt 8.0 added. An older virsh
+// refuses an option it does not know, and the migration with it.
+func virshHasSyncWrites(ctx context.Context) bool {
+	virshSyncWritesOnce.Do(func() {
+		b, err := exec.CommandContext(ctx, "virsh", "help", "migrate").Output()
+		virshSyncWrites = err == nil && hasSyncWritesOption(string(b))
+	})
+	return virshSyncWrites
+}
+
+func hasSyncWritesOption(help string) bool {
+	return strings.Contains(help, "--copy-storage-synchronous-writes")
 }
 
 // migrateTimeout returns the longest a migration may take, zero for no limit

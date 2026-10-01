@@ -59,10 +59,21 @@ func TestParseMoveDisks(t *testing.T) {
 func TestMigrateArgs(t *testing.T) {
 	assert.Equal(t,
 		[]string{"migrate", "--live", "--persistent", "vm1", "qemu+ssh://n2/system"},
-		migrateArgs("vm1", "qemu+ssh://n2/system", nil))
+		migrateArgs("vm1", "qemu+ssh://n2/system", nil, true),
+		"shared storage: nothing is mirrored, so writes have nothing to wait for")
+	assert.Equal(t,
+		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "--copy-storage-synchronous-writes", "vm1", "qemu+ssh://n2/system"},
+		migrateArgs("vm1", "qemu+ssh://n2/system", []string{"vda", "vdb"}, true))
 	assert.Equal(t,
 		[]string{"migrate", "--live", "--persistent", "--copy-storage-all", "--migrate-disks", "vda,vdb", "vm1", "qemu+ssh://n2/system"},
-		migrateArgs("vm1", "qemu+ssh://n2/system", []string{"vda", "vdb"}))
+		migrateArgs("vm1", "qemu+ssh://n2/system", []string{"vda", "vdb"}, false),
+		"a virsh older than libvirt 8.0 does not know the option")
+}
+
+// The option is looked for in what virsh says of its migrate command.
+func TestHasSyncWritesOption(t *testing.T) {
+	assert.True(t, hasSyncWritesOption("    --copy-storage-synchronous-writes  force guest disk writes to be synchronously written"))
+	assert.False(t, hasSyncWritesOption("    --copy-storage-all  migration with non-shared storage with full disk copy"))
 }
 
 // A migration copying no disk is bounded by the stop_timeout of the guest, as
