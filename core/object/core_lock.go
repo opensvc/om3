@@ -67,6 +67,27 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 	return unlock, nil
 }
 
+// lockStatus takes the lock every status evaluation of the object holds,
+// whatever it is part of.
+//
+// The status evaluation closing an action runs under the lock of the action,
+// which a status refresh does not take: a "status -m" refresh running beside
+// the stop of a monitor action read the status of before the stop, and posted
+// it stamped after the status the stop closed on, which the daemon dropped as
+// the older. The instance stayed up to the daemon, and to the peers waiting
+// for it to be down to take over, until the next refresh.
+func (t *core) lockStatus(ctx context.Context) (func(), error) {
+	if actioncontext.IsLockDisabled(ctx) {
+		return func() {}, nil
+	}
+	lock := flock.New(t.lockPath(actioncontext.Status.LockGroup), xsession.SessionID().String(), fcntllock.New)
+	if err := lock.Lock(actioncontext.LockTimeout(ctx), actioncontext.Status.Name); err != nil {
+		return func() {}, err
+	}
+	t.reloadConfig()
+	return func() { _ = lock.UnLock() }, nil
+}
+
 // syncHoldingLock is the holder of the object lock when it is a sync and the
 // action is a stop, which would otherwise wait the time a lock is usually
 // waited for, and fail with nothing saying why.

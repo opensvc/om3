@@ -16,11 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/statusbus"
 	"github.com/opensvc/om3/v3/testhelper"
 
 	_ "github.com/opensvc/om3/v3/drivers/resfsflag"
@@ -124,5 +126,64 @@ func TestMonitorStatusReadsTheCacheUnderTheLock(t *testing.T) {
 		assert.Equal(t, status.Down, r.data.Avail)
 	case <-time.After(30 * time.Second):
 		t.Fatal("the monitored-only status refresh did not end")
+	}
+}
+
+// The status evaluation closing an action takes the status lock, as every
+// status evaluation does, and not only the lock of the action: a status -m
+// refresh running beside the stop of a monitor action read the status of
+// before the stop, posted it dated after the status the stop closed on, and
+// the daemon kept the instance up.
+func TestTheStatusClosingAnActionTakesTheStatusLock(t *testing.T) {
+	testhelper.Setup(t)
+	clusterConfig := cluster.Config{Name: "cluster1"}
+	clusterConfig.SetSecret("9ceab2da-a126-4187-83f2-4900da8a6825")
+	cluster.ConfigData.Set(&clusterConfig)
+	p, err := naming.ParsePath("test/svc/closing")
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[fs#1]\ntype = flag\n"), 0o644))
+	o, err := New(p)
+	require.NoError(t, err)
+	a := o.(*svc)
+
+	lockFile := a.lockPath("status")
+	require.NoError(t, os.MkdirAll(filepath.Dir(lockFile), 0o755))
+	helper := exec.Command(os.Args[0], "-test.run=^TestHoldLockHelper$")
+	helper.Env = append(os.Environ(), holdLockEnv+"="+lockFile, "GO_TEST_MODE=")
+	stdin, err := helper.StdinPipe()
+	require.NoError(t, err)
+	stdout, err := helper.StdoutPipe()
+	require.NoError(t, err)
+	require.NoError(t, helper.Start())
+	t.Cleanup(func() {
+		_ = stdin.Close()
+		_ = helper.Wait()
+	})
+	line, err := bufio.NewReader(stdout).ReadString('\n')
+	require.NoError(t, err)
+	require.Equal(t, "locked\n", line)
+
+	done := make(chan error, 1)
+	go func() {
+		// As an action makes its context.
+		ctx := actioncontext.WithProps(context.Background(), actioncontext.Stop)
+		ctx, stop := statusbus.WithContext(ctx, p)
+		defer stop()
+		_, err := a.statusEval(ctx)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("the status closing a stop did not wait for the status lock: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	require.NoError(t, stdin.Close())
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(30 * time.Second):
+		t.Fatal("the status closing a stop did not end once the status lock was released")
 	}
 }

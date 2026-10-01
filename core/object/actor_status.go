@@ -85,7 +85,7 @@ func (t *actor) postActionStatusEval(ctx context.Context) {
 // way, the instance reported up with nothing running, and every later refresh
 // reads that status back, until a full one.
 func (t *actor) monitorStatusEval(ctx context.Context) (instance.Status, error) {
-	unlock, err := t.lockAction(ctx)
+	unlock, err := t.lockStatus(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}
@@ -98,7 +98,7 @@ func (t *actor) monitorStatusEval(ctx context.Context) (instance.Status, error) 
 }
 
 func (t *actor) statusEval(ctx context.Context) (instance.Status, error) {
-	unlock, err := t.lockAction(ctx)
+	unlock, err := t.lockStatus(ctx)
 	if err != nil {
 		return instance.Status{}, err
 	}
