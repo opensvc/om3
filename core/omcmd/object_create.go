@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 	"strings"
@@ -85,7 +86,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	// --wait or --provision, until every node of the object watches it.
 	waitAll := t.Wait || t.Provision
 	needWait, err := func() (bool, error) {
-		if t.path.Exists() {
+		if exists, err := objectExists(t.path); err != nil {
+			return false, err
+		} else if exists {
 			return false, nil
 		}
 		timeout := t.Time
@@ -268,8 +271,12 @@ func (t *CmdObjectCreate) dataFromConfig() ([]byte, error) {
 }
 
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	if !t.Force && !t.Restore && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
+	if !t.Force && !t.Restore {
+		if exists, err := objectExists(p); err != nil {
+			return err
+		} else if exists {
+			return fmt.Errorf("%s already exists", p)
+		}
 	}
 	oc, err := object.NewConfigurer(p, object.WithConfigData(b))
 	if err != nil {
@@ -347,8 +354,12 @@ func (t *CmdObjectCreate) reportConfigWarnings(p naming.Path, oc object.Configur
 }
 
 func (t *CmdObjectCreate) localEmpty(p naming.Path) error {
-	if !t.Force && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
+	if !t.Force {
+		if exists, err := objectExists(p); err != nil {
+			return err
+		} else if exists {
+			return fmt.Errorf("%s already exists", p)
+		}
 	}
 	o, err := object.New(p)
 	if err != nil {
@@ -365,4 +376,21 @@ func (t *CmdObjectCreate) localEmpty(p naming.Path) error {
 		return err
 	}
 	return oc.Config().Commit()
+}
+
+// objectExists says whether the configuration file of p exists, and why it
+// can not tell.
+//
+// A configuration file this user can not look at was taken for one that
+// exists: a user that is not root was told an object root knows nothing of
+// already existed.
+func objectExists(p naming.Path) (bool, error) {
+	exists, err := file.ExistsNotDir(p.ConfigFile())
+	switch {
+	case errors.Is(err, fs.ErrPermission):
+		return false, fmt.Errorf("can not tell whether %s exists: %w: om creates an object as root, ox through the api with a user it grants", p, err)
+	case err != nil:
+		return false, fmt.Errorf("can not tell whether %s exists: %w", p, err)
+	}
+	return exists, nil
 }
