@@ -243,7 +243,9 @@ func (t *T) undefine(ctx context.Context) error {
 	return cmd.Run()
 }
 
-func (t *T) migrate(ctx context.Context, to string) error {
+// migrate moves the running domain to the node to, mirroring the content of
+// the disks named in copyDisks, by their target, to the destination.
+func (t *T) migrate(ctx context.Context, to string, copyDisks []string) error {
 	toUri := fmt.Sprintf("qemu+ssh://%s/system", to)
 	if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
 		toUri += fmt.Sprintf("?keyfile=%s", sshKeyFile)
@@ -251,7 +253,7 @@ func (t *T) migrate(ctx context.Context, to string) error {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("virsh"),
-		command.WithVarArgs("migrate", "--live", "--persistent", t.Name, toUri),
+		command.WithArgs(migrateArgs(t.Name, toUri, copyDisks)),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -377,17 +379,11 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 		}
 	}()
 
-	for _, dev := range t.SubDevices(ctx) {
-		r, err := t.resourceHandlingDevice(ctx, dev)
-		if err != nil {
-			return err
-		}
-		if r == nil {
-			continue
-		}
-		if r.IsDisabled() {
-			continue
-		}
+	resources, copyDisks, err := t.moveResources(ctx)
+	if err != nil {
+		return err
+	}
+	for _, r := range resources {
 		if err := resource.PRStop(ctx, r); err != nil {
 			return err
 		}
@@ -405,7 +401,7 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 	}
 
 	t.Log().Infof("migrating container %s to %s", t.Name, to)
-	if err := t.migrate(ctx, to); err != nil {
+	if err := t.migrate(ctx, to, copyDisks); err != nil {
 		t.Log().Warnf("migrate container %s to %s: %s", t.Name, to, err)
 		return fmt.Errorf("migrate container: %w", err)
 	}

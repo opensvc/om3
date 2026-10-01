@@ -34,6 +34,7 @@ type (
 	T struct {
 		resource.T
 		resource.Restart
+		resource.SSH
 		datarecv.DataRecv
 		MountPoint     string         `json:"mnt"`
 		Device         string         `json:"dev"`
@@ -46,6 +47,10 @@ type (
 		Quota          string         `json:"quota"`
 		RefReservation string         `json:"refreservation"`
 		Reservation    string         `json:"reservation"`
+
+		// moveSnapshot is the snapshot PreMove sent, which PostMove
+		// keeps as the base of the next move.
+		moveSnapshot string
 	}
 )
 
