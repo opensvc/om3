@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -29,7 +30,12 @@ import (
 //
 // The file is written only over the base the request was checked against,
 // and the write is refused as a conflict if another landed since.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait) error {
+//
+// A creation holds the answer until this daemon knows the object, so the
+// request that follows finds it: the daemon learns of an object a moment after
+// its configuration is written, and a provision asked in that moment was told
+// the object did not exist.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, creation bool) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -52,6 +58,11 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 	if err := refuseClaimOverrun(ctx.Request().Context(), p, o, configurer.Config()); err != nil {
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 	}
+	var knownSub *pubsub.Subscription
+	if creation {
+		knownSub = a.subscribeObjectKnown(fmt.Sprintf("api.write_object_config_file.known %s %s", p, ctx.Get("uuid")), p)
+		defer func() { _ = knownSub.Stop() }()
+	}
 	var sub *pubsub.Subscription
 	if waiting {
 		// Subscribed before the write, so no landing is missed between the
@@ -66,6 +77,13 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 	a.announceConfigFileWritten(p)
+	if creation {
+		knownCtx, knownCancel := context.WithTimeout(ctx.Request().Context(), objectKnownTimeout)
+		if !a.waitObjectKnown(knownCtx, knownSub, p) {
+			LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: created, and not known to the daemon after %s", p, objectKnownTimeout)
+		}
+		knownCancel()
+	}
 	warnSharedRootlessAccounts(ctx, p)
 	// Answer with the timestamp the configuration now carries, so the caller
 	// can require it of the actions it goes on to ask of the instances. This

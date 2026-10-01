@@ -148,6 +148,56 @@ func AnySingleNode(selector string, c *client.T) (string, error) {
 //
 // If acquiring the event reader fails, WaitInstanceMonitor returns
 // the error immediately and does not send anything to errC.
+// WaitObjectKnown watches for the daemon to know p, and sends nil on errC
+// once it does: listed, which is how a selection names it, and watched by an
+// instance monitor, on any node, which is what an action is asked of.
+//
+// It is started before the configuration of p is written, so no event is
+// missed between the write and the wait. The daemon learns of an object a
+// moment after its configuration file is written, and a command run in that
+// moment is told the object does not exist.
+func WaitObjectKnown(ctx context.Context, c *client.T, p naming.Path, timeout time.Duration, errC chan error) error {
+	filters := []string{
+		"ObjectStatusUpdated,path=" + p.String(),
+		"InstanceMonitorUpdated,path=" + p.String(),
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if timeout > 0 {
+		getEvents = getEvents.SetDuration(timeout)
+	}
+	evReader, err := getEvents.GetReader(ctx)
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer func() { _ = evReader.Close() }()
+		var listed, monitored bool
+		for !listed || !monitored {
+			rawEvent, err := evReader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					err = fmt.Errorf("no more events: %w", err)
+				}
+				errC <- fmt.Errorf("wait for the daemon to know %s: %w", p, err)
+				return
+			}
+			msgEvent, err := msgbus.EventToMessage(*rawEvent)
+			if err != nil {
+				errC <- fmt.Errorf("wait for the daemon to know %s: %w", p, err)
+				return
+			}
+			switch msgEvent.(type) {
+			case *msgbus.ObjectStatusUpdated:
+				listed = true
+			case *msgbus.InstanceMonitorUpdated:
+				monitored = true
+			}
+		}
+		errC <- nil
+	}()
+	return nil
+}
+
 func WaitAllInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeout time.Duration, errC chan error) error {
 	waitingAt := time.Now()
 	filters := []string{

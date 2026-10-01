@@ -21,5 +21,5 @@ func (a *DaemonAPI) PutClusterConfigFile(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read body", "%s", err)
 	}
-	return a.writeObjectConfigFile(ctx, naming.Cluster, body, base, nil)
+	return a.writeObjectConfigFile(ctx, naming.Cluster, body, base, nil, false)
 }
