@@ -304,6 +304,7 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 		naming.LogWithPath(t.log, msg.Path).Tracef("%s: ignore outdated %s vs %s", s, msg.Value.UpdatedAt, prev.UpdatedAt)
 		return
 	}
+	t.logResourceStatusChanges(msg.Path, prev.Resources, msg.Value.Resources)
 	if prev.Avail != msg.Value.Avail {
 		naming.LogWithPath(t.log, msg.Path).Infof("%s: change avail %s -> %s", s, prev.Avail, msg.Value.Avail)
 	}
@@ -322,6 +323,28 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 		t.labelLocalhost,
 		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s})
+}
+
+// logResourceStatusChanges logs the resources whose status changes from prev
+// to next. A resource missing from either side has the undef status.
+func (t *T) logResourceStatusChanges(p naming.Path, prev, next instance.ResourceStatuses) {
+	rids := make([]string, 0, len(next))
+	for rid := range next {
+		rids = append(rids, rid)
+	}
+	for rid := range prev {
+		if _, ok := next[rid]; !ok {
+			rids = append(rids, rid)
+		}
+	}
+	slices.Sort(rids)
+	s := p.String()
+	for _, rid := range rids {
+		prevStatus, nextStatus := prev[rid].Status, next[rid].Status
+		if prevStatus != nextStatus {
+			naming.LogWithPath(t.log, p).Attr("rid", rid).Infof("%s: change resource %s status %s -> %s", s, rid, prevStatus, nextStatus)
+		}
+	}
 }
 
 func (t *T) onInstanceStoppedFileUpdated(msg *msgbus.InstanceStoppedFileUpdated) {
