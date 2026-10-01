@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -221,6 +222,34 @@ func (t *T) startHbRx(hb hbcfg.Confer) error {
 	return nil
 }
 
+// knownRids returns the heartbeats this manager knows of: the ones recorded
+// as started from their configuration, and the ones running, sorted.
+func (t *T) knownRids() []string {
+	m := make(map[string]bool)
+	for rid := range t.ridSignature {
+		m[rid] = true
+	}
+	for rid := range t.txs {
+		m[rid] = true
+	}
+	for rid := range t.rxs {
+		m[rid] = true
+	}
+	l := make([]string, 0, len(m))
+	for rid := range m {
+		l = append(l, rid)
+	}
+	sort.Strings(l)
+	return l
+}
+
+// isRunningRid says whether a tx or an rx of the heartbeat runs.
+func (t *T) isRunningRid(rid string) bool {
+	_, tx := t.txs[rid]
+	_, rx := t.rxs[rid]
+	return tx || rx
+}
+
 func (t *T) stopHbRid(rid string) error {
 	errCount := 0
 	failures := make([]string, 0)
@@ -264,7 +293,13 @@ func (t *T) rescanHb(ctx context.Context) error {
 		ridSignatureNew[rid] = hb.Signature()
 	}
 
-	for rid := range t.ridSignature {
+	// A heartbeat whose start failed is not recorded, so a later rescan
+	// tries it again, and "om daemon hb restart" can start it meanwhile. The
+	// running ones are stopped too when their configuration goes away: only
+	// the recorded ones were, and a heartbeat started by a restart after a
+	// failed start ran on, its configuration deleted, until the daemon
+	// stopped.
+	for _, rid := range t.knownRids() {
 		if _, ok := ridSignatureNew[rid]; ok {
 			continue
 		}
@@ -298,6 +333,15 @@ func (t *T) rescanHb(ctx context.Context) error {
 	}
 	for rid, newSig := range ridSignatureNew {
 		if _, ok := t.ridSignature[rid]; !ok {
+			if t.isRunningRid(rid) {
+				// Started by a restart after its start failed: it
+				// is started again from the configuration, rather
+				// than a second time beside itself.
+				if err := t.stopHbRid(rid); err != nil {
+					errs = errors.Join(errs, err)
+					continue
+				}
+			}
 			t.log.Infof("heartbeat config new %s => starting", rid)
 			if err := t.startHb(ridHb[rid]); err != nil {
 				errs = errors.Join(errs, err)
