@@ -36,7 +36,9 @@ var NodeMigrationRules = MigrationRules{
 	},
 	{
 		Doc: "listener.openid_well_known becomes listener.openid_issuer: " +
-			"the url without its /.well-known/openid-configuration end, which om appends itself.",
+			"the url without its /.well-known/openid-configuration end, which om appends itself. " +
+			"An issuer without listener.openid_client_id is reported: om refuses openid logins " +
+			"without the client id om3-webapp is registered with at the provider.",
 		apply: migrateOpenIDWellKnown,
 	},
 	{
@@ -186,6 +188,35 @@ func migrateOpenIDWellKnown(cfg *xconfig.T, m *Migration) {
 		m.Sets = append(m.Sets, set("listener", target, issuer))
 		m.Unsets = append(m.Unsets, k)
 		m.Notes = append(m.Notes, fmt.Sprintf("%s is listener.%s %s now", k, target, issuer))
+	}
+	reportMissingOpenIDClientID(cfg, m)
+}
+
+// reportMissingOpenIDClientID reports an openid issuer, set or migrated to,
+// with no client id beside it.
+//
+// om verifies a token was issued for the client om3-webapp is registered as
+// at the provider, and without that client id it ignores the openid
+// strategy altogether: every openid login is refused, and the daemon says
+// so in a warning of its log alone. The client id is the provider's to tell,
+// so it is reported rather than written.
+//
+// The node and the cluster configurations are read merged, and this sees one
+// of them: the report says the other may set it.
+func reportMissingOpenIDClientID(cfg *xconfig.T, m *Migration) {
+	hasIssuer, hasClientID := false, false
+	for _, option := range cfg.Keys("listener") {
+		switch base, _ := cutScope(option); base {
+		case "openid_issuer", "openid_authority", "openid_well_known":
+			hasIssuer = true
+		case "openid_client_id":
+			hasClientID = true
+		}
+	}
+	if hasIssuer && !hasClientID {
+		m.Refusals = append(m.Refusals, "listener: an openid issuer is set, and no listener.openid_client_id: "+
+			"om refuses every openid login without the client id om3-webapp is registered with at the provider. "+
+			"Set it, unless the node or cluster configuration this one is merged with does")
 	}
 }
 

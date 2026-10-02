@@ -167,6 +167,21 @@ openid_well_known = https://auth.example.com/realms/r1/.well-known/openid-config
 	assert.Equal(t, "https://auth.example.com/realms/r1", v)
 	assert.True(t, unset(m, "listener.openid_well_known"))
 
+	assert.True(t, refusedAbout(m, "openid_client_id"), "an issuer with no client id is reported")
+
+	m = clusterMigrationOf(t, `
+[listener]
+openid_well_known = https://auth.example.com/realms/r1/.well-known/openid-configuration
+openid_client_id = om3-webapp
+`)
+	assert.False(t, refusedAbout(m, "openid_client_id"), "the client id is set")
+
+	m = clusterMigrationOf(t, `
+[listener]
+openid_issuer = https://auth.example.com/realms/r1
+`)
+	assert.True(t, refusedAbout(m, "openid_client_id"), "an issuer om3 has, with no client id, is reported too")
+
 	m = clusterMigrationOf(t, `
 [listener]
 openid_well_known = https://auth.example.com/realms/r1/config
