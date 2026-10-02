@@ -86,7 +86,7 @@ func (t *T) Status(ctx context.Context) status.T {
 
 func (t *T) status() status.T {
 	if !capabilities.Has(drvID.Cap()) {
-		t.StatusLog().Error(errExportfsNotInstalled.Error())
+		t.StatusLog().Error("%s", errExportfsNotInstalled)
 		return status.NotApplicable
 	}
 	v, err := t.isPathExported()

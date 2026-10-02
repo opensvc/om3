@@ -221,8 +221,8 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 		command.WithIgnoredExitCodes(),
 	)
 	if t.StatusLogKw {
-		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
-		opts = append(opts, command.WithOnStderrLine(func(s string) { t.StatusLog().Warn(s) }))
+		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info("%s", s) }))
+		opts = append(opts, command.WithOnStderrLine(func(s string) { t.StatusLog().Warn("%s", s) }))
 	}
 	cmd := command.New(opts...)
 

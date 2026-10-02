@@ -424,7 +424,7 @@ func (t *T) statusBlockDevices() status.T {
 	}
 	if s != status.Down {
 		for _, issue := range issues {
-			t.StatusLog().Warn(issue)
+			t.StatusLog().Warn("%s", issue)
 		}
 	}
 	return s

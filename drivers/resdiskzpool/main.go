@@ -245,7 +245,7 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 	case "ONLINE":
 		return true, nil
 	case "SUSPENDED", "DEGRADED":
-		t.StatusLog().Warn(strings.ToLower(data.State))
+		t.StatusLog().Warn("%s", strings.ToLower(data.State))
 		return false, nil
 	default:
 		return false, nil

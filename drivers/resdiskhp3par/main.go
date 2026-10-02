@@ -223,7 +223,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 
-	t.StatusLog().Info(t.groupStatus.String())
+	t.StatusLog().Info("%s", t.groupStatus.String())
 
 	// Check overall RCG status
 	if t.groupStatus.Status != groupStatusStarted {
