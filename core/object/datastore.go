@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"os"
 	"slices"
 
@@ -53,6 +54,7 @@ type (
 	// KeyStore is implemented by encrypting KeyStore object kinds (usr, sec).
 	KeyStore interface {
 		GenCert() error
+		RenewCertificate(ctx context.Context, force bool, webroot string) (CertificateRenewal, error)
 		GenCertificateSigningRequest() ([]byte, error)
 		PKCS(password []byte) ([]byte, error)
 	}

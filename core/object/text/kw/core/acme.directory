@@ -1,0 +1,7 @@
+The ACME directory `om <path> certificate renew` obtains the certificate of
+the sec from, Let's Encrypt by default. The domains are the `cn` and the
+`alt_names` of the sec, and the account is registered there, with its `email`
+as the contact when it has one.
+
+Use the staging directory of Let's Encrypt to try a setup out: its
+certificates are not trusted, and its rate limits are far higher.

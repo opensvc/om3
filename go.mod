@@ -20,20 +20,21 @@ require (
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e
 	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807
 	github.com/fatih/color v1.16.0
-	github.com/fsnotify/fsnotify v1.6.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/g8rswimmer/error-chain v1.0.0
 	github.com/gdamore/tcell/v2 v2.7.1
 	github.com/getkin/kin-openapi v0.144.0
+	github.com/go-acme/lego/v4 v4.35.2
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/nftables v0.3.0
 	github.com/google/uuid v1.6.0
 	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
 	github.com/gorilla/websocket v1.5.3
-	github.com/hashicorp/go-version v1.4.0
+	github.com/hashicorp/go-version v1.9.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
@@ -68,7 +69,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/ssrathi/go-attr v1.3.0
 	github.com/stretchr/testify v1.11.1
-	github.com/subosito/gotenv v1.2.0
+	github.com/subosito/gotenv v1.6.0
 	github.com/talos-systems/go-smbios v0.1.1
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.4
@@ -77,7 +78,7 @@ require (
 	github.com/zalando/go-keyring v0.2.8
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
 	golang.org/x/crypto v0.53.0
-	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
+	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
 	golang.org/x/net v0.56.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.21.0
@@ -89,13 +90,14 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/client-go v0.28.0
 	sigs.k8s.io/yaml v1.3.0
-	software.sslmate.com/src/go-pkcs12 v0.5.0
+	software.sslmate.com/src/go-pkcs12 v0.7.1
 )
 
 require (
 	github.com/antchfx/xpath v1.3.6 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cilium/ebpf v0.22.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-iptables v0.5.0 // indirect
@@ -103,6 +105,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
@@ -114,6 +117,7 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
+	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -130,7 +134,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

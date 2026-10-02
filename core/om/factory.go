@@ -1649,6 +1649,43 @@ func newCmdObjectCertificateCreate(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectCertificateRenew(kind string) *cobra.Command {
+	var options commands.CmdObjectCertificateRenew
+	cmd := &cobra.Command{
+		Use:   "renew",
+		Short: "obtain the certificate from the acme directory, when due",
+		Long: `Obtain the certificate of the sec from its ACME directory, Let's Encrypt by
+default, when it is due: there is none, it is self-signed, it names other
+domains than the sec asks, or it expires within acme.renew_before. A renewal
+not due does nothing, so the command can run on a schedule.
+
+The domains are the cn and the alt_names of the sec. They are proved with the
+http-01 challenge, its token written under .well-known/acme-challenge/ in
+acme.webroot, which the http server of the domains must serve. The account is
+registered on the first renewal, with the email of the sec as its contact
+when it has one, and kept in the sec, as the certificate is: private_key, certificate, certificate_chain, and
+fullpem, the private key followed by the chain.
+
+The volumes installing these keys get the new ones, and the signals of their
+install lines are sent, on every node running them.`,
+		Example: `  # renew the certificate of a sec, when due
+  om ns1/sec/web certificate renew
+
+  # as a task of the service publishing the domains, where it runs
+  [task#acme]
+  command = om ns1/sec/web certificate renew
+  schedule = @1d`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.BoolVar(&options.Force, "force", false, "obtain a certificate even when the current one is not due")
+	flags.StringVar(&options.Webroot, "webroot", "", "the directory the http-01 challenge token is written in, acme.webroot by default")
+	return cmd
+}
+
 func newCmdObjectCertificateSigningRequest(kind string) *cobra.Command {
 	var options commands.CmdObjectCertificateSigningRequest
 	cmd := &cobra.Command{

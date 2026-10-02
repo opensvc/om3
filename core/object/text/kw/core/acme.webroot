@@ -1,0 +1,7 @@
+The directory, on the node renewing the certificate, the http server of the
+domains serves `/.well-known/acme-challenge/` from: the renewal writes the
+http-01 challenge token there, under `.well-known/acme-challenge/`, and the
+ACME directory reads it back through the domains.
+
+It is usually a directory of a volume of the service publishing the domains,
+the renewal running as a task of that service, where it runs.
