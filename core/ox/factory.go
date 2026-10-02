@@ -4762,14 +4762,33 @@ func NewCmdContextLogin() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "request and cache authentication tokens",
+		Long: `Request and cache the authentication tokens of a context.
+
+When the cluster of the context trusts an openid issuer, the login is made
+there: in the browser of this machine, the issuer redirecting to a listener of
+127.0.0.1, or with a device code from a browser anywhere when this machine has
+no browser, or with --device. The issuer must allow the redirect uri
+http://127.0.0.1:<any port>/callback for the client the cluster names.
+
+The openid tokens are shared by the contexts whose clusters trust the same
+issuer and client: logging in one of them logs the others in, and a context
+logging in where a valid refresh token is cached needs no challenge. They are
+kept in the keyring of the session, else in a file encrypted with a key of
+the ssh-agent, else in a file only the user reads; --cache chooses.
+
+--auth password logs in with the password of the context user, as when the
+cluster trusts no openid issuer.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(cmd)
 		},
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&options.Context, "context", "", "The context to use to login")
-	flags.Var(duration.NewFlag(&options.RefreshDuration), "refresh-duration", "refresh_token duration, for example 1h or 1d.")
-	flags.Var(duration.NewFlag(&options.AccessDuration), "duration", "access_token duration, for example 1h or 1d.")
+	flags.Var(duration.NewFlag(&options.RefreshDuration), "refresh-duration", "refresh_token duration of a password login, for example 1h or 1d.")
+	flags.Var(duration.NewFlag(&options.AccessDuration), "duration", "access_token duration of a password login, for example 1h or 1d.")
+	flags.StringVar(&options.Auth, "auth", "", "the login method, openid or password; openid when the cluster offers it, password otherwise")
+	flags.BoolVar(&options.Device, "device", false, "log in at the openid issuer with a device code, from a browser anywhere, rather than with the browser of this machine")
+	flags.StringVar(&options.Cache, "cache", "", "where the openid tokens are kept: keyring, agent (a file encrypted with a key of the ssh-agent) or file; the first usable one by default")
 
 	return cmd
 }

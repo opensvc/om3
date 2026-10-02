@@ -28,6 +28,18 @@ type (
 		Context         string
 		AccessDuration  time.Duration
 		RefreshDuration time.Duration
+
+		// Auth is the login method: openid, password, or empty for openid
+		// when the cluster offers it, password otherwise.
+		Auth string
+
+		// Device logs in at the openid issuer with a device code, from a
+		// browser anywhere, rather than with the browser of this machine.
+		Device bool
+
+		// Cache is the token store the openid tokens are kept in: keyring,
+		// agent or file, the first usable one when empty.
+		Cache string
 	}
 )
 
@@ -101,19 +113,36 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		}
 	}
 
+	os.Setenv("OSVC_CONTEXT", t.Context)
+
+	clientc, ok := config.Contexts[t.Context]
+	if !ok {
+		return fmt.Errorf("context %s not found in config", t.Context)
+	}
+
+	switch t.Auth {
+	case "", "openid":
+		issuer, clientID, err := openIDOffer()
+		if err != nil {
+			return err
+		}
+		if issuer != "" {
+			return t.loginOpenID(cmd, issuer, clientID)
+		}
+		if t.Auth == "openid" {
+			return fmt.Errorf("the cluster of context %s offers no openid login", t.Context)
+		}
+	case "password":
+	default:
+		return fmt.Errorf("unknown --auth %q: expected openid or password", t.Auth)
+	}
+
 	password, err := readPassword(t.Context)
 	if err != nil {
 		return err
 	}
 	if password == "" {
 		return fmt.Errorf("empty password")
-	}
-
-	os.Setenv("OSVC_CONTEXT", t.Context)
-
-	clientc, ok := config.Contexts[t.Context]
-	if !ok {
-		return fmt.Errorf("context %s not found in config", t.Context)
 	}
 
 	userName := clientc.UserRefName

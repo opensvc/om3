@@ -1052,6 +1052,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     Use `--wait` to block until the cluster nodes are updated. Beware, that only says the cluster dropped the node:
     the daemon restart and the user creation happen afterwards, on a node this cluster no longer observes.
 
+* `ox context login` logs in at the openid issuer the cluster trusts, when it trusts one: in the browser of the machine, the issuer redirecting to `http://127.0.0.1:<port>/callback`, which the issuer must allow for the client the cluster names, or with a device code from a browser anywhere, when the machine has no browser or with `--device`. `--auth password` logs in with the password of the context user, as before.
+
+    The openid tokens are shared by the contexts whose clusters trust the same issuer and client: a context logging in, or used before any login, where a valid refresh token is cached needs no challenge. They are kept in the keyring of the session, else in a file encrypted with a key derived from a signature of an ed25519 or rsa key of the ssh-agent, else in a file only the user reads. `--cache keyring|agent|file` chooses, and `ox context list` shows the store and the issuer of each context.
+
 * The `om cluster leave` command accepts `--credential <path>`, naming a file holding the `<username>:<password>` of a
    user to create once the daemon has restarted alone, for the reason `o[mx] cluster evict` does. The
    `OSVC_CREDENTIAL` environment variable is read when the option is not set. Without either, no user is created and

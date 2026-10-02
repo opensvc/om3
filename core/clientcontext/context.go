@@ -60,6 +60,14 @@ type (
 		RefreshExpireAt string `json:"refresh_expired_at"`
 		Authenticated   bool   `json:"authenticated"`
 		AuthenticatedAt string `json:"authenticated_at"`
+
+		// Store is where the tokens are kept: the context file for a
+		// password login, the token store of an openid one.
+		Store string `json:"store"`
+
+		// Issuer is the openid issuer of the tokens, empty for a password
+		// login.
+		Issuer string `json:"issuer,omitempty"`
 	}
 )
 

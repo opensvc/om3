@@ -19,7 +19,7 @@ type (
 )
 
 func (t *CmdContextList) Run() error {
-	cols := "NAME:name,AUTHENTICATED:authenticated,ACCESS_EXPIRE:access_expired_at,REFRESH_EXPIRE:refresh_expired_at,AUTHENTICATED_AT:authenticated_at"
+	cols := "NAME:name,AUTHENTICATED:authenticated,ACCESS_EXPIRE:access_expired_at,REFRESH_EXPIRE:refresh_expired_at,AUTHENTICATED_AT:authenticated_at,STORE:store,ISSUER:issuer"
 
 	config, err := clientcontext.Load()
 	if err != nil {
@@ -39,10 +39,22 @@ func (t *CmdContextList) Run() error {
 			info.AccessExpireAt = "-"
 			info.RefreshExpireAt = "-"
 			info.AuthenticatedAt = "-"
+			info.Store = "-"
 		} else {
 			info.AccessExpireAt = tok.AccessTokenExpire.Format(time.RFC3339)
 			info.RefreshExpireAt = tok.RefreshTokenExpire.Format(time.RFC3339)
 			info.Authenticated = time.Now().Before(tok.RefreshTokenExpire)
+			info.Store = "context"
+			if tok.OpenID != nil {
+				// The issuer may not tell when the refresh token
+				// expires: it is tried until refused.
+				info.Authenticated = tok.HasValidRefresh(time.Now())
+				info.Store = string(tok.OpenID.Store)
+				info.Issuer = tok.OpenID.Issuer
+				if tok.RefreshTokenExpire.IsZero() {
+					info.RefreshExpireAt = "-"
+				}
+			}
 			modTime, err := tokencache.ModTime(name)
 			if err != nil {
 				return err
