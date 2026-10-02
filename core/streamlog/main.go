@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
@@ -18,9 +21,11 @@ import (
 
 type (
 	Stream struct {
-		cmd  *command.T
-		q    chan Event
-		errs chan error
+		mu      sync.Mutex
+		cmd     *command.T
+		stopped bool
+		q       chan Event
+		errs    chan error
 	}
 	StreamConfig struct {
 		Follow  bool
@@ -169,38 +174,48 @@ func (stream *Stream) Events() chan Event {
 }
 
 func (stream *Stream) Stop() error {
-	if c := stream.cmd.Cmd(); c != nil {
-		_ = c.Process.Kill()
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	stream.stopped = true
+	if stream.cmd != nil {
+		if c := stream.cmd.Cmd(); c != nil && c.Process != nil {
+			_ = c.Process.Kill()
+		}
 	}
 	return nil
 }
 
-func (stream *Stream) Start(streamConfig StreamConfig) error {
+// args returns the journalctl arguments selecting the entries of the
+// config, the options of the read added.
+func (streamConfig StreamConfig) args(options ...string) ([]string, error) {
 	comm, err := os.Executable()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var args []string
-	comm = filepath.Base(comm)
-	args = append(args, "-o", "json", "_COMM="+comm)
+	args := []string{"-o", "json", "_COMM=" + filepath.Base(comm)}
 	args = append(args, streamConfig.Matches...)
-	args = append(args, "-n", fmt.Sprint(streamConfig.Lines))
 	// An empty pattern is no pattern. Passing --grep with one asks journalctl
 	// to filter on nothing, and asks it for an option the journalctl of an
 	// older distribution does not have, which fails the whole read.
 	if streamConfig.Grep != nil && *streamConfig.Grep != "" {
 		args = append(args, "--grep", *streamConfig.Grep)
 	}
-	if streamConfig.Follow {
-		args = append(args, "-f")
-	}
-	stream.cmd = command.New(
+	return append(args, options...), nil
+}
+
+// newCmd returns a journalctl command sending the entries it reads to the
+// stream, and its stderr as errors. onEvent is called with each entry sent.
+func (stream *Stream) newCmd(args []string, onEvent func(Event)) *command.T {
+	return command.New(
 		command.WithName("journalctl"),
 		command.WithArgs(args),
 		command.WithOnStdoutLine(func(line string) {
 			if event, err := NewEvent([]byte(line)); err != nil {
 				stream.errs <- err
 			} else {
+				if onEvent != nil {
+					onEvent(event)
+				}
 				stream.q <- event
 			}
 		}),
@@ -210,12 +225,113 @@ func (stream *Stream) Start(streamConfig StreamConfig) error {
 			stream.errs <- fmt.Errorf("journalctl: %s", line)
 		}),
 	)
-	if err := stream.cmd.Start(); err != nil {
+}
+
+// setCmd makes cmd the command Stop kills, and says false when the stream
+// is stopped already, for the command not to be started.
+func (stream *Stream) setCmd(cmd *command.T) bool {
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	if stream.stopped {
+		return false
+	}
+	stream.cmd = cmd
+	return true
+}
+
+func (stream *Stream) Start(streamConfig StreamConfig) error {
+	if streamConfig.Follow {
+		if _, err := streamConfig.args(); err != nil {
+			return err
+		}
+		go stream.follow(streamConfig)
+		return nil
+	}
+	args, err := streamConfig.args("-n", fmt.Sprint(streamConfig.Lines))
+	if err != nil {
+		return err
+	}
+	cmd := stream.newCmd(args, nil)
+	if !stream.setCmd(cmd) {
+		return nil
+	}
+	if err := cmd.Start(); err != nil {
 		return err
 	}
 	go func() {
-		_ = stream.cmd.Wait()
+		_ = cmd.Wait()
 		stream.errs <- nil // signal client we are done sending
 	}()
 	return nil
+}
+
+// follow sends the last entries of the config, then the entries logged after
+// them, as they are logged.
+//
+// It is two reads rather than one "journalctl -n <lines> -f": with a field to
+// match, as the session or the object of a log request, that one starts
+// following from the tail it showed and misses entries logged in a burst
+// afterwards (seen with systemd 255, where it sent 1 to 9 of 10). A follow
+// starting after a cursor misses none. The cursor is the one of the last
+// entry shown, or, when none was, the one of the last entry of the journal,
+// taken before the entries were read: an entry logged in between is in the
+// first read or after the cursor, and never in both.
+func (stream *Stream) follow(streamConfig StreamConfig) {
+	defer func() { stream.errs <- nil }() // signal client we are done sending
+	after := lastCursor()
+	if streamConfig.Lines > 0 {
+		args, _ := streamConfig.args("-n", fmt.Sprint(streamConfig.Lines))
+		cmd := stream.newCmd(args, func(event Event) {
+			if c, ok := event.M["__CURSOR"].(string); ok && c != "" {
+				after = c
+			}
+		})
+		if !stream.setCmd(cmd) {
+			return
+		}
+		if err := stream.run(cmd); err != nil {
+			return
+		}
+	}
+	options := []string{"-f"}
+	if after != "" {
+		options = append(options, "--after-cursor", after)
+	} else {
+		// An empty journal: what is logged from now on.
+		options = append(options, "--since", "now")
+	}
+	args, _ := streamConfig.args(options...)
+	cmd := stream.newCmd(args, nil)
+	if !stream.setCmd(cmd) {
+		return
+	}
+	_ = stream.run(cmd)
+}
+
+// run runs cmd to its end, and sends the error starting it to the stream.
+func (stream *Stream) run(cmd *command.T) error {
+	if err := cmd.Start(); err != nil {
+		stream.errs <- err
+		return err
+	}
+	_ = cmd.Wait()
+	return nil
+}
+
+// lastCursor returns the cursor of the last entry of the journal, empty when
+// the journal holds none.
+func lastCursor() string {
+	b, err := exec.Command("journalctl", "-n", "1", "-o", "json").Output()
+	if err != nil {
+		return ""
+	}
+	var m map[string]any
+	for _, line := range strings.Split(string(b), "\n") {
+		if err := json.Unmarshal([]byte(line), &m); err == nil {
+			if c, ok := m["__CURSOR"].(string); ok {
+				return c
+			}
+		}
+	}
+	return ""
 }
