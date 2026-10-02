@@ -33,7 +33,7 @@ type (
 		DecodeKeys(name ...string) ([][]byte, error)
 		EditKey(name string) error
 		InstallKey(name string) error
-		InstallKeyTo(KVInstall) error
+		InstallKeyTo(KVInstall) (bool, error)
 		RemoveKey(name string) error
 		RenameKey(name, to string) error
 

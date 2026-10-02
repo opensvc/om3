@@ -644,11 +644,16 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 			}
 		}
 		md.ToLog = t.to.Log()
-		if err := from.InstallKeyTo(md); err != nil && md.Required {
+		// A file whose content did not change gives what reads it nothing
+		// to reload: its signals are sent for a change only.
+		fileChanged, err := from.InstallKeyTo(md)
+		if err != nil && md.Required {
 			return false, err
 		}
-		signals.Merge(md.Signals)
-		changed = true
+		if fileChanged {
+			signals.Merge(md.Signals)
+			changed = true
+		}
 	}
 
 	t.SendSignals(ctx, signals)
@@ -747,11 +752,14 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 			}
 		}
 		md.ToLog = t.to.Log()
-		if err = dataStore.InstallKeyTo(md); err != nil && md.Required {
+		fileChanged, err := dataStore.InstallKeyTo(md)
+		if err != nil && md.Required {
 			return false, err
 		}
-		signals.Merge(md.Signals)
-		changed = true
+		if fileChanged {
+			signals.Merge(md.Signals)
+			changed = true
+		}
 	}
 
 	t.SendSignals(ctx, signals)
@@ -1024,10 +1032,11 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
 		md.ToLog = t.to.Log()
-		if err = dataStore.InstallKeyTo(md); err != nil {
+		fileChanged, err := dataStore.InstallKeyTo(md)
+		if err != nil {
 			return changed, err
 		}
-		changed = true
+		changed = changed || fileChanged
 	}
 	return changed, nil
 }

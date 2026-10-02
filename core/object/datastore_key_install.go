@@ -303,7 +303,10 @@ func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, fs confin
 }
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
-// This function return false if the dst content didn't change.
+// It returns true when the content of dst changed: a file created or written
+// anew. An access, an owner or a time set on a file of the same content is
+// not a change of what the file says, and what reads it has nothing to
+// reload for it.
 //
 // A link at dst is removed and the file written in its place: an install
 // writes a file, and following the link would write where the link says,
@@ -356,7 +359,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 		return true, err
 	}
 	opt.ToLog.Infof("reinstall key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
-	return false, nil
+	return true, nil
 }
 
 func (t *dataStore) InstallKey(keyName string) error {
@@ -398,7 +401,9 @@ func (t *dataStore) makedirs(opt KVInstall) error {
 	return nil
 }
 
-func (t *dataStore) InstallKeyTo(opt KVInstall) error {
+// InstallKeyTo installs the keys opt names as files, and says whether the
+// content of one of them changed.
+func (t *dataStore) InstallKeyTo(opt KVInstall) (bool, error) {
 	if opt.ToLog == nil {
 		opt.ToLog = t.log
 	}
@@ -410,7 +415,7 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 	if opt.ToHead != "" {
 		tree, err := confined.Open(opt.ToHead)
 		if err != nil {
-			return fmt.Errorf("install key %s: %w", opt.FromPattern, err)
+			return false, fmt.Errorf("install key %s: %w", opt.FromPattern, err)
 		}
 		defer func() { _ = tree.Close() }()
 		opt.fs = tree
@@ -419,24 +424,27 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 	}
 	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
-		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
+		return false, fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
 	}
 	if len(keys) == 0 {
 		if opt.Required {
-			return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, ErrKeyNotFound)
+			return false, fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, ErrKeyNotFound)
 		} else {
-			return nil
+			return false, nil
 		}
 	}
 	if err := t.makedirs(opt); err != nil {
-		return err
+		return false, err
 	}
+	changed := false
 	for _, vk := range keys {
-		if _, err := t.installKey(vk, opt); err != nil {
-			return fmt.Errorf("install %s key %s to %s: %w", t.path, vk.Key, opt.ToPath, err)
+		v, err := t.installKey(vk, opt)
+		if err != nil {
+			return changed, fmt.Errorf("install %s key %s to %s: %w", t.path, vk.Key, opt.ToPath, err)
 		}
+		changed = changed || v
 	}
-	return nil
+	return changed, nil
 }
 
 func (t *dataStore) postInstall(k string) error {
