@@ -490,10 +490,11 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 	)
 	filters = []string{
 		fmt.Sprintf("NodeMonitorDeleted"),
-		fmt.Sprintf("ExecFailed,.session_id=%s", requesterSessionID),
-		fmt.Sprintf("ExecSuccess,.session_id=%s", requesterSessionID),
+		fmt.Sprintf("ExecFailed,.session_id=\"%s\"", requesterSessionID),
+		fmt.Sprintf("ExecSuccess,.session_id=\"%s\"", requesterSessionID),
 	}
-	getEvents := c.NewGetEvents().SetFilters(filters)
+	// The end of an exec is published on the bus of the node running it.
+	getEvents := c.NewGetEvents().SetFilters(filters).SetNodename(nodename)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
 	}
