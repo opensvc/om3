@@ -46,6 +46,13 @@ type (
 		tokens   tokencache.Entry
 		Username string
 		Password string
+
+		// explicitAuth says the requests carry a credential their caller
+		// chose, as the scoped token a cluster join or leave presents: a
+		// response refusing it is the caller's answer, and is not retried
+		// with the credentials the context has cached, which would run the
+		// request as someone else.
+		explicitAuth bool
 	}
 )
 
@@ -136,6 +143,10 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		tokens:   config.Tokens,
 		Username: config.Username,
 		Password: config.Password,
+		// The bearer of the cached tokens is the context's own, which
+		// the transport refreshes. Another one, or an authorization
+		// header, is the caller's.
+		explicitAuth: config.Authorization != "" || (config.Bearer != "" && config.Bearer != config.Tokens.AccessToken),
 	}
 
 	options := []api.ClientOption{api.WithHTTPClient(&httpClient)}
@@ -194,6 +205,10 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	if resp.StatusCode != http.StatusUnauthorized {
+		return resp, nil
+	}
+
+	if t.explicitAuth {
 		return resp, nil
 	}
 

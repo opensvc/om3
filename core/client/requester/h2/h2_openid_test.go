@@ -121,3 +121,49 @@ func TestRefreshTransportAdoptsTheSharedOpenIDToken(t *testing.T) {
 	require.NotNil(t, own)
 	assert.Equal(t, "access2", own.AccessToken, "c2 keeps the adopted tokens as its own")
 }
+
+// A request carrying a credential its caller chose, as the scoped token of a
+// cluster join, is refused as it is: it is not retried with the openid token
+// the context has cached, which would run it as another user.
+func TestRefreshTransportKeepsAnExplicitCredential(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("SSH_AUTH_SOCK", "")
+	homedir.Reset()
+	t.Cleanup(homedir.Reset)
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "opensvc"), 0o700))
+
+	issuerCalled := false
+	issuer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		issuerCalled = true
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "access2", "token_type": "Bearer", "expires_in": 300})
+	}))
+	defer issuer.Close()
+	var authorizations []string
+	cluster := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/auth/info" {
+			_, _ = w.Write([]byte(`{"methods":["openid"],"openid":{"issuer":"https://idp/app/","client_id":"om3"}}`))
+			return
+		}
+		authorizations = append(authorizations, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer cluster.Close()
+
+	ref := &tokencache.OpenID{Issuer: "https://idp/app/", ClientID: "om3", TokenEndpoint: issuer.URL, Store: tokenstore.File}
+	t.Setenv("OSVC_CONTEXT", "c1")
+	require.NoError(t, tokencache.Save("c1", tokencache.Entry{AccessToken: "access1", RefreshToken: "refresh1", OpenID: ref}))
+
+	t.Setenv("OSVC_CONTEXT", "c2")
+	tr := &RefreshTransport{Base: http.DefaultTransport, baseURL: cluster.URL, explicitAuth: true}
+	req, err := http.NewRequest(http.MethodPost, cluster.URL+"/api/cluster/join", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer scoped-join-token")
+	resp, err := tr.RoundTrip(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "the refusal of the explicit credential is the answer")
+	assert.Equal(t, []string{"Bearer scoped-join-token"}, authorizations, "no retry with another credential")
+	assert.False(t, issuerCalled, "the cached openid token is not refreshed for it")
+}
