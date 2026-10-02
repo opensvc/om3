@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
@@ -23,8 +24,9 @@ type (
 	// configuration write takes: the same validation, the same policy, the
 	// same claim on a pool.
 	Migration struct {
-		Sets   []keyop.T
-		Unsets []key.T
+		Sets    []keyop.T
+		Unsets  []key.T
+		Deletes []string
 
 		// Notes is what changed, in the words of whoever has to read the
 		// configuration afterwards, one line per change.
@@ -34,7 +36,82 @@ type (
 		// reason. A configuration keeps what nothing can migrate for it.
 		Refusals []string
 	}
+
+	// MigrationRule is one change of shape a configuration written for an
+	// older agent takes.
+	MigrationRule struct {
+		// Doc says what the rule rewrites, in the words of the help of the
+		// command applying it: one paragraph, wrapped where it is shown.
+		Doc string
+
+		apply func(cfg *xconfig.T, m *Migration)
+	}
+
+	// MigrationRules is the rules a kind of configuration is migrated by,
+	// in the order they apply.
+	MigrationRules []MigrationRule
 )
+
+// ObjectMigrationRules is the rules the configuration of an object is
+// migrated by.
+var ObjectMigrationRules = MigrationRules{
+	{
+		Doc: "A filesystem that made the volume it mounts, its vg and size keywords set, " +
+			"becomes a disk.lv resource and a filesystem resting on it. " +
+			"A size written as a share of a volume group becomes arithmetic on what om reports of that group, " +
+			"where the group is a resource of the object, and is kept as it is where it is not.",
+		apply: migrateFilesystemVolumes,
+	},
+	{
+		Doc: "The size and the mode options of the mnt_opt of a tmpfs become its size and mode keywords, " +
+			"the size being what a resize records. " +
+			"The tmpfs of a volume is sized {DEFAULT.size}, the size the volume is claimed with. " +
+			"A size written as a share of the memory is kept in mnt_opt: om cannot say how big it is.",
+		apply: migrateTmpfsMountOptions,
+	},
+}
+
+// MigrationRulesOf returns the rules the configuration of a kind of object is
+// migrated by: the node ones for the cluster configuration, which holds the
+// same keywords as the node one.
+func MigrationRulesOf(kind naming.Kind) MigrationRules {
+	switch kind {
+	case naming.KindCcfg, naming.KindInvalid:
+		return NodeMigrationRules
+	default:
+		return ObjectMigrationRules
+	}
+}
+
+// Apply returns what the configuration has to become by the rules.
+func (t MigrationRules) Apply(cfg *xconfig.T) Migration {
+	var m Migration
+	for _, rule := range t {
+		rule.apply(cfg, &m)
+	}
+	return m
+}
+
+// Doc lists the rules as the help of a command shows them, a dash heading
+// each, wrapped at width.
+func (t MigrationRules) Doc(width int) string {
+	var b strings.Builder
+	for i, rule := range t {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		line := "  -"
+		for _, word := range strings.Fields(rule.Doc) {
+			if len(line)+1+len(word) > width && line != "  -" {
+				b.WriteString(line + "\n")
+				line = "   "
+			}
+			line += " " + word
+		}
+		b.WriteString(line + "\n")
+	}
+	return b.String()
+}
 
 // shareRegexp matches the share of a volume group a size can be written as in
 // an om2 configuration: "60%FREE", "100%VG", "10%PVS".
@@ -51,10 +128,13 @@ var shareRegexp = regexp.MustCompile(`^([0-9]+)%(FREE|VG|PVS)$`)
 // It changes nothing by itself. What it answers is what a configuration
 // update would take, so that the caller can show it before writing it.
 func MigrateConfig(cfg *xconfig.T) Migration {
-	var m Migration
-	migrateFilesystemVolumes(cfg, &m)
-	migrateTmpfsMountOptions(cfg, &m)
-	return m
+	return ObjectMigrationRules.Apply(cfg)
+}
+
+// MigrateNodeConfig is what a node or cluster configuration has to become for
+// om to run what it describes. It changes nothing by itself, as MigrateConfig.
+func MigrateNodeConfig(cfg *xconfig.T) Migration {
+	return NodeMigrationRules.Apply(cfg)
 }
 
 // tmpfsSizeRegexp matches the size option of a tmpfs mount, as the kernel

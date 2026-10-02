@@ -1177,6 +1177,8 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * Rename the stonith sections `cmd` option to `command`. Backward compatibility is implemented.
 
+* `om cluster config migrate` and `om node config migrate` write the cluster and node configurations in the shape om3 reads them in: the keywords under a former name, `ips_per_node`, `listener.openid_well_known`, the `brocade` schedule, and the removal of what om3 no longer reads. `--dry-run` prints the changes first, and the help lists the rules.
+
 ### DNS
 
 * Reinstall system/svc/dns if installed. Make sure the recursor and server configuration in system/cfg/dns are reapplied (allow-from is often customized).

@@ -52,6 +52,7 @@ func init() {
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMigrate(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
