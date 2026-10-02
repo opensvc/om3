@@ -265,8 +265,7 @@ func newAuditConsoleWriter() io.Writer {
 	w.TimeFormat = time.RFC3339Nano
 	w.NoColor = color.NoColor
 	w.FormatLevel = logging.FormatLevel
-	w.FormatFieldName = func(i any) string { return "" }
-	w.FormatFieldValue = func(i any) string { return "" }
+	w.FormatPrepare = logging.DropFields
 	w.FormatMessage = func(i any) string {
 		return rawconfig.Colorize.Bold(i)
 	}

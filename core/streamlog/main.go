@@ -53,8 +53,7 @@ func (event *Event) RenderConsole() {
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
 	w.FormatLevel = logging.FormatLevel
-	w.FormatFieldName = func(i any) string { return "" }
-	w.FormatFieldValue = func(i any) string { return "" }
+	w.FormatPrepare = logging.DropFields
 	w.FormatMessage = func(i any) string {
 		node := ""
 		if nodeVal, ok := event.M["NODE"].(string); ok {
