@@ -35,6 +35,10 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 	}
 	sessionID := xsession.NewSessionID(requesterSessionID)
 	execID := xsession.NewExecID()
+	// The exec is part of the session of its requester, which follows its
+	// logs by that id: a command logging nothing, as a node push, shows
+	// at least its start and its end.
+	log = log.Attr("session_id", sessionID.String())
 	cmd := command.New(
 		command.WithName(execname),
 		command.WithArgs(args),
@@ -88,9 +92,9 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 	go func() {
 		err := cmd.Wait()
 		proc.Unregister(pid)
-		log.Infof("<- exec %s", cmd)
 		duration := time.Now().Sub(startTime)
 		if err != nil {
+			log.Errorf("<- exec %s: %s", cmd, err)
 			msg := msgbus.ExecFailed{
 				Command:   cmd.String(),
 				Duration:  duration,
@@ -103,6 +107,7 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 			}
 			a.Bus.Pub(&msg, labels...)
 		} else {
+			log.Infof("<- exec %s", cmd)
 			msg := msgbus.ExecSuccess{
 				Command:   cmd.String(),
 				Duration:  duration,
