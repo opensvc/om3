@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -344,18 +343,4 @@ func lookup(values map[string]any, key string) (string, bool) {
 	default:
 		return "", false
 	}
-}
-
-// Summary is the number of rows of each group, in group name order.
-func (stats Stats) Summary() []string {
-	names := make([]string, 0, len(stats))
-	for name := range stats {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	out := make([]string, 0, len(names))
-	for _, name := range names {
-		out = append(out, fmt.Sprintf("%s: %d rows", name, len(stats[name].Rows)))
-	}
-	return out
 }

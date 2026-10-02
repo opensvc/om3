@@ -3,10 +3,12 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/duration"
 )
 
 type (
@@ -20,17 +22,33 @@ type (
 	}
 )
 
-// pushStatsTimeLayouts are the forms --begin and --end accept, the local time
-// zone applying to those without one.
+// pushStatsTimeLayouts are the dated forms --begin and --end accept, the
+// local time zone applying to those without one.
 var pushStatsTimeLayouts = []string{
 	"2006-01-02 15:04:05",
 	"2006-01-02 15:04",
 	"2006-01-02",
 }
 
-func parsePushStatsTime(option, s string) (time.Time, error) {
+// pushStatsClockLayouts are the forms of a time of the current day.
+var pushStatsClockLayouts = []string{
+	"15:04:05",
+	"15:04",
+}
+
+// parsePushStatsTime reads a --begin or --end value: a time ago, as -1d2h or
+// -30m, a date, RFC 3339 or YYYY-MM-DD[ HH:MM[:SS]], or a time of today,
+// HH:MM[:SS]. The local time zone applies to the forms without one.
+func parsePushStatsTime(option, s string, now time.Time) (time.Time, error) {
 	if s == "" {
 		return time.Time{}, nil
+	}
+	if strings.HasPrefix(s, "-") {
+		d, err := duration.Parse(s)
+		if err != nil || d >= 0 {
+			return time.Time{}, fmt.Errorf("--%s %q: a time ago is a negative duration, as -1d2h or -30m", option, s)
+		}
+		return now.Add(d), nil
 	}
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return t, nil
@@ -40,15 +58,22 @@ func parsePushStatsTime(option, s string) (time.Time, error) {
 			return t, nil
 		}
 	}
-	return time.Time{}, fmt.Errorf("--%s %q: expected RFC 3339 or YYYY-MM-DD[ HH:MM[:SS]]", option, s)
+	for _, layout := range pushStatsClockLayouts {
+		if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
+			local := now.In(time.Local)
+			return time.Date(local.Year(), local.Month(), local.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local), nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("--%s %q: expected a time ago, as -1d2h, RFC 3339, YYYY-MM-DD[ HH:MM[:SS]], or HH:MM[:SS] for today", option, s)
 }
 
 func (t *CmdNodePushStats) Run() error {
-	begin, err := parsePushStatsTime("begin", t.Begin)
+	now := time.Now()
+	begin, err := parsePushStatsTime("begin", t.Begin, now)
 	if err != nil {
 		return err
 	}
-	end, err := parsePushStatsTime("end", t.End)
+	end, err := parsePushStatsTime("end", t.End, now)
 	if err != nil {
 		return err
 	}

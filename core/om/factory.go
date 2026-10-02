@@ -1382,8 +1382,8 @@ func newCmdNodePushPkg() *cobra.Command {
 }
 
 func addFlagsNodePushStats(flags *pflag.FlagSet, options *commands.CmdNodePushStats) {
-	flags.StringVar(&options.Begin, "begin", "", "the start of the statistics to push, RFC 3339 or YYYY-MM-DD[ HH:MM[:SS]] in local time; by default, where the last scheduled push left, within 21 minutes and a day")
-	flags.StringVar(&options.End, "end", "", "the end of the statistics to push; now by default")
+	flags.StringVar(&options.Begin, "begin", "", "the start of the statistics to push: a time ago as -1d2h, RFC 3339, YYYY-MM-DD[ HH:MM[:SS]], or HH:MM[:SS] for today, in local time; by default, where the last scheduled push left, within 21 minutes and a day")
+	flags.StringVar(&options.End, "end", "", "the end of the statistics to push, in the --begin forms; now by default")
 	flags.StringVar(&options.StatsDir, "stats-dir", "", "the sysstat data directory; /var/log/sysstat, else /var/log/sa, by default")
 }
 
@@ -1395,10 +1395,16 @@ func newCmdNodePushStats() *cobra.Command {
 		Long: `Read the cpu, memory, swap, load, block and network i/o statistics sysstat
 collected on the node, and the file system usage, and push them to the
 collector, which keeps their history. The stats.disable keyword lists the
-groups not to push. The sysstat collection must be enabled on the node.`,
+groups not to push. The sysstat collection must be enabled on the node.
+
+A range is read and pushed a day at a time, so a push of months holds a day
+of statistics in memory, and a push stopped by an error has stored the days
+before the one the error names.`,
 		Example: `  om node push stats
+  om node push stats --begin -1d2h
+  om node push stats --begin 02:00 --end 06:00
   om node push stats --begin "2026-10-01 00:00" --end "2026-10-01 12:00"
-  om node push stats --dry-run`,
+  om node push stats --begin 2025-10-01 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
