@@ -55,6 +55,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/ressyncsymsrdfs"
 	_ "github.com/opensvc/om3/v3/drivers/ressynczfs"
 	_ "github.com/opensvc/om3/v3/drivers/ressynczfssnap"
+	_ "github.com/opensvc/om3/v3/drivers/restaskacme"
 	_ "github.com/opensvc/om3/v3/drivers/restaskhost"
 	_ "github.com/opensvc/om3/v3/drivers/resvol"
 	_ "github.com/opensvc/om3/v3/drivers/switchbrocade"

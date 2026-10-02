@@ -1,7 +1,14 @@
-The ACME directory `om <path> certificate renew` obtains the certificate of
-the sec from, Let's Encrypt by default. The domains are the `cn` and the
-`alt_names` of the sec, and the account is registered there, with its `email`
-as the contact when it has one.
+The ACME directory the certificate of the sec is issued by, renewed by
+`om <path> certificate renew` or a `task.acme` resource. `letsencrypt` and
+`letsencrypt-staging` name the directories of Let's Encrypt, and any other
+value is the url of a directory.
+
+The domains are the `cn` and the `alt_names` of the sec, and the account is
+registered there, with its `email` as the contact when it has one.
+
+A sec naming no directory has its certificate generated as `certificate
+create` does, self-signed or signed by its `ca`, and renewed the same way when
+due.
 
 Use the staging directory of Let's Encrypt to try a setup out: its
 certificates are not trusted, and its rate limits are far higher.

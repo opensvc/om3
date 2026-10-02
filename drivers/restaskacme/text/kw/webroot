@@ -1,0 +1,9 @@
+Where the http-01 challenge token of an ACME certificate is written, as
+`<volume rid>:<path>`: a directory of a volume of the service, which the http
+server of the domains serves `/.well-known/acme-challenge/` from. The token
+is written under `.well-known/acme-challenge/` in that directory, and never
+outside the volume, whatever the volume holds.
+
+The task runs where the service runs, so the http server it writes the token
+for is the one the domains reach. When empty, the `acme.webroot` of the sec is
+used, a host path its root administrator set.

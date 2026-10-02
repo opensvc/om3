@@ -688,8 +688,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/alt_names"),
 	},
 	{
-		Default:  "https://acme-v02.api.letsencrypt.org/directory",
-		Example:  "https://acme-staging-v02.api.letsencrypt.org/directory",
+		Example:  "letsencrypt",
 		Kind:     naming.NewKinds(naming.KindSec),
 		Option:   "directory",
 		Section:  "acme",

@@ -1,0 +1,12 @@
+The secs whose certificates the task renews, when due: the certificate of a
+sec naming an `acme.directory` is obtained from that ACME directory, the
+certificate of another sec is generated as `certificate create` does,
+self-signed or signed by its `ca`.
+
+A sec is named as an install line names a store: `web` and `./sec/web` are
+secs of the namespace of the service, `ns2/sec/web` a sec of another
+namespace, which must share it with this one, its `share` keyword naming this
+namespace or `*`.
+
+The volumes installing the renewed keys get the new ones, and the signals of
+their install lines are sent, on every node running them.

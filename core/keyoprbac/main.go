@@ -117,6 +117,12 @@ const (
 // itself, do not.
 var containerTypes = []string{"oci", "docker", "podman"}
 
+// taskTypes is the task types a user holding no root grant may ask for: the
+// container ones, and acme, whose action is om's own, renewing the
+// certificates of secs the namespace may use, and which writes on the node
+// only inside a volume of the object.
+var taskTypes = append(slices.Clone(containerTypes), "acme")
+
 // rootRule is the group default of the driver groups whose keywords describe
 // what the object takes from the node.
 var rootRule = Rule{Grant: rbac.GrantRoot, Reason: reasonRoot}
@@ -161,11 +167,27 @@ const reasonSquatter = "requires the squatter grant"
 // otherwise. A group present here says the same thing about its own keywords
 // through its Default.
 var rules = map[string]Group{
+	// The acme section of a sec says where its certificate is issued. The
+	// directory and the renewal window are the namespace's to choose. The
+	// webroot is a host path the renewal writes the challenge token in, as
+	// root, so it is not: a task.acme writes the token in a volume of its
+	// object instead.
+	"acme": {
+		Rules: map[string]Rule{
+			"directory":    {},
+			"renew_before": {},
+			"webroot": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a host path the challenge token is written in requires the root grant",
+			},
+		},
+		Default: &rootRule,
+	},
 	"task": {Rules: map[string]Rule{
 		"type": {
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
-			Values: containerTypes,
+			Values: taskTypes,
 		},
 		"run_args": {
 			Grant:  rbac.GrantRoot,

@@ -364,3 +364,18 @@ func TestTheResourcesOfAVolumeNeedTheRootGrant(t *testing.T) {
 		assert.NoErrorf(t, Denied(admin, naming.KindVol, "DEFAULT", option, "x", none), "DEFAULT.%s", option)
 	}
 }
+
+// A task.acme runs om's own action, so a namespace administrator may ask for
+// one. The acme section of a sec is theirs too, but the host path its
+// renewal writes in as root.
+func TestAcmeRules(t *testing.T) {
+	none := rbac.Grants{}
+	assert.NoError(t, Denied(none, naming.KindSvc, "task#acme", "type", "acme", nil))
+	assert.Error(t, Denied(none, naming.KindSvc, "task#acme", "type", "host", nil))
+	assert.NoError(t, Denied(none, naming.KindSvc, "task#acme", "secs", "web ns2/sec/shared", nil))
+	assert.NoError(t, Denied(none, naming.KindSvc, "task#acme", "webroot", "volume#1:/www", nil))
+	assert.NoError(t, Denied(none, naming.KindSec, "acme", "directory", "letsencrypt", nil))
+	assert.NoError(t, Denied(none, naming.KindSec, "acme", "renew_before", "20d", nil))
+	assert.Error(t, Denied(none, naming.KindSec, "acme", "webroot", "/srv/www", nil))
+	assert.Error(t, Denied(none, naming.KindSec, "acme", "future_keyword", "x", nil), "unweighed keywords need the root grant")
+}

@@ -35,7 +35,7 @@ func (t *CmdObjectCertificateRenew) Run(kind string) error {
 			if !ok {
 				return nil, fmt.Errorf("%s is not a keystore", o)
 			}
-			return store.RenewCertificate(ctx, t.Force, t.Webroot)
+			return store.RenewCertificate(ctx, object.CertificateRenewOptions{Force: t.Force, Webroot: t.Webroot})
 		}),
 	).Do()
 }

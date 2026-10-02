@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -13,6 +14,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/testhelper"
 )
 
 // testCert returns a certificate for names expiring at notAfter, signed by a
@@ -71,4 +75,44 @@ func TestAcmeRenewalDue(t *testing.T) {
 			assert.NotEmpty(t, reason)
 		})
 	}
+}
+
+// A sec naming no ACME directory has its certificate generated as certificate
+// create does, self-signed here, when due: a second renewal does nothing, a
+// forced one generates it anew with the same private key.
+func TestRenewGeneratedCertificate(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "web", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\ncn = web.example.com\nalt_names = web.example.com www.example.com\nbits = 2048\n")))
+	require.NoError(t, err)
+	r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, r.Reason)
+	assert.Equal(t, "no certificate", r.Reason)
+	assert.Empty(t, r.Directory)
+	key1, err := o.DecodeKey("private_key")
+	require.NoError(t, err)
+
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.False(t, r.Renewed, "a self-signed certificate is what the sec asks: not due")
+
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{Force: true})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed)
+	key2, err := o.DecodeKey("private_key")
+	require.NoError(t, err)
+	assert.Equal(t, key1, key2, "the private key is kept")
+}
+
+func TestAcmeDirectoryAliases(t *testing.T) {
+	assert.Equal(t, AcmeLetsEncrypt, acmeDirectory("letsencrypt"))
+	assert.Equal(t, AcmeLetsEncryptStaging, acmeDirectory("letsencrypt-staging"))
+	assert.Equal(t, "https://acme.example/dir", acmeDirectory("https://acme.example/dir"))
+	assert.Equal(t, "", acmeDirectory(""))
 }

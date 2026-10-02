@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/lego"
 	legolog "github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/providers/http/webroot"
@@ -36,9 +37,32 @@ type (
 		// Reason says why a certificate was issued, or why none was.
 		Reason string `json:"reason"`
 
-		Domains   []string  `json:"domains"`
-		Directory string    `json:"directory"`
+		// Sec is the sec the certificate is of, for a renewal of several.
+		Sec string `json:"sec,omitempty"`
+
+		Domains []string `json:"domains"`
+
+		// Directory is the ACME directory the certificate is issued by,
+		// empty for a certificate generated, self-signed or signed by the
+		// ca of the sec.
+		Directory string    `json:"directory,omitempty"`
 		NotAfter  time.Time `json:"not_after,omitzero"`
+	}
+
+	// CertificateRenewOptions says how a certificate is renewed.
+	CertificateRenewOptions struct {
+		// Force issues a certificate even when the current one is not due.
+		Force bool
+
+		// Webroot is the host directory the http-01 challenge token is
+		// written in, acme.webroot when empty. It is ignored when HTTP01
+		// is set.
+		Webroot string
+
+		// HTTP01 writes the http-01 challenge token where the http server
+		// of the domains serves it from, as a task writes it in a volume of
+		// its object, confined there.
+		HTTP01 challenge.Provider
 	}
 
 	// acmeAccount is what the sec keeps of its account at the ACME
@@ -59,8 +83,13 @@ type (
 )
 
 const (
-	// AcmeDefaultDirectory is the directory of Let's Encrypt.
-	AcmeDefaultDirectory = "https://acme-v02.api.letsencrypt.org/directory"
+	// AcmeLetsEncrypt is the directory of Let's Encrypt, which
+	// acme.directory = letsencrypt names.
+	AcmeLetsEncrypt = "https://acme-v02.api.letsencrypt.org/directory"
+
+	// AcmeLetsEncryptStaging is the staging directory of Let's Encrypt,
+	// which acme.directory = letsencrypt-staging names.
+	AcmeLetsEncryptStaging = "https://acme-staging-v02.api.letsencrypt.org/directory"
 
 	acmeDefaultRenewBefore = 30 * 24 * time.Hour
 
@@ -86,8 +115,15 @@ func (t CertificateRenewal) Render() string {
 	} else {
 		fmt.Fprintf(&b, "no certificate issued: %s\n", t.Reason)
 	}
+	if t.Sec != "" {
+		fmt.Fprintf(&b, "sec        %s\n", t.Sec)
+	}
 	fmt.Fprintf(&b, "domains    %s\n", strings.Join(t.Domains, " "))
-	fmt.Fprintf(&b, "directory  %s\n", t.Directory)
+	if t.Directory != "" {
+		fmt.Fprintf(&b, "directory  %s\n", t.Directory)
+	} else {
+		fmt.Fprintf(&b, "issuer     the sec, self-signed or signed by its ca\n")
+	}
 	if !t.NotAfter.IsZero() {
 		fmt.Fprintf(&b, "expires    %s\n", t.NotAfter.Local().Truncate(time.Second).Format(time.RFC3339))
 	}
@@ -114,6 +150,13 @@ func (t *sec) acmeDomains() []string {
 // why: there is none, it is not one of an ACME directory, it does not name
 // the domains asked, or it expires within before.
 func acmeRenewalDue(certPEM []byte, domains []string, now time.Time, before time.Duration) (bool, string) {
+	return certificateDue(certPEM, domains, now, before, true)
+}
+
+// certificateDue says whether a certificate is to be issued for domains, and
+// why: there is none, it does not name the domains asked, it expires within
+// before, or it is self-signed where a certificate of an issuer is asked.
+func certificateDue(certPEM []byte, domains []string, now time.Time, before time.Duration, selfSignedIsDue bool) (bool, string) {
 	if len(certPEM) == 0 {
 		return true, "no certificate"
 	}
@@ -125,7 +168,7 @@ func acmeRenewalDue(certPEM []byte, domains []string, now time.Time, before time
 	if err != nil {
 		return true, "the certificate is not readable: " + err.Error()
 	}
-	if cert.Issuer.String() == cert.Subject.String() {
+	if selfSignedIsDue && cert.Issuer.String() == cert.Subject.String() {
 		return true, "the certificate is self-signed"
 	}
 	have := slices.Clone(cert.DNSNames)
@@ -154,11 +197,12 @@ func acmeRenewalDue(certPEM []byte, domains []string, now time.Time, before time
 // The account at the directory is registered on the first renewal, and kept
 // as keys of the sec, so the node renewing next, whichever it is, renews
 // with the same account.
-func (t *sec) RenewCertificate(ctx context.Context, force bool, webrootPath string) (CertificateRenewal, error) {
-	directory := t.config.GetString(key.Parse("acme.directory"))
+func (t *sec) RenewCertificate(ctx context.Context, opts CertificateRenewOptions) (CertificateRenewal, error) {
+	directory := acmeDirectory(t.config.GetString(key.Parse("acme.directory")))
 	if directory == "" {
-		directory = AcmeDefaultDirectory
+		return t.renewGeneratedCertificate(opts.Force)
 	}
+	force, webrootPath := opts.Force, opts.Webroot
 	result := CertificateRenewal{Domains: t.acmeDomains(), Directory: directory}
 	if len(result.Domains) == 0 {
 		return result, fmt.Errorf("no domain to issue a certificate for: set cn, and alt_names for more")
@@ -169,7 +213,7 @@ func (t *sec) RenewCertificate(ctx context.Context, force bool, webrootPath stri
 	if webrootPath == "" {
 		webrootPath = t.config.GetString(key.Parse("acme.webroot"))
 	}
-	if webrootPath == "" {
+	if opts.HTTP01 == nil && webrootPath == "" {
 		return result, fmt.Errorf("no webroot to prove the domains from: set acme.webroot, the directory the http server of the domains serves /.well-known/acme-challenge/ from")
 	}
 	before := acmeDefaultRenewBefore
@@ -206,9 +250,11 @@ func (t *sec) RenewCertificate(ctx context.Context, force bool, webrootPath stri
 	if err != nil {
 		return result, fmt.Errorf("acme client of %s: %w", directory, err)
 	}
-	provider, err := webroot.NewHTTPProvider(webrootPath)
-	if err != nil {
-		return result, fmt.Errorf("acme webroot %s: %w", webrootPath, err)
+	provider := opts.HTTP01
+	if provider == nil {
+		if provider, err = webroot.NewHTTPProvider(webrootPath); err != nil {
+			return result, fmt.Errorf("acme webroot %s: %w", webrootPath, err)
+		}
 	}
 	if err := client.Challenge.SetHTTP01Provider(provider); err != nil {
 		return result, err
@@ -331,4 +377,54 @@ type debugWriter struct {
 func (w debugWriter) Write(b []byte) (int, error) {
 	w.log.Debugf("acme: %s", strings.TrimRight(string(b), "\n"))
 	return len(b), nil
+}
+
+// acmeDirectory returns the url of the ACME directory acme.directory names,
+// its aliases resolved, and empty when it names none.
+func acmeDirectory(s string) string {
+	switch s {
+	case "letsencrypt":
+		return AcmeLetsEncrypt
+	case "letsencrypt-staging":
+		return AcmeLetsEncryptStaging
+	default:
+		return s
+	}
+}
+
+// renewGeneratedCertificate generates the certificate of a sec issued by no
+// ACME directory, as certificate create does, when it is due: self-signed,
+// or signed by the ca the sec names. The private key is kept.
+func (t *sec) renewGeneratedCertificate(force bool) (CertificateRenewal, error) {
+	// The names the certificate is issued for, as the result says them:
+	// the subject first. The alternate names are what it is compared
+	// with, the common name not being one of them.
+	result := CertificateRenewal{Domains: t.acmeDomains()}
+	before := acmeDefaultRenewBefore
+	if d := t.config.GetDuration(key.Parse("acme.renew_before")); d != nil {
+		before = *d
+	}
+	current, _ := t.decode("certificate")
+	due, reason := certificateDue(current, t.DNSNamesFromAltNames(), time.Now(), before, false)
+	switch {
+	case force:
+		result.Reason = "asked"
+	case !due:
+		result.Reason = reason
+		return result, nil
+	default:
+		result.Reason = reason
+	}
+	if err := t.GenCert(); err != nil {
+		return result, err
+	}
+	if b, err := t.decode("certificate"); err == nil {
+		if block, _ := pem.Decode(b); block != nil {
+			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
+				result.NotAfter = cert.NotAfter
+			}
+		}
+	}
+	result.Renewed = true
+	return result, nil
 }

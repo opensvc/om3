@@ -54,7 +54,7 @@ type (
 	// KeyStore is implemented by encrypting KeyStore object kinds (usr, sec).
 	KeyStore interface {
 		GenCert() error
-		RenewCertificate(ctx context.Context, force bool, webroot string) (CertificateRenewal, error)
+		RenewCertificate(ctx context.Context, opts CertificateRenewOptions) (CertificateRenewal, error)
 		GenCertificateSigningRequest() ([]byte, error)
 		PKCS(password []byte) ([]byte, error)
 	}
