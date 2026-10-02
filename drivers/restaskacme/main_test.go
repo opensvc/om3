@@ -1,6 +1,7 @@
 package restaskacme
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,15 +78,16 @@ func TestConfinedWebrootStaysInTheVolume(t *testing.T) {
 	assert.Empty(t, entries, "nothing written through the link")
 }
 
-// The webroot names a volume resource and a path in it.
+// The webroot names a path in a volume or a filesystem of the service, never
+// a path of the node.
 func TestWebrootSyntax(t *testing.T) {
-	for _, s := range []string{"/srv/www", ":/www", "volume#1"} {
+	for _, s := range []string{"/srv/www", "volume#1:/www", "volume#1/www", "nota#rid:/www"} {
 		task := &T{Webroot: s}
-		_, _, err := task.http01()
+		_, _, err := task.http01(context.Background())
 		assert.Error(t, err, s)
 	}
 	task := &T{}
-	p, _, err := task.http01()
+	p, _, err := task.http01(context.Background())
 	require.NoError(t, err)
 	assert.Nil(t, p, "no webroot, no writer: the secs are not acme ones, or name their own")
 }

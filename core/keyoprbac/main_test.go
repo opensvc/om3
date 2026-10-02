@@ -369,13 +369,20 @@ func TestTheResourcesOfAVolumeNeedTheRootGrant(t *testing.T) {
 // one. The acme section of a sec is theirs too, but the host path its
 // renewal writes in as root.
 func TestAcmeRules(t *testing.T) {
-	none := rbac.Grants{}
-	assert.NoError(t, Denied(none, naming.KindSvc, "task#acme", "type", "acme", nil))
-	assert.Error(t, Denied(none, naming.KindSvc, "task#acme", "type", "host", nil))
-	assert.NoError(t, Denied(none, naming.KindSvc, "task#acme", "secs", "web ns2/sec/shared", nil))
-	assert.NoError(t, Denied(none, naming.KindSvc, "task#acme", "webroot", "volume#1:/www", nil))
-	assert.NoError(t, Denied(none, naming.KindSec, "acme", "directory", "letsencrypt", nil))
-	assert.NoError(t, Denied(none, naming.KindSec, "acme", "renew_before", "20d", nil))
-	assert.Error(t, Denied(none, naming.KindSec, "acme", "webroot", "/srv/www", nil))
-	assert.Error(t, Denied(none, naming.KindSec, "acme", "future_keyword", "x", nil), "unweighed keywords need the root grant")
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "task#acme", "type", "acme", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "task#acme", "type", "host", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "task#acme", "secs", "web ns2/sec/shared", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "task#acme", "webroot", "volume#1:/www", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "acme", "directory", "letsencrypt", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "acme", "renew_before", "20d", none))
+	assert.Error(t, Denied(noGrant, naming.KindSec, "acme", "webroot", "/srv/www", none))
+	assert.Error(t, Denied(noGrant, naming.KindSec, "acme", "future_keyword", "x", none), "unweighed keywords need the root grant")
+}
+
+// A mount from a resource of the service is the service's own storage, as a
+// mount from a vol of the namespace is. Climbing out of it is not.
+func TestVolumeMountFromAResource(t *testing.T) {
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "volume#1:/haproxy/certs:/certs volume#1:/haproxy/haproxy.cfg:/etc/haproxy.cfg:ro", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "volume#1:/../../etc:/x", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "/etc:/x", none))
 }

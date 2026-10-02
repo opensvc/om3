@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/restask"
 	"github.com/opensvc/om3/v3/util/confined"
 )
@@ -40,14 +41,6 @@ type (
 	confinedWebroot struct {
 		tree *confined.Tree
 		dir  string
-	}
-
-	resourceByIDer interface {
-		ResourceByID(string) resource.Driver
-	}
-
-	header interface {
-		Head() string
 	}
 )
 
@@ -71,7 +64,7 @@ func (t *T) lockedRun(ctx context.Context) error {
 		ctx, cancel = context.WithTimeout(ctx, *t.Timeout)
 		defer cancel()
 	}
-	provider, closeProvider, err := t.http01()
+	provider, closeProvider, err := t.http01(ctx)
 	if err != nil {
 		_ = t.WriteLastRun(1)
 		return err
@@ -143,37 +136,30 @@ func secPath(ref, ns string) (naming.Path, error) {
 
 // http01 returns the writer of the http-01 challenge tokens the webroot
 // keyword names, nil when it names none, and what closes it.
-func (t *T) http01() (challenge.Provider, func(), error) {
+//
+// The webroot is a path in a volume or a filesystem of the service, as
+// volume#1:/www or a vol name, never a path of the node: the task writes as
+// root, and its writer may not be.
+func (t *T) http01(ctx context.Context) (challenge.Provider, func(), error) {
 	noop := func() {}
 	if t.Webroot == "" {
 		return nil, noop, nil
 	}
-	rid, sub, ok := strings.Cut(t.Webroot, ":")
-	if !ok || rid == "" {
-		return nil, noop, fmt.Errorf("webroot %s: expected <volume rid>:<path>", t.Webroot)
+	if strings.HasPrefix(t.Webroot, "/") {
+		return nil, noop, fmt.Errorf("webroot %s: a path of the node is refused: name a volume or a filesystem of the service, as volume#1:/www", t.Webroot)
 	}
-	o, ok := t.GetObject().(resourceByIDer)
-	if !ok {
-		return nil, noop, fmt.Errorf("webroot %s: the object has no resources", t.Webroot)
-	}
-	r := o.ResourceByID(rid)
-	if r == nil {
-		return nil, noop, fmt.Errorf("webroot %s: no resource %s", t.Webroot, rid)
-	}
-	h, ok := r.(header)
-	if !ok {
-		return nil, noop, fmt.Errorf("webroot %s: resource %s is not a volume", t.Webroot, rid)
-	}
-	head := h.Head()
-	if head == "" {
-		return nil, noop, fmt.Errorf("webroot %s: volume %s has no mount point here", t.Webroot, rid)
-	}
-	tree, err := confined.Open(head)
+	target, err := vpath.Resolve(ctx, t.Webroot, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 	if err != nil {
 		return nil, noop, fmt.Errorf("webroot %s: %w", t.Webroot, err)
 	}
-	dir := filepath.Join(head, filepath.Clean("/"+sub))
-	return &confinedWebroot{tree: tree, dir: dir}, func() { _ = tree.Close() }, nil
+	if target.Head == "" {
+		return nil, noop, fmt.Errorf("webroot %s: not in a volume or a filesystem of the service", t.Webroot)
+	}
+	tree, err := confined.Open(target.Head)
+	if err != nil {
+		return nil, noop, fmt.Errorf("webroot %s: %w", t.Webroot, err)
+	}
+	return &confinedWebroot{tree: tree, dir: filepath.Clean(target.HostPath)}, func() { _ = tree.Close() }, nil
 }
 
 func (t *confinedWebroot) tokenPath(token string) (string, error) {

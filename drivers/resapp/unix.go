@@ -280,7 +280,7 @@ func (t *T) BaseCmdArgs(ctx context.Context, s string, action string) ([]string,
 func (t *T) replaceVolumeHead(ctx context.Context, s string) (string, error) {
 	words := strings.Fields(s)
 	if !strings.HasPrefix(words[0], "/") && strings.Contains(words[0], "/") {
-		return vpath.HostPath(ctx, s, t.Path.Namespace)
+		return vpath.ResolveHostPath(ctx, s, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 	}
 	return s, nil
 }
