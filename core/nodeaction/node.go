@@ -409,6 +409,10 @@ func (t T) DoRemote() error {
 		cancel context.CancelFunc
 		errs   error
 		waitC  chan error
+
+		// wait is the end of the execs waited for, which --watch needs to
+		// know when to stop streaming their logs.
+		wait = t.Wait || t.Watch
 	)
 
 	ctx := context.Background()
@@ -421,12 +425,21 @@ func (t T) DoRemote() error {
 		defer cancel()
 	}
 
-	if t.Wait {
+	if wait {
 		waitC = make(chan error, count)
 	}
 
+	var sessionLogs *actionrouter.SessionLogs
+	if t.Watch && len(nodenames) > 0 {
+		// Opened before the action is asked, so the stream has its first
+		// entries.
+		if sessionLogs, err = actionrouter.StartSessionLogs(c, nodenames, requesterSessionID, t.Output); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
+
 	for _, nodename := range nodenames {
-		if t.Wait {
+		if wait {
 			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSessionID, waitC)
 		}
 		if t.RemoteFunc == nil {
@@ -438,6 +451,7 @@ func (t T) DoRemote() error {
 		todo++
 	}
 	if todo == 0 {
+		sessionLogs.Stop()
 		return nil
 	}
 	for {
@@ -456,16 +470,29 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
-	errs = errors.Join(errs, output.Renderer{
-		DefaultOutput: t.DefaultOutput,
-		Output:        t.Output,
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          results,
-		Colorize:      rawconfig.Colorize,
-	}.Print())
-	if t.Wait && todo > 0 {
-		for i := 0; i < todo; i++ {
+	if !t.Watch {
+		// The ids of the execs started, for their logs to be followed. A
+		// watch streams those logs instead, and an error is said above.
+		errs = errors.Join(errs, output.Renderer{
+			DefaultOutput: t.DefaultOutput,
+			Output:        t.Output,
+			Sort:          t.Sort,
+			Color:         t.Color,
+			Data:          results,
+			Colorize:      rawconfig.Colorize,
+		}.Print())
+	}
+	defer sessionLogs.Stop()
+	// An action the daemon refused started no exec, whose end would never
+	// come.
+	started := todo
+	for _, result := range results {
+		if result.Error != nil || result.Panic != nil {
+			started--
+		}
+	}
+	if wait && started > 0 {
+		for i := 0; i < started; i++ {
 			select {
 			case <-ctx.Done():
 				errs = errors.Join(errs, ctx.Err())

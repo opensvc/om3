@@ -143,12 +143,21 @@ func (t Result) Unstructured() map[string]any {
 }
 
 // Do is the switch method between local, remote or async mode.
-// If Watch is set, end up starting a monitor on the selected objects.
+// If Watch is set, end up starting a monitor on the selected objects, but
+// for a remote action, whose DoRemote streams the logs of its session.
 func Do(t Actioner) error {
-	var errs error
+	var (
+		errs error
+
+		// remote says the action was asked of the daemons of nodes, which
+		// --watch follows by streaming the logs of its session rather than
+		// by monitoring the objects.
+		remote bool
+	)
 	o := t.Options()
 	switch {
 	case o.NodeSelector != "":
+		remote = true
 		errs = t.DoRemote()
 	case t.HasLocal() && (o.Local || o.DefaultIsLocal || o.RID != "" || o.Subset != "" || o.Tag != ""):
 		errs = t.DoLocal()
@@ -158,9 +167,10 @@ func Do(t Actioner) error {
 		errs = t.DoLocal()
 	default:
 		// post action on context endpoint
+		remote = true
 		errs = t.DoRemote()
 	}
-	if o.Watch {
+	if o.Watch && !remote {
 		m := monitor.New()
 		m.SetColor(o.Color)
 		m.SetFormat(o.Output)

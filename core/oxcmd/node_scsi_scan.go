@@ -14,6 +14,7 @@ type (
 	CmdNodeSCSIScan struct {
 		OptsGlobal
 		NodeSelector string
+		Watch        bool
 		HBA          string
 		Target       string
 		LUN          string
@@ -26,6 +27,7 @@ func (t *CmdNodeSCSIScan) Run() error {
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()
 			if err != nil {

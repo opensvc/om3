@@ -14,6 +14,7 @@ type (
 	CmdNodePushDisks struct {
 		OptsGlobal
 		NodeSelector                string
+		Watch                       bool
 		DryRun                      bool
 		IgnoreNoCollectorConfigured bool
 	}
@@ -26,6 +27,7 @@ func (t *CmdNodePushDisks) Run() error {
 
 	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
@@ -67,6 +69,7 @@ func (t *CmdNodePushDisks) Run() error {
 func (t *CmdNodePushDisks) doDryRun() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),

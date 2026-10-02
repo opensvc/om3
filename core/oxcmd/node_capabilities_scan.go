@@ -14,6 +14,7 @@ type (
 	CmdNodeCapabilitiesScan struct {
 		OptsGlobal
 		NodeSelector string
+		Watch        bool
 	}
 )
 
@@ -23,6 +24,7 @@ func (t *CmdNodeCapabilitiesScan) Run() error {
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()
 			if err != nil {

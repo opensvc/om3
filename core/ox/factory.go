@@ -341,6 +341,7 @@ installed software to be discovered without restarting the daemon.`,
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 	return cmd
 }
 
@@ -359,6 +360,7 @@ This command scans SCSI hosts for new block devices. You can specify specific HB
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 	commoncmd.FlagSCSIHBA(flags, &options.HBA)
 	commoncmd.FlagSCSITarget(flags, &options.Target)
 	commoncmd.FlagSCSILUN(flags, &options.LUN)
@@ -1274,6 +1276,7 @@ func newCmdNodePushAsset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 	commoncmd.FlagDryRun(flags, &options.DryRun)
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
@@ -1292,6 +1295,7 @@ func newCmdNodePushDisk() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 	commoncmd.FlagDryRun(flags, &options.DryRun)
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
@@ -1309,6 +1313,7 @@ func newCmdNodePushPkg() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 	commoncmd.FlagDryRun(flags, &options.DryRun)
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
@@ -1332,6 +1337,7 @@ func newCmdNodeRegister() *cobra.Command {
 	commoncmd.FlagCollectorPassword(flags, &options.Password)
 	commoncmd.FlagCollectorApp(flags, &options.App)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 
 	return cmd
 }
@@ -1377,6 +1383,7 @@ func newCmdNodeSysreport() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagWatchLogs(flags, &options.Watch)
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }

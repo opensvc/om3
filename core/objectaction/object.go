@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -724,6 +725,14 @@ func (t T) DoRemote() error {
 		errs   error
 		waitC  chan error
 		count  int
+
+		// wait is the end of the execs waited for, which --watch needs to
+		// know when to stop streaming their logs.
+		wait = t.Wait || t.Watch
+
+		// watchNodes are the nodes the action runs on, whose log streams
+		// --watch opens.
+		watchNodes = make(map[string]any)
 	)
 
 	ctx := context.Background()
@@ -745,6 +754,7 @@ func (t T) DoRemote() error {
 		for n, i := range core.Instances {
 			if _, ok := nodenames[n]; ok {
 				selectedInstances[n] = i
+				watchNodes[n] = nil
 			}
 		}
 		if t.Target == "started" {
@@ -761,8 +771,22 @@ func (t T) DoRemote() error {
 		count += len(selectedInstances)
 	}
 
-	if t.Wait {
+	if wait {
 		waitC = make(chan error, count)
+	}
+
+	var sessionLogs *actionrouter.SessionLogs
+	if t.Watch && len(watchNodes) > 0 {
+		// Opened before the action is asked, so the stream has its first
+		// entries.
+		l := make([]string, 0, len(watchNodes))
+		for n := range watchNodes {
+			l = append(l, n)
+		}
+		slices.Sort(l)
+		if sessionLogs, err = actionrouter.StartSessionLogs(c, l, requesterSessionID, t.Output); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	}
 
 	for _, item := range resp.JSON200.Items {
@@ -775,7 +799,7 @@ func (t T) DoRemote() error {
 			if err != nil {
 				return err
 			}
-			if t.Wait {
+			if wait {
 				t.waitRequesterSessionEnd(ctx, c, requesterSessionID, n, p, waitC)
 			}
 			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, n string, p naming.Path) (any, error) {
@@ -785,6 +809,7 @@ func (t T) DoRemote() error {
 		}
 	}
 	if todo == 0 {
+		sessionLogs.Stop()
 		return nil
 	}
 	for {
@@ -803,17 +828,30 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
-	errs = errors.Join(errs, output.Renderer{
-		DefaultOutput: t.DefaultOutput,
-		Output:        t.Output,
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          results,
-		HumanRenderer: func() string { return rsHumanRender(results) },
-		Colorize:      rawconfig.Colorize,
-	}.Print())
-	if t.Wait && todo > 0 {
-		for i := 0; i < todo; i++ {
+	if !t.Watch {
+		// The ids of the execs started, for their logs to be followed. A
+		// watch streams those logs instead, and an error is said above.
+		errs = errors.Join(errs, output.Renderer{
+			DefaultOutput: t.DefaultOutput,
+			Output:        t.Output,
+			Sort:          t.Sort,
+			Color:         t.Color,
+			Data:          results,
+			HumanRenderer: func() string { return rsHumanRender(results) },
+			Colorize:      rawconfig.Colorize,
+		}.Print())
+	}
+	defer sessionLogs.Stop()
+	// An action the daemon refused started no exec, whose end would never
+	// come.
+	started := todo
+	for _, result := range results {
+		if result.Error != nil || result.Panic != nil {
+			started--
+		}
+	}
+	if wait && started > 0 {
+		for i := 0; i < started; i++ {
 			select {
 			case <-ctx.Done():
 				errs = errors.Join(errs, ctx.Err())

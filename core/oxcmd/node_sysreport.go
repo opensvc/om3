@@ -15,6 +15,7 @@ type (
 		OptsGlobal
 		Force                       bool
 		NodeSelector                string
+		Watch                       bool
 		IgnoreNoCollectorConfigured bool
 	}
 )
@@ -22,6 +23,7 @@ type (
 func (t *CmdNodeSysreport) Run() error {
 	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
