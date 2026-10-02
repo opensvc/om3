@@ -17,8 +17,8 @@ import (
 var NodeMigrationRules = MigrationRules{
 	{
 		Doc: "A keyword written under a former name, which om still reads as an alias, " +
-			"is written under its name: node.min_avail_mem becomes min_avail_mem_pct, " +
-			"node.db_min_ping_interval becomes collector_ping_interval, listener.tls_port becomes port, " +
+			"is written under its name: node.db_min_ping_interval becomes collector_ping_interval, " +
+			"node.min_avail_mem_pct becomes min_avail_mem, listener.tls_port becomes port, " +
 			"the name of an arbitrator becomes uri, the cmd of a stonith becomes command, " +
 			"and so on for every alias the keyword reference lists.",
 		apply: migrateAliases,

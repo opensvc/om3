@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 const (
@@ -231,21 +232,25 @@ var (
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.secure_fetch"),
 	}
-	kwNodeMinAvailMemPct = keywords.Keyword{
-		Aliases:   []string{"min_avail_mem"},
-		Converter: converters.Int,
-		Default:   "2",
-		Option:    "min_avail_mem_pct",
+	kwNodeMinAvailMem = keywords.Keyword{
+		Aliases:   []string{"min_avail_mem_pct"},
+		Converter: converters.Share,
+		Default:   "2%",
+		Example:   "2Gi",
+		Option:    "min_avail_mem",
 		Section:   "node",
-		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_mem_pct"),
+		Validate:  validShare,
+		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_mem"),
 	}
-	kwNodeMinAvailSwapPct = keywords.Keyword{
-		Aliases:   []string{"min_avail_swap"},
-		Converter: converters.Int,
-		Default:   "10",
-		Option:    "min_avail_swap_pct",
+	kwNodeMinAvailSwap = keywords.Keyword{
+		Aliases:   []string{"min_avail_swap_pct"},
+		Converter: converters.Share,
+		Default:   "10%",
+		Example:   "4Gi",
+		Option:    "min_avail_swap",
 		Section:   "node",
-		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_swap_pct"),
+		Validate:  validShare,
+		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_swap"),
 	}
 	kwNodeEnv = keywords.Keyword{
 		Default: "TST",
@@ -1756,8 +1761,8 @@ var (
 	nodeCommonKeywords = []*keywords.Keyword{
 		&kwNodeComment,
 		&kwNodeSecureFetch,
-		&kwNodeMinAvailMemPct,
-		&kwNodeMinAvailSwapPct,
+		&kwNodeMinAvailMem,
+		&kwNodeMinAvailSwap,
 		&kwNodeEnv,
 		&kwNodeConsolePort,
 		&kwNodeConsoleURL,
@@ -1971,6 +1976,13 @@ var (
 )
 
 var NodeKeywordStore = keywords.Store(append(nodePrivateKeywords, nodeCommonKeywords...))
+
+// validShare refuses a value that is neither a percentage nor a size, which
+// would set no minimum where one was asked for.
+func validShare(value string) error {
+	_, err := sizeconv.ParseShare(value)
+	return err
+}
 
 func (t Node) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(NodeKeywordStore, k, naming.KindInvalid, sectionType)

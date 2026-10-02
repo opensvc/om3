@@ -153,6 +153,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
         | `alt_version` | Version of the alternate secreat          |
         |---------------|-------------------------------------------|
 
+* **`node.min_avail_mem` and `node.min_avail_swap` read as in v2:**
+    They take a percentage, `10` or `10%`, or a size, `512m` or `2Gi`, which is read as the whole percentage of the memory or swap of the node it amounts to, and as 50% of the memory at most, as v2 did. A number with no unit is a percentage, where v2 read it as a count of bytes. `min_avail_mem_pct` and `min_avail_swap_pct` are read as them.
+    A node without swap, or whose memory om can not read, is no longer held overloaded by them.
+
 * **`node.default_mon_format` removed:**
     It should be a user-level setting, not a node-level config.
 

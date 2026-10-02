@@ -40,8 +40,8 @@ func refusedAbout(m Migration, s string) bool {
 func TestNodeMigrationRenamesAliases(t *testing.T) {
 	m := clusterMigrationOf(t, `
 [node]
-min_avail_mem = 10
-min_avail_swap@n2 = 5
+min_avail_mem_pct = 10
+min_avail_swap_pct@n2 = 5
 db_min_ping_interval = 30s
 
 [listener]
@@ -54,12 +54,12 @@ name = arb1.example.com
 cmd = /bin/true
 `)
 	for from, to := range map[string]string{
-		"node.min_avail_mem":        "node.min_avail_mem_pct",
-		"node.min_avail_swap@n2":    "node.min_avail_swap_pct@n2",
-		"node.db_min_ping_interval": "node.collector_ping_interval",
-		"listener.tls_port":         "listener.port",
-		"arbitrator#1.name":         "arbitrator#1.uri",
-		"stonith#n2.cmd":            "stonith#n2.command",
+		"node.min_avail_mem_pct":     "node.min_avail_mem",
+		"node.min_avail_swap_pct@n2": "node.min_avail_swap@n2",
+		"node.db_min_ping_interval":  "node.collector_ping_interval",
+		"listener.tls_port":          "listener.port",
+		"arbitrator#1.name":          "arbitrator#1.uri",
+		"stonith#n2.cmd":             "stonith#n2.command",
 	} {
 		_, ok := setOf(m, to)
 		assert.True(t, ok, "%s is set", to)
@@ -264,6 +264,18 @@ method = telnet
 	assert.False(t, unset(m, "hb#1.secret"))
 }
 
+// The minimum available memory and swap of a v2 node configuration, a
+// percentage or a size, are read under their v2 names, and stay as written.
+func TestNodeMigrationKeepsTheV2MinAvailForms(t *testing.T) {
+	m := clusterMigrationOf(t, `
+[node]
+min_avail_mem = 2%
+min_avail_swap = 2Gi
+`)
+	assert.Empty(t, m.Sets)
+	assert.Empty(t, m.Unsets)
+}
+
 // A configuration om reads as it is has nothing to migrate.
 func TestNodeMigrationOfACurrentConfiguration(t *testing.T) {
 	m := clusterMigrationOf(t, `
@@ -287,10 +299,10 @@ mask_per_node = 24
 
 // The node configuration resolves its keywords as the cluster one does.
 func TestNodeMigrationOfANodeConfiguration(t *testing.T) {
-	n, err := NewNode(WithConfigData([]byte("[node]\nmin_avail_mem = 10\n")), WithVolatile(true))
+	n, err := NewNode(WithConfigData([]byte("[node]\nmin_avail_mem_pct = 10\n")), WithVolatile(true))
 	require.NoError(t, err)
 	m := MigrateNodeConfig(n.Config())
-	v, ok := setOf(m, "node.min_avail_mem_pct")
+	v, ok := setOf(m, "node.min_avail_mem")
 	require.True(t, ok)
 	assert.Equal(t, "10", v)
 }
