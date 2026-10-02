@@ -1972,6 +1972,7 @@ func newCmdObjectFS(kind string) *cobra.Command {
 		newCmdObjectGroupList(kind, "fs"),
 		newCmdObjectGroupInfo(kind, "fs"),
 		newCmdObjectGroupProvision(kind, "fs"),
+		newCmdObjectGroupInstall(kind, "fs"),
 		newCmdObjectGroupPRStart(kind, "fs"),
 		newCmdObjectGroupPRStop(kind, "fs"),
 		newCmdObjectGroupRestart(kind, "fs"),
@@ -1990,6 +1991,7 @@ func newCmdObjectVolume(kind string) *cobra.Command {
 		newCmdObjectGroupList(kind, "volume"),
 		newCmdObjectGroupInfo(kind, "volume"),
 		newCmdObjectGroupProvision(kind, "volume"),
+		newCmdObjectGroupInstall(kind, "volume"),
 		newCmdObjectGroupPRStart(kind, "volume"),
 		newCmdObjectGroupPRStop(kind, "volume"),
 		newCmdObjectGroupRestart(kind, "volume"),
@@ -2032,6 +2034,7 @@ func newCmdObjectResource(kind string) *cobra.Command {
 		newCmdObjectGroupInfo(kind, ""),
 		newCmdObjectGroupProvision(kind, ""),
 		newCmdObjectGroupUnprovision(kind, ""),
+		newCmdObjectGroupInstall(kind, ""),
 		newCmdObjectGroupPRStart(kind, ""),
 		newCmdObjectGroupPRStop(kind, ""),
 		newCmdObjectGroupRestart(kind, ""),
@@ -3296,6 +3299,63 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagStateOnly(flags, &options.StateOnly)
+	return cmd
+}
+
+func newCmdObjectInstanceInstall(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceInstall
+	cmd := &cobra.Command{
+		Use:   "install",
+		Short: "install again the data of the volumes and filesystems",
+		Long: `Install again what the volumes and the filesystems of the instance declare
+(the install, configs, secrets and directories keywords), as their start does,
+without starting anything, and send the signals of their install lines for the
+files whose content changed.
+
+As opposed to a start, it says what it leaves as it is too, and why: a
+directory in place, a file up to date, a key the store does not hold, a
+store that does not exist, a resource not up here, a resource installing
+nothing.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectGroupInstall(kind, group string) *cobra.Command {
+	var options commands.CmdObjectInstanceInstall
+	use, arg, long := "install [PATTERN]...", "PATTERN  A fnmatch resource index filter.", fmt.Sprintf("Install again the data of the %s resources, as their start does, without starting anything. Equivalent to 'instance install --rid %s#<ID>'.", group, group)
+	if group == "" {
+		use, arg, long = "install [RID]...", "RID  A resource id, or a resource selector expression.", "Install again the data of the resources, as their start does, without starting anything. Equivalent to 'instance install --rid <RID>'."
+	}
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: "install again the data of the resources",
+		Long: long + `
+
+It says what it leaves as it is too, and why: a directory in place, a file up
+to date, a key the store does not hold, a store that does not exist, a
+resource not up here, a resource installing nothing.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetRIDFromArgs(&options.RID, args, group, group)
+			return options.Run(kind)
+		},
+	}
+	commoncmd.CmdWithArg(cmd, arg)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

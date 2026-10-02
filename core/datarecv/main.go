@@ -191,6 +191,11 @@ type (
 		Signal      string   `json:"signal"`
 
 		to receiver
+
+		// report logs what an install leaves as it is, and why, for the
+		// install asked by the user. A start installs quietly what has not
+		// changed.
+		report bool
 	}
 
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
@@ -644,6 +649,7 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 			}
 		}
 		md.ToLog = t.to.Log()
+		md.LogUnchanged = t.report
 		// A file whose content did not change gives what reads it nothing
 		// to reload: its signals are sent for a change only.
 		fileChanged, err := from.InstallKeyTo(md)
@@ -752,6 +758,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 			}
 		}
 		md.ToLog = t.to.Log()
+		md.LogUnchanged = t.report
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
@@ -961,6 +968,15 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 	return dirs, files
 }
 
+// RunInstall installs what the data receiver declares, as a start does, and
+// logs what it leaves as it is too, and why: a directory in place, a file up
+// to date, a key the store does not hold, a store that does not exist.
+func (t *DataRecv) RunInstall(ctx context.Context) error {
+	t.report = true
+	defer func() { t.report = false }()
+	return t.Do(ctx)
+}
+
 func (t *DataRecv) Do(ctx context.Context) error {
 	changed := false
 
@@ -1032,6 +1048,7 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
 		md.ToLog = t.to.Log()
+		md.LogUnchanged = t.report
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil {
 			return changed, err
@@ -1188,6 +1205,9 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 	default:
 		if !info.IsDir() {
 			return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
+		}
+		if t.report && info.Mode().Perm() == perm {
+			t.to.Log().Infof("%s directory is in place", p)
 		}
 		if info.Mode().Perm() != perm {
 			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)

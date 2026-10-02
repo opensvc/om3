@@ -43,6 +43,12 @@ type (
 		AccessControl KVInstallAccessControl
 		Signals       *volsignal.T
 
+		// LogUnchanged logs what the install leaves as it is, a file up to
+		// date or a key the store does not hold, as an install report asked
+		// by the user shows them. A start installs quietly what has not
+		// changed.
+		LogUnchanged bool
+
 		// fs is where the install writes: the tree of ToHead, which the
 		// install cannot leave, or the node for an install naming no head.
 		fs confined.FS
@@ -345,6 +351,9 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 		return false, err
 	}
 	if mtime == info.ModTime() {
+		if opt.LogUnchanged {
+			opt.ToLog.Infof("%s from key %s of %s is up to date", dst, vk.Key, t.path)
+		}
 		return false, nil
 	}
 	current, err := opt.fs.ReadFile(dst)
@@ -352,7 +361,11 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 		return false, err
 	}
 	if md5.Sum(current) == md5.Sum(b) {
-		opt.ToLog.Tracef("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
+		if opt.LogUnchanged {
+			opt.ToLog.Infof("%s from key %s of %s is up to date", dst, vk.Key, t.path)
+		} else {
+			opt.ToLog.Tracef("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
+		}
 		return false, opt.fs.Chtimes(dst, mtime, mtime)
 	}
 	if err := opt.fs.WriteFile(dst, b, info.Mode()); err != nil {
@@ -429,9 +442,11 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) (bool, error) {
 	if len(keys) == 0 {
 		if opt.Required {
 			return false, fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, ErrKeyNotFound)
-		} else {
-			return false, nil
 		}
+		if opt.LogUnchanged {
+			opt.ToLog.Infof("%s skipped: %s holds no key %s", opt.ToPath, t.path, opt.FromPattern)
+		}
+		return false, nil
 	}
 	if err := t.makedirs(opt); err != nil {
 		return false, err
