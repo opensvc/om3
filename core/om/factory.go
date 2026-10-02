@@ -1653,27 +1653,43 @@ func newCmdObjectCertificateRenew(kind string) *cobra.Command {
 	var options commands.CmdObjectCertificateRenew
 	cmd := &cobra.Command{
 		Use:   "renew",
-		Short: "obtain the certificate from the acme directory, when due",
-		Long: `Obtain the certificate of the sec from its ACME directory, Let's Encrypt by
-default, when it is due: there is none, it is self-signed, it names other
-domains than the sec asks, or it expires within acme.renew_before. A renewal
-not due does nothing, so the command can run on a schedule.
+		Short: "renew the certificate, when due",
+		Long: `Renew the certificate of the sec, when it is due: there is none, it names
+other domains than the sec asks, it expires within acme.renew_before, or,
+where an ACME directory is asked, it is self-signed or issued by another
+directory. A renewal not due does nothing, so the command can run on a
+schedule.
 
-The domains are the cn and the alt_names of the sec. They are proved with the
-http-01 challenge, its token written under .well-known/acme-challenge/ in
-acme.webroot, which the http server of the domains must serve. The account is
+A sec naming an acme.directory obtains its certificate there. The domains are
+the cn and the alt_names of the sec, proved with the http-01 challenge: its
+token is written under .well-known/acme-challenge/ in acme.webroot, or in
+--webroot, which the http server of the domains must serve. The account is
 registered on the first renewal, with the email of the sec as its contact
-when it has one, and kept in the sec, as the certificate is: private_key, certificate, certificate_chain, and
-fullpem, the private key followed by the chain.
+when it has one, and kept in the sec.
 
-The volumes installing these keys get the new ones, and the signals of their
-install lines are sent, on every node running them.`,
+A sec naming no directory has its certificate generated as certificate create
+does, self-signed or signed by its ca.
+
+The certificate is kept in the sec as certificate create keeps it:
+private_key, certificate, certificate_chain, and fullpem, the private key
+followed by the chain. The volumes installing these keys get the new ones,
+and the signals of their install lines are sent, on every node running them.
+
+To renew from the service publishing the domains, writing the challenge token
+in one of its volumes, configure a task.acme resource there rather than run
+this command.`,
 		Example: `  # renew the certificate of a sec, when due
   om ns1/sec/web certificate renew
 
+  # try a setup out against the staging directory of Let's Encrypt
+  om ns1/sec/web set --kw acme.directory=letsencrypt-staging
+  om ns1/sec/web certificate renew --webroot /var/www/html
+
   # as a task of the service publishing the domains, where it runs
   [task#acme]
-  command = om ns1/sec/web certificate renew
+  type = acme
+  secs = web
+  webroot = volume#1:/acme-challenges
   schedule = @1d`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)

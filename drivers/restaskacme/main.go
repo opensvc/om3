@@ -48,8 +48,9 @@ func New() resource.Driver {
 	return &T{}
 }
 
+// Label is the secs renewed: the status says the driver already.
 func (t *T) Label(_ context.Context) string {
-	return "acme " + strings.Join(t.Secs, " ")
+	return strings.Join(t.Secs, " ")
 }
 
 func (t *T) Run(ctx context.Context) error {
