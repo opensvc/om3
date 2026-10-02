@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/util/duration"
@@ -157,7 +158,7 @@ func New() (T, error) {
 	if cr.UserRefName != "" {
 		c.User, ok = cfg.Users[cr.UserRefName]
 		if !ok {
-			return c, fmt.Errorf("%w: user not defined: %s", Err, cr.ClusterRefName)
+			return c, fmt.Errorf("%w: user not defined: %s", Err, cr.UserRefName)
 		}
 	}
 	if cr.Namespace != nil {
@@ -189,6 +190,11 @@ func (c *config) Save() error {
 	tempFilename, _ := homedir.Expand(ConfigFilename + ".tmp")
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
+		return err
+	}
+	// The first cluster, user or context added is the first file written
+	// in the configuration directory, which nothing has made yet.
+	if err := os.MkdirAll(filepath.Dir(tempFilename), 0o700); err != nil {
 		return err
 	}
 	if err := os.WriteFile(tempFilename, b, 0o600); err != nil {
@@ -228,6 +234,20 @@ func removeItem[V any](m map[string]V, name string, singular, plural string) err
 	}
 	delete(m, name)
 	return nil
+}
+
+// Selectable says whether a context can be connected with: its cluster is
+// defined, and so is its user, when it names one. A context naming no user
+// logs in at the openid issuer of its cluster, who says who the user is.
+func (c *config) Selectable(r Relation) bool {
+	if _, ok := c.Clusters[r.ClusterRefName]; !ok {
+		return false
+	}
+	if r.UserRefName == "" {
+		return true
+	}
+	_, ok := c.Users[r.UserRefName]
+	return ok
 }
 
 func (c *config) AddContext(name string, r Relation) error {

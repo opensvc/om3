@@ -4530,14 +4530,13 @@ func NewCmdContextAdd() *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.StringVar(&options.Name, "name", "", "Context name")
-	flags.StringVar(&options.User, "user", "", "User name")
+	flags.StringVar(&options.User, "user", "", "User name, needed by a password login; a context without a user logs in at the openid issuer of its cluster")
 	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
 	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
 	flags.Var(duration.NewFlag(&options.AccessTokenDuration), "access-token-duration", "Access token duration, for example 1h or 1d")
 	flags.Var(duration.NewFlag(&options.RefreshTokenDuration), "refresh-token-duration", "Refresh token duration, for example 1h or 1d")
 
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("user")
 	_ = cmd.MarkFlagRequired("cluster")
 
 	return cmd
@@ -4549,22 +4548,23 @@ func NewCmdContextChange() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "change",
 		Short: "change a context",
+		Long:  "Change the context named by --name: only the flags given are changed. --user \"\" removes the user, for a context logging in at the openid issuer of its cluster.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.UserChanged = cmd.Flags().Changed("user")
+			options.ClusterChanged = cmd.Flags().Changed("cluster")
 			return options.Run()
 		},
 	}
 
 	flags := cmd.Flags()
 	flags.StringVar(&options.Name, "name", "", "Context name")
-	flags.StringVar(&options.User, "user", "", "User name")
+	flags.StringVar(&options.User, "user", "", "User name, empty for a context logging in at the openid issuer of its cluster")
 	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
 	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
 	flags.Var(duration.NewFlag(&options.AccessTokenDuration), "access-token-duration", "Access token duration, for example 1h or 1d")
 	flags.Var(duration.NewFlag(&options.RefreshTokenDuration), "refresh-token-duration", "Refresh token duration, for example 1h or 1d")
 
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("user")
-	_ = cmd.MarkFlagRequired("cluster")
 
 	return cmd
 }

@@ -137,6 +137,10 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("unknown --auth %q: expected openid or password", t.Auth)
 	}
 
+	if clientc.UserRefName == "" {
+		return fmt.Errorf("context %s names no user, which a password login needs: set one with `ox context change --name %s --user <user>`, or log in at the openid issuer of the cluster", t.Context, t.Context)
+	}
+
 	password, err := readPassword(t.Context)
 	if err != nil {
 		return err
