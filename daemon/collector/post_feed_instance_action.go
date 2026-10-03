@@ -219,6 +219,9 @@ func (t *T) pruneActionSent() {
 // sendActions starts sending a batch of the queued action phases, unless a
 // batch is being sent. The result comes back to the loop through
 // actionSendResultC.
+//
+// The batch stops at the first send to retry: with the collector down, the
+// others would fail too, each end after reading its log lines on its node.
 func (t *T) sendActions() {
 	if t.actionSending || len(t.actionToSend) == 0 || t.client == nil {
 		return
@@ -230,13 +233,20 @@ func (t *T) sendActions() {
 	t.actionSending = true
 	ctx := t.ctx
 	requester := t.client
-	readLog := t.readActionLog
+	readLog := t.actionReadLog
+	if readLog == nil {
+		readLog = t.readActionLog
+	}
 	agentVersion := t.agentVersion()
 	resultC := t.actionSendResultC
 	go func() {
 		results := make([]actionSendResult, 0, len(jobs))
 		for _, job := range jobs {
-			results = append(results, sendAction(ctx, requester, readLog, agentVersion, job))
+			r := sendAction(ctx, requester, readLog, agentVersion, job)
+			results = append(results, r)
+			if !r.done {
+				break
+			}
 		}
 		select {
 		case resultC <- results:
@@ -248,24 +258,25 @@ func (t *T) sendActions() {
 // nextActionJobs returns the next batch of queued action phases to send:
 // the end of an action when queued, with the collector uuid of its begin
 // when known, else its begin.
+//
+// The begins go first: they read no log lines, so they are the cheaper
+// probe of a collector that may be down.
 func (t *T) nextActionJobs() []actionSendJob {
-	jobs := make([]actionSendJob, 0, min(len(t.actionToSend), actionSendMax))
+	var begins, ends []actionSendJob
 	for key, e := range t.actionToSend {
-		if len(jobs) >= actionSendMax {
-			break
-		}
 		switch {
 		case e.end != nil:
 			uuid := e.end.UUID
 			if uuid == "" {
 				uuid = t.actionBeginUUID[key]
 			}
-			jobs = append(jobs, actionSendJob{key: key, msg: e.end, uuid: uuid})
+			ends = append(ends, actionSendJob{key: key, msg: e.end, uuid: uuid})
 		case e.begin != nil:
-			jobs = append(jobs, actionSendJob{key: key, msg: e.begin})
+			begins = append(begins, actionSendJob{key: key, msg: e.begin})
 		}
 	}
-	return jobs
+	jobs := append(begins, ends...)
+	return jobs[:min(len(jobs), actionSendMax)]
 }
 
 // onActionSendResults applies the results of a send batch: an action phase
