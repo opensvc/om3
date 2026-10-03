@@ -306,7 +306,7 @@ func (t *T) setupRequester(c *collector.Config) error {
 		}
 		return err
 	} else {
-		t.client = cli
+		t.client = newInstrumentedRequester(cli)
 		t.status.Url = cli.URL()
 		// It is now enabled, clear previous disable state
 		t.disable = false
