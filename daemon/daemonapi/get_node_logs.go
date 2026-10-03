@@ -46,10 +46,16 @@ func (a *DaemonAPI) getPeerNodeLogs(ctx echo.Context, nodename string, params ap
 	resp, err := c.GetNodeLogs(evCtx, nodename, &params)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-	} else if resp.StatusCode != http.StatusOK {
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			return err
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Errorf("response from %s body close: %s", nodename, err)
 		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		w.WriteHeader(resp.StatusCode)
+		_, err := io.Copy(w, resp.Body)
+		return err
 	}
 	if request.Header.Get("accept") == "text/event-stream" {
 		setStreamHeaders(w)
@@ -60,29 +66,9 @@ func (a *DaemonAPI) getPeerNodeLogs(ctx echo.Context, nodename string, params ap
 	// don't wait first event to flush response
 	w.Flush()
 
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Errorf("response from %s body close: %s", nodename, err)
-		}
-	}()
-	var follow bool
-	if params.Follow != nil && *params.Follow {
-		follow = true
-	}
-	if !follow {
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			return err
-		}
-		w.Flush()
-	} else {
-		for {
-			if _, err := io.Copy(w, resp.Body); err != nil {
-				return err
-			}
-			w.Flush()
-		}
-	}
-	return nil
+	// Each entry is sent as the peer sends it: a followed stream does not
+	// end, and its entries would otherwise wait in the response buffer.
+	return streamCopyFlush(evCtx, w, resp.Body)
 }
 
 func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) error {

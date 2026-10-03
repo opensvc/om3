@@ -163,7 +163,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 	if msg != "" {
-		t.StatusLog().Warn(msg)
+		t.StatusLog().Warn("%s", msg)
 	}
 	if dev.IsAutoActivated() {
 		t.StatusLog().Warn("auto-assemble is not disabled")

@@ -1,0 +1,3 @@
+How long before its expiry the certificate is renewed: a renewal earlier
+than that does nothing. A certificate naming other domains than the sec asks,
+or self-signed, is renewed whatever its expiry.

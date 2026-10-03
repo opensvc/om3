@@ -28,6 +28,7 @@ type (
 	TDuration      struct{}
 	TUmask         struct{}
 	TSize          struct{}
+	TShare         struct{}
 	TFileMode      struct{}
 	TTristate      struct{}
 
@@ -53,6 +54,7 @@ var (
 	Duration      Converter = TDuration{}
 	Umask         Converter = TUmask{}
 	Size          Converter = TSize{}
+	Share         Converter = TShare{}
 	FileMode      Converter = TFileMode{}
 	Tristate      Converter = TTristate{}
 	User          Converter = TUser{}
@@ -77,6 +79,7 @@ func init() {
 	Register(Duration)
 	Register(Umask)
 	Register(Size)
+	Register(Share)
 	Register(FileMode)
 	Register(Tristate)
 }
@@ -320,6 +323,19 @@ func (t TSize) convert(s string) (*int64, error) {
 
 func (t TSize) String() string {
 	return "size"
+}
+
+// Convert returns the share s says, a percentage or a size, and nil when s is
+// empty.
+func (t TShare) Convert(s string) (any, error) {
+	if s == "" {
+		return nil, nil
+	}
+	return sizeconv.ParseShare(s)
+}
+
+func (t TShare) String() string {
+	return "share"
 }
 
 func (t TFileMode) Convert(s string) (any, error) {

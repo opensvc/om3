@@ -27,6 +27,7 @@ var (
 		"pushasset",
 		"pushdisks",
 		"pushpkg",
+		"pushstats",
 		"pushswitch",
 		"sysreport",
 	}
@@ -96,6 +97,8 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 		tail = []string{"push", "disk"}
 	case "pushpkg":
 		tail = []string{"push", "pkg"}
+	case "pushstats":
+		tail = []string{"push", "stats"}
 	case "checks":
 		tail = []string{"checks"}
 	case "compliance_auto":

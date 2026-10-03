@@ -33,7 +33,7 @@ func installInHead(t *testing.T, plant func(head, outside string)) (string, stri
 	o, err := NewDataStore(p)
 	require.NoError(t, err)
 	require.NoError(t, o.AddKey("index.html", []byte("installed")))
-	err = o.InstallKeyTo(KVInstall{
+	_, err = o.InstallKeyTo(KVInstall{
 		ToHead:      head,
 		ToPath:      filepath.Join(head, "html", "index.html"),
 		FromPattern: "index.html",

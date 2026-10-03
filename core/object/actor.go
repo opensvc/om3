@@ -77,6 +77,7 @@ type (
 		Start(context.Context) error
 		StartStandby(context.Context) error
 		Stop(context.Context) error
+		Install(context.Context) error
 		PRStart(context.Context) error
 		PRStop(context.Context) error
 		PGUpdate(context.Context) error

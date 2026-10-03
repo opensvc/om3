@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"os"
 	"slices"
 
@@ -33,7 +34,7 @@ type (
 		DecodeKeys(name ...string) ([][]byte, error)
 		EditKey(name string) error
 		InstallKey(name string) error
-		InstallKeyTo(KVInstall) error
+		InstallKeyTo(KVInstall) (bool, error)
 		RemoveKey(name string) error
 		RenameKey(name, to string) error
 
@@ -53,6 +54,7 @@ type (
 	// KeyStore is implemented by encrypting KeyStore object kinds (usr, sec).
 	KeyStore interface {
 		GenCert() error
+		RenewCertificate(ctx context.Context, opts CertificateRenewOptions) (CertificateRenewal, error)
 		GenCertificateSigningRequest() ([]byte, error)
 		PKCS(password []byte) ([]byte, error)
 	}

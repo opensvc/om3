@@ -143,7 +143,7 @@ func (t *KeyMeta) CacheFile() (string, error) {
 	fileinfo, err := os.Stat(filename)
 	if errors.Is(err, os.ErrNotExist) {
 		// cache file does not exist... install
-		if err := ds.InstallKeyTo(kvInstall); err != nil {
+		if _, err := ds.InstallKeyTo(kvInstall); err != nil {
 			return "", err
 		}
 		return filename, nil
@@ -157,7 +157,7 @@ func (t *KeyMeta) CacheFile() (string, error) {
 	}
 
 	// cache file is outdated... reinstall
-	if err := ds.InstallKeyTo(kvInstall); err != nil {
+	if _, err := ds.InstallKeyTo(kvInstall); err != nil {
 		return "", err
 	}
 	return filename, nil

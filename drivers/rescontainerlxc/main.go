@@ -564,11 +564,11 @@ func (t *T) prefix() (string, error) {
 
 func (t *T) getConfigFile(ctx context.Context) (string, error) {
 	if t.ConfigFile != "" {
-		return vpath.HostPath(ctx, t.ConfigFile, t.Path.Namespace)
+		return vpath.ResolveHostPath(ctx, t.ConfigFile, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 	}
 	if t.DataDir != "" {
 		p := filepath.Join(t.DataDir, t.Name, "config")
-		return vpath.HostPath(ctx, p, t.Path.Namespace)
+		return vpath.ResolveHostPath(ctx, p, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 	}
 	relDir := "/var/lib/lxc"
 
@@ -656,7 +656,7 @@ func (t *T) rootfsFromConfigFile(ctx context.Context) (string, error) {
 
 func (t *T) getRootDir(ctx context.Context) (string, error) {
 	if t.RootDir != "" {
-		return vpath.HostPath(ctx, t.RootDir, t.Path.Namespace)
+		return vpath.ResolveHostPath(ctx, t.RootDir, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 	}
 	return t.rootDirFromConfigFile(ctx)
 }
@@ -680,7 +680,7 @@ func (t *T) dataDir(ctx context.Context) (string, error) {
 	if p, ok := t.cache["dataDir"]; ok {
 		return p.(string), nil
 	}
-	if p, err := vpath.HostPath(ctx, t.DataDir, t.Path.Namespace); err == nil {
+	if p, err := vpath.ResolveHostPath(ctx, t.DataDir, t.Path.Namespace, vpath.ResolverOf(t.GetObject())); err == nil {
 		t.cache["dataDir"] = p
 		return p, nil
 	} else {

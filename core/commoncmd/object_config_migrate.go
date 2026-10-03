@@ -66,35 +66,12 @@ func (t *CmdObjectConfigMigrate) migrate(c *client.T, p naming.Path, prefixed bo
 	if !ok {
 		return fmt.Errorf("%s: a %s has no configuration to migrate", p, p.Kind)
 	}
-	m := object.MigrateConfig(configurer.Config())
-	for _, s := range m.Refusals {
-		fmt.Printf("%s%s\n", prefix, s)
-	}
-	if len(m.Sets) == 0 && len(m.Unsets) == 0 {
-		fmt.Printf("%snothing to migrate\n", prefix)
+	m := object.MigrationRulesOf(p.Kind).Apply(configurer.Config())
+	sets, unsets, deletes, ok := showMigration(prefix, m)
+	if !ok || t.DryRun {
 		return nil
 	}
-	for _, s := range m.Notes {
-		fmt.Printf("%s%s\n", prefix, s)
-	}
-	sets := make([]string, 0, len(m.Sets))
-	for _, op := range m.Sets {
-		sets = append(sets, fmt.Sprintf("%s=%s", op.Key, op.Value))
-	}
-	unsets := make([]string, 0, len(m.Unsets))
-	for _, k := range m.Unsets {
-		unsets = append(unsets, k.String())
-	}
-	for _, s := range sets {
-		fmt.Printf("%sset %s\n", prefix, s)
-	}
-	for _, s := range unsets {
-		fmt.Printf("%sunset %s\n", prefix, s)
-	}
-	if t.DryRun {
-		return nil
-	}
-	backup, err := backupConfig(p, b)
+	backup, err := backupConfig(objectBackupName(p), b)
 	if err != nil {
 		// A change nothing can undo is not one to make: the configuration
 		// this rewrites is the only copy of what the object was.
@@ -104,6 +81,7 @@ func (t *CmdObjectConfigMigrate) migrate(c *client.T, p naming.Path, prefixed bo
 	params := api.PatchObjectConfigParams{}
 	params.Set = &sets
 	params.Unset = &unsets
+	params.Delete = &deletes
 	response, err := c.PatchObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
 		return err
@@ -147,21 +125,91 @@ func configFile(c *client.T, p naming.Path) ([]byte, error) {
 	return resp.Body, nil
 }
 
-// backupConfig keeps the configuration of an object as it is now, and answers
-// where it kept it.
+// showMigration prints what a migration changes, and what it refuses, and
+// returns the changes as the parameters of a configuration update. It
+// returns false when there is nothing to change.
+func showMigration(prefix string, m object.Migration) (sets, unsets, deletes []string, ok bool) {
+	for _, s := range m.Refusals {
+		fmt.Printf("%s%s\n", prefix, s)
+	}
+	if len(m.Sets) == 0 && len(m.Unsets) == 0 && len(m.Deletes) == 0 {
+		fmt.Printf("%snothing to migrate\n", prefix)
+		return nil, nil, nil, false
+	}
+	for _, s := range m.Notes {
+		fmt.Printf("%s%s\n", prefix, s)
+	}
+	sets = make([]string, 0, len(m.Sets))
+	for _, op := range m.Sets {
+		sets = append(sets, fmt.Sprintf("%s=%s", op.Key, op.Value))
+	}
+	unsets = make([]string, 0, len(m.Unsets))
+	for _, k := range m.Unsets {
+		unsets = append(unsets, k.String())
+	}
+	deletes = append(make([]string, 0, len(m.Deletes)), m.Deletes...)
+	for _, s := range sets {
+		fmt.Printf("%sset %s\n", prefix, s)
+	}
+	for _, s := range unsets {
+		fmt.Printf("%sunset %s\n", prefix, s)
+	}
+	for _, s := range deletes {
+		fmt.Printf("%sdelete %s\n", prefix, s)
+	}
+	return sets, unsets, deletes, true
+}
+
+// ObjectConfigMigrateLong is the help of the config migrate command of a kind
+// of object, listing the rules it applies.
+func ObjectConfigMigrateLong(kind string) string {
+	return configMigrateLong(object.MigrationRulesOf(naming.Kind(kind)))
+}
+
+// NodeConfigMigrateLong is the help of the node config migrate command,
+// listing the rules it applies.
+func NodeConfigMigrateLong() string {
+	return configMigrateLong(object.NodeMigrationRules)
+}
+
+// configMigrateLong is the help of a config migrate command, listing the
+// rules it applies.
+func configMigrateLong(rules object.MigrationRules) string {
+	return `Write the configuration in the shape om reads it in.
+
+A configuration written for an older agent describes things this one no longer
+reads that way. What it asked for is still possible, in another shape, and
+this writes that shape: the configuration says the same thing afterwards, in
+words om reads. What changes is printed, and what no rule can write is printed
+with the reason, and kept.
+
+The rules:
+
+` + rules.Doc(78) + `
+The changes land as a configuration update, so they are weighed like any other
+write. The configuration as it was is kept under the backup directory of the
+node this runs on, and where it was kept is printed. --dry-run prints the
+changes and writes nothing.`
+}
+
+// objectBackupName is where the configuration of an object is kept under the
+// backup directory: where it is under the configuration directory.
+func objectBackupName(p naming.Path) string {
+	name := p.ConfigFile()
+	if rel, err := filepath.Rel(rawconfig.Paths.Etc, name); err == nil {
+		return rel
+	}
+	return filepath.Base(name)
+}
+
+// backupConfig keeps a configuration as it is now, under the backup directory
+// at name, and answers where it kept it.
 //
 // It is written where this command runs, which is where whoever runs it will
 // look for it, and under the backup directory of the node, beside what every
-// other command that replaces a configuration leaves there. The layout of the
-// configuration directory is kept, so an object is found where it is named,
-// and the time it was taken ends the name: a migration asked twice keeps both.
-func backupConfig(p naming.Path, b []byte) (string, error) {
-	name := p.ConfigFile()
-	if rel, err := filepath.Rel(rawconfig.Paths.Etc, name); err == nil {
-		name = rel
-	} else {
-		name = filepath.Base(name)
-	}
+// other command that replaces a configuration leaves there. The time it was
+// taken ends the name: a migration asked twice keeps both.
+func backupConfig(name string, b []byte) (string, error) {
 	name = filepath.Join(rawconfig.Paths.Backup, name) + "." + time.Now().Format("2006-01-02T15:04:05")
 	if err := os.MkdirAll(filepath.Dir(name), 0700); err != nil {
 		return "", err

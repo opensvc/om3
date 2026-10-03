@@ -120,6 +120,7 @@ func init() {
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectGroupInfo(kind, ""),
 		newCmdObjectInstanceList(kind),
+		newCmdObjectInstanceInstall(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceProvision(kind),

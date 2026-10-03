@@ -691,6 +691,10 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			// the configuration waits for this one to report it installed.
 			// The watcher does not say it again: see configannounce.
 			configannounce.Written(t.publisher, c.Path)
+			// A datastore fetched carries the keys a local volume may
+			// install: the node the keys were written on refreshed its own
+			// volumes, this one refreshes its.
+			t.onDataStoreConfigFetched(c.Path)
 		}
 		c.Err <- nil
 	}

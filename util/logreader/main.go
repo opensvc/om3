@@ -310,8 +310,7 @@ func renderEvent(e streamlog.Event, node string, streamIndex int, numStreams int
 		w.NoColor = color.NoColor
 		w.TimeFormat = "2006-01-02T15:04:05.000000Z07:00"
 		w.FormatLevel = logging.FormatLevel
-		w.FormatFieldName = func(i any) string { return "" }
-		w.FormatFieldValue = func(i any) string { return "" }
+		w.FormatPrepare = logging.DropFields
 
 		// Determine prefix based on stream index
 		var prefix string

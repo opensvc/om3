@@ -1,0 +1,9 @@
+The minimum available swap to allow orchestration. Below it, the node is
+overloaded, and the daemon starts nothing on it.
+
+A share of the swap of the node, written as a percentage, `10` or `10%`, or as
+a size, `512m` or `2Gi`. A size is read as the whole percentage of the swap it
+amounts to. `0` disables the check, and a node without swap is never
+overloaded by it.
+
+`min_avail_swap_pct`, which took a percentage alone, is read as this keyword.

@@ -2885,6 +2885,48 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/install:
+    post:
+      description: |
+        Install again what the volumes and the filesystems of the instance
+        declare, as their start does, without starting anything, and send
+        the signals of the files the install changed. The log of the action
+        says what it left as it is too, and why.
+      operationId: PostInstanceActionInstall
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
     post:
       description: |

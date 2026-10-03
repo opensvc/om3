@@ -383,19 +383,18 @@ func (t *App) updateContextList() {
 		row++
 		selectable := true
 		cluster, clusterOk := cfg.Clusters[data.ClusterRefName]
-		_, userOk := cfg.Users[data.UserRefName]
 		if clusterOk {
 			v.SetCell(row, 1, tview.NewTableCell(cluster.Server).SetSelectable(false))
 		} else {
 			v.SetCell(row, 1, tview.NewTableCell("-").SetSelectable(false))
-			selectable = false
 		}
-		if userOk {
-			v.SetCell(row, 2, tview.NewTableCell(data.UserRefName).SetSelectable(false))
-		} else {
-			v.SetCell(row, 2, tview.NewTableCell("-").SetSelectable(false))
-			selectable = false
+		user := data.UserRefName
+		if user == "" {
+			// No user: the openid issuer of the cluster says who.
+			user = "-"
 		}
+		v.SetCell(row, 2, tview.NewTableCell(user).SetSelectable(false))
+		selectable = cfg.Selectable(data)
 		v.SetCell(row, 0, tview.NewTableCell(name).SetSelectable(selectable))
 		var namespace string
 		if data.Namespace != nil {

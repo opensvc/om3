@@ -42,6 +42,10 @@ type (
 
 		publisher pubsub.Publisher
 
+		// keyInstaller refreshes the keys of a datastore installed in the
+		// local volumes, when its configuration is fetched from a peer.
+		keyInstaller *keyInstaller
+
 		// cfgDeleting is a map of local crm deleting call indexed by object path
 		cfgDeleting map[naming.Path]bool
 
@@ -182,6 +186,7 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 	}
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
+	t.keyInstaller = newKeyInstaller()
 	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
 	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
 

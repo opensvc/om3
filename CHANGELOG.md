@@ -153,6 +153,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
         | `alt_version` | Version of the alternate secreat          |
         |---------------|-------------------------------------------|
 
+* **`node.min_avail_mem` and `node.min_avail_swap` read as in v2:**
+    They take a percentage, `10` or `10%`, or a size, `512m` or `2Gi`, which is read as the whole percentage of the memory or swap of the node it amounts to, and as 50% of the memory at most, as v2 did. A number with no unit is a percentage, where v2 read it as a count of bytes. `min_avail_mem_pct` and `min_avail_swap_pct` are read as them.
+    A node without swap, or whose memory om can not read, is no longer held overloaded by them.
+
 * **`node.default_mon_format` removed:**
     It should be a user-level setting, not a node-level config.
 
@@ -1048,6 +1052,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     Use `--wait` to block until the cluster nodes are updated. Beware, that only says the cluster dropped the node:
     the daemon restart and the user creation happen afterwards, on a node this cluster no longer observes.
 
+* `ox context login` logs in at the openid issuer the cluster trusts, when it trusts one: in the browser of the machine, the issuer redirecting to `http://127.0.0.1:<port>/callback`, which the issuer must allow for the client the cluster names, or with a device code from a browser anywhere, when the machine has no browser or with `--device`. `--auth password` logs in with the password of the context user, as before. A context logging in at the openid issuer needs no user: `ox context add` takes no `--user` then, and the connection selector of the terminal ui offers it.
+
+    The openid tokens are shared by the contexts whose clusters trust the same issuer and client: a context logging in, or used before any login, where a valid refresh token is cached needs no challenge. They are kept in the keyring of the session, else in a file encrypted with a key derived from a signature of an ed25519 or rsa key of the ssh-agent, else in a file only the user reads. `--cache keyring|agent|file` chooses, and `ox context list` shows the store and the issuer of each context.
+
 * The `om cluster leave` command accepts `--credential <path>`, naming a file holding the `<username>:<password>` of a
    user to create once the daemon has restarted alone, for the reason `o[mx] cluster evict` does. The
    `OSVC_CREDENTIAL` environment variable is read when the option is not set. Without either, no user is created and
@@ -1176,6 +1184,8 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     ```
 
 * Rename the stonith sections `cmd` option to `command`. Backward compatibility is implemented.
+
+* `om cluster config migrate` and `om node config migrate` write the cluster and node configurations in the shape om3 reads them in: the keywords under a former name, `ips_per_node`, `listener.openid_well_known`, the `brocade` schedule, and the removal of what om3 no longer reads. `--dry-run` prints the changes first, and the help lists the rules.
 
 ### DNS
 

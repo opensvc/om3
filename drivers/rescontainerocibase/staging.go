@@ -67,11 +67,11 @@ func (t *BT) stageVolumeMounts() error {
 			// is mounted as named.
 			continue
 		}
-		hostPath, vol, err := volumeHostPath(t, source)
+		target, err := volumeTarget(t, source)
 		if err != nil {
 			return err
 		}
-		if err := stageMount(vol.Head(), hostPath, t.stagingPath(i)); err != nil {
+		if err := stageMount(target.Head, target.HostPath, t.stagingPath(i)); err != nil {
 			return fmt.Errorf("volume_mounts entry %s: %w", s, err)
 		}
 	}

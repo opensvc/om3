@@ -42,6 +42,7 @@ func (t *CmdObjectPurge) Run(kind string) error {
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithAsyncFollow(t.Follow),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

@@ -50,6 +50,7 @@ func (t *CmdNodeDrain) doRemote() error {
 				nodeaction.WithAsyncTarget("drained"),
 				nodeaction.WithAsyncTime(t.Time),
 				nodeaction.WithAsyncWait(t.Wait),
+				nodeaction.WithAsyncFollow(t.Follow),
 				nodeaction.WithFormat(t.Output),
 				nodeaction.WithSort(t.Sort),
 				nodeaction.WithColor(t.Color),
@@ -61,7 +62,9 @@ func (t *CmdNodeDrain) doRemote() error {
 						case http.StatusOK:
 							// The orchestration id is what the action was
 							// accepted as, and what a wait waits for.
-							fmt.Printf("%s: %s\n", nodename, resp.JSON200.OrchestrationID)
+							if !t.Follow {
+								fmt.Printf("%s: %s\n", nodename, resp.JSON200.OrchestrationID)
+							}
 							return resp.JSON200.OrchestrationID, nil
 						case 400:
 							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON400)

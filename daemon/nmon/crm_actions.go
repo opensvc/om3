@@ -88,9 +88,9 @@ func (t *Manager) crmActionWithEnv(title string, extraEnv []string, cmdArgs ...s
 		command.WithLogger(t.log),
 	)
 	if title != "" {
-		t.log.Infof("-> exec %s %s", cmdPath, cmd)
+		t.log.Infof("-> exec %s", cmd)
 	} else {
-		t.log.Tracef("-> exec %s %s", cmdPath, cmd)
+		t.log.Tracef("-> exec %s", cmd)
 	}
 	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
 	startTime := time.Now()
@@ -157,9 +157,9 @@ func (t *Manager) crmActionWithEnv(title string, extraEnv []string, cmdArgs ...s
 		Title:           title,
 	}, labels...)
 	if title != "" {
-		t.log.Infof("<- exec %s %s", cmdPath, cmd)
+		t.log.Infof("<- exec %s", cmd)
 	} else {
-		t.log.Tracef("<- exec %s %s", cmdPath, cmd)
+		t.log.Tracef("<- exec %s", cmd)
 	}
 	return nil
 }

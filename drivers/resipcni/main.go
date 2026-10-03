@@ -315,7 +315,7 @@ func (t *T) Stop(ctx context.Context) error {
 func (t *T) Status(ctx context.Context) status.T {
 	netConf, err := t.netConf()
 	if err != nil {
-		t.StatusLog().Warn(fmt.Sprint(err))
+		t.StatusLog().Warn("%s", err)
 		return status.Undef
 	}
 	netns, err := t.getNSCtx(ctx)

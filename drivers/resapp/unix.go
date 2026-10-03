@@ -221,8 +221,8 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 		command.WithIgnoredExitCodes(),
 	)
 	if t.StatusLogKw {
-		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info(s) }))
-		opts = append(opts, command.WithOnStderrLine(func(s string) { t.StatusLog().Warn(s) }))
+		opts = append(opts, command.WithOnStdoutLine(func(s string) { t.StatusLog().Info("%s", s) }))
+		opts = append(opts, command.WithOnStderrLine(func(s string) { t.StatusLog().Warn("%s", s) }))
 	}
 	cmd := command.New(opts...)
 
@@ -280,7 +280,7 @@ func (t *T) BaseCmdArgs(ctx context.Context, s string, action string) ([]string,
 func (t *T) replaceVolumeHead(ctx context.Context, s string) (string, error) {
 	words := strings.Fields(s)
 	if !strings.HasPrefix(words[0], "/") && strings.Contains(words[0], "/") {
-		return vpath.HostPath(ctx, s, t.Path.Namespace)
+		return vpath.ResolveHostPath(ctx, s, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 	}
 	return s, nil
 }

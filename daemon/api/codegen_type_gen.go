@@ -3490,6 +3490,30 @@ type PostInstanceActionIngestParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostInstanceActionInstallParams defines parameters for PostInstanceActionInstall.
+type PostInstanceActionInstallParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
 // PostInstanceActionPGResetParams defines parameters for PostInstanceActionPGReset.
 type PostInstanceActionPGResetParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`

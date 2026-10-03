@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/util/duration"
+	"github.com/opensvc/om3/v3/util/tokenstore"
 )
 
 type (
@@ -21,10 +22,23 @@ type (
 		AccessTokenDuration *duration.Duration `json:"access_token_duration,omitempty"`
 		RefreshTokenExpire  time.Time          `json:"refresh_expired_at"`
 		RefreshToken        string             `json:"refresh_token"`
+
+		// OpenID is set when the tokens were issued by the openid issuer the
+		// cluster trusts, rather than by the cluster. They are then shared by
+		// the contexts logging in at the same issuer and client, kept in the
+		// token store OpenID names, and only this reference is in the file of
+		// the context.
+		OpenID *OpenID `json:"openid,omitempty"`
 	}
 )
 
 func Save(contextName string, token Entry) error {
+	if token.OpenID != nil {
+		if err := saveOpenID(*token.OpenID, token); err != nil {
+			return err
+		}
+		token = Entry{OpenID: token.OpenID, AccessTokenDuration: token.AccessTokenDuration}
+	}
 	filename, _ := homedir.Expand(FmtFilename(contextName))
 	b, err := json.MarshalIndent(token, "", "  ")
 	if err != nil {
@@ -48,6 +62,19 @@ func Load(contextName string) (*Entry, error) {
 	if err := json.Unmarshal(b, token); err != nil {
 		return nil, err
 	}
+	if token.OpenID != nil {
+		shared, err := loadOpenID(*token.OpenID)
+		if errors.Is(err, tokenstore.ErrNotFound) {
+			// Forgotten, as by the logout of another context of the
+			// issuer: there is no token, as there is none before a
+			// first login.
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		shared.AccessTokenDuration = token.AccessTokenDuration
+		return shared, nil
+	}
 	return token, nil
 }
 
@@ -57,16 +84,22 @@ func Exists(contextName string) bool {
 	return !errors.Is(err, os.ErrNotExist)
 }
 
+// Delete forgets the tokens of a context. The tokens an openid context shares
+// with others are kept for them, and forgotten with the last of them.
 func Delete(contextName string) error {
 	if !Exists(contextName) {
 		return fmt.Errorf("no token found for context %s", contextName)
 	}
+	ref := openIDRef(contextName)
 	filename, _ := homedir.Expand(FmtFilename(contextName))
 	err := os.Remove(filename)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
-	return err
+	if ref != nil && !openIDReferenced(*ref) {
+		return deleteOpenID(*ref)
+	}
+	return nil
 }
 
 func getAllFiles() ([]os.DirEntry, error) {

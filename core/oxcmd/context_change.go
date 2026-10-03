@@ -16,6 +16,11 @@ type (
 		Namespace            string
 		AccessTokenDuration  time.Duration
 		RefreshTokenDuration time.Duration
+
+		// UserChanged and ClusterChanged say --user and --cluster were
+		// given: the others are kept.
+		UserChanged    bool
+		ClusterChanged bool
 	}
 )
 
@@ -31,8 +36,15 @@ func (t *ContextChangeCmd) Run() error {
 		return fmt.Errorf("context %s does not exist", t.Name)
 	}
 
-	ctx.UserRefName = t.User
-	ctx.ClusterRefName = t.Cluster
+	if t.UserChanged {
+		ctx.UserRefName = t.User
+	}
+	if t.ClusterChanged {
+		if t.Cluster == "" {
+			return fmt.Errorf("a context needs a cluster")
+		}
+		ctx.ClusterRefName = t.Cluster
+	}
 
 	if t.Namespace != "" {
 		ctx.Namespace = &t.Namespace

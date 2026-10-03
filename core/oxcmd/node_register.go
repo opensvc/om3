@@ -19,6 +19,7 @@ type (
 		Password       string
 		App            string
 		NodeSelector   string
+		Follow         bool
 	}
 )
 
@@ -35,6 +36,7 @@ func (t *CmdNodeRegister) Run() error {
 	}
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithAsyncFollow(t.Follow),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()
 			if err != nil {

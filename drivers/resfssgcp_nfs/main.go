@@ -390,7 +390,7 @@ func (t *T) fileStatus(ctx context.Context) status.T {
 
 	if t.exclusive {
 		if n > 1 {
-			t.StatusLog().Warn(fmt.Sprintf("too many grants (%d)", n))
+			t.StatusLog().Warn("too many grants (%d)", n)
 		}
 	}
 

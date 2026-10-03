@@ -94,6 +94,21 @@ func marshalStack(err error) interface{} {
 	return f
 }
 
+// DropFields is the FormatPrepare of a console writer showing an entry as
+// its time, its level, its message and its error: it removes the other
+// fields, which the writer separates by a space each, even when it renders
+// them as nothing, padding the line with as many trailing blanks.
+func DropFields(evt map[string]any) error {
+	for k := range evt {
+		switch k {
+		case zerolog.TimestampFieldName, zerolog.LevelFieldName, zerolog.MessageFieldName, zerolog.CallerFieldName, zerolog.ErrorFieldName:
+		default:
+			delete(evt, k)
+		}
+	}
+	return nil
+}
+
 func FormatLevel(i interface{}) string {
 	var l string
 	if ll, ok := i.(string); ok {
@@ -156,12 +171,11 @@ func Configure(config Config) error {
 
 	if config.WithConsoleLog {
 		consoleWriter := zerolog.ConsoleWriter{
-			Out:              os.Stderr,
-			TimeFormat:       TimeFormat,
-			NoColor:          !config.WithColor,
-			FormatLevel:      FormatLevel,
-			FormatFieldName:  func(i any) string { return "" },
-			FormatFieldValue: func(i any) string { return "" },
+			Out:           os.Stderr,
+			TimeFormat:    TimeFormat,
+			NoColor:       !config.WithColor,
+			FormatLevel:   FormatLevel,
+			FormatPrepare: DropFields,
 			FormatMessage: func(i any) string {
 				if s, ok := i.(string); ok {
 					return strings.TrimPrefix(s, "instance: ")

@@ -40,6 +40,7 @@ func (t *CmdObjectInstancePGReset) Run(kind string) error {
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithAsyncFollow(t.Follow),
 		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),

@@ -358,7 +358,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("role: %s", err)
 		return status.Undef
 	}
-	t.StatusLog().Info(role)
+	t.StatusLog().Info("%s", role)
 
 	states, err := dev.DiskStates(ctx)
 	if err != nil {

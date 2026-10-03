@@ -1,0 +1,2 @@
+The statistics groups not to push to the collector, among `cpu`, `mem_u`,
+`swap`, `proc`, `block`, `blockdev`, `netdev`, `netdev_err` and `fs_u`.

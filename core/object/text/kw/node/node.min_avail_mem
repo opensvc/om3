@@ -1,0 +1,8 @@
+The minimum available memory to allow orchestration. Below it, the node is
+overloaded, and the daemon starts nothing on it.
+
+A share of the memory of the node, written as a percentage, `10` or `10%`, or
+as a size, `512m` or `2Gi`. A size is read as the whole percentage of the
+memory it amounts to, and as 50% at most. `0` disables the check.
+
+`min_avail_mem_pct`, which took a percentage alone, is read as this keyword.

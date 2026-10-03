@@ -185,6 +185,7 @@ func init() {
 		newCmdNodePushasset(),
 		newCmdNodePushdisk(),
 		newCmdNodePushpkg(),
+		newCmdNodePushstats(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),
 		newCmdNodeEvents(),
@@ -202,6 +203,7 @@ func init() {
 		newCmdNodeConfigEdit(),
 		newCmdNodeConfigEval(),
 		newCmdNodeConfigGet(),
+		newCmdNodeConfigMigrate(),
 		newCmdNodeConfigShow(),
 		newCmdNodeConfigUpdate(),
 		newCmdNodeConfigValidate(),
@@ -216,6 +218,7 @@ func init() {
 		newCmdNodePushArray(),
 		newCmdNodePushDisk(),
 		newCmdNodePushPkg(),
+		newCmdNodePushStats(),
 		newCmdNodePushSwitch(),
 	)
 	cmdNodeRelay.AddCommand(

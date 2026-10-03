@@ -152,6 +152,7 @@ func init() {
 		newCmdNodeConfigEdit(),
 		newCmdNodeConfigEval(),
 		newCmdNodeConfigGet(),
+		newCmdNodeConfigMigrate(),
 		newCmdNodeConfigShow(),
 		newCmdNodeConfigUpdate(),
 		newCmdNodeConfigValidate(),

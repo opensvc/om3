@@ -117,7 +117,7 @@ func (t *T) installCaFiles(clusterName string) error {
 	opt.FromPattern = "private_key"
 	opt.ToPath = daemonenv.CAKeyFile()
 	opt.Required = true
-	if err := caSec.InstallKeyTo(opt); err != nil {
+	if _, err := caSec.InstallKeyTo(opt); err != nil {
 		return fmt.Errorf("install ca files can't dump ca private_key to %s: %w", opt.ToPath, err)
 	} else {
 		t.log.Infof("install ca files dump ca private_key to %s", opt.ToPath)
@@ -126,7 +126,7 @@ func (t *T) installCaFiles(clusterName string) error {
 	opt.FromPattern = "certificate_chain"
 	opt.ToPath = daemonenv.CACertChainFile()
 	opt.Required = true
-	if err := caSec.InstallKeyTo(opt); err != nil {
+	if _, err := caSec.InstallKeyTo(opt); err != nil {
 		return fmt.Errorf("install ca files can't dump ca certificate_chain to %s: %w", opt.ToPath, err)
 	} else {
 		t.log.Infof("install ca files dump ca certificate_chain to %s", opt.ToPath)
@@ -198,7 +198,7 @@ func (t *T) installCertFiles(clusterName string) error {
 	opt.FromPattern = "private_key"
 	opt.ToPath = daemonenv.KeyFile()
 	opt.Required = true
-	if err := certSec.InstallKeyTo(opt); err != nil {
+	if _, err := certSec.InstallKeyTo(opt); err != nil {
 		return fmt.Errorf("install cert files can't dump cert private_key to %s: %w", opt.ToPath, err)
 	} else {
 		t.log.Infof("install cert files dump cert private_key to %s", opt.ToPath)
@@ -207,7 +207,7 @@ func (t *T) installCertFiles(clusterName string) error {
 	opt.FromPattern = "certificate_chain"
 	opt.ToPath = daemonenv.CertChainFile()
 	opt.Required = true
-	if err := certSec.InstallKeyTo(opt); err != nil {
+	if _, err := certSec.InstallKeyTo(opt); err != nil {
 		return fmt.Errorf("install cert files can't dump cert certificate_chain to %s: %w", opt.ToPath, err)
 	} else {
 		t.log.Infof("install cert files dump cert certificate_chain to %s", opt.ToPath)

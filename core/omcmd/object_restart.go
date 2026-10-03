@@ -55,6 +55,7 @@ func (t *CmdObjectRestart) Run(kind string) error {
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncTargetOptions(options),
 		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithAsyncFollow(t.Follow),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/util/httpclientcache"
+	"github.com/opensvc/om3/v3/util/oidc"
 
 	"golang.org/x/net/http2"
 )
@@ -45,6 +46,13 @@ type (
 		tokens   tokencache.Entry
 		Username string
 		Password string
+
+		// explicitAuth says the requests carry a credential their caller
+		// chose, as the scoped token a cluster join or leave presents: a
+		// response refusing it is the caller's answer, and is not retried
+		// with the credentials the context has cached, which would run the
+		// request as someone else.
+		explicitAuth bool
 	}
 )
 
@@ -124,6 +132,10 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		baseTransport = http.DefaultTransport
 	}
 
+	if !strings.Contains(config.URL[8:], ":") {
+		config.URL += fmt.Sprintf(":%d", daemonenv.HTTPPort)
+	}
+
 	httpClient := *cachedClient
 	httpClient.Transport = &RefreshTransport{
 		Base:     baseTransport,
@@ -131,10 +143,10 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		tokens:   config.Tokens,
 		Username: config.Username,
 		Password: config.Password,
-	}
-
-	if !strings.Contains(config.URL[8:], ":") {
-		config.URL += fmt.Sprintf(":%d", daemonenv.HTTPPort)
+		// The bearer of the cached tokens is the context's own, which
+		// the transport refreshes. Another one, or an authorization
+		// header, is the caller's.
+		explicitAuth: config.Authorization != "" || (config.Bearer != "" && config.Bearer != config.Tokens.AccessToken),
 	}
 
 	options := []api.ClientOption{api.WithHTTPClient(&httpClient)}
@@ -196,11 +208,28 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		return resp, nil
 	}
 
+	if t.explicitAuth {
+		return resp, nil
+	}
+
 	hasTokens := t.tokens.AccessToken != "" || t.tokens.RefreshToken != ""
 	hasCredentials := t.Username != "" && t.Password != ""
 
 	if !hasTokens && hasCredentials {
 		return resp, nil
+	}
+
+	if !hasTokens && env.Context() != "" {
+		// A context never logged in may share the openid issuer and
+		// client of one that was: its tokens are valid here too.
+		if adopted := t.adoptOpenID(ctx, base); adopted {
+			_ = resp.Body.Close()
+			newToken, err := t.refreshOpenID(ctx, time.Now())
+			if err != nil {
+				return nil, err
+			}
+			return t.retryWithToken(ctx, req, base, newToken)
+		}
 	}
 
 	_ = resp.Body.Close()
@@ -241,6 +270,10 @@ func (t *RefreshTransport) retryWithToken(ctx context.Context, req *http.Request
 
 func (t *RefreshTransport) authenticateOrRefresh(ctx context.Context, base http.RoundTripper) (string, error) {
 	now := time.Now()
+
+	if t.tokens.OpenID != nil {
+		return t.refreshOpenID(ctx, now)
+	}
 
 	if t.tokens.AccessToken == "" && t.tokens.RefreshToken == "" {
 		return t.authenticateWithCredentials(ctx, base, "no access or refresh tokens available, use `ox context login` to authenticate")
@@ -332,6 +365,57 @@ func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.Rou
 	t.tokens.AccessToken = tokenResp.AccessToken
 	t.tokens.AccessTokenExpire = tokenResp.AccessTokenExpire
 	return tokenResp.AccessToken, tokencache.Save(env.Context(), t.tokens)
+}
+
+// adoptOpenID takes the openid tokens cached for the issuer and client the
+// cluster trusts, when another context logged in there, and says whether it
+// did. The cluster tells them without authentication.
+func (t *RefreshTransport) adoptOpenID(ctx context.Context, base http.RoundTripper) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(t.baseURL, "/")+"/api/auth/info", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := base.RoundTrip(req)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	var info api.AuthInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil || info.Openid == nil || info.Openid.Issuer == "" {
+		return false
+	}
+	shared := tokencache.FindOpenID(info.Openid.Issuer, info.Openid.ClientId)
+	if shared == nil || !shared.HasValidRefresh(time.Now()) {
+		return false
+	}
+	t.tokens = *shared
+	return true
+}
+
+// refreshOpenID obtains a new access token from the openid issuer that gave
+// the tokens. The cluster does not refresh a token it did not issue.
+//
+// The new tokens are saved for the other contexts logged in at the same
+// issuer and client, which share them.
+func (t *RefreshTransport) refreshOpenID(ctx context.Context, now time.Time) (string, error) {
+	ref := t.tokens.OpenID
+	if !t.tokens.HasValidRefresh(now) {
+		return "", fmt.Errorf("the openid refresh token of %s is expired, use `ox context login` to reauthenticate", ref.Issuer)
+	}
+	tok, err := oidc.Refresh(ctx, ref.TokenEndpoint, ref.ClientID, t.tokens.RefreshToken)
+	if err != nil {
+		return "", fmt.Errorf("%w, use `ox context login` to reauthenticate", err)
+	}
+	t.tokens.AccessToken = tok.AccessToken
+	t.tokens.AccessTokenExpire = tok.AccessExpiry
+	t.tokens.RefreshToken = tok.RefreshToken
+	if !tok.RefreshExpiry.IsZero() {
+		t.tokens.RefreshTokenExpire = tok.RefreshExpiry
+	}
+	return tok.AccessToken, tokencache.Save(env.Context(), t.tokens)
 }
 
 func (t *RefreshTransport) updateTokens(token tokencache.Entry) {

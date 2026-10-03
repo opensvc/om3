@@ -434,11 +434,11 @@ func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 		if !strings.HasPrefix(source, "/") {
 			// A volume source is mounted through its staging mount, which
 			// the start made: see stageVolumeMounts.
-			_, vol, err := volumeHostPath(t, source)
+			target, err := volumeTarget(t, source)
 			if err != nil {
 				return mounts, err
 			}
-			if newOpt, err := mangleVolMountOptions(opt, vol); err != nil {
+			if newOpt, err := mangleVolMountOptions(opt, target.Vol); err != nil {
 				return mounts, fmt.Errorf("can't prepare volume options for volume mount '%s': %w", s, err)
 			} else {
 				opt = newOpt
@@ -497,8 +497,14 @@ func (t *BT) unstageAfterStop(ctx context.Context) {
 
 // parseVolumeMount splits a volume_mounts entry into its source, its target
 // and its options.
+//
+// A source in a resource of the object, as volume#1:/etc/nginx, holds a ':'
+// of its own, and spans the first two fields.
 func parseVolumeMount(s string) (source, target, opt string, err error) {
 	l := strings.Split(s, ":")
+	if len(l) > 1 && vpath.IsResourceRef(l[0]) {
+		l = append([]string{l[0] + ":" + l[1]}, l[2:]...)
+	}
 	switch len(l) {
 	case 2:
 		source, target, opt = l[0], l[1], "rw"
@@ -516,10 +522,11 @@ func parseVolumeMount(s string) (source, target, opt string, err error) {
 	return source, target, opt, nil
 }
 
-// volumeHostPath is the path of the node a volume source names, under the
-// head of its volume, and the volume.
-func volumeHostPath(t *BT, source string) (string, object.Vol, error) {
-	return vpath.HostPathAndVol(context.Background(), source, t.Path.Namespace)
+// volumeTarget is what a volume source names: the path of the node, under
+// the mount point of the vol or of the resource of the object it names, and
+// that vol.
+func volumeTarget(t *BT, source string) (vpath.Target, error) {
+	return vpath.Resolve(context.Background(), source, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 }
 
 // NeedPreStartRemove return true when container has Remove or not Detach.

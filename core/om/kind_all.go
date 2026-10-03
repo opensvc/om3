@@ -110,6 +110,7 @@ func init() {
 		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstanceProvision(kind),
+		newCmdObjectInstanceInstall(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceRestart(kind),

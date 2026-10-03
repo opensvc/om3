@@ -5,9 +5,10 @@ import "time"
 type (
 	// OptsAsync contains options accepted by all actions having an orchestration
 	OptsAsync struct {
-		Watch bool
-		Wait  bool
-		Time  time.Duration
+		Watch  bool
+		Wait   bool
+		Time   time.Duration
+		Follow bool
 	}
 
 	// OptsLogs contains options used by all log commands:

@@ -43,6 +43,7 @@ var tuiNotOffered = map[string]string{
 	"quiet":            "command line output",
 	"wait":             "command line output: the TUI shows the states as they change",
 	"watch":            "command line output: the TUI is the watch",
+	"follow":           "command line output: the logs of the action streamed on the terminal",
 	"cron":             "hidden by the TUI: the scheduler's",
 	"confirm":          "hidden by the TUI: it confirms a run",
 }

@@ -81,6 +81,11 @@ type (
 		//
 		Watch bool
 
+		// Follow streams the logs of the action until it ends: the logs of
+		// its session for an action asked of the daemons of nodes, the logs
+		// of its orchestration for a target state.
+		Follow bool
+
 		//
 		// Output controls the output data format.
 		// <empty>   => human readable format

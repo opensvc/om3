@@ -127,6 +127,13 @@ var (
 		Name: "push resinfo",
 		PG:   true,
 	}
+	// Install installs again what the volumes and the filesystems of the
+	// instance declare, as their start does, without starting anything.
+	Install = Properties{
+		Name:     "install",
+		MustLock: true,
+		PG:       true,
+	}
 	Run = Properties{
 		Name:            "run",
 		TimeoutKeywords: []string{"run_timeout", "timeout"},
