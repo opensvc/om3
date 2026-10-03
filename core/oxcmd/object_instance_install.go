@@ -36,6 +36,7 @@ func (t *CmdObjectInstanceInstall) Run(kind string) error {
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithAsyncFollow(t.Follow),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			return postInstanceActionInstall(ctx, p, nodename, t.OptsResourceSelector)

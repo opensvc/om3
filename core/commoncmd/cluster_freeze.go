@@ -37,6 +37,7 @@ func (t *CmdClusterFreeze) Run() error {
 		nodeaction.WithAsyncTime(t.Time),
 		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),
+		nodeaction.WithAsyncFollow(t.Follow),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),

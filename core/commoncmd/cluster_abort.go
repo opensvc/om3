@@ -35,6 +35,7 @@ func (t *CmdClusterAbort) Run() error {
 	return nodeaction.New(
 		nodeaction.WithAsyncTarget("aborted"),
 		nodeaction.WithAsyncWatch(t.Watch),
+		nodeaction.WithAsyncFollow(t.Follow),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),

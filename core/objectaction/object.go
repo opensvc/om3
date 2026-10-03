@@ -221,6 +221,18 @@ func WithAsyncWatch(v bool) funcopt.O {
 	})
 }
 
+// WithAsyncFollow streams the logs of the action until it ends, rather than
+// answering the ids it was accepted as: the logs of its session for an
+// action asked of the daemons of nodes, of its orchestration for a target
+// state.
+func WithAsyncFollow(v bool) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Follow = v
+		return nil
+	})
+}
+
 // WithOutput controls the output data format.
 // <empty>   => human readable format
 // json      => json machine readable format
@@ -599,7 +611,10 @@ func (t T) DoAsync() error {
 		defer cancel()
 	}
 	rs := make(asyncResults, 0)
-	if t.Wait {
+	// A follow streams the logs of the orchestrations until they end, so
+	// it waits for their end.
+	wait := t.Wait || t.Follow
+	if wait {
 		waitC = make(chan error, len(paths))
 	}
 
@@ -613,7 +628,7 @@ func (t T) DoAsync() error {
 			// the command would never return.
 			idC = make(chan uuid.UUID, 1)
 		)
-		if t.Wait {
+		if wait {
 			t.waitExpectation(ctx, c, idC, target, p, waitC, t.TargetOptions)
 		}
 
@@ -625,7 +640,7 @@ func (t T) DoAsync() error {
 				Path:   p.String(),
 				Status: err.Error(),
 			}
-			if t.Wait {
+			if wait {
 				idC <- uuid.Nil
 			}
 		} else {
@@ -637,7 +652,7 @@ func (t T) DoAsync() error {
 					Path:            p.String(),
 					Status:          "accepted",
 				}
-				if t.Wait {
+				if wait {
 					idC <- r.OrchestrationID
 				}
 			} else {
@@ -645,22 +660,42 @@ func (t T) DoAsync() error {
 					Path:   p.String(),
 					Status: err.Error(),
 				}
-				if t.Wait {
+				if wait {
 					idC <- uuid.Nil
 				}
 			}
 		}
 		rs = append(rs, r)
 	}
-	errs = errors.Join(errs, output.Renderer{
-		DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,STATUS:status",
-		Output:        t.Output,
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          rs,
-		Colorize:      rawconfig.Colorize,
-	}.Print())
-	if t.Wait && toWait > 0 {
+	if t.Follow {
+		// The logs of the orchestrations accepted, rather than their ids,
+		// and the refusals, which have none.
+		ids := make([]uuid.UUID, 0, len(rs))
+		for _, r := range rs {
+			if r.OrchestrationID != uuid.Nil {
+				ids = append(ids, r.OrchestrationID)
+			} else {
+				errs = errors.Join(errs, fmt.Errorf("%s: %s", r.Path, r.Status))
+			}
+		}
+		if len(ids) > 0 {
+			orchestrationLogs, err := actionrouter.StartOrchestrationLogs(c, ids, t.Output)
+			if err != nil {
+				_, _ = fmt.Fprintln(os.Stderr, err)
+			}
+			defer orchestrationLogs.Stop()
+		}
+	} else {
+		errs = errors.Join(errs, output.Renderer{
+			DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,STATUS:status",
+			Output:        t.Output,
+			Sort:          t.Sort,
+			Color:         t.Color,
+			Data:          rs,
+			Colorize:      rawconfig.Colorize,
+		}.Print())
+	}
+	if wait && toWait > 0 {
 		for i := 0; i < toWait; i++ {
 			select {
 			case <-ctx.Done():
@@ -726,13 +761,13 @@ func (t T) DoRemote() error {
 		waitC  chan error
 		count  int
 
-		// wait is the end of the execs waited for, which --watch needs to
-		// know when to stop streaming their logs.
-		wait = t.Wait || t.Watch
+		// wait is the end of the execs waited for, which --follow needs
+		// to know when to stop streaming their logs.
+		wait = t.Wait || t.Follow
 
-		// watchNodes are the nodes the action runs on, whose log streams
-		// --watch opens.
-		watchNodes = make(map[string]any)
+		// followNodes are the nodes the action runs on, whose log streams
+		// --follow opens.
+		followNodes = make(map[string]any)
 	)
 
 	ctx := context.Background()
@@ -754,7 +789,7 @@ func (t T) DoRemote() error {
 		for n, i := range core.Instances {
 			if _, ok := nodenames[n]; ok {
 				selectedInstances[n] = i
-				watchNodes[n] = nil
+				followNodes[n] = nil
 			}
 		}
 		if t.Target == "started" {
@@ -775,12 +810,12 @@ func (t T) DoRemote() error {
 		waitC = make(chan error, count)
 	}
 
-	var sessionLogs *actionrouter.SessionLogs
-	if t.Watch && len(watchNodes) > 0 {
+	var sessionLogs *actionrouter.ActionLogs
+	if t.Follow && len(followNodes) > 0 {
 		// Opened before the action is asked, so the stream has its first
 		// entries.
-		l := make([]string, 0, len(watchNodes))
-		for n := range watchNodes {
+		l := make([]string, 0, len(followNodes))
+		for n := range followNodes {
 			l = append(l, n)
 		}
 		slices.Sort(l)
@@ -828,9 +863,9 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
-	if !t.Watch {
+	if !t.Follow {
 		// The ids of the execs started, for their logs to be followed. A
-		// watch streams those logs instead, and an error is said above.
+		// follow streams those logs instead, and an error is said above.
 		errs = errors.Join(errs, output.Renderer{
 			DefaultOutput: t.DefaultOutput,
 			Output:        t.Output,

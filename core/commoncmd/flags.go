@@ -57,6 +57,7 @@ func FlagsAsync(flags *pflag.FlagSet, p *OptsAsync) {
 	FlagTime(flags, &p.Time)
 	FlagWait(flags, &p.Wait)
 	FlagWatch(flags, &p.Watch)
+	FlagFollow(flags, &p.Follow)
 }
 
 func FlagsLogs(flags *pflag.FlagSet, p *OptsLogs) {
@@ -704,13 +705,14 @@ func FlagWait(flags *pflag.FlagSet, p *bool) {
 }
 
 func FlagWatch(flags *pflag.FlagSet, p *bool) {
-	flags.BoolVarP(p, "watch", "w", false, "watch the monitor changes of an orchestration, or stream the logs of an action asked of the daemons of nodes, rather than the ids of the execs it started")
+	flags.BoolVarP(p, "watch", "w", false, "watch the monitor changes")
 }
 
-// FlagWatchLogs is the watch flag of an action asked of the daemons of nodes,
-// which streams its logs.
-func FlagWatchLogs(flags *pflag.FlagSet, p *bool) {
-	flags.BoolVarP(p, "watch", "w", false, "stream the logs of the action until it ends, rather than the ids of the execs it started")
+// FlagFollow is the follow flag of an action asked of daemons, which streams
+// its logs: the logs of its session for an action asked of the daemons of
+// nodes, of its orchestration for a target state.
+func FlagFollow(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "follow", "f", false, "follow the logs of the action until it ends, rather than show the ids it was accepted as")
 }
 
 func FlagColor(flags *pflag.FlagSet, p *string) {

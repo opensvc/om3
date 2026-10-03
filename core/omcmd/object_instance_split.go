@@ -40,6 +40,7 @@ func (t *CmdObjectInstanceSplit) Run(kind string) error {
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
+		objectaction.WithAsyncFollow(t.Follow),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {

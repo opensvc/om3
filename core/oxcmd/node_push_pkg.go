@@ -14,7 +14,7 @@ type (
 	CmdNodePushPkg struct {
 		OptsGlobal
 		NodeSelector                string
-		Watch                       bool
+		Follow                      bool
 		DryRun                      bool
 		IgnoreNoCollectorConfigured bool
 	}
@@ -27,7 +27,7 @@ func (t *CmdNodePushPkg) Run() error {
 
 	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithAsyncWatch(t.Watch),
+		nodeaction.WithAsyncFollow(t.Follow),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
@@ -69,7 +69,7 @@ func (t *CmdNodePushPkg) Run() error {
 func (t *CmdNodePushPkg) doDryRun() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithAsyncWatch(t.Watch),
+		nodeaction.WithAsyncFollow(t.Follow),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
