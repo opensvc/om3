@@ -72,8 +72,13 @@ var (
 	ErrZeroPath = errors.New("zero path")
 )
 
-func (t *T) sendObjectConfigChange() (err error) {
+// sendObjectConfigChange sends the queued instance configs. A config sent,
+// skipped or refused for good is dequeued. A send failing stops: the
+// config and the ones not tried stay queued for a later tick, as with the
+// collector down the others would fail too, each after fetching its config.
+func (t *T) sendObjectConfigChange() {
 	t.log.Tracef("sendObjectConfigChange")
+	var failErr error
 	for p, v := range t.objectConfigToSend {
 		checksum, b, err := t.asPostFeedObjectConfigBody(p, v)
 		if err != nil {
@@ -81,9 +86,11 @@ func (t *T) sendObjectConfigChange() (err error) {
 			if !errors.Is(err, os.ErrNotExist) {
 				t.log.Warnf("skip send instance config %s: %s", p, err)
 			}
+			delete(t.objectConfigToSend, p)
 			continue
 		} else if len(b) == 0 {
 			t.log.Warnf("skip send instance config %s: empty body", p)
+			delete(t.objectConfigToSend, p)
 			continue
 		}
 
@@ -93,20 +100,25 @@ func (t *T) sendObjectConfigChange() (err error) {
 			if err1 := sent.drop(); err1 != nil && !errors.Is(err1, fs.ErrNotExist) {
 				t.log.Errorf("remove corrupted sent config flag for %s: %s", p, err1)
 			}
+			delete(t.objectConfigToSend, p)
 			continue
 		}
 
 		if checksum == sent.Checksum {
 			t.log.Debugf("skip already sent instance config %s with checksum %s", p, checksum)
+			delete(t.objectConfigToSend, p)
 			continue
 		}
-		if err := t.doPostObjectConfig(checksum, b, p); err != nil {
+		if err := t.doPostObjectConfig(checksum, b, p); errors.Is(err, errCollectorRefused) {
 			t.log.Warnf("post instance config %s: %s", p, err)
-			continue
+		} else if err != nil {
+			t.log.Debugf("post instance config %s: %s", p, err)
+			failErr = err
+			break
 		}
+		delete(t.objectConfigToSend, p)
 	}
-	t.objectConfigToSend = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
-	return
+	t.objectConfigFailure.update(t.log, time.Now(), failErr, len(t.objectConfigToSend))
 }
 
 func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUpdated) (checksum string, b []byte, err error) {
@@ -264,15 +276,18 @@ func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	switch resp.StatusCode {
-	case http.StatusAccepted:
+	switch {
+	case resp.StatusCode == http.StatusAccepted:
 		t.log.Tracef("%s %s %s status code %d", method, path, p, resp.StatusCode)
 		sent := objectConfigSent{path: p, Checksum: checksum, SentAt: time.Now()}
 		if err := sent.write(); err != nil {
-			return err
+			// the collector has it: not a send to retry
+			t.log.Warnf("save the sent config flag for %s: %s", p, err)
 		}
 		t.objectConfigSent[p] = sent
 		return nil
+	case isRefusedStatus(resp.StatusCode):
+		return fmt.Errorf("%w: %s %s status code %d", errCollectorRefused, method, path, resp.StatusCode)
 	default:
 		return fmt.Errorf("%s %s unexpected status code: %d", method, path, resp.StatusCode)
 	}

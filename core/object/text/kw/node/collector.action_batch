@@ -1,0 +1,5 @@
+The maximum number of instance action begins and ends the collector speaker
+sends to the collector per batch, one batch at a time.
+A batch stops at the first send failing, so a collector down costs one send
+per batch whatever this value.
+Minimum value: 1

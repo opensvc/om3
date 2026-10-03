@@ -385,10 +385,18 @@ func actionSelectedRIDs(resources resource.Drivers, action string) []string {
 	return rids
 }
 
-func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
+// action runs fn on the resources of the action of ctx, and reports the
+// action to the collector unless ctx already carries a report.
+func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) (err error) {
 	if t.IsDisabled() {
 		return ErrDisabled
 	}
+	ctx, done := t.beginCollectorAction(ctx, actioncontext.Props(ctx).Name)
+	defer func() { done(err) }()
+	return t.doAction(ctx, fn)
+}
+
+func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 	t.pg = t.pgConfig("")
 	wd, _ := os.Getwd()
 	action := actioncontext.Props(ctx)

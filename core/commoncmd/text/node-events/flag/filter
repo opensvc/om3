@@ -51,6 +51,7 @@ Receive only events matching the filtering expression formatted as:
 
 ### Instance
 
+     InstanceActionPending, InstanceActionSent
      InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
      InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
      InstanceMonitorAction, InstanceMonitorDeleted, InstanceMonitorUpdated

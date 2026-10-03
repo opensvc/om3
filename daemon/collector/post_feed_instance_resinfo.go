@@ -29,9 +29,14 @@ import (
 type (
 	// resInfoPost is the POST feed instance resinfo payload.
 	resInfoPost struct {
-		Info     []resource.Info `json:"info"`
-		Path     string          `json:"path"`
-		Topology *string         `json:"topology,omitempty"`
+		Info []resource.Info `json:"info"`
+		Path string          `json:"path"`
+
+		// Nodename is the node of the instance: the speaker sends the
+		// resource info of all the nodes, and the collector would take them
+		// for the speaker ones.
+		Nodename string  `json:"nodename"`
+		Topology *string `json:"topology,omitempty"`
 	}
 
 	// resInfoSent describes the resource info sent to the collector db. It
@@ -89,8 +94,13 @@ func (t *T) seedResInfoToSend() {
 
 func (t *T) sendResInfoChange() {
 	t.log.Tracef("sendResInfoChange")
+	getResInfo := t.resInfoGet
+	if getResInfo == nil {
+		getResInfo = t.getResInfo
+	}
+	var failErr error
 	for i, v := range t.resInfoToSend {
-		infos, err := t.getResInfo(v.Path, v.Node)
+		infos, err := getResInfo(v.Path, v.Node)
 		if err != nil {
 			// skip os.ErrNotExist: the instance may never have refreshed its
 			// cache, or may have been deleted.
@@ -100,13 +110,21 @@ func (t *T) sendResInfoChange() {
 			delete(t.resInfoToSend, i)
 			continue
 		}
-		if err := t.doPostResInfo(v, infos); err != nil {
-			// keep it queued, retried on a later tick
+		if err := t.doPostResInfo(v, infos); errors.Is(err, errCollectorRefused) {
+			// refused for good, as the info of a node the collector does
+			// not know in the cluster: drop it
 			t.log.Warnf("post resource info %s: %s", i, err)
-			continue
+		} else if err != nil {
+			// Keep it queued, retried on a later tick, and stop: with the
+			// collector down the others would fail too, each after
+			// fetching its info on its node.
+			t.log.Debugf("post resource info %s: %s", i, err)
+			failErr = err
+			break
 		}
 		delete(t.resInfoToSend, i)
 	}
+	t.resInfoFailure.update(t.log, time.Now(), failErr, len(t.resInfoToSend))
 }
 
 // getResInfo returns the resource info key-values of the p instance on nodename,
@@ -197,8 +215,9 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 	i := instance.InstanceString(v.Path, v.Node)
 
 	data := resInfoPost{
-		Info: infos.Resources,
-		Path: v.Path.String(),
+		Info:     infos.Resources,
+		Path:     v.Path.String(),
+		Nodename: v.Node,
 	}
 	if cfg := instance.ConfigData.GetByPathAndNode(v.Path, v.Node); cfg != nil {
 		topology := cfg.Topology.String()
@@ -225,7 +244,11 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusAccepted {
+	switch {
+	case resp.StatusCode == http.StatusAccepted:
+	case isRefusedStatus(resp.StatusCode):
+		return fmt.Errorf("%w: %s %s status code %d", errCollectorRefused, method, path, resp.StatusCode)
+	default:
 		return fmt.Errorf("%s %s unexpected status code: wanted %d got %d",
 			method, path, http.StatusAccepted, resp.StatusCode)
 	}
@@ -237,7 +260,8 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 		SentAt:   time.Now(),
 	}
 	if err := sent.write(); err != nil {
-		return err
+		// the collector has it: not a send to retry
+		t.log.Warnf("save the sent resource info flag for %s: %s", i, err)
 	}
 	t.resInfoSent[i] = sent
 	return nil
