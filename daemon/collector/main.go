@@ -178,6 +178,10 @@ type (
 
 		// actionFailWarn paces the warning counting actionFailed.
 		actionFailWarn warnBackoff
+
+		// actionReadLog reads the log lines of an action, readActionLog
+		// when nil. Tests replace it.
+		actionReadLog actionLogReader
 	}
 
 	requester interface {

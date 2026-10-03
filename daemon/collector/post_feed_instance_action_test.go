@@ -513,8 +513,7 @@ func TestWarnBackoff(t *testing.T) {
 	now := time.Now()
 	assert.True(t, b.due(now), "the first warning is due at once")
 
-	want := []time.Duration{10 * time.Second, 20 * time.Second, 40 * time.Second}
-	for _, d := range want {
+	for d := warnBackoffMin; d < warnBackoffMax; d *= 2 {
 		b.arm(now)
 		assert.Equal(t, d, b.interval)
 		assert.False(t, b.due(now.Add(d-time.Millisecond)))
@@ -524,12 +523,12 @@ func TestWarnBackoff(t *testing.T) {
 	for range 20 {
 		b.arm(now)
 	}
-	assert.Equal(t, time.Hour, b.interval, "the interval stops doubling at one hour")
+	assert.Equal(t, warnBackoffMax, b.interval, "the interval stops doubling at the max")
 
 	b.reset()
 	assert.True(t, b.due(now))
 	b.arm(now)
-	assert.Equal(t, 10*time.Second, b.interval, "a reset starts over")
+	assert.Equal(t, warnBackoffMin, b.interval, "a reset starts over")
 }
 
 // TestOnActionSendResultsCountsTheFailures pins that a failed send stays
@@ -580,4 +579,72 @@ func TestOnActionSendResultsCountsTheFailures(t *testing.T) {
 	assert.Empty(t, tr.actionFailed)
 	assert.Zero(t, tr.actionFailWarn.interval)
 	assert.Nil(t, tr.actionFailLastErr)
+}
+
+// TestSendActionsStopsAtTheFirstFailure pins that a collector down costs
+// one send, and one log read, per batch, not one per action queued.
+func TestSendActionsStopsAtTheFirstFailure(t *testing.T) {
+	tr, _ := newTestT(t)
+	tr.isSpeaker = true
+	tr.ctx = context.Background()
+	var logReads int
+	tr.actionReadLog = func(context.Context, string, collector.Action) ([]map[string]any, error) {
+		logReads++
+		return nil, nil
+	}
+	down := true
+	f := &fakeRequester{respond: func(*http.Request) *http.Response {
+		if down {
+			return response(http.StatusBadGateway, ``)
+		}
+		return response(http.StatusAccepted, `null`)
+	}}
+	tr.client = f
+	for range 3 {
+		tr.onInstanceActionPending(pendingMsg(endedAction(newTestCollectorAction(), "ok"), "node2"))
+	}
+
+	runBatch := func() {
+		tr.sendActions()
+		select {
+		case results := <-tr.actionSendResultC:
+			tr.onActionSendResults(results)
+		case <-time.After(5 * time.Second):
+			t.Fatal("no send result")
+		}
+	}
+
+	runBatch()
+	assert.Len(t, f.requests, 1, "the batch stops at the first failure")
+	assert.Equal(t, 1, logReads)
+	assert.Len(t, tr.actionToSend, 3, "all stay queued")
+	assert.Len(t, tr.actionFailed, 1, "only the one tried is counted failing")
+
+	down = false
+	runBatch()
+	assert.Len(t, f.requests, 4, "a collector back takes the whole batch")
+	assert.Empty(t, tr.actionToSend)
+	assert.Empty(t, tr.actionFailed)
+}
+
+// TestNextActionJobsPutsTheBeginsFirst pins that a batch takes the begins
+// queued before the ends, the queue holding more than a batch.
+func TestNextActionJobsPutsTheBeginsFirst(t *testing.T) {
+	tr, _ := newTestT(t)
+	tr.isSpeaker = true
+	for range actionSendMax + 2 {
+		tr.onInstanceActionPending(pendingMsg(endedAction(newTestCollectorAction(), "ok"), "node2"))
+	}
+	for range 3 {
+		tr.onInstanceActionPending(pendingMsg(newTestCollectorAction(), "node2"))
+	}
+	jobs := tr.nextActionJobs()
+	require.Len(t, jobs, actionSendMax)
+	for i, job := range jobs {
+		want := collector.ActionPhaseEnd
+		if i < 3 {
+			want = collector.ActionPhaseBegin
+		}
+		assert.Equal(t, want, job.msg.Phase, "job %d", i)
+	}
 }
