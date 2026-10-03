@@ -371,12 +371,16 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.dbopensvc"),
 	}
 	kwNodeCollector = keywords.Keyword{
-		Example: "https://collector.opensvc.com",
-		Option:  "collector",
-		Section: "node",
-		Text:    keywords.NewText(fs, "text/kw/node/node.collector"),
+		Deprecated: "v3.0.0-rc44",
+		ReplacedBy: "collector.url",
+		Example:    "https://collector.opensvc.com",
+		Option:     "collector",
+		Section:    "node",
+		Text:       keywords.NewText(fs, "text/kw/node/node.collector"),
 	}
 	kwNodeCollectorServer = keywords.Keyword{
+		Deprecated:  "v3.0.0-rc44",
+		ReplacedBy:  "collector.server",
 		Example:     "https://collector.opensvc.com/server",
 		Option:      "collector_server",
 		Section:     "node",
@@ -384,6 +388,8 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.collector_server.default"),
 	}
 	kwNodeCollectorFeeder = keywords.Keyword{
+		Deprecated:  "v3.0.0-rc44",
+		ReplacedBy:  "collector.feeder",
 		Example:     "https://collector.opensvc.com/feeder",
 		Option:      "collector_feeder",
 		Section:     "node",
@@ -391,29 +397,103 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.collector_feeder.default"),
 	}
 	kwNodeCollectorPingInterval = keywords.Keyword{
-		Example:   "120s",
-		Option:    "collector_ping_interval",
-		Aliases:   []string{"db_min_ping_interval"},
-		Section:   "node",
-		Converter: converters.Duration,
-		Default:   "60s",
-		Text:      keywords.NewText(fs, "text/kw/node/node.collector_ping_interval"),
+		Deprecated: "v3.0.0-rc44",
+		ReplacedBy: "collector.ping_interval",
+		Example:    "120s",
+		Option:     "collector_ping_interval",
+		Aliases:    []string{"db_min_ping_interval"},
+		Section:    "node",
+		Converter:  converters.Duration,
+		Default:    "60s",
+		Text:       keywords.NewText(fs, "text/kw/node/node.collector_ping_interval"),
 	}
 	kwNodeCollectorStatusDelay = keywords.Keyword{
-		Example:   "30s",
-		Option:    "collector_status_delay",
-		Aliases:   []string{"db_min_update_interval"},
-		Section:   "node",
-		Converter: converters.Duration,
-		Default:   "10s",
-		Text:      keywords.NewText(fs, "text/kw/node/node.collector_status_delay"),
+		Deprecated: "v3.0.0-rc44",
+		ReplacedBy: "collector.status_delay",
+		Example:    "30s",
+		Option:     "collector_status_delay",
+		Aliases:    []string{"db_min_update_interval"},
+		Section:    "node",
+		Converter:  converters.Duration,
+		Default:    "10s",
+		Text:       keywords.NewText(fs, "text/kw/node/node.collector_status_delay"),
 	}
 	kwNodeCollectorTimeout = keywords.Keyword{
-		Option:    "collector_timeout",
-		Section:   "node",
+		Deprecated: "v3.0.0-rc44",
+		ReplacedBy: "collector.timeout",
+		Option:     "collector_timeout",
+		Section:    "node",
+		Converter:  converters.Duration,
+		Default:    "5s",
+		Text:       keywords.NewText(fs, "text/kw/node/node.collector_timeout"),
+	}
+	kwCollectorURL = keywords.Keyword{
+		Example: "https://collector.opensvc.com",
+		Option:  "url",
+		Section: "collector",
+		Since:   "v3.0.0-rc44",
+		Text:    keywords.NewText(fs, "text/kw/node/collector.url"),
+	}
+	kwCollectorServer = keywords.Keyword{
+		Example:     "https://collector.opensvc.com/server",
+		Option:      "server",
+		Section:     "collector",
+		Since:       "v3.0.0-rc44",
+		Text:        keywords.NewText(fs, "text/kw/node/collector.server"),
+		DefaultText: keywords.NewText(fs, "text/kw/node/collector.server.default"),
+	}
+	kwCollectorFeeder = keywords.Keyword{
+		Example:     "https://collector.opensvc.com/feeder",
+		Option:      "feeder",
+		Section:     "collector",
+		Since:       "v3.0.0-rc44",
+		Text:        keywords.NewText(fs, "text/kw/node/collector.feeder"),
+		DefaultText: keywords.NewText(fs, "text/kw/node/collector.feeder.default"),
+	}
+	kwCollectorPingInterval = keywords.Keyword{
+		Example:   "120s",
+		Option:    "ping_interval",
+		Section:   "collector",
+		Since:     "v3.0.0-rc44",
+		Converter: converters.Duration,
+		Default:   "60s",
+		Text:      keywords.NewText(fs, "text/kw/node/collector.ping_interval"),
+	}
+	kwCollectorStatusDelay = keywords.Keyword{
+		Example:   "30s",
+		Option:    "status_delay",
+		Section:   "collector",
+		Since:     "v3.0.0-rc44",
+		Converter: converters.Duration,
+		Default:   "10s",
+		Text:      keywords.NewText(fs, "text/kw/node/collector.status_delay"),
+	}
+	kwCollectorTimeout = keywords.Keyword{
+		Example:   "10s",
+		Option:    "timeout",
+		Section:   "collector",
+		Since:     "v3.0.0-rc44",
 		Converter: converters.Duration,
 		Default:   "5s",
-		Text:      keywords.NewText(fs, "text/kw/node/node.collector_timeout"),
+		Text:      keywords.NewText(fs, "text/kw/node/collector.timeout"),
+	}
+	kwCollectorActionBatch = keywords.Keyword{
+		Example:   "200",
+		Option:    "action_batch",
+		Section:   "collector",
+		Since:     "v3.0.0-rc44",
+		Converter: converters.Int,
+		Default:   "100",
+		Text:      keywords.NewText(fs, "text/kw/node/collector.action_batch"),
+	}
+	kwCollectorActionLogTimeout = keywords.Keyword{
+		Example:   "30s",
+		Option:    "action_log_timeout",
+		Section:   "collector",
+		Since:     "v3.0.0-rc44",
+		Converter: converters.Duration,
+		Default:   "10s",
+		Text:      keywords.NewText(fs, "text/kw/node/collector.action_log_timeout"),
 	}
 	kwNodeDBInsecure = keywords.Keyword{
 		Converter: converters.Bool,
@@ -1791,6 +1871,14 @@ var (
 		&kwNodeCollectorPingInterval,
 		&kwNodeCollectorStatusDelay,
 		&kwNodeCollectorTimeout,
+		&kwCollectorURL,
+		&kwCollectorServer,
+		&kwCollectorFeeder,
+		&kwCollectorPingInterval,
+		&kwCollectorStatusDelay,
+		&kwCollectorTimeout,
+		&kwCollectorActionBatch,
+		&kwCollectorActionLogTimeout,
 		&kwNodeBranch,
 		&kwNodeRepo,
 		&kwNodeRepoPkg,

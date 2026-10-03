@@ -112,18 +112,38 @@ type (
 	actionPostAccepted struct {
 		UUID string `json:"uuid"`
 	}
+
+	// actionTunables are the tunables of the action sends, set from the
+	// node collector configuration.
+	actionTunables struct {
+		// batch is the maximum number of action phases a send batch holds.
+		batch int
+
+		// postTimeout bounds a POST or a PUT feed instance action.
+		postTimeout time.Duration
+
+		// logTimeout bounds the read of the log lines of an action.
+		logTimeout time.Duration
+	}
 )
 
 var (
-	// actionSendMax is the maximum number of action phases a send batch
-	// holds.
-	actionSendMax = 10
+	// defaultActionBatch is the maximum number of action phases a send
+	// batch holds, unless collector.action_batch says otherwise.
+	defaultActionBatch = 100
 
-	// actionPostTimeout bounds a POST or a PUT feed instance action.
-	actionPostTimeout = 5 * time.Second
+	// defaultActionPostTimeout bounds a POST or a PUT feed instance action,
+	// unless collector.timeout says otherwise, up to
+	// maxActionPostTimeout.
+	defaultActionPostTimeout = 5 * time.Second
+	maxActionPostTimeout     = 20 * time.Second
 
-	// actionLogTimeout bounds the read of the log lines of an action.
-	actionLogTimeout = 10 * time.Second
+	// defaultActionLogTimeout bounds the read of the log lines of an action,
+	// unless collector.action_log_timeout says otherwise.
+	defaultActionLogTimeout = 10 * time.Second
+
+	// minActionTimeout is the minimum of the action timeouts.
+	minActionTimeout = time.Second
 
 	// actionLogMaxLines is the maximum number of journal records read for
 	// the log lines of an action, so it also bounds the payload size.
@@ -227,11 +247,12 @@ func (t *T) sendActions() {
 		readLog = t.readActionLog
 	}
 	agentVersion := t.agentVersion()
+	tunables := t.actionTunables
 	resultC := t.actionSendResultC
 	go func() {
 		results := make([]actionSendResult, 0, len(jobs))
 		for _, job := range jobs {
-			r := sendAction(ctx, requester, readLog, agentVersion, job)
+			r := sendAction(ctx, requester, readLog, agentVersion, tunables, job)
 			results = append(results, r)
 			if !r.done {
 				break
@@ -265,7 +286,7 @@ func (t *T) nextActionJobs() []actionSendJob {
 		}
 	}
 	jobs := append(begins, ends...)
-	return jobs[:min(len(jobs), actionSendMax)]
+	return jobs[:min(len(jobs), t.actionTunables.batch)]
 }
 
 // onActionSendResults applies the results of a send batch: an action phase
@@ -344,6 +365,46 @@ func (t *T) pubActionSent(nodename string, a collector.Action, phase collector.A
 	)
 }
 
+// newActionTunables returns the action send tunables of the collector
+// configuration cfg: the defaults where it sets none, and the values it
+// sets brought within their bounds.
+func newActionTunables(cfg *collector.Config) actionTunables {
+	t := actionTunables{
+		batch:       defaultActionBatch,
+		postTimeout: defaultActionPostTimeout,
+		logTimeout:  defaultActionLogTimeout,
+	}
+	if cfg == nil {
+		return t
+	}
+	if cfg.ActionBatch > 0 {
+		t.batch = cfg.ActionBatch
+	}
+	if cfg.Timeout > 0 {
+		t.postTimeout = min(max(cfg.Timeout, minActionTimeout), maxActionPostTimeout)
+	}
+	if cfg.ActionLogTimeout > 0 {
+		t.logTimeout = max(cfg.ActionLogTimeout, minActionTimeout)
+	}
+	return t
+}
+
+// setActionTunables sets the action send tunables from the collector
+// configuration cfg, logging the ones changed.
+func (t *T) setActionTunables(cfg *collector.Config) {
+	n := newActionTunables(cfg)
+	if n.batch != t.actionTunables.batch {
+		t.log.Infof("feeder action batch: %d", n.batch)
+	}
+	if n.postTimeout != t.actionTunables.postTimeout {
+		t.log.Infof("feeder action post timeout: %s", n.postTimeout)
+	}
+	if n.logTimeout != t.actionTunables.logTimeout {
+		t.log.Infof("feeder action log timeout: %s", n.logTimeout)
+	}
+	t.actionTunables = n
+}
+
 // agentVersion returns the agent version to send: the collector refuses an
 // action whose version does not start with the agent major.
 func (t *T) agentVersion() string {
@@ -359,7 +420,7 @@ func (t *T) agentVersion() string {
 // A begin accepted returns the collector uuid of the action. An end carries
 // the log lines read from the journal of the node the action ran on. A log
 // that can not be read does not hold the end: it is sent without lines.
-func sendAction(ctx context.Context, requester requester, readLog actionLogReader, agentVersion string, job actionSendJob) actionSendResult {
+func sendAction(ctx context.Context, requester requester, readLog actionLogReader, agentVersion string, tunables actionTunables, job actionSendJob) actionSendResult {
 	result := actionSendResult{actionSendJob: job}
 	msg := job.msg
 	var method string
@@ -369,7 +430,7 @@ func sendAction(ctx context.Context, requester requester, readLog actionLogReade
 		method = http.MethodPost
 	case collector.ActionPhaseEnd:
 		method = http.MethodPut
-		logCtx, cancel := context.WithTimeout(ctx, actionLogTimeout)
+		logCtx, cancel := context.WithTimeout(ctx, tunables.logTimeout)
 		records, err := readLog(logCtx, msg.Node, msg.Action)
 		cancel()
 		if err != nil {
@@ -389,7 +450,7 @@ func sendAction(ctx context.Context, requester requester, readLog actionLogReade
 		return result
 	}
 	path := oc3path.FeedInstanceAction
-	postCtx, cancel := context.WithTimeout(ctx, actionPostTimeout)
+	postCtx, cancel := context.WithTimeout(ctx, tunables.postTimeout)
 	defer cancel()
 	req, err := requester.NewRequestWithContext(postCtx, method, path, bytes.NewReader(body))
 	if err != nil {

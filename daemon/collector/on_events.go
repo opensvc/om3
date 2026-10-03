@@ -152,6 +152,7 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	}
 	cfg := c.Value.Collector
 	t.setThrottle(cfg)
+	t.setActionTunables(cfg)
 	err := t.setNodeFeedClient(cfg)
 	if t.feedPinger != nil {
 		t.feedPinger.Stop()
