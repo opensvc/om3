@@ -1167,6 +1167,18 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     The resource info, instance config and action log sends stop at the first failure, keeping their queue for the next tick, so a collector down costs one send per feed and tick instead of one per queued item. A 4xx response refuses an item for good: it is dropped with a warning instead of being sent again.
 
+* New prometheus metrics of the collector speaker, on `/metrics`:
+
+    * `opensvc_collector_requests_total{feed,code}`: the collector calls, by feed (`daemon_ping`, `daemon_status`, `daemon_change`, `resource_info`, `object_config`, `instance_action`) and status code, `error` for a call without response. Each call carries one item, so its rate is the push rate.
+    * `opensvc_collector_pending{feed}`: the items the speaker holds for the collector, what piles up while it is down or not configured yet. Zero on the other nodes.
+    * `opensvc_collector_action_pending_files`: on every node, the local instance actions whose begin or end the collector did not acknowledge yet. Summed over the cluster, the action backlog, speaker or not.
+
+    ```
+    # push rate accepted by the collector, and backlog
+    sum by (feed) (rate(opensvc_collector_requests_total{code="202"}[5m]))
+    sum by (feed) (opensvc_collector_pending)
+    ```
+
 ### sec
 
 * Add "o[mx] key rename --name old --to new" commands

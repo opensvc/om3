@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	// Imported for their metric registrations, which happen in init.
+	_ "github.com/opensvc/om3/v3/daemon/collector"
 	_ "github.com/opensvc/om3/v3/daemon/listener/routehttp"
 	_ "github.com/opensvc/om3/v3/daemon/scheduler"
 	_ "github.com/opensvc/om3/v3/util/pubsub"
@@ -102,6 +103,9 @@ func TestHintsAreOnTheDefaultRegistry(t *testing.T) {
 		"opensvc_pubsub_subscription_queue_full_total",
 		"opensvc_pubsub_subscription_queue_threshold_total",
 		"opensvc_scheduler_runs_total",
+		"opensvc_collector_requests_total",
+		"opensvc_collector_pending",
+		"opensvc_collector_action_pending_files",
 	} {
 		assert.True(t, isRegistered(prometheus.DefaultRegisterer, name), "%s must stay on /metrics as a drill down hint", name)
 	}

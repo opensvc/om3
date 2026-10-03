@@ -96,6 +96,8 @@ func (t *T) announceActionPending(force bool) {
 		return
 	}
 	now := time.Now()
+	var pending int
+	defer func() { collectorActionPendingFiles.Set(float64(pending)) }()
 	for _, k := range keys {
 		if now.Sub(k.ModTime) > actionPendingExpire {
 			t.log.Warnf("drop the action %s not acknowledged by the collector since %s", k.Key, k.ModTime)
@@ -104,6 +106,9 @@ func (t *T) announceActionPending(force bool) {
 			}
 			delete(t.actionAnnouncedAt, k.Key)
 			continue
+		}
+		if k.HasBegin || k.HasEnd {
+			pending++
 		}
 		if t.disable {
 			// no collector to report to: only expire

@@ -41,6 +41,7 @@ func (t *T) onRefreshTicker() {
 		t.previousUpdatedAt = time.Time{}
 		t.dropChanges()
 	}
+	t.setPendingMetrics()
 }
 
 func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
