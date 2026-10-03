@@ -165,6 +165,12 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		d.publisher.Pub(c, labelFromPeer)
 
 	// instances...
+	case *msgbus.InstanceActionPending:
+		// signal only: the collector speaker sends it, and the node the
+		// action ran on keeps it pending until InstanceActionSent.
+		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.InstanceActionSent:
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceConfigDeleted:
 		instance.ConfigData.Unset(c.Path, c.Node)
 		d.publisher.Pub(c, labelFromPeer)

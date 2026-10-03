@@ -3713,6 +3713,49 @@ paths:
         - node / instance / sec
         - node / instance / usr
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/collector/action:
+    post:
+      operationId: PostInstanceCollectorAction
+      description: |
+        Signal the daemon that the action process wrote the begin or the end
+        of an instance action to report to the collector.
+
+        The daemon reads the pending file itself and publishes an
+        InstanceActionPending event. The collector speaker sends it, reading
+        the log lines of an end from the journal of this node, and
+        acknowledges it with an InstanceActionSent event.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostInstanceCollectorAction'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+      x-internal: true
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/config/file:
     get:
       description: |
@@ -8590,6 +8633,20 @@ components:
             - PoolVolumeList
         items:
           $ref: '#/components/schemas/PoolVolumeItems'
+
+    PostInstanceCollectorAction:
+      type: object
+      required:
+        - exec_id
+        - phase
+      properties:
+        exec_id:
+          type: string
+          format: uuid
+          x-go-name: ExecID
+        phase:
+          type: string
+          description: the action phase the pending file is for, begin or end
 
     PostInstanceProgress:
       type: object

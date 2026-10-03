@@ -34,7 +34,11 @@ func (t *actor) stopWithContext(ctx context.Context) error {
 }
 
 // Restart stops then starts the local instance of the object
-func (t *actor) Restart(ctx context.Context) error {
+//
+// The stop and the start report to the collector as one restart.
+func (t *actor) Restart(ctx context.Context) (err error) {
+	ctx, done := t.beginCollectorAction(ctx, "restart")
+	defer func() { done(err) }()
 	if err := t.stopForRestart(ctx); err != nil {
 		return err
 	}

@@ -2205,6 +2205,14 @@ type PostComputeClaim struct {
 	Path string `json:"path"`
 }
 
+// PostInstanceCollectorAction defines model for PostInstanceCollectorAction.
+type PostInstanceCollectorAction struct {
+	ExecID openapi_types.UUID `json:"exec_id"`
+
+	// Phase the action phase the pending file is for, begin or end
+	Phase string `json:"phase"`
+}
+
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
 	IsPartial *bool              `json:"is_partial,omitempty"`
@@ -4313,6 +4321,9 @@ type PostDaemonLogControlJSONRequestBody = LogControlBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
+
+// PostInstanceCollectorActionJSONRequestBody defines body for PostInstanceCollectorAction for application/json ContentType.
+type PostInstanceCollectorActionJSONRequestBody = PostInstanceCollectorAction
 
 // PostObjectActionResizeJSONRequestBody defines body for PostObjectActionResize for application/json ContentType.
 type PostObjectActionResizeJSONRequestBody = PostObjectActionResize

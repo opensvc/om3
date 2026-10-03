@@ -16,6 +16,11 @@ var (
 )
 
 func (t *T) onRefreshTicker() {
+	if time.Since(t.actionAnnounceCheckAt) >= actionAnnounceInterval {
+		t.actionAnnounceCheckAt = time.Now()
+		t.announceActionPending(false)
+		t.pruneActionSent()
+	}
 	if t.isSpeaker {
 		err := t.sendCollectorData()
 		if err != nil {
@@ -29,6 +34,7 @@ func (t *T) onRefreshTicker() {
 		if len(t.resInfoToSend) > 0 {
 			t.sendResInfoChange()
 		}
+		t.sendActions()
 	} else {
 		t.previousUpdatedAt = time.Time{}
 		t.dropChanges()
@@ -180,9 +186,18 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 			t.isSpeaker = isSpeaker
 			if isSpeaker {
 				t.seedResInfoToSend()
+			} else {
+				t.dropActionToSend()
 			}
 			t.publishOnChange(t.getState())
 		}
+	}
+	wasLeader := t.nodeIsLeader[c.Node]
+	t.nodeIsLeader[c.Node] = c.Value.IsLeader
+	if c.Value.IsLeader && !wasLeader {
+		// A new speaker has none of the local actions pending: announce
+		// them all again.
+		t.announceActionPending(true)
 	}
 }
 

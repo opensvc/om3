@@ -310,6 +310,12 @@ func Props(ctx context.Context) Properties {
 	return ctx.Value(propsKey).(Properties)
 }
 
+// HasProps tells whether the context carries the properties of an action.
+func HasProps(ctx context.Context) bool {
+	_, ok := ctx.Value(propsKey).(Properties)
+	return ok
+}
+
 // IsStep tells whether the action of the context is a step of another
 // action, which flags nothing stopped on purpose.
 func IsStep(ctx context.Context) bool {
