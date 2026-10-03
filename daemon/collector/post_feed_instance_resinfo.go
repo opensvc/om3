@@ -29,9 +29,14 @@ import (
 type (
 	// resInfoPost is the POST feed instance resinfo payload.
 	resInfoPost struct {
-		Info     []resource.Info `json:"info"`
-		Path     string          `json:"path"`
-		Topology *string         `json:"topology,omitempty"`
+		Info []resource.Info `json:"info"`
+		Path string          `json:"path"`
+
+		// Nodename is the node of the instance: the speaker sends the
+		// resource info of all the nodes, and the collector would take them
+		// for the speaker ones.
+		Nodename string  `json:"nodename"`
+		Topology *string `json:"topology,omitempty"`
 	}
 
 	// resInfoSent describes the resource info sent to the collector db. It
@@ -49,6 +54,9 @@ type (
 		cacheFile string
 	}
 )
+
+// errResInfoRefused is the collector refusing resource info for good.
+var errResInfoRefused = errors.New("refused by the collector")
 
 // resInfoKinds are the object kinds that have resources, and so resource
 // info to report. The others are datastores and configurations: asking
@@ -100,7 +108,11 @@ func (t *T) sendResInfoChange() {
 			delete(t.resInfoToSend, i)
 			continue
 		}
-		if err := t.doPostResInfo(v, infos); err != nil {
+		if err := t.doPostResInfo(v, infos); errors.Is(err, errResInfoRefused) {
+			// refused for good, as the info of a node the collector does
+			// not know in the cluster: drop it
+			t.log.Warnf("post resource info %s: %s", i, err)
+		} else if err != nil {
 			// keep it queued, retried on a later tick
 			t.log.Warnf("post resource info %s: %s", i, err)
 			continue
@@ -197,8 +209,9 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 	i := instance.InstanceString(v.Path, v.Node)
 
 	data := resInfoPost{
-		Info: infos.Resources,
-		Path: v.Path.String(),
+		Info:     infos.Resources,
+		Path:     v.Path.String(),
+		Nodename: v.Node,
 	}
 	if cfg := instance.ConfigData.GetByPathAndNode(v.Path, v.Node); cfg != nil {
 		topology := cfg.Topology.String()
@@ -225,7 +238,11 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusAccepted {
+	switch resp.StatusCode {
+	case http.StatusAccepted:
+	case http.StatusForbidden:
+		return fmt.Errorf("%w: %s %s status code %d", errResInfoRefused, method, path, resp.StatusCode)
+	default:
 		return fmt.Errorf("%s %s unexpected status code: wanted %d got %d",
 			method, path, http.StatusAccepted, resp.StatusCode)
 	}
