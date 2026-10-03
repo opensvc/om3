@@ -93,5 +93,5 @@ func TestDoPostResInfoNamesTheInstanceNode(t *testing.T) {
 	f.respond = func(*http.Request) *http.Response {
 		return response(http.StatusForbidden, `{"detail":"node2: not a node of the cluster"}`)
 	}
-	assert.ErrorIs(t, tr.doPostResInfo(v, infos), errResInfoRefused)
+	assert.ErrorIs(t, tr.doPostResInfo(v, infos), errCollectorRefused)
 }

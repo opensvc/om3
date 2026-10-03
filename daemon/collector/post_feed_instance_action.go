@@ -112,13 +112,6 @@ type (
 	actionPostAccepted struct {
 		UUID string `json:"uuid"`
 	}
-
-	// warnBackoff paces a repeated warning: due at once, then after an
-	// interval doubling from warnBackoffMin up to warnBackoffMax.
-	warnBackoff struct {
-		interval time.Duration
-		next     time.Time
-	}
 )
 
 var (
@@ -145,11 +138,6 @@ var (
 	// actionLineTimeFormat is the log line time format, the om2 agent one:
 	// the collector stores it unparsed.
 	actionLineTimeFormat = time.DateTime
-
-	// warnBackoffMin and warnBackoffMax bound the interval between two
-	// warnings of the action logs failing to send.
-	warnBackoffMin = 10 * time.Second
-	warnBackoffMax = time.Hour
 )
 
 // onInstanceActionPending queues the announced action phase when speaker,
@@ -201,7 +189,8 @@ func (t *T) dropActionToSend() {
 	t.actionBeginUUID = make(map[string]string)
 	t.actionSent = make(map[string]actionSentTrace)
 	t.actionFailed = make(map[string]struct{})
-	t.actionFailWarn.reset()
+	t.actionFailLastErr = nil
+	t.actionFailure.reset()
 }
 
 // pruneActionSent forgets the traces of the actions sent long enough ago
@@ -330,42 +319,12 @@ func (t *T) onActionSendResults(results []actionSendResult) {
 }
 
 // warnActionFailed warns about the action phases whose latest send failed,
-// at once, then at an interval doubling from warnBackoffMin up to
-// warnBackoffMax while they keep failing. It tells when none fails anymore.
+// paced by actionFailure, and tells when none fails anymore.
 func (t *T) warnActionFailed(now time.Time) {
-	n := len(t.actionFailed)
-	if n == 0 {
-		if t.actionFailWarn.interval > 0 {
-			t.log.Infof("the collector accepts the action logs again")
-		}
-		t.actionFailWarn.reset()
+	if len(t.actionFailed) == 0 {
 		t.actionFailLastErr = nil
-		return
 	}
-	if !t.actionFailWarn.due(now) {
-		return
-	}
-	t.actionFailWarn.arm(now)
-	t.log.Warnf("%d action logs pending, failing to send to the collector: %v (next warning in %s)",
-		n, t.actionFailLastErr, t.actionFailWarn.interval)
-}
-
-func (b *warnBackoff) due(now time.Time) bool {
-	return !now.Before(b.next)
-}
-
-// arm sets the time the warning is due again, the interval doubled.
-func (b *warnBackoff) arm(now time.Time) {
-	if b.interval == 0 {
-		b.interval = warnBackoffMin
-	} else {
-		b.interval = min(2*b.interval, warnBackoffMax)
-	}
-	b.next = now.Add(b.interval)
-}
-
-func (b *warnBackoff) reset() {
-	*b = warnBackoff{}
+	t.actionFailure.update(t.log, now, t.actionFailLastErr, len(t.actionFailed))
 }
 
 // pubActionSent publishes the InstanceActionSent acknowledging the phase of
