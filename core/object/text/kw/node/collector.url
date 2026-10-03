@@ -1,0 +1,4 @@
+The url of the OpenSVC Collector v3. The node feeds it, and reaches its
+server api, when the node is registered on it.
+If collector.feeder or collector.server are not explicitly defined, they are
+derived from this value.

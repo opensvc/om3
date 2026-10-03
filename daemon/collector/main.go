@@ -186,6 +186,10 @@ type (
 		resInfoFailure      collectorFailure
 		objectConfigFailure collectorFailure
 
+		// actionTunables are the action send tunables, set from the node
+		// collector configuration.
+		actionTunables actionTunables
+
 		// actionReadLog reads the log lines of an action, readActionLog
 		// when nil. Tests replace it.
 		actionReadLog actionLogReader
@@ -328,6 +332,7 @@ func (t *T) Start(ctx context.Context) error {
 		cfg := initialNodeConfig.Collector
 
 		t.setThrottle(cfg)
+		t.setActionTunables(cfg)
 
 		if err := t.setNodeFeedClient(cfg); err != nil {
 			t.log.Infof("the collector routine is dormant: %s", err)

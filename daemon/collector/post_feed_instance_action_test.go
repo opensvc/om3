@@ -106,6 +106,7 @@ func newTestT(t *testing.T) (*T, *fakePublisher) {
 		actionAnnouncedAt: make(map[string]time.Time),
 		actionSendResultC: make(chan []actionSendResult, 1),
 		actionFailure:     newCollectorFailure("action logs"),
+		actionTunables:    newActionTunables(nil),
 	}
 	tr.dropActionToSend()
 	return tr, pub
@@ -196,7 +197,7 @@ func TestSendAction(t *testing.T) {
 			return response(http.StatusAccepted, `{"uuid":"oc3-uuid"}`)
 		}}
 		job := actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")}
-		r := sendAction(context.Background(), f, readLog, "3.0.0", job)
+		r := sendAction(context.Background(), f, readLog, "3.0.0", newActionTunables(nil), job)
 		require.NoError(t, r.err)
 		assert.True(t, r.done)
 		assert.Equal(t, "oc3-uuid", r.uuid)
@@ -216,7 +217,7 @@ func TestSendAction(t *testing.T) {
 		}}
 		ended := endedAction(a, "ok")
 		job := actionSendJob{key: a.Key(), msg: pendingMsg(ended, "node2"), uuid: "oc3-uuid"}
-		r := sendAction(context.Background(), f, readLog, "3.0.0", job)
+		r := sendAction(context.Background(), f, readLog, "3.0.0", newActionTunables(nil), job)
 		require.NoError(t, r.err)
 		assert.True(t, r.done)
 		require.Len(t, f.requests, 1)
@@ -237,7 +238,7 @@ func TestSendAction(t *testing.T) {
 			return nil, errors.New("no journal")
 		}
 		job := actionSendJob{key: a.Key(), msg: pendingMsg(endedAction(a, "ok"), "node2")}
-		r := sendAction(context.Background(), f, failingLog, "3.0.0", job)
+		r := sendAction(context.Background(), f, failingLog, "3.0.0", newActionTunables(nil), job)
 		assert.ErrorContains(t, r.err, "no journal", "the log error is reported")
 		assert.True(t, r.done, "but does not hold the end")
 		var body actionPost
@@ -250,7 +251,7 @@ func TestSendAction(t *testing.T) {
 		f := &fakeRequester{respond: func(*http.Request) *http.Response {
 			return response(http.StatusBadRequest, `{"title":"bad"}`)
 		}}
-		r := sendAction(context.Background(), f, readLog, "3.0.0", actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")})
+		r := sendAction(context.Background(), f, readLog, "3.0.0", newActionTunables(nil), actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")})
 		assert.True(t, r.done, "sending it again would not do better")
 		assert.Error(t, r.err)
 	})
@@ -259,7 +260,7 @@ func TestSendAction(t *testing.T) {
 		f := &fakeRequester{respond: func(*http.Request) *http.Response {
 			return response(http.StatusForbidden, `{"detail":"node2: not a node of the cluster"}`)
 		}}
-		r := sendAction(context.Background(), f, readLog, "3.0.0", actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")})
+		r := sendAction(context.Background(), f, readLog, "3.0.0", newActionTunables(nil), actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")})
 		assert.True(t, r.done, "sending it again would not do better")
 		assert.Error(t, r.err)
 	})
@@ -268,7 +269,7 @@ func TestSendAction(t *testing.T) {
 		f := &fakeRequester{respond: func(*http.Request) *http.Response {
 			return response(http.StatusInternalServerError, ``)
 		}}
-		r := sendAction(context.Background(), f, readLog, "3.0.0", actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")})
+		r := sendAction(context.Background(), f, readLog, "3.0.0", newActionTunables(nil), actionSendJob{key: a.Key(), msg: pendingMsg(a, "node2")})
 		assert.False(t, r.done)
 		assert.Error(t, r.err)
 	})
@@ -633,14 +634,14 @@ func TestSendActionsStopsAtTheFirstFailure(t *testing.T) {
 func TestNextActionJobsPutsTheBeginsFirst(t *testing.T) {
 	tr, _ := newTestT(t)
 	tr.isSpeaker = true
-	for range actionSendMax + 2 {
+	for range tr.actionTunables.batch + 2 {
 		tr.onInstanceActionPending(pendingMsg(endedAction(newTestCollectorAction(), "ok"), "node2"))
 	}
 	for range 3 {
 		tr.onInstanceActionPending(pendingMsg(newTestCollectorAction(), "node2"))
 	}
 	jobs := tr.nextActionJobs()
-	require.Len(t, jobs, actionSendMax)
+	require.Len(t, jobs, tr.actionTunables.batch)
 	for i, job := range jobs {
 		want := collector.ActionPhaseEnd
 		if i < 3 {
@@ -648,4 +649,17 @@ func TestNextActionJobsPutsTheBeginsFirst(t *testing.T) {
 		}
 		assert.Equal(t, want, job.msg.Phase, "job %d", i)
 	}
+}
+
+func TestNewActionTunables(t *testing.T) {
+	d := newActionTunables(nil)
+	assert.Equal(t, actionTunables{batch: 100, postTimeout: 5 * time.Second, logTimeout: 10 * time.Second}, d, "the defaults")
+	assert.Equal(t, d, newActionTunables(&collector.Config{}), "a config setting none")
+
+	got := newActionTunables(&collector.Config{ActionBatch: 20, Timeout: 8 * time.Second, ActionLogTimeout: 30 * time.Second})
+	assert.Equal(t, actionTunables{batch: 20, postTimeout: 8 * time.Second, logTimeout: 30 * time.Second}, got, "the values set")
+
+	got = newActionTunables(&collector.Config{Timeout: time.Minute, ActionLogTimeout: time.Millisecond})
+	assert.Equal(t, 20*time.Second, got.postTimeout, "collector.timeout is at most 20s")
+	assert.Equal(t, time.Second, got.logTimeout, "a timeout is at least 1s")
 }

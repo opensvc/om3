@@ -41,7 +41,7 @@ func TestSendSysreport(t *testing.T) {
 	defer server.Close()
 
 	testhelper.Setup(t)
-	conf := "[node]\nuuid = 00000000-0000-0000-0000-000000000001\ncollector_feeder = " + server.URL + "\n"
+	conf := "[node]\nuuid = 00000000-0000-0000-0000-000000000001\n[collector]\nfeeder = " + server.URL + "\n"
 	require.NoError(t, os.WriteFile(rawconfig.NodeConfigFile(), []byte(conf), 0600))
 	n, err := NewNode()
 	require.NoError(t, err)
