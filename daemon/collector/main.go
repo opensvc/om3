@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -176,12 +177,22 @@ type (
 		// actionFailLastErr is the error of the latest send failed.
 		actionFailLastErr error
 
-		// actionFailWarn paces the warning counting actionFailed.
-		actionFailWarn warnBackoff
+		// actionFailure paces the warning counting actionFailed.
+		actionFailure collectorFailure
+
+		// daemonStatusFailure, resInfoFailure and objectConfigFailure pace
+		// the warnings about the other feeds failing to send.
+		daemonStatusFailure collectorFailure
+		resInfoFailure      collectorFailure
+		objectConfigFailure collectorFailure
 
 		// actionReadLog reads the log lines of an action, readActionLog
 		// when nil. Tests replace it.
 		actionReadLog actionLogReader
+
+		// resInfoGet returns the resource info of an instance, getResInfo
+		// when nil. Tests replace it.
+		resInfoGet func(p naming.Path, nodename string) (resource.Infos, error)
 	}
 
 	requester interface {
@@ -242,6 +253,11 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 
 		actionPendingDir:  ActionPendingDir(),
 		actionSendResultC: make(chan []actionSendResult, 1),
+
+		actionFailure:       newCollectorFailure("action logs"),
+		daemonStatusFailure: newCollectorFailure("daemon status"),
+		resInfoFailure:      newCollectorFailure("resource info"),
+		objectConfigFailure: newCollectorFailure("instance config"),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)

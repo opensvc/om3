@@ -22,14 +22,16 @@ func (t *T) onRefreshTicker() {
 		t.pruneActionSent()
 	}
 	if t.isSpeaker {
-		err := t.sendCollectorData()
-		if err != nil {
-			t.log.Warnf("sendCollectorData: %s", err)
+		switch err := t.sendCollectorData(); {
+		case errors.Is(err, errCollectorDataNotSent):
+		case err != nil:
+			t.log.Debugf("sendCollectorData: %s", err)
+			t.daemonStatusFailure.update(t.log, time.Now(), err, 0)
+		default:
+			t.daemonStatusFailure.update(t.log, time.Now(), nil, 0)
 		}
 		if len(t.objectConfigToSend) > 0 {
-			if err := t.sendObjectConfigChange(); err != nil {
-				t.log.Warnf("sendObjectConfigChange", err)
-			}
+			t.sendObjectConfigChange()
 		}
 		if len(t.resInfoToSend) > 0 {
 			t.sendResInfoChange()
@@ -188,6 +190,9 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 				t.seedResInfoToSend()
 			} else {
 				t.dropActionToSend()
+				t.daemonStatusFailure.reset()
+				t.resInfoFailure.reset()
+				t.objectConfigFailure.reset()
 			}
 			t.publishOnChange(t.getState())
 		}

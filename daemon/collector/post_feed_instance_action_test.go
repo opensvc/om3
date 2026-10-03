@@ -105,6 +105,7 @@ func newTestT(t *testing.T) (*T, *fakePublisher) {
 		actionPendingDir:  collector.ActionPendingDir(t.TempDir()),
 		actionAnnouncedAt: make(map[string]time.Time),
 		actionSendResultC: make(chan []actionSendResult, 1),
+		actionFailure:     newCollectorFailure("action logs"),
 	}
 	tr.dropActionToSend()
 	return tr, pub
@@ -549,35 +550,35 @@ func TestOnActionSendResultsCountsTheFailures(t *testing.T) {
 	})
 	assert.Len(t, tr.actionFailed, 2)
 	assert.Len(t, tr.actionToSend, 2, "the failed sends stay queued")
-	assert.Equal(t, warnBackoffMin, tr.actionFailWarn.interval, "warned at once, next in 10s")
+	assert.Equal(t, warnBackoffMin, tr.actionFailure.backoff.interval, "warned at once, next in 10s")
 	assert.Equal(t, down, tr.actionFailLastErr)
 
 	// failing again before the interval does not warn again
 	tr.onActionSendResults([]actionSendResult{
 		{actionSendJob: actionSendJob{key: a1.Key(), msg: m1}, err: down},
 	})
-	assert.Equal(t, warnBackoffMin, tr.actionFailWarn.interval)
+	assert.Equal(t, warnBackoffMin, tr.actionFailure.backoff.interval)
 
 	// once due, it warns again and the interval doubles
-	tr.actionFailWarn.next = time.Now()
+	tr.actionFailure.backoff.next = time.Now()
 	tr.onActionSendResults([]actionSendResult{
 		{actionSendJob: actionSendJob{key: a1.Key(), msg: m1}, err: down},
 	})
-	assert.Equal(t, 2*warnBackoffMin, tr.actionFailWarn.interval)
+	assert.Equal(t, 2*warnBackoffMin, tr.actionFailure.backoff.interval)
 
 	// one accepted leaves one failing
 	tr.onActionSendResults([]actionSendResult{
 		{actionSendJob: actionSendJob{key: a1.Key(), msg: m1, uuid: "u1"}, done: true},
 	})
 	assert.Len(t, tr.actionFailed, 1)
-	assert.NotZero(t, tr.actionFailWarn.interval)
+	assert.NotZero(t, tr.actionFailure.backoff.interval)
 
 	// none failing resets the pacing
 	tr.onActionSendResults([]actionSendResult{
 		{actionSendJob: actionSendJob{key: a2.Key(), msg: m2, uuid: "u2"}, done: true},
 	})
 	assert.Empty(t, tr.actionFailed)
-	assert.Zero(t, tr.actionFailWarn.interval)
+	assert.Zero(t, tr.actionFailure.backoff.interval)
 	assert.Nil(t, tr.actionFailLastErr)
 }
 
