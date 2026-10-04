@@ -118,14 +118,20 @@ func (t *actor) isCollectorAction() bool {
 
 // collectorActionRIDs returns the rids of the resources the action is
 // restricted to, comma-separated, and an empty string when it acts on all.
-//
-// An action chaining others, as a restart, carries no action properties to
-// resolve the selection with: its --rid value is returned as given.
 func (t *actor) collectorActionRIDs(ctx context.Context) string {
-	if !actioncontext.HasProps(ctx) {
-		return actioncontext.RID(ctx)
+	var sel *resourceselector.T
+	if actioncontext.HasProps(ctx) {
+		sel = resourceselector.FromContext(ctx, t)
+	} else {
+		// An action chaining others, as a restart, carries no action
+		// properties: its selection is resolved from its --rid, --tag and
+		// --subset alone.
+		sel = resourceselector.New(t,
+			resourceselector.WithRID(actioncontext.RID(ctx)),
+			resourceselector.WithTag(actioncontext.Tag(ctx)),
+			resourceselector.WithSubset(actioncontext.Subset(ctx)),
+		)
 	}
-	sel := resourceselector.FromContext(ctx, t)
 	if sel.IsZero() {
 		return ""
 	}
@@ -183,20 +189,42 @@ func isConnRefused(err error) bool {
 	return sysErr.Err == syscall.ECONNREFUSED
 }
 
-// maskArgv returns a copy of argv with the values of --value masked, as they
-// may hold secrets.
+// secretFlags are the command flags whose values may hold secrets: a
+// keyword value, or an environment variable exported to the action.
+var secretFlags = []string{"--value", "--env"}
+
+// maskArgv returns a copy of argv with the values of the secretFlags masked,
+// as given in the "--flag value" or the "--flag=value" form.
+//
+// An --env value keeps the name of the variable it sets, as NAME=xxx: which
+// variable an action got is worth reading, its value is not.
 func maskArgv(argv []string) []string {
 	masked := make([]string, len(argv))
 	copy(masked, argv)
-	for i, arg := range masked {
-		switch {
-		case arg == "--value":
-			if i+1 < len(masked) {
-				masked[i+1] = "xxx"
+	for i := 0; i < len(masked); i++ {
+		for _, flag := range secretFlags {
+			switch {
+			case masked[i] == flag:
+				if i+1 < len(masked) {
+					masked[i+1] = maskFlagValue(flag, masked[i+1])
+					i++
+				}
+			case strings.HasPrefix(masked[i], flag+"="):
+				masked[i] = flag + "=" + maskFlagValue(flag, strings.TrimPrefix(masked[i], flag+"="))
+			default:
+				continue
 			}
-		case strings.HasPrefix(arg, "--value="):
-			masked[i] = "--value=xxx"
+			break
 		}
 	}
 	return masked
+}
+
+func maskFlagValue(flag, value string) string {
+	if flag == "--env" {
+		if name, _, ok := strings.Cut(value, "="); ok {
+			return name + "=xxx"
+		}
+	}
+	return "xxx"
 }

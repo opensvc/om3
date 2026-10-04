@@ -1,12 +1,12 @@
 package collector
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -126,7 +126,7 @@ func (t ActionPendingDir) Read(key string, phase ActionPhase) (Action, error) {
 	if err != nil {
 		return a, err
 	}
-	b, err := os.ReadFile(filepath.Join(string(t), key+suffix))
+	b, err := t.readFile(key + suffix)
 	if err != nil {
 		return a, err
 	}
@@ -142,7 +142,7 @@ func (t ActionPendingDir) WriteUUID(key, s string) error {
 // ReadUUID returns the collector uuid of the begin of the key, and an empty
 // string when the begin was not acknowledged.
 func (t ActionPendingDir) ReadUUID(key string) (string, error) {
-	b, err := os.ReadFile(filepath.Join(string(t), key+actionSuffixUUID))
+	b, err := t.readFile(key + actionSuffixUUID)
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	} else if err != nil {
@@ -220,34 +220,60 @@ func (t ActionPendingDir) List() ([]ActionPendingKey, error) {
 	return l, nil
 }
 
+// root opens the directory as the root of the pending file operations, so
+// a file name, made of a key, can not name a file out of it.
+func (t ActionPendingDir) root() (*os.Root, error) {
+	return os.OpenRoot(string(t))
+}
+
+func (t ActionPendingDir) readFile(name string) ([]byte, error) {
+	root, err := t.root()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	return root.ReadFile(name)
+}
+
 func (t ActionPendingDir) writeFile(name string, b []byte) error {
-	dir := string(t)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(string(t), 0700); err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(dir, "."+name+".*")
+	root, err := t.root()
 	if err != nil {
 		return err
 	}
-	tmp := f.Name()
+	defer func() { _ = root.Close() }()
+	tmp := "." + name + "." + rand.Text()
+	f, err := root.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
 	if _, err := f.Write(b); err != nil {
 		_ = f.Close()
-		_ = os.Remove(tmp)
+		_ = root.Remove(tmp)
 		return err
 	}
 	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp)
+		_ = root.Remove(tmp)
 		return err
 	}
-	if err := os.Rename(tmp, filepath.Join(dir, name)); err != nil {
-		_ = os.Remove(tmp)
+	if err := root.Rename(tmp, name); err != nil {
+		_ = root.Remove(tmp)
 		return err
 	}
 	return nil
 }
 
 func (t ActionPendingDir) remove(name string) error {
-	if err := os.Remove(filepath.Join(string(t), name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	root, err := t.root()
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	if err := root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	return nil

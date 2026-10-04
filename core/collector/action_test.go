@@ -120,3 +120,23 @@ func TestActionPendingDirListMissingDir(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, l)
 }
+
+// TestActionPendingDirStaysInTheDirectory pins that a key can not name a
+// file out of the pending directory.
+func TestActionPendingDirStaysInTheDirectory(t *testing.T) {
+	parent := t.TempDir()
+	dir := ActionPendingDir(filepath.Join(parent, "action_pending"))
+	require.NoError(t, os.WriteFile(filepath.Join(parent, "outside.begin.json"), []byte(`{}`), 0600))
+	require.NoError(t, dir.WriteUUID("inside", "u"))
+
+	_, err := dir.Read("../outside", ActionPhaseBegin)
+	assert.Error(t, err, "a read out of the directory is refused")
+
+	assert.Error(t, dir.WriteUUID("../escaped", "u"), "a write out of the directory is refused")
+	_, err = os.Stat(filepath.Join(parent, "escaped.uuid"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+
+	assert.Error(t, dir.RemoveAll("../outside"), "a remove out of the directory is refused")
+	_, err = os.Stat(filepath.Join(parent, "outside.begin.json"))
+	assert.NoError(t, err, "the file out of the directory is left")
+}
