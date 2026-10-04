@@ -476,8 +476,13 @@ func (t *T) msgFromRx(ctx context.Context) {
 			}
 		case msg := <-t.readMsgQueue:
 			peer := msg.Nodename
-			if msgTimes[peer].Equal(msg.UpdatedAt) {
+			last := msgTimes[peer]
+			if last.Equal(msg.UpdatedAt) {
 				t.log.Tracef("msgFromRx: drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				continue
+			}
+			if isStaleMsg(msg.UpdatedAt, last) {
+				t.log.Debugf("msgFromRx: drop msg %s from %s gens: %v older than the last processed by %s", msg.Kind, msg.Nodename, msg.Gen, last.Sub(msg.UpdatedAt))
 				continue
 			}
 			select {
@@ -491,6 +496,31 @@ func (t *T) msgFromRx(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// staleMsgMaxAge is the age, relative to the last message processed from a
+// peer, below which an older message of that peer is dropped as stale.
+//
+// It covers the heartbeat timeouts: a slow heartbeat, as a disk or a relay
+// one, can deliver a message of a peer after a faster one delivered later
+// ones, as on its first read after this daemon started, and its receiver no
+// longer delivers a message older than its timeout. A message older still is
+// taken for one of a peer whose clock was stepped back, and processed, so a
+// clock stepped back costs at most this long of dropped messages.
+const staleMsgMaxAge = 2 * time.Minute
+
+// isStaleMsg tells whether a peer message stamped updated is older than the
+// last message processed from that peer, stamped last, by less than
+// staleMsgMaxAge.
+//
+// Processing such a message would set back what this node knows of the peer,
+// its gens first: the peer would be asked a full message again, and this node
+// would stay in full message type, for a state already superseded.
+func isStaleMsg(updated, last time.Time) bool {
+	if last.IsZero() || !updated.Before(last) {
+		return false
+	}
+	return last.Sub(updated) < staleMsgMaxAge
 }
 
 // janitor starts the goroutine responsible for hb drivers lifecycle.
