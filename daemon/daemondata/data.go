@@ -416,6 +416,8 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.HeartbeatSecretUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.HeartbeatStale{}, d.labelLocalhost)
 
+	sub.AddFilter(&msgbus.ClusterDataSnapshotRequest{})
+
 	sub.AddFilter(&msgbus.InstanceActionPending{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceActionSent{}, d.labelLocalhost)
 
@@ -569,6 +571,12 @@ func (d *data) onSubEvent(i interface{}) {
 		}
 	case *msgbus.HeartbeatStale, *msgbus.HeartbeatAlive:
 		d.hasEventHeartbeatStaleOrAlive = true
+	case *msgbus.ClusterDataSnapshotRequest:
+		select {
+		case c.ReplyC <- d.clusterData.DeepCopy():
+		default:
+			// the requester gave up, or was answered already
+		}
 	}
 
 	if msg, ok := i.(pubsub.Messager); ok {

@@ -3,6 +3,7 @@ package daemondata_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/om"
@@ -24,6 +26,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -129,6 +132,80 @@ func TestDaemonData(t *testing.T) {
 				"The initial localhost node monitor state doesn't prevent imon to orchestrate: got %+v", localNode)
 		})
 		require.False(t, t.Failed()) // fail on first error
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("ClusterDataAfterPublished holds the messages published before the call", func(t *testing.T) {
+		// A burst of local instance status updates, still queued on the
+		// daemondata subscription when the snapshot is asked for, must be
+		// in it: an events stream replaying it would never see them else.
+		// The burst stays under the subscription queue size of the test.
+		const n = 90
+		paths := make([]naming.Path, n)
+		for i := range paths {
+			paths[i] = naming.Path{Namespace: "snap", Kind: naming.KindSvc, Name: fmt.Sprintf("s%d", i)}
+			psbus.Pub(&msgbus.InstanceStatusUpdated{Path: paths[i], Node: localNode, Value: instance.Status{Avail: status.Up}},
+				pubsub.Label{"node", localNode}, pubsub.Label{"path", paths[i].String()})
+		}
+		data, ok := bus.ClusterDataAfterPublished(psbus, 5*time.Second)
+		require.True(t, ok, "the daemondata manager answers")
+		for _, p := range paths {
+			inst, found := data.Cluster.Node[localNode].Instance[p.String()]
+			require.Truef(t, found, "instance %s is in the snapshot", p)
+			require.NotNilf(t, inst.Status, "instance %s status is in the snapshot", p)
+			assert.Equal(t, status.Up, inst.Status.Avail)
+		}
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("ClusterDataAfterPublished answers concurrent requests each with its own snapshot", func(t *testing.T) {
+		// Each client publishes its burst, then asks for the snapshot, at
+		// the same time as the others: each must get its own answer, and
+		// the answer must hold what that client published before asking.
+		const (
+			clients = 4
+			n       = 20
+		)
+		type answer struct {
+			client int
+			data   *clusterdump.Data
+			err    error
+		}
+		answers := make(chan answer, clients)
+		start := make(chan struct{})
+		for c := 0; c < clients; c++ {
+			go func(c int) {
+				<-start
+				paths := make([]naming.Path, n)
+				for i := range paths {
+					paths[i] = naming.Path{Namespace: fmt.Sprintf("conc%d", c), Kind: naming.KindSvc, Name: fmt.Sprintf("s%d", i)}
+					psbus.Pub(&msgbus.InstanceStatusUpdated{Path: paths[i], Node: localNode, Value: instance.Status{Avail: status.Up}},
+						pubsub.Label{"node", localNode}, pubsub.Label{"path", paths[i].String()})
+				}
+				data, ok := bus.ClusterDataAfterPublished(psbus, 5*time.Second)
+				if !ok {
+					answers <- answer{client: c, err: fmt.Errorf("client %d: no answer", c)}
+					return
+				}
+				for _, p := range paths {
+					if inst, found := data.Cluster.Node[localNode].Instance[p.String()]; !found || inst.Status == nil {
+						answers <- answer{client: c, err: fmt.Errorf("client %d: instance %s is not in its snapshot", c, p)}
+						return
+					}
+				}
+				answers <- answer{client: c, data: data}
+			}(c)
+		}
+		close(start)
+		seen := make(map[*clusterdump.Data]int)
+		for c := 0; c < clients; c++ {
+			a := <-answers
+			require.NoError(t, a.err)
+			if other, ok := seen[a.data]; ok {
+				t.Fatalf("clients %d and %d got the same snapshot", other, a.client)
+			}
+			seen[a.data] = a.client
+		}
 	})
 	require.False(t, t.Failed()) // fail on first error
 

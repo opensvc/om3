@@ -54,6 +54,11 @@ type (
 	}
 )
 
+// replaySnapshotTimeout bounds the wait for the cluster data an events stream
+// replays: past it, the stream replays the current cluster data, as before
+// the replay waited for the daemondata manager to catch up.
+const replaySnapshotTimeout = 5 * time.Second
+
 // GetDaemonEvents feeds node daemon event publications in rss format.
 func (a *DaemonAPI) GetDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
 	nodename = a.parseNodename(nodename)
@@ -425,7 +430,16 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	}
 
 	if replay {
-		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
+		// Taken once the daemondata manager processed what was published
+		// before the subscription started: a message published then, but
+		// not processed yet, would be in neither the replay nor the
+		// subscription.
+		snapshot, ok := a.Daemondata.ClusterDataAfterPublished(a.Bus, replaySnapshotTimeout)
+		if !ok {
+			log.Warnf("the cluster data manager did not answer within %s, replay its current cluster data", replaySnapshotTimeout)
+			snapshot = a.Daemondata.ClusterData()
+		}
+		data := msgbus.NewClusterData(snapshot)
 		if len(filters) == 0 {
 			// Filters are not specified => all events are filtered,
 			// So automatically use all extractable events.
@@ -473,6 +487,11 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		case <-evCtx.Done():
 			return nil
 		case i := <-sub.C:
+			if _, ok := i.(*msgbus.ClusterDataSnapshotRequest); ok {
+				// a request of an events stream to the daemondata manager,
+				// not an event
+				continue
+			}
 			if ev, ok := i.(pubsub.Messager); ok {
 				if !isAllowed(ev) {
 					continue
