@@ -223,11 +223,47 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return true
 	}
 
+	// learnPath adds the object path p to the paths the selector expands
+	// against, and to the selection when the selector selects it.
+	//
+	// The selection is first computed from the object statuses known when
+	// the stream starts, and grown by the ObjectCreated events received
+	// after. An object announced before the stream started, but with no
+	// status yet, as while the daemon discovers the objects after a
+	// restart, is in neither: so the path of any event not known yet is
+	// learnt, instead of dropping the events of that object for the life of
+	// the stream.
+	learnPath := func(p naming.Path) error {
+		s := p.String()
+		if pathM.Has(s) {
+			return nil
+		}
+		pathL = pathL.Merge([]naming.Path{p})
+		pathM[s] = nil
+		selector.SetPaths(pathL)
+		selected, err := getSelectedMap()
+		if err != nil {
+			return err
+		}
+		if selected.Has(s) {
+			log.Tracef("add object %s to selection", s)
+			pathSelected[s] = nil
+		}
+		return nil
+	}
+
 	// isSelected returns true when msg has path label that is selected or
 	// doesn't have a path label.
 	isSelected := func(msg pubsub.Messager) bool {
 		labels := msg.GetLabels()
 		if s, ok := labels["path"]; ok {
+			if !pathM.Has(s) {
+				if p, err := naming.ParsePath(s); err == nil {
+					if err := learnPath(p); err != nil {
+						log.Warnf("can't add object %s to selection: %s", s, err)
+					}
+				}
+			}
 			if pathSelected.Has(s) {
 				// path label is selected
 				return true
@@ -445,18 +481,9 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			if hasSelector {
 				switch ev := i.(type) {
 				case *msgbus.ObjectCreated:
-					s := ev.Path.String()
-					if !pathM.Has(s) {
-						pathL = pathL.Merge([]naming.Path{ev.Path})
-						pathM[s] = nil
-						selector.SetPaths(pathL)
-						if selected, err := getSelectedMap(); err != nil {
-							log.Errorf("can't filter on object created")
-							return err
-						} else if selected.Has(s) {
-							log.Tracef("add created object %s to selection", s)
-							pathSelected[s] = nil
-						}
+					if err := learnPath(ev.Path); err != nil {
+						log.Errorf("can't filter on object created")
+						return err
 					}
 					if !needForwardEvent("ObjectCreated", ev) {
 						// not required on response stream
