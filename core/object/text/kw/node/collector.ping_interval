@@ -1,0 +1,4 @@
+Set the minimum interval between 2 push alive status to collector.
+It is called when there are no daemon status changes, but we want
+to send alive status to collector.
+Minimum value: 60s

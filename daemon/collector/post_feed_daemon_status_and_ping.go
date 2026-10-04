@@ -118,7 +118,7 @@ func (t *T) postPing() error {
 	if t.client == nil {
 		t.previousUpdatedAt = time.Time{}
 		t.dropChanges()
-		return nil
+		return errCollectorDataNotSent
 	}
 	var (
 		req  *http.Request
@@ -134,7 +134,7 @@ func (t *T) postPing() error {
 	)
 	if now.Sub(t.feedPingOrStatusAt) < t.pingInterval {
 		t.log.Tracef("postPing throttled")
-		return nil
+		return errCollectorDataNotSent
 	}
 
 	body := *t.postPingBody()
@@ -202,7 +202,7 @@ func (t *T) postChanges() error {
 	if t.client == nil {
 		t.previousUpdatedAt = time.Time{}
 		t.dropChanges()
-		return nil
+		return errCollectorDataNotSent
 	}
 	var (
 		req  *http.Request
@@ -251,7 +251,6 @@ func (t *T) postChanges() error {
 		t.dropChanges()
 		return nil
 	default:
-		t.log.Warnf("post daemon change unexpected status code %d", resp.StatusCode)
 		return fmt.Errorf("post daemon change unexpected status code %d", resp.StatusCode)
 	}
 }
@@ -260,12 +259,12 @@ func (t *T) postStatus() error {
 	if t.client == nil {
 		t.previousUpdatedAt = time.Time{}
 		t.dropChanges()
-		return nil
+		return errCollectorDataNotSent
 	}
 	now := time.Now()
 	if !t.feedStatusAt.IsZero() && now.Sub(t.feedStatusAt) < t.statusDelay {
 		t.log.Tracef("postStatus throttled")
-		return nil
+		return errCollectorDataNotSent
 	}
 
 	var (

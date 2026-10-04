@@ -1,0 +1,4 @@
+The maximum time the collector speaker waits for the log lines of an ended
+instance action, read from the journal of the node the action ran on.
+An end whose log lines can not be read in time is sent without them.
+Minimum value: 1s

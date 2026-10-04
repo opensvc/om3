@@ -74,7 +74,7 @@ func setupSwitchNode(t *testing.T, feederURL string) *Node {
 		driver.Register(driver.NewID(driver.GroupSwitch, "testswitch"), func() sanswitch.Driver { return &testSwitch{} })
 	})
 	testhelper.Setup(t)
-	conf := "[node]\nuuid = 00000000-0000-0000-0000-000000000001\ncollector_feeder = " + feederURL + "\n" +
+	conf := "[node]\nuuid = 00000000-0000-0000-0000-000000000001\n[collector]\nfeeder = " + feederURL + "\n" +
 		"[switch#sw1]\ntype = testswitch\n"
 	require.NoError(t, os.WriteFile(rawconfig.NodeConfigFile(), []byte(conf), 0600))
 	n, err := NewNode()

@@ -16,8 +16,10 @@ import (
 )
 
 // Provision allocates and starts the local instance of the object
-func (t *actor) Provision(ctx context.Context) error {
-	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
+//
+// The provision, and the stop ending it off the placement leader, report to
+// the collector as one provision.
+func (t *actor) Provision(ctx context.Context) (err error) {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
@@ -25,6 +27,10 @@ func (t *actor) Provision(ctx context.Context) error {
 	if !provision {
 		return fmt.Errorf("provision is disabled: make sure all resources have been provisioned by a sysadmin and execute 'instance provision --state-only")
 	}
+	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
+	ctx2, done := t.beginCollectorAction(ctx2, "provision")
+	defer func() { done(err, recover()) }()
+	ctx = withCollectorActionOf(ctx, ctx2)
 	t.setenv("provision", actioncontext.IsLeader(ctx2))
 	unlock, err := t.lockAction(ctx2)
 	if err != nil {

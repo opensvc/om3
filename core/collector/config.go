@@ -14,6 +14,14 @@ type (
 		PingInterval time.Duration `json:"ping_interval"`
 		StatusDelay  time.Duration `json:"status_delay"`
 
+		// ActionBatch is the maximum number of instance action begins and
+		// ends the collector speaker sends per batch.
+		ActionBatch int `json:"action_batch"`
+
+		// ActionLogTimeout bounds the read of the log lines of an ended
+		// instance action on the node it ran on.
+		ActionLogTimeout time.Duration `json:"action_log_timeout"`
+
 		// Hidden fields
 		Password string `json:"-"`
 	}

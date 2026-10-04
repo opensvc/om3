@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/collector"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/httphelper"
 	"github.com/opensvc/om3/v3/util/key"
@@ -27,6 +29,9 @@ type (
 		uuid         string
 		pingInterval *time.Duration
 		statusDelay  *time.Duration
+
+		actionBatch      int
+		actionLogTimeout *time.Duration
 	}
 
 	CollectorProblem struct {
@@ -57,17 +62,37 @@ func CollectorResponseStatusCheck(resp *http.Response, method, path string, want
 func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 	cfg := t.MergedConfig()
 	return &CollectorConfigRaw{
-		collectorUrl: cfg.GetString(key.Parse("node.collector")),
-		feederUrl:    cfg.GetString(key.Parse("node.collector_feeder")),
-		serverUrl:    cfg.GetString(key.Parse("node.collector_server")),
-		timeout:      cfg.GetDuration(key.Parse("node.collector_timeout")),
+		collectorUrl: cfg.GetString(collectorKey(cfg, &kwCollectorURL, &kwNodeCollector)),
+		feederUrl:    cfg.GetString(collectorKey(cfg, &kwCollectorFeeder, &kwNodeCollectorFeeder)),
+		serverUrl:    cfg.GetString(collectorKey(cfg, &kwCollectorServer, &kwNodeCollectorServer)),
+		timeout:      cfg.GetDuration(collectorKey(cfg, &kwCollectorTimeout, &kwNodeCollectorTimeout)),
 		insecure:     cfg.GetBool(key.Parse("node.dbinsecure")),
-		pingInterval: cfg.GetDuration(key.Parse(kwNodeCollectorPingInterval.String())),
-		statusDelay:  cfg.GetDuration(key.Parse(kwNodeCollectorStatusDelay.String())),
+		pingInterval: cfg.GetDuration(collectorKey(cfg, &kwCollectorPingInterval, &kwNodeCollectorPingInterval)),
+		statusDelay:  cfg.GetDuration(collectorKey(cfg, &kwCollectorStatusDelay, &kwNodeCollectorStatusDelay)),
+
+		actionBatch:      cfg.GetInt(key.Parse(kwCollectorActionBatch.String())),
+		actionLogTimeout: cfg.GetDuration(key.Parse(kwCollectorActionLogTimeout.String())),
 
 		// uuid is loaded from node.conf
 		uuid: t.Config().GetString(key.Parse("node.uuid")),
 	}
+}
+
+// collectorKey returns the key to read a collector setting from: the
+// [collector] keyword kw when set, else the deprecated [node] keyword
+// deprecated it replaces, or one of its aliases, when set, else kw for its
+// default.
+func collectorKey(cfg *xconfig.T, kw, deprecated *keywords.Keyword) key.T {
+	k := key.New(kw.Section, kw.Option)
+	if cfg.HasKey(k) {
+		return k
+	}
+	for _, option := range append([]string{deprecated.Option}, deprecated.Aliases...) {
+		if old := key.New(deprecated.Section, option); cfg.HasKey(old) {
+			return old
+		}
+	}
+	return k
 }
 
 func (t *CollectorConfigRaw) HasServerV3() bool {
@@ -95,7 +120,7 @@ func (t *CollectorConfigRaw) ServerUrl() string {
 }
 
 func (t *CollectorConfigRaw) AsConfig() *collector.Config {
-	var timeout, pingInterval, statusDelay time.Duration
+	var timeout, pingInterval, statusDelay, actionLogTimeout time.Duration
 	if t.timeout != nil {
 		timeout = *t.timeout
 	}
@@ -105,6 +130,9 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 	if t.statusDelay != nil {
 		statusDelay = *t.statusDelay
 	}
+	if t.actionLogTimeout != nil {
+		actionLogTimeout = *t.actionLogTimeout
+	}
 	return &collector.Config{
 		FeederUrl:    t.FeederUrl(),
 		ServerUrl:    t.ServerUrl(),
@@ -113,6 +141,9 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 		Password:     t.uuid,
 		PingInterval: pingInterval,
 		StatusDelay:  statusDelay,
+
+		ActionBatch:      t.actionBatch,
+		ActionLogTimeout: actionLogTimeout,
 	}
 }
 

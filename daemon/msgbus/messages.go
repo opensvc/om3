@@ -55,6 +55,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/hbsecret"
@@ -145,6 +146,10 @@ var (
 		"HeartbeatSecretUpdated": func() any { return &HeartbeatSecretUpdated{} },
 
 		"HeartbeatStale": func() any { return &HeartbeatStale{} },
+
+		"InstanceActionPending": func() any { return &InstanceActionPending{} },
+
+		"InstanceActionSent": func() any { return &InstanceActionSent{} },
 
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
 
@@ -566,6 +571,40 @@ type (
 		Nodename   string    `json:"node" yaml:"node"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
+	}
+
+	// InstanceActionPending is emitted by the node an instance action ran on,
+	// for the begin or the end of the action the collector did not
+	// acknowledge yet. The node emits it again until the collector speaker
+	// acknowledges it with InstanceActionSent.
+	//
+	// It carries no log line: the speaker reads them from the journal of
+	// Node when it sends the end.
+	InstanceActionPending struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path           `json:"path" yaml:"path"`
+		Node       string                `json:"node" yaml:"node"`
+		Phase      collector.ActionPhase `json:"phase" yaml:"phase"`
+		Action     collector.Action      `json:"action" yaml:"action"`
+
+		// UUID is the collector uuid of the begin, when the end is announced
+		// after the begin was acknowledged.
+		UUID string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
+	}
+
+	// InstanceActionSent is emitted by the collector speaker when the
+	// collector accepted, or refused for good, the begin or the end of an
+	// instance action. Node is the node the action ran on, which drops its
+	// pending files of the action.
+	InstanceActionSent struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path           `json:"path" yaml:"path"`
+		Node       string                `json:"node" yaml:"node"`
+		ExecID     uuid.UUID             `json:"exec_id" yaml:"exec_id"`
+		Phase      collector.ActionPhase `json:"phase" yaml:"phase"`
+
+		// UUID is the collector uuid of the begin.
+		UUID string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 	}
 
 	InstanceConfigDeleted struct {
@@ -1375,6 +1414,22 @@ func (e *HeartbeatSecretUpdated) Kind() string {
 
 func (e *HeartbeatStale) Kind() string {
 	return "HeartbeatStale"
+}
+
+func (e *InstanceActionPending) Kind() string {
+	return "InstanceActionPending"
+}
+
+func (e *InstanceActionPending) Key() string {
+	return fmt.Sprintf("InstanceActionPending,path=%s,node=%s,exec_id=%s,phase=%s", e.Path, e.Node, e.Action.ExecID, e.Phase)
+}
+
+func (e *InstanceActionSent) Kind() string {
+	return "InstanceActionSent"
+}
+
+func (e *InstanceActionSent) Key() string {
+	return fmt.Sprintf("InstanceActionSent,path=%s,node=%s,exec_id=%s,phase=%s", e.Path, e.Node, e.ExecID, e.Phase)
 }
 
 func (e *InstanceConfigDeleted) Kind() string {

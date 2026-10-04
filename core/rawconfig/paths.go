@@ -56,6 +56,12 @@ func CollectorResInfoSentDir() string {
 	return filepath.Join(Paths.Var, "node", "collector", "resinfo_sent")
 }
 
+// CollectorActionPendingDir is the directory holding the begin and end of
+// the local instance actions not yet acknowledged by the collector.
+func CollectorActionPendingDir() string {
+	return filepath.Join(Paths.Var, "node", "collector", "action_pending")
+}
+
 func NodeConfigFile() string {
 	return filepath.Join(Paths.Etc, "node.conf")
 }
@@ -69,6 +75,7 @@ func CreateMandatoryDirectories() error {
 		NodeVarDir(),
 		CollectorSentDir(),
 		CollectorResInfoSentDir(),
+		CollectorActionPendingDir(),
 		DNSUDSDir(),
 		Paths.Certs,
 		Paths.Etc,

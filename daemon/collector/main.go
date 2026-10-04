@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -135,6 +134,69 @@ type (
 
 		// clusterNode is a map of cluster nodenames
 		clusterNode map[string]struct{}
+
+		// nodeIsLeader is the collector speaker state of the cluster nodes,
+		// to announce again the local pending actions to a new speaker.
+		nodeIsLeader map[string]bool
+
+		// actionPendingDir holds the begin and end of the local instance
+		// actions not acknowledged by the collector yet.
+		actionPendingDir collector.ActionPendingDir
+
+		// actionAnnouncedAt is the time of the latest announce of each
+		// local pending action, by key.
+		actionAnnouncedAt map[string]time.Time
+
+		// actionAnnounceCheckAt is the time of the latest check of the local
+		// pending actions to announce again.
+		actionAnnounceCheckAt time.Time
+
+		// actionToSend is the speaker queue of the action phases to send to
+		// the collector, by key.
+		actionToSend map[string]*actionToSend
+
+		// actionBeginUUID is the collector uuid of the begins the speaker
+		// sent, by key, for their end to send it back.
+		actionBeginUUID map[string]string
+
+		// actionSent is the trace of the action phases the speaker sent, by
+		// key, to acknowledge again an announce instead of sending twice.
+		actionSent map[string]actionSentTrace
+
+		// actionSending is true while a batch of action phases is sent.
+		actionSending bool
+
+		// actionSendResultC is where the batch sender returns its results
+		// to the loop.
+		actionSendResultC chan []actionSendResult
+
+		// actionFailed is the set of the queued action phases whose latest
+		// send failed, by key.
+		actionFailed map[string]struct{}
+
+		// actionFailLastErr is the error of the latest send failed.
+		actionFailLastErr error
+
+		// actionFailure paces the warning counting actionFailed.
+		actionFailure collectorFailure
+
+		// daemonStatusFailure, resInfoFailure and objectConfigFailure pace
+		// the warnings about the other feeds failing to send.
+		daemonStatusFailure collectorFailure
+		resInfoFailure      collectorFailure
+		objectConfigFailure collectorFailure
+
+		// actionTunables are the action send tunables, set from the node
+		// collector configuration.
+		actionTunables actionTunables
+
+		// actionReadLog reads the log lines of an action, readActionLog
+		// when nil. Tests replace it.
+		actionReadLog actionLogReader
+
+		// resInfoGet returns the resource info of an instance, getResInfo
+		// when nil. Tests replace it.
+		resInfoGet func(p naming.Path, nodename string) (resource.Infos, error)
 	}
 
 	requester interface {
@@ -159,25 +221,6 @@ type (
 		InstanceStatusUpdates []msgbus.InstanceStatusUpdated `json:"instance_status_update"`
 		InstanceStatusDeletes []msgbus.InstanceStatusDeleted `json:"instance_status_delete"`
 	}
-
-	// End action:
-	// {
-	//   "level":"error",
-	//   "node":"dev2n1",
-	//   "sid":"cb373a76-991a-48e1-af18-2003b29d5b2e",
-	//   "obj_path":"foo014",
-	//   "node":"dev2n1",
-	//   "sid":"cb373a76-991a-48e1-af18-2003b29d5b2e",
-	//   "argv":["./om3","foo01*","instance","start","--caller"],
-	//   "cwd":"/root/dev/om3",
-	//   "action":"start",
-	//   "origin":"user",
-	//   "duration":1518.528241,
-	//   "error":"abort start",
-	//   "time":"2023-10-09T12:53:43.10928891+02:00",
-	//   "message":"done",
-	// }
-	logEntry map[string]string
 )
 
 const (
@@ -189,18 +232,6 @@ const (
 )
 
 var (
-	Headers = []string{
-		"svcname",
-		"action",
-		"hostname",
-		"sid",
-		"version",
-		"begin",
-		"status_log",
-		"cron",
-	}
-	WatchDir = filepath.Join(rawconfig.Paths.Log, "actions")
-
 	FeedPingerInterval = time.Second * 5
 
 	// defaultPostMaxDuration is the max duration of post request context.
@@ -223,6 +254,14 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			Url: "",
 		},
 		version: "3.0.0",
+
+		actionPendingDir:  ActionPendingDir(),
+		actionSendResultC: make(chan []actionSendResult, 1),
+
+		actionFailure:       newCollectorFailure("action logs"),
+		daemonStatusFailure: newCollectorFailure("daemon status"),
+		resInfoFailure:      newCollectorFailure("resource info"),
+		objectConfigFailure: newCollectorFailure("instance config"),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -267,7 +306,7 @@ func (t *T) setupRequester(c *collector.Config) error {
 		}
 		return err
 	} else {
-		t.client = cli
+		t.client = newInstrumentedRequester(cli)
 		t.status.Url = cli.URL()
 		// It is now enabled, clear previous disable state
 		t.disable = false
@@ -293,6 +332,7 @@ func (t *T) Start(ctx context.Context) error {
 		cfg := initialNodeConfig.Collector
 
 		t.setThrottle(cfg)
+		t.setActionTunables(cfg)
 
 		if err := t.setNodeFeedClient(cfg); err != nil {
 			t.log.Infof("the collector routine is dormant: %s", err)
@@ -336,6 +376,9 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 
+	sub.AddFilter(&msgbus.InstanceActionPending{})
+	sub.AddFilter(&msgbus.InstanceActionSent{})
+
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.InstanceResourceInfoUpdated{})
@@ -363,12 +406,18 @@ func (t *T) loop() {
 	t.publishOnChange(t.getState())
 
 	t.initChanges()
+	t.initActions()
 	if t.isSpeaker {
 		// onNodeStatusUpdated fires no transition when the daemon starts while
 		// already speaker, so seed here too.
 		t.seedResInfoToSend()
 	}
 	sub := t.startSubscriptions()
+
+	// Announce the local actions left pending by a daemon down during the
+	// action, or by a speaker gone before acknowledging them. After the
+	// subscription, for a speaker to queue its own.
+	t.announceActionPending(true)
 	defer func() {
 		t.status.State = "disabled"
 		t.publish()
@@ -391,6 +440,10 @@ func (t *T) loop() {
 				t.log.HandleAuditStop(c.Q, c.Subsystems, "collector")
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
+			case *msgbus.InstanceActionPending:
+				t.onInstanceActionPending(c)
+			case *msgbus.InstanceActionSent:
+				t.onInstanceActionSent(c)
 			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(c)
 			case *msgbus.InstanceConfigUpdated:
@@ -416,18 +469,12 @@ func (t *T) loop() {
 			}
 		case <-refreshTicker.C:
 			t.onRefreshTicker()
+		case results := <-t.actionSendResultC:
+			t.onActionSendResults(results)
 		case <-t.ctx.Done():
 			return
 		}
 	}
-}
-
-func (t *T) sendBeginAction(data []string) {
-	t.feedClient.Call("begin_action", Headers, data)
-}
-
-func (t *T) sendLogs(data [][]string) {
-	t.feedClient.Call("res_action_batch", Headers, data)
 }
 
 func (t *T) initChanges() {
@@ -479,6 +526,19 @@ func (t *T) initChanges() {
 	for _, nodename := range clusternode.Get() {
 		t.clusterNode[nodename] = struct{}{}
 	}
+}
+
+// initActions initializes the state of the instance actions reported to
+// the collector. Unlike the changes, it survives a collector asking for a
+// full dataset.
+func (t *T) initActions() {
+	t.nodeIsLeader = make(map[string]bool)
+	for _, v := range node.StatusData.GetAll() {
+		t.nodeIsLeader[v.Node] = v.Value.IsLeader
+	}
+	t.actionAnnouncedAt = make(map[string]time.Time)
+	t.actionAnnounceCheckAt = time.Now()
+	t.dropActionToSend()
 }
 
 func (t *T) dropChanges() {

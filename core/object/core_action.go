@@ -385,10 +385,18 @@ func actionSelectedRIDs(resources resource.Drivers, action string) []string {
 	return rids
 }
 
-func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
+// action runs fn on the resources of the action of ctx, and reports the
+// action to the collector unless ctx already carries a report.
+func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) (err error) {
 	if t.IsDisabled() {
 		return ErrDisabled
 	}
+	ctx, done := t.beginCollectorAction(ctx, actioncontext.Props(ctx).Name)
+	defer func() { done(err, recover()) }()
+	return t.doAction(ctx, fn)
+}
+
+func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 	t.pg = t.pgConfig("")
 	wd, _ := os.Getwd()
 	action := actioncontext.Props(ctx)
@@ -438,13 +446,16 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		ctx = actioncontext.WithSelectedRIDs(ctx, t.path, actionSelectedRIDs(resourceSelector.Resources(), action.Name))
 	}
 
+	// The command line may hold secrets, which the log, and the action
+	// lines reported to the collector from it, must not.
+	argv := maskArgv(os.Args)
 	logger := t.log.
-		Attr("argv", os.Args).
+		Attr("argv", argv).
 		Attr("cwd", wd).
 		Attr("action", action.Name).
 		Attr("origin", env.Origin()).
 		Attr("crm", "true")
-	logger.Infof(">>> do %s %s (origin %s, session_id %s)", action.Name, os.Args, env.Origin(), xsession.SessionID())
+	logger.Infof(">>> do %s %s (origin %s, session_id %s)", action.Name, argv, env.Origin(), xsession.SessionID())
 	beginTime := time.Now()
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
@@ -454,7 +465,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if overallStatus := sb.Get("overall"); overallStatus == status.Warn {
 			statusIcon += ", with warnings"
 		}
-		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("<<< done %s %s in %s, instance status is now %s", action.Name, os.Args, time.Now().Sub(beginTime), statusIcon)
+		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("<<< done %s %s in %s, instance status is now %s", action.Name, argv, time.Now().Sub(beginTime), statusIcon)
 	}()
 
 	// daemon instance monitor updates
