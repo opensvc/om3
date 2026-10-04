@@ -157,10 +157,17 @@ func (d *data) setNextMsgType() {
 				delete(d.hbGens, node)
 				continue
 			}
+			// A peer that applied a gen of this node, any one, catches up
+			// from patches: the event queue keeps the events of the gens
+			// above the lowest one the peers applied (see
+			// purgeAppliedPatchQueue). Only a peer that applied none needs
+			// a full message.
+			//
+			// Waiting in full for every peer to have applied the current
+			// gen held a node in full as long as its gen moved faster than
+			// a peer message round trip, as during its own startup, when a
+			// peer restart sent it back to full.
 			if gen[d.localNode] == 0 {
-				remoteNeedFull = append(remoteNeedFull, node)
-			} else if d.hbMessageType == "full" && gen[d.localNode] < d.gen {
-				// stay in full, peers not ready for patch
 				remoteNeedFull = append(remoteNeedFull, node)
 			}
 
