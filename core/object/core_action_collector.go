@@ -42,12 +42,27 @@ var (
 // reported to the collector, and returns the context carrying the record
 // and the function recording its end.
 //
+// The end function is given the action error and what recover() returned,
+// from the action deferred function:
+//
+//	ctx, done := t.beginCollectorAction(ctx, name)
+//	defer func() { done(err, recover()) }()
+//
+// so an action panicking ends err, rather than ok as its error is still nil,
+// and panics again with the same value once recorded.
+//
 // The context of an action already recorded is returned as is, with a
 // no-op end: a restart, or a provision and the stop ending it, report once.
 // So does the context of an action not to report, so the actions it chains
 // do not report either.
-func (t *actor) beginCollectorAction(ctx context.Context, name string) (context.Context, func(error)) {
-	noop := func(error) {}
+func (t *actor) beginCollectorAction(ctx context.Context, name string) (context.Context, func(err error, panicked any)) {
+	// The end of an action chained by another one records nothing, but a
+	// panic it recovered goes on to the chaining action.
+	noop := func(_ error, panicked any) {
+		if panicked != nil {
+			panic(panicked)
+		}
+	}
 	if _, ok := ctx.Value(collectorActionKey{}).(*collectorAction); ok {
 		return ctx, noop
 	}
@@ -70,14 +85,17 @@ func (t *actor) beginCollectorAction(ctx context.Context, name string) (context.
 	}
 	t.saveCollectorAction(rec)
 	ctx = context.WithValue(ctx, collectorActionKey{}, rec)
-	return ctx, func(err error) {
+	return ctx, func(err error, panicked any) {
 		rec.a.End = time.Now()
-		if err == nil {
+		if err == nil && panicked == nil {
 			rec.a.Status = "ok"
 		} else {
 			rec.a.Status = "err"
 		}
 		t.saveCollectorAction(rec)
+		if panicked != nil {
+			panic(panicked)
+		}
 	}
 }
 

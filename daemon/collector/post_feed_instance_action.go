@@ -155,6 +155,11 @@ var (
 
 	actionLineTrimTag = " <trimmed> "
 
+	// actionLinesMaxLen is the total length of the line messages above
+	// which the lines of an action end are dropped in their middle, so the
+	// end payload stays bounded whatever the action logged.
+	actionLinesMaxLen = 1 * 1024 * 1024
+
 	// actionLineTimeFormat is the log line time format, the om2 agent one:
 	// the collector stores it unparsed.
 	actionLineTimeFormat = time.DateTime
@@ -436,7 +441,7 @@ func sendAction(ctx context.Context, requester requester, readLog actionLogReade
 		if err != nil {
 			result.err = fmt.Errorf("read the log lines, send without: %w", err)
 		}
-		lines = actionLinesFromJournal(records, msg.Action.PID)
+		lines = capActionLines(actionLinesFromJournal(records, msg.Action.PID), actionLinesMaxLen)
 	default:
 		result.err = fmt.Errorf("invalid phase %q", msg.Phase)
 		return result
@@ -535,7 +540,8 @@ func newActionPost(nodename string, a collector.Action, phase collector.ActionPh
 //     others are ok
 //   - a message above actionLineMaxLen is trimmed in its middle
 //   - consecutive records of the same resource and status are merged, their
-//     messages joined by a new line
+//     messages joined by a new line, and the merged message is trimmed the
+//     same way
 func actionLinesFromJournal(records []map[string]any, pid int) []actionLine {
 	lines := make([]actionLine, 0)
 	pidS := strconv.Itoa(pid)
@@ -555,7 +561,9 @@ func actionLinesFromJournal(records []map[string]any, pid int) []actionLine {
 		}
 		message = trimActionLineMessage(message)
 		if n := len(lines); n > 0 && lines[n-1].RID == rid && lines[n-1].Status == status {
-			lines[n-1].StatusLog += "\n" + message
+			// Trimmed again once merged: a merged line keeps the cap of a
+			// record, keeping the head and the tail of what was merged.
+			lines[n-1].StatusLog = trimActionLineMessage(lines[n-1].StatusLog + "\n" + message)
 			continue
 		}
 		var begin string
@@ -610,6 +618,42 @@ func parseJournalRecord(record map[string]any) (at time.Time, level, rid, messag
 		}
 	}
 	return at, level, rid, message, true
+}
+
+// capActionLines returns the lines whose messages total maxLen at most:
+// when longer, the lines of the head and of the tail, each taking up to half
+// of maxLen, are kept, and a line in their place tells how many were
+// dropped. The head tells how the action started, the tail how it ended.
+func capActionLines(lines []actionLine, maxLen int) []actionLine {
+	total := 0
+	for _, line := range lines {
+		total += len(line.StatusLog)
+	}
+	if total <= maxLen {
+		return lines
+	}
+	half := maxLen / 2
+	head, size := 0, 0
+	for head < len(lines) && size+len(lines[head].StatusLog) <= half {
+		size += len(lines[head].StatusLog)
+		head++
+	}
+	tail, size := len(lines), 0
+	for tail > head && size+len(lines[tail-1].StatusLog) <= half {
+		size += len(lines[tail-1].StatusLog)
+		tail--
+	}
+	dropped := lines[head:tail]
+	capped := make([]actionLine, 0, head+1+len(lines)-tail)
+	capped = append(capped, lines[:head]...)
+	capped = append(capped, actionLine{
+		Begin:     dropped[0].Begin,
+		PID:       dropped[0].PID,
+		Status:    "warn",
+		StatusLog: fmt.Sprintf("<trimmed> %d log lines dropped: the action log exceeds %d characters", len(dropped), maxLen),
+	})
+	capped = append(capped, lines[tail:]...)
+	return capped
 }
 
 func trimActionLineMessage(s string) string {

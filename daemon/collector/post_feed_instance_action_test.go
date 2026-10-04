@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -662,4 +663,53 @@ func TestNewActionTunables(t *testing.T) {
 	got = newActionTunables(&collector.Config{Timeout: time.Minute, ActionLogTimeout: time.Millisecond})
 	assert.Equal(t, 20*time.Second, got.postTimeout, "collector.timeout is at most 20s")
 	assert.Equal(t, time.Second, got.logTimeout, "a timeout is at least 1s")
+}
+
+// TestActionLinesFromJournalCapsMergedLines pins that the records merged in
+// one line keep the cap of a record, so a chatty resource can not grow an
+// end payload without bound.
+func TestActionLinesFromJournalCapsMergedLines(t *testing.T) {
+	at := time.Date(2026, 10, 4, 10, 0, 0, 0, time.UTC)
+	records := make([]map[string]any, 0, 300)
+	records = append(records, journalRecord(t, at, "info", "app#1", "first"))
+	for range 298 {
+		records = append(records, journalRecord(t, at, "info", "app#1", strings.Repeat("m", 100)))
+	}
+	records = append(records, journalRecord(t, at, "info", "app#1", "last"))
+
+	lines := actionLinesFromJournal(records, 1)
+	require.Len(t, lines, 1, "the records of a resource and status merge in one line")
+	assert.Len(t, lines[0].StatusLog, actionLineMaxLen)
+	assert.True(t, strings.HasPrefix(lines[0].StatusLog, "first\n"), "the head is kept")
+	assert.True(t, strings.HasSuffix(lines[0].StatusLog, "\nlast"), "the tail is kept")
+	assert.Contains(t, lines[0].StatusLog, actionLineTrimTag)
+}
+
+func TestCapActionLines(t *testing.T) {
+	newLines := func(n int) []actionLine {
+		lines := make([]actionLine, n)
+		for i := range lines {
+			lines[i] = actionLine{Begin: fmt.Sprintf("b%d", i), PID: "1", Status: "ok", StatusLog: fmt.Sprintf("%03d%s", i, strings.Repeat("x", 97))}
+		}
+		return lines
+	}
+
+	lines := newLines(10)
+	assert.Equal(t, lines, capActionLines(lines, 1000), "lines within the limit are left as they are")
+
+	capped := capActionLines(newLines(100), 1000)
+	require.Len(t, capped, 11, "5 lines of the head, the dropped lines one, 5 lines of the tail")
+	assert.True(t, strings.HasPrefix(capped[0].StatusLog, "000"), "the head is kept")
+	assert.True(t, strings.HasPrefix(capped[4].StatusLog, "004"))
+	assert.Equal(t, "warn", capped[5].Status)
+	assert.Equal(t, "b5", capped[5].Begin, "the dropped lines one is timed as the first dropped")
+	assert.Contains(t, capped[5].StatusLog, "90 log lines dropped")
+	assert.True(t, strings.HasPrefix(capped[6].StatusLog, "095"), "the tail is kept")
+	assert.True(t, strings.HasPrefix(capped[10].StatusLog, "099"))
+
+	total := 0
+	for _, line := range capped {
+		total += len(line.StatusLog)
+	}
+	assert.LessOrEqual(t, total, 1000+len(capped[5].StatusLog))
 }

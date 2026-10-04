@@ -29,7 +29,7 @@ func (t *actor) Provision(ctx context.Context) (err error) {
 	}
 	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
 	ctx2, done := t.beginCollectorAction(ctx2, "provision")
-	defer func() { done(err) }()
+	defer func() { done(err, recover()) }()
 	ctx = withCollectorActionOf(ctx, ctx2)
 	t.setenv("provision", actioncontext.IsLeader(ctx2))
 	unlock, err := t.lockAction(ctx2)

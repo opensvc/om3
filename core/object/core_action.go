@@ -392,7 +392,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) (err error) {
 		return ErrDisabled
 	}
 	ctx, done := t.beginCollectorAction(ctx, actioncontext.Props(ctx).Name)
-	defer func() { done(err) }()
+	defer func() { done(err, recover()) }()
 	return t.doAction(ctx, fn)
 }
 
