@@ -58,7 +58,7 @@ func (t *BT) stageVolumeMounts() error {
 		return err
 	}
 	for i, s := range t.VolumeMounts {
-		source, _, _, err := parseVolumeMount(s)
+		source, _, opt, err := parseVolumeMount(s)
 		if err != nil {
 			return err
 		}
@@ -71,7 +71,7 @@ func (t *BT) stageVolumeMounts() error {
 		if err != nil {
 			return err
 		}
-		if err := stageMount(target.Head, target.HostPath, t.stagingPath(i)); err != nil {
+		if err := stageMount(target.Head, target.HostPath, t.stagingPath(i), opt); err != nil {
 			return fmt.Errorf("volume_mounts entry %s: %w", s, err)
 		}
 	}
@@ -134,11 +134,13 @@ func unmountAll(p string) error {
 }
 
 // stageMount bind mounts the source, a path in the head of a volume, onto the
-// staging path target, without following a link out of the head.
+// staging path target, without following a link out of the head, with the
+// propagation the options of the volume_mounts entry, opt, ask the engine
+// for.
 //
 // A source missing is made in the head as a directory, as the engines make a
 // missing bind source.
-func stageMount(head, source, target string) error {
+func stageMount(head, source, target, opt string) error {
 	if head == "" {
 		return fmt.Errorf("the volume has no head")
 	}
@@ -185,13 +187,44 @@ func stageMount(head, source, target string) error {
 	if err := unix.Mount(fdPath, target, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
 		return fmt.Errorf("bind %s on %s: %w", source, target, err)
 	}
-	// The staging mount is the container's alone: a mount made in the
-	// volume afterwards is not one it was given.
-	if err := unix.Mount("", target, "", unix.MS_PRIVATE|unix.MS_REC, ""); err != nil {
-		_ = unmountAll(target)
-		return fmt.Errorf("make %s private: %w", target, err)
+	if flags, name := stagingPropagation(opt); flags != 0 {
+		if err := unix.Mount("", target, "", flags, ""); err != nil {
+			_ = unmountAll(target)
+			return fmt.Errorf("make %s %s: %w", target, name, err)
+		}
 	}
 	return nil
+}
+
+// stagingPropagation is the propagation the staging mount of a volume_mounts
+// entry is set, from the options of the entry, and its name: zero flags keep
+// the propagation of the bind.
+//
+// The staging mount is the container's alone by default: a mount made in the
+// volume afterwards is not one it was given. An entry asking the engine for
+// another propagation asks for mounts to cross, which the engine refuses on a
+// private source:
+//
+//   - shared or rshared keeps the bind a peer of the volume mount, as a bind
+//     of a shared mount is: a mount made in the container reaches the volume,
+//     as the FUSE mount of a sidecar container reaches the containers using
+//     its mount point.
+//   - slave or rslave makes it a slave of the volume mount: a mount made in
+//     the volume reaches the container, and none goes back.
+//
+// Either way the mounts cross within the volume only, the staging mount
+// being a bind of a path in it. A volume mount that is private itself has
+// nothing to propagate, and the engine refuses the entry.
+func stagingPropagation(opt string) (uintptr, string) {
+	for _, o := range strings.Split(opt, ",") {
+		switch o {
+		case "shared", "rshared":
+			return 0, "shared"
+		case "slave", "rslave":
+			return unix.MS_SLAVE | unix.MS_REC, "slave"
+		}
+	}
+	return unix.MS_PRIVATE | unix.MS_REC, "private"
 }
 
 // traversable makes the directories from the staging root to dir searchable
