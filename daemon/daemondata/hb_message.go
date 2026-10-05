@@ -83,6 +83,7 @@ func (d *data) getHbMessage() (hbtype.Msg, error) {
 		Compat:    d.clusterData.Cluster.Node[d.localNode].Status.Compat,
 		Kind:      d.hbMessageType,
 		Nodename:  d.localNode,
+		RunID:     d.runID,
 		Gen:       d.deepCopyLocalGens(),
 		UpdatedAt: time.Now(),
 	}

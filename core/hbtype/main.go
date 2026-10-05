@@ -20,6 +20,14 @@ type (
 		Events    map[string][]event.Event `json:"events,omitempty"`
 		NodeData  node.Node                `json:"node_data,omitempty"`
 		Nodename  string                   `json:"nodename"`
+
+		// RunID identifies the daemon run of the sender, new at each daemon
+		// start. A peer seeing it change knows the sender restarted, and
+		// asks it a full message, whatever the gens: a restart is otherwise
+		// told only by a gen going back below the one applied, which a peer
+		// missing the first messages of the new run does not see. Empty
+		// from a sender not setting it.
+		RunID string `json:"run_id,omitempty"`
 	}
 
 	// IDStopper is the interface to stop a hb driver

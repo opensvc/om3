@@ -84,6 +84,18 @@ type (
 		// It is used to drop outdated patch messages
 		hbPatchMsgUpdated map[string]time.Time
 
+		// runID identifies this daemon run in the hb messages it sends.
+		runID string
+
+		// peerRuns is the daemon run of each peer, as its latest hb message
+		// told, to detect a peer restart.
+		peerRuns map[string]peerRun
+
+		// peerRunCandidates is, for each peer, the run of its messages
+		// stamped before the latest message of its known run: a run to
+		// confirm before switching to it.
+		peerRunCandidates map[string]peerRunCandidate
+
 		// needMsg is set to true when a peer node doesn't know localnode current data gen
 		// set to false after a hb message is created
 		needMsg bool
@@ -91,6 +103,26 @@ type (
 		hasEventHeartbeatStaleOrAlive bool
 
 		labelLocalhost pubsub.Label
+	}
+
+	// peerRun is the daemon run of a peer, and the update time of its
+	// latest hb message of that run.
+	peerRun struct {
+		id        string
+		updatedAt time.Time
+	}
+
+	// peerRunCandidate is a run of a peer whose messages are stamped
+	// before the latest message of its known run: either messages of a
+	// previous run delivered late, or the messages of a new run of a peer
+	// whose clock was stepped back. count is the number of its messages
+	// received with increasing stamps, seenAt the local time the latest was
+	// received.
+	peerRunCandidate struct {
+		id        string
+		updatedAt time.Time
+		count     int
+		seenAt    time.Time
 	}
 
 	eventQueue map[string][]event.Event
