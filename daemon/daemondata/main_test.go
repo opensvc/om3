@@ -32,6 +32,16 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
+// stuckPublisher holds each publication until released, as the bus does
+// while a matching subscription queue is full.
+type stuckPublisher struct {
+	released chan struct{}
+}
+
+func (p stuckPublisher) Pub(pubsub.Messager, ...pubsub.Label) {
+	<-p.released
+}
+
 func loadFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	path := filepath.Join("testdata", name)
@@ -206,6 +216,19 @@ func TestDaemonData(t *testing.T) {
 			}
 			seen[a.data] = a.client
 		}
+	})
+	require.False(t, t.Failed()) // fail on first error
+
+	t.Run("ClusterDataAfterPublished gives up within timeout on a publication the bus holds", func(t *testing.T) {
+		// The bus waits for a full subscription to queue a publication: a
+		// stalled manager must not hold the caller past its timeout.
+		stuck := stuckPublisher{released: make(chan struct{})}
+		defer close(stuck.released)
+		begin := time.Now()
+		data, ok := bus.ClusterDataAfterPublished(stuck, 100*time.Millisecond)
+		require.False(t, ok, "the request was never queued")
+		require.Nil(t, data)
+		require.Less(t, time.Since(begin), 2*time.Second, "the caller is not held by the publication")
 	})
 	require.False(t, t.Failed()) // fail on first error
 
