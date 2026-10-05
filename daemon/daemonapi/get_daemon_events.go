@@ -215,17 +215,13 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return false
 	}
 
-	// isAllowed returns false if a message has a namespace label that
+	// isAllowed returns false if a message is about a namespace that
 	// doesn't match any of the user's guest grant.
 	isAllowed := func(msg pubsub.Messager) bool {
 		if hasRoot {
 			return true
 		}
-		labels := msg.GetLabels()
-		if namespace, ok := labels["namespace"]; ok {
-			return hasRoleGuestOn(userGrants, namespace)
-		}
-		return true
+		return isEventAllowedForGuest(userGrants, msg)
 	}
 
 	// learnPath adds the object path p to the paths the selector expands
@@ -566,6 +562,30 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			}
 		}
 	}
+}
+
+// isEventAllowedForGuest returns false if msg is about a namespace that
+// doesn't match any of grants guest grant.
+//
+// The namespace is read from the namespace label, else from the path label:
+// the events replayed from the cluster data, as the instance status and
+// config ones, carry a path label and no namespace label. A message with
+// neither, or with the empty path of the node configuration, is not about a
+// namespace.
+func isEventAllowedForGuest(grants rbac.Grants, msg pubsub.Messager) bool {
+	labels := msg.GetLabels()
+	if namespace, ok := labels["namespace"]; ok {
+		return hasRoleGuestOn(grants, namespace)
+	}
+	s, ok := labels["path"]
+	if !ok || s == "" {
+		return true
+	}
+	p, err := naming.ParsePath(s)
+	if err != nil {
+		return false
+	}
+	return hasRoleGuestOn(grants, p.Namespace)
 }
 
 // parseFilters return filters from b.Filter

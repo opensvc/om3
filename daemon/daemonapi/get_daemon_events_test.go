@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
@@ -211,6 +212,29 @@ func TestDataFilters(t *testing.T) {
 	for s, c := range notMatched {
 		t.Run(s, func(t *testing.T) {
 			require.Falsef(t, c.match(v), "'%s' shouldn't match '%s'", v, c)
+		})
+	}
+}
+
+func TestIsEventAllowedForGuest(t *testing.T) {
+	grants := rbac.NewGrants("guest:ns1")
+	cases := map[string]struct {
+		labels  pubsub.Labels
+		allowed bool
+	}{
+		"namespace label of a granted namespace": {pubsub.NewLabels("node", "n1", "namespace", "ns1", "path", "ns1/svc/s1"), true},
+		"namespace label of another namespace":   {pubsub.NewLabels("node", "n1", "namespace", "ns2", "path", "ns2/svc/s1"), false},
+		"cached event of a granted namespace":    {pubsub.NewLabels("node", "n1", "path", "ns1/svc/s1", "source", "cache"), true},
+		"cached event of another namespace":      {pubsub.NewLabels("node", "n1", "path", "ns2/svc/s1", "source", "cache"), false},
+		"cached event of the root namespace":     {pubsub.NewLabels("node", "n1", "path", "s1", "source", "cache"), false},
+		"cached event of an unparsable path":     {pubsub.NewLabels("node", "n1", "path", "ns2/badkind/s1", "source", "cache"), false},
+		"event of the node configuration":        {pubsub.NewLabels("node", "n1", "path", ""), true},
+		"event with neither namespace nor path":  {pubsub.NewLabels("node", "n1"), true},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			msg := &msgbus.InstanceStatusUpdated{Msg: pubsub.Msg{Labels: c.labels}}
+			require.Equal(t, c.allowed, isEventAllowedForGuest(grants, msg))
 		})
 	}
 }
