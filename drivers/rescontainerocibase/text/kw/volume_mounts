@@ -26,3 +26,9 @@ cross, within the volume:
   starts before the mount is made.
 
 The engine refuses either on a volume whose own mount is private.
+
+Only the container making the mount asks `rshared`: when a container stops,
+its staging mount goes, and with a shared one the mounts made on it go from
+the volume and from every container using it. Those of a sidecar die with
+it anyway. A container using them asks `rslave`, and leaves them to the
+others when it stops.

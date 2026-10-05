@@ -258,4 +258,6 @@ func TestAStagingMountAskedSlaveReceivesTheMountsOfTheVolume(t *testing.T) {
 	b, err := os.ReadFile("/proc/self/mountinfo")
 	require.NoError(t, err)
 	assert.Equal(t, 2, strings.Count(string(b), " "+target+" "), "the mount made in the volume is stacked on the staging mount")
+	require.NoError(t, unmountAll(target))
+	assert.True(t, isMountPoint(t, filepath.Join(head, "html")), "a container using what a sidecar mounts leaves the mount to the others when its staging mount goes")
 }

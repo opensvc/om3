@@ -620,9 +620,10 @@ func (t *BT) Start(ctx context.Context) error {
 			return logError(err)
 		}
 		if err := f(ctx); err != nil {
-			// The staging mounts of a container that did not start would
-			// stay until its next start or stop.
-			t.unstageAfterStop(ctx)
+			// The staging mounts are kept: a start that timed out may
+			// still be carried out by the engine, which would then mount
+			// an empty directory in place of the volume source. The next
+			// start or stop removes them.
 			return logError(err)
 		} else if t.Detach {
 			// rollback needed only for detached containers, not for init containers that exit after start.
