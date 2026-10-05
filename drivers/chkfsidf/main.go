@@ -29,6 +29,9 @@ func (t *fsChecker) Entries(ctx context.Context) ([]df.Entry, error) {
 	return df.Inode(ctx)
 }
 
+// ResultSet is the percentage of the inodes of the filesystem in use. The
+// inode counts are not reported: the collector checks every fs_i instance
+// against the percentage thresholds, as v2 reported none.
 func (t *fsChecker) ResultSet(ctx context.Context, entry *df.Entry, objs []interface{}) *check.ResultSet {
 	path := check.ObjectPathClaimingDir(ctx, entry.MountPoint, objs)
 	rs := check.NewResultSet()
@@ -37,22 +40,6 @@ func (t *fsChecker) ResultSet(ctx context.Context, entry *df.Entry, objs []inter
 		Value:       entry.UsedPercent,
 		Path:        path,
 		Unit:        "%",
-		DriverGroup: DriverGroup,
-		DriverName:  DriverName,
-	})
-	rs.Push(check.Result{
-		Instance:    entry.MountPoint + ".free",
-		Value:       entry.Free,
-		Path:        path,
-		Unit:        "inode",
-		DriverGroup: DriverGroup,
-		DriverName:  DriverName,
-	})
-	rs.Push(check.Result{
-		Instance:    entry.MountPoint + ".size",
-		Value:       entry.Total,
-		Path:        path,
-		Unit:        "inode",
 		DriverGroup: DriverGroup,
 		DriverName:  DriverName,
 	})

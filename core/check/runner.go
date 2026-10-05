@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -54,6 +55,7 @@ func RunnerWithObjects(objs ...interface{}) funcopt.O {
 // the output.
 func (r Runner) Do(ctx context.Context, opts ...funcopt.O) *ResultSet {
 	rs := NewResultSet()
+	defer forgetIndexes(r.objects)
 	for _, path := range r.customCheckPaths {
 		go r.doCustomCheck(ctx, path)
 	}
@@ -72,21 +74,27 @@ func (r Runner) Do(ctx context.Context, opts ...funcopt.O) *ResultSet {
 		Str("c", "checks").
 		Int("instances", len(rs.Data)).
 		Int("drivers", len(r.customCheckPaths)).
-		Msg("checks done")
+		Msgf("checks done: %d results, %d custom checkers", len(rs.Data), len(r.customCheckPaths))
 	return rs
 }
 
 func (r *Runner) doRegisteredCheck(ctx context.Context, c Checker) {
+	begin := time.Now()
 	rs, err := c.Check(ctx, r.objects)
+	if rs == nil {
+		// A checker failing before it has results, which the aggregation
+		// can not add.
+		rs = NewResultSet()
+	}
 	if err != nil {
-		log.Error().Err(err).Msg("execution")
+		log.Error().Err(err).Msgf("checker %T: execution", c)
 		r.q <- rs
 		return
 	}
 	log.Debug().
 		Str("c", "checks").
 		Int("instances", len(rs.Data)).
-		Send()
+		Msgf("checker %T: %d results in %s", c, len(rs.Data), time.Since(begin).Round(time.Millisecond))
 	r.q <- rs
 }
 
@@ -96,18 +104,18 @@ func (r *Runner) doCustomCheck(ctx context.Context, path string) {
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {
-		log.Error().Str("checker", path).Err(err).Msg("execution")
+		log.Error().Str("checker", path).Err(err).Msgf("checker %s: execution", path)
 		r.q <- rs
 		return
 	}
-	log.Error().Str("checker", path).Err(err).Msg(string(b))
+	log.Debug().Str("checker", path).Msgf("checker %s: %s", path, b)
 	if err := json.Unmarshal(b, rs); err != nil {
-		log.Error().Str("checker", path).Err(err).Msg("unmarshal json")
+		log.Error().Str("checker", path).Err(err).Msgf("checker %s: unmarshal json", path)
 	}
 	log.Debug().
 		Str("c", "checks").
 		Str("driver", path).
 		Int("instances", len(rs.Data)).
-		Send()
+		Msgf("checker %s: %d results", path, len(rs.Data))
 	r.q <- rs
 }
