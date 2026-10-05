@@ -33,19 +33,40 @@ type (
 		addr   string
 		server *http.Server
 
+		// tokens are the challenge tokens of the secs, read when they
+		// change.
+		tokens *tlssecs.Store
+
+		// busy bounds the requests served at once: what exceeds it is
+		// answered unavailable, before any work.
+		busy chan struct{}
+
 		cancel context.CancelFunc
 		done   chan struct{}
 	}
 )
 
-const challengePath = "/.well-known/acme-challenge/"
+const (
+	challengePath = "/.well-known/acme-challenge/"
+
+	// maxConcurrent is how many requests are served at once. An ACME
+	// directory reads a token from a few vantage points.
+	maxConcurrent = 16
+
+	// retryInterval is how often a port that could not be listened on is
+	// tried again.
+	retryInterval = 30 * time.Second
+)
 
 func New() *T {
+	log := plog.NewDefaultLogger().
+		Attr("pkg", "daemon/listener/lsnracme").
+		Attr("lsnr_type", "acme").
+		WithPrefix("daemon: listener: acme: ")
 	return &T{
-		log: plog.NewDefaultLogger().
-			Attr("pkg", "daemon/listener/lsnracme").
-			Attr("lsnr_type", "acme").
-			WithPrefix("daemon: listener: acme: "),
+		log:    log,
+		tokens: tlssecs.New(log),
+		busy:   make(chan struct{}, maxConcurrent),
 	}
 }
 
@@ -61,10 +82,16 @@ func (t *T) Start(ctx context.Context) error {
 	go func() {
 		defer close(t.done)
 		defer func() { _ = sub.Stop() }()
+		retry := time.NewTicker(retryInterval)
+		defer retry.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
+			case <-retry.C:
+				// A port taken when the listener started, or moved, is
+				// tried again.
+				t.apply(configuredAddr(cluster.ConfigData.Get()))
 			case e := <-sub.C:
 				if m, ok := e.(*msgbus.ClusterConfigUpdated); ok {
 					t.apply(configuredAddr(&m.Value))
@@ -117,6 +144,8 @@ func (t *T) apply(addr string) {
 	lsnr, err := net.Listen("tcp", addr)
 	if err != nil {
 		t.log.Errorf("listen on %s: %s", addr, err)
+		// Not listened on, so tried again.
+		t.addr = ""
 		return
 	}
 	t.server = &http.Server{
@@ -143,7 +172,14 @@ func (t *T) serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	keyAuth, ok := tlssecs.KeyAuthorization(token)
+	select {
+	case t.busy <- struct{}{}:
+		defer func() { <-t.busy }()
+	default:
+		http.Error(w, "busy", http.StatusServiceUnavailable)
+		return
+	}
+	keyAuth, ok := t.tokens.KeyAuthorization(token)
 	if !ok {
 		http.NotFound(w, r)
 		return

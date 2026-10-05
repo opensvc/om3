@@ -38,6 +38,9 @@ const (
 	// tokens of a renewal through the listener.
 	acmeChallengeKeyPrefix = "acme_challenge/"
 
+	// AcmeChallengeKeyPattern matches the keys of the challenge tokens.
+	AcmeChallengeKeyPattern = acmeChallengeKeyPrefix + "*"
+
 	// listenerHTTP01Wait bounds the wait for every node to answer a token,
 	// the time the daemon takes to replicate the sec.
 	listenerHTTP01Wait = time.Minute
