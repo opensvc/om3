@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
+	"github.com/opensvc/om3/v3/daemon/listener/tlssecs"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
@@ -33,6 +34,10 @@ type (
 		keyFile   string
 		wg        sync.WaitGroup
 		status    daemonsubsystem.Listener
+
+		// tlsSecs presents the certificates of listener.tls_secs to the
+		// clients asking one of their names.
+		tlsSecs *tlssecs.Store
 
 		labelLocalhost pubsub.Label
 		localhost      string
@@ -57,6 +62,7 @@ func New(ctx context.Context, opts ...funcopt.O) *T {
 		return nil
 	}
 	t.log = t.log.Attr("lsnr_addr", t.addr)
+	t.tlsSecs = tlssecs.New(t.log)
 	return t
 }
 
@@ -107,8 +113,11 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		Addr:    t.addr,
 		Handler: routehttp.New(ctx, true),
 		TLSConfig: &tls.Config{
-			ClientAuth: tls.RequestClientCert,
-			MinVersion: tls.VersionTLS13,
+			// The certificate of system/sec/cert, from certFile, unless
+			// the client asks a name of one of listener.tls_secs.
+			GetCertificate: t.tlsSecs.GetCertificate,
+			ClientAuth:     tls.RequestClientCert,
+			MinVersion:     tls.VersionTLS13,
 			CurvePreferences: []tls.CurveID{
 				tls.X25519,
 				tls.CurveP521,

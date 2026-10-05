@@ -103,6 +103,8 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerRateLimiterRate    = key.New("listener", "rate_limiter_rate")
 		keyListenerRateLimiterBurst   = key.New("listener", "rate_limiter_burst")
 		keyListenerRateLimiterExpires = key.New("listener", "rate_limiter_expires")
+		keyListenerTLSSecs            = key.New("listener", "tls_secs")
+		keyListenerACMEPort           = key.New("listener", "acme_port")
 
 		keyNodeSSHKey = key.New("node", "sshkey")
 	)
@@ -144,6 +146,8 @@ func getClusterConfig() (*cluster.Config, error) {
 	if expires := c.GetDuration(keyListenerRateLimiterExpires); expires != nil {
 		cfg.Listener.RateLimiter.Expires = *expires
 	}
+	cfg.Listener.TLSSecs = c.GetStrings(keyListenerTLSSecs)
+	cfg.Listener.ACMEPort = c.GetInt(keyListenerACMEPort)
 
 	if homedir, err := os.UserHomeDir(); err != nil {
 		cfg.Issues = append(cfg.Issues, fmt.Sprintf("user home dir: %s", err))

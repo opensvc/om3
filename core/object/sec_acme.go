@@ -214,7 +214,15 @@ func (t *sec) RenewCertificate(ctx context.Context, opts CertificateRenewOptions
 		webrootPath = t.config.GetString(key.Parse("acme.webroot"))
 	}
 	if opts.HTTP01 == nil && webrootPath == "" {
-		return result, fmt.Errorf("no webroot to prove the domains from: set acme.webroot, the directory the http server of the domains serves /.well-known/acme-challenge/ from")
+		// A sec whose certificate the listener presents is proved through
+		// the listener, which every node answers the token on.
+		if provider, err := t.newListenerHTTP01(); err != nil {
+			return result, err
+		} else if provider != nil {
+			opts.HTTP01 = provider
+		} else {
+			return result, fmt.Errorf("no webroot to prove the domains from: set acme.webroot, the directory the http server of the domains serves /.well-known/acme-challenge/ from, or list %s in listener.tls_secs for the listener to answer the challenge", t.path)
+		}
 	}
 	before := acmeDefaultRenewBefore
 	if d := t.config.GetDuration(key.Parse("acme.renew_before")); d != nil {

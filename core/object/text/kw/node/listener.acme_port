@@ -1,0 +1,8 @@
+The port of the node the listener answers http-01 ACME challenges on, in
+plain http, usually `80`: the port an ACME directory reads them from. No
+challenge is answered when empty.
+
+The listener answers only `/.well-known/acme-challenge/<token>`, from the
+tokens a renewal of a sec of `listener.tls_secs` stores in that sec, and
+every node answers them, so the names of the certificate may resolve to any
+node of the cluster.

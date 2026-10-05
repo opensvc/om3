@@ -673,6 +673,22 @@ var (
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_client_id"),
 	}
+	kwNodeListenerTLSSecs = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "system/sec/public",
+		Option:    "tls_secs",
+		Section:   "listener",
+		Since:     "v3.0.0-rc44",
+		Text:      keywords.NewText(fs, "text/kw/node/listener.tls_secs"),
+	}
+	kwNodeListenerACMEPort = keywords.Keyword{
+		Converter: converters.Int,
+		Example:   "80",
+		Option:    "acme_port",
+		Section:   "listener",
+		Since:     "v3.0.0-rc44",
+		Text:      keywords.NewText(fs, "text/kw/node/listener.acme_port"),
+	}
 	kwNodeListenerRateLimiterRate = keywords.Keyword{
 		Default:   "20",
 		Converter: converters.Int,
@@ -1908,6 +1924,8 @@ var (
 		&kwNodeListenerRateLimiterRate,
 		&kwNodeListenerRateLimiterBurst,
 		&kwNodeListenerRateLimiterExpires,
+		&kwNodeListenerTLSSecs,
+		&kwNodeListenerACMEPort,
 		&kwNodeSyslogFacility,
 		&kwNodeSyslogLevel,
 		&kwNodeSyslogHost,

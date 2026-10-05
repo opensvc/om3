@@ -47,6 +47,14 @@ type (
 		DNSSockGID     string            `json:"dns_sock_gid"`
 		DNSSockUID     string            `json:"dns_sock_uid"`
 		RateLimiter    RateLimiterConfig `json:"rate_limiter"`
+
+		// TLSSecs are the secs whose certificates the listener presents
+		// to the clients asking one of their names.
+		TLSSecs []string `json:"tls_secs"`
+
+		// ACMEPort is the port the listener answers the http-01 ACME
+		// challenges on, none when zero.
+		ACMEPort int `json:"acme_port"`
 	}
 )
 
@@ -77,6 +85,7 @@ func (t *Config) DeepCopy() *Config {
 	n.Nodes = deepcopy.Slice(t.Nodes)
 	n.DNS = deepcopy.Slice(t.DNS)
 	n.CASecPaths = deepcopy.Slice(t.CASecPaths)
+	n.Listener.TLSSecs = deepcopy.Slice(t.Listener.TLSSecs)
 	return &n
 }
 
