@@ -12,3 +12,17 @@ When the source is a directory of the node, the default `<mount option>` is `rw`
 
 When the source is in a volume, the default `<mount option>` is taken from the
 volume access.
+
+A source in a volume is handed to the engine as a bind mount of its own,
+private by default: a mount made in the volume after the container started
+does not reach it. The `<mount options>` of the entry ask for the mounts to
+cross, within the volume:
+
+* `rshared` lets a mount made in the container reach the volume, and the
+  other containers using it, as a sidecar mounting a FUSE filesystem, an S3
+  bucket for example, does. Making a mount needs a `privileged` container.
+* `rslave` lets the mounts made in the volume reach the container, and none
+  go back, as a container using what a sidecar mounts there needs when it
+  starts before the mount is made.
+
+The engine refuses either on a volume whose own mount is private.
