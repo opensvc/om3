@@ -14287,6 +14287,18 @@ func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNames
 
 		}
 
+		if params.WaitLocal != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait_local", *params.WaitLocal, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}

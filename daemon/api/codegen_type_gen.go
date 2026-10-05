@@ -2937,6 +2937,9 @@ type InQueryUnsets = []string
 // Wait defines model for inQueryWait.
 type Wait = string
 
+// WaitLocal defines model for inQueryWaitLocal.
+type WaitLocal = bool
+
 // N200 defines model for 200.
 type N200 = Problem
 
@@ -4179,6 +4182,15 @@ type PostObjectConfigFileParams struct {
 	// A request held until the wait expires is answered 408, which says the
 	// thing is still running, and is not an error of the request.
 	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+
+	// WaitLocal Hold the answer of the creation of an object until this daemon knows
+	// the object, listed and watched by an instance monitor, for the request
+	// that follows to find it. The daemon learns of an object a moment after
+	// its configuration is written.
+	//
+	// The hold is bounded: past it, the request is answered 408, the object
+	// created all the same, as a wait that expires.
+	WaitLocal *WaitLocal `form:"wait_local,omitempty" json:"wait_local,omitempty"`
 }
 
 // PutObjectConfigFileParams defines parameters for PutObjectConfigFile.
