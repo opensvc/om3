@@ -1667,6 +1667,11 @@ token is written under .well-known/acme-challenge/ in acme.webroot, or in
 registered on the first renewal, with the email of the sec as its contact
 when it has one, and kept in the sec.
 
+A sec of listener.tls_secs, the certificate the listener presents for its
+names, is proved through the listener when no webroot is given: the token is
+stored in the sec, which the daemon replicates, and every node answers it on
+listener.acme_port, so the domains may resolve to any node.
+
 A sec naming no directory has its certificate generated as certificate create
 does, self-signed or signed by its ca.
 
@@ -1680,6 +1685,10 @@ in one of its volumes, configure a task.acme resource there rather than run
 this command.`,
 		Example: `  # renew the certificate of a sec, when due
   om ns1/sec/web certificate renew
+
+  # the certificate the listener presents for its public names
+  om cluster set --kw listener.tls_secs=system/sec/public --kw listener.acme_port=80
+  om system/sec/public certificate renew
 
   # try a setup out against the staging directory of Let's Encrypt
   om ns1/sec/web set --kw acme.directory=letsencrypt-staging

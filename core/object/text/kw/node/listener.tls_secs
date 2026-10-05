@@ -1,0 +1,13 @@
+The secs whose certificates the listener presents, besides the certificate
+of `system/sec/cert`, to the clients asking one of their names: a name of the
+cluster published on the internet, as the name of its virtual address, can
+have a certificate browsers trust, from an ACME directory, while the nodes
+keep reaching each other by their names, which only the cluster ca certifies.
+
+A sec is named by its path, as `system/sec/public`, or by its name in the
+`system` namespace. A client asking a name no listed certificate has gets the
+certificate of `system/sec/cert`.
+
+A certificate renewed is presented from the next connection, on every node.
+`om <sec> certificate renew` obtains the certificate of a listed sec through
+the listener, which serves the http-01 challenge on `listener.acme_port`.
