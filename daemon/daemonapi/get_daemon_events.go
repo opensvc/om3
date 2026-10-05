@@ -54,6 +54,11 @@ type (
 	}
 )
 
+// replaySnapshotTimeout bounds the wait for the cluster data an events stream
+// replays: past it, the stream replays the current cluster data, as before
+// the replay waited for the daemondata manager to catch up.
+const replaySnapshotTimeout = 5 * time.Second
+
 // GetDaemonEvents feeds node daemon event publications in rss format.
 func (a *DaemonAPI) GetDaemonEvents(ctx echo.Context, nodename string, params api.GetDaemonEventsParams) error {
 	nodename = a.parseNodename(nodename)
@@ -210,17 +215,42 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return false
 	}
 
-	// isAllowed returns false if a message has a namespace label that
+	// isAllowed returns false if a message is about a namespace that
 	// doesn't match any of the user's guest grant.
 	isAllowed := func(msg pubsub.Messager) bool {
 		if hasRoot {
 			return true
 		}
-		labels := msg.GetLabels()
-		if namespace, ok := labels["namespace"]; ok {
-			return hasRoleGuestOn(userGrants, namespace)
+		return isEventAllowedForGuest(userGrants, msg)
+	}
+
+	// learnPath adds the object path p to the paths the selector expands
+	// against, and to the selection when the selector selects it.
+	//
+	// The selection is first computed from the object statuses known when
+	// the stream starts, and grown by the ObjectCreated events received
+	// after. An object announced before the stream started, but with no
+	// status yet, as while the daemon discovers the objects after a
+	// restart, is in neither: so the path of any event not known yet is
+	// learnt, instead of dropping the events of that object for the life of
+	// the stream.
+	learnPath := func(p naming.Path) error {
+		s := p.String()
+		if pathM.Has(s) {
+			return nil
 		}
-		return true
+		pathL = pathL.Merge([]naming.Path{p})
+		pathM[s] = nil
+		selector.SetPaths(pathL)
+		selected, err := getSelectedMap()
+		if err != nil {
+			return err
+		}
+		if selected.Has(s) {
+			log.Tracef("add object %s to selection", s)
+			pathSelected[s] = nil
+		}
+		return nil
 	}
 
 	// isSelected returns true when msg has path label that is selected or
@@ -228,6 +258,13 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	isSelected := func(msg pubsub.Messager) bool {
 		labels := msg.GetLabels()
 		if s, ok := labels["path"]; ok {
+			if !pathM.Has(s) {
+				if p, err := naming.ParsePath(s); err == nil {
+					if err := learnPath(p); err != nil {
+						log.Warnf("can't add object %s to selection: %s", s, err)
+					}
+				}
+			}
 			if pathSelected.Has(s) {
 				// path label is selected
 				return true
@@ -389,7 +426,16 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	}
 
 	if replay {
-		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
+		// Taken once the daemondata manager processed what was published
+		// before the subscription started: a message published then, but
+		// not processed yet, would be in neither the replay nor the
+		// subscription.
+		snapshot, ok := a.Daemondata.ClusterDataAfterPublished(a.Bus, replaySnapshotTimeout)
+		if !ok {
+			log.Warnf("the cluster data manager did not answer within %s, replay its current cluster data", replaySnapshotTimeout)
+			snapshot = a.Daemondata.ClusterData()
+		}
+		data := msgbus.NewClusterData(snapshot)
 		if len(filters) == 0 {
 			// Filters are not specified => all events are filtered,
 			// So automatically use all extractable events.
@@ -437,6 +483,11 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		case <-evCtx.Done():
 			return nil
 		case i := <-sub.C:
+			if _, ok := i.(*msgbus.ClusterDataSnapshotRequest); ok {
+				// a request of an events stream to the daemondata manager,
+				// not an event
+				continue
+			}
 			if ev, ok := i.(pubsub.Messager); ok {
 				if !isAllowed(ev) {
 					continue
@@ -445,18 +496,9 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			if hasSelector {
 				switch ev := i.(type) {
 				case *msgbus.ObjectCreated:
-					s := ev.Path.String()
-					if !pathM.Has(s) {
-						pathL = pathL.Merge([]naming.Path{ev.Path})
-						pathM[s] = nil
-						selector.SetPaths(pathL)
-						if selected, err := getSelectedMap(); err != nil {
-							log.Errorf("can't filter on object created")
-							return err
-						} else if selected.Has(s) {
-							log.Tracef("add created object %s to selection", s)
-							pathSelected[s] = nil
-						}
+					if err := learnPath(ev.Path); err != nil {
+						log.Errorf("can't filter on object created")
+						return err
 					}
 					if !needForwardEvent("ObjectCreated", ev) {
 						// not required on response stream
@@ -520,6 +562,30 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			}
 		}
 	}
+}
+
+// isEventAllowedForGuest returns false if msg is about a namespace that
+// doesn't match any of grants guest grant.
+//
+// The namespace is read from the namespace label, else from the path label:
+// the events replayed from the cluster data, as the instance status and
+// config ones, carry a path label and no namespace label. A message with
+// neither, or with the empty path of the node configuration, is not about a
+// namespace.
+func isEventAllowedForGuest(grants rbac.Grants, msg pubsub.Messager) bool {
+	labels := msg.GetLabels()
+	if namespace, ok := labels["namespace"]; ok {
+		return hasRoleGuestOn(grants, namespace)
+	}
+	s, ok := labels["path"]
+	if !ok || s == "" {
+		return true
+	}
+	p, err := naming.ParsePath(s)
+	if err != nil {
+		return false
+	}
+	return hasRoleGuestOn(grants, p.Namespace)
 }
 
 // parseFilters return filters from b.Filter

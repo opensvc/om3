@@ -1,6 +1,7 @@
 package daemondata
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -66,6 +67,9 @@ func newData() *data {
 		hbGens:             map[string]node.Gen{localNode: {localNode: 0}},
 		hbMessageType:      initialMsgType,
 		hbPatchMsgUpdated:  make(map[string]time.Time),
+		runID:              fmt.Sprintf("%s", startedAt),
+		peerRuns:           make(map[string]peerRun),
+		peerRunCandidates:  make(map[string]peerRunCandidate),
 		localNode:          localNode,
 		clusterNodes:       clusterNodes,
 		clusterData:        msgbus.NewClusterData(status.DeepCopy()),

@@ -573,6 +573,21 @@ type (
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
+	// ClusterDataSnapshotRequest asks the daemondata manager for its cluster
+	// data, answered on ReplyC once the manager processed the messages
+	// published before this request: the bus queues the messages of a
+	// subscription in their publication order.
+	//
+	// A daemon events stream asks for its replay this way, after it
+	// subscribed, so a message published before the stream subscribed is in
+	// the replay even when the manager had not processed it yet.
+	//
+	// It is not an event kind: an events stream does not forward it.
+	ClusterDataSnapshotRequest struct {
+		pubsub.Msg `yaml:",inline"`
+		ReplyC     chan *clusterdump.Data `json:"-" yaml:"-"`
+	}
+
 	// InstanceActionPending is emitted by the node an instance action ran on,
 	// for the begin or the end of the action the collector did not
 	// acknowledge yet. The node emits it again until the collector speaker
@@ -1414,6 +1429,10 @@ func (e *HeartbeatSecretUpdated) Kind() string {
 
 func (e *HeartbeatStale) Kind() string {
 	return "HeartbeatStale"
+}
+
+func (e *ClusterDataSnapshotRequest) Kind() string {
+	return "ClusterDataSnapshotRequest"
 }
 
 func (e *InstanceActionPending) Kind() string {

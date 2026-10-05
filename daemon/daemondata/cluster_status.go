@@ -3,10 +3,13 @@ package daemondata
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"golang.org/x/sync/singleflight"
 
 	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 var (
@@ -35,6 +38,34 @@ func (t T) clusterData() *clusterdump.Data {
 		return nil
 	}
 	return <-status
+}
+
+// ClusterDataAfterPublished returns a deep copy of the cluster data once the
+// manager processed every message published before this call, and false
+// when the manager did not answer within timeout.
+//
+// ClusterData answers from the commands channel, which the manager serves
+// apart from its subscription: a message published, but still queued on the
+// subscription, is not in the copy. A caller subscribing to the bus, then
+// replaying the cluster data before forwarding what its subscription
+// receives, would never see such a message. The request goes through the
+// bus instead, queued after the messages published before it.
+//
+// The bus returns from a publication once it queued it on every matching
+// subscription and waits while one of them is full: a manager stalled on
+// its subscription would hold the request, and the caller, past timeout.
+// The request is published apart, the timeout running from the call; its
+// reply channel is buffered, the manager never waits on a caller that gave
+// up.
+func (t T) ClusterDataAfterPublished(publisher pubsub.Publisher, timeout time.Duration) (*clusterdump.Data, bool) {
+	req := &msgbus.ClusterDataSnapshotRequest{ReplyC: make(chan *clusterdump.Data, 1)}
+	go publisher.Pub(req)
+	select {
+	case data := <-req.ReplyC:
+		return data, true
+	case <-time.After(timeout):
+		return nil, false
+	}
 }
 
 type opGetClusterData struct {
