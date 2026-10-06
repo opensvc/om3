@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/danwakefield/fnmatch"
 	"github.com/ssrathi/go-attr"
 	"golang.org/x/exp/maps"
 
@@ -266,6 +267,17 @@ func (t Store) ByOption(option string) Store {
 		}
 	}
 	return Store{}
+}
+
+// MatchingOption returns the keywords whose option matches the fnmatch
+// pattern, as "sched*", in every section of the store.
+func (t Store) MatchingOption(pattern string) (store Store) {
+	for _, kw := range t {
+		if fnmatch.Match(pattern, kw.Option, 0) {
+			store = append(store, kw)
+		}
+	}
+	return store
 }
 
 // WithOption returns the keywords of the option, in every section.
