@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/pool"
-	"github.com/opensvc/om3/v3/drivers/pooldirectory"
-	"github.com/opensvc/om3/v3/drivers/poolshm"
 )
 
 func (t *Node) ShowPoolsByName(ctx context.Context, name string) pool.StatusList {
@@ -48,20 +46,31 @@ func (t *Node) Pools() []pool.Pooler {
 		l = append(l, p)
 	}
 	if !hasSHM {
-		p := poolshm.NewPooler()
-		p.SetName("shm")
-		p.SetDriver("shm")
-		p.SetConfig(config)
-		l = append(l, p)
+		if p := implicitPool("shm", "shm", config); p != nil {
+			l = append(l, p)
+		}
 	}
 	if !hasDefault {
-		p := pooldirectory.NewPooler()
-		p.SetName("default")
-		p.SetDriver("directory")
-		p.SetConfig(config)
-		l = append(l, p)
+		if p := implicitPool("default", "directory", config); p != nil {
+			l = append(l, p)
+		}
 	}
 	return l
+}
+
+// implicitPool returns a pool the node has with no configuration section,
+// allocated by the driver registered for its type, and nil when the binary
+// links no such driver.
+func implicitPool(name, poolType string, config pool.Config) pool.Pooler {
+	fn := pool.Driver(poolType)
+	if fn == nil {
+		return nil
+	}
+	p := fn()
+	p.SetName(name)
+	p.SetDriver(poolType)
+	p.SetConfig(config)
+	return p
 }
 
 func (t *Node) ListPools() []string {
