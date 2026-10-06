@@ -342,8 +342,26 @@ func (t Store) Doc(w io.Writer, kind naming.Kind, driver, asked string, depth in
 			return t[0].Doc(w, depth, kind, docSection(driver, asked, t[0]), rbacDoc)
 		default:
 			sort.Sort(t)
+			// Keywords of several drivers or sections, as the "schedule" of
+			// every task and sync driver an option named with no section
+			// finds, are told apart by where they belong, their options
+			// being the same. The keywords of a section or a driver asked
+			// for all belong to it.
+			mixed := false
+			if _, _, inSection := strings.Cut(asked, "."); driver == "" && !inSection {
+				for _, kw := range t[1:] {
+					if kw.docOwner() != t[0].docOwner() {
+						mixed = true
+						break
+					}
+				}
+			}
 			for _, kw := range t {
-				if err := kw.Doc(w, depth, kind, docSection(driver, asked, kw), rbacDoc); err != nil {
+				of := ""
+				if mixed {
+					of = kw.docOwner()
+				}
+				if err := kw.doc(w, depth, kind, docSection(driver, asked, kw), of, rbacDoc); err != nil {
 					return err
 				}
 			}
@@ -556,11 +574,35 @@ func docSection(driver, asked string, kw *Keyword) string {
 	return ""
 }
 
+// docOwner is where a keyword belongs as a documentation heading says it: the
+// driver of its group and types, as "driver `task.acme`", or the section of a
+// keyword of no driver, as "section `DEFAULT`".
+func (t *Keyword) docOwner() string {
+	if driver.NewGroup(t.Section) == driver.GroupUnknown {
+		return fmt.Sprintf("section `%s`", t.Section)
+	}
+	types := slices.DeleteFunc(slices.Clone(t.Types), func(s string) bool { return s == "" })
+	if len(types) == 0 {
+		return fmt.Sprintf("driver `%s`", t.Section)
+	}
+	return fmt.Sprintf("driver `%s.%s`", t.Section, strings.Join(types, "|"))
+}
+
 func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, rbacDoc RBACDoc) error {
+	return t.doc(w, depth, kind, section, "", rbacDoc)
+}
+
+// doc renders the documentation of the keyword, its heading saying where it
+// belongs when of is set.
+func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of string, rbacDoc RBACDoc) error {
 	fprintProp := func(a, b string) {
 		fmt.Fprintf(w, "\t%-12s %s\n", a+":", b)
 	}
-	fmt.Fprintf(w, "%s Keyword `%s`\n\n", strings.Repeat("#", depth+1), t.Option)
+	if of != "" {
+		fmt.Fprintf(w, "%s Keyword `%s` of %s\n\n", strings.Repeat("#", depth+1), t.Option, of)
+	} else {
+		fmt.Fprintf(w, "%s Keyword `%s`\n\n", strings.Repeat("#", depth+1), t.Option)
+	}
 	fprintProp("required", fmt.Sprint(t.Required))
 	fprintProp("scopable", fmt.Sprint(t.Scopable))
 	if t.Since != "" {
