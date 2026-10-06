@@ -49,3 +49,19 @@ func TestIsResourceSelected(t *testing.T) {
 		}
 	})
 }
+
+func TestWithoutResourceSelector(t *testing.T) {
+	ctx := context.Background()
+	ctx = WithRID(ctx, "volume#1")
+	ctx = WithTag(ctx, "t1")
+	ctx = WithSubset(ctx, "g1")
+	ctx = WithTo(ctx, "volume#1")
+	ctx = WithLeader(ctx, true)
+	ctx = WithForce(ctx, true)
+	assert.True(t, HasResourceSelector(ctx), "selector before")
+
+	ctx = WithoutResourceSelector(ctx)
+	assert.False(t, HasResourceSelector(ctx), "selector after")
+	assert.True(t, IsLeader(ctx), "leader kept")
+	assert.True(t, IsForce(ctx), "force kept")
+}

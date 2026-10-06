@@ -350,3 +350,18 @@ func IsActionForMaster(ctx context.Context) bool {
 func HasResourceSelector(ctx context.Context) bool {
 	return RID(ctx) != "" || Tag(ctx) != "" || Subset(ctx) != "" || To(ctx) != ""
 }
+
+// WithoutResourceSelector returns the context of an action a resource runs on
+// another object, as a volume resource does on its vol object. The resource
+// selector of the action names resources of the object it runs on, so it
+// must not select among the resources of the other object, which the
+// resource acts on as a whole.
+func WithoutResourceSelector(ctx context.Context) context.Context {
+	if !HasResourceSelector(ctx) {
+		return ctx
+	}
+	ctx = WithRID(ctx, "")
+	ctx = WithTag(ctx, "")
+	ctx = WithSubset(ctx, "")
+	return WithTo(ctx, "")
+}
