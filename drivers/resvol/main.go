@@ -486,7 +486,7 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("volume %s does not exist", t.Path)
+		return fmt.Errorf("volume %s does not exist", volume.Path())
 	}
 	if volumeStatus, err := volume.Status(ctx); err != nil {
 		return err
