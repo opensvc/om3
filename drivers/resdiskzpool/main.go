@@ -496,3 +496,9 @@ func (t *T) toDevices(l []string) device.L {
 	}
 	return devs
 }
+
+// PoolName is the name of the pool, by which a check of its health is
+// attributed to the object.
+func (t *T) PoolName() string {
+	return t.Name
+}

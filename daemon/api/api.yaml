@@ -5373,6 +5373,7 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryWait'
+        - $ref: '#/components/parameters/inQueryWaitLocal'
       requestBody:
         description: OK
         content:
@@ -10273,6 +10274,21 @@ components:
       schema:
         type: string
         example: 5m
+
+    inQueryWaitLocal:
+      in: query
+      name: wait_local
+      x-go-name: WaitLocal
+      description: |
+        Hold the answer of the creation of an object until this daemon knows
+        the object, listed and watched by an instance monitor, for the request
+        that follows to find it. The daemon learns of an object a moment after
+        its configuration is written.
+
+        The hold is bounded: past it, the request is answered 408, the object
+        created all the same, as a wait that expires.
+      schema:
+        type: boolean
 
     inQueryHBA:
       in: query

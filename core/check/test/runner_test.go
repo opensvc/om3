@@ -149,9 +149,11 @@ func TestRunnerDo(t *testing.T) {
 		CustomCheckPaths   []string
 		RegisteredCheckers []check.Checker
 		ExpectedResults    []check.Result
+		ExpectedPartial    bool
 	}{
 		{
 			Name:             "succeedWithInvalidOut",
+			ExpectedPartial:  true,
 			CustomCheckPaths: []string{"succeedWithInvalidOut"},
 			ExpectedResults:  []check.Result{},
 		},
@@ -162,6 +164,7 @@ func TestRunnerDo(t *testing.T) {
 		},
 		{
 			Name:             "withOneFailedChecker",
+			ExpectedPartial:  true,
 			CustomCheckPaths: []string{"exitCode3"},
 			ExpectedResults:  nil,
 		},
@@ -251,6 +254,7 @@ func TestRunnerDo(t *testing.T) {
 		},
 		{
 			Name:               "succeedCustomChecker, error and succeed registered checkers",
+			ExpectedPartial:    true,
 			CustomCheckPaths:   []string{"succeedWithOut"},
 			RegisteredCheckers: []check.Checker{errorChecker, checker2},
 			ExpectedResults: []check.Result{
@@ -296,6 +300,7 @@ func TestRunnerDo(t *testing.T) {
 		},
 		{
 			Name:             "withSomeFailedCustomCheckers",
+			ExpectedPartial:  true,
 			CustomCheckPaths: []string{"succeedWithOut", "exitCode3"},
 			ExpectedResults: []check.Result{
 				{
@@ -310,11 +315,13 @@ func TestRunnerDo(t *testing.T) {
 		},
 		{
 			Name:             "withWithCorrectOutputButBadExitCode",
+			ExpectedPartial:  true,
 			CustomCheckPaths: []string{"failWithCorrectOut"},
 			ExpectedResults:  []check.Result{},
 		},
 		{
 			Name:             "withFailedCustomCheckers",
+			ExpectedPartial:  true,
 			CustomCheckPaths: []string{"failWithOutAndErr"},
 			ExpectedResults:  []check.Result{},
 		},
@@ -336,6 +343,8 @@ func TestRunnerDo(t *testing.T) {
 				"ResultSets Data: %+v instead of expected: %+v",
 				resultSet.Data, tc.ExpectedResults)
 			assert.Equal(t, len(resultSet.Data), len(tc.ExpectedResults))
+			assert.Equalf(t, tc.ExpectedPartial, resultSet.IsPartial(),
+				"partial, with the failed checkers %v", resultSet.Failed)
 		})
 	}
 }

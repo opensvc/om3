@@ -31,11 +31,12 @@ import (
 // The file is written only over the base the request was checked against,
 // and the write is refused as a conflict if another landed since.
 //
-// A creation holds the answer until this daemon knows the object, so the
-// request that follows finds it: the daemon learns of an object a moment after
-// its configuration is written, and a provision asked in that moment was told
-// the object did not exist.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, creation bool) error {
+// With waitKnown, as a creation asks with wait_local, the answer is held
+// until this daemon knows the object, so the request that follows finds it:
+// the daemon learns of an object a moment after its configuration is
+// written, and a provision asked in that moment was told the object did not
+// exist.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown bool) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -59,7 +60,7 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 	}
 	var knownSub *pubsub.Subscription
-	if creation {
+	if waitKnown {
 		knownSub = a.subscribeObjectKnown(fmt.Sprintf("api.write_object_config_file.known %s %s", p, ctx.Get("uuid")), p)
 		defer func() { _ = knownSub.Stop() }()
 	}
@@ -77,12 +78,14 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 	a.announceConfigFileWritten(p)
-	if creation {
+	if waitKnown {
 		knownCtx, knownCancel := context.WithTimeout(ctx.Request().Context(), objectKnownTimeout)
-		if !a.waitObjectKnown(knownCtx, knownSub, p) {
-			LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: created, and not known to the daemon after %s", p, objectKnownTimeout)
-		}
+		known := a.waitObjectKnown(knownCtx, knownSub, p)
 		knownCancel()
+		if !known {
+			return JSONProblemf(ctx, http.StatusRequestTimeout, "Object not known yet",
+				"%s is created, and not known to this daemon after %s", p, objectKnownTimeout)
+		}
 	}
 	warnSharedRootlessAccounts(ctx, p)
 	// Answer with the timestamp the configuration now carries, so the caller

@@ -88,7 +88,7 @@ func (t *T) startVolume(ctx context.Context, volume object.Vol) error {
 		t.Log().Infof("volume %s is already up", volume.Path())
 		return nil
 	}
-	if err := volume.Start(ctx); err != nil {
+	if err := volume.Start(actioncontext.WithoutResourceSelector(ctx)); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
@@ -107,7 +107,7 @@ func (t *T) stopVolume(ctx context.Context, volume object.Vol, force bool) error
 		t.Log().Infof("skip volume %s stop: active users: %s", volume.Path(), holders)
 		return nil
 	}
-	return volume.Stop(ctx)
+	return volume.Stop(actioncontext.WithoutResourceSelector(ctx))
 }
 
 func (t *T) statusVolume(ctx context.Context, volume object.Vol) (instance.Status, error) {
@@ -486,7 +486,7 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		return fmt.Errorf("volume %s does not exist", t.Path)
+		return fmt.Errorf("volume %s does not exist", volume.Path())
 	}
 	if volumeStatus, err := volume.Status(ctx); err != nil {
 		return err
@@ -494,7 +494,7 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 		t.Log().Infof("volume %s is already provisioned", volume.Path())
 		return nil
 	}
-	return volume.Provision(ctx)
+	return volume.Provision(actioncontext.WithoutResourceSelector(ctx))
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
@@ -523,7 +523,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("volume %s is already provisioned", volume.Path())
 		return nil
 	}
-	return volume.Provision(ctx)
+	return volume.Provision(actioncontext.WithoutResourceSelector(ctx))
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {

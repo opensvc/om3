@@ -2,7 +2,6 @@ package ox
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/omcmd"
 )
 
 func init() {
@@ -47,7 +46,7 @@ func init() {
 	)
 
 	cmdObjectConfig.AddCommand(
-		omcmd.NewCmdObjectConfigDoc(kind),
+		commoncmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

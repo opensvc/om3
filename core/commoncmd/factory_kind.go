@@ -4,12 +4,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCmdAll creates the "all" command
-func NewCmdAll() *cobra.Command {
+// NewCmdAny creates the "any" command, whose selector picks objects of any
+// kind, where the command of a kind picks the objects of that kind only.
+func NewCmdAny() *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDObjectKinds,
-		Use:     "all",
-		Short:   "manage a mix of objects, tentatively exposing all commands",
+		Use:     "any",
+		Short:   "manage objects of any kind, tentatively exposing all commands",
 	}
 }
 

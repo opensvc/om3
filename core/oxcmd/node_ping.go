@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/daemon/daemoncmd"
 )
 
 type (
@@ -41,7 +40,7 @@ func (t *CmdNodePing) Run() error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*1)
 	defer cancel()
 
-	q := make(chan daemoncmd.PingItem)
+	q := make(chan PingItem)
 	errC := make(chan error)
 	doneC := make(chan string)
 	todo := len(nodenames)
@@ -51,9 +50,9 @@ func (t *CmdNodePing) Run() error {
 			ctx, cancel := context.WithTimeout(ctx, time.Millisecond*500)
 			defer cancel()
 			defer func() { doneC <- nodename }()
-			d := daemoncmd.PingItem{
-				Data: daemoncmd.Ping{Ping: false},
-				Meta: daemoncmd.NodeMeta{Node: nodename},
+			d := PingItem{
+				Data: Ping{Ping: false},
+				Meta: NodeMeta{Node: nodename},
 			}
 			begin := time.Now()
 			response, err := c.GetNodePingWithResponse(ctx, nodename)
@@ -81,7 +80,7 @@ func (t *CmdNodePing) Run() error {
 	var (
 		errs error
 		done int
-		data daemoncmd.PingItems
+		data PingItems
 	)
 
 	for {

@@ -35,6 +35,7 @@ type (
 		Keywords  []string
 		Env       []string
 		Provision bool
+		WaitLocal bool
 		Restore   bool
 		Force     bool
 		Namespace string
@@ -82,10 +83,13 @@ func (t *CmdObjectCreate) Run(kind string) error {
 
 	// The daemon learns of the object a moment after its configuration file
 	// is written, and a command run in that moment is told the object does
-	// not exist. So the create holds until the daemon knows it, and with
-	// --wait or --provision, until every node of the object watches it.
+	// not exist. --wait-local holds the create until the daemon knows it,
+	// and --wait or --provision until every node of the object watches it.
 	waitAll := t.Wait || t.Provision
 	needWait, err := func() (bool, error) {
+		if !waitAll && !t.WaitLocal {
+			return false, nil
+		}
 		if exists, err := objectExists(t.path); err != nil {
 			return false, err
 		} else if exists {
@@ -126,16 +130,8 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	}
 
 	if needWait {
-		err := <-errC
-		switch {
-		case err == nil:
-		case waitAll:
+		if err := <-errC; err != nil {
 			return err
-		default:
-			// The object is created, which is what was asked. That the
-			// daemon does not know it yet is worth saying, as the next
-			// command may not find it, and not worth failing the create.
-			fmt.Fprintf(os.Stderr, "%s is created, and not known to the daemon after %s: %s\n", t.path, objectKnownTimeout, err)
 		}
 	}
 

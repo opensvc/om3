@@ -20,7 +20,9 @@ func doDFUsage(ctx context.Context, args ...string) ([]byte, error) {
 	return doDF(ctx, append([]string{"-lP"}, args...))
 }
 
-func parse(b []byte) ([]Entry, error) {
+// parse reads the entries of a df -P output, whose counts are in blocks of
+// unit bytes for a usage, and in inodes, a unit of 1, for an inode listing.
+func parse(b []byte, unit int64) ([]Entry, error) {
 	r := make([]Entry, 0)
 	text := string(b)
 	for _, line := range strings.Split(text, "\n")[1:] {
@@ -48,9 +50,9 @@ func parse(b []byte) ([]Entry, error) {
 		}
 		r = append(r, Entry{
 			Device:      l[0],
-			Total:       total * 1024,
-			Used:        used * 1024,
-			Free:        free * 1024,
+			Total:       total * unit,
+			Used:        used * unit,
+			Free:        free * unit,
 			UsedPercent: usedPct,
 			MountPoint:  l[5],
 		})
@@ -59,9 +61,9 @@ func parse(b []byte) ([]Entry, error) {
 }
 
 func parseUsage(b []byte) ([]Entry, error) {
-	return parse(b)
+	return parse(b, 1024)
 }
 
 func parseInode(b []byte) ([]Entry, error) {
-	return parse(b)
+	return parse(b, 1)
 }

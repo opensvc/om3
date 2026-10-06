@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/uri"
 )
@@ -199,7 +200,11 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	if err != nil {
 		return err
 	}
-	resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, nil, "application/octet-stream", bytes.NewBuffer(b))
+	// The answer is held until the daemon knows the object, so the command
+	// run next, as a provision, finds it.
+	waitLocal := true
+	params := api.PostObjectConfigFileParams{WaitLocal: &waitLocal}
+	resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -208,6 +213,10 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 		fmt.Printf("%s: created\n", p)
 	case 400:
 		fmt.Printf("%s: %s\n", p, *resp.JSON400)
+	case 408:
+		// Created, and not known to the daemon yet: the command run next
+		// may not find it.
+		return fmt.Errorf("%s", resp.JSON408.Detail)
 	default:
 		return fmt.Errorf("%s: %s", p, resp.Status())
 	}

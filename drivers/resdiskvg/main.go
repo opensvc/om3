@@ -388,3 +388,9 @@ func (t *T) SubDevices(ctx context.Context) device.L {
 func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }
+
+// VolumeGroupName is the name of the volume group, by which a check of its
+// usage is attributed to the object.
+func (t *T) VolumeGroupName() string {
+	return t.VGName
+}
