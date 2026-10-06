@@ -147,29 +147,13 @@ func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 	t.log.Tracef("reconfigure")
-	if collector.Alive.Load() {
-		t.log.Infof("disable collector clients")
-		collector.Alive.Store(false)
-	}
 	cfg := c.Value.Collector
 	t.setThrottle(cfg)
 	t.setActionTunables(cfg)
-	err := t.setNodeFeedClient(cfg)
-	if t.feedPinger != nil {
-		t.feedPinger.Stop()
-	}
 	if err := t.setupRequester(cfg); err != nil {
 		if !errors.Is(err, collector.ErrConfig) {
 			t.log.Errorf("can't setup requester: %s", err)
 		}
-	}
-	if err != nil {
-		t.log.Infof("the collector routine is dormant: %s", err)
-	} else {
-		t.log.Infof("feeding %s", t.feedClient)
-		t.feedPinger = t.feedClient.NewPinger()
-		time.Sleep(time.Microsecond * 10)
-		t.feedPinger.Start(t.ctx, FeedPingerInterval)
 	}
 	t.publishOnChange(t.getState())
 }

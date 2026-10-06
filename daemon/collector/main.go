@@ -30,16 +30,14 @@ import (
 
 type (
 	T struct {
-		ctx        context.Context
-		cancel     context.CancelFunc
-		log        *plog.Logger
-		localhost  string
-		feedClient *collector.Client
-		feedPinger *collector.Pinger
-		client     requester
-		wg         sync.WaitGroup
-		publisher  pubsub.Publisher
-		created    map[string]time.Time
+		ctx       context.Context
+		cancel    context.CancelFunc
+		log       *plog.Logger
+		localhost string
+		client    requester
+		wg        sync.WaitGroup
+		publisher pubsub.Publisher
+		created   map[string]time.Time
 
 		status daemonsubsystem.Collector
 
@@ -232,8 +230,6 @@ const (
 )
 
 var (
-	FeedPingerInterval = time.Second * 5
-
 	// defaultPostMaxDuration is the max duration of post request context.
 	defaultPostMaxDuration = 1000 * time.Millisecond
 )
@@ -268,20 +264,6 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		return nil
 	}
 	return t
-}
-
-func (t *T) setNodeFeedClient(c *collector.Config) error {
-	if c == nil {
-		t.feedClient = nil
-		return nil
-	} else if client, err := c.NewFeedClient(); err != nil {
-		t.feedClient = nil
-		return err
-	} else {
-		t.feedClient = client
-		t.feedClient.SetLogger(t.log)
-		return nil
-	}
 }
 
 func (t *T) setupRequester(c *collector.Config) error {
@@ -334,14 +316,6 @@ func (t *T) Start(ctx context.Context) error {
 		t.setThrottle(cfg)
 		t.setActionTunables(cfg)
 
-		if err := t.setNodeFeedClient(cfg); err != nil {
-			t.log.Infof("the collector routine is dormant: %s", err)
-		} else {
-			t.log.Infof("feeding %s", t.feedClient)
-			t.feedPinger = t.feedClient.NewPinger()
-			t.feedPinger.Start(t.ctx, FeedPingerInterval)
-			defer t.feedPinger.Stop()
-		}
 		if err := t.setupRequester(cfg); err != nil {
 			t.log.Errorf("can't setup requester: %s", err)
 		}

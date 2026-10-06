@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -40,7 +40,30 @@ jobs:
         run: ./bin/ox --version
 
       - name: Run Go tests
-        run: sudo go test -p 1 -timeout 60s ./...
+        run: sudo go test -ldflags=-w -timeout 120s ./...
+
+  # The tests with race detector run on a runner of their own, along the
+  # build and the tests without.
+  race-test:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # Ensures full history and tags are fetched
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: go.sum
+
+      - name: set opensvc version file
+        run: git describe --tags --abbrev > ./util/version/text/VERSION
 
       - name: Run Go tests with race detector
-        run: sudo go test -p 1 -timeout 600s --race ./...
+        run: sudo go test -ldflags=-w -timeout 600s --race ./...

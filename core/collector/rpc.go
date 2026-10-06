@@ -1,26 +1,18 @@
 package collector
 
 import (
-	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync/atomic"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/ybbus/jsonrpc"
 
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/httphelper"
 	"github.com/opensvc/om3/v3/util/plog"
-)
-
-var (
-	Alive atomic.Bool
 )
 
 type (
@@ -31,75 +23,10 @@ type (
 		secret   string
 		log      *plog.Logger
 	}
-	Pinger struct {
-		ctx    context.Context
-		cancel context.CancelFunc
-		client *Client
-		id     uuid.UUID
-	}
-
-	// pinger command channel messages
-	pingerStop    struct{}
-	pingerStopped struct{}
 )
 
 func (c *Client) String() string {
 	return c.endpoint
-}
-
-func (c *Client) SetLogger(log *plog.Logger) {
-	c.log = log
-}
-
-func (c *Client) NewPinger() *Pinger {
-	pinger := Pinger{
-		id:     uuid.New(),
-		client: c,
-	}
-	return &pinger
-}
-
-func (t *Pinger) Start(ctx context.Context, interval time.Duration) {
-	t.ctx, t.cancel = context.WithCancel(ctx)
-	go func() {
-		defer t.cancel()
-		t.client.log.Infof("collector pinger %s started", t.id)
-		defer t.client.log.Infof("collector pinger %s stopped", t.id)
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if !Alive.Load() {
-					if t.client.Ping() {
-						t.client.log.Infof("enable collector clients")
-						Alive.Store(true)
-					}
-				}
-			case <-t.ctx.Done():
-				return
-			}
-		}
-	}()
-}
-
-func (t *Pinger) Stop() {
-	if t == nil {
-		return
-	}
-	if t.cancel != nil {
-		t.cancel()
-	}
-}
-
-func (c *Client) Ping() bool {
-	_, err := c.Call("daemon_ping")
-	switch {
-	case err == nil:
-		return true
-	default:
-		return false
-	}
 }
 
 func ComplianceURL(s string) (*url.URL, error) {
@@ -280,12 +207,7 @@ func (c *Client) Call(method string, params ...interface{}) (*jsonrpc.RPCRespons
 	l := c.log.Attr("collector_rpc_method", method).Attr("collector_rpc_params", params)
 	if response != nil && response.Error != nil {
 		l.Attr("collector_rpc_response_data", response.Error.Data).Attr("collector_rpc_response_code", response.Error.Code).Debugf("call: %s: %s", response.Error.Message, response.Error.Data)
-	} else if err != nil {
-		if Alive.Load() {
-			l.Errorf("disable collector clients: call: %s: %s", method, err)
-			Alive.Store(false)
-		}
-	} else {
+	} else if err == nil {
 		l.Infof("call: %s", method)
 	}
 	return response, err
