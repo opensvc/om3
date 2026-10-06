@@ -1,4 +1,4 @@
-package daemoncmd
+package oxcmd
 
 type (
 	PingItems []PingItem
