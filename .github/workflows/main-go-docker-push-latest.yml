@@ -12,7 +12,7 @@ jobs:
   # The tests without and with race detector run side by side, each on a
   # runner of its own: the images are pushed once both passed.
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
 
@@ -48,7 +48,7 @@ jobs:
         run: sudo go test -ldflags=-w -timeout 120s ./...
 
   race-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
 
@@ -73,7 +73,7 @@ jobs:
 
   build-and-push-latest:
     needs: [build-and-test, race-test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
