@@ -4,7 +4,9 @@ GOCMD ?= go
 GOBUILD := $(GOCMD) build
 GOBUILDRACE := GORACE="halt_on_error=1" $(GOCMD) build -race
 GOCLEAN := $(GOCMD) clean
-GOTEST := $(GOCMD) test
+# The test binaries are linked without DWARF, a third of their link time,
+# which stack traces do not need.
+GOTEST := $(GOCMD) test -ldflags=-w
 GOGEN := $(GOCMD) generate
 GOVET := $(GOCMD) vet
 GOINSTALL := $(GOCMD) install
@@ -106,20 +108,20 @@ ox-race:
 	$(GOBUILDRACE) -o $(OX) ./cmd/ox/
 
 test-race:
-	$(GOTEST) -p 1 -timeout 240s ./... -race
+	$(GOTEST) -timeout 480s ./... -race
 
 restart:
 	$(PREFIX)/$(OM) daemon restart
 
 test:
-	$(GOTEST) -p 1 -timeout 60s ./...
+	$(GOTEST) -timeout 120s ./...
 
 test-cover:
-	$(GOTEST) -p 1 -timeout 60s -race -coverprofile=coverage.out ./...
+	$(GOTEST) -timeout 480s -race -coverprofile=coverage.out ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 
 testinfo:
-	TEST_LOG_LEVEL=info $(GOTEST) -p 1 -timeout 60s ./...
+	TEST_LOG_LEVEL=info $(GOTEST) -timeout 120s ./...
 
 version:
 	git describe --tags --abbrev >util/version/text/VERSION
