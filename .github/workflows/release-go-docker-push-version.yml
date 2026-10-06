@@ -9,7 +9,70 @@ env:
   IMAGE_OWNER: opensvc
 
 jobs:
+  # The tests without and with race detector run side by side, each on a
+  # runner of its own: the images are pushed once both passed.
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # Ensures full history and tags are fetched
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: go.sum
+
+      - name: set opensvc version file
+        run: git describe --tags --abbrev > ./util/version/text/VERSION
+
+      - name: Go build om
+        run: sudo go build -v -o ./bin/om ./cmd/om
+
+      - name: Show om version
+        run: ./bin/om --version
+
+      - name: Go build ox
+        run: sudo go build -v -o ./bin/ox ./cmd/ox
+
+      - name: Show ox version
+        run: ./bin/ox --version
+
+      - name: Run Go tests
+        run: sudo go test -ldflags=-w -timeout 120s ./...
+
+  race-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # Ensures full history and tags are fetched
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: go.sum
+
+      - name: set opensvc version file
+        run: git describe --tags --abbrev > ./util/version/text/VERSION
+
+      - name: Run Go tests with race detector
+        run: sudo go test -ldflags=-w -timeout 600s --race ./...
+
   build-and-push-release:
+    needs: [build-and-test, race-test]
     runs-on: ubuntu-latest
     permissions:
       contents: write # to allow upload sbom
@@ -50,24 +113,6 @@ jobs:
 
       - name: set opensvc version file
         run: git describe --tags --abbrev > ./util/version/text/VERSION
-
-      - name: Go build om
-        run: sudo go build -v -o ./bin/om ./cmd/om
-
-      - name: Show om version
-        run: ./bin/om --version
-
-      - name: Go build ox
-        run: sudo go build -v -o ./bin/ox ./cmd/ox
-
-      - name: Show ox version
-        run: ./bin/ox --version
-
-      - name: Run Go tests
-        run: sudo go test -ldflags=-w -timeout 120s ./...
-
-      - name: Run Go tests with race detector
-        run: sudo go test -ldflags=-w -timeout 600s --race ./...
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.3.0
