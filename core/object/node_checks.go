@@ -14,22 +14,6 @@ import (
 	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/exe"
-
-	_ "github.com/opensvc/om3/v3/drivers/chkbtrfs"
-	_ "github.com/opensvc/om3/v3/drivers/chketh"
-	_ "github.com/opensvc/om3/v3/drivers/chkfsidf"
-	_ "github.com/opensvc/om3/v3/drivers/chkfsudf"
-	_ "github.com/opensvc/om3/v3/drivers/chkfszfs"
-	_ "github.com/opensvc/om3/v3/drivers/chkjstat"
-	_ "github.com/opensvc/om3/v3/drivers/chklag"
-	_ "github.com/opensvc/om3/v3/drivers/chkmcelog"
-	_ "github.com/opensvc/om3/v3/drivers/chkmpath"
-	_ "github.com/opensvc/om3/v3/drivers/chknuma"
-	_ "github.com/opensvc/om3/v3/drivers/chkomreport"
-	_ "github.com/opensvc/om3/v3/drivers/chkpowerpath"
-	_ "github.com/opensvc/om3/v3/drivers/chkraid"
-	_ "github.com/opensvc/om3/v3/drivers/chkvg"
-	_ "github.com/opensvc/om3/v3/drivers/chkzpool"
 )
 
 // Checks finds and runs the check drivers.

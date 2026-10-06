@@ -6,8 +6,6 @@ import (
 
 	"github.com/rs/zerolog"
 
-	_ "github.com/opensvc/om3/v3/drivers/chkfsidf"
-	_ "github.com/opensvc/om3/v3/drivers/chkfsudf"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
