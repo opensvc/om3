@@ -12,3 +12,52 @@ due.
 
 Use the staging directory of Let's Encrypt to try a setup out: its
 certificates are not trusted, and its rate limits are far higher.
+
+A certificate of Let's Encrypt for two names, its http-01 challenges served
+by the http server of the domains from a webroot:
+
+```
+[DEFAULT]
+cn = www.example.com
+alt_names = example.com
+email = admin@example.com
+
+[acme]
+directory = letsencrypt
+webroot = /srv/web.ns1.vol.cluster1/acme-challenges
+```
+
+The same, tried out first on the staging directory:
+
+```
+[acme]
+directory = letsencrypt-staging
+webroot = /srv/web.ns1.vol.cluster1/acme-challenges
+```
+
+Changing the directory, as from `letsencrypt-staging` to `letsencrypt` once
+the setup works, makes the next renewal issue a new certificate from the
+directory now named, due or not.
+
+A sec listed in the `listener.tls_secs` of the cluster needs no webroot: the
+listener of every node answers its challenges on `listener.acme_port`.
+
+A certificate of the directory of an ACME server of your own, as a smallstep
+`step-ca` with an ACME provisioner named `acme`, served with a certificate the
+node trusts:
+
+```
+[acme]
+directory = https://ca.example.com/acme/acme/directory
+```
+
+A certificate of a pebble test server, its certificate trusted by the node
+too:
+
+```
+[acme]
+directory = https://pebble.example.com:14000/dir
+```
+
+A directory requiring an external account binding, as ZeroSSL and Google
+Trust Services do, is not supported: the account is registered without one.
