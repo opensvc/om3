@@ -156,7 +156,14 @@ func WaitOrchestration(ctx context.Context, id string) (Orchestration, bool) {
 	for {
 		c := ended()
 		o, ok := GetOrchestration(id)
-		if ok && o.EndedAt != nil {
+		if !ok {
+			// The api records an orchestration before handing its id
+			// out, and the monitors of the other nodes tell theirs, so
+			// an id not known is one dropped, or that never ran here:
+			// waiting would not make it known.
+			return o, false
+		}
+		if o.EndedAt != nil {
 			return o, true
 		}
 		select {
@@ -278,6 +285,27 @@ func AddOrchestration(o Orchestration) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
+	if o.StartedAt.IsZero() {
+		o.StartedAt = time.Now()
+	}
+	o.State = StateRunning
+	orchestrations[o.OrchestrationID] = &o
+}
+
+// AddOrchestrationIfUnknown records an orchestration the store does not know
+// yet, as the api does for the id it hands out, before the monitor taking it
+// on says so: a client asking about the id at once then finds it. An
+// orchestration already known is left alone, as the monitor may have said by
+// then how it ended.
+func AddOrchestrationIfUnknown(o Orchestration) {
+	if o.OrchestrationID == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if _, ok := orchestrations[o.OrchestrationID]; ok {
+		return
+	}
 	if o.StartedAt.IsZero() {
 		o.StartedAt = time.Now()
 	}

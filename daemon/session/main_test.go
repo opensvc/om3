@@ -343,3 +343,34 @@ func TestWaitingOnAnUnknownExecIsAnsweredAtOnce(t *testing.T) {
 	require.True(t, ok)
 	assert.NotNil(t, e.EndedAt, "a known exec is waited for until it ends")
 }
+
+// The api records the orchestration it hands an id out for, so waiting for
+// an id this node does not know is answered at once.
+func TestWaitingOnAnUnknownOrchestrationIsAnsweredAtOnce(t *testing.T) {
+	reset()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	begin := time.Now()
+	o, ok := WaitOrchestration(ctx, "o1")
+	assert.False(t, ok, "an orchestration this node never heard of is unknown")
+	assert.Equal(t, Orchestration{}, o)
+	assert.Less(t, time.Since(begin), time.Second, "the wait is answered at once")
+}
+
+// The api records the id it hands out after the monitor answered it, and the
+// monitor may have said by then how the orchestration ended: recording it
+// again must not make it run again.
+func TestRecordingAnOrchestrationIfUnknownLeavesAKnownOneAlone(t *testing.T) {
+	reset()
+	AddOrchestrationIfUnknown(Orchestration{OrchestrationID: "o1", Node: "n1", Path: "obj"})
+	o, ok := GetOrchestration("o1")
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+
+	EndOrchestration("o1", StateRefused, "no changes")
+	AddOrchestrationIfUnknown(Orchestration{OrchestrationID: "o1", Node: "n1", Path: "obj"})
+	o, ok = GetOrchestration("o1")
+	require.True(t, ok)
+	assert.Equal(t, StateRefused, o.State, "an ended orchestration stays ended")
+	assert.NotNil(t, o.EndedAt)
+}

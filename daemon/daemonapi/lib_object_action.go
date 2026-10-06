@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
@@ -70,9 +71,24 @@ var monitorStatesRunningAction = []instance.MonitorState{
 //   - StatusRequestTimeout: request context DeadlineExceeded or timeout reached
 //   - StatusConflict: expectation value refused
 func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node string, value *instance.MonitorUpdate, err error) error {
+	queued := func() error {
+		// Recorded before the id is answered, for the client to find it
+		// if it asks at once: the monitor says it took it on, or refused
+		// it, only after answering.
+		o := session.Orchestration{
+			OrchestrationID: value.CandidateOrchestrationID.String(),
+			Node:            node,
+			Path:            p.String(),
+		}
+		if value.GlobalExpect != nil {
+			o.Expect = value.GlobalExpect.String()
+		}
+		session.AddOrchestrationIfUnknown(o)
+		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+	}
 	switch {
 	case err == nil:
-		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+		return queued()
 	case errors.Is(err, context.DeadlineExceeded):
 		// The instance monitor did not answer. Running an action, it
 		// reads no request until the action ends, which can be long, and
@@ -82,7 +98,7 @@ func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node stri
 			if value.GlobalExpect != nil && *value.GlobalExpect == instance.MonitorGlobalExpectAborted {
 				// An abort is accepted whatever the orchestration in
 				// progress: it is queued, not refused.
-				return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+				return queued()
 			}
 			return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "%s is %s on %s: the instance monitor reads the request when the action ends, and may refuse it then", p, instMon.State, node)
 		}
