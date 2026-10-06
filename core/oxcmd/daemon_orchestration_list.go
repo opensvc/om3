@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/session"
-	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -116,7 +115,9 @@ func (t *CmdDaemonOrchestrationList) run() ([]api.OrchestrationItem, error) {
 		return nil, err
 	}
 	if t.NodeSelector == "" {
-		t.NodeSelector = hostname.Hostname()
+		// Any node answers for any orchestration, and the host ox runs on
+		// is no cluster node to ask.
+		t.NodeSelector = "*"
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
