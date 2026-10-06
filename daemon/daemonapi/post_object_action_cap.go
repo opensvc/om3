@@ -118,7 +118,7 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 	a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 	if err := setInstanceMonitorErr.Receive(); err != nil {
-		return JSONFromSetInstanceMonitorError(eCtx, &value, err)
+		return JSONFromSetInstanceMonitorError(eCtx, p, a.localhost, &value, err)
 	}
 	if pending != nil {
 		if _, err := pending.commit(); err != nil {
@@ -135,7 +135,7 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 	if mtime := file.ModTime(p.ConfigFile()); !mtime.IsZero() {
 		eCtx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 	}
-	return JSONFromSetInstanceMonitorError(eCtx, &value, nil)
+	return JSONFromSetInstanceMonitorError(eCtx, p, a.localhost, &value, nil)
 }
 
 // capClockMargin is how far before the request a configuration written for

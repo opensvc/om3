@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
@@ -37,7 +38,7 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 
 		a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
-		return JSONFromSetInstanceMonitorError(eCtx, &value, setImonErr.Receive())
+		return JSONFromSetInstanceMonitorError(eCtx, p, a.localhost, &value, setImonErr.Receive())
 	}
 	for nodename := range instance.MonitorData.GetByPath(p) {
 		if nodename == a.localhost {
@@ -48,17 +49,59 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 	return JSONProblem(eCtx, http.StatusNotFound, "object not found", "")
 }
 
+// monitorStatesRunningAction are the states of an instance monitor running
+// an action it waits for the end of, as a stop: it reads no request until the
+// action ends, so a request sent meanwhile times out.
+var monitorStatesRunningAction = []instance.MonitorState{
+	instance.MonitorStateBootProgress,
+	instance.MonitorStateCapProgress,
+	instance.MonitorStateDeleteProgress,
+	instance.MonitorStateProvisionProgress,
+	instance.MonitorStateResizeProgress,
+	instance.MonitorStateShutdownProgress,
+	instance.MonitorStateStartProgress,
+	instance.MonitorStateStopProgress,
+	instance.MonitorStateUnprovisionProgress,
+}
+
 // JSONFromSetInstanceMonitorError sends a JSON response where status code depends
 // on SetMonitorUpdate error value.
-//   - StatusOK: expectation value accepted
+//   - StatusOK: expectation value accepted, or an abort queued to an
+//     instance monitor running an action
 //   - StatusRequestTimeout: request context DeadlineExceeded or timeout reached
 //   - StatusConflict: expectation value refused
-func JSONFromSetInstanceMonitorError(eCtx echo.Context, value *instance.MonitorUpdate, err error) error {
-	// TODO: is 408 Request Timeout correct ? it may caused from slow imon
+func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node string, value *instance.MonitorUpdate, err error) error {
+	queued := func() error {
+		// Recorded before the id is answered, for the client to find it
+		// if it asks at once: the monitor says it took it on, or refused
+		// it, only after answering.
+		o := session.Orchestration{
+			OrchestrationID: value.CandidateOrchestrationID.String(),
+			Node:            node,
+			Path:            p.String(),
+		}
+		if value.GlobalExpect != nil {
+			o.Expect = value.GlobalExpect.String()
+		}
+		session.AddOrchestrationIfUnknown(o)
+		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+	}
 	switch {
 	case err == nil:
-		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+		return queued()
 	case errors.Is(err, context.DeadlineExceeded):
+		// The instance monitor did not answer. Running an action, it
+		// reads no request until the action ends, which can be long, and
+		// reads the request then: say so, rather than a timeout naming
+		// the request.
+		if instMon := instance.MonitorData.GetByPathAndNode(p, node); instMon != nil && instMon.State.IsOneOf(monitorStatesRunningAction...) {
+			if value.GlobalExpect != nil && *value.GlobalExpect == instance.MonitorGlobalExpectAborted {
+				// An abort is accepted whatever the orchestration in
+				// progress: it is queued, not refused.
+				return queued()
+			}
+			return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "%s is %s on %s: the instance monitor reads the request when the action ends, and may refuse it then", p, instMon.State, node)
+		}
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "timeout publishing %s", *value)
 	case errors.Is(err, context.Canceled):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "client context canceled")

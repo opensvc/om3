@@ -26,6 +26,22 @@ func TestFilterKeywordStoreOptionInAnySection(t *testing.T) {
 	}
 }
 
+func TestFilterKeywordStoreOptionPatternInAnySection(t *testing.T) {
+	store := keywords.Store{
+		{Section: "DEFAULT", Option: "nodes"},
+		{Section: "task", Option: "schedule"},
+		{Section: "sync", Option: "schedule"},
+		{Section: "DEFAULT", Option: "status_schedule"},
+	}
+	option := "sched*"
+	got, err := FilterKeywordStore(store, nil, nil, &option, naming.Path{}, nil)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	for _, kw := range got {
+		require.Equal(t, "schedule", kw.Option)
+	}
+}
+
 func TestFindKeywords(t *testing.T) {
 	type query struct{ section, option string }
 	record := func(asked *[]query, found map[query]api.KeywordDefinitionItems) func(section, option *string) (api.KeywordDefinitionItems, error) {

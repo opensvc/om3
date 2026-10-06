@@ -43,5 +43,5 @@ func (a *DaemonAPI) PostClusterAction(eCtx echo.Context, globalExpect node.Monit
 	msg, err := msgbus.NewSetNodeMonitorWithErr(ctx, a.localhost, value)
 
 	a.Bus.Pub(msg, a.LabelLocalhost, labelOriginAPI)
-	return JSONFromSetNodeMonitorError(eCtx, &value, err.Receive())
+	return JSONFromSetNodeMonitorError(eCtx, a.localhost, &value, err.Receive())
 }

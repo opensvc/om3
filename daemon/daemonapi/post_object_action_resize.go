@@ -100,7 +100,7 @@ func (a *DaemonAPI) PostObjectActionResize(eCtx echo.Context, namespace string, 
 
 		a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
-		return JSONFromSetInstanceMonitorError(eCtx, &value, setInstanceMonitorErr.Receive())
+		return JSONFromSetInstanceMonitorError(eCtx, p, a.localhost, &value, setInstanceMonitorErr.Receive())
 	}
 	for nodename := range instance.MonitorData.GetByPath(p) {
 		return a.proxy(eCtx, nodename, func(c *client.T) (*http.Response, error) {

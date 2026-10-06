@@ -43,7 +43,14 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 		if *option == "" && section != nil {
 			return store.ByOption(*section), nil
 		}
+		if isGlob(*option) {
+			return keywords.Store(store).MatchingOption(*option), nil
+		}
 		return store.ByOption(*option), nil
+	case driver == nil && section == nil && option != nil && isGlob(*option):
+		// An option pattern named with no section matches the options of
+		// any section.
+		store = store.MatchingOption(*option)
 	case driver == nil && section == nil && option != nil:
 		// An option named with no section is the option in any section.
 		store = store.WithOption(*option)
@@ -58,6 +65,21 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 		if err != nil {
 			return nil, fmt.Errorf("%s.%s: %s", drvGroup, sectionType, err)
 		}
+	case driver == nil && section != nil && option != nil && isGlob(*option):
+		// An option pattern matches the options of the keywords of the
+		// section, as "config get" matches them, whether the configuration
+		// sets them or not.
+		o, err := getConfigProvider()
+		if err != nil {
+			return nil, err
+		}
+		sectionType := o.Config().GetString(key.New(*section, "type"))
+		drvGroup, _, _ := strings.Cut(*section, "#")
+		l, err := store.DriverKeywords(drvGroup, sectionType, path.Kind)
+		if err != nil {
+			return nil, fmt.Errorf("%s.%s: %s", drvGroup, sectionType, err)
+		}
+		store = keywords.Store(l).MatchingOption(*option)
 	case driver == nil && section != nil && option != nil:
 		o, err := getConfigProvider()
 		if err != nil {
@@ -191,4 +213,10 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 		return slices.Compare(left.Kind, right.Kind) < 0
 	})
 	return l
+}
+
+// isGlob says whether an option of a --kw value is a pattern, as "sched*",
+// matching the options of the keywords rather than naming one.
+func isGlob(s string) bool {
+	return strings.ContainsAny(s, "*?[")
 }

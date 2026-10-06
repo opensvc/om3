@@ -156,7 +156,14 @@ func WaitOrchestration(ctx context.Context, id string) (Orchestration, bool) {
 	for {
 		c := ended()
 		o, ok := GetOrchestration(id)
-		if ok && o.EndedAt != nil {
+		if !ok {
+			// The api records an orchestration before handing its id
+			// out, and the monitors of the other nodes tell theirs, so
+			// an id not known is one dropped, or that never ran here:
+			// waiting would not make it known.
+			return o, false
+		}
+		if o.EndedAt != nil {
 			return o, true
 		}
 		select {
@@ -168,12 +175,18 @@ func WaitOrchestration(ctx context.Context, id string) (Orchestration, bool) {
 }
 
 // WaitExec waits for the exec of an id to end, and returns it and whether it
-// is known.
+// is known. An exec not known is answered at once: the daemon records an exec
+// before handing its id to the client that submitted it, so an id it does not
+// know is one it dropped, or one that never ran on this node, and waiting
+// would not make it known.
 func WaitExec(ctx context.Context, id string) (Exec, bool) {
 	for {
 		c := ended()
 		e, ok := GetExec(id)
-		if ok && e.EndedAt != nil {
+		if !ok {
+			return e, false
+		}
+		if e.EndedAt != nil {
 			return e, true
 		}
 		select {
@@ -272,6 +285,27 @@ func AddOrchestration(o Orchestration) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
+	if o.StartedAt.IsZero() {
+		o.StartedAt = time.Now()
+	}
+	o.State = StateRunning
+	orchestrations[o.OrchestrationID] = &o
+}
+
+// AddOrchestrationIfUnknown records an orchestration the store does not know
+// yet, as the api does for the id it hands out, before the monitor taking it
+// on says so: a client asking about the id at once then finds it. An
+// orchestration already known is left alone, as the monitor may have said by
+// then how it ended.
+func AddOrchestrationIfUnknown(o Orchestration) {
+	if o.OrchestrationID == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if _, ok := orchestrations[o.OrchestrationID]; ok {
+		return
+	}
 	if o.StartedAt.IsZero() {
 		o.StartedAt = time.Now()
 	}

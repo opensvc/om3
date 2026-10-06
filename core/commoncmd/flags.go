@@ -280,7 +280,7 @@ func FlagKeyTo(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagKeyword(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "kw", "", "a configuration keyword: [<section>.]<option>")
+	flags.StringVar(p, "kw", "", "a configuration keyword: [<section>.]<option>, the option a pattern matching several, as task#1.sched*")
 }
 
 func FlagKeywordOps(flags *pflag.FlagSet, p *[]string) {

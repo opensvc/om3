@@ -816,7 +816,7 @@ connection, or that asks late, still be told how it went.`,
 	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	flags.DurationVar(&options.Wait, "duration", 0, "give up waiting after this duration")
 	return cmd
 }
@@ -845,7 +845,7 @@ follow one.`,
 	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	flags.StringSliceVar(&options.States, "state", nil, "list the orchestrations in these states, every state when not set")
 	return cmd
 }
