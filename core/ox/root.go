@@ -176,7 +176,7 @@ func guessSubsystem(s string) string {
 	if p, err := naming.ParsePath(s); err == nil {
 		return p.Kind.String()
 	}
-	return "all"
+	return "any"
 }
 
 // mergeSelector returns the selector from argv[1], or falls back to

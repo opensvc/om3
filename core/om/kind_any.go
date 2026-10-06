@@ -1,10 +1,14 @@
-package ox
+package om
 
-import "github.com/opensvc/om3/v3/core/commoncmd"
+import (
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/omcmd"
+	"github.com/opensvc/om3/v3/util/hostname"
+)
 
 func init() {
 	kind := ""
-	cmdObject := commoncmd.NewCmdAll()
+	cmdObject := commoncmd.NewCmdAny()
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectCompliance := commoncmd.NewCmdObjectCompliance(kind)
@@ -12,32 +16,39 @@ func init() {
 	cmdObjectComplianceDetach := newCmdObjectComplianceDetach(kind)
 	cmdObjectComplianceShow := newCmdObjectComplianceShow(kind)
 	cmdObjectComplianceList := newCmdObjectComplianceList(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
-	cmdObjectInstanceDevice := commoncmd.NewCmdObjectInstanceDevice(kind)
 	cmdObjectInstancePG := commoncmd.NewCmdObjectInstancePG(kind)
+	cmdObjectInstanceDevice := commoncmd.NewCmdObjectInstanceDevice(kind)
 	cmdObjectPG := commoncmd.NewCmdObjectInstancePG(kind)
 	cmdObjectPG.Hidden = true
-	cmdObjectSchedule := newCmdObjectSchedule(kind)
-	cmdObjectSet := newCmdObjectSet(kind)
-	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectPrint := commoncmd.NewCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
+	cmdObjectSet := newCmdObjectSet(kind)
+	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
-	root.AddCommand(
-		cmdObject,
-	)
 	cmdObject.AddGroup(
 		commoncmd.NewGroupOrchestrated(),
 		commoncmd.NewGroupQuery(),
 		commoncmd.NewGroupResources(),
 		commoncmd.NewGroupSubsystems(),
 	)
+	root.AddCommand(
+		cmdObject,
+	)
 	cmdObject.AddCommand(
 		cmdObjectCollector,
 		cmdObjectCompliance,
 		cmdObjectConfig,
+		newCmdDataStoreAdd(kind),
+		newCmdDataStoreChange(kind),
+		newCmdDataStoreDecode(kind),
+		newCmdDataStoreKeys(kind),
+		newCmdDataStoreInstall(kind),
+		newCmdDataStoreRemove(kind),
+		newCmdObjectKey(kind),
 		newCmdObjectContainer(kind),
 		newCmdObjectIP(kind),
 		newCmdObjectFS(kind),
@@ -46,7 +57,6 @@ func init() {
 		newCmdObjectShare(kind),
 		newCmdObjectApp(kind),
 		newCmdObjectTask(kind),
-		newCmdObjectSync(kind),
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPG,
@@ -54,20 +64,16 @@ func init() {
 		newCmdObjectResource(kind),
 		cmdObjectSet,
 		cmdObjectSchedule,
+		newCmdObjectSync(kind),
 		cmdObjectValidate,
-		newCmdDataStoreAdd(kind),
-		newCmdDataStoreChange(kind),
-		newCmdDataStoreDecode(kind),
-		newCmdDataStoreKeys(kind),
-		newCmdDataStoreInstall(kind),
-		newCmdDataStoreRemove(kind),
-		newCmdObjectKey(kind),
 		commoncmd.NewCmdObjectCap(kind),
 		newCmdObjectAbort(kind),
 		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),
+		newCmdObjectDisable(kind),
+		newCmdObjectEnable(kind),
 		newCmdObjectEnter(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectFreeze(kind),
@@ -81,7 +87,11 @@ func init() {
 		newCmdObjectPRStart(kind),
 		newCmdObjectPRStop(kind),
 		newCmdObjectRestart(kind),
+		newCmdObjectRun(kind),
+		newCmdObjectShutdown(kind),
 		newCmdObjectStart(kind),
+		newCmdObjectStartStandby(kind),
+		newCmdObjectStatus(kind),
 		newCmdObjectStop(kind),
 		newCmdObjectSwitch(kind),
 		newCmdObjectTakeover(kind),
@@ -89,31 +99,28 @@ func init() {
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
-		newCmdTUI(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
-		cmdObjectInstancePG,
 		newCmdObjectInstanceBoot(kind),
 		newCmdObjectInstanceDelete(kind),
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectGroupInfo(kind, ""),
 		newCmdObjectInstanceList(kind),
+		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstanceProvision(kind),
 		newCmdObjectInstanceInstall(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceRestart(kind),
-		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceShutdown(kind),
 		newCmdObjectInstanceStart(kind),
 		newCmdObjectInstanceStartStandby(kind),
 		newCmdObjectInstanceStop(kind),
 		newCmdObjectInstanceUnfreeze(kind),
 		newCmdObjectInstanceUnprovision(kind),
-		commoncmd.NewCmdObjectInstanceClear(kind, ""),
+		commoncmd.NewCmdObjectInstanceClear(kind, hostname.Hostname()),
 
 		// sync
 		newCmdObjectInstanceIngest(kind),
@@ -129,11 +136,16 @@ func init() {
 		newCmdObjectInstancePGReset(kind),
 		newCmdObjectInstancePGUpdate(kind),
 	)
+	cmdObjectPG.AddCommand(
+		newCmdObjectInstancePGReset(kind),
+		newCmdObjectInstancePGUpdate(kind),
+	)
 	cmdObjectConfig.AddCommand(
-		commoncmd.NewCmdObjectConfigDoc(kind),
+		omcmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -141,14 +153,11 @@ func init() {
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
 	)
-	cmdObjectPG.AddCommand(
-		newCmdObjectInstancePGReset(kind),
-		newCmdObjectInstancePGUpdate(kind),
-	)
 	cmdObjectSchedule.AddCommand(
 		newCmdObjectScheduleList(kind),
 	)
 	cmdObjectSet.AddCommand(
+		//deprecated...
 		newCmdObjectSetProvisioned(kind),
 		newCmdObjectSetUnprovisioned(kind),
 	)
@@ -158,6 +167,9 @@ func init() {
 		newCmdObjectPrintSchedule(kind),
 		newCmdObjectPrintStatus(kind),
 	)
+	cmdObjectPrintConfig.AddCommand(
+		newCmdObjectConfigMtime(kind),
+	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
 	)
@@ -166,7 +178,9 @@ func init() {
 	)
 	cmdObjectCollectorTag.AddCommand(
 		newCmdObjectCollectorTagAttach(kind),
+		newCmdObjectCollectorTagCreate(kind),
 		newCmdObjectCollectorTagDetach(kind),
+		newCmdObjectCollectorTagList(kind),
 		newCmdObjectCollectorTagShow(kind),
 	)
 	cmdObjectCompliance.AddCommand(
