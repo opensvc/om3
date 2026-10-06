@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
@@ -74,7 +75,7 @@ func (r Runner) Do(ctx context.Context, opts ...funcopt.O) *ResultSet {
 		Str("c", "checks").
 		Int("instances", len(rs.Data)).
 		Int("drivers", len(r.customCheckPaths)).
-		Msgf("checks done: %d results, %d custom checkers", len(rs.Data), len(r.customCheckPaths))
+		Msgf("checks done: %d results, %d custom checkers, %d failed", len(rs.Data), len(r.customCheckPaths), len(rs.Failed))
 	return rs
 }
 
@@ -88,6 +89,7 @@ func (r *Runner) doRegisteredCheck(ctx context.Context, c Checker) {
 	}
 	if err != nil {
 		log.Error().Err(err).Msgf("checker %T: execution", c)
+		rs.Failed = append(rs.Failed, fmt.Sprintf("%T", c))
 		r.q <- rs
 		return
 	}
@@ -105,12 +107,14 @@ func (r *Runner) doCustomCheck(ctx context.Context, path string) {
 	b, err := cmd.Output()
 	if err != nil {
 		log.Error().Str("checker", path).Err(err).Msgf("checker %s: execution", path)
+		rs.Failed = append(rs.Failed, path)
 		r.q <- rs
 		return
 	}
 	log.Debug().Str("checker", path).Msgf("checker %s: %s", path, b)
 	if err := json.Unmarshal(b, rs); err != nil {
 		log.Error().Str("checker", path).Err(err).Msgf("checker %s: unmarshal json", path)
+		rs.Failed = append(rs.Failed, path)
 	}
 	log.Debug().
 		Str("c", "checks").

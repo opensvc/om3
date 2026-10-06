@@ -44,11 +44,18 @@ func (t Node) Checks(ctx context.Context) (check.ResultSet, error) {
 // drivers report them.
 type oc3ChecksBody struct {
 	Data []check.Result `json:"data"`
+
+	// Partial says a checker failed during the run, so the results miss
+	// some of the checks the node has: the collector updates the checks
+	// reported and keeps the others, with their alerts.
+	Partial bool `json:"partial,omitempty"`
 }
 
 // pushChecks sends the results to the collector, which replaces the checks
 // of the node with them: an empty set is sent too, for the checks the node
-// no longer reports to go.
+// no longer reports to go. A partial set, of a run where a checker failed,
+// replaces nothing: a transient failure must not delete the last known
+// checks of the failed checker, and their alerts.
 func (t Node) pushChecks(rs *check.ResultSet) error {
 	var (
 		method = http.MethodPost
@@ -58,7 +65,7 @@ func (t Node) pushChecks(rs *check.ResultSet) error {
 	if err != nil {
 		return err
 	}
-	body := oc3ChecksBody{Data: rs.Data}
+	body := oc3ChecksBody{Data: rs.Data, Partial: rs.IsPartial()}
 	if body.Data == nil {
 		body.Data = []check.Result{}
 	}
