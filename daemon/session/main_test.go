@@ -319,3 +319,27 @@ func TestWaitingOnExecsIsAnsweredWhenTheLastOneEnds(t *testing.T) {
 	assert.False(t, running, "a node that ran nothing for the session is not made to wait")
 	assert.Len(t, l, 0)
 }
+
+// The daemon records an exec before handing its id out, so waiting for an id
+// it does not know cannot make it known: the wait is answered at once, not
+// when its context expires.
+func TestWaitingOnAnUnknownExecIsAnsweredAtOnce(t *testing.T) {
+	reset()
+	AddExec(Exec{SessionID: "s1", ExecID: "e1", Node: "n1"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	begin := time.Now()
+	e, ok := WaitExec(ctx, "e2")
+	assert.False(t, ok, "an exec this node never heard of is unknown")
+	assert.Equal(t, Exec{}, e)
+	assert.Less(t, time.Since(begin), time.Second, "the wait is answered at once")
+
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		EndExec("e1", "s1", StateSucceeded, "", 0, time.Millisecond)
+	}()
+	e, ok = WaitExec(ctx, "e1")
+	require.True(t, ok)
+	assert.NotNil(t, e.EndedAt, "a known exec is waited for until it ends")
+}

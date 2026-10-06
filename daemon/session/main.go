@@ -168,12 +168,18 @@ func WaitOrchestration(ctx context.Context, id string) (Orchestration, bool) {
 }
 
 // WaitExec waits for the exec of an id to end, and returns it and whether it
-// is known.
+// is known. An exec not known is answered at once: the daemon records an exec
+// before handing its id to the client that submitted it, so an id it does not
+// know is one it dropped, or one that never ran on this node, and waiting
+// would not make it known.
 func WaitExec(ctx context.Context, id string) (Exec, bool) {
 	for {
 		c := ended()
 		e, ok := GetExec(id)
-		if ok && e.EndedAt != nil {
+		if !ok {
+			return e, false
+		}
+		if e.EndedAt != nil {
 			return e, true
 		}
 		select {
