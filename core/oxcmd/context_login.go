@@ -75,11 +75,14 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		slices.Sort(contextName)
 
 		tokens := tokencache.GetAll()
+		now := time.Now()
 		for i, name := range contextName {
-			if tok, ok := tokens[name]; ok && !time.Now().Before(tok.RefreshTokenExpire) {
-				name = name + " (expired)"
+			// The mark is only shown, the selection names the context.
+			label := name
+			if tok, ok := tokens[name]; ok && !tok.HasValidRefresh(now) {
+				label += " (expired)"
 			}
-			fmt.Printf("%d) %s\n", i+1, name)
+			fmt.Printf("%d) %s\n", i+1, label)
 			if name == lastName {
 				lastIndex = i
 			}
@@ -96,7 +99,7 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		if err != nil && err != io.EOF {
 			return err
 		}
-		if input == "\n" && lastName != "" {
+		if input == "\n" && lastIndex != -1 {
 			t.Context = lastName
 		} else if input == "\n" {
 			return fmt.Errorf("no context selected")
