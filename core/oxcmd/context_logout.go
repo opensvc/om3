@@ -32,30 +32,29 @@ func (t *CmdContextLogout) Run(cmd *cobra.Command) error {
 
 	if t.Context == "" && !t.All {
 		tokens := tokencache.GetAll()
-		for name := range tokens {
-			tok := tokens[name]
-			if !time.Now().Before(tok.RefreshTokenExpire) {
-				delete(tokens, name)
-				tokens[name+" (expired)"] = tok
-			}
-		}
 		if len(tokens) == 0 {
-			return fmt.Errorf("no valid context login found")
+			return fmt.Errorf("no context login found")
 		}
 
-		fmt.Println("Current valid context logins:")
-		i := 0
-		contextName := make([]string, len(tokens))
+		fmt.Println("Current context logins:")
+		contextName := make([]string, 0, len(tokens))
 		lastName, _ := tokencache.GetLast()
 		lastIndex := -1
 		for name := range tokens {
-			contextName[i] = name
-			i++
+			contextName = append(contextName, name)
 		}
 		slices.Sort(contextName)
 
+		now := time.Now()
 		for i, name := range contextName {
-			fmt.Printf("%d) %s\n", i+1, name)
+			// The expired logins are listed too: their token files are
+			// still to delete. The mark is only shown, the selection
+			// names the context.
+			label := name
+			if !tokens[name].HasValidRefresh(now) {
+				label += " (expired)"
+			}
+			fmt.Printf("%d) %s\n", i+1, label)
 			if name == lastName {
 				lastIndex = i
 			}
