@@ -19,7 +19,6 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -459,30 +458,7 @@ func (t *Manager) updateStatus() {
 	}
 
 	updatePlacementState := func() {
-		t.status.PlacementState = placement.NotApplicable
-		if t.path.Kind != naming.KindSvc {
-			return
-		}
-		if t.status.Avail.Is(status.Down, status.NotApplicable, status.Undef, status.Warn) {
-			// no need to report a placement issue for a object not up
-			return
-		}
-		for node, instMonitor := range t.instMonitor {
-			instStatus, ok := t.instStatus[node]
-			if !ok {
-				t.status.PlacementState = placement.NotApplicable
-				break
-			}
-			if instMonitor.IsHALeader && !instStatus.Avail.Is(status.Up, status.NotApplicable) {
-				t.status.PlacementState = placement.NonOptimal
-				break
-			}
-			if !instMonitor.IsHALeader && !instStatus.Avail.Is(status.Down, status.StandbyUp, status.StandbyDown, status.NotApplicable) {
-				t.status.PlacementState = placement.NonOptimal
-				break
-			}
-			t.status.PlacementState = placement.Optimal
-		}
+		t.status.PlacementState = placementState(t.path.Kind, t.status.Avail, t.instMonitor, t.instStatus)
 	}
 
 	if t.isActor {
