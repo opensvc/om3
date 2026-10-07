@@ -47,7 +47,6 @@ require (
 	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mlafeldt/sysrq v0.0.0-20171106101645-38dd78d6e663
 	github.com/msoap/byline v1.1.1
 	github.com/ncw/directio v1.0.5
 	github.com/oapi-codegen/oapi-codegen/v2 v2.7.1
