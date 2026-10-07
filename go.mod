@@ -34,7 +34,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
 	github.com/gorilla/websocket v1.5.3
-	github.com/hashicorp/go-version v1.9.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
