@@ -1,4 +1,12 @@
 The url of the OpenSVC Collector v3. The node feeds it, and reaches its
 server api, when the node is registered on it.
-If collector.feeder or collector.server are not explicitly defined, they are
-derived from this value.
+
+The url of each api is derived from this one by appending its path, unless
+set by its own keyword:
+
+* `collector.feeder` defaults to `<collector.url>/feeder`
+* `collector.server` defaults to `<collector.url>/server`
+
+For example, with `url = https://collector.opensvc.com`, the node feeds
+`https://collector.opensvc.com/feeder` and calls the server api at
+`https://collector.opensvc.com/server`.

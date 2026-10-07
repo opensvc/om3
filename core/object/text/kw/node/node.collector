@@ -1,4 +1,6 @@
 The system enables OpenSVC Collector 3 calls conditional upon the detection of
 the Collector 3 environment.
-If collector_feeder or collector_server are not explicitly defined, they are
-derived from this value.
+
+The url of each api is derived from this one by appending its path, unless
+set by its own keyword: `<collector>/feeder` for collector_feeder, and
+`<collector>/server` for collector_server.
