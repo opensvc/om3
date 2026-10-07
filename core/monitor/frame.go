@@ -36,6 +36,7 @@ var (
 	green, yellow, hired, hiBlue, hiBlack, bold func(a ...interface{}) string
 
 	iconUp, iconWarning, iconDownIssue, iconPlacementAlert  string
+	iconError                                               string
 	iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue string
 	iconUndef, iconFrozen, iconDown, iconDRP, iconLeader    string
 	iconNotApplicable, iconPreserved, iconStandbyUp         string
@@ -54,6 +55,7 @@ func InitColor() {
 
 	iconUp = green("O")
 	iconWarning = yellow("!")
+	iconError = hired("!")
 	iconDownIssue = hired("X")
 	iconPlacementAlert = yellow("^")
 	iconProvisionAlert = hired("P")

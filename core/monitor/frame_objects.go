@@ -37,9 +37,15 @@ func sObjectPlacement(d object.Status) string {
 	return ""
 }
 
+// sObjectWarning is the "!" of an object with issues: red when more instances
+// are up than its topology allows, which may have several nodes write its
+// shared resources at once, yellow when its overall status is warn.
 func sObjectWarning(d object.Status) string {
 	if d.ActorStatus == nil {
 		return ""
+	}
+	if d.ActorStatus.ExcessInstances() > 0 {
+		return iconError
 	}
 	if d.ActorStatus.Overall == status.Warn {
 		return iconWarning
