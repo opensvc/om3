@@ -4385,6 +4385,34 @@ func newCmdObjectValidateConfig(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectStatus(kind string) *cobra.Command {
+	var options commands.CmdObjectStatus
+	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
+		Use:     "status",
+		Aliases: []string{"stat", "st"},
+		Short:   "show the object status cluster-wide",
+		Long: `Show a board of the resources of the object by node, the instance states
+above it, and below it the notes saying what needs attention.
+
+The resources come in the order the actions run them, grouped by subset, a
+subset marked // when its resources run in parallel. A cell holds the status
+of a resource on a node, its flags departing from the usual, and the markers
+of the notes about it:
+
+  R  running             M  monitored         D  disabled
+  O  optional            E  encap             P  not provisioned
+  S  standby             X  stopped           n  restarts remaining, + if 10 or more`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagRefresh(flags, &options.Refresh)
+	return cmd
+}
+
 func newCmdObjectPrintStatus(kind string) *cobra.Command {
 	cmd := newCmdObjectInstanceStatus(kind)
 	cmd.Hidden = true

@@ -80,6 +80,7 @@ const (
 	viewHbStatus
 	viewRelay
 	viewNodeIssues
+	viewObjectStatus
 
 	// viewLast is not a view. It bounds the enum, so that a view added
 	// above is walked by the tests that check the registry.
@@ -132,6 +133,15 @@ func init() {
 			},
 			refresh: (*App).updateKeysView,
 			leave:   func(t *App) { t.keys = nil },
+		},
+		viewObjectStatus: {
+			title: "status",
+			enter: func(t *App) {
+				t.mountTextView()
+				t.updateObjectStatusView()
+			},
+			refresh: (*App).updateObjectStatusView,
+			leave:   (*App).releaseTextView,
 		},
 		viewInstance: {
 			title: "instance",

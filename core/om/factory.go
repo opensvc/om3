@@ -4004,17 +4004,31 @@ func newCmdObjectInstanceStartStandby(kind string) *cobra.Command {
 func newCmdObjectStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectStatus
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "status",
-		Hidden:  true,
 		Aliases: []string{"stat", "st"},
-		Long:    "Internal, for use by the daemon scheduler. This command is silent. Only the exitcode holds information. The exitcode is set to the instance avail status.",
+		Short:   "show the object status cluster-wide",
+		Long: `Show a board of the resources of the object by node, the instance states
+above it, and below it the notes saying what needs attention.
+
+The resources come in the order the actions run them, grouped by subset, a
+subset marked // when its resources run in parallel. A cell holds the status
+of a resource on a node, its flags departing from the usual, and the markers
+of the notes about it:
+
+  R  running             M  monitored         D  disabled
+  O  optional            E  encap             P  not provisioned
+  S  standby             X  stopped           n  restarts remaining, + if 10 or more
+
+With --refresh or --monitor, the status of the local instance is evaluated
+first, and the exit code is its avail status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagRefresh(flags, &options.Refresh)
 	addFlagMonitor(flags, &options.Monitor)
 	cmd.MarkFlagsMutuallyExclusive("refresh", "monitor")

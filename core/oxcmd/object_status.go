@@ -1,8 +1,7 @@
-package omcmd
+package oxcmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -11,9 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusboard"
-	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -22,9 +19,7 @@ type (
 	// attention.
 	CmdObjectStatus struct {
 		OptsGlobal
-		commoncmd.OptsLock
 		Refresh bool
-		Monitor bool
 	}
 )
 
@@ -39,28 +34,15 @@ func (t *CmdObjectStatus) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.New(
-		mergedSelector,
-		objectselector.WithClient(c),
-		objectselector.WithLocal(true),
-	)
-	paths, err := sel.MustExpand()
+	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return fmt.Errorf("expand object selection: %w", err)
 	}
 	pathMap := paths.StrMap()
 
-	// The instance status command gathers the same dataset: the status of
-	// the local instance evaluated again first when asked, then the
-	// instances of every node the daemon knows, or the local instance
-	// alone when the daemon is not running.
-	gather := CmdObjectInstanceStatus{
-		OptsGlobal: t.OptsGlobal,
-		OptsLock:   t.OptsLock,
-		Refresh:    t.Refresh,
-		Monitor:    t.Monitor,
-	}
-	data, err := gather.extract(nil, paths, c)
+	// The instance status command gathers the same dataset from the api.
+	gather := CmdObjectInstanceStatus{OptsGlobal: t.OptsGlobal, Refresh: t.Refresh}
+	data, err := gather.extract(paths, c)
 	if err != nil {
 		return err
 	}
@@ -81,20 +63,5 @@ func (t *CmdObjectStatus) Run(kind string) error {
 		},
 		Colorize: rawconfig.Colorize,
 	}
-	if err := renderer.Print(); err != nil {
-		return err
-	}
-	if t.Refresh || t.Monitor {
-		// The status of the local instances was evaluated, and the exit
-		// code says it, for the scripts testing it.
-		var avail status.T
-		localhost := hostname.Hostname()
-		for _, d := range shown {
-			if s, ok := d.Instances.ByNode()[localhost]; ok {
-				avail.Add(s.Status.Avail)
-			}
-		}
-		os.Exit(int(avail))
-	}
-	return nil
+	return renderer.Print()
 }

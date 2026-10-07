@@ -30,6 +30,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **New `ox` terminal UI**: A dedicated terminal interface for real-time cluster monitoring and management, complementing the `om` CLI. Open an `ox` session to watch services move around the cluster interactively.
 
+* **Object status board**: `om <path> status`, `ox <path> status`, and the enter key on an object path in the terminal UI show the object cluster-wide: its resources by node in the order the actions run them, grouped by subset, the instance states, what differs from a node to another, as a node-scoped address, and the notes saying what needs attention, the resource logs included.
+
 * **Enhanced logging with journald**: All agent logs now integrate with systemd-journald, enabling fast filtering with `journalctl _COMM=om` and adding indexed attributes like `OBJ_PATH` for precise log queries.
 
 ### Orchestration & Management
@@ -303,9 +305,15 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
 * `om xx status`
-    This command no longer accepts a selector, because:
-    1/ it is documented the exitcode is the instance status so we can not be ambiguous.
-    2/ it is optimized for efficiency as the daemon executes this frequently to refresh instances status data.
+    The silent command whose exit code was the instance status now shows the status of the object cluster-wide: a
+    board of the resources by node, with the instance states above it and the notes saying what needs attention
+    below it, or the dataset with `-o json`. The exit code is the avail status of the local instances only with
+    `--refresh` or `--monitor`, which evaluate it first, and 0 otherwise. A script testing the exit code adds one of
+    them, and discards the output:
+
+    ```
+    om svc1 status --refresh >/dev/null; echo $?
+    ```
 
 * `om node register` deprecates `--user` and `--password`. The collector credentials now reach the command as
   `--credential`, naming a file holding the `<username>:<password>` of a collector user, and the

@@ -149,6 +149,49 @@ func NewStatus() *Digest {
 	return t
 }
 
+// ExpectedInstances is the number of instances the object is expected to
+// run: the flex target, or one, as om mon reads it in its "up/expected"
+// counter.
+func (s *ActorStatus) ExpectedInstances() int {
+	if s == nil {
+		return 0
+	}
+	if s.Flex != nil {
+		return s.Flex.Target
+	}
+	return 1
+}
+
+// AllowedInstances is the number of instances the topology allows up at
+// once: one for a failover object, flex_max for a flex one, and 0 when the
+// topology sets no bound, as a flex object whose bounds are not known yet.
+func (s *ActorStatus) AllowedInstances() int {
+	if s == nil {
+		return 0
+	}
+	switch s.Topology {
+	case topology.Failover:
+		return 1
+	case topology.Flex:
+		if s.Flex != nil {
+			return s.Flex.Max
+		}
+	}
+	return 0
+}
+
+// ExcessInstances is the number of instances up beyond the ones the topology
+// allows, as two instances of a failover object, which may write the shared
+// resources at once: an error, where a warn status says no more than
+// something is not as it should be.
+func (s *ActorStatus) ExcessInstances() int {
+	allowed := s.AllowedInstances()
+	if allowed <= 0 || s.UpInstancesCount <= allowed {
+		return 0
+	}
+	return s.UpInstancesCount - allowed
+}
+
 func (s *ActorStatus) DeepCopy() *ActorStatus {
 	if s == nil {
 		return nil
