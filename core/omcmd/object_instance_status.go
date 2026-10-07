@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/statusboard"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -231,14 +233,20 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {
-			s := ""
+			// In the order of the paths, separated as the status boards
+			// are.
+			shown := make([]object.Digest, 0, len(data))
 			for _, d := range data {
-				if !pathMap.HasPath(d.Path) {
-					continue
+				if pathMap.HasPath(d.Path) {
+					shown = append(shown, d)
 				}
-				s += d.Render(nodenames)
 			}
-			return s
+			sort.Slice(shown, func(i, j int) bool { return shown[i].Path.String() < shown[j].Path.String() })
+			l := make([]string, len(shown))
+			for i, d := range shown {
+				l[i] = d.Render(nodenames)
+			}
+			return statusboard.JoinDocuments(l)
 		},
 		Colorize: rawconfig.Colorize,
 	}

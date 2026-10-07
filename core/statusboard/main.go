@@ -953,8 +953,18 @@ func visibleWidth(s string) int {
 	return runewidth.StringWidth(regexpANSI.ReplaceAllString(s, ""))
 }
 
-// boardSeparator is the line between the boards of several objects.
-const boardSeparator = "---"
+// documentSeparator is the line between the renderings of several objects.
+const documentSeparator = "---"
+
+// JoinDocuments joins the renderings of several objects, as their boards or
+// their instance status trees, with a "---" line between each, set apart by
+// empty lines.
+func JoinDocuments(l []string) string {
+	for i := range l {
+		l[i] = strings.TrimRight(l[i], "\n") + "\n"
+	}
+	return strings.Join(l, "\n"+documentSeparator+"\n\n")
+}
 
 // RenderTerminalList returns the boards of the objects, separated by a
 // "---" line, as RenderTerminal renders each of them.
@@ -963,7 +973,7 @@ func RenderTerminalList(digests []object.Digest) string {
 	for i, d := range digests {
 		l[i] = RenderTerminal(d)
 	}
-	return strings.Join(l, "\n"+boardSeparator+"\n\n")
+	return JoinDocuments(l)
 }
 
 // RenderTerminal returns the board as wide as the terminal attached to the
