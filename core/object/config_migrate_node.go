@@ -55,7 +55,9 @@ var NodeMigrationRules = MigrationRules{
 	{
 		Doc: "A relay heartbeat authenticating with a secret, and a switch reached with telnet, are reported and kept: " +
 			"what replaces them is a decision, a relay user with the heartbeat grant and a password secret, " +
-			"an ssh key or a password secret.",
+			"an ssh key or a password secret. " +
+			"An arbitrator written with name, reached by a tcp connect without a port, is reported: om reaches it on listener.port, " +
+			"1215 by default, where a v2 agent was reached on 1214, and only its admin knows whether it still runs one.",
 		apply: reportNodeDecisions,
 	},
 }
@@ -307,11 +309,33 @@ func reportNodeDecisions(cfg *xconfig.T, m *Migration) {
 			m.Refusals = append(m.Refusals, fmt.Sprintf("%s: a relay heartbeat authenticates with the username and the password of a user of the relay with the heartbeat grant, and the secret is not read: set %s.username and %s.password", section, section, section))
 		}
 	}
+	for _, section := range sectionsOf(cfg, "arbitrator") {
+		// An arbitrator written with name, the v2 keyword, was reached
+		// on the 1214 port of a v2 agent. One written with uri, the om
+		// keyword, is reached on listener.port as its admin meant.
+		if cfg.HasKey(key.New(section, "uri")) {
+			continue
+		}
+		uri := rawValue(cfg, key.New(section, "name"))
+		if arbitratorDialsTheListenerPort(uri) {
+			m.Refusals = append(m.Refusals, fmt.Sprintf("%s: %s.name = %s names no port, and om reaches it on listener.port, 1215 by default, where a v2 agent was reached on 1214: set %s.uri = %s:1214 if the arbitrator still runs a v2 agent", section, section, uri, section, uri))
+		}
+	}
 	for _, section := range sectionsOf(cfg, "switch") {
 		if rawValue(cfg, key.New(section, "method")) == "telnet" {
 			m.Refusals = append(m.Refusals, fmt.Sprintf("%s: telnet sends the password in clear and is refused: set %s.method = ssh, with a key or a password secret", section, section))
 		}
 	}
+}
+
+// arbitratorDialsTheListenerPort says whether om checks the arbitrator of the
+// uri by a tcp connect to the port of the cluster listener: a uri with no
+// http scheme and no port, as the daemon dials it.
+func arbitratorDialsTheListenerPort(uri string) bool {
+	if uri == "" || strings.HasPrefix(uri, "http") {
+		return false
+	}
+	return !strings.Contains(uri, ":")
 }
 
 // relayHeartbeats returns the heartbeat sections of type relay.

@@ -335,3 +335,26 @@ func TestMigrationRulesDoc(t *testing.T) {
 	assert.Equal(t, NodeMigrationRules, MigrationRulesOf(naming.KindCcfg))
 	assert.Equal(t, ObjectMigrationRules, MigrationRulesOf(naming.KindSvc))
 }
+
+// An arbitrator written with the v2 name keyword and no port was reached on
+// the 1214 port of a v2 agent, which om no longer implies: it is reported.
+// One written with uri is an om configuration, reached as meant.
+func TestNodeMigrationReportsAV2ArbitratorWithoutPort(t *testing.T) {
+	m := clusterMigrationOf(t, `
+[arbitrator#1]
+name = arb1.example.com
+
+[arbitrator#2]
+name = arb2.example.com:1214
+
+[arbitrator#3]
+name = https://arb3.example.com/check
+
+[arbitrator#4]
+uri = arb4.example.com
+`)
+	assert.True(t, refusedAbout(m, "arbitrator#1.uri = arb1.example.com:1214"), "%v", m.Refusals)
+	assert.False(t, refusedAbout(m, "arbitrator#2"), "a port is named")
+	assert.False(t, refusedAbout(m, "arbitrator#3"), "an http check names its port in its url")
+	assert.False(t, refusedAbout(m, "arbitrator#4"), "an om uri")
+}
