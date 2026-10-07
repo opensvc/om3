@@ -185,7 +185,7 @@ func (t *board) nodesWith(fn func(instance.States) bool) []string {
 
 func (t *board) loadInstanceRows() {
 	t.rows = append(t.rows, row{name: "instance", heading: true, cells: t.cellsOf(func(s instance.States) string {
-		return t.statusText(s.Status.Avail) + t.leaderMark(s)
+		return t.statusIcon(s.Status.Avail) + t.instanceMarks(s)
 	})})
 	t.rows = append(t.rows, row{name: "  monitor", cells: t.cellsOf(func(s instance.States) string {
 		switch {
@@ -214,29 +214,6 @@ func (t *board) loadInstanceRows() {
 			return strings.Join(l, " ")
 		})})
 	}
-	if t.anyNode(func(s instance.States) bool { return s.Status.IsFrozen() || !s.Node.FrozenAt.IsZero() }) {
-		t.rows = append(t.rows, row{name: "  frozen", cells: t.cellsOf(func(s instance.States) string {
-			l := make([]string, 0)
-			if s.Status.IsFrozen() {
-				l = append(l, "frozen")
-			}
-			if !s.Node.FrozenAt.IsZero() {
-				l = append(l, "node-frozen")
-			}
-			if len(l) == 0 {
-				return rawconfig.Colorize.Secondary("·")
-			}
-			return rawconfig.Colorize.Frozen(strings.Join(l, " "))
-		})})
-	}
-	if t.anyNode(func(s instance.States) bool { return s.Status.IsStopped() }) {
-		t.rows = append(t.rows, row{name: "  stopped", cells: t.cellsOf(func(s instance.States) string {
-			if s.Status.IsStopped() {
-				return rawconfig.Colorize.Frozen("stopped")
-			}
-			return rawconfig.Colorize.Secondary("·")
-		})})
-	}
 	if t.anyNode(func(s instance.States) bool {
 		return isActor(s) && (s.Status.Provisioned == provisioned.False || s.Status.Provisioned == provisioned.Mixed)
 	}) {
@@ -262,30 +239,60 @@ func (t *board) loadInstanceRows() {
 	}
 }
 
-// statusText is a status of an instance or a resource as the board colors
-// it: a down one in gray where the object runs as many instances as it
-// expects, as on a node of a failover object running elsewhere, which is no
-// issue, even with more instances up than allowed, which a note says, and
-// in red where it misses instances.
-func (t *board) statusText(st status.T) string {
-	if st == status.Down && t.hasExpectedInstances() {
-		return rawconfig.Colorize.Secondary(st.String())
+// statusIcon is a status of an instance or a resource as the om mon icon
+// says it: O up, X down, o standby up, x standby down, ! warn, / n/a, ?
+// undefined. A down or a standby up is gray where the object runs as many
+// instances as it expects, as on a node of a failover object running
+// elsewhere, which is no issue, even with more instances up than allowed,
+// which a note says, and red where it misses instances.
+func (t *board) statusIcon(st status.T) string {
+	issue := func(icon string) string {
+		if t.hasExpectedInstances() {
+			return rawconfig.Colorize.Secondary(icon)
+		}
+		return rawconfig.Colorize.Error(icon)
 	}
-	return colorstatus.Sprint(st, rawconfig.Colorize)
+	switch st {
+	case status.Up, status.StandbyUpWithUp:
+		return rawconfig.Colorize.Optimal("O")
+	case status.Down:
+		return issue("X")
+	case status.StandbyUp, status.StandbyUpWithDown:
+		return issue("o")
+	case status.StandbyDown:
+		return rawconfig.Colorize.Error("x")
+	case status.Warn:
+		return rawconfig.Colorize.Warning("!")
+	case status.NotApplicable:
+		return rawconfig.Colorize.Secondary("/")
+	case status.Undef:
+		return rawconfig.Colorize.Error("?")
+	default:
+		return st.String()
+	}
 }
 
-// leaderMark is the "^" om mon puts on the instance the placement prefers,
-// its ha leader: the one to keep running, as of instances up in excess. It is
-// gray, and red when the placement is not optimal, the object not running
-// where the placement prefers.
-func (t *board) leaderMark(s instance.States) string {
-	if !s.Monitor.IsHALeader {
-		return ""
+// instanceMarks is the marks om mon puts after the icon of an instance: "^"
+// on the one the placement prefers, its ha leader, the one to keep running
+// as of instances up in excess, gray, and red when the object does not run
+// where the placement prefers; "*" on a frozen one; "=" on one stopped on
+// purpose.
+func (t *board) instanceMarks(s instance.States) string {
+	marks := ""
+	if s.Monitor.IsHALeader {
+		if obj := t.digest.Object.ActorStatus; obj != nil && obj.PlacementState == placement.NonOptimal {
+			marks += rawconfig.Colorize.Error("^")
+		} else {
+			marks += rawconfig.Colorize.Secondary("^")
+		}
 	}
-	if obj := t.digest.Object.ActorStatus; obj != nil && obj.PlacementState == placement.NonOptimal {
-		return " " + rawconfig.Colorize.Error("^")
+	if s.Status.IsFrozen() {
+		marks += rawconfig.Colorize.Frozen("*")
 	}
-	return " " + rawconfig.Colorize.Secondary("^")
+	if s.Status.IsStopped() {
+		marks += rawconfig.Colorize.Secondary("=")
+	}
+	return marks
 }
 
 // hasExpectedInstances says whether the object has as many instances up as
@@ -445,7 +452,7 @@ func (t *board) loadResourceRow(prefix, rid, typ string, get func(instance.State
 		if !ok {
 			return rawconfig.Colorize.Secondary("·")
 		}
-		st := t.statusText(rs.Status)
+		st := t.statusIcon(rs.Status)
 		markers := make([]string, 0)
 		for _, e := range rs.Log {
 			markers = append(markers, t.noteOf(rid, s.Node.Name, e).placeholder())
@@ -686,6 +693,9 @@ func (t *board) loadObjectNotes() {
 	if l := t.nodesWith(func(s instance.States) bool { return s.Status.IsFrozen() }); len(l) > 0 {
 		add(resource.InfoLevel, "frozen", l, "the daemon takes no initiative on the instance")
 	}
+	if l := t.nodesWith(func(s instance.States) bool { return !s.Node.FrozenAt.IsZero() }); len(l) > 0 {
+		add(resource.InfoLevel, "node frozen", l, "the daemon takes no initiative on the instances of the node")
+	}
 	if l := t.nodesWith(func(s instance.States) bool { return s.Status.IsStopped() }); len(l) > 0 {
 		add(resource.InfoLevel, "stopped", l, "stopped on purpose: the daemon does not start it back")
 	}
@@ -916,11 +926,14 @@ func (t *board) issueMark() string {
 	return mark
 }
 
-// nodeHeader is the header of the column of a node: its name. Where the
-// object is up is the instance row, just below, and which node the placement
-// prefers is said by the placement note, when it matters.
+// nodeHeader is the header of the column of a node: its name, followed by
+// "*" when the node is frozen, as om mon marks it.
 func (t *board) nodeHeader(nodename string) string {
-	return rawconfig.Colorize.Bold(nodename)
+	h := rawconfig.Colorize.Bold(nodename)
+	if s, ok := t.states[nodename]; ok && !s.Node.FrozenAt.IsZero() {
+		h += rawconfig.Colorize.Frozen("*")
+	}
+	return h
 }
 
 func (t *board) renderNotes(width int) string {

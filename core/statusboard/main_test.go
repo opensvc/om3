@@ -130,8 +130,8 @@ func TestASubsetRowNamesTheSubsetAndItsResourcesFollow(t *testing.T) {
 	), 100)
 	subset := lineOf(t, board, "subset#app:workers")
 	assert.Equal(t, []string{"subset#app:workers", "//"}, strings.Fields(subset), "the name and the parallel mark, no status")
-	assert.Contains(t, lineOf(t, board, "app#1"), "up")
-	assert.Contains(t, lineOf(t, board, "app#2"), "down")
+	assert.Contains(t, lineOf(t, board, "app#1"), "O", "up")
+	assert.Contains(t, lineOf(t, board, "app#2"), "X", "down")
 }
 
 func TestTheNotesListErrorsFirstAndGroupTheNodesOfAMessage(t *testing.T) {
@@ -146,7 +146,7 @@ func TestTheNotesListErrorsFirstAndGroupTheNodesOfAMessage(t *testing.T) {
 	notes := notesOf(t, board)
 	assert.Less(t, strings.Index(notes, "split brain"), strings.Index(notes, "Secondary"), "the error is listed first")
 	assert.Contains(t, notes, "¹  error disk#2   n1 n3", "the nodes of the same message share its note")
-	assert.Contains(t, lineOf(t, board, "disk#2"), "warn ¹")
+	assert.Contains(t, lineOf(t, board, "disk#2"), "! ¹", "the warn icon and its marker")
 	for _, l := range strings.Split(notes, "\n") {
 		assert.LessOrEqual(t, len([]rune(l)), 80, "the note is wrapped: %q", l)
 	}
@@ -211,11 +211,15 @@ func TestDownIsGrayWhereTheObjectIsUp(t *testing.T) {
 			newInstance(p, "n1", status.Up, res{rid: "fs#1", typ: "fs.ext4", st: status.Up}),
 			newInstance(p, "n2", status.Down, res{rid: "fs#1", typ: "fs.ext4", st: status.Down}),
 		)
-		d.Object.ActorStatus = &object.ActorStatus{Avail: avail, Topology: topology.Failover, UpInstancesCount: 1}
+		up := 0
+		if avail == status.Up {
+			up = 1
+		}
+		d.Object.ActorStatus = &object.ActorStatus{Avail: avail, Topology: topology.Failover, UpInstancesCount: up}
 		return Render(d, 100)
 	}
-	gray := rawconfig.Colorize.Secondary("down")
-	red := rawconfig.Colorize.Error("down")
+	gray := rawconfig.Colorize.Secondary("X")
+	red := rawconfig.Colorize.Error("X")
 	assert.Contains(t, render(status.Up), gray)
 	assert.NotContains(t, render(status.Up), red)
 	assert.Contains(t, render(status.Down), red)
@@ -274,11 +278,11 @@ func TestDownIsGrayBesideInstancesInExcess(t *testing.T) {
 	)
 	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Failover, UpInstancesCount: 2}
 	board := Render(d, 100)
-	assert.Contains(t, lineOf(t, board, "instance"), rawconfig.Colorize.Secondary("down"))
+	assert.Contains(t, lineOf(t, board, "instance"), rawconfig.Colorize.Secondary("X"))
 
 	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Flex, UpInstancesCount: 2, Flex: &object.FlexStatus{Target: 3, Max: 3}}
 	board = Render(d, 100)
-	assert.Contains(t, lineOf(t, board, "instance"), rawconfig.Colorize.Error("down"), "a flex missing an instance")
+	assert.Contains(t, lineOf(t, board, "instance"), rawconfig.Colorize.Error("X"), "a flex missing an instance")
 }
 
 // The instance the placement prefers is marked as om mon marks it, gray, and
@@ -295,4 +299,31 @@ func TestTheHALeaderInstanceIsMarked(t *testing.T) {
 
 	d.Object.ActorStatus.PlacementState = placement.NonOptimal
 	assert.Contains(t, lineOf(t, Render(d, 100), "instance"), rawconfig.Colorize.Error("^"))
+}
+
+// The statuses are the om mon icons, and the instance icon carries the om
+// mon marks of a frozen and of a stopped instance.
+func TestTheStatusesAreTheOmMonIcons(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	frozen := newInstance(p, "n1", status.StandbyUp,
+		res{rid: "disk#1", typ: "disk.drbd", st: status.StandbyUp},
+		res{rid: "disk#2", typ: "disk.drbd", st: status.StandbyDown},
+		res{rid: "fs#1", typ: "fs.flag", st: status.Warn},
+		res{rid: "app#1", typ: "app.simple", st: status.NotApplicable},
+	)
+	frozen.Status.FrozenAt = time.Now()
+	stopped := newInstance(p, "n2", status.Down)
+	stopped.Status.StoppedAt = time.Now()
+	stopped.Node.FrozenAt = time.Now()
+	board := Render(newDigest(frozen, stopped), 100)
+	fields := func(name string) []string { return strings.Fields(lineOf(t, board, name)) }
+	assert.Equal(t, []string{"instance", "o*", "X="}, fields("instance"))
+	assert.Equal(t, "o", fields("disk#1")[1])
+	assert.Equal(t, "x", fields("disk#2")[1])
+	assert.Equal(t, "!", fields("fs#1")[1])
+	assert.Equal(t, "/", fields("app#1")[1])
+	assert.Contains(t, board, "n2*", "a frozen node")
+	for _, l := range strings.Split(board, "\n") {
+		assert.False(t, strings.HasPrefix(strings.TrimSpace(l), "frozen"), "no frozen row: %q", l)
+	}
 }

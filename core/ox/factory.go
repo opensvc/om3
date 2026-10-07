@@ -4397,8 +4397,22 @@ above it, and below it the notes saying what needs attention.
 
 The resources come in the order the actions run them, grouped by subset, a
 subset marked // when its resources run in parallel. A cell holds the status
-of a resource on a node, its flags departing from the usual, and the markers
-of the notes about it:
+of a resource on a node as the om mon icon says it, its flags departing from
+the usual, and the markers of the notes about it.
+
+Status icons, of the instances and the resources:
+
+  O  up                  X  down              o  standby up
+  x  standby down        !  warn              /  n/a
+  ?  undefined
+
+A down or a standby up is gray where the object runs the instances it
+expects, and red where it misses some. An instance icon is followed by ^ on
+the instance the placement prefers, red when the object does not run there,
+* when frozen, and = when stopped. A node name is followed by * when the
+node is frozen.
+
+Resource flags:
 
   R  running             M  monitored         D  disabled
   O  optional            E  encap             P  not provisioned
