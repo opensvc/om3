@@ -646,9 +646,12 @@ func (t *board) loadObjectNotes() {
 	// An overall status in warn no resource note explains, as a resource
 	// in warn logging nothing: a note says it, for the issue mark to point
 	// to one.
+	// An object in warn with no instance in warn is so by the aggregation of
+	// its instances, as too many up, which a note of its own says.
 	if obj := t.digest.Object.ActorStatus; obj != nil && obj.Overall == status.Warn && !t.hasResourceIssueNote() {
-		l := t.nodesWith(func(s instance.States) bool { return s.Status.Overall == status.Warn })
-		add(resource.WarnLevel, "overall", l, "resources are in warn")
+		if l := t.nodesWith(func(s instance.States) bool { return s.Status.Overall == status.Warn }); len(l) > 0 {
+			add(resource.WarnLevel, "overall", l, "resources are in warn")
+		}
 	}
 	if !t.digest.IsCompat {
 		add(resource.ErrorLevel, "agents", nil, "the nodes run incompatible agent versions")
@@ -932,9 +935,15 @@ func (t *board) renderNotes(width int) string {
 		// A head per note of the group, the marker on the first, then
 		// the text they share.
 		for i, n := range g.notes {
+			// The first head of an entry starts with its marker, or a
+			// dot for a note no cell points to, so each entry stands
+			// out from the heads a shared note lists under its first.
 			marker := ""
 			if i == 0 {
 				marker = n.marker
+				if marker == "" {
+					marker = "·"
+				}
 			}
 			head := fmt.Sprintf(" %-3s%s %s", marker, mark, rawconfig.Colorize.Bold(n.rid))
 			nodes := ""

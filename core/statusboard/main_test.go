@@ -250,3 +250,11 @@ func TestResourcesLoggingTheSameMessageShareANote(t *testing.T) {
 	assert.Contains(t, notes, "\n    info  app#env")
 	assert.Contains(t, lineOf(t, board, "app#env"), "¹", "the resources share the marker")
 }
+
+func TestANoteNoCellPointsToStartsWithADot(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	s := newInstance(p, "n1", status.Down)
+	s.Status.FrozenAt = time.Now()
+	notes := notesOf(t, Render(newDigest(s), 100))
+	assert.Contains(t, notes, " ·  info  frozen", "a dot where a numbered note has its number:\n%s", notes)
+}
