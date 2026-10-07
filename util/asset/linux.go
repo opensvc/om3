@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,15 +47,18 @@ func (t T) Get(s string) (interface{}, error) {
 	case "cpu_dies":
 		return si.CPU.Cpus, nil
 	case "os_vendor":
-		return si.OS.Vendor, nil
+		return newOSProbe("/").Vendor(), nil
 	case "os_release":
-		return si.OS.Release, nil
+		return newOSProbe("/").Release(), nil
 	case "os_kernel":
-		return si.Kernel.Release, nil
+		_, release, _, err := uname()
+		return release, err
 	case "os_arch":
-		return si.OS.Architecture, nil
+		_, _, machine, err := uname()
+		return machine, err
 	case "os_name":
-		return osName()
+		sysname, _, _, err := uname()
+		return sysname, err
 	case "serial":
 		return si.Product.Serial, nil
 	case "sp_version":
@@ -195,10 +197,6 @@ func memBanks() (int, error) {
 		n++
 	}
 	return n, nil
-}
-
-func osName() (string, error) {
-	return runtime.GOOS, nil
 }
 
 // pkg Size() is buggy wrt to extended support ...
