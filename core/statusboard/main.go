@@ -725,7 +725,7 @@ func (t *board) render(width int) string {
 	var b strings.Builder
 	header := t.headerLine()
 
-	// The columns: the name, the type, a column per node, the description.
+	// The widths of the columns: the name, a column per node, the type.
 	nameW, typW := 0, 0
 	nodeW := make([]int, len(t.nodes))
 	for i, nodename := range t.nodes {
@@ -752,12 +752,18 @@ func (t *board) render(width int) string {
 	pad := func(s string, w int) string {
 		return s + strings.Repeat(" ", max(0, w-visibleWidth(s)))
 	}
+	// The columns: the name, a column per node, the type of the
+	// resource, and its description.
 	line := func(name, typ string, cells []string, desc string) {
-		s := " " + pad(name, nameW) + "  " + pad(typ, typW) + "  "
-		for i, c := range cells {
+		s := " " + pad(name, nameW) + "  "
+		for i := range nodeW {
+			c := ""
+			if i < len(cells) {
+				c = cells[i]
+			}
 			s += pad(c, nodeW[i]) + "  "
 		}
-		s += desc
+		s += pad(typ, typW) + "  " + desc
 		b.WriteString(strings.TrimRight(s, " ") + "\n")
 	}
 	nodeHeaders := make([]string, len(t.nodes))
@@ -774,7 +780,7 @@ func (t *board) render(width int) string {
 		if r.heading {
 			name = rawconfig.Colorize.Bold(name)
 		}
-		line(name, rawconfig.Colorize.Secondary(r.typ), r.cells, r.desc)
+		line(name, r.typ, r.cells, r.desc)
 	}
 	if len(t.notes) > 0 {
 		b.WriteString("\n " + rawconfig.Colorize.Bold("notes") + "\n")
