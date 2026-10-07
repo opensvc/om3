@@ -1,6 +1,8 @@
 package omcmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -47,19 +49,32 @@ func (t *CmdObjectStatus) Run(kind string) error {
 	}
 	pathMap := paths.StrMap()
 
-	// The instance status command gathers the same dataset: the status of
-	// the local instance evaluated again first when asked, then the
-	// instances of every node the daemon knows, or the local instance
-	// alone when the daemon is not running.
+	// With --refresh, every node evaluates again the status of its
+	// instances, and the board waits for them. Without a daemon to ask the
+	// nodes, the local instance alone is evaluated again.
+	var refreshErr error
+	refresh := t.Refresh
+	if t.Refresh {
+		if clusterStatus, err := getClusterStatus(paths, c); err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), commoncmd.StatusRefreshTimeout)
+			refreshErr = commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus)
+			cancel()
+			refresh = false
+		}
+	}
+
+	// The instance status command gathers the same dataset: the instances
+	// of every node the daemon knows, or the local instance alone when the
+	// daemon is not running.
 	gather := CmdObjectInstanceStatus{
 		OptsGlobal: t.OptsGlobal,
 		OptsLock:   t.OptsLock,
-		Refresh:    t.Refresh,
+		Refresh:    refresh,
 		Monitor:    t.Monitor,
 	}
 	data, err := gather.extract(nil, paths, c)
 	if err != nil {
-		return err
+		return errors.Join(refreshErr, err)
 	}
 	shown := make([]object.Digest, 0, len(data))
 	for _, d := range data {
@@ -78,5 +93,10 @@ func (t *CmdObjectStatus) Run(kind string) error {
 		},
 		Colorize: rawconfig.Colorize,
 	}
-	return renderer.Print()
+	if err := renderer.Print(); err != nil {
+		return err
+	}
+	// The board shows the statuses the nodes refreshed, and the last known
+	// of the others, which the error names.
+	return refreshErr
 }

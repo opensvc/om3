@@ -1,6 +1,7 @@
 package oxcmd
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -42,9 +43,9 @@ func (t *CmdObjectStatus) Run(kind string) error {
 
 	// The instance status command gathers the same dataset from the api.
 	gather := CmdObjectInstanceStatus{OptsGlobal: t.OptsGlobal, Refresh: t.Refresh}
-	data, err := gather.extract(paths, c)
+	data, refreshErr, err := gather.extract(paths, c)
 	if err != nil {
-		return err
+		return errors.Join(refreshErr, err)
 	}
 	shown := make([]object.Digest, 0, len(data))
 	for _, d := range data {
@@ -63,5 +64,10 @@ func (t *CmdObjectStatus) Run(kind string) error {
 		},
 		Colorize: rawconfig.Colorize,
 	}
-	return renderer.Print()
+	if err := renderer.Print(); err != nil {
+		return err
+	}
+	// The board shows the statuses the nodes refreshed, and the last known
+	// of the others, which the error names.
+	return refreshErr
 }

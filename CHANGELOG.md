@@ -307,7 +307,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * `om xx status`
     The silent command whose exit code was the instance status now shows the status of the object cluster-wide: a
     board of the resources by node, with the instance states above it and the notes saying what needs attention
-    below it, or the dataset with `-o json`.
+    below it, or the dataset with `-o json`. With `--refresh`, every node evaluates again the status of its instances
+    first, and the board waits for them.
 
     The exit code no longer carries a status, with or without `--refresh` or `--monitor`: it is 0 when the command
     shows the status, whatever the status, and non-zero only when the command fails. A script testing the

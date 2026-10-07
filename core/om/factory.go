@@ -4036,8 +4036,11 @@ Resource flags:
   O  optional            E  encap             P  not provisioned
   S  standby             X  stopped           n  restarts remaining, + if 10 or more
 
-With --refresh or --monitor, the status of the local instance is evaluated
-first.
+With --refresh, every node evaluates again the status of its instances
+first, and the board waits for them to show the fresh ones. A node not
+answering within 30s has its last known status shown, and the command
+fails after the board. Without a daemon, the local instance alone is
+evaluated again. With --monitor, the local instance is evaluated again.
 
 The exit code is 0 whatever the status shown, and non-zero only when the
 command fails to get the status.`,
