@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -67,11 +68,27 @@ func newDigest(instances ...instance.States) object.Digest {
 	return d
 }
 
-// notesOf returns the notes of the board, from their heading.
+// notesOf returns the notes of the board, from their heading, colors aside
+// to find it.
 func notesOf(t *testing.T, board string) string {
-	i := strings.Index(board, "\n notes\n")
-	require.GreaterOrEqual(t, i, 0, "no notes in:\n%s", board)
-	return board[i+1:]
+	lines := strings.Split(board, "\n")
+	for i, l := range lines {
+		if regexpANSI.ReplaceAllString(l, "") == " notes" {
+			return strings.Join(lines[i:], "\n")
+		}
+	}
+	require.Failf(t, "no notes", "no notes in:\n%s", board)
+	return ""
+}
+
+// noteLines returns the lines of the notes, their spaces collapsed, so the
+// assertions read their words, whatever the width of the first column.
+func noteLines(t *testing.T, board string) []string {
+	l := make([]string, 0)
+	for _, line := range strings.Split(notesOf(t, board), "\n") {
+		l = append(l, strings.Join(strings.Fields(regexpANSI.ReplaceAllString(line, "")), " "))
+	}
+	return l
 }
 
 // lineOf returns the line of the board starting with the row name, colors
@@ -145,7 +162,7 @@ func TestTheNotesListErrorsFirstAndGroupTheNodesOfAMessage(t *testing.T) {
 	), 80)
 	notes := notesOf(t, board)
 	assert.Less(t, strings.Index(notes, "split brain"), strings.Index(notes, "Secondary"), "the error is listed first")
-	assert.Contains(t, notes, "¹  error disk#2   n1 n3", "the nodes of the same message share its note")
+	assert.Contains(t, noteLines(t, board), "¹ error disk#2 n1 n3", "the nodes of the same message share its note")
 	assert.Contains(t, lineOf(t, board, "disk#2"), "! ¹", "the warn icon and its marker")
 	for _, l := range strings.Split(notes, "\n") {
 		assert.LessOrEqual(t, len([]rune(l)), 80, "the note is wrapped: %q", l)
@@ -174,7 +191,7 @@ func TestInstancesUpBeyondTheTopologyAreAnError(t *testing.T) {
 	)
 	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Failover, UpInstancesCount: 2}
 	board := Render(d, 100)
-	assert.Contains(t, strings.SplitN(board, "\n", 2)[0], "warn! 2/1", "the issue mark, and the om mon up/expected counter")
+	assert.Equal(t, []string{"instance", "O", "O", "X", "2/1"}, strings.Fields(lineOf(t, board, "instance")), "the om mon up/expected counter ends the instance row")
 	notes := notesOf(t, board)
 	first := strings.Split(notes, "\n")[1]
 	assert.Contains(t, first, "error instances   n1 n2", "the error is the first note, naming the nodes it is up on")
@@ -225,22 +242,69 @@ func TestDownIsGrayWhereTheObjectIsUp(t *testing.T) {
 	assert.Contains(t, render(status.Down), red)
 }
 
-func TestTheIssueMarkFollowsTheWarningAndErrorNotes(t *testing.T) {
+func TestTheHeaderSaysTheStatusesAndTheStatesOfTheObject(t *testing.T) {
 	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
-	header := func(d object.Digest) string { return strings.SplitN(Render(d, 100), "\n", 2)[0] }
-
-	info := []resource.StatusLogEntry{{Level: resource.InfoLevel, Message: "Secondary"}}
-	d := newDigest(newInstance(p, "n1", status.Up, res{rid: "disk#1", typ: "disk.drbd", st: status.Up, log: info}))
-	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Up, Overall: status.Up, Topology: topology.Failover, UpInstancesCount: 1}
-	assert.NotContains(t, header(d), "!", "no issue mark for an info note")
-
-	// A resource in warn logging nothing: the overall warn gets a note.
 	s := newInstance(p, "n1", status.Up, res{rid: "fs#1", typ: "fs.ext4", st: status.Warn})
 	s.Status.Overall = status.Warn
-	d = newDigest(s)
-	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Up, Overall: status.Warn, Topology: topology.Failover, UpInstancesCount: 1}
-	assert.Contains(t, header(d), "up!")
-	assert.Contains(t, notesOf(t, Render(d, 100)), "warn  overall   n1")
+	d := newDigest(s)
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Up, Overall: status.Warn, Topology: topology.Failover, UpInstancesCount: 1, Provisioned: provisioned.Mixed, Frozen: "mixed"}
+	board := Render(d, 100)
+	lines := strings.Split(board, "\n")
+	assert.Equal(t, "s1   failover", lines[0], "the path and the policies")
+	assert.Equal(t, []string{"avail", "up"}, strings.Fields(lines[1]))
+	assert.Equal(t, []string{"overall", "warn"}, strings.Fields(lines[2]))
+	assert.Equal(t, []string{"state", "mixed-provisioned,", "mixed-frozen"}, strings.Fields(lines[3]))
+	assert.Equal(t, "O!", strings.Fields(lineOf(t, board, "instance"))[1], "the om mon overall warn mark of the instance")
+	// A resource in warn logging nothing: the overall warn gets a note.
+	assert.Contains(t, noteLines(t, board), "· warn overall n1")
+}
+
+// A copy older than its contract allows is an error: the instance has the om
+// mon "L" mark, and the resource a note, as the copy never received.
+func TestARPOBreachIsAnError(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	breached := time.Now().Add(-time.Hour)
+	s := newInstance(p, "n1", status.Down, res{rid: "sync#1", typ: "sync.rsync", st: status.NotApplicable})
+	s.Status.RPOBreachedAt = breached
+	rs := s.Status.Resources["sync#1"]
+	rs.RPOBreachedAt = breached
+	s.Status.Resources["sync#1"] = rs
+	never := newInstance(p, "n2", status.Down, res{rid: "sync#1", typ: "sync.rsync", st: status.NotApplicable})
+	rs = never.Status.Resources["sync#1"]
+	rs.RPOBreachedAt = time.Unix(0, 0)
+	never.Status.Resources["sync#1"] = rs
+	board := Render(newDigest(s, never), 100)
+	assert.Equal(t, "XL", strings.Fields(lineOf(t, board, "instance"))[1])
+	notes := notesOf(t, board)
+	assert.Contains(t, noteLines(t, board), "¹ error sync#1 n1")
+	assert.Contains(t, notes, "rpo breached since")
+	assert.Contains(t, notes, "no copy was ever received here")
+	assert.NotContains(t, notes, "1970")
+}
+
+// The markers of a cell come in the order of the notes they point to.
+func TestTheMarkersOfACellAreInOrder(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	log := []resource.StatusLogEntry{
+		{Level: resource.InfoLevel, Message: "an info"},
+		{Level: resource.ErrorLevel, Message: "an error"},
+	}
+	board := Render(newDigest(newInstance(p, "n1", status.Warn, res{rid: "app#1", typ: "app.simple", st: status.Warn, log: log})), 100)
+	assert.Contains(t, lineOf(t, board, "app#1"), "! ¹²")
+}
+
+// A wrapped info note is colored line by line, no color code spanning lines.
+func TestAWrappedNoteIsColoredLineByLine(t *testing.T) {
+	color.NoColor = false
+	defer func() { color.NoColor = true }()
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	log := []resource.StatusLogEntry{{Level: resource.InfoLevel, Message: strings.Repeat("word ", 40)}}
+	board := Render(newDigest(newInstance(p, "n1", status.Up, res{rid: "app#1", typ: "app.simple", st: status.Up, log: log})), 60)
+	for _, l := range strings.Split(notesOf(t, board), "\n") {
+		if strings.Contains(l, "word") {
+			assert.True(t, strings.HasSuffix(l, "\x1b[0m"), "the color closes on its line: %q", l)
+		}
+	}
 }
 
 func TestResourcesLoggingTheSameMessageShareANote(t *testing.T) {
@@ -252,8 +316,9 @@ func TestResourcesLoggingTheSameMessageShareANote(t *testing.T) {
 	)), 100)
 	notes := notesOf(t, board)
 	assert.Equal(t, 1, strings.Count(notes, "not evaluated"), "the text is written once:\n%s", notes)
-	assert.Contains(t, notes, "¹  info  app#1")
-	assert.Contains(t, notes, "\n    info  app#env")
+	lines := noteLines(t, board)
+	assert.Contains(t, lines, "¹ info app#1 n1")
+	assert.Contains(t, lines, "info app#env n1", "the second head of the note, with no marker")
 	assert.Contains(t, lineOf(t, board, "app#env"), "¹", "the resources share the marker")
 }
 
@@ -261,8 +326,8 @@ func TestANoteNoCellPointsToStartsWithADot(t *testing.T) {
 	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
 	s := newInstance(p, "n1", status.Down)
 	s.Status.FrozenAt = time.Now()
-	notes := notesOf(t, Render(newDigest(s), 100))
-	assert.Contains(t, notes, " ·  info  frozen", "a dot where a numbered note has its number:\n%s", notes)
+	lines := noteLines(t, Render(newDigest(s), 100))
+	assert.Contains(t, lines, "· info frozen n1", "a dot where a numbered note has its number: %v", lines)
 }
 
 // An instance down beside instances in excess is not the issue to stress:

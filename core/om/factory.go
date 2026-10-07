@@ -4023,10 +4023,12 @@ Status icons, of the instances and the resources:
   ?  undefined
 
 A down or a standby up is gray where the object runs the instances it
-expects, and red where it misses some. An instance icon is followed by ^ on
-the instance the placement prefers, red when the object does not run there,
-* when frozen, and = when stopped. A node name is followed by * when the
-node is frozen.
+expects, and red where it misses some. An instance icon is followed by the om
+mon marks: ! when its overall is warn, R when a resource runs, L when a copy
+breaches its rpo, # on a drp node, ^ on its ha leader, the instance the
+daemon starts on its own, red when the placement is not optimal, * when
+frozen, = when stopped, and P when not provisioned. A node name is followed
+by * when the node is frozen.
 
 Resource flags:
 
