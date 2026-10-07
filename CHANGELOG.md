@@ -307,12 +307,14 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * `om xx status`
     The silent command whose exit code was the instance status now shows the status of the object cluster-wide: a
     board of the resources by node, with the instance states above it and the notes saying what needs attention
-    below it, or the dataset with `-o json`. The exit code is the avail status of the local instances only with
-    `--refresh` or `--monitor`, which evaluate it first, and 0 otherwise. A script testing the exit code adds one of
-    them, and discards the output:
+    below it, or the dataset with `-o json`.
+
+    The exit code no longer carries a status, with or without `--refresh` or `--monitor`: it is 0 when the command
+    shows the status, whatever the status, and non-zero only when the command fails. A script testing the
+    availability of an object reads it from the output instead:
 
     ```
-    om svc1 status --refresh >/dev/null; echo $?
+    om svc1 status --refresh -o tab=object.avail
     ```
 
 * `om node register` deprecates `--user` and `--password`. The collector credentials now reach the command as

@@ -4037,7 +4037,10 @@ Resource flags:
   S  standby             X  stopped           n  restarts remaining, + if 10 or more
 
 With --refresh or --monitor, the status of the local instance is evaluated
-first, and the exit code is its avail status.`,
+first.
+
+The exit code is 0 whatever the status shown, and non-zero only when the
+command fails to get the status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},

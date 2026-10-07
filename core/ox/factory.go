@@ -4418,7 +4418,10 @@ Resource flags:
 
   R  running             M  monitored         D  disabled
   O  optional            E  encap             P  not provisioned
-  S  standby             X  stopped           n  restarts remaining, + if 10 or more`,
+  S  standby             X  stopped           n  restarts remaining, + if 10 or more
+
+The exit code is 0 whatever the status shown, and non-zero only when the
+command fails to get the status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},

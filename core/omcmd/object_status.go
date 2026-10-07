@@ -2,7 +2,6 @@ package omcmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -11,9 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusboard"
-	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -81,20 +78,5 @@ func (t *CmdObjectStatus) Run(kind string) error {
 		},
 		Colorize: rawconfig.Colorize,
 	}
-	if err := renderer.Print(); err != nil {
-		return err
-	}
-	if t.Refresh || t.Monitor {
-		// The status of the local instances was evaluated, and the exit
-		// code says it, for the scripts testing it.
-		var avail status.T
-		localhost := hostname.Hostname()
-		for _, d := range shown {
-			if s, ok := d.Instances.ByNode()[localhost]; ok {
-				avail.Add(s.Status.Avail)
-			}
-		}
-		os.Exit(int(avail))
-	}
-	return nil
+	return renderer.Print()
 }
