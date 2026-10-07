@@ -67,8 +67,18 @@ type (
 		text   string
 	}
 
+	// noteGroup is the notes saying the same thing at the same level, as
+	// the same message logged by several resources: they share a marker,
+	// and their text is written once, under the heads of them all.
+	noteGroup struct {
+		level resource.Level
+		text  string
+		notes []*note
+	}
+
 	board struct {
 		digest object.Digest
+		groups []*noteGroup
 		nodes  []string
 		states map[string]instance.States
 		rows   []row
@@ -682,13 +692,35 @@ func (t *board) numberNotes() {
 	sort.SliceStable(t.notes, func(i, j int) bool {
 		return rank[t.notes[i].level] < rank[t.notes[j].level]
 	})
-	i := 0
+	byText := make(map[string]*noteGroup)
+	t.groups = make([]*noteGroup, 0, len(t.notes))
 	for _, n := range t.notes {
-		if _, ok := t.noteByKey[n.rid+"\x00"+string(n.level)+"\x00"+n.text]; !ok {
+		key := string(n.level) + "\x00" + n.text
+		g, ok := byText[key]
+		if !ok {
+			g = &noteGroup{level: n.level, text: n.text}
+			byText[key] = g
+			t.groups = append(t.groups, g)
+		}
+		g.notes = append(g.notes, n)
+	}
+	// A group with a resource note gets a marker, which the cells of its
+	// resources show.
+	i := 0
+	for _, g := range t.groups {
+		marked := false
+		for _, n := range g.notes {
+			if _, ok := t.noteByKey[n.rid+"\x00"+string(n.level)+"\x00"+n.text]; ok {
+				marked = true
+			}
+		}
+		if !marked {
 			continue
 		}
 		i++
-		n.marker = superscript(i)
+		for _, n := range g.notes {
+			n.marker = superscript(i)
+		}
 	}
 	// The markers were taken when the cells were made, before the notes
 	// were numbered: put the numbers in the cells now.
@@ -872,14 +904,14 @@ func (t *board) nodeHeader(nodename string) string {
 func (t *board) renderNotes(width int) string {
 	var b strings.Builder
 	infos := 0
-	for _, n := range t.notes {
-		if n.level == resource.InfoLevel {
+	for _, g := range t.groups {
+		if g.level == resource.InfoLevel {
 			infos++
 		}
 	}
 	listedInfos := 0
-	for _, n := range t.notes {
-		if n.level == resource.InfoLevel {
+	for _, g := range t.groups {
+		if g.level == resource.InfoLevel {
 			if infos > infoMax && listedInfos >= infoMax {
 				continue
 			}
@@ -889,7 +921,7 @@ func (t *board) renderNotes(width int) string {
 		// board read without colors, as piped or with --color=no, still
 		// tells an error from a warning.
 		var mark string
-		switch n.level {
+		switch g.level {
 		case resource.ErrorLevel:
 			mark = rawconfig.Colorize.Error("error")
 		case resource.WarnLevel:
@@ -897,21 +929,29 @@ func (t *board) renderNotes(width int) string {
 		default:
 			mark = rawconfig.Colorize.Secondary("info ")
 		}
-		head := fmt.Sprintf(" %-3s%s %s", n.marker, mark, rawconfig.Colorize.Bold(n.rid))
-		nodes := ""
-		switch {
-		case len(n.nodes) == 0:
-		case len(n.nodes) == len(t.nodes) && len(t.nodes) > 1:
-			nodes = "all"
-		default:
-			nodes = strings.Join(n.nodes, " ")
+		// A head per note of the group, the marker on the first, then
+		// the text they share.
+		for i, n := range g.notes {
+			marker := ""
+			if i == 0 {
+				marker = n.marker
+			}
+			head := fmt.Sprintf(" %-3s%s %s", marker, mark, rawconfig.Colorize.Bold(n.rid))
+			nodes := ""
+			switch {
+			case len(n.nodes) == 0:
+			case len(n.nodes) == len(t.nodes) && len(t.nodes) > 1:
+				nodes = "all"
+			default:
+				nodes = strings.Join(n.nodes, " ")
+			}
+			if nodes != "" {
+				head += "   " + nodes
+			}
+			b.WriteString(head + "\n")
 		}
-		if nodes != "" {
-			head += "   " + nodes
-		}
-		b.WriteString(head + "\n")
-		text := n.text
-		if n.level == resource.InfoLevel {
+		text := g.text
+		if g.level == resource.InfoLevel {
 			text = rawconfig.Colorize.Secondary(text)
 		}
 		for _, l := range wrap(text, width-7) {

@@ -236,3 +236,17 @@ func TestTheIssueMarkFollowsTheWarningAndErrorNotes(t *testing.T) {
 	assert.Contains(t, header(d), "up!")
 	assert.Contains(t, notesOf(t, Render(d, 100)), "warn  overall   n1")
 }
+
+func TestResourcesLoggingTheSameMessageShareANote(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	msg := []resource.StatusLogEntry{{Level: resource.InfoLevel, Message: "not evaluated (fs#1 is down)"}}
+	board := Render(newDigest(newInstance(p, "n1", status.Down,
+		res{rid: "app#1", typ: "app.forking", st: status.NotApplicable, log: msg},
+		res{rid: "app#env", typ: "app.forking", st: status.NotApplicable, log: msg},
+	)), 100)
+	notes := notesOf(t, board)
+	assert.Equal(t, 1, strings.Count(notes, "not evaluated"), "the text is written once:\n%s", notes)
+	assert.Contains(t, notes, "¹  info  app#1")
+	assert.Contains(t, notes, "\n    info  app#env")
+	assert.Contains(t, lineOf(t, board, "app#env"), "¹", "the resources share the marker")
+}
