@@ -8,13 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	dosmbios "github.com/digitalocean/go-smbios/smbios"
+	"github.com/digitalocean/go-smbios/smbios"
 	"github.com/jaypipes/pcidb"
-	"github.com/talos-systems/go-smbios/smbios"
 	"github.com/zcalusic/sysinfo"
 
 	"github.com/opensvc/om3/v3/util/bootid"
@@ -22,7 +22,6 @@ import (
 
 var (
 	si          sysinfo.SysInfo
-	smb         *smbios.SMBIOS
 	initialized bool
 )
 
@@ -32,14 +31,6 @@ func New() *T {
 		si.GetSysInfo()
 	}
 	return &t
-}
-
-func SMBIOS() (*smbios.SMBIOS, error) {
-	if smb != nil {
-		return smb, nil
-	}
-	smb, err := smbios.New()
-	return smb, err
 }
 
 func (t T) Get(s string) (interface{}, error) {
@@ -184,31 +175,21 @@ func Hardware() ([]Device, error) {
 }
 
 func memSlots() (int, error) {
-	smb, err := SMBIOS()
+	devs, err := memoryDevices()
 	if err != nil {
 		return 0, fmt.Errorf("parse smbios: %w", err)
 	}
-	n := 0
-	for _, s := range smb.Structures {
-		if s.Header.Type != 17 {
-			continue
-		}
-		n++
-	}
-	return n, nil
+	return len(devs), nil
 }
 
 func memBanks() (int, error) {
-	smb, err := SMBIOS()
+	devs, err := memoryDevices()
 	if err != nil {
 		return 0, fmt.Errorf("parse smbios: %w", err)
 	}
 	n := 0
-	for _, s := range smb.Structures {
-		if s.Header.Type != 17 {
-			continue
-		}
-		if fmtSize(s) == "" {
+	for _, dev := range devs {
+		if fmtSize(dev.Structure) == "" {
 			continue
 		}
 		n++
@@ -222,7 +203,7 @@ func osName() (string, error) {
 
 // pkg Size() is buggy wrt to extended support ...
 // define a size formatter here.
-func fmtSize(s *dosmbios.Structure) string {
+func fmtSize(s *smbios.Structure) string {
 	size := int(binary.LittleEndian.Uint16(s.Formatted[8:10]))
 	if size == 0 {
 		return ""
@@ -244,19 +225,15 @@ func fmtSize(s *dosmbios.Structure) string {
 
 func hardwareMemDevices() ([]Device, error) {
 	devs := make([]Device, 0)
-	smb, err := SMBIOS()
+	mdevs, err := memoryDevices()
 	if err != nil {
 		return devs, fmt.Errorf("parse smbios: %w", err)
 	}
 
-	for _, s := range smb.Structures {
-		if s.Header.Type != 17 {
-			continue
-		}
-		mdev := smbios.MemoryDeviceStructure{Structure: s}
-		path := fmt.Sprintf("%s %s", mdev.Locator(), mdev.BankLocator())
-		clas := fmt.Sprintf("%s %s %s %s", fmtSize(s), mdev.MemoryType(), mdev.TypeDetail(), mdev.Speed())
-		desc := fmt.Sprintf("%s %s", mdev.Manufacturer(), mdev.PartNumber())
+	for _, mdev := range mdevs {
+		path := joinFields(mdev.Locator(), mdev.BankLocator())
+		clas := joinFields(fmtSize(mdev.Structure), mdev.MemoryType(), mdev.TypeDetail(), mdev.Speed())
+		desc := joinFields(mdev.Manufacturer(), mdev.PartNumber())
 		devs = append(devs, Device{
 			Path:        path,
 			Description: desc,
@@ -265,6 +242,12 @@ func hardwareMemDevices() ([]Device, error) {
 		})
 	}
 	return devs, nil
+}
+
+// joinFields joins the fields a device has, a field the device does not say
+// leaving no space behind.
+func joinFields(l ...string) string {
+	return strings.Join(slices.DeleteFunc(l, func(s string) bool { return s == "" }), " ")
 }
 
 func hardwarePCIDevices() ([]Device, error) {

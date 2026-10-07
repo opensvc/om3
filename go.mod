@@ -68,7 +68,6 @@ require (
 	github.com/ssrathi/go-attr v1.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/subosito/gotenv v1.6.0
-	github.com/talos-systems/go-smbios v0.1.1
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
