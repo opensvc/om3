@@ -120,6 +120,10 @@ func (f Frame) StrObjectRunning(path string) string {
 		return fmt.Sprintf("%d", actual)
 	case avail == status.NotApplicable:
 		return ""
+	case objectStatus.ExcessInstances() > 0:
+		// More instances up than the topology allows, red as the
+		// status board counts them.
+		return hired(fmt.Sprintf("%d/%d", actual, expected))
 	default:
 		return fmt.Sprintf("%d/%d", actual, expected)
 	}
