@@ -296,6 +296,55 @@ func row(v any) any {
 	return v
 }
 
+// lookupItem is a row a jsonpath is evaluated on, typed first, and as the
+// json decoder makes it of the row marshaled when the typed row has nothing
+// at the path.
+//
+// The jsonpath does not resolve a field promoted from an embedded pointer
+// to a struct, as the avail of an object status, nor a value its type
+// marshals as something else than its fields: the json form has them under
+// the keys the json output shows, which are the keys a tab expression or a
+// sort key names.
+type lookupItem struct {
+	typed     any
+	asJSON    any
+	marshaled bool
+}
+
+func newLookupItem(v any) *lookupItem {
+	return &lookupItem{typed: v}
+}
+
+func (t *lookupItem) json() any {
+	if !t.marshaled {
+		t.marshaled = true
+		if b, err := json.Marshal(t.typed); err == nil {
+			var v any
+			if err := json.Unmarshal(b, &v); err == nil {
+				t.asJSON = v
+			}
+		}
+	}
+	return t.asJSON
+}
+
+// FindResults returns the values at the path of the jsonpath, and the
+// error of the typed row when its json form has none either.
+func (t *lookupItem) FindResults(jp *jsonpath.JSONPath) ([][]reflect.Value, error) {
+	values, err := jp.FindResults(t.typed)
+	if err == nil && len(values) > 0 && len(values[0]) > 0 {
+		return values, nil
+	}
+	asJSON := t.json()
+	if asJSON == nil {
+		return values, err
+	}
+	if jsonValues, jsonErr := jp.FindResults(asJSON); jsonErr == nil && len(jsonValues) > 0 && len(jsonValues[0]) > 0 {
+		return jsonValues, nil
+	}
+	return values, err
+}
+
 func (t Renderer) renderTab(options string) (string, error) {
 	var (
 		hasHeader bool
@@ -382,9 +431,10 @@ func (t Renderer) renderTab(options string) (string, error) {
 		rows = append(rows, headers)
 	}
 	for _, line := range lines {
+		item := newLookupItem(line)
 		row := make([]string, len(jsonPaths))
 		for i, jsonPath := range jsonPaths {
-			values, err := jsonPath.FindResults(line)
+			values, err := item.FindResults(jsonPath)
 			if err != nil {
 				row[i] = "-"
 				continue
