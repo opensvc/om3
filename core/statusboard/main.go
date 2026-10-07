@@ -180,7 +180,7 @@ func (t *board) loadInstanceRows() {
 			// One of the instances up beyond what the topology allows.
 			return rawconfig.Colorize.Error(s.Status.Avail.String())
 		}
-		return colorstatus.Sprint(s.Status.Avail, rawconfig.Colorize)
+		return t.statusText(s.Status.Avail)
 	})})
 	t.rows = append(t.rows, row{name: "  monitor", cells: t.cellsOf(func(s instance.States) string {
 		switch {
@@ -255,6 +255,19 @@ func (t *board) loadInstanceRows() {
 			return s.Monitor.OrchestrationID.String()[:8]
 		})})
 	}
+}
+
+// statusText is a status of an instance or a resource as the board colors
+// it: a down one in gray where the object is up, as an instance down on a
+// node of a failover object running elsewhere, and in red where it is not,
+// as om mon colors its instance icons.
+func (t *board) statusText(st status.T) string {
+	if st == status.Down {
+		if obj := t.digest.Object.ActorStatus; obj != nil && obj.Avail == status.Up {
+			return rawconfig.Colorize.Secondary(st.String())
+		}
+	}
+	return colorstatus.Sprint(st, rawconfig.Colorize)
 }
 
 func isActor(s instance.States) bool {
@@ -403,7 +416,7 @@ func (t *board) loadResourceRow(prefix, rid, typ string, get func(instance.State
 		if !ok {
 			return rawconfig.Colorize.Secondary("·")
 		}
-		st := colorstatus.Sprint(rs.Status, rawconfig.Colorize)
+		st := t.statusText(rs.Status)
 		markers := make([]string, 0)
 		for _, e := range rs.Log {
 			markers = append(markers, t.noteOf(rid, s.Node.Name, e).placeholder())

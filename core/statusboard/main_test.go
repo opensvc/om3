@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -195,4 +196,25 @@ func TestTheBoardsOfSeveralObjectsAreSeparated(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(out, "\n---\n"), "one separator between two boards:\n%s", out)
 	assert.Less(t, strings.Index(out, "s1"), strings.Index(out, "---"))
 	assert.Greater(t, strings.Index(out, "s2"), strings.Index(out, "---"))
+}
+
+// A resource down is an issue where the object is not up, and the normal
+// state of the nodes the object does not run on where it is up.
+func TestDownIsGrayWhereTheObjectIsUp(t *testing.T) {
+	color.NoColor = false
+	defer func() { color.NoColor = true }()
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	render := func(avail status.T) string {
+		d := newDigest(
+			newInstance(p, "n1", status.Up, res{rid: "fs#1", typ: "fs.ext4", st: status.Up}),
+			newInstance(p, "n2", status.Down, res{rid: "fs#1", typ: "fs.ext4", st: status.Down}),
+		)
+		d.Object.ActorStatus = &object.ActorStatus{Avail: avail, Topology: topology.Failover, UpInstancesCount: 1}
+		return Render(d, 100)
+	}
+	gray := rawconfig.Colorize.Secondary("down")
+	red := rawconfig.Colorize.Error("down")
+	assert.Contains(t, render(status.Up), gray)
+	assert.NotContains(t, render(status.Up), red)
+	assert.Contains(t, render(status.Down), red)
 }
