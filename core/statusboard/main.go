@@ -184,13 +184,8 @@ func (t *board) nodesWith(fn func(instance.States) bool) []string {
 }
 
 func (t *board) loadInstanceRows() {
-	excess := t.digest.Object.ActorStatus.ExcessInstances() > 0
 	t.rows = append(t.rows, row{name: "instance", heading: true, cells: t.cellsOf(func(s instance.States) string {
-		if excess && s.Status.Avail == status.Up {
-			// One of the instances up beyond what the topology allows.
-			return rawconfig.Colorize.Error(s.Status.Avail.String())
-		}
-		return t.statusText(s.Status.Avail)
+		return t.statusText(s.Status.Avail) + t.leaderMark(s)
 	})})
 	t.rows = append(t.rows, row{name: "  monitor", cells: t.cellsOf(func(s instance.States) string {
 		switch {
@@ -268,16 +263,40 @@ func (t *board) loadInstanceRows() {
 }
 
 // statusText is a status of an instance or a resource as the board colors
-// it: a down one in gray where the object is up, as an instance down on a
-// node of a failover object running elsewhere, and in red where it is not,
-// as om mon colors its instance icons.
+// it: a down one in gray where the object runs as many instances as it
+// expects, as on a node of a failover object running elsewhere, which is no
+// issue, even with more instances up than allowed, which a note says, and
+// in red where it misses instances.
 func (t *board) statusText(st status.T) string {
-	if st == status.Down {
-		if obj := t.digest.Object.ActorStatus; obj != nil && obj.Avail == status.Up {
-			return rawconfig.Colorize.Secondary(st.String())
-		}
+	if st == status.Down && t.hasExpectedInstances() {
+		return rawconfig.Colorize.Secondary(st.String())
 	}
 	return colorstatus.Sprint(st, rawconfig.Colorize)
+}
+
+// leaderMark is the "^" om mon puts on the instance the placement prefers,
+// its ha leader: the one to keep running, as of instances up in excess. It is
+// gray, and red when the placement is not optimal, the object not running
+// where the placement prefers.
+func (t *board) leaderMark(s instance.States) string {
+	if !s.Monitor.IsHALeader {
+		return ""
+	}
+	if obj := t.digest.Object.ActorStatus; obj != nil && obj.PlacementState == placement.NonOptimal {
+		return " " + rawconfig.Colorize.Error("^")
+	}
+	return " " + rawconfig.Colorize.Secondary("^")
+}
+
+// hasExpectedInstances says whether the object has as many instances up as
+// it expects, the one of a failover or its flex target, or one at least when
+// it expects no number.
+func (t *board) hasExpectedInstances() bool {
+	obj := t.digest.Object.ActorStatus
+	if obj == nil {
+		return false
+	}
+	return obj.UpInstancesCount >= max(1, obj.ExpectedInstances())
 }
 
 func isActor(s instance.States) bool {
@@ -635,7 +654,7 @@ func (t *board) loadObjectNotes() {
 	}
 	if obj := t.digest.Object.ActorStatus; obj != nil {
 		if obj.PlacementState == placement.NonOptimal {
-			leaders := t.nodesWith(func(s instance.States) bool { return s.Monitor.IsLeader })
+			leaders := t.nodesWith(func(s instance.States) bool { return s.Monitor.IsHALeader })
 			text := "non-optimal: the instances are not running on the nodes the placement policy prefers"
 			if len(leaders) > 0 {
 				text = fmt.Sprintf("non-optimal: the placement policy prefers %s", strings.Join(leaders, " "))

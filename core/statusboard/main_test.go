@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -73,10 +74,11 @@ func notesOf(t *testing.T, board string) string {
 	return board[i+1:]
 }
 
-// lineOf returns the line of the board starting with the row name.
+// lineOf returns the line of the board starting with the row name, colors
+// aside.
 func lineOf(t *testing.T, board, name string) string {
 	for _, l := range strings.Split(board, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(l), name) {
+		if strings.HasPrefix(strings.TrimSpace(regexpANSI.ReplaceAllString(l, "")), name) {
 			return l
 		}
 	}
@@ -257,4 +259,40 @@ func TestANoteNoCellPointsToStartsWithADot(t *testing.T) {
 	s.Status.FrozenAt = time.Now()
 	notes := notesOf(t, Render(newDigest(s), 100))
 	assert.Contains(t, notes, " ·  info  frozen", "a dot where a numbered note has its number:\n%s", notes)
+}
+
+// An instance down beside instances in excess is not the issue to stress:
+// the excess is, which a note says.
+func TestDownIsGrayBesideInstancesInExcess(t *testing.T) {
+	color.NoColor = false
+	defer func() { color.NoColor = true }()
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	d := newDigest(
+		newInstance(p, "n1", status.Up),
+		newInstance(p, "n2", status.Up),
+		newInstance(p, "n3", status.Down),
+	)
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Failover, UpInstancesCount: 2}
+	board := Render(d, 100)
+	assert.Contains(t, lineOf(t, board, "instance"), rawconfig.Colorize.Secondary("down"))
+
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Flex, UpInstancesCount: 2, Flex: &object.FlexStatus{Target: 3, Max: 3}}
+	board = Render(d, 100)
+	assert.Contains(t, lineOf(t, board, "instance"), rawconfig.Colorize.Error("down"), "a flex missing an instance")
+}
+
+// The instance the placement prefers is marked as om mon marks it, gray, and
+// red when the object does not run there.
+func TestTheHALeaderInstanceIsMarked(t *testing.T) {
+	color.NoColor = false
+	defer func() { color.NoColor = true }()
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	leader := newInstance(p, "n1", status.Up)
+	leader.Monitor.IsHALeader = true
+	d := newDigest(leader, newInstance(p, "n2", status.Up))
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Failover, UpInstancesCount: 2}
+	assert.Contains(t, lineOf(t, Render(d, 100), "instance"), rawconfig.Colorize.Secondary("^"))
+
+	d.Object.ActorStatus.PlacementState = placement.NonOptimal
+	assert.Contains(t, lineOf(t, Render(d, 100), "instance"), rawconfig.Colorize.Error("^"))
 }
