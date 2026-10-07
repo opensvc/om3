@@ -633,6 +633,13 @@ func (t *board) loadObjectNotes() {
 			add(resource.WarnLevel, "placement", nil, text)
 		}
 	}
+	// An overall status in warn no resource note explains, as a resource
+	// in warn logging nothing: a note says it, for the issue mark to point
+	// to one.
+	if obj := t.digest.Object.ActorStatus; obj != nil && obj.Overall == status.Warn && !t.hasResourceIssueNote() {
+		l := t.nodesWith(func(s instance.States) bool { return s.Status.Overall == status.Warn })
+		add(resource.WarnLevel, "overall", l, "resources are in warn")
+	}
 	if !t.digest.IsCompat {
 		add(resource.ErrorLevel, "agents", nil, "the nodes run incompatible agent versions")
 	}
@@ -655,6 +662,17 @@ func (t *board) loadObjectNotes() {
 	}); len(l) > 0 {
 		add(resource.ErrorLevel, "provisioned", l, "the instance is not provisioned, or partly")
 	}
+}
+
+// hasResourceIssueNote says whether a resource logged a warning or an
+// error.
+func (t *board) hasResourceIssueNote() bool {
+	for _, n := range t.noteByKey {
+		if n.level == resource.ErrorLevel || n.level == resource.WarnLevel {
+			return true
+		}
+	}
+	return false
 }
 
 // numberNotes orders the notes by level, errors first, and gives the markers
@@ -806,12 +824,11 @@ func (t *board) headerLine() string {
 			if obj.ExcessInstances() > 0 {
 				count = rawconfig.Colorize.Error(count)
 			}
-			avail += " " + count
+			avail = avail + t.issueMark() + " " + count
+		} else {
+			avail += t.issueMark()
 		}
 		l = append(l, avail)
-		if w := d.ObjectWarningsString(); w != "" {
-			l = append(l, w)
-		}
 		facts := make([]string, 0)
 		if s := obj.Topology.String(); s != "" {
 			facts = append(facts, s)
@@ -827,6 +844,22 @@ func (t *board) headerLine() string {
 		}
 	}
 	return strings.Join(l, "   ")
+}
+
+// issueMark is the "!" om mon puts after the avail of an object with issues,
+// here when a note is a warning or an error, the notes saying which: red
+// when one is an error, orange otherwise.
+func (t *board) issueMark() string {
+	mark := ""
+	for _, n := range t.notes {
+		switch n.level {
+		case resource.ErrorLevel:
+			return rawconfig.Colorize.Error("!")
+		case resource.WarnLevel:
+			mark = rawconfig.Colorize.Warning("!")
+		}
+	}
+	return mark
 }
 
 // nodeHeader is the header of the column of a node: its name. Where the

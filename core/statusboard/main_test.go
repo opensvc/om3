@@ -172,7 +172,7 @@ func TestInstancesUpBeyondTheTopologyAreAnError(t *testing.T) {
 	)
 	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Warn, Topology: topology.Failover, UpInstancesCount: 2}
 	board := Render(d, 100)
-	assert.Contains(t, strings.SplitN(board, "\n", 2)[0], "warn 2/1", "the om mon up/expected counter")
+	assert.Contains(t, strings.SplitN(board, "\n", 2)[0], "warn! 2/1", "the issue mark, and the om mon up/expected counter")
 	notes := notesOf(t, board)
 	first := strings.Split(notes, "\n")[1]
 	assert.Contains(t, first, "error instances   n1 n2", "the error is the first note, naming the nodes it is up on")
@@ -217,4 +217,22 @@ func TestDownIsGrayWhereTheObjectIsUp(t *testing.T) {
 	assert.Contains(t, render(status.Up), gray)
 	assert.NotContains(t, render(status.Up), red)
 	assert.Contains(t, render(status.Down), red)
+}
+
+func TestTheIssueMarkFollowsTheWarningAndErrorNotes(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	header := func(d object.Digest) string { return strings.SplitN(Render(d, 100), "\n", 2)[0] }
+
+	info := []resource.StatusLogEntry{{Level: resource.InfoLevel, Message: "Secondary"}}
+	d := newDigest(newInstance(p, "n1", status.Up, res{rid: "disk#1", typ: "disk.drbd", st: status.Up, log: info}))
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Up, Overall: status.Up, Topology: topology.Failover, UpInstancesCount: 1}
+	assert.NotContains(t, header(d), "!", "no issue mark for an info note")
+
+	// A resource in warn logging nothing: the overall warn gets a note.
+	s := newInstance(p, "n1", status.Up, res{rid: "fs#1", typ: "fs.ext4", st: status.Warn})
+	s.Status.Overall = status.Warn
+	d = newDigest(s)
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Up, Overall: status.Warn, Topology: topology.Failover, UpInstancesCount: 1}
+	assert.Contains(t, header(d), "up!")
+	assert.Contains(t, notesOf(t, Render(d, 100)), "warn  overall   n1")
 }
