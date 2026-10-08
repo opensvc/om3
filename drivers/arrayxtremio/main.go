@@ -12,18 +12,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/san"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -112,8 +113,29 @@ func (t Array) username() string {
 	return t.Config().GetString(t.Key("username"))
 }
 
+// password returns the password the api is logged in with.
+//
+// The keyword names the sec holding the password rather than holding it, as
+// v2 reads it: "from system/sec/xio key password", or the older
+// "system/sec/xio" whose key is "password". A value naming no sec is refused
+// rather than sent as the password, so a password written in clear in the
+// configuration is not used, as v2 does not use it.
 func (t Array) password() (string, error) {
-	return t.Config().GetStringStrict(t.Key("password"))
+	s, err := t.Config().GetStringStrict(t.Key("password"))
+	if err != nil {
+		return "", err
+	}
+	// The value is not quoted in the errors: when it names no sec, it may be
+	// the password itself, and an error is logged.
+	km, err := datarecv.ParseKeyMetaRelWithFallback(s, naming.NsSys, "password")
+	if err != nil || km.Path.Kind != naming.KindSec {
+		return "", fmt.Errorf("the password keyword does not name a sec key, as \"from system/sec/<name> key password\" does")
+	}
+	b, err := km.RootDecode()
+	if err != nil {
+		return "", fmt.Errorf("the password keyword names %s key %s: %w", km.Path, km.Key, err)
+	}
+	return string(b), nil
 }
 
 // httpClient returns the client the array is talked to through.
@@ -152,6 +174,18 @@ func (t *Array) do(ctx context.Context, method, path string, params map[string]s
 	if err != nil {
 		return nil, 0, err
 	}
+	if strings.HasPrefix(path, "http") {
+		// A link the array answered with is followed only to the array:
+		// the request carries the password, which another host, or the
+		// array over plain http, must not be sent.
+		base, err := url.Parse(api)
+		if err != nil {
+			return nil, 0, fmt.Errorf("%s: api %s: %w", t.Name(), api, err)
+		}
+		if parsed.Scheme != base.Scheme || parsed.Host != base.Host {
+			return nil, 0, fmt.Errorf("%s: refuse to follow the link %s out of the api %s", t.Name(), path, api)
+		}
+	}
 	query := parsed.Query()
 	for k, v := range params {
 		query.Set(k, v)
@@ -177,12 +211,12 @@ func (t *Array) do(ctx context.Context, method, path string, params map[string]s
 	}
 	resp, err := t.httpClient().Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("%w: %s %s: %w", errNoAnswer, method, path, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, err
+		return nil, resp.StatusCode, fmt.Errorf("%w: %s %s: %w", errNoAnswer, method, path, err)
 	}
 	return b, resp.StatusCode, nil
 }
@@ -210,25 +244,22 @@ func (t *Array) get(ctx context.Context, path string, params map[string]string, 
 	return json.Unmarshal(b, out)
 }
 
-// post creates a resource and returns what the array made of it.
+// create creates a resource and returns the link to what the array made.
 //
-// The array answers a creation with the location of what it created, and v2
-// reads it back from there, so the caller is handed the object rather than the
-// link to it.
-func (t *Array) post(ctx context.Context, path string, data map[string]any, out any) error {
+// The array answers a creation with the location of what it created. The
+// caller reads it from there, and knows from an error wrapping errNoAnswer
+// that the creation may have been done all the same.
+func (t *Array) create(ctx context.Context, path string, data map[string]any) (string, error) {
 	if data == nil {
 		data = map[string]any{}
 	}
 	data["cluster-id"] = t.clusterName()
 	b, code, err := t.do(ctx, http.MethodPost, path, nil, data)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if code != http.StatusCreated {
-		return fmt.Errorf("POST %s: %s: %s", path, http.StatusText(code), string(b))
-	}
-	if out == nil {
-		return nil
+		return "", fmt.Errorf("POST %s: %s: %s", path, http.StatusText(code), string(b))
 	}
 	var created struct {
 		Links []struct {
@@ -236,12 +267,24 @@ func (t *Array) post(ctx context.Context, path string, data map[string]any, out 
 		} `json:"links"`
 	}
 	if err := json.Unmarshal(b, &created); err != nil {
+		return "", fmt.Errorf("POST %s: the array answered the creation with %q: %w", path, string(b), err)
+	}
+	if len(created.Links) == 0 || created.Links[0].Href == "" {
+		return "", fmt.Errorf("POST %s: the array named nothing it created", path)
+	}
+	return created.Links[0].Href, nil
+}
+
+// post creates a resource and returns what the array made of it.
+//
+// v2 reads what was made back from the link the array answers with, so the
+// caller is handed the object rather than the link to it.
+func (t *Array) post(ctx context.Context, path string, data map[string]any, out any) error {
+	href, err := t.create(ctx, path, data)
+	if err != nil {
 		return err
 	}
-	if len(created.Links) == 0 {
-		return fmt.Errorf("POST %s: the array named nothing it created", path)
-	}
-	return t.get(ctx, created.Links[0].Href, nil, out)
+	return t.get(ctx, href, nil, out)
 }
 
 // put changes a resource of the array.
@@ -285,6 +328,13 @@ func (t *Array) del(ctx context.Context, path string, params map[string]string) 
 func convertIDs(data map[string]any) map[string]any {
 	out := make(map[string]any, len(data))
 	for k, v := range data {
+		if k == "cluster-id" {
+			// The cluster is named, as the reads name it with
+			// cluster-name: a cluster named "2" sent as the number 2 is the
+			// cluster of index 2, another one on an XMS serving several.
+			out[k] = v
+			continue
+		}
 		if s, ok := v.(string); ok && strings.HasSuffix(k, "-id") {
 			if i, err := strconv.Atoi(s); err == nil {
 				out[k] = i
@@ -307,55 +357,100 @@ func volumePath(volume string) (string, map[string]string) {
 	return "/volumes", map[string]string{"name": volume}
 }
 
-// sizeMB renders a size expression the way the array reads one.
-func sizeMB(size string) (string, error) {
-	b, err := sizeconv.FromSize(size)
-	if err != nil {
-		return "", err
+// mib returns the size the array is told a volume has, in megabytes, as v2
+// tells it.
+//
+// v2 dropped what is below a megabyte, which makes a volume smaller than
+// asked. A size that is not a whole number of megabytes is refused rather
+// than rounded either way.
+func mib(b int64) (string, error) {
+	if b <= 0 || b%(1024*1024) != 0 {
+		return "", fmt.Errorf("a volume size of %d bytes is not a whole number of megabytes, the unit the array is told a size in", b)
 	}
 	return fmt.Sprintf("%dM", b/(1024*1024)), nil
 }
 
-// initiatorGroupOf returns the initiator group an hba belongs to.
-func (t *Array) initiatorGroupOf(ctx context.Context, hbaID string) (string, error) {
-	var data struct {
-		Initiators []struct {
-			IGID []any `json:"ig-id"`
-		} `json:"initiators"`
+// parseSize reads the --size of an action, in the units v2 and the collector
+// read it in.
+func parseSize(s string) (array.Size, error) {
+	if s == "" {
+		return array.Size{}, fmt.Errorf("--size is mandatory")
 	}
-	params := map[string]string{"full": "1", "filter": "port-address:eq:" + convertHBAID(hbaID)}
-	if err := t.get(ctx, "/initiators", params, &data); err != nil {
-		return "", err
+	size, err := array.ParseSize(s)
+	if err != nil {
+		return size, fmt.Errorf("--size: %w", err)
 	}
-	if len(data.Initiators) == 0 {
-		return "", fmt.Errorf("no initiator found with port-address=%s", hbaID)
+	if size.Bytes%(1024*1024) != 0 {
+		return size, fmt.Errorf("--size %s is not a whole number of megabytes, the unit the array is told a size in", s)
 	}
-	ig := data.Initiators[0].IGID
-	if len(ig) == 0 {
-		return "", fmt.Errorf("initiator %s found in no initiatorgroup", hbaID)
-	}
-	return fmt.Sprint(ig[len(ig)-1]), nil
+	return size, nil
 }
 
-// targetGroupOf returns the target group a target port belongs to.
-func (t *Array) targetGroupOf(ctx context.Context, target string) (string, error) {
-	var data struct {
-		Targets []struct {
-			TGID []any `json:"tg-id"`
-		} `json:"targets"`
+// groupOf returns the index of the group the port of an initiator or of a
+// target belongs to.
+//
+// The array is asked for the port by a filter, and the answer is checked
+// rather than trusted: a filter the array did not apply would hand back the
+// first port it has, and the volume would be exported to a host that did not
+// ask for it.
+//
+// The group is named by the last element of its id, which is the index, as v2
+// names it. The index is what the mapping is made with, so a group whose name
+// is a number is not mistaken for another one.
+func (t *Array) groupOf(ctx context.Context, resource, groupKey, port string) (int, error) {
+	address := convertHBAID(port)
+	var data map[string]json.RawMessage
+	params := map[string]string{"full": "1", "filter": "port-address:eq:" + address}
+	if err := t.get(ctx, "/"+resource, params, &data); err != nil {
+		return 0, err
 	}
-	params := map[string]string{"full": "1", "filter": "port-address:eq:" + convertHBAID(target)}
-	if err := t.get(ctx, "/targets", params, &data); err != nil {
-		return "", err
+	var list []map[string]any
+	if err := json.Unmarshal(data[resource], &list); err != nil {
+		return 0, fmt.Errorf("GET /%s: the answer holds no %s list: %w", resource, resource, err)
 	}
-	if len(data.Targets) == 0 {
-		return "", fmt.Errorf("no target found with port-address=%s", target)
+	matching := make([]map[string]any, 0, 1)
+	for _, one := range list {
+		if s, ok := one["port-address"].(string); ok && strings.EqualFold(s, address) {
+			matching = append(matching, one)
+		}
 	}
-	tg := data.Targets[0].TGID
-	if len(tg) == 0 {
-		return "", fmt.Errorf("target %s found in no targetgroup", target)
+	switch len(matching) {
+	case 0:
+		return 0, fmt.Errorf("no %s found with port-address=%s", strings.TrimSuffix(resource, "s"), address)
+	case 1:
+	default:
+		return 0, fmt.Errorf("%d %s found with port-address=%s", len(matching), resource, address)
 	}
-	return fmt.Sprint(tg[len(tg)-1]), nil
+	id, ok := matching[0][groupKey].([]any)
+	if !ok || len(id) == 0 {
+		return 0, fmt.Errorf("%s %s found in no group: its %s is %v", strings.TrimSuffix(resource, "s"), address, groupKey, matching[0][groupKey])
+	}
+	index, err := indexOf(id[len(id)-1])
+	if err != nil {
+		return 0, fmt.Errorf("%s %s: %s %v: %w", strings.TrimSuffix(resource, "s"), address, groupKey, id, err)
+	}
+	return index, nil
+}
+
+// initiatorGroupOf returns the index of the initiator group an hba belongs to.
+func (t *Array) initiatorGroupOf(ctx context.Context, hbaID string) (int, error) {
+	return t.groupOf(ctx, "initiators", "ig-id", hbaID)
+}
+
+// targetGroupOf returns the index of the target group a target port belongs
+// to.
+func (t *Array) targetGroupOf(ctx context.Context, target string) (int, error) {
+	return t.groupOf(ctx, "targets", "tg-id", target)
+}
+
+// indexOf reads an object index of an answer of the array, which a json
+// decoder hands over as a float.
+func indexOf(v any) (int, error) {
+	f, ok := v.(float64)
+	if !ok || f < 0 || f != math.Trunc(f) || f > math.MaxInt32 {
+		return 0, fmt.Errorf("%v is not an object index", v)
+	}
+	return int(f), nil
 }
 
 // convertHBAID renders a port name the way the array stores one: a wwn is
@@ -378,27 +473,18 @@ func convertHBAID(s string) string {
 	return strings.Join(l, ":")
 }
 
-// sizeBytes reads a size expression.
-func sizeBytes(size string) (int64, error) {
-	return sizeconv.FromSize(size)
-}
-
 // parseMappings reads the mappings of a command line, in the grammar the
 // collector writes them.
 func parseMappings(l []string) (san.Paths, error) {
 	return san.ParseMappings(l)
 }
 
-// sortedPathKeys returns the keys of a map, in a stable order, so two runs of
-// one command make the same mappings in the same order.
-func sortedPathKeys(m map[string][]san.Path) []string {
-	l := make([]string, 0, len(m))
-	for k := range m {
-		l = append(l, k)
-	}
-	sort.Strings(l)
-	return l
-}
+var (
+	// errMappingRequired is what "del map" says when it is told nothing to
+	// remove.
+	errMappingRequired = errors.New("--mapping is mandatory, or --volume to remove every mapping of a volume")
 
-// errMappingRequired is what "del map" says when it is told nothing to remove.
-var errMappingRequired = errors.New("--mapping is mandatory, or --volume to remove every mapping of a volume")
+	// errNoAnswer is a request sent and not answered. A creation or a removal
+	// may have been done all the same.
+	errNoAnswer = errors.New("no answer from the array")
+)
