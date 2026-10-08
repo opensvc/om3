@@ -179,10 +179,7 @@ func (t *osProbe) withoutVendor(s string) string {
 	if v == "" {
 		return s
 	}
-	re, err := regexp.Compile("(?i)" + v)
-	if err != nil {
-		re = regexp.MustCompile("(?i)" + regexp.QuoteMeta(v))
-	}
+	re := regexp.MustCompile("(?i)" + regexp.QuoteMeta(v))
 	return re.ReplaceAllString(s, "")
 }
 
