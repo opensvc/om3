@@ -55,11 +55,17 @@ func (t *CmdObjectStatus) Run(kind string) error {
 	var refreshErr error
 	refresh := t.Refresh
 	if t.Refresh {
-		if clusterStatus, err := getClusterStatus(paths, c); err == nil {
+		clusterStatus, err := getClusterStatus(paths, c)
+		switch {
+		case err == nil:
 			ctx, cancel := context.WithTimeout(context.Background(), commoncmd.StatusRefreshTimeout)
 			refreshErr = commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus)
 			cancel()
 			refresh = false
+		case client.IsDaemonDown(err):
+			// No daemon: the local instance is refreshed alone.
+		default:
+			return fmt.Errorf("refresh: %w", err)
 		}
 	}
 

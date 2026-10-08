@@ -364,7 +364,9 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 			}
 			p, err := naming.ParsePath(ps)
 			if err != nil {
+				mu.Lock()
 				errs = errors.Join(errs, err)
+				mu.Unlock()
 				continue
 			}
 			wg.Add(1)

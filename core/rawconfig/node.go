@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/msoap/byline"
@@ -34,6 +35,12 @@ var (
 	SSRFAllowedCIDR     []string
 	SSRFBlockedCIDR     []string
 	SSRFEnableRedirects bool
+
+	// BoardLetters is true when the status board marks its notes beyond
+	// the ninth with the superscript letters, so a marker stays one glyph
+	// for longer, and false when it marks them with superscript numbers
+	// only. The OSVC_BOARD_LETTERS variable sets it, true by default.
+	BoardLetters bool
 )
 
 func init() {
@@ -63,11 +70,22 @@ func Load(env map[string]string) {
 
 	var colors string
 	if s, ok := os.LookupEnv("OSVC_COLORS"); ok {
-		root = s
+		colors = s
 	} else if env != nil {
-		root = env["OSVC_COLORS"]
+		colors = env["OSVC_COLORS"]
 	}
 	setColors(colors)
+
+	BoardLetters = true
+	letters, ok := os.LookupEnv("OSVC_BOARD_LETTERS")
+	if !ok && env != nil {
+		letters, ok = env["OSVC_BOARD_LETTERS"]
+	}
+	if ok {
+		if v, err := strconv.ParseBool(letters); err == nil {
+			BoardLetters = v
+		}
+	}
 
 	capabilities.SetCacheFile(Paths.Capabilities)
 }

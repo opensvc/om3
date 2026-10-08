@@ -3081,6 +3081,10 @@ func newCmdObjectInstanceBoot(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	// The boot waits for the lock as the other actions do: unset, the
+	// lock timeout is zero, and a status evaluation the daemon runs at
+	// the same time fails the boot after a single try.
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -4035,6 +4039,11 @@ Resource flags:
   R  running             M  monitored         D  disabled
   O  optional            E  encap             P  not provisioned
   S  standby             X  stopped           n  restarts remaining, + if 10 or more
+
+The notes are marked ¹ to ⁹, then ᴬ to ᵂ, then ²⁹ on, so the markers of a
+cell read apart. OSVC_BOARD_LETTERS=false, in the environment or in
+/etc/sysconfig/opensvc or /etc/default/opensvc, marks them with numbers
+only.
 
 With --refresh, every node evaluates again the status of its instances
 first, and the board waits for them to show the fresh ones. A node not

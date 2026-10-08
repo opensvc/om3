@@ -17,7 +17,7 @@ func Func(lockPath string, timeout time.Duration, intent string, f func() error)
 	log.Debug().Msgf("Locking %s: %s", intent, lockPath)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
-		return err
+		return Explain(lock, timeout, err)
 	}
 	defer func() {
 		_ = lock.UnLock()
@@ -33,7 +33,7 @@ func Lock(lockPath string, timeout time.Duration, intent string) (func(), error)
 	log.Debug().Msgf("Locking %s: %s", intent, lockPath)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
-		return nil, err
+		return nil, Explain(lock, timeout, err)
 	}
 	return func() {
 		_ = lock.UnLock()

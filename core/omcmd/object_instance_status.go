@@ -73,6 +73,10 @@ func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths
 	// try to get instance Monitor and Config from the daemon
 	if daemonData, err := t.extractFromDaemon(paths, c); err == nil {
 		return daemonData, nil
+	} else if !client.IsDaemonDown(err) {
+		// The daemon answered: its denial or its failure is the answer,
+		// not a reason to read the local files instead.
+		return nil, err
 	}
 
 	// fallback to display just instance Status, no Monitor, no Config

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -99,10 +100,43 @@ func (t *osProbe) parseOSRelease() map[string]string {
 	return m
 }
 
+// isOpenSUSE is true on the openSUSE distributions identified as
+// opensuse-<edition>, as opensuse-leap since Leap 15 and opensuse-tumbleweed.
+//
+// OpenSVC v2 does not know these identifiers: it reports the name of the
+// edition as the vendor, and the release it derives from the pretty name
+// without that name is empty on Tumbleweed, so Unknown. No v2 node reports
+// them to a collector filterset, so they are told here as a reader expects
+// them, rather than as v2 does.
+func (t *osProbe) isOpenSUSE() bool {
+	return strings.HasPrefix(t.osRelease["id"], "opensuse-")
+}
+
+// openSUSERelease returns the edition and the version of an openSUSE
+// distribution, as "Leap 15.6" or "Tumbleweed 20241001", the version of
+// Tumbleweed being its snapshot date, which its pretty name does not have.
+func (t *osProbe) openSUSERelease() string {
+	name := t.osRelease["name"]
+	if len(name) >= len("openSUSE") && strings.EqualFold(name[:len("openSUSE")], "openSUSE") {
+		name = name[len("openSUSE"):]
+	}
+	l := strings.Fields(name)
+	if version := t.osRelease["version_id"]; version != "" && !slices.Contains(l, version) {
+		l = append(l, version)
+	}
+	if len(l) == 0 {
+		return "Unknown"
+	}
+	return strings.Join(l, " ")
+}
+
 // Vendor returns the vendor of the distribution, as "Ubuntu" or "Red Hat".
 func (t *osProbe) Vendor() string {
 	if v, ok := osVendors[t.osRelease["id"]]; ok {
 		return v
+	}
+	if t.isOpenSUSE() {
+		return "SuSE"
 	}
 	for _, line := range t.lines("/etc/lsb-release") {
 		if strings.Contains(line, "DISTRIB_ID") {
@@ -145,10 +179,7 @@ func (t *osProbe) withoutVendor(s string) string {
 	if v == "" {
 		return s
 	}
-	re, err := regexp.Compile("(?i)" + v)
-	if err != nil {
-		re = regexp.MustCompile("(?i)" + regexp.QuoteMeta(v))
-	}
+	re := regexp.MustCompile("(?i)" + regexp.QuoteMeta(v))
 	return re.ReplaceAllString(s, "")
 }
 
@@ -183,6 +214,9 @@ func (t *osProbe) releaseFromLSB() string {
 // Release returns the release of the distribution, as "24.04.5 LTS" or
 // "Enterprise Linux 7.9".
 func (t *osProbe) Release() string {
+	if t.isOpenSUSE() {
+		return t.openSUSERelease()
+	}
 	s := t.releaseFromOSRelease()
 	if s == "Enterprise Linux" && t.osRelease["version"] != "" {
 		// Before el8, the pretty name did not have the version.

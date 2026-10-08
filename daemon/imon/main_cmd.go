@@ -1137,14 +1137,14 @@ func (t *Manager) doTransitionAction(action func() error, newState, successState
 }
 
 func (t *Manager) queueLastAction(action func() error, newState, successState, errorState instance.MonitorState) {
-	_ = runner.Run(t.instConfig.Priority, func() error {
+	_ = runner.Run(t.instConfig.Priority, t.runnerLabel(newState.String()), func() error {
 		t.doLastAction(action, newState, successState, errorState)
 		return nil
 	})
 }
 
 func (t *Manager) queueAction(action func() error, newState, successState, errorState instance.MonitorState) {
-	_ = runner.Run(t.instConfig.Priority, func() error {
+	_ = runner.Run(t.instConfig.Priority, t.runnerLabel(newState.String()), func() error {
 		t.doAction(action, newState, successState, errorState)
 		return nil
 	})

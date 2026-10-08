@@ -1,6 +1,8 @@
 package imon
 
 import (
+	"strconv"
+
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
@@ -95,7 +97,7 @@ func (t *Manager) queueResizeStage(stage int) {
 		t.transitionTo(instance.MonitorStateResizeFailure)
 		return
 	}
-	_ = runner.Run(t.instConfig.Priority, func() error {
+	_ = runner.Run(t.instConfig.Priority, t.runnerLabel("resize stage "+strconv.Itoa(stage)), func() error {
 		t.transitionTo(instance.MonitorStateResizeProgress)
 		next := staged
 		exitCode, err := t.crmResizeStage(stage)

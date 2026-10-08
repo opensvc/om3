@@ -33,6 +33,7 @@ import (
 	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
+	ulock "github.com/opensvc/om3/v3/util/lock"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/runfiles"
@@ -1504,7 +1505,7 @@ func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), er
 	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
-		return nil, err
+		return nil, ulock.Explain(lock, timeout, err)
 	}
 	return func() { _ = lock.UnLock() }, nil
 }

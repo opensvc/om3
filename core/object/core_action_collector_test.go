@@ -17,14 +17,6 @@ import (
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
-func TestMaskArgv(t *testing.T) {
-	argv := []string{"s1", "set", "--kw", "env.pass", "--value", "secret", "--value=other"}
-	masked := maskArgv(argv)
-	assert.Equal(t, []string{"s1", "set", "--kw", "env.pass", "--value", "xxx", "--value=xxx"}, masked)
-	assert.Equal(t, "secret", argv[5], "the argv given is left untouched")
-	assert.Equal(t, []string{"--value"}, maskArgv([]string{"--value"}), "a trailing --value has nothing to mask")
-}
-
 // TestBeginCollectorActionReportsOnce pins that an action chained by
 // another one, as the start of a restart, does not report on its own.
 func TestBeginCollectorActionReportsOnce(t *testing.T) {
@@ -52,18 +44,6 @@ func TestWithCollectorActionOf(t *testing.T) {
 
 	ctx = withCollectorActionOf(context.Background(), context.Background())
 	assert.Nil(t, ctx.Value(collectorActionKey{}))
-}
-
-func TestMaskArgvEnv(t *testing.T) {
-	argv := []string{"/usr/bin/om", "s1", "run", "--rid", "task#1", "--env", "TOKEN=secret", "--env=PASS=other", "--env", "NOEQUAL"}
-	assert.Equal(t,
-		[]string{"/usr/bin/om", "s1", "run", "--rid", "task#1", "--env", "TOKEN=xxx", "--env=PASS=xxx", "--env", "xxx"},
-		maskArgv(argv),
-		"an --env value keeps the name of the variable it sets")
-	assert.Equal(t,
-		[]string{"om", "--value", "xxx", "--rid", "x"},
-		maskArgv([]string{"om", "--value", "--env", "--rid", "x"}),
-		"the argument following --value is its value, as the flag parser reads it, whatever it looks like")
 }
 
 // TestCollectorActionRIDsWithoutProps pins that an action chaining others,

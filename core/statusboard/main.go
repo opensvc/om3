@@ -123,12 +123,10 @@ func newBoard(digest object.Digest) *board {
 	}
 	// The nodes in the order of the object scope, which is the order of
 	// its placement policy reads them in, then the nodes not in the scope
-	// that report an instance anyway.
-	for _, nodename := range digest.Object.Scope {
-		if _, ok := t.states[nodename]; ok {
-			t.nodes = append(t.nodes, nodename)
-		}
-	}
+	// that report an instance anyway. A node of the scope that reports no
+	// instance has its column too, empty, rather than the board showing
+	// the object as if it had no such node.
+	t.nodes = slices.Clone(digest.Object.Scope)
 	others := make([]string, 0)
 	for nodename := range t.states {
 		if !slices.Contains(t.nodes, nodename) {
@@ -794,7 +792,7 @@ func (t *board) numberNotes() {
 		}
 		i++
 		for _, n := range g.notes {
-			n.marker = superscript(i)
+			n.marker = marker(i)
 		}
 	}
 	// The markers were taken when the cells were made, before the notes
@@ -847,6 +845,22 @@ func (t *board) renumber(cell string) string {
 		}
 		return out
 	})
+}
+
+// superscriptLetters are the capital letters Unicode has a superscript
+// form of, which mark the notes beyond the ninth, so a marker stays one
+// glyph and the markers of a cell read apart: ¹⁰¹ reads as the 10th and
+// the 1st as well as the 101st, ᴬ¹ does not.
+var superscriptLetters = []rune("ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁⱽᵂ")
+
+// marker is the marker of the n-th note: ¹ to ⁹, then the superscript
+// letters ᴬ to ᵂ, then the numbers following, ²⁹ on. Without the letters,
+// as OSVC_BOARD_LETTERS=false asks, the numbers follow ⁹ at once.
+func marker(n int) string {
+	if rawconfig.BoardLetters && n > 9 && n-10 < len(superscriptLetters) {
+		return string(superscriptLetters[n-10])
+	}
+	return superscript(n)
 }
 
 func superscript(n int) string {

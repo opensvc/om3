@@ -59,39 +59,61 @@ func factor(t string) int {
 	return factor
 }
 
+// devPath returns the path of the device lsblk names name and the kernel
+// names kname, as the PATH column of lsblk says it: /dev/mapper/<name> for a
+// device-mapper device, which lsblk names after its dm name, and
+// /dev/<name> for the others.
+//
+// The PATH column is not asked to lsblk, as the util-linux of rhel 7 and 8,
+// 2.23 and 2.32, do not have it: it came with 2.33.
+func devPath(name, kname string) string {
+	if strings.HasPrefix(kname, "dm-") {
+		return "/dev/mapper/" + name
+	}
+	return "/dev/" + name
+}
+
+// parseDev returns the device of a line of "lsblk --pairs".
+func parseDev(line string) Dev {
+	d := Dev{}
+	var kname string
+	for _, pair := range pairsRE.FindAllStringSubmatch(line, -1) {
+		key := pair[1]
+		val := pair[2]
+		switch key {
+		case "KNAME":
+			kname = val
+		case "NAME":
+			d.Name = val
+		case "WWN":
+			d.WWN = strings.Replace(val, "0x", "", 1)
+		case "SIZE":
+			if i, err := strconv.ParseUint(val, 10, 64); err == nil {
+				d.Size = i
+			}
+		case "VENDOR":
+			d.Vendor = val
+		case "MODEL":
+			d.Model = val
+		case "TYPE":
+			d.Type = val
+		case "MAJ:MIN":
+			d.Number = val
+		}
+	}
+	d.Path = devPath(d.Name, kname)
+	return d
+}
+
 func loadDevs() error {
 	_devices = make(Devices)
 	parse := func(line string) {
-		d := Dev{}
-		for _, pair := range pairsRE.FindAllStringSubmatch(line, -1) {
-			key := pair[1]
-			val := pair[2]
-			switch key {
-			case "PATH":
-				d.Path = val
-			case "NAME":
-				d.Name = val
-			case "WWN":
-				d.WWN = strings.Replace(val, "0x", "", 1)
-			case "SIZE":
-				if i, err := strconv.ParseUint(val, 10, 64); err == nil {
-					d.Size = i
-				}
-			case "VENDOR":
-				d.Vendor = val
-			case "MODEL":
-				d.Model = val
-			case "TYPE":
-				d.Type = val
-			case "MAJ:MIN":
-				d.Number = val
-			}
-		}
+		d := parseDev(line)
 		_devices[d.Name] = d
 	}
 	cmd := command.New(
 		command.WithName("lsblk"),
-		command.WithVarArgs("-o", "PATH,NAME,WWN,SIZE,VENDOR,MODEL,TYPE,MAJ:MIN", "-b", "-e7", "--pairs"),
+		command.WithVarArgs("-o", "NAME,KNAME,WWN,SIZE,VENDOR,MODEL,TYPE,MAJ:MIN", "-b", "-e7", "--pairs"),
 		command.WithOnStdoutLine(parse),
 	)
 	if err := cmd.Run(); err != nil {

@@ -576,6 +576,18 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     Use double quotes instead of quotes, as the strings in the value part already use double quotes.
     Not mixing single and double quotes helps formatting the --filter for `om node events`.
 
+* **Asset `os_vendor` and `os_release` of the openSUSE editions identified as `opensuse-<edition>`:**
+    The other distributions report the `os_*` asset values v2 reports, as the collector filtersets match them. v2 did
+    not know the `opensuse-leap` and `opensuse-tumbleweed` identifiers of Leap 15 and later and of Tumbleweed: it
+    reported the name of the edition as the vendor, and an `Unknown` release on Tumbleweed. v3 reports them as:
+
+    | os-release `ID`       | v2                               | v3                            |
+    |-----------------------|----------------------------------|-------------------------------|
+    | `opensuse-leap`       | `openSUSE Leap`, `15.6`          | `SuSE`, `Leap 15.6`           |
+    | `opensuse-tumbleweed` | `openSUSE Tumbleweed`, `Unknown` | `SuSE`, `Tumbleweed 20241001` |
+
+    The Tumbleweed release carries its snapshot, the `VERSION_ID` of its os-release.
+
 ### Drivers removed
 
 These drivers of v2.1 have no v3 counterpart:
