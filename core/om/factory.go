@@ -3081,6 +3081,10 @@ func newCmdObjectInstanceBoot(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	// The boot waits for the lock as the other actions do: unset, the
+	// lock timeout is zero, and a status evaluation the daemon runs at
+	// the same time fails the boot after a single try.
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
