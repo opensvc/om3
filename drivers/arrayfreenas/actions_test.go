@@ -91,7 +91,7 @@ func TestMappingsAreRepeatableAndWhole(t *testing.T) {
 	action := array.Action{
 		Path:  []string{"add", "disk"},
 		Short: "add",
-		Flags: append(append([]array.Flag{}, zvolFlags...), flagInsecureTPC, array.FlagLUN, array.FlagMapping),
+		Flags: diskFlags,
 		Run: func(_ context.Context, in array.Input) (any, error) {
 			got = optAddDisk(in, in.String(array.FlagName.Name))
 			return nil, nil
@@ -110,17 +110,17 @@ func TestMappingsAreRepeatableAndWhole(t *testing.T) {
 func TestTheDefaultsAreTheOnesThisDriverShipped(t *testing.T) {
 	var got AddZvolOptions
 	action := array.Action{
-		Path:  []string{"add", "zvol"},
+		Path:  []string{"add", "disk"},
 		Short: "add",
-		Flags: zvolFlags,
+		Flags: diskFlags,
 		Run: func(_ context.Context, in array.Input) (any, error) {
 			got = optAddZvol(in, in.String(array.FlagName.Name))
 			return nil, nil
 		},
 	}
 	require.NoError(t, array.RunActions(context.Background(), []array.Action{action},
-		[]string{"add", "zvol", "--name", "d1", "--size", "1g"}, &bytes.Buffer{}))
-	assert.Equal(t, "512", got.Blocksize)
+		[]string{"add", "disk", "--name", "d1", "--size", "1g"}, &bytes.Buffer{}))
+	assert.Equal(t, "512", got.Blocksize, "the blocksize the extent exports")
 	assert.Equal(t, "off", got.Deduplication)
 	assert.Equal(t, "inherit", got.Compression)
 	assert.False(t, got.Sparse)

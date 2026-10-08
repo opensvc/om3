@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/opensvc/om3/v3/core/array"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
@@ -26,6 +24,11 @@ import (
 )
 
 var (
+	// listParams are the parameters of a listing. The api pages a listing
+	// unless told not to, and an item past the first page is not there to
+	// the code looking for it: an extent not found is a name free to take.
+	listParams = map[string]string{"limit": "0"}
+
 	Head                  = "/api/v2.0"
 	DatasetTypeVolume     = "VOLUME"
 	DatasetTypeFilesystem = "FILESYSTEM"
@@ -35,6 +38,11 @@ var (
 type (
 	Array struct {
 		*array.Array
+
+		// secret, when set, replaces the decoding of the configured
+		// password secret, which needs a cluster to hold it: the tests
+		// talk to a fake array, with no cluster around.
+		secret func() (string, error)
 	}
 
 	UnmapDiskOptions struct {
@@ -55,6 +63,10 @@ type (
 
 	AddDiskOptions struct {
 		AddZvolOptions
+
+		// ExtentName is the name of the iscsi extent exporting the zvol.
+		// Left empty, the extent is named as the zvol is.
+		ExtentName  string
 		InsecureTPC bool
 		Mappings    []string
 		LunId       *int
@@ -91,8 +103,8 @@ type (
 		ISCSI   *DiskISCSI `json:"iscsi,omitempty"`
 	}
 	DiskISCSI struct {
-		Extent        *ISCSIExtent        `json:"extent,omitempty"`
-		TargetExtents []ISCSITargetExtent `json:"targetextents,omitempty"`
+		Extent        *ISCSIExtent       `json:"extent,omitempty"`
+		TargetExtents ISCSITargetExtents `json:"targetextents,omitempty"`
 	}
 
 	// CompositeValue defines model for CompositeValue.
@@ -126,16 +138,22 @@ func New() *Array {
 func (t *Array) Run(args []string) error {
 	return array.RunActions(context.Background(), t.Actions(), args, os.Stdout)
 }
+
+// DelZvol deletes a zvol no extent exports. A zvol an extent exports is a
+// disk, which "del disk" deletes with its extent and its mappings: deleting
+// the zvol alone pulls the storage from under initiators still reaching it.
 func (t Array) DelZvol(ctx context.Context, name string) (*Dataset, error) {
-	dataset, err := t.GetDataset(ctx, name)
+	ref, err := t.resolveZvol(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	if dataset == nil {
-		return nil, fmt.Errorf("dataset not found")
+	if len(ref.extents) > 0 {
+		return nil, fmt.Errorf("zvol %s is exported by the iscsi extent(s) %s: delete the disk instead", ref.dataset.Name, ref.extents.Names())
 	}
-	err = t.delZvolById(ctx, dataset.Id)
-	return dataset, err
+	if err := t.delZvolById(ctx, ref.dataset.Id); err != nil {
+		return nil, err
+	}
+	return &ref.dataset, nil
 }
 
 func (t Array) delZvolById(ctx context.Context, id string) error {
@@ -183,13 +201,16 @@ func (t Array) DelISCSIExtent(ctx context.Context, opt DelISCSIExtentOptions) (*
 	return extent, t.delISCSIExtent(ctx, *extent)
 }
 
+// AddISCSIExtent creates an extent. An extent of that name, or exporting
+// that disk, is refused rather than returned: it may be another client's,
+// and the caller is about to map it.
 func (t Array) AddISCSIExtent(ctx context.Context, opt AddISCSIExtentOptions) (*ISCSIExtent, error) {
-	extent, err := t.GetISCSIExtent(ctx, opt.Name)
+	extents, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if extent != nil {
-		return extent, nil
+	if err := extents.checkFree(opt.Name, opt.Disk); err != nil {
+		return nil, err
 	}
 	params := CreateISCSIExtentParams{
 		Name:        opt.Name,
@@ -205,76 +226,287 @@ func (t Array) AddISCSIExtent(ctx context.Context, opt AddISCSIExtentOptions) (*
 	return t.createISCSIExtent(ctx, params)
 }
 
+// AddZvol creates a zvol. A dataset of that name is refused rather than
+// returned: it holds data of its own, maybe another client's, and is not of
+// the size asked for.
 func (t Array) AddZvol(ctx context.Context, opt AddZvolOptions) (*Dataset, error) {
 	params, err := opt.Params()
 	if err != nil {
 		return nil, err
 	}
-	params.Type = &DatasetTypeVolume
-	dataset, err := t.GetDataset(ctx, params.Name)
-	if err != nil {
+	if err := t.checkNoDataset(ctx, params.Name); err != nil {
 		return nil, err
-	}
-	if dataset != nil {
-		return dataset, nil
 	}
 	return t.CreateDataset(ctx, params)
 }
 
+// checkNoDataset returns an error when a dataset is named name.
+func (t Array) checkNoDataset(ctx context.Context, name string) error {
+	dataset, err := t.GetDataset(ctx, name)
+	if err != nil {
+		return err
+	}
+	if dataset != nil {
+		return fmt.Errorf("dataset %s already exists (type %s): refusing to export storage this command did not create", name, dataset.Type)
+	}
+	return nil
+}
+
+// DelDisk unexports a zvol and deletes it, in the order v2 does: the
+// targetextents, the extent, then the zvol. Each step deletes only what the
+// one before left unreachable, so a failure midway leaves no exported disk
+// without storage behind it.
 func (t Array) DelDisk(ctx context.Context, name string) (*Disk, error) {
 	disk, err := t.GetDisk(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	if disk != nil {
-		if disk.ISCSI != nil && disk.ISCSI.Extent != nil {
-			if _, err := t.DelISCSIExtent(ctx, DelISCSIExtentOptions{Id: disk.ISCSI.Extent.Id}); err != nil {
-				return disk, err
-			}
+	var done []string
+	fail := func(err error) (*Disk, error) {
+		if len(done) == 0 {
+			return disk, err
 		}
-		if disk.Dataset != nil {
-			if err := t.delZvolById(ctx, disk.Dataset.Id); err != nil {
-				return disk, err
+		return disk, fmt.Errorf("%w; already deleted: %s", err, strings.Join(done, ", "))
+	}
+	if extent := disk.ISCSI.Extent; extent != nil {
+		for _, targetExtent := range disk.ISCSI.TargetExtents {
+			if err := t.delISCSITargetExtent(ctx, targetExtent.Id); err != nil {
+				return fail(fmt.Errorf("delete targetextent %d of extent %d: %w", targetExtent.Id, extent.Id, err))
 			}
+			done = append(done, fmt.Sprintf("targetextent %d", targetExtent.Id))
 		}
+		if err := t.delISCSIExtent(ctx, *extent); err != nil {
+			return fail(fmt.Errorf("delete extent %d (%s): %w", extent.Id, extent.Name, err))
+		}
+		done = append(done, fmt.Sprintf("extent %d (%s)", extent.Id, extent.Name))
+	}
+	if err := t.delZvolById(ctx, disk.Dataset.Id); err != nil {
+		return fail(fmt.Errorf("delete zvol %s: %w", disk.Dataset.Name, err))
 	}
 	return disk, nil
 }
 
+// leftovers names what an add made on the array before failing.
+//
+// The add does not delete them: a cleanup guessing what a failure left is
+// the way to delete what it did not make, so the error names them for the
+// operator to judge.
+type leftovers []string
+
+func (t leftovers) wrap(err error) error {
+	if len(t) == 0 {
+		return err
+	}
+	return fmt.Errorf("%w; made on the array and left in place: %s", err, strings.Join(t, ", "))
+}
+
+// madeAnyway returns t with what a write that answered an error may have
+// made nonetheless: an error, as a timeout, does not say the array did not
+// act.
+//
+// Found after the error, the object is only maybe this command's: another
+// one can have made it since the check that it did not exist, as when the
+// write failed because it did, and naming it as made would invite the
+// operator to delete another client's disk.
+func (t leftovers) madeAnyway(what string, check func() (bool, error)) leftovers {
+	if ok, err := check(); err != nil {
+		return append(t, fmt.Sprintf("maybe %s (could not check: %s)", what, err))
+	} else if ok {
+		return append(t, fmt.Sprintf("maybe %s (it exists after the error: this command or another one made it)", what))
+	}
+	return t
+}
+
+// AddDisk creates a zvol, the extent exporting it and the targetextents
+// mapping it.
+//
+// What can be refused without writing is checked before the first write:
+// the size, the targets of the mappings, and that neither the zvol nor its
+// extent exist. A failure after a write returns an error naming what was
+// made.
 func (t Array) AddDisk(ctx context.Context, opt AddDiskOptions) (*Disk, error) {
+	params, err := opt.AddZvolOptions.Params()
+	if err != nil {
+		return nil, err
+	}
+	extentName := opt.ExtentName
+	if extentName == "" {
+		extentName = opt.Name
+	}
+	extentDisk := "zvol/" + opt.Name
+	extentParams := CreateISCSIExtentParams{
+		Name:        extentName,
+		Disk:        extentDisk,
+		Type:        "DISK",
+		InsecureTPC: opt.InsecureTPC,
+	}
+	if i, err := sizeconv.FromSize(opt.Blocksize); err != nil {
+		return nil, fmt.Errorf("blocksize: %w", err)
+	} else {
+		extentParams.Blocksize = int(i)
+	}
+	targets, err := t.mappedTargets(ctx, opt.Mappings)
+	if err != nil {
+		return nil, err
+	}
+	if err := t.checkNoDataset(ctx, opt.Name); err != nil {
+		return nil, err
+	}
+	if extents, err := t.GetISCSIExtents(ctx); err != nil {
+		return nil, err
+	} else if err := extents.checkFree(extentName, extentDisk); err != nil {
+		return nil, err
+	}
+
+	var made leftovers
 	disk := Disk{
 		ISCSI: &DiskISCSI{},
 	}
-	if data, err := t.AddZvol(ctx, opt.AddZvolOptions); err != nil {
-		return nil, err
-	} else {
-		disk.Dataset = data
-	}
-
-	// Extent
-	extent, err := t.AddISCSIExtent(ctx, AddISCSIExtentOptions{
-		Name:        opt.Name,
-		Disk:        "zvol/" + opt.Name,
-		Blocksize:   opt.Blocksize,
-		InsecureTPC: opt.InsecureTPC,
-	})
+	dataset, err := t.CreateDataset(ctx, params)
 	if err != nil {
-		return nil, err
+		made = made.madeAnyway("zvol "+opt.Name, func() (bool, error) {
+			ds, err := t.GetDataset(ctx, opt.Name)
+			return ds != nil, err
+		})
+		return nil, made.wrap(fmt.Errorf("create zvol %s: %w", opt.Name, err))
 	}
+	made = append(made, "zvol "+opt.Name)
+	disk.Dataset = dataset
+
+	extent, err := t.createISCSIExtent(ctx, extentParams)
+	if err != nil {
+		made = made.madeAnyway("extent "+extentName, func() (bool, error) {
+			extents, err := t.GetISCSIExtents(ctx)
+			return extents.GetByName(extentName) != nil, err
+		})
+		return nil, made.wrap(fmt.Errorf("create extent %s: %w", extentName, err))
+	}
+	if extent.Id == 0 {
+		// The id is what the targetextents are created with: guessing it
+		// from a listing maps whatever extent the guess finds.
+		return nil, made.wrap(fmt.Errorf("create extent %s: the array answered no extent id", extentName))
+	}
+	made = append(made, fmt.Sprintf("extent %d (%s)", extent.Id, extentName))
 	disk.ISCSI.Extent = extent
 
-	// targetExtent
-	targetExtent, err := t.MapDisk(ctx, MapDiskOptions{
-		Name:     opt.Name,
-		Mappings: opt.Mappings,
-		LunId:    opt.LunId,
-	})
+	targetExtents, err := t.mapExtent(ctx, *extent, targets, opt.LunId)
+	for _, targetExtent := range targetExtents {
+		made = append(made, fmt.Sprintf("targetextent %d", targetExtent.Id))
+	}
+	if err != nil {
+		return nil, made.wrap(err)
+	}
+	disk.ISCSI.TargetExtents = targetExtents
+	return &disk, nil
+}
+
+// mapExtent attaches the extent to each target, and returns the
+// targetextents it created. On error, they are the ones created before it,
+// and the one that failed when the array made it nonetheless.
+func (t Array) mapExtent(ctx context.Context, extent ISCSIExtent, targets ISCSITargets, lunId *int) (ISCSITargetExtents, error) {
+	created := make(ISCSITargetExtents, 0, len(targets))
+	for _, target := range targets {
+		params := CreateISCSITargetExtentParams{
+			Target: target.Id,
+			Extent: extent.Id,
+			LunId:  lunId,
+		}
+		d, err := t.createISCSITargetExtent(ctx, params)
+		if err != nil {
+			err = fmt.Errorf("attach extent %d to target %d (%s): %w", extent.Id, target.Id, target.Name, err)
+			if l, lerr := t.GetISCSITargetExtents(ctx); lerr != nil {
+				err = fmt.Errorf("%w; could not check whether the array attached it nonetheless: %s", err, lerr)
+			} else {
+				created = append(created, l.WithExtent(extent).WithTarget(target)...)
+			}
+			return created, err
+		}
+		created = append(created, *d)
+	}
+	return created, nil
+}
+
+// mappedTargets returns the targets the mappings name, each once: the
+// initiators of the nodes of a cluster reach a disk through the same
+// targets, and an extent is attached to a target once. A target the array
+// does not have is an error, returned before anything is made.
+func (t Array) mappedTargets(ctx context.Context, mappings []string) (ISCSITargets, error) {
+	paths, err := san.ParseMappings(mappings)
 	if err != nil {
 		return nil, err
 	}
-	disk.ISCSI.TargetExtents = targetExtent
+	targets := make(ISCSITargets, 0)
+	if len(paths) == 0 {
+		return targets, nil
+	}
+	all, err := t.GetISCSITargets(ctx)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	for _, p := range paths {
+		if seen[p.Target.Name] {
+			continue
+		}
+		seen[p.Target.Name] = true
+		target, ok := all.GetByName(p.Target.Name)
+		if !ok {
+			return nil, fmt.Errorf("target %s not found (%d scanned)", p.Target.Name, len(all))
+		}
+		targets = append(targets, target)
+	}
+	return targets, nil
+}
 
-	return &disk, nil
+// zvolRef is a zvol named on a command line, and the extents exporting it.
+type zvolRef struct {
+	dataset Dataset
+	extents ISCSIExtents
+}
+
+// resolveZvol returns the zvol a command line names, the way v2 reads the
+// name: the name of the extent exporting it, or its naa, else the zvol
+// name itself. The collector knows a disk by the name of its extent, which
+// is not the name of its zvol.
+//
+// A name naming nothing is an error: the collector forgets a disk a delete
+// says it deleted.
+func (t Array) resolveZvol(ctx context.Context, name string) (zvolRef, error) {
+	var ref zvolRef
+	if name == "" {
+		return ref, fmt.Errorf("a name is required")
+	}
+	extents, err := t.GetISCSIExtents(ctx)
+	if err != nil {
+		return ref, err
+	}
+	zvolName := name
+	extent := extents.GetByName(name)
+	if extent == nil {
+		extent = extents.GetByNAA(name)
+	}
+	if extent != nil {
+		if s, ok := extent.zvol(); !ok {
+			return ref, fmt.Errorf("extent %d (%s) is a %s extent of %q, not a zvol", extent.Id, extent.Name, extent.Type, extent.diskPath())
+		} else {
+			zvolName = s
+		}
+	}
+	dataset, err := t.GetDataset(ctx, zvolName)
+	if err != nil {
+		return ref, err
+	}
+	switch {
+	case dataset == nil && extent != nil:
+		return ref, fmt.Errorf("extent %d (%s) exports zvol %s, which does not exist", extent.Id, extent.Name, zvolName)
+	case dataset == nil:
+		return ref, fmt.Errorf("no extent named %s or of this naa, and no dataset named %s", name, name)
+	case dataset.Type != DatasetTypeVolume:
+		return ref, fmt.Errorf("dataset %s is a %s, not a zvol", dataset.Name, dataset.Type)
+	}
+	ref.dataset = *dataset
+	ref.extents = extents.WithZvol(zvolName)
+	return ref, nil
 }
 
 func (t Array) timeout() time.Duration {
@@ -294,6 +526,9 @@ func (t Array) username() string {
 }
 
 func (t Array) password() (string, error) {
+	if t.secret != nil {
+		return t.secret()
+	}
 	var km datarecv.KeyMeta
 	s, err := t.Config().GetStringStrict(t.Key("password"))
 	if err != nil {
@@ -345,7 +580,7 @@ func (t Array) dumpPools(ctx context.Context) error {
 }
 
 func (t Array) UpdateDataset(ctx context.Context, id string, params UpdateDatasetParams) (*Dataset, error) {
-	path := fmt.Sprintf("/pool/dataset/id/%s", id)
+	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(id))
 	req, err := t.newRequest(ctx, http.MethodPut, path, nil, params)
 	if err != nil {
 		return nil, err
@@ -395,7 +630,7 @@ func (t Array) DeleteDataset(ctx context.Context, name string) (*Dataset, error)
 
 func (t Array) GetPools(ctx context.Context) ([]Pool, error) {
 	path := fmt.Sprintf("/pool")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +652,7 @@ func (t Array) dumpISCSIPortals(ctx context.Context) error {
 
 func (t Array) GetISCSIPortals(ctx context.Context) ([]any, error) {
 	path := fmt.Sprintf("/iscsi/portal")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +697,7 @@ func (t *Array) Do(req *http.Request, v interface{}) (*http.Response, error) {
 
 func (t Array) GetISCSITargets(ctx context.Context) (ISCSITargets, error) {
 	path := fmt.Sprintf("/iscsi/target")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +736,7 @@ func (t Array) dumpISCSITargetExtents(ctx context.Context) error {
 
 func (t Array) GetISCSITargetExtents(ctx context.Context) (ISCSITargetExtents, error) {
 	path := fmt.Sprintf("/iscsi/targetextent")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +758,7 @@ func (t Array) dumpISCSIExtents(ctx context.Context) error {
 
 func (t Array) GetISCSIExtents(ctx context.Context) (ISCSIExtents, error) {
 	path := fmt.Sprintf("/iscsi/extent")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +780,7 @@ func (t Array) dumpISCSIInitiators(ctx context.Context) error {
 
 func (t Array) GetISCSIInitiators(ctx context.Context) (ISCSIInitiators, error) {
 	path := fmt.Sprintf("/iscsi/initiator")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -587,40 +822,33 @@ func (t Array) dumpDisk(ctx context.Context, name string) error {
 	return dump(data)
 }
 
+// GetDisk returns the zvol a command line names, the extent exporting it and
+// the targetextents mapping it. See resolveZvol for how a name is read.
+//
+// A zvol exported by more than one extent is an error: which one a command
+// is about is a guess, and a delete deleting the one guessed leaves the
+// others exporting a zvol gone.
 func (t Array) GetDisk(ctx context.Context, name string) (*Disk, error) {
+	ref, err := t.resolveZvol(ctx, name)
+	if err != nil {
+		return nil, err
+	}
 	disk := Disk{
-		ISCSI: &DiskISCSI{},
+		Dataset: &ref.dataset,
+		ISCSI:   &DiskISCSI{},
 	}
-
-	dataset, err := t.GetDataset(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if dataset == nil {
-		return nil, nil
-	}
-	disk.Dataset = dataset
-
-	extents, err := t.GetISCSIExtents(ctx)
-	if err != nil {
-		return nil, err
-	}
-	switch dataset.Type {
-	case "VOLUME":
-		extents = extents.WithType("DISK").WithPath("zvol/" + name)
-	case "FILESYSTEM":
-		extents = extents.WithType("FILE").WithPath(*dataset.Mountpoint)
-	default:
-		return nil, errors.Errorf("unsupported %s dataset type: %s", name, dataset.Type)
-	}
-	if len(extents) == 1 {
-		extent := extents[0]
+	switch len(ref.extents) {
+	case 0:
+	case 1:
+		extent := ref.extents[0]
 		disk.ISCSI.Extent = &extent
 		if targetExtents, err := t.GetISCSITargetExtents(ctx); err != nil {
 			return nil, err
 		} else {
 			disk.ISCSI.TargetExtents = targetExtents.WithExtent(extent)
 		}
+	default:
+		return nil, fmt.Errorf("zvol %s is exported by %d iscsi extents: %s", ref.dataset.Name, len(ref.extents), ref.extents.Names())
 	}
 	return &disk, nil
 }
@@ -635,7 +863,7 @@ func (t Array) dumpDatasets(ctx context.Context) error {
 
 func (t Array) GetDatasets(ctx context.Context) (Datasets, error) {
 	path := fmt.Sprintf("/pool/dataset")
-	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, listParams, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -658,7 +886,8 @@ func (t Array) dumpDataset(ctx context.Context, name string) error {
 func (t Array) GetDataset(ctx context.Context, name string) (*Dataset, error) {
 	path := fmt.Sprintf("/pool/dataset")
 	params := map[string]string{
-		"name": name,
+		"name":  name,
+		"limit": "0",
 	}
 	req, err := t.newRequest(ctx, http.MethodGet, path, params, nil)
 	if err != nil {
@@ -669,104 +898,122 @@ func (t Array) GetDataset(ctx context.Context, name string) (*Dataset, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(data) == 0 {
-		return nil, nil
-	}
-	return &data[0], nil
+	// The name is a filter the api may not apply, and the first dataset of
+	// an unfiltered listing is not the one asked for.
+	dataset, _ := data.GetByName(name)
+	return dataset, nil
 }
 
+// exportedDisk returns the disk a command line names, which must be exported
+// by an extent.
+func (t Array) exportedDisk(ctx context.Context, name string) (*Disk, error) {
+	disk, err := t.GetDisk(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if disk.ISCSI.Extent == nil {
+		return nil, fmt.Errorf("zvol %s is exported by no iscsi extent", disk.Dataset.Name)
+	}
+	return disk, nil
+}
+
+// UnmapDisk detaches the extent of a disk from the targets of the mappings,
+// and returns the targetextents it deleted.
+//
+// A targetextent is the disk on a target for every initiator the target
+// admits, not for the initiator of a mapping alone: a mapping naming an
+// initiator the target does not admit is refused, as deleting the
+// targetextent would cut the disk from the hosts that do reach it there. A
+// target unknown to the array is refused too, rather than skipped as done.
+// Every mapping is checked before the first targetextent is deleted.
 func (t Array) UnmapDisk(ctx context.Context, opt UnmapDiskOptions) (ISCSITargetExtents, error) {
 	deletedTargetExtents := make(ISCSITargetExtents, 0)
 	paths, err := san.ParseMappings(opt.Mappings)
 	if err != nil {
 		return deletedTargetExtents, err
 	} else if len(paths) == 0 {
-		return deletedTargetExtents, nil
+		return deletedTargetExtents, fmt.Errorf("no mapping: --mappings names no <hba>:<tgt> path")
 	}
+	disk, err := t.exportedDisk(ctx, opt.Name)
+	if err != nil {
+		return deletedTargetExtents, err
+	}
+	extent := *disk.ISCSI.Extent
 	targets, err := t.GetISCSITargets(ctx)
 	if err != nil {
 		return deletedTargetExtents, err
 	}
-	extents, err := t.GetISCSIExtents(ctx)
+	initiators, err := t.GetISCSIInitiators(ctx)
 	if err != nil {
 		return deletedTargetExtents, err
 	}
-	targetextents, err := t.GetISCSITargetExtents(ctx)
-	if err != nil {
-		return deletedTargetExtents, err
-	}
+	toDelete := make(ISCSITargetExtents, 0)
+	seen := make(map[string]bool)
 	for _, p := range paths {
 		target, ok := targets.GetByName(p.Target.Name)
 		if !ok {
+			return deletedTargetExtents, fmt.Errorf("target %s not found", p.Target.Name)
+		}
+		if ok, err := targetAdmits(target, p.Initiator.Name, initiators); err != nil {
+			return deletedTargetExtents, err
+		} else if !ok {
+			return deletedTargetExtents, fmt.Errorf("target %s does not admit initiator %s: detaching extent %d from it would cut the disk from the hosts it admits", target.Name, p.Initiator.Name, extent.Id)
+		}
+		if seen[p.Target.Name] {
 			continue
 		}
-		extentName := "zvol/" + opt.Name
-		extent := extents.GetByPath(extentName)
-		if extent == nil {
-			continue
-		}
-		filteredTargetextents := targetextents.WithExtent(*extent).WithTarget(target)
+		seen[p.Target.Name] = true
+		filteredTargetextents := disk.ISCSI.TargetExtents.WithTarget(target)
 		if len(filteredTargetextents) == 0 {
+			// Already detached.
 			continue
 		} else if len(filteredTargetextents) > 1 {
-			return deletedTargetExtents, fmt.Errorf("too many (%d) target extents for path %s", len(filteredTargetextents), p)
+			return deletedTargetExtents, fmt.Errorf("too many (%d) target extents for extent %d and target %s", len(filteredTargetextents), extent.Id, target.Name)
 		}
-		filteredTargetextent := filteredTargetextents[0]
-		if err := t.delISCSITargetExtent(ctx, filteredTargetextent.Id); err != nil {
-			return deletedTargetExtents, err
+		toDelete = append(toDelete, filteredTargetextents[0])
+	}
+	for _, targetExtent := range toDelete {
+		if err := t.delISCSITargetExtent(ctx, targetExtent.Id); err != nil {
+			return deletedTargetExtents, fmt.Errorf("delete targetextent %d, after deleting %d of %d: %w", targetExtent.Id, len(deletedTargetExtents), len(toDelete), err)
 		}
-		deletedTargetExtents = append(deletedTargetExtents, filteredTargetextent)
+		deletedTargetExtents = append(deletedTargetExtents, targetExtent)
 	}
 	return deletedTargetExtents, nil
 }
 
+// MapDisk attaches the extent of a disk to the targets of the mappings it is
+// not attached to yet, and returns the targetextents of these targets. Every
+// target is found before the first is attached.
 func (t Array) MapDisk(ctx context.Context, opt MapDiskOptions) (ISCSITargetExtents, error) {
-	missingTargetExtents := make(ISCSITargetExtents, 0)
-	paths, err := san.ParseMappings(opt.Mappings)
+	targetExtents := make(ISCSITargetExtents, 0)
+	targets, err := t.mappedTargets(ctx, opt.Mappings)
 	if err != nil {
-		return missingTargetExtents, err
-	} else if len(paths) == 0 {
-		return missingTargetExtents, nil
+		return targetExtents, err
+	} else if len(targets) == 0 {
+		return targetExtents, nil
 	}
-	targets, err := t.GetISCSITargets(ctx)
+	disk, err := t.exportedDisk(ctx, opt.Name)
 	if err != nil {
-		return missingTargetExtents, err
+		return targetExtents, err
 	}
-	extents, err := t.GetISCSIExtents(ctx)
+	missing := make(ISCSITargets, 0)
+	for _, target := range targets {
+		if l := disk.ISCSI.TargetExtents.WithTarget(target); len(l) > 0 {
+			targetExtents = append(targetExtents, l...)
+		} else {
+			missing = append(missing, target)
+		}
+	}
+	created, err := t.mapExtent(ctx, *disk.ISCSI.Extent, missing, opt.LunId)
+	targetExtents = append(targetExtents, created...)
 	if err != nil {
-		return missingTargetExtents, err
+		var made leftovers
+		for _, targetExtent := range created {
+			made = append(made, fmt.Sprintf("targetextent %d", targetExtent.Id))
+		}
+		return targetExtents, made.wrap(err)
 	}
-	targetextents, err := t.GetISCSITargetExtents(ctx)
-	if err != nil {
-		return missingTargetExtents, err
-	}
-	for _, p := range paths {
-		target, ok := targets.GetByName(p.Target.Name)
-		if !ok {
-			return missingTargetExtents, fmt.Errorf("target %s not found (%d scanned)", p.Target.Name, len(targets))
-		}
-		extentName := "zvol/" + opt.Name
-		extent := extents.GetByPath(extentName)
-		if extent == nil {
-			return missingTargetExtents, fmt.Errorf("extent %s not found (%d scanned)", extentName, len(extents))
-		}
-		filteredTargetextents := targetextents.WithExtent(*extent).WithTarget(target)
-		if len(filteredTargetextents) == 1 {
-			missingTargetExtents = append(missingTargetExtents, filteredTargetextents[0])
-			continue
-		}
-		params := CreateISCSITargetExtentParams{
-			Target: target.Id,
-			Extent: extent.Id,
-			LunId:  opt.LunId,
-		}
-		d, err := t.createISCSITargetExtent(ctx, params)
-		if err != nil {
-			return missingTargetExtents, err
-		}
-		missingTargetExtents = append(missingTargetExtents, *d)
-	}
-	return missingTargetExtents, nil
+	return targetExtents, nil
 }
 
 func (t Array) createISCSITargetExtent(ctx context.Context, params CreateISCSITargetExtentParams) (*ISCSITargetExtent, error) {
@@ -1053,7 +1300,7 @@ func (t *Array) newRequest(ctx context.Context, method string, path string, para
 		if err != nil {
 			return nil, err
 		}
-		req, err = http.NewRequest(method, baseURL.String(), bytes.NewBuffer(jsonString))
+		req, err = http.NewRequestWithContext(ctx, method, baseURL.String(), bytes.NewBuffer(jsonString))
 		if err != nil {
 			return nil, err
 		}
@@ -1074,6 +1321,10 @@ func (t *Array) newRequest(ctx context.Context, method string, path string, para
 
 // DiskId return the NAA from the created disk dataset
 func (t Array) DiskId(disk Disk) string {
+	// A zvol no extent exports has no naa, and a delete of one returns it.
+	if disk.ISCSI == nil || disk.ISCSI.Extent == nil {
+		return ""
+	}
 	return strings.TrimPrefix(disk.ISCSI.Extent.NAA, "0x")
 }
 
@@ -1154,19 +1405,28 @@ func (t AddZvolOptions) Params() (CreateDatasetParams, error) {
 	compressionParam := t.Compression
 	compressionParam = strings.ToUpper(compressionParam)
 
+	// The volblocksize is left to the array, as v2 leaves it. The
+	// blocksize option is the one the extent exports, and a zvol of 512 B
+	// blocks is a zvol of eight times the metadata.
 	params := CreateDatasetParams{
 		Name:          t.Name,
-		Volblocksize:  &t.Blocksize,
+		Type:          &DatasetTypeVolume,
 		Sparse:        &t.Sparse,
 		Deduplication: &dedupParam,
+	}
+	if t.Name == "" {
+		return params, fmt.Errorf("a zvol name is required")
 	}
 	if compressionParam != "INHERIT" {
 		params.Compression = &compressionParam
 	}
-	if i, err := sizeconv.FromSize(t.Size); err != nil {
+	size, err := array.ParseSize(t.Size)
+	if err != nil {
 		return params, err
-	} else {
-		params.Volsize = &i
 	}
+	if size.Relative {
+		return params, fmt.Errorf("size %s: a new zvol has no size to grow from", t.Size)
+	}
+	params.Volsize = &size.Bytes
 	return params, nil
 }
