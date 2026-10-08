@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resourceselector"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -74,7 +75,7 @@ func (t *actor) beginCollectorAction(ctx context.Context, name string) (context.
 		a: collector.Action{
 			Path:      t.path,
 			Action:    name,
-			Argv:      maskArgv(os.Args[1:]),
+			Argv:      args.MaskSecrets(os.Args[1:]),
 			RIDs:      t.collectorActionRIDs(ctx),
 			Origin:    string(env.Origin()),
 			SessionID: xsession.SessionID().UUID(),
@@ -205,44 +206,4 @@ func isConnRefused(err error) bool {
 		return false
 	}
 	return sysErr.Err == syscall.ECONNREFUSED
-}
-
-// secretFlags are the command flags whose values may hold secrets: a
-// keyword value, or an environment variable exported to the action.
-var secretFlags = []string{"--value", "--env"}
-
-// maskArgv returns a copy of argv with the values of the secretFlags masked,
-// as given in the "--flag value" or the "--flag=value" form.
-//
-// An --env value keeps the name of the variable it sets, as NAME=xxx: which
-// variable an action got is worth reading, its value is not.
-func maskArgv(argv []string) []string {
-	masked := make([]string, len(argv))
-	copy(masked, argv)
-	for i := 0; i < len(masked); i++ {
-		for _, flag := range secretFlags {
-			switch {
-			case masked[i] == flag:
-				if i+1 < len(masked) {
-					masked[i+1] = maskFlagValue(flag, masked[i+1])
-					i++
-				}
-			case strings.HasPrefix(masked[i], flag+"="):
-				masked[i] = flag + "=" + maskFlagValue(flag, strings.TrimPrefix(masked[i], flag+"="))
-			default:
-				continue
-			}
-			break
-		}
-	}
-	return masked
-}
-
-func maskFlagValue(flag, value string) string {
-	if flag == "--env" {
-		if name, _, ok := strings.Cut(value, "="); ok {
-			return name + "=xxx"
-		}
-	}
-	return "xxx"
 }

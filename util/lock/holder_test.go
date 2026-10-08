@@ -21,7 +21,9 @@ const flockHolderEnv = "OM_TEST_FLOCK_HOLDER"
 
 func TestATimeoutNamesTheHolder(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "x.lock")
-	cmd := exec.Command(os.Args[0], "-test.run=^$")
+	// The holder runs with a secret on its command line, as a task run
+	// with --env, which the message must not copy.
+	cmd := exec.Command(os.Args[0], "-test.run=^$", "--env", "TOKEN=secret")
 	cmd.Env = append(os.Environ(), flockHolderEnv+"="+p)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
@@ -35,7 +37,8 @@ func TestATimeoutNamesTheHolder(t *testing.T) {
 	require.Error(t, err)
 	msg := err.Error()
 	assert.Contains(t, msg, "lock timeout exceeded after 100ms on "+p)
-	assert.Contains(t, msg, fmt.Sprintf("held by pid %d (%s -test.run=^$)", cmd.Process.Pid, os.Args[0]))
+	assert.Contains(t, msg, fmt.Sprintf("held by pid %d (%s -test.run=^$ --env TOKEN=xxx)", cmd.Process.Pid, os.Args[0]))
+	assert.NotContains(t, msg, "secret")
 	assert.Contains(t, msg, "for test hold since ")
 	assert.Contains(t, msg, ", session ")
 }

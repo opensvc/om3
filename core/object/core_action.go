@@ -30,6 +30,7 @@ import (
 	"github.com/opensvc/om3/v3/core/statusbus"
 	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -448,7 +449,7 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 
 	// The command line may hold secrets, which the log, and the action
 	// lines reported to the collector from it, must not.
-	argv := maskArgv(os.Args)
+	argv := args.MaskSecrets(os.Args)
 	logger := t.log.
 		Attr("argv", argv).
 		Attr("cwd", wd).

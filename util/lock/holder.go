@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/opensvc/flock"
+
+	"github.com/opensvc/om3/v3/util/args"
 )
 
 // timeoutMessage is the error of flock when the lock is still held at the
@@ -59,12 +61,19 @@ func describeHolder(meta flock.Meta, now time.Time) string {
 	return b.String()
 }
 
-// commandLine returns the command line of the process, empty when it does
-// not run any more or the system does not tell it.
+// commandLine returns the command line of the process, the values of the
+// flags that may hold secrets masked, as the action logs mask them, and
+// empty when the process does not run any more or the system does not
+// tell it.
 func commandLine(pid int) string {
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	if err != nil {
 		return ""
 	}
-	return string(bytes.TrimSpace(bytes.ReplaceAll(bytes.TrimRight(b, "\x00"), []byte{0}, []byte{' '})))
+	b = bytes.TrimRight(b, "\x00")
+	if len(b) == 0 {
+		return ""
+	}
+	argv := strings.Split(string(b), "\x00")
+	return strings.TrimSpace(strings.Join(args.MaskSecrets(argv), " "))
 }
