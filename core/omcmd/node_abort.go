@@ -44,6 +44,7 @@ func (t *CmdNodeAbort) doRemote() error {
 		go func(nodename string) {
 			err := nodeaction.New(
 				nodeaction.WithAsyncTarget("aborted"),
+				nodeaction.WithAsyncNode(nodename),
 				nodeaction.WithAsyncTime(t.Time),
 				nodeaction.WithAsyncWait(t.Wait),
 				nodeaction.WithAsyncFollow(t.Follow),

@@ -36,7 +36,12 @@ type (
 		actionrouter.T
 		// AsyncFunc submits the action and answers the orchestration it was
 		// accepted as, which is what a wait waits for.
-		AsyncFunc  func(context.Context) (uuid.UUID, error)
+		AsyncFunc func(context.Context) (uuid.UUID, error)
+
+		// AsyncNode is the node AsyncFunc submits the action for, which
+		// accepts the orchestration: a wait asks it first.
+		AsyncNode string
+
 		LocalFunc  func() (any, error)
 		RemoteFunc func(context.Context, string) (any, error)
 	}
@@ -111,6 +116,18 @@ func LocalFirst() funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultIsLocal = true
+		return nil
+	})
+}
+
+// WithAsyncNode is the node an async action is submitted for, which accepts
+// the orchestration, and the one a wait asks first how it went: the daemon
+// the client talks to knows of an orchestration of a peer only once the
+// heartbeats told it.
+func WithAsyncNode(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.AsyncNode = s
 		return nil
 	})
 }
@@ -407,7 +424,7 @@ func (t T) DoAsync() error {
 			}
 			defer orchestrationLogs.Stop()
 		}
-		return actionrouter.WaitOrchestration(ctx, c, orchestrationID)
+		return actionrouter.WaitNodeOrchestration(ctx, c, t.AsyncNode, orchestrationID)
 	}
 
 	return err
