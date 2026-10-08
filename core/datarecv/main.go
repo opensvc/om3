@@ -1118,6 +1118,12 @@ func (t *DataRecv) chown(fs confined.FS, p string, usr, grp string, info os.File
 	return fs.Lchown(p, uid, gid)
 }
 
+// modeBits are the bits a configured mode sets: the rwx bits, and the
+// setuid, setgid and sticky flags that a 4 digit mode such as 2750 adds.
+// FileMode.Perm() keeps the rwx bits only, so comparing it with such a mode
+// would never match.
+const modeBits = os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+
 func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, group string) {
 	p := filepath.Join(head, path)
 	if head == "" {
@@ -1147,8 +1153,8 @@ func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, g
 		if !info.IsDir() {
 			t.to.StatusLog().Warn("%s is already occupied by a non-directory", p)
 		}
-		if info.Mode().Perm() != perm {
-			t.to.StatusLog().Warn("%s permissions are %s instead of %s", p, info.Mode().Perm(), perm)
+		if info.Mode()&modeBits != perm {
+			t.to.StatusLog().Warn("%s permissions are %s instead of %s", p, info.Mode()&modeBits, perm)
 		}
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 			currentUID := int(stat.Uid)
@@ -1206,11 +1212,11 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 		if !info.IsDir() {
 			return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
 		}
-		if t.report && info.Mode().Perm() == perm {
+		if t.report && info.Mode()&modeBits == perm {
 			t.to.Log().Infof("%s directory is in place", p)
 		}
-		if info.Mode().Perm() != perm {
-			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)
+		if info.Mode()&modeBits != perm {
+			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode()&modeBits, perm)
 			if err := t.chmod(tree, p, &perm); err != nil {
 				return err
 			}
