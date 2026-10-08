@@ -4036,6 +4036,11 @@ Resource flags:
   O  optional            E  encap             P  not provisioned
   S  standby             X  stopped           n  restarts remaining, + if 10 or more
 
+The notes are marked ¹ to ⁹, then ᴬ to ᵂ, then ²⁹ on, so the markers of a
+cell read apart. OSVC_BOARD_LETTERS=false, in the environment or in
+/etc/sysconfig/opensvc or /etc/default/opensvc, marks them with numbers
+only.
+
 With --refresh, every node evaluates again the status of its instances
 first, and the board waits for them to show the fresh ones. A node not
 answering within 30s has its last known status shown, and the command

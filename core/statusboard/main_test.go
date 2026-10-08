@@ -405,3 +405,19 @@ func TestANodeOfTheScopeReportingNoInstanceHasItsColumn(t *testing.T) {
 	assert.Equal(t, []string{"instance", "O", "?"}, strings.Fields(regexpANSI.ReplaceAllString(lineOf(t, board, "instance"), "")))
 	assert.Contains(t, noteLines(t, board), "· warn monitor n2")
 }
+
+func TestTheMarkersBeyondTheNinthAreLetters(t *testing.T) {
+	defer func(v bool) { rawconfig.BoardLetters = v }(rawconfig.BoardLetters)
+
+	rawconfig.BoardLetters = true
+	l := make([]string, 0, 30)
+	for n := 1; n <= 30; n++ {
+		l = append(l, marker(n))
+	}
+	assert.Equal(t, "¹²³⁴⁵⁶⁷⁸⁹ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁⱽᵂ²⁹³⁰", strings.Join(l, ""))
+
+	rawconfig.BoardLetters = false
+	assert.Equal(t, "⁹", marker(9))
+	assert.Equal(t, "¹⁰", marker(10))
+	assert.Equal(t, "²⁸", marker(28))
+}
