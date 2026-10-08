@@ -501,6 +501,26 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **`om <selector> config unset`:**
     Now accepts `--section <name>` to remove a cluster, node or object configuration section.
 
+* **Array disk commands (`om array <name> ...`, and `om node array ... -a <name>` as the collector queues them):**
+    The commands the collector disk forms queue on an array proxy behave as in v2, with these differences, all made to
+    refuse what v2 did to the wrong disk or reported done when it was not:
+
+    * A `--size` unit is a power of 1024 whatever it is written as: `10g`, `10gb` and `10GiB` are all 10 GiB. v2 read
+      `gib` as a power of 1000. A size can not be negative: a volume is shrunk by giving its new size.
+    * A resize to a size below the current one is refused unless `--truncate` is given (the symmetrix `--force` is an
+      alias), as the arrays shrink a volume by dropping its end. A resize to the current size changes nothing.
+    * A mapping that can not be made is an error before anything is created, rather than a volume created and left
+      unexported. A failure after the volume is created names it and leaves it in place: nothing is deleted on a
+      failure.
+    * freenas: an existing zvol or extent is refused rather than reused, `del` refuses a dataset that is not a zvol,
+      and a disk name no extent or zvol has is an error rather than a success.
+    * hds: a device number the driver can not read is refused rather than sent to the array, and a wwid resolves only
+      to a volume of the array named, by its ldkc, cu and ldev, where v2 read the last 4 digits of any wwid.
+    * symmetrix: `del disk` refuses the R2 of a SRDF pair, which the collector deletes after its R1, as the result of
+      deleting an R2 named its R1 for the collector to delete next.
+    * xtremio: a volume name made of digits only is refused, as the array reads it as a volume index, and the
+      `password` keyword is a secret reference, as for the other arrays.
+
 * **`om monitor`:**
     Instance availability icons changes:
     ```
