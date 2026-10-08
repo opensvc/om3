@@ -3,6 +3,7 @@ package auditstate
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -10,7 +11,7 @@ import (
 func begin(r *Registry, user string, preempt bool) (chan plog.LogMessage, chan struct{}, Session, bool) {
 	q := make(chan plog.LogMessage)
 	preemptC := make(chan struct{})
-	sess, ok := r.Begin(q, nil, preemptC, user, preempt)
+	sess, ok := r.Begin(q, nil, preemptC, user, preempt, nil)
 	return q, preemptC, sess, ok
 }
 
@@ -83,5 +84,42 @@ func TestBeginConcurrentAtMostOne(t *testing.T) {
 	wg.Wait()
 	if begun != 1 {
 		t.Fatalf("%d sessions began at once, want 1", begun)
+	}
+}
+
+// TestBeginActivatesInOrder preempts a session between its registration and
+// its activation: the session preempting it must activate last, so the
+// subsystems send their logs to it.
+func TestBeginActivatesInOrder(t *testing.T) {
+	r := &Registry{}
+	var (
+		mu    sync.Mutex
+		order []string
+		done  = make(chan struct{})
+	)
+	activated := func(name string) {
+		mu.Lock()
+		order = append(order, name)
+		mu.Unlock()
+	}
+	q1 := make(chan plog.LogMessage)
+	_, ok := r.Begin(q1, nil, make(chan struct{}), "u1", false, func() {
+		go func() {
+			defer close(done)
+			r.Begin(make(chan plog.LogMessage), nil, make(chan struct{}), "u2", true, func() {
+				activated("preempting")
+			})
+		}()
+		// Give the preempting session the time to activate first, as it
+		// could without the ordering.
+		time.Sleep(50 * time.Millisecond)
+		activated("preempted")
+	})
+	if !ok {
+		t.Fatal("the first session is refused")
+	}
+	<-done
+	if len(order) != 2 || order[0] != "preempted" || order[1] != "preempting" {
+		t.Fatalf("activation order %v, want [preempted preempting]", order)
 	}
 }

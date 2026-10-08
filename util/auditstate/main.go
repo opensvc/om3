@@ -20,6 +20,12 @@ type (
 		mu      sync.RWMutex
 		active  bool
 		current Session
+
+		// beginMu orders the sessions beginning: a session is registered
+		// and activated before the next one begins. It is not mu, so the
+		// subsystems reading the registry while a session activates are
+		// not blocked.
+		beginMu sync.Mutex
 	}
 )
 
@@ -29,7 +35,23 @@ type (
 //
 // The check and the replacement are one step, so two sessions beginning at
 // once can not both find none.
-func (r *Registry) Begin(q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string, preempt bool) (Session, bool) {
+//
+// activate, when not nil, is called for a session that begins, before the
+// next session can begin: it tells the subsystems to send their logs to q.
+// A session preempted right after it registered has then told them before
+// the session preempting it, which they hear last and keep. The stop of the
+// preempted session, naming a queue they no longer send to, changes nothing.
+func (r *Registry) Begin(q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string, preempt bool, activate func()) (Session, bool) {
+	r.beginMu.Lock()
+	defer r.beginMu.Unlock()
+	sess, ok := r.register(q, subsystems, preemptC, user, preempt)
+	if ok && activate != nil {
+		activate()
+	}
+	return sess, ok
+}
+
+func (r *Registry) register(q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string, preempt bool) (Session, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.active {

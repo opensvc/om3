@@ -108,11 +108,31 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		subsystems = *params.Sub
 	}
 
+	labels := []pubsub.Label{
+		{"node", nodename},
+		labelOriginAPI,
+	}
+
+	// activate tells the subsystems to send their logs to q. The registry
+	// calls it before another session can begin, so a session preempted
+	// now can not tell them after the session preempting it.
+	var busAudit bool
+	activate := func() {
+		if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
+			busAudit = a.Bus.AuditStart(q) == nil
+		}
+		a.Bus.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
+	}
 	if a.AuditRegistry != nil {
-		if sess, ok := a.AuditRegistry.Begin(q, subsystems, preemptC, user.Username, preempt); !ok {
+		if sess, ok := a.AuditRegistry.Begin(q, subsystems, preemptC, user.Username, preempt, activate); !ok {
 			return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s", sess.User)
 		}
 		defer a.AuditRegistry.Stop(q)
+	} else {
+		activate()
+	}
+	if busAudit {
+		defer a.Bus.AuditStop(q)
 	}
 
 	request := ctx.Request()
@@ -126,18 +146,6 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	w.WriteHeader(http.StatusOK)
 	w.Flush()
 
-	labels := []pubsub.Label{
-		{"node", nodename},
-		labelOriginAPI,
-	}
-
-	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
-		err = a.Bus.AuditStart(q)
-		if err == nil {
-			defer a.Bus.AuditStop(q)
-		}
-	}
-	a.Bus.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	log.Infof("publish audit start session %s", uuidFromContext(ctx))
 	defer log.Infof("publish audit stop session %s", uuidFromContext(ctx))
 
