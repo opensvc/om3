@@ -15,12 +15,15 @@ import (
 	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
-func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error)) error {
+// proxy asks nodename what the request asks, with fn, and answers what it
+// answers. opts are the options of the client asking, as client.WithTimeout(0)
+// for a request the peer holds longer than the default client timeout.
+func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error), opts ...funcopt.O) error {
 	if data := node.StatusData.GetByNode(nodename); data == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "node status data not found", "%s", nodename)
 	}
 	GetLogger(ctx).Tracef("create proxy client for %s", nodename)
-	c, err := a.newProxyClient(ctx, nodename)
+	c, err := a.newProxyClient(ctx, nodename, opts...)
 	if err != nil {
 		GetLogger(ctx).Errorf("create proxy client for %s: %s", nodename, err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)

@@ -2,10 +2,19 @@ package actionrouter
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/session"
 )
 
 // The daemon caps how long it holds one request, so a wait longer than the
@@ -45,4 +54,28 @@ func TestAskingAgainFollowsTheCallerDeadline(t *testing.T) {
 	ctx, cancel = context.WithCancel(context.Background())
 	cancel()
 	assert.False(t, hasTimeLeft(ctx))
+}
+
+// The wait asks the node it is given about the orchestration, not the daemon
+// the client talks to: the node that accepted it knows the id from the
+// moment it answered it, another one only once the monitor carrying the id
+// reached it.
+func TestWaitAsksTheNodeItIsGiven(t *testing.T) {
+	id := uuid.New()
+	var asked []string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(api.OrchestrationItem{
+			OrchestrationID: id.String(),
+			Node:            "n3",
+			State:           string(session.StateSucceeded),
+		})
+	}))
+	defer srv.Close()
+	c, err := client.New(client.WithURL(srv.URL), client.WithInsecureSkipVerify(true), client.WithBearer("tk"))
+	require.NoError(t, err)
+
+	require.NoError(t, WaitOrchestration(context.Background(), c, "n3", id))
+	assert.Equal(t, []string{"/api/node/name/n3/daemon/orchestration/id/" + id.String()}, asked)
 }

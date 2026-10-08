@@ -36,7 +36,12 @@ type (
 		actionrouter.T
 		// AsyncFunc submits the action and answers the orchestration it was
 		// accepted as, which is what a wait waits for.
-		AsyncFunc  func(context.Context) (uuid.UUID, error)
+		AsyncFunc func(context.Context) (uuid.UUID, error)
+
+		// AsyncNode is the node AsyncFunc submits the action for, which
+		// accepts the orchestration, and the one a wait asks about it.
+		AsyncNode string
+
 		LocalFunc  func() (any, error)
 		RemoteFunc func(context.Context, string) (any, error)
 	}
@@ -111,6 +116,17 @@ func LocalFirst() funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultIsLocal = true
+		return nil
+	})
+}
+
+// WithAsyncNode is the node an async action is submitted for, which accepts
+// the orchestration: a wait asks that node about it. The local daemon is
+// asked when it is not set.
+func WithAsyncNode(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.AsyncNode = s
 		return nil
 	})
 }
@@ -407,7 +423,11 @@ func (t T) DoAsync() error {
 			}
 			defer orchestrationLogs.Stop()
 		}
-		return actionrouter.WaitOrchestration(ctx, c, orchestrationID)
+		waitNode := t.AsyncNode
+		if waitNode == "" {
+			waitNode = api.AliasLocalhost
+		}
+		return actionrouter.WaitOrchestration(ctx, c, waitNode, orchestrationID)
 	}
 
 	return err

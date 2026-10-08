@@ -1010,7 +1010,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 			return
 		}
 
-		err = actionrouter.WaitOrchestration(ctx, c, orchestrationID)
+		err = actionrouter.WaitOrchestration(ctx, c, api.AliasLocalhost, orchestrationID)
 	}()
 }
 

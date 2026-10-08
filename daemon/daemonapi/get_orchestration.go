@@ -44,9 +44,12 @@ func (a *DaemonAPI) GetDaemonOrchestration(ctx echo.Context, nodename string, or
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
+		// The peer holds a wait for as long as it asks, up to an hour,
+		// longer than the default client timeout: the request ends when
+		// the peer answers or the client asking goes away.
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetDaemonOrchestration(ctx.Request().Context(), nodename, orchestrationID, &params)
-		})
+		}, client.WithTimeout(0))
 	}
 	waitCtx, cancel, waiting, err := waitContext(ctx, params.Wait)
 	if err != nil {
