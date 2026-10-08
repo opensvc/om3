@@ -123,12 +123,10 @@ func newBoard(digest object.Digest) *board {
 	}
 	// The nodes in the order of the object scope, which is the order of
 	// its placement policy reads them in, then the nodes not in the scope
-	// that report an instance anyway.
-	for _, nodename := range digest.Object.Scope {
-		if _, ok := t.states[nodename]; ok {
-			t.nodes = append(t.nodes, nodename)
-		}
-	}
+	// that report an instance anyway. A node of the scope that reports no
+	// instance has its column too, empty, rather than the board showing
+	// the object as if it had no such node.
+	t.nodes = slices.Clone(digest.Object.Scope)
 	others := make([]string, 0)
 	for nodename := range t.states {
 		if !slices.Contains(t.nodes, nodename) {
