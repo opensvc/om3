@@ -20,6 +20,14 @@ import (
 const holderEnv = "OM_TEST_EXCLUSIVE_HOLDER"
 
 func TestMain(m *testing.M) {
+	if p := os.Getenv(flockHolderEnv); p != "" {
+		if _, err := Lock(p, time.Second, "test hold"); err != nil {
+			os.Exit(1)
+		}
+		os.Stdout.WriteString("locked\n")
+		time.Sleep(time.Minute)
+		os.Exit(0)
+	}
 	if p := os.Getenv(holderEnv); p != "" {
 		if _, err := Exclusive(context.Background(), p); err != nil {
 			os.Exit(1)

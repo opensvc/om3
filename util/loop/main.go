@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	ulock "github.com/opensvc/om3/v3/util/lock"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/udevadm"
@@ -133,7 +134,7 @@ func (t T) Add(ctx context.Context, filePath string) error {
 	p := "/var/lock/opensvc.losetup.lock"
 	lock := flock.New(p, "", fcntllock.New)
 	if err := lock.Lock(20*time.Second, ""); err != nil {
-		return err
+		return ulock.Explain(lock, 20*time.Second, err)
 	}
 	defer func() { _ = lock.UnLock() }()
 	return t.lockedAdd(ctx, filePath)

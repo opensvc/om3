@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/util/key"
+	ulock "github.com/opensvc/om3/v3/util/lock"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -48,6 +49,7 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 	}
 	err := lock.Lock(timeout, props.Name)
 	if err != nil {
+		err = ulock.Explain(lock, timeout, err)
 		if syncHolder != nil {
 			return unlock, fmt.Errorf("the syncs still hold the object lock after %s, --interrupt-syncs ends them: %w", timeout, err)
 		}
@@ -81,8 +83,9 @@ func (t *core) lockStatus(ctx context.Context) (func(), error) {
 		return func() {}, nil
 	}
 	lock := flock.New(t.lockPath(actioncontext.Status.LockGroup), xsession.SessionID().String(), fcntllock.New)
-	if err := lock.Lock(actioncontext.LockTimeout(ctx), actioncontext.Status.Name); err != nil {
-		return func() {}, err
+	timeout := actioncontext.LockTimeout(ctx)
+	if err := lock.Lock(timeout, actioncontext.Status.Name); err != nil {
+		return func() {}, ulock.Explain(lock, timeout, err)
 	}
 	t.reloadConfig()
 	return func() { _ = lock.UnLock() }, nil

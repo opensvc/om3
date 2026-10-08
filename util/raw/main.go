@@ -18,10 +18,11 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/devicedriver"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	ulock "github.com/opensvc/om3/v3/util/lock"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 )
 
 const (
@@ -216,7 +217,7 @@ func (t T) Bind(bDevPath string) (int, error) {
 	p := "/var/lock/opensvc.raw.lock"
 	lock := flock.New(p, "", fcntllock.New)
 	if err := lock.Lock(20*time.Second, ""); err != nil {
-		return 0, err
+		return 0, ulock.Explain(lock, 20*time.Second, err)
 	}
 	defer func() { _ = lock.UnLock() }()
 	return t.lockedBind(bDevPath)

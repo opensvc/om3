@@ -45,6 +45,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	ulock "github.com/opensvc/om3/v3/util/lock"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -376,7 +377,7 @@ func (t *T) createVolume(ctx context.Context, volume object.Vol) (object.Vol, er
 	p := filepath.Join(volume.Path().VarDir(), "create_volume.lock")
 	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
 	if err := lock.Lock(20*time.Second, ""); err != nil {
-		return nil, err
+		return nil, ulock.Explain(lock, 20*time.Second, err)
 	}
 	defer func() { _ = lock.UnLock() }()
 	return t.lockedCreateVolume(ctx, volume)
