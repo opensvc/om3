@@ -168,3 +168,46 @@ func TestOSProbe(t *testing.T) {
 		})
 	}
 }
+
+// TestOSProbeOpenSUSE verifies the openSUSE distributions identified as
+// opensuse-<edition> are told as a reader expects them, where OpenSVC v2
+// reports the name of the edition as the vendor, and Unknown as the
+// release of Tumbleweed.
+func TestOSProbeOpenSUSE(t *testing.T) {
+	cases := map[string]struct {
+		osRelease string
+		vendor    string
+		release   string
+	}{
+		"leap 15.6": {
+			osRelease: "NAME=\"openSUSE Leap\"\nVERSION=\"15.6\"\nID=\"opensuse-leap\"\nID_LIKE=\"suse opensuse\"\nVERSION_ID=\"15.6\"\nPRETTY_NAME=\"openSUSE Leap 15.6\"\n",
+			vendor:    "SuSE",
+			release:   "Leap 15.6",
+		},
+		"tumbleweed": {
+			osRelease: "NAME=\"openSUSE Tumbleweed\"\nID=\"opensuse-tumbleweed\"\nID_LIKE=\"opensuse suse\"\nVERSION_ID=\"20241001\"\nPRETTY_NAME=\"openSUSE Tumbleweed\"\n",
+			vendor:    "SuSE",
+			release:   "Tumbleweed 20241001",
+		},
+		"leap micro": {
+			osRelease: "NAME=\"openSUSE Leap Micro\"\nVERSION=\"6.0\"\nID=\"opensuse-leap-micro\"\nVERSION_ID=\"6.0\"\nPRETTY_NAME=\"openSUSE Leap Micro 6.0\"\n",
+			vendor:    "SuSE",
+			release:   "Leap Micro 6.0",
+		},
+		"no version": {
+			osRelease: "NAME=\"openSUSE Tumbleweed\"\nID=\"opensuse-tumbleweed\"\n",
+			vendor:    "SuSE",
+			release:   "Tumbleweed",
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			require.NoError(t, os.Mkdir(filepath.Join(root, "etc"), 0o755))
+			require.NoError(t, os.WriteFile(filepath.Join(root, "etc", "os-release"), []byte(c.osRelease), 0o644))
+			probe := newOSProbe(root)
+			require.Equal(t, c.vendor, probe.Vendor(), "vendor")
+			require.Equal(t, c.release, probe.Release(), "release")
+		})
+	}
+}
