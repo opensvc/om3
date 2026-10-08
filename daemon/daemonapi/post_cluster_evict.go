@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -16,13 +17,25 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/converters"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // evictDefaultTimeout is the duration the leave forked on the evicted node
 // runs under when the body sets no timeout. It has to outlive a daemon
 // restart.
 const evictDefaultTimeout = time.Hour
+
+// reasonDrainInProgress is why a node is not drained while its drain has not
+// ended, as this node last heard of it.
+const reasonDrainInProgress = "a drain is in progress"
+
+// evictDrainEndTimeout bounds how long an evict waits for this node to hear
+// of the end of a drain. The evicted node tells its node monitor to its peers
+// over the heartbeats, a second after its drain ended at most, so this only
+// matters when the drain has not ended, or its node stopped beating.
+var evictDrainEndTimeout = 10 * time.Second
 
 // PostClusterEvict removes a node from our cluster nodes.
 //
@@ -82,7 +95,25 @@ func (a *DaemonAPI) PostClusterEvict(ctx echo.Context) error {
 		}
 	}
 
-	if reason := notDrainedReason(nodename); reason != "" {
+	// The node monitor this judges the drain by is the copy the heartbeats
+	// of the evicted node bring, a second behind it: an evict that follows
+	// the end of a drain, as "om node drain --wait" ends when the drained
+	// node says so, would find the drain still running. It is subscribed
+	// before the first look, so that no update falls between the look and
+	// the wait.
+	sub := a.Bus.Sub(fmt.Sprintf("api.post_cluster_evict %s", ctx.Get("uuid")))
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, pubsub.Label{"node", nodename})
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{}, pubsub.Label{"node", nodename})
+	sub.Start()
+	defer func() {
+		if err := sub.Stop(); err != nil {
+			log.Warnf("subscription stop: %s", err)
+		}
+	}()
+	waitCtx, cancel := context.WithTimeout(ctx.Request().Context(), evictDrainEndTimeout)
+	reason := waitDrainEnd(waitCtx, sub.C, nodename)
+	cancel()
+	if reason != "" {
 		log.Infof("evict %s refused: %s", nodename, reason)
 		return JSONProblemf(ctx, http.StatusConflict, "Invalid state",
 			"node '%s' is not drained: %s: drain it first, else what it runs would stay up on a node "+
@@ -128,6 +159,28 @@ func (a *DaemonAPI) PostClusterEvict(ctx echo.Context) error {
 		"node %s is leaving the cluster", nodename)
 }
 
+// waitDrainEnd returns why nodename is not drained, as notDrainedReason, once
+// it is no longer that its drain is in progress, or when ctx ends.
+//
+// It looks again on every update of the node monitor of nodename that events
+// says this node received, the copy notDrainedReason reads. The other reasons
+// are answered at once: the node monitor of a node is received after the
+// instance statuses it had then, so when the drain is seen ended, the
+// instances it stopped are seen stopped.
+func waitDrainEnd(ctx context.Context, events <-chan any, nodename string) string {
+	for {
+		reason := notDrainedReason(nodename)
+		if reason != reasonDrainInProgress {
+			return reason
+		}
+		select {
+		case <-ctx.Done():
+			return reason
+		case <-events:
+		}
+	}
+}
+
 // notDrainedReason returns why nodename is not drained, and an empty string
 // when it is.
 //
@@ -148,9 +201,9 @@ func notDrainedReason(nodename string) string {
 	if mon := node.MonitorData.GetByNode(nodename); mon != nil {
 		switch {
 		case mon.LocalExpect == node.MonitorLocalExpectDrained:
-			return "a drain is in progress"
+			return reasonDrainInProgress
 		case mon.State == node.MonitorStateDrainProgress:
-			return "a drain is in progress"
+			return reasonDrainInProgress
 		case mon.State == node.MonitorStateDrainFailure:
 			return "its last drain failed"
 		}

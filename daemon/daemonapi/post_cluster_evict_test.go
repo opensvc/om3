@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -104,5 +105,54 @@ func TestNotDrainedReason(t *testing.T) {
 				assert.Contains(t, notDrainedReason(nodename), "still runs "+svc1.String())
 			})
 		}
+	})
+}
+
+// The node monitor of the evicted node is a copy the heartbeats bring, behind
+// it: an evict that follows the end of a drain waits for the copy to say so,
+// on the events of its updates, rather than refuse the drain as running.
+func TestWaitDrainEnd(t *testing.T) {
+	const nodename = "node3"
+	frozen := &node.Status{FrozenAt: time.Now()}
+	setNode := func(t *testing.T, s *node.Status, m *node.Monitor) {
+		node.StatusData.Set(nodename, s)
+		node.MonitorData.Set(nodename, m)
+		t.Cleanup(func() {
+			node.StatusData.Unset(nodename)
+			node.MonitorData.Unset(nodename)
+		})
+	}
+
+	t.Run("accepts the node once an update says its drain ended", func(t *testing.T) {
+		setNode(t, frozen, &node.Monitor{LocalExpect: node.MonitorLocalExpectDrained, State: node.MonitorStateDrainProgress})
+		events := make(chan any)
+		go func() {
+			// An update not ending the drain, then the one ending it.
+			events <- struct{}{}
+			node.MonitorData.Set(nodename, &node.Monitor{State: node.MonitorStateIdle})
+			events <- struct{}{}
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		assert.Equal(t, "", waitDrainEnd(ctx, events, nodename))
+		assert.NoError(t, ctx.Err(), "answered on the update, not at the deadline")
+	})
+
+	t.Run("refuses a drain no update says ended", func(t *testing.T) {
+		setNode(t, frozen, &node.Monitor{State: node.MonitorStateDrainProgress})
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+
+		assert.Equal(t, reasonDrainInProgress, waitDrainEnd(ctx, make(chan any), nodename))
+	})
+
+	t.Run("answers the other reasons at once", func(t *testing.T) {
+		setNode(t, &node.Status{}, &node.Monitor{State: node.MonitorStateIdle})
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		assert.Contains(t, waitDrainEnd(ctx, make(chan any), nodename), "not frozen")
+		assert.NoError(t, ctx.Err(), "not held until the deadline")
 	})
 }
