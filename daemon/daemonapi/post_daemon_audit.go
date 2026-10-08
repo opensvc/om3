@@ -100,22 +100,19 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		preempt = true
 	}
 
-	if sess, ok := a.AuditRegistry.Snapshot(); ok {
-		if !preempt {
+	q := make(chan plog.LogMessage, 1000)
+	preemptC := make(chan struct{})
+
+	var subsystems []string
+	if params.Sub != nil {
+		subsystems = *params.Sub
+	}
+
+	if a.AuditRegistry != nil {
+		if sess, ok := a.AuditRegistry.Begin(q, subsystems, preemptC, user.Username, preempt); !ok {
 			return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s", sess.User)
 		}
-		select {
-		case sess.PreemptC <- struct{}{}:
-		case <-time.After(time.Second):
-			// Perhaps the session has been closed, verify if preempt is still needed
-			if sess, ok := a.AuditRegistry.Snapshot(); ok {
-				select {
-				case sess.PreemptC <- struct{}{}:
-				case <-time.After(250 * time.Millisecond):
-					return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s, but preempt is refused", sess.User)
-				}
-			}
-		}
+		defer a.AuditRegistry.Stop(q)
 	}
 
 	request := ctx.Request()
@@ -129,16 +126,9 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	w.WriteHeader(http.StatusOK)
 	w.Flush()
 
-	q := make(chan plog.LogMessage, 1000)
-	preemptC := make(chan struct{})
 	labels := []pubsub.Label{
 		{"node", nodename},
 		labelOriginAPI,
-	}
-
-	var subsystems []string
-	if params.Sub != nil {
-		subsystems = *params.Sub
 	}
 
 	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
@@ -151,13 +141,8 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	log.Infof("publish audit start session %s", uuidFromContext(ctx))
 	defer log.Infof("publish audit stop session %s", uuidFromContext(ctx))
 
-	if a.AuditRegistry != nil {
-		a.AuditRegistry.Start(q, subsystems, preemptC, user.Username)
-		defer a.AuditRegistry.Stop(q)
-	}
-
-	write := func(msg plog.LogMessage) error {
-		formatted, err := formatMessage(msg, messageId, nodename)
+	write := func(event string, msg plog.LogMessage) error {
+		formatted, err := formatMessage(event, msg, messageId, nodename)
 		if err != nil {
 			return fmt.Errorf("failed to format log message: %v", err)
 		}
@@ -176,7 +161,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		Timestamp: time.Now(),
 		Message:   "daemon audit: audit started",
 	}
-	if err = write(msg); err != nil {
+	if err = write("", msg); err != nil {
 		log.Warnf("%s", err)
 		return nil
 	}
@@ -186,7 +171,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 			if msg.Level < level {
 				continue
 			}
-			if err = write(msg); err != nil {
+			if err = write("", msg); err != nil {
 				log.Warnf("%s", err)
 				return nil
 			}
@@ -198,7 +183,9 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 				Timestamp: time.Now(),
 				Message:   "daemon audit: session preempted by another session",
 			}
-			if err := write(msg); err != nil {
+			// The event tells the client not to reconnect: it would
+			// preempt the session that preempted it.
+			if err := write(api.AuditEventPreempted, msg); err != nil {
 				log.Warnf("%s", err)
 			}
 			return nil
@@ -206,9 +193,14 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 }
 
-func formatMessage(msg plog.LogMessage, messageId uint64, nodename string) ([]byte, error) {
+// formatMessage formats a log message as a server-sent event, named event
+// when it is not empty.
+func formatMessage(event string, msg plog.LogMessage, messageId uint64, nodename string) ([]byte, error) {
 	var b []byte
 	b = append(b, []byte("id:"+strconv.FormatUint(messageId, 10))...)
+	if event != "" {
+		b = append(b, []byte("\nevent:"+event)...)
+	}
 	b = append(b, []byte("\ndata:")...)
 	buf := &bytes.Buffer{}
 	encoder := json.NewEncoder(buf)

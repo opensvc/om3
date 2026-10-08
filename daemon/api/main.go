@@ -17,6 +17,10 @@ const (
 	HeaderUser         = "OM-User"
 )
 
+// AuditEventPreempted names the server-sent event a daemon audit stream ends
+// with when another session preempts it.
+const AuditEventPreempted = "preempted"
+
 const (
 	AliasLocalhost      = "localhost"
 	AliasShortLocalhost = "_"
