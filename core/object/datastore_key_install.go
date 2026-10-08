@@ -249,10 +249,10 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 
 func (t *dataStore) chmod(p string, perm os.FileMode, info os.FileInfo, fs confined.FS, log *plog.Logger) error {
 	if info != nil {
-		if perm == info.Mode().Perm() {
+		if perm == info.Mode()&file.ModeBits {
 			return nil
 		}
-		log.Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), perm)
+		log.Infof("change %s permissions from %s to %s", p, info.Mode()&file.ModeBits, perm)
 	} else {
 		log.Tracef("set %s permissions to %s", p, perm)
 	}
@@ -391,7 +391,13 @@ func (t *dataStore) makedir(path string, opt KVInstallAccessControl, fs confined
 		return nil
 	} else {
 		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, opt.MakedirPerm)
-		if err := fs.MkdirAll(path, opt.MakedirPerm); err != nil {
+		// The confined mkdir refuses the setuid, setgid and sticky flags, and
+		// mkdir applies the umask: create with the rwx bits, then set the
+		// configured mode explicitly.
+		if err := fs.MkdirAll(path, opt.MakedirPerm.Perm()); err != nil {
+			return err
+		}
+		if err := fs.Chmod(path, opt.MakedirPerm); err != nil {
 			return err
 		}
 		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, fs, log); err != nil {

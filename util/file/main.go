@@ -215,13 +215,18 @@ func Touch(p string, tm time.Time) error {
 	return nil
 }
 
+// ModeBits are the bits a configured mode sets: the rwx bits, and the setuid,
+// setgid and sticky flags a 4 digit mode such as 2750 adds. FileMode.Perm()
+// keeps the rwx bits only, so comparing it with such a mode never matches.
+const ModeBits = os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+
 // IsPerm returns true if the file current permissions are the same as the target.
 func IsPerm(p string, perm os.FileMode) (bool, error) {
 	currentMode, err := Mode(p)
 	if err != nil {
 		return false, err
 	}
-	return currentMode.Perm() == perm, nil
+	return currentMode&ModeBits == perm, nil
 }
 
 // IsMode returns true if the file current mode is the same as the target mode.
