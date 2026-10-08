@@ -36,6 +36,11 @@ const (
 	maxAuditLineSize = 1024 * 1024
 )
 
+// errAuditPreempted is the end of a stream another session preempted. The
+// stream is not reconnected: that would preempt the other session in turn,
+// and the two would preempt each other for ever.
+var errAuditPreempted = errors.New("audit session preempted by another session")
+
 func NewCmdDaemonAudit() *cobra.Command {
 	options := &CmdDaemonAudit{}
 	cmd := &cobra.Command{
@@ -192,6 +197,7 @@ func (t *CmdDaemonAudit) Run() error {
 
 			eventC := make(chan string)
 			errC := make(chan error)
+			preempted := false
 			go auditParse(ctx, resp.Body, eventC, errC)
 
 			func() {
@@ -212,11 +218,19 @@ func (t *CmdDaemonAudit) Run() error {
 						if err == nil || errors.Is(err, io.EOF) {
 							return
 						}
+						if errors.Is(err, errAuditPreempted) {
+							preempted = true
+							return
+						}
 						fmt.Fprintf(os.Stderr, "audit read error from %s: %s\n", nodename, err)
 						return
 					}
 				}
 			}()
+
+			if preempted {
+				return nil, errAuditPreempted
+			}
 
 			select {
 			case <-ctx.Done():
@@ -235,22 +249,37 @@ func auditParse(ctx context.Context, body io.Reader, eventC chan<- string, errC 
 	scanner := bufio.NewScanner(body)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxAuditLineSize)
 
+	var (
+		event string
+		err   error
+	)
 	for scanner.Scan() {
 		line := scanner.Bytes()
 
-		if len(line) > 0 {
-			if fieldName, fieldValue, ok := bytes.Cut(line, []byte{':'}); ok {
-				fieldValue = bytes.TrimLeft(fieldValue, " ")
-				switch string(fieldName) {
-				case "":
-				case "data":
-					eventC <- string(fieldValue)
-				default:
-				}
+		if len(line) == 0 {
+			// The end of an event.
+			if event == api.AuditEventPreempted {
+				err = errAuditPreempted
+				break
+			}
+			event = ""
+			continue
+		}
+		if fieldName, fieldValue, ok := bytes.Cut(line, []byte{':'}); ok {
+			fieldValue = bytes.TrimLeft(fieldValue, " ")
+			switch string(fieldName) {
+			case "":
+			case "event":
+				event = string(fieldValue)
+			case "data":
+				eventC <- string(fieldValue)
+			default:
 			}
 		}
 	}
-	err := scanner.Err()
+	if err == nil {
+		err = scanner.Err()
+	}
 	if err == nil {
 		err = io.EOF
 	}

@@ -36,6 +36,7 @@ func init() {
 		NewCmdContextLogout(),
 		NewCmdContextList(),
 		NewCmdContextShow(),
+		NewCmdContextWhoAmI(),
 		NewCmdContextEdit(),
 
 		NewCmdContextAdd(),
