@@ -25,9 +25,11 @@ type (
 )
 
 var (
-	smbiosOnce       sync.Once
+	smbiosMu         sync.Mutex
 	smbiosStructures []*smbios.Structure
-	smbiosErr        error
+
+	// smbiosStream opens the SMBIOS of the node, replaced by the tests.
+	smbiosStream = smbios.Stream
 
 	// memoryTypes are the names of the memory types, by their code
 	// (DSP0134 7.18.2).
@@ -89,18 +91,26 @@ var (
 	}
 )
 
-// readSMBIOS returns the structures of the SMBIOS of the node, read once.
+// readSMBIOS returns the structures of the SMBIOS of the node, read once
+// it is read whole. A read failing is tried again by the next call, as the
+// table can be unavailable for a moment.
 func readSMBIOS() ([]*smbios.Structure, error) {
-	smbiosOnce.Do(func() {
-		rc, _, err := smbios.Stream()
-		if err != nil {
-			smbiosErr = err
-			return
-		}
-		defer func() { _ = rc.Close() }()
-		smbiosStructures, smbiosErr = smbios.NewDecoder(rc).Decode()
-	})
-	return smbiosStructures, smbiosErr
+	smbiosMu.Lock()
+	defer smbiosMu.Unlock()
+	if smbiosStructures != nil {
+		return smbiosStructures, nil
+	}
+	rc, _, err := smbiosStream()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rc.Close() }()
+	l, err := smbios.NewDecoder(rc).Decode()
+	if err != nil {
+		return nil, err
+	}
+	smbiosStructures = l
+	return l, nil
 }
 
 // memoryDevices returns the memory device structures of the SMBIOS.

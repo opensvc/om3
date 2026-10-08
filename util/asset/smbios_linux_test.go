@@ -3,11 +3,15 @@
 package asset
 
 import (
+	"bytes"
 	"encoding/binary"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/digitalocean/go-smbios/smbios"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // newMemoryDevice returns a memory device structure of the SMBIOS 3.3 size,
@@ -78,4 +82,36 @@ func TestMemoryDeviceOfAnOlderSpecificationIsShorter(t *testing.T) {
 	}}
 	assert.Equal(t, "", dev.Manufacturer(), "a field past the structure is not set")
 	assert.Equal(t, "Unknown", dev.Speed())
+}
+
+func TestReadSMBIOSRetriesAfterAFailure(t *testing.T) {
+	prevStream := smbiosStream
+	defer func() {
+		smbiosStream = prevStream
+		smbiosStructures = nil
+	}()
+	smbiosStructures = nil
+
+	calls := 0
+	smbiosStream = func() (io.ReadCloser, smbios.EntryPoint, error) {
+		calls++
+		if calls == 1 {
+			return nil, nil, errors.New("dmi table unavailable")
+		}
+		// An end-of-table structure alone: type 127, length 4, handle 0,
+		// and the empty string set.
+		return io.NopCloser(bytes.NewReader([]byte{127, 4, 0, 0, 0, 0})), nil, nil
+	}
+
+	_, err := readSMBIOS()
+	require.Error(t, err)
+
+	l, err := readSMBIOS()
+	require.NoError(t, err)
+	require.Len(t, l, 1)
+
+	// Read whole, the table is not read again.
+	_, err = readSMBIOS()
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
 }
