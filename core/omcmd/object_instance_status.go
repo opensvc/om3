@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"sort"
 	"strings"
@@ -74,7 +73,7 @@ func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths
 	// try to get instance Monitor and Config from the daemon
 	if daemonData, err := t.extractFromDaemon(paths, c); err == nil {
 		return daemonData, nil
-	} else if !isDaemonUnreachable(err) {
+	} else if !client.IsDaemonDown(err) {
 		// The daemon answered: its denial or its failure is the answer,
 		// not a reason to read the local files instead.
 		return nil, err
@@ -145,14 +144,6 @@ func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Dig
 		data = append(data, o)
 	}
 	return data, errs
-}
-
-// isDaemonUnreachable is true when err says no daemon listens on the api
-// socket, as when it is not running: the dial failed. An error the daemon
-// answered, as a denial or a failure, is not.
-func isDaemonUnreachable(err error) bool {
-	var opErr *net.OpError
-	return errors.As(err, &opErr) && opErr.Op == "dial"
 }
 
 func getClusterStatus(paths naming.Paths, c *client.T) (clusterdump.Data, error) {
