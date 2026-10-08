@@ -1,6 +1,9 @@
 package auditstate
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/opensvc/om3/v3/util/plog"
@@ -21,17 +24,31 @@ type (
 		active  bool
 		current Session
 
-		// beginMu orders the sessions beginning: a session is registered
-		// and activated before the next one begins. It is not mu, so the
-		// subsystems reading the registry while a session activates are
-		// not blocked.
-		beginMu sync.Mutex
+		// beginC is the slot a session takes to begin, so a session is
+		// registered and activated before the next one begins. It is not
+		// mu, so the subsystems reading the registry while a session
+		// activates are not blocked. It is a channel, not a mutex, so a
+		// session waiting for it can give up.
+		beginC    chan struct{}
+		beginOnce sync.Once
 	}
 )
 
-// Begin makes a session the current one, and says whether it did: there is
-// at most one. A current session is returned and kept, unless preempt asks
-// to end it: it is then told so, by the close of its PreemptC, and replaced.
+var (
+	// ErrActive is the refusal of a session while another one runs, and
+	// the session beginning does not preempt it.
+	ErrActive = errors.New("an audit session is already running")
+
+	// ErrBusy is the refusal of a session that waited too long for the
+	// one beginning before it: that one is activating, which waits for
+	// the bus to accept its publication.
+	ErrBusy = errors.New("another audit session is beginning")
+)
+
+// Begin makes a session the current one, or says why it did not: there is
+// at most one. A current session is returned and kept, with ErrActive,
+// unless preempt asks to end it: it is then told so, by the close of its
+// PreemptC, and replaced.
 //
 // The check and the replacement are one step, so two sessions beginning at
 // once can not both find none.
@@ -41,14 +58,25 @@ type (
 // A session preempted right after it registered has then told them before
 // the session preempting it, which they hear last and keep. The stop of the
 // preempted session, naming a queue they no longer send to, changes nothing.
-func (r *Registry) Begin(q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string, preempt bool, activate func()) (Session, bool) {
-	r.beginMu.Lock()
-	defer r.beginMu.Unlock()
+//
+// A session waits for the one beginning before it until ctx is done, and is
+// then refused with ErrBusy.
+func (r *Registry) Begin(ctx context.Context, q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string, preempt bool, activate func()) (Session, error) {
+	r.beginOnce.Do(func() { r.beginC = make(chan struct{}, 1) })
+	select {
+	case r.beginC <- struct{}{}:
+	case <-ctx.Done():
+		return Session{}, fmt.Errorf("%w: %w", ErrBusy, ctx.Err())
+	}
+	defer func() { <-r.beginC }()
 	sess, ok := r.register(q, subsystems, preemptC, user, preempt)
-	if ok && activate != nil {
+	if !ok {
+		return sess, ErrActive
+	}
+	if activate != nil {
 		activate()
 	}
-	return sess, ok
+	return sess, nil
 }
 
 func (r *Registry) register(q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string, preempt bool) (Session, bool) {

@@ -20,9 +20,15 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/auditstate"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
+
+// auditBeginTimeout is how long an audit session waits for the one beginning
+// before it. Beginning takes no time, unless the bus does not accept the
+// publication of the session start, a subscriber not reading its queue.
+const auditBeginTimeout = 5 * time.Second
 
 func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
 	if v, err := assertRoot(ctx); !v {
@@ -124,8 +130,16 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		a.Bus.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	}
 	if a.AuditRegistry != nil {
-		if sess, ok := a.AuditRegistry.Begin(q, subsystems, preemptC, user.Username, preempt, activate); !ok {
+		beginCtx, cancel := context.WithTimeout(ctx.Request().Context(), auditBeginTimeout)
+		sess, err := a.AuditRegistry.Begin(beginCtx, q, subsystems, preemptC, user.Username, preempt, activate)
+		cancel()
+		switch {
+		case errors.Is(err, auditstate.ErrActive):
 			return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s", sess.User)
+		case errors.Is(err, auditstate.ErrBusy):
+			return JSONProblemf(ctx, http.StatusConflict, "Audit beginning", "refused, another audit session is beginning, retry later")
+		case err != nil:
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Audit begin", "%s", err)
 		}
 		defer a.AuditRegistry.Stop(q)
 	} else {

@@ -1,6 +1,8 @@
 package auditstate
 
 import (
+	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -11,8 +13,8 @@ import (
 func begin(r *Registry, user string, preempt bool) (chan plog.LogMessage, chan struct{}, Session, bool) {
 	q := make(chan plog.LogMessage)
 	preemptC := make(chan struct{})
-	sess, ok := r.Begin(q, nil, preemptC, user, preempt, nil)
-	return q, preemptC, sess, ok
+	sess, err := r.Begin(context.Background(), q, nil, preemptC, user, preempt, nil)
+	return q, preemptC, sess, err == nil
 }
 
 func TestBeginRefusesASecondSession(t *testing.T) {
@@ -103,10 +105,10 @@ func TestBeginActivatesInOrder(t *testing.T) {
 		mu.Unlock()
 	}
 	q1 := make(chan plog.LogMessage)
-	_, ok := r.Begin(q1, nil, make(chan struct{}), "u1", false, func() {
+	_, err := r.Begin(context.Background(), q1, nil, make(chan struct{}), "u1", false, func() {
 		go func() {
 			defer close(done)
-			r.Begin(make(chan plog.LogMessage), nil, make(chan struct{}), "u2", true, func() {
+			r.Begin(context.Background(), make(chan plog.LogMessage), nil, make(chan struct{}), "u2", true, func() {
 				activated("preempting")
 			})
 		}()
@@ -115,11 +117,58 @@ func TestBeginActivatesInOrder(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		activated("preempted")
 	})
-	if !ok {
+	if err != nil {
 		t.Fatal("the first session is refused")
 	}
 	<-done
 	if len(order) != 2 || order[0] != "preempted" || order[1] != "preempting" {
 		t.Fatalf("activation order %v, want [preempted preempting]", order)
+	}
+}
+
+// TestBeginGivesUp begins a session whose activation does not return, as when
+// the bus does not accept its publication: the next session, preempting or
+// not, gives up when its context is done, rather than wait for ever.
+func TestBeginGivesUp(t *testing.T) {
+	r := &Registry{}
+	activating := make(chan struct{})
+	unblock := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		r.Begin(context.Background(), make(chan plog.LogMessage), nil, make(chan struct{}), "u1", false, func() {
+			close(activating)
+			<-unblock
+		})
+	}()
+	<-activating
+
+	for _, preempt := range []bool{false, true} {
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		_, err := r.Begin(ctx, make(chan plog.LogMessage), nil, make(chan struct{}), "u2", preempt, nil)
+		cancel()
+		if !errors.Is(err, ErrBusy) {
+			t.Fatalf("preempt %v: err %v, want ErrBusy", preempt, err)
+		}
+	}
+
+	// The slot is free again once the activation returns.
+	close(unblock)
+	<-done
+	_, err := r.Begin(context.Background(), make(chan plog.LogMessage), nil, make(chan struct{}), "u2", true, nil)
+	if err != nil {
+		t.Fatalf("a preempting session is refused after the activation returned: %v", err)
+	}
+}
+
+func TestBeginActiveError(t *testing.T) {
+	r := &Registry{}
+	begin(r, "u1", false)
+	sess, err := r.Begin(context.Background(), make(chan plog.LogMessage), nil, make(chan struct{}), "u2", false, nil)
+	if !errors.Is(err, ErrActive) {
+		t.Fatalf("err %v, want ErrActive", err)
+	}
+	if sess.User != "u1" {
+		t.Fatalf("the refusal names the session of %q, want u1", sess.User)
 	}
 }
