@@ -11,6 +11,7 @@ import (
 	"github.com/rivo/tview"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/naming"
 )
 
 // TestSmokeLiveDaemon drives the real application against the daemon of the
@@ -141,6 +142,36 @@ func TestSmokeLiveDaemon(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 		if st := inspect(); st.depth != 1 || st.focus != viewObject {
 			t.Fatalf("back from %s: stack is %s", v, st.stack)
+		}
+	}
+
+	// enter on the path of a service opens its status board, and back out
+	var svcPath string
+	sync(func() {
+		for row := a.firstObjectRow; row < a.objects.GetRowCount(); row++ {
+			text := a.objects.GetCell(row, 0).Text
+			if p, err := naming.ParsePath(text); err == nil && p.Kind == naming.KindSvc {
+				a.objects.Select(row, 0)
+				svcPath = text
+				return
+			}
+		}
+	})
+	if svcPath != "" {
+		key(tcell.KeyEnter)
+		time.Sleep(300 * time.Millisecond)
+		if st := inspect(); st.focus != viewObjectStatus {
+			t.Fatalf("enter on %s: focused on %s", svcPath, st.focus)
+		}
+		if screen := dump(); !strings.Contains(screen, "instance") || !strings.Contains(screen, "monitor") {
+			t.Errorf("the status board of %s is not shown:\n%s", svcPath, screen)
+		} else {
+			t.Logf("status board of %s:\n%s", svcPath, screen)
+		}
+		sync(func() { a.back() })
+		time.Sleep(200 * time.Millisecond)
+		if st := inspect(); st.focus != viewObject {
+			t.Fatalf("back from the status of %s: stack is %s", svcPath, st.stack)
 		}
 	}
 

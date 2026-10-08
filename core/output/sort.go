@@ -152,12 +152,12 @@ func digitRun(s string) (string, string) {
 // An instant is compared as an instant and not as the string it is rendered
 // as: two nodes of one cluster can report the same moment with different utc
 // offsets, and the text of those does not order the way the moments do.
-func valueOf(key sortKey, item any) (sortValue, bool) {
+func valueOf(key sortKey, item *lookupItem) (sortValue, bool) {
 	var v reflect.Value
 	if key.self {
-		v = reflect.ValueOf(item)
+		v = reflect.ValueOf(item.typed)
 	} else {
-		results, err := key.path.FindResults(item)
+		results, err := item.FindResults(key.path)
 		if err != nil {
 			// The item has no such field. Told apart from a field it has and
 			// has nothing in, which is absent rather than unknown.
@@ -274,7 +274,7 @@ func sortDataKeys(data any, keys []sortKey, columns map[string]string, strict bo
 	values := make([][]sortValue, n)
 	known := make([]bool, len(keys))
 	for i := 0; i < n; i++ {
-		item := row(v.Index(i).Interface())
+		item := newLookupItem(row(v.Index(i).Interface()))
 		values[i] = make([]sortValue, len(keys))
 		for j, key := range keys {
 			value, ok := valueOf(key, item)

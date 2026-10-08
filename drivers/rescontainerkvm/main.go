@@ -16,7 +16,6 @@ import (
 
 	"github.com/antchfx/xmlquery"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-version"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -36,6 +35,7 @@ import (
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/ping"
+	"github.com/opensvc/om3/v3/util/versioncmp"
 	"github.com/opensvc/om3/v3/util/waitfor"
 )
 
@@ -106,19 +106,8 @@ func isPartitionsCapable(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	vs := strings.TrimSpace(string(b))
-	v, err := version.NewVersion(vs)
-	if err != nil {
-		return false
-	}
-	constraints, err := version.NewConstraint(">= 1.0.1")
-	if err != nil {
-		return false
-	}
-	if constraints.Check(v) {
-		return true
-	}
-	return false
+	ok, err := versioncmp.AtLeast(string(b), "1.0.1")
+	return err == nil && ok
 }
 
 func isHVMCapable(ctx context.Context) bool {

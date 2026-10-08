@@ -1,7 +1,6 @@
-package omcmd
+package oxcmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -21,9 +20,7 @@ type (
 	// attention.
 	CmdObjectStatus struct {
 		OptsGlobal
-		commoncmd.OptsLock
 		Refresh bool
-		Monitor bool
 	}
 )
 
@@ -38,41 +35,15 @@ func (t *CmdObjectStatus) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	sel := objectselector.New(
-		mergedSelector,
-		objectselector.WithClient(c),
-		objectselector.WithLocal(true),
-	)
-	paths, err := sel.MustExpand()
+	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return fmt.Errorf("expand object selection: %w", err)
 	}
 	pathMap := paths.StrMap()
 
-	// With --refresh, every node evaluates again the status of its
-	// instances, and the board waits for them. Without a daemon to ask the
-	// nodes, the local instance alone is evaluated again.
-	var refreshErr error
-	refresh := t.Refresh
-	if t.Refresh {
-		if clusterStatus, err := getClusterStatus(paths, c); err == nil {
-			ctx, cancel := context.WithTimeout(context.Background(), commoncmd.StatusRefreshTimeout)
-			refreshErr = commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus)
-			cancel()
-			refresh = false
-		}
-	}
-
-	// The instance status command gathers the same dataset: the instances
-	// of every node the daemon knows, or the local instance alone when the
-	// daemon is not running.
-	gather := CmdObjectInstanceStatus{
-		OptsGlobal: t.OptsGlobal,
-		OptsLock:   t.OptsLock,
-		Refresh:    refresh,
-		Monitor:    t.Monitor,
-	}
-	data, err := gather.extract(nil, paths, c)
+	// The instance status command gathers the same dataset from the api.
+	gather := CmdObjectInstanceStatus{OptsGlobal: t.OptsGlobal, Refresh: t.Refresh}
+	data, refreshErr, err := gather.extract(paths, c)
 	if err != nil {
 		return errors.Join(refreshErr, err)
 	}

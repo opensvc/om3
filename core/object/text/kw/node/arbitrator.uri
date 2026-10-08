@@ -4,8 +4,9 @@ split.
 When the uri scheme is http or https, the vote checker is based on a GET
 request, else it is based on a TCP connect.
 
-For backward compatibility, when the port is not specified in a TCP connect
-uri, the 1214 port is implied.
+When the port is not specified in a TCP connect uri, the port of the cluster
+listener is implied: listener.port, 1215 by default. An arbitrator still
+listening on the 1214 port of a v2 agent must name it in the uri.
 
 Arbitrators are tried in sequence, each reachable arbitrator gives a vote.
 

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -331,11 +332,18 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 	return nil
 }
 
-// RefreshInstanceStatusFromClusterStatus updates instance statuses for all nodes using cluster status data.
-// It ensures instance status updates before return.
-// Returns an error if client creation, API calls, or processing fails.
+// StatusRefreshTimeout is how long a command refreshing the instance
+// statuses cluster-wide waits for the nodes to publish them.
+const StatusRefreshTimeout = 30 * time.Second
+
+// RefreshInstanceStatusFromClusterStatus asks every node to evaluate again
+// the status of its instances the cluster status lists, and returns once
+// each node published the status, so the caller reads the fresh ones.
+//
+// The instances are refreshed in parallel, and the error joins the ones of
+// the instances whose status could not be refreshed, a node that did not
+// publish it before ctx is done included.
 func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus clusterdump.Data) error {
-	var wg sync.WaitGroup
 	sessionID := api.SessionID(xsession.SessionID().UUID())
 	params := &api.PostInstanceActionStatusParams{
 		SessionID: &sessionID,
@@ -344,48 +352,55 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 	if err != nil {
 		return err
 	}
-
-	// serialize the WaitInstanceStatusUpdated calls and go wait for its
-	// completion: The WaitInstanceStatusUpdated have to be called before refresh
-	// calls.
+	var (
+		wg   sync.WaitGroup
+		mu   sync.Mutex
+		errs error
+	)
 	for nodename, node := range clusterStatus.Cluster.Node {
 		for ps, inst := range node.Instance {
 			if inst.IsZero() {
 				continue
 			}
-			path, _ := naming.ParsePath(ps)
-
-			// errC must be buffered because of early return if an error occurs
-			// during PostInstanceActionStatusWithResponse
-			errC := make(chan error, 1)
-
-			if err := WaitInstanceStatusUpdated(ctx, c, nodename, path, 0, errC); err != nil {
-				// TODO: accumulate or ignore error ?
-			} else {
-				wg.Add(1)
-				go func(c <-chan error) {
-					_ = <-c
-					wg.Done()
-				}(errC)
-			}
-		}
-	}
-	for nodename, node := range clusterStatus.Cluster.Node {
-		for ps, _ := range node.Instance {
-			path, _ := naming.ParsePath(ps)
-			response, err := c.PostInstanceActionStatusWithResponse(ctx, nodename, path.Namespace, path.Kind, path.Name, params)
+			p, err := naming.ParsePath(ps)
 			if err != nil {
-				return err
+				errs = errors.Join(errs, err)
+				continue
 			}
-			switch response.StatusCode() {
-			case 200:
-			default:
-				return fmt.Errorf("%s: %s: post status refresh: %d", nodename, path, response.StatusCode())
-			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := refreshInstanceStatus(ctx, c, nodename, p, params); err != nil {
+					mu.Lock()
+					errs = errors.Join(errs, err)
+					mu.Unlock()
+				}
+			}()
 		}
 	}
 	wg.Wait()
-	return nil
+	return errs
+}
+
+// refreshInstanceStatus asks the node to evaluate again the status of its
+// instance of p, and returns once the node published it.
+func refreshInstanceStatus(ctx context.Context, c *client.T, nodename string, p naming.Path, params *api.PostInstanceActionStatusParams) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Listen before asking, so the status the node publishes is not missed.
+	errC := make(chan error, 1)
+	if err := WaitInstanceStatusUpdated(ctx, c, nodename, p, 0, errC); err != nil {
+		return fmt.Errorf("%s@%s: wait status refresh: %w", p, nodename, err)
+	}
+	response, err := c.PostInstanceActionStatusWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, params)
+	if err != nil {
+		return fmt.Errorf("%s@%s: post status refresh: %w", p, nodename, err)
+	}
+	if response.StatusCode() != http.StatusOK {
+		return fmt.Errorf("%s@%s: post status refresh: %s", p, nodename, response.Status())
+	}
+	return <-errC
 }
 
 func InstanceStatusUpdatedWaiter(ctx context.Context, paths naming.Paths) (func(), error) {

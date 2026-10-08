@@ -10,10 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/go-version"
-
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/versioncmp"
 )
 
 const (
@@ -52,15 +51,7 @@ func isMpathVersionSufficent(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	minVer, err := version.NewVersion("0.7.8")
-	if err != nil {
-		return false, err
-	}
-	curVer, err := version.NewVersion(v)
-	if err != nil {
-		return false, err
-	}
-	return minVer.LessThanOrEqual(curVer), nil
+	return versioncmp.AtLeast(v, "0.7.8")
 }
 
 func mpathVersion(ctx context.Context) (string, error) {

@@ -34,7 +34,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
 	github.com/gorilla/websocket v1.5.3
-	github.com/hashicorp/go-version v1.9.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
@@ -47,7 +46,6 @@ require (
 	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mlafeldt/sysrq v0.0.0-20171106101645-38dd78d6e663
 	github.com/msoap/byline v1.1.1
 	github.com/ncw/directio v1.0.5
 	github.com/oapi-codegen/oapi-codegen/v2 v2.7.1
@@ -70,7 +68,6 @@ require (
 	github.com/ssrathi/go-attr v1.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/subosito/gotenv v1.6.0
-	github.com/talos-systems/go-smbios v0.1.1
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible

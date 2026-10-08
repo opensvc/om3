@@ -1,0 +1,1165 @@
+// Package statusboard renders the status of an object cluster-wide, for a
+// reader to grasp its issues at a sight: a board of the resources by node,
+// the instance states above it, and below it the notes saying what needs
+// attention.
+//
+// The resources are rows, in the order the actions run them, grouped by
+// subset, and the nodes are columns. A cell holds the status of the resource
+// on the node, the flags departing from the usual, and the marker of the
+// notes about it. What the label of a resource says the same on every node
+// stays in the label column, and what differs, as a node-scoped address,
+// goes on rows of its own under it, "@<node> <value>". The
+// resource logs, long lines that differ per node, are notes the markers
+// point to, so the board keeps its width.
+package statusboard
+
+import (
+	"fmt"
+	"os"
+	"regexp"
+	"slices"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/mattn/go-runewidth"
+	"golang.org/x/term"
+
+	"github.com/opensvc/om3/v3/core/colorstatus"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceset"
+	"github.com/opensvc/om3/v3/core/status"
+)
+
+type (
+	// row is a line of the board: a label part, the cells of the nodes,
+	// and a description.
+	row struct {
+		name  string
+		typ   string
+		cells []string
+		desc  string
+
+		// ident is a row named by an identifier, a resource or a subset,
+		// in bold as the identifiers of the board all are, its path and
+		// its node names included, where the names of its parts are not.
+		ident bool
+
+		// blank is an empty line between the parts of the board.
+		blank bool
+	}
+
+	// note is an entry of the notes: a message about a resource on the
+	// nodes it was logged on, or about the object.
+	note struct {
+		// id is the creation rank of the note, which the cells name it by
+		// until the notes are numbered.
+		id     int
+		marker string
+		level  resource.Level
+		rid    string
+		nodes  []string
+		text   string
+	}
+
+	// noteGroup is the notes saying the same thing at the same level, as
+	// the same message logged by several resources: they share a marker,
+	// and their text is written once, under the heads of them all.
+	noteGroup struct {
+		level resource.Level
+		text  string
+		notes []*note
+	}
+
+	board struct {
+		digest object.Digest
+		groups []*noteGroup
+		nodes  []string
+		states map[string]instance.States
+		rows   []row
+		notes  []*note
+
+		// noteByKey finds the note of a resource message, to give the
+		// nodes logging the same one the same marker.
+		noteByKey map[string]*note
+	}
+)
+
+const (
+	// minName is the narrowest name column: a resource of a subset.
+	minName = "    container#1"
+
+	// infoMax is the number of info notes listed, beyond which they are
+	// counted: the warnings and errors stay on the screen.
+	infoMax = 10
+)
+
+var (
+	regexpANSI = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+	superscripts = []rune("⁰¹²³⁴⁵⁶⁷⁸⁹")
+)
+
+// Render returns the board of the object status, its notes wrapped to width
+// columns, or as wide as they need when width is 0.
+func Render(digest object.Digest, width int) string {
+	t := newBoard(digest)
+	t.load()
+	return t.render(width)
+}
+
+func newBoard(digest object.Digest) *board {
+	t := &board{
+		digest:    digest,
+		states:    digest.Instances.ByNode(),
+		noteByKey: make(map[string]*note),
+	}
+	// The nodes in the order of the object scope, which is the order of
+	// its placement policy reads them in, then the nodes not in the scope
+	// that report an instance anyway.
+	for _, nodename := range digest.Object.Scope {
+		if _, ok := t.states[nodename]; ok {
+			t.nodes = append(t.nodes, nodename)
+		}
+	}
+	others := make([]string, 0)
+	for nodename := range t.states {
+		if !slices.Contains(t.nodes, nodename) {
+			others = append(others, nodename)
+		}
+	}
+	sort.Strings(others)
+	t.nodes = append(t.nodes, others...)
+	return t
+}
+
+func (t *board) load() {
+	t.loadInstanceRows()
+	first := len(t.rows)
+	t.loadResourceRows()
+	if len(t.rows) > first {
+		// The resources are listed under their heading, as the instance
+		// states are under the instance row. An object with no resource
+		// has no heading for them.
+		for i := first; i < len(t.rows); i++ {
+			t.rows[i].name = "  " + t.rows[i].name
+		}
+		heading := []row{{blank: true}, {name: "resources"}}
+		t.rows = append(t.rows[:first], append(heading, t.rows[first:]...)...)
+	}
+	t.loadObjectNotes()
+	t.numberNotes()
+}
+
+// cellsOf returns the cells of a row, one per node, computed by fn for the
+// nodes having an instance, and "·" for the others.
+func (t *board) cellsOf(fn func(instance.States) string) []string {
+	cells := make([]string, len(t.nodes))
+	for i, nodename := range t.nodes {
+		cells[i] = fn(t.states[nodename])
+	}
+	return cells
+}
+
+func (t *board) anyNode(fn func(instance.States) bool) bool {
+	for _, nodename := range t.nodes {
+		if fn(t.states[nodename]) {
+			return true
+		}
+	}
+	return false
+}
+
+// nodesWith returns the nodes whose instance fn says yes about.
+func (t *board) nodesWith(fn func(instance.States) bool) []string {
+	l := make([]string, 0)
+	for _, nodename := range t.nodes {
+		if fn(t.states[nodename]) {
+			l = append(l, nodename)
+		}
+	}
+	return l
+}
+
+func (t *board) loadInstanceRows() {
+	t.rows = append(t.rows, row{name: "instance", desc: t.instanceCount(), cells: t.cellsOf(func(s instance.States) string {
+		return t.statusIcon(s.Status.Avail) + t.instanceMarks(s)
+	})})
+	t.rows = append(t.rows, row{name: "  monitor", cells: t.cellsOf(func(s instance.States) string {
+		switch {
+		case s.Monitor.UpdatedAt.IsZero():
+			return rawconfig.Colorize.Warning("no-monitor")
+		case s.Monitor.State == instance.MonitorStateIdle:
+			return rawconfig.Colorize.Secondary(s.Monitor.State.String())
+		case strings.HasSuffix(s.Monitor.State.String(), "failed"):
+			return rawconfig.Colorize.Error(s.Monitor.State.String())
+		default:
+			return rawconfig.Colorize.Primary(s.Monitor.State.String())
+		}
+	})})
+	if t.anyNode(hasExpect) {
+		t.rows = append(t.rows, row{name: "  expect", cells: t.cellsOf(func(s instance.States) string {
+			l := make([]string, 0)
+			if isGlobalExpect(s.Monitor.GlobalExpect) {
+				l = append(l, ">"+s.Monitor.GlobalExpect.String())
+			}
+			if isLocalExpect(s.Monitor.LocalExpect) {
+				l = append(l, s.Monitor.LocalExpect.String())
+			}
+			if len(l) == 0 {
+				return rawconfig.Colorize.Secondary("·")
+			}
+			return strings.Join(l, " ")
+		})})
+	}
+	if t.anyNode(func(s instance.States) bool {
+		return isActor(s) && (s.Status.Provisioned == provisioned.False || s.Status.Provisioned == provisioned.Mixed)
+	}) {
+		t.rows = append(t.rows, row{name: "  provisioned", cells: t.cellsOf(func(s instance.States) string {
+			v := s.Status.Provisioned
+			switch v {
+			case provisioned.True:
+				return rawconfig.Colorize.Secondary(v.String())
+			case provisioned.NotApplicable:
+				return rawconfig.Colorize.Secondary(v.String())
+			default:
+				return rawconfig.Colorize.Error(v.String())
+			}
+		})})
+	}
+	if t.anyNode(func(s instance.States) bool { return s.Monitor.OrchestrationID != uuid.Nil }) {
+		t.rows = append(t.rows, row{name: "  orchestration", cells: t.cellsOf(func(s instance.States) string {
+			if s.Monitor.OrchestrationID == uuid.Nil {
+				return rawconfig.Colorize.Secondary("·")
+			}
+			return s.Monitor.OrchestrationID.String()[:8]
+		})})
+	}
+}
+
+// statusIcon is a status of an instance or a resource as the om mon icon
+// says it: O up, X down, o standby up, x standby down, ! warn, / n/a, ?
+// undefined. A down or a standby up is gray where the object runs as many
+// instances as it expects, as on a node of a failover object running
+// elsewhere, which is no issue, even with more instances up than allowed,
+// which a note says, and red where it misses instances.
+func (t *board) statusIcon(st status.T) string {
+	issue := func(icon string) string {
+		if t.hasExpectedInstances() {
+			return rawconfig.Colorize.Secondary(icon)
+		}
+		return rawconfig.Colorize.Error(icon)
+	}
+	switch st {
+	case status.Up, status.StandbyUpWithUp:
+		return rawconfig.Colorize.Optimal("O")
+	case status.Down:
+		return issue("X")
+	case status.StandbyUp, status.StandbyUpWithDown:
+		return issue("o")
+	case status.StandbyDown:
+		return rawconfig.Colorize.Error("x")
+	case status.Warn:
+		return rawconfig.Colorize.Warning("!")
+	case status.NotApplicable:
+		return rawconfig.Colorize.Secondary("/")
+	case status.Undef:
+		return rawconfig.Colorize.Error("?")
+	default:
+		return st.String()
+	}
+}
+
+// instanceMarks is the marks om mon puts after the icon of an instance, in
+// its order: "!" when its overall status is warn, "R" when a resource run is
+// in progress, "L" when a copy breaches its recovery point objective, "#" on
+// a drp node, "^" on the one the placement prefers, its ha leader, the one to
+// keep running as of instances up in excess, gray, and red when the object
+// does not run where the placement prefers, "*" when frozen, "=" when stopped
+// on purpose, and "P" when not provisioned.
+func (t *board) instanceMarks(s instance.States) string {
+	marks := ""
+	if s.Status.Overall == status.Warn {
+		marks += rawconfig.Colorize.Warning("!")
+	}
+	running := len(s.Status.Running) > 0
+	for _, encap := range s.Status.Encap {
+		running = running || len(encap.Running) > 0
+	}
+	if running {
+		// The blue om mon has its running mark in.
+		marks += rawconfig.Colorize.Frozen("R")
+	}
+	if tm := s.Status.RPOBreachedAt; !tm.IsZero() && time.Now().After(tm) {
+		marks += rawconfig.Colorize.Error("L")
+	}
+	if s.Config.ActorConfig != nil && s.Config.ActorConfig.DRP {
+		marks += rawconfig.Colorize.Secondary("#")
+	}
+	if s.Monitor.IsHALeader {
+		if obj := t.digest.Object.ActorStatus; obj != nil && obj.PlacementState == placement.NonOptimal {
+			marks += rawconfig.Colorize.Error("^")
+		} else {
+			marks += rawconfig.Colorize.Secondary("^")
+		}
+	}
+	if s.Status.IsFrozen() {
+		marks += rawconfig.Colorize.Frozen("*")
+	}
+	if s.Status.IsStopped() {
+		marks += rawconfig.Colorize.Secondary("=")
+	}
+	if s.Status.Provisioned == provisioned.False || s.Status.Provisioned == provisioned.Mixed {
+		marks += rawconfig.Colorize.Error("P")
+	}
+	return marks
+}
+
+// hasExpectedInstances says whether the object has as many instances up as
+// it expects, the one of a failover or its flex target, or one at least when
+// it expects no number.
+func (t *board) hasExpectedInstances() bool {
+	obj := t.digest.Object.ActorStatus
+	if obj == nil {
+		return false
+	}
+	return obj.UpInstancesCount >= max(1, obj.ExpectedInstances())
+}
+
+func isActor(s instance.States) bool {
+	return s.Config.ActorConfig != nil
+}
+
+func isGlobalExpect(v instance.MonitorGlobalExpect) bool {
+	return v != instance.MonitorGlobalExpectNone && v != instance.MonitorGlobalExpectInit
+}
+
+func isLocalExpect(v instance.MonitorLocalExpect) bool {
+	return v != instance.MonitorLocalExpectNone && v != instance.MonitorLocalExpectInit
+}
+
+func hasExpect(s instance.States) bool {
+	return isGlobalExpect(s.Monitor.GlobalExpect) || isLocalExpect(s.Monitor.LocalExpect)
+}
+
+// resourceOrder returns the resources of the object in the order the
+// actions run them, from the instance knowing the most of them, followed by
+// the ones only other instances know.
+func (t *board) resourceOrder() []resource.Status {
+	var ref []resource.Status
+	for _, nodename := range t.nodes {
+		s := t.states[nodename]
+		if l := s.Status.SortedResources(); len(l) > len(ref) {
+			ref = l
+		}
+	}
+	seen := make(map[string]bool)
+	for _, r := range ref {
+		seen[r.ResourceID.Name] = true
+	}
+	for _, nodename := range t.nodes {
+		s := t.states[nodename]
+		for _, r := range s.Status.SortedResources() {
+			if !seen[r.ResourceID.Name] {
+				seen[r.ResourceID.Name] = true
+				ref = append(ref, r)
+			}
+		}
+	}
+	return ref
+}
+
+func (t *board) loadResourceRows() {
+	order := t.resourceOrder()
+	lastSubset := ""
+	for _, r := range order {
+		rid := r.ResourceID.Name
+		prefix := ""
+		subset := r.Subset
+		if subset != "" {
+			name := resourceset.T{Name: subset, DriverGroup: r.ResourceID.DriverGroup()}.String()
+			if name != lastSubset {
+				t.loadSubsetRow(name)
+			}
+			lastSubset = name
+			// The resources of a subset are indented under its row.
+			prefix = "  "
+		} else {
+			lastSubset = ""
+		}
+		t.loadResourceRow(prefix, rid, r.Type, func(s instance.States) (resource.Status, bool) {
+			rs, ok := s.Status.Resources[rid]
+			return rs, ok
+		}, func(s instance.States, rs resource.Status) string {
+			return flags(rid, s, rs)
+		})
+		if r.ResourceID.DriverGroup().String() == "container" {
+			t.loadEncapRows(rid)
+		}
+	}
+}
+
+// loadSubsetRow adds the row of a subset, marked "//" when its resources
+// run in parallel, its resources listed under it.
+func (t *board) loadSubsetRow(name string) {
+	parallel := ""
+	for _, nodename := range t.nodes {
+		s := t.states[nodename]
+		if isActor(s) {
+			if cfg, ok := s.Config.Subsets[name]; ok && cfg.Parallel {
+				parallel = "//"
+			}
+		}
+	}
+	t.rows = append(t.rows, row{
+		name:  name,
+		ident: true,
+		cells: make([]string, len(t.nodes)),
+		desc:  parallel,
+	})
+}
+
+// loadEncapRows adds the rows of the resources run inside a container, as
+// its encapsulated agent reports them.
+func (t *board) loadEncapRows(container string) {
+	order := make([]resource.Status, 0)
+	seen := make(map[string]bool)
+	for _, nodename := range t.nodes {
+		s := t.states[nodename]
+		encap, ok := s.Status.Encap[container]
+		if !ok {
+			continue
+		}
+		for _, r := range encap.SortedResources() {
+			if !seen[r.ResourceID.Name] {
+				seen[r.ResourceID.Name] = true
+				order = append(order, r)
+			}
+		}
+	}
+	for _, r := range order {
+		rid := r.ResourceID.Name
+		// The resources a container runs are indented under its row.
+		prefix := "  "
+		t.loadResourceRow(prefix, rid, r.Type, func(s instance.States) (resource.Status, bool) {
+			encap, ok := s.Status.Encap[container]
+			if !ok {
+				return resource.Status{}, false
+			}
+			rs, ok := encap.Resources[rid]
+			return rs, ok
+		}, func(s instance.States, rs resource.Status) string {
+			return flags(rid, s, rs)
+		})
+	}
+}
+
+// loadResourceRow adds the row of a resource, and the rows of the parts of
+// its label too long for the cells.
+func (t *board) loadResourceRow(prefix, rid, typ string, get func(instance.States) (resource.Status, bool), flagsOf func(instance.States, resource.Status) string) {
+	labels := make(map[string]string)
+	for _, nodename := range t.nodes {
+		if rs, ok := get(t.states[nodename]); ok {
+			labels[nodename] = rs.Label
+		}
+	}
+	common, varying := splitLabels(t.nodes, labels)
+	if _, short, ok := strings.Cut(typ, "."); ok {
+		typ = short
+	}
+	common = strings.TrimSpace(strings.TrimPrefix(common, typ))
+	cells := t.cellsOf(func(s instance.States) string {
+		rs, ok := get(s)
+		if !ok {
+			return rawconfig.Colorize.Secondary("·")
+		}
+		st := t.statusIcon(rs.Status)
+		markers := make([]string, 0)
+		for _, e := range rs.Log {
+			markers = append(markers, t.noteOf(rid, s.Node.Name, e).placeholder())
+		}
+		if tm := rs.RPOBreachedAt; !tm.IsZero() && time.Now().After(tm) {
+			// The copy is older than its contract allows: this node
+			// taking over now would lose more data than its max delay.
+			msg := fmt.Sprintf("rpo breached since %s: the copy here is older than the max delay of the resource allows, and taking over here would lose more data",
+				tm.Local().Truncate(time.Second).Format(time.RFC3339))
+			if tm.Unix() == 0 {
+				// The time a sync driver says a copy never received
+				// breaches at.
+				msg = "rpo breached: no copy was ever received here, and taking over here would lose all the data"
+			}
+			e := resource.StatusLogEntry{Level: resource.ErrorLevel, Message: msg}
+			markers = append(markers, t.noteOf(rid, s.Node.Name, e).placeholder())
+		}
+		return joinCell(st, flagsOf(s, rs), uniq(markers))
+	})
+	t.rows = append(t.rows, row{name: prefix + rid, typ: typ, cells: cells, desc: common, ident: true})
+	// The parts of the label differing by node, one row per distinct
+	// value, naming the nodes having it.
+	byValue := make(map[string][]string)
+	values := make([]string, 0)
+	for _, nodename := range t.nodes {
+		v, ok := varying[nodename]
+		if !ok || v == "" {
+			continue
+		}
+		// A device the label joins to its mount point with a "@", the
+		// mount point shared, stands alone on its row.
+		v = strings.TrimSuffix(v, "@")
+		if _, ok := byValue[v]; !ok {
+			values = append(values, v)
+		}
+		byValue[v] = append(byValue[v], nodename)
+	}
+	// In the description column, the nodes as a scoped keyword names
+	// them, "@<node>", then their value.
+	for _, v := range values {
+		scopes := make([]string, len(byValue[v]))
+		for i, nodename := range byValue[v] {
+			scopes[i] = "@" + nodename
+		}
+		t.rows = append(t.rows, row{desc: strings.Join(scopes, " ") + " " + v, cells: make([]string, len(t.nodes))})
+	}
+}
+
+// words cuts a label in words: at the spaces, and after a "@", which joins
+// a device to its mount point, so the part the nodes share, as the mount
+// point, is told from the part they do not, as the device. A word ending
+// with "@" is glued to the next one when the words are joined back.
+func words(label string) []string {
+	l := make([]string, 0)
+	for _, w := range strings.Fields(label) {
+		for {
+			i := strings.Index(w, "@")
+			if i < 0 || i == len(w)-1 {
+				break
+			}
+			l = append(l, w[:i+1])
+			w = w[i+1:]
+		}
+		l = append(l, w)
+	}
+	return l
+}
+
+func joinWords(l []string) string {
+	var b strings.Builder
+	for i, w := range l {
+		if i > 0 && !strings.HasSuffix(l[i-1], "@") {
+			b.WriteString(" ")
+		}
+		b.WriteString(w)
+	}
+	return b.String()
+}
+
+// splitLabels returns the words of the labels the nodes share, in the order
+// of the first label, and by node the words of its label the others do not
+// all have.
+func splitLabels(nodes []string, labels map[string]string) (string, map[string]string) {
+	varying := make(map[string]string)
+	if len(labels) == 0 {
+		return "", varying
+	}
+	byNode := make(map[string][]string)
+	var ref []string
+	for _, nodename := range nodes {
+		l, ok := labels[nodename]
+		if !ok {
+			continue
+		}
+		byNode[nodename] = words(l)
+		if ref == nil {
+			ref = byNode[nodename]
+		}
+	}
+	isCommon := func(w string) bool {
+		for _, l := range byNode {
+			if !slices.Contains(l, w) {
+				return false
+			}
+		}
+		return true
+	}
+	common := make([]string, 0)
+	for _, w := range ref {
+		if isCommon(w) {
+			common = append(common, w)
+		}
+	}
+	for nodename, l := range byNode {
+		own := make([]string, 0)
+		for _, w := range l {
+			if !isCommon(w) {
+				own = append(own, w)
+			}
+		}
+		varying[nodename] = joinWords(own)
+	}
+	return joinWords(common), varying
+}
+
+// flags returns the flags of a resource on a node departing from the usual:
+// R running, M monitored, D disabled, O optional, E encap, P not
+// provisioned, S standby, and the restarts remaining, + for 10 or more, or X
+// stopped on purpose, in the order the instance status flags have them.
+func flags(rid string, s instance.States, rs resource.Status) string {
+	l := make([]string, 0)
+	if s.Status.Running.Has(rid) {
+		l = append(l, "R")
+	}
+	if rs.IsMonitored {
+		l = append(l, "M")
+	}
+	if rs.IsDisabled {
+		l = append(l, "D")
+	}
+	if rs.IsOptional {
+		l = append(l, "O")
+	}
+	if rs.IsEncap {
+		l = append(l, "E")
+	}
+	if rs.IsProvisioned.State == provisioned.False {
+		l = append(l, rawconfig.Colorize.Error("P"))
+	}
+	if rs.IsStandby {
+		l = append(l, "S")
+	}
+	if isActor(s) {
+		restart := 0
+		if rcfg := s.Config.Resources.Get(rid); rcfg != nil {
+			restart = rcfg.Restart
+		}
+		remaining := 0
+		if rmon := s.Monitor.Resources.Get(rid); rmon != nil && rmon.Restart != nil {
+			remaining = rmon.Restart.Remaining
+		}
+		// As the instance status flags say it: X stopped, the restarts
+		// remaining, + for 10 or more, and nothing without restarts.
+		if f := rs.RestartFlag(restart, remaining); f != "." {
+			l = append(l, f)
+		}
+	}
+	return strings.Join(l, "")
+}
+
+func joinCell(st, flags string, markers []string) string {
+	s := st
+	if flags != "" {
+		s += " " + flags
+	}
+	if len(markers) > 0 {
+		s += " " + strings.Join(markers, "")
+	}
+	return s
+}
+
+func uniq(l []string) []string {
+	out := make([]string, 0, len(l))
+	for _, s := range l {
+		if !slices.Contains(out, s) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// noteOf returns the note of a message a resource logged on a node, the one
+// of the same message logged on another node if any.
+func (t *board) noteOf(rid, nodename string, e resource.StatusLogEntry) *note {
+	key := rid + "\x00" + string(e.Level) + "\x00" + e.Message
+	n, ok := t.noteByKey[key]
+	if !ok {
+		n = &note{id: len(t.notes), level: e.Level, rid: rid, text: e.Message}
+		t.noteByKey[key] = n
+		t.notes = append(t.notes, n)
+	}
+	if !slices.Contains(n.nodes, nodename) {
+		n.nodes = append(n.nodes, nodename)
+	}
+	return n
+}
+
+// loadObjectNotes adds the notes about the object and its instances, which
+// no resource marker points to.
+func (t *board) loadObjectNotes() {
+	add := func(level resource.Level, subject string, nodes []string, text string) {
+		t.notes = append(t.notes, &note{id: len(t.notes), level: level, rid: subject, nodes: nodes, text: text})
+	}
+	if obj := t.digest.Object.ActorStatus; obj.ExcessInstances() > 0 {
+		up := t.nodesWith(func(s instance.States) bool { return s.Status.Avail == status.Up })
+		add(resource.ErrorLevel, "instances", up, fmt.Sprintf(
+			"%d instances up, %s allows %d: the shared resources may be written by several nodes at once. Stop the instances in excess.",
+			obj.UpInstancesCount, obj.Topology, obj.AllowedInstances()))
+	}
+	if obj := t.digest.Object.ActorStatus; obj != nil {
+		if obj.PlacementState == placement.NonOptimal {
+			// The natural leaders, the ones the placement policy puts
+			// first, which the daemon judges the placement against.
+			leaders := t.nodesWith(func(s instance.States) bool { return s.Monitor.IsLeader })
+			text := "non-optimal: the instances are not running on the nodes the placement policy prefers"
+			if len(leaders) > 0 {
+				text = fmt.Sprintf("non-optimal: the placement policy prefers %s", strings.Join(leaders, " "))
+			}
+			add(resource.WarnLevel, "placement", nil, text)
+		}
+	}
+	// An overall status in warn no resource note explains, as a resource
+	// in warn logging nothing: a note says it, for the issue mark to point
+	// to one.
+	// An object in warn with no instance in warn is so by the aggregation of
+	// its instances, as too many up, which a note of its own says.
+	if obj := t.digest.Object.ActorStatus; obj != nil && obj.Overall == status.Warn && !t.hasResourceIssueNote() {
+		if l := t.nodesWith(func(s instance.States) bool { return s.Status.Overall == status.Warn }); len(l) > 0 {
+			add(resource.WarnLevel, "overall", l, "resources are in warn")
+		}
+	}
+	if !t.digest.IsCompat {
+		add(resource.ErrorLevel, "agents", nil, "the nodes run incompatible agent versions")
+	}
+	if l := t.nodesWith(func(s instance.States) bool { return s.Monitor.UpdatedAt.IsZero() }); len(l) > 0 {
+		add(resource.WarnLevel, "monitor", l, "no instance monitor: the daemon is down, or has not started monitoring the instance")
+	}
+	if l := t.nodesWith(func(s instance.States) bool { return strings.HasSuffix(s.Monitor.State.String(), "failed") }); len(l) > 0 {
+		for _, nodename := range l {
+			add(resource.ErrorLevel, "monitor", []string{nodename}, fmt.Sprintf("%s: the orchestration gave up, clear the instance to retry", t.states[nodename].Monitor.State))
+		}
+	}
+	if l := t.nodesWith(func(s instance.States) bool { return s.Status.IsFrozen() }); len(l) > 0 {
+		add(resource.InfoLevel, "frozen", l, "the daemon takes no initiative on the instance")
+	}
+	if l := t.nodesWith(func(s instance.States) bool { return !s.Node.FrozenAt.IsZero() }); len(l) > 0 {
+		add(resource.InfoLevel, "node frozen", l, "the daemon takes no initiative on the instances of the node")
+	}
+	if l := t.nodesWith(func(s instance.States) bool { return s.Status.IsStopped() }); len(l) > 0 {
+		add(resource.InfoLevel, "stopped", l, "stopped on purpose: the daemon does not start it back")
+	}
+	if l := t.nodesWith(func(s instance.States) bool {
+		return isActor(s) && (s.Status.Provisioned == provisioned.False || s.Status.Provisioned == provisioned.Mixed)
+	}); len(l) > 0 {
+		add(resource.ErrorLevel, "provisioned", l, "the instance is not provisioned, or partly")
+	}
+}
+
+// hasResourceIssueNote says whether a resource logged a warning or an
+// error.
+func (t *board) hasResourceIssueNote() bool {
+	for _, n := range t.noteByKey {
+		if n.level == resource.ErrorLevel || n.level == resource.WarnLevel {
+			return true
+		}
+	}
+	return false
+}
+
+// numberNotes orders the notes by level, errors first, and gives the markers
+// to the notes of the resources.
+func (t *board) numberNotes() {
+	rank := map[resource.Level]int{resource.ErrorLevel: 0, resource.WarnLevel: 1, resource.InfoLevel: 2}
+	sort.SliceStable(t.notes, func(i, j int) bool {
+		return rank[t.notes[i].level] < rank[t.notes[j].level]
+	})
+	byText := make(map[string]*noteGroup)
+	t.groups = make([]*noteGroup, 0, len(t.notes))
+	for _, n := range t.notes {
+		key := string(n.level) + "\x00" + n.text
+		g, ok := byText[key]
+		if !ok {
+			g = &noteGroup{level: n.level, text: n.text}
+			byText[key] = g
+			t.groups = append(t.groups, g)
+		}
+		g.notes = append(g.notes, n)
+	}
+	// A group with a resource note gets a marker, which the cells of its
+	// resources show.
+	i := 0
+	for _, g := range t.groups {
+		marked := false
+		for _, n := range g.notes {
+			if _, ok := t.noteByKey[n.rid+"\x00"+string(n.level)+"\x00"+n.text]; ok {
+				marked = true
+			}
+		}
+		if !marked {
+			continue
+		}
+		i++
+		for _, n := range g.notes {
+			n.marker = superscript(i)
+		}
+	}
+	// The markers were taken when the cells were made, before the notes
+	// were numbered: put the numbers in the cells now.
+	for ri := range t.rows {
+		for ci := range t.rows[ri].cells {
+			t.rows[ri].cells[ci] = t.renumber(t.rows[ri].cells[ci])
+		}
+	}
+}
+
+// placeholder names the note in a cell until the notes are numbered.
+func (n *note) placeholder() string {
+	return fmt.Sprintf("\x01%d\x02", n.id)
+}
+
+var regexpPlaceholders = regexp.MustCompile("(?:\x01[0-9]+\x02)+")
+
+var regexpPlaceholder = regexp.MustCompile("\x01([0-9]+)\x02")
+
+// renumber replaces the note placeholders of a cell by their markers, in the
+// order of their numbers, each colored by the level of its note.
+func (t *board) renumber(cell string) string {
+	byID := make(map[int]*note, len(t.notes))
+	rank := make(map[*note]int, len(t.notes))
+	for i, n := range t.notes {
+		byID[n.id] = n
+		rank[n] = i
+	}
+	return regexpPlaceholders.ReplaceAllStringFunc(cell, func(run string) string {
+		l := make([]*note, 0)
+		for _, m := range regexpPlaceholder.FindAllStringSubmatch(run, -1) {
+			var id int
+			_, _ = fmt.Sscanf(m[1], "%d", &id)
+			if n, ok := byID[id]; ok && n.marker != "" {
+				l = append(l, n)
+			}
+		}
+		sort.SliceStable(l, func(i, j int) bool { return rank[l[i]] < rank[l[j]] })
+		out := ""
+		for _, n := range l {
+			switch n.level {
+			case resource.ErrorLevel:
+				out += rawconfig.Colorize.Error(n.marker)
+			case resource.WarnLevel:
+				out += rawconfig.Colorize.Warning(n.marker)
+			default:
+				out += rawconfig.Colorize.Secondary(n.marker)
+			}
+		}
+		return out
+	})
+}
+
+func superscript(n int) string {
+	s := ""
+	for _, c := range fmt.Sprint(n) {
+		s += string(superscripts[c-'0'])
+	}
+	return s
+}
+
+func (t *board) render(width int) string {
+	var b strings.Builder
+
+	// The widths of the columns: the name, a column per node, the type.
+	// The name column is as wide as a resource of a subset at least, so the
+	// boards of different objects start their columns alike.
+	nameW, typW := runewidth.StringWidth(minName), 0
+	nodeW := make([]int, len(t.nodes))
+	for i, nodename := range t.nodes {
+		nodeW[i] = visibleWidth(t.nodeHeader(nodename))
+	}
+	for _, r := range t.rows {
+		nameW = max(nameW, runewidth.StringWidth(r.name))
+		typW = max(typW, runewidth.StringWidth(r.typ))
+		for i, c := range r.cells {
+			nodeW[i] = max(nodeW[i], visibleWidth(c))
+		}
+	}
+	// The rows are indented by 2, as the fields of the head are.
+	const indent = 2
+	descStart := indent + nameW + 2 + typW + 2
+	for _, w := range nodeW {
+		descStart += w + 2
+	}
+
+	// The second column of the head, its values, starts where the first
+	// node column does.
+	col := indent + nameW + 2
+	header := t.headerLines(col)
+	headerW := 0
+	for _, l := range header {
+		headerW = max(headerW, visibleWidth(l))
+	}
+	if width <= 0 {
+		width = max(headerW, descStart+20)
+	}
+
+	for _, l := range header {
+		b.WriteString(l + "\n")
+	}
+	b.WriteString("\n")
+
+	pad := func(s string, w int) string {
+		return s + strings.Repeat(" ", max(0, w-visibleWidth(s)))
+	}
+	// The columns: the name, a column per node, the type of the
+	// resource, and its description.
+	line := func(name, typ string, cells []string, desc string) {
+		s := strings.Repeat(" ", indent) + pad(name, nameW) + "  "
+		for i := range nodeW {
+			c := ""
+			if i < len(cells) {
+				c = cells[i]
+			}
+			s += pad(c, nodeW[i]) + "  "
+		}
+		s += pad(typ, typW) + "  " + desc
+		b.WriteString(strings.TrimRight(s, " ") + "\n")
+	}
+	nodeHeaders := make([]string, len(t.nodes))
+	for i, nodename := range t.nodes {
+		nodeHeaders[i] = t.nodeHeader(nodename)
+	}
+	line("", "", nodeHeaders, "")
+	for _, r := range t.rows {
+		if r.blank {
+			b.WriteString("\n")
+			continue
+		}
+		name := r.name
+		if r.ident {
+			indent := len(name) - len(strings.TrimLeft(name, " "))
+			name = name[:indent] + rawconfig.Colorize.Bold(name[indent:])
+		}
+		line(name, r.typ, r.cells, r.desc)
+	}
+	if len(t.notes) > 0 {
+		b.WriteString("\n notes\n")
+		b.WriteString(t.renderNotes(width))
+	}
+	return b.String()
+}
+
+// headerLines is the head of the board: the path and the policies of the
+// object, then its avail and overall statuses, and the states of the object
+// worth saying, as its instances provisioned or frozen alike or not.
+func (t *board) headerLines(col int) []string {
+	d := t.digest
+	first := []string{rawconfig.Colorize.Bold(d.Path.String())}
+	obj := d.Object.ActorStatus
+	if obj == nil {
+		return first
+	}
+	facts := make([]string, 0)
+	if s := obj.Topology.String(); s != "" {
+		facts = append(facts, s)
+	}
+	if obj.Orchestrate != "" {
+		facts = append(facts, obj.Orchestrate)
+	}
+	if s := obj.PlacementPolicy.String(); s != "" {
+		facts = append(facts, s)
+	}
+	if len(facts) > 0 {
+		first = append(first, rawconfig.Colorize.Secondary(strings.Join(facts, " · ")))
+	}
+	lines := []string{strings.Join(first, "   ")}
+	field := func(name, value string) {
+		lines = append(lines, "  "+name+strings.Repeat(" ", max(1, col-2-len(name)))+value)
+	}
+	field("avail", colorstatus.Sprint(obj.Avail, rawconfig.Colorize))
+	field("overall", colorstatus.Sprint(obj.Overall, rawconfig.Colorize))
+	states := make([]string, 0)
+	switch obj.Provisioned {
+	case provisioned.False:
+		states = append(states, rawconfig.Colorize.Error("not-provisioned"))
+	case provisioned.Mixed:
+		states = append(states, rawconfig.Colorize.Error("mixed-provisioned"))
+	}
+	switch d.Object.Frozen {
+	case "frozen":
+		states = append(states, rawconfig.Colorize.Frozen("frozen"))
+	case "mixed":
+		states = append(states, rawconfig.Colorize.Frozen("mixed-frozen"))
+	}
+	if obj.PlacementState == placement.NonOptimal {
+		states = append(states, rawconfig.Colorize.Warning("non-optimal-placement"))
+	}
+	if !d.IsCompat {
+		states = append(states, rawconfig.Colorize.Error("incompatible-versions"))
+	}
+	if len(states) > 0 {
+		field("state", strings.Join(states, ", "))
+	}
+	return lines
+}
+
+// instanceCount is the instances up over the ones expected, as om mon counts
+// them, red when beyond what the topology allows, and the instances up alone
+// when no number is expected, as of a flex with no target.
+func (t *board) instanceCount() string {
+	obj := t.digest.Object.ActorStatus
+	if obj == nil || obj.Avail == status.NotApplicable {
+		return ""
+	}
+	count := fmt.Sprintf("%d/%d", obj.UpInstancesCount, obj.ExpectedInstances())
+	if obj.ExpectedInstances() == 0 {
+		count = fmt.Sprint(obj.UpInstancesCount)
+	}
+	if obj.ExcessInstances() > 0 {
+		count = rawconfig.Colorize.Error(count)
+	}
+	return count
+}
+
+// nodeHeader is the header of the column of a node: its name, followed by
+// "*" when the node is frozen, as om mon marks it.
+func (t *board) nodeHeader(nodename string) string {
+	h := rawconfig.Colorize.Bold(nodename)
+	if s, ok := t.states[nodename]; ok && !s.Node.FrozenAt.IsZero() {
+		h += rawconfig.Colorize.Frozen("*")
+	}
+	return h
+}
+
+func (t *board) renderNotes(width int) string {
+	var b strings.Builder
+	infos := 0
+	for _, g := range t.groups {
+		if g.level == resource.InfoLevel {
+			infos++
+		}
+	}
+	listedInfos := 0
+	for _, g := range t.groups {
+		if g.level == resource.InfoLevel {
+			if infos > infoMax && listedInfos >= infoMax {
+				continue
+			}
+			listedInfos++
+		}
+		// The level is written out, the color only adding to it: a
+		// board read without colors, as piped or with --color=no, still
+		// tells an error from a warning.
+		var mark string
+		switch g.level {
+		case resource.ErrorLevel:
+			mark = rawconfig.Colorize.Error("error")
+		case resource.WarnLevel:
+			mark = rawconfig.Colorize.Warning("warn ")
+		default:
+			mark = rawconfig.Colorize.Secondary("info ")
+		}
+		// A head per note of the group, the marker on the first, then
+		// the text they share.
+		for i, n := range g.notes {
+			// The first head of an entry starts with its marker, or a
+			// dot for a note no cell points to, so each entry stands
+			// out from the heads a shared note lists under its first.
+			marker := ""
+			if i == 0 {
+				marker = n.marker
+				if marker == "" {
+					marker = "·"
+				}
+			}
+			head := fmt.Sprintf(" %-3s%s %s", marker, mark, rawconfig.Colorize.Bold(n.rid))
+			nodes := ""
+			switch {
+			case len(n.nodes) == 0:
+			case len(n.nodes) == len(t.nodes) && len(t.nodes) > 1:
+				nodes = "all"
+			default:
+				nodes = strings.Join(n.nodes, " ")
+			}
+			if nodes != "" {
+				head += "   " + nodes
+			}
+			b.WriteString(head + "\n")
+		}
+		// Wrapped, then colored line by line: a color opened on one
+		// line and closed on another does not survive every terminal.
+		for _, l := range wrap(g.text, width-7) {
+			if g.level == resource.InfoLevel {
+				l = rawconfig.Colorize.Secondary(l)
+			}
+			b.WriteString("       " + l + "\n")
+		}
+	}
+	if infos > infoMax {
+		fmt.Fprintf(&b, " %s\n", rawconfig.Colorize.Secondary(fmt.Sprintf("· %d more info notes: see -o json, or instance status", infos-infoMax)))
+	}
+	return b.String()
+}
+
+// wrap cuts the text in lines no wider than width, at the spaces, keeping
+// the line breaks the text has. A word wider than width is not cut.
+func wrap(text string, width int) []string {
+	if width < 20 {
+		width = 20
+	}
+	lines := make([]string, 0)
+	for _, paragraph := range strings.Split(text, "\n") {
+		current := ""
+		for _, w := range strings.Fields(paragraph) {
+			switch {
+			case current == "":
+				current = w
+			case visibleWidth(current)+1+visibleWidth(w) > width:
+				lines = append(lines, current)
+				current = w
+			default:
+				current += " " + w
+			}
+		}
+		lines = append(lines, current)
+	}
+	return lines
+}
+
+func visibleWidth(s string) int {
+	return runewidth.StringWidth(regexpANSI.ReplaceAllString(s, ""))
+}
+
+// documentSeparator is the line between the renderings of several objects.
+const documentSeparator = "---"
+
+// JoinDocuments joins the renderings of several objects, as their boards or
+// their instance status trees, with a "---" line between each, set apart by
+// empty lines.
+func JoinDocuments(l []string) string {
+	for i := range l {
+		l[i] = strings.TrimRight(l[i], "\n") + "\n"
+	}
+	return strings.Join(l, "\n"+documentSeparator+"\n\n")
+}
+
+// RenderTerminalList returns the boards of the objects, separated by a
+// "---" line, as RenderTerminal renders each of them.
+func RenderTerminalList(digests []object.Digest) string {
+	l := make([]string, len(digests))
+	for i, d := range digests {
+		l[i] = RenderTerminal(d)
+	}
+	return JoinDocuments(l)
+}
+
+// RenderTerminal returns the board as wide as the terminal attached to the
+// standard output, or the COLUMNS environment variable says, as wide as it
+// needs otherwise.
+func RenderTerminal(digest object.Digest) string {
+	return Render(digest, outputColumns())
+}
+
+func outputColumns() int {
+	fd := int(os.Stdout.Fd())
+	if term.IsTerminal(fd) {
+		if c, _, err := term.GetSize(fd); err == nil && c > 0 {
+			return c - 1
+		}
+	}
+	if c, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && c > 0 {
+		return c - 1
+	}
+	return 0
+}

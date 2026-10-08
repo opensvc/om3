@@ -33,6 +33,8 @@ func (t *App) initObjectsTable() {
 			t.nav(viewInstance)
 		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
 			t.nav(viewKeys)
+		case !t.viewPath.IsZero() && t.viewNode == "" && (t.viewPath.Kind == naming.KindSvc || t.viewPath.Kind == naming.KindVol):
+			t.nav(viewObjectStatus)
 		case row == 0 && col == 1:
 			t.nav(viewContext)
 		case row == 1 && col == 1:

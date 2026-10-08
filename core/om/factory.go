@@ -4004,17 +4004,53 @@ func newCmdObjectInstanceStartStandby(kind string) *cobra.Command {
 func newCmdObjectStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectStatus
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "status",
-		Hidden:  true,
 		Aliases: []string{"stat", "st"},
-		Long:    "Internal, for use by the daemon scheduler. This command is silent. Only the exitcode holds information. The exitcode is set to the instance avail status.",
+		Short:   "show the object status cluster-wide",
+		Long: `Show a board of the resources of the object by node, the instance states
+above it, and below it the notes saying what needs attention.
+
+The resources come in the order the actions run them, grouped by subset, a
+subset marked // when its resources run in parallel. A cell holds the status
+of a resource on a node as the om mon icon says it, its flags departing from
+the usual, and the markers of the notes about it.
+
+Status icons, of the instances and the resources:
+
+  O  up                  X  down              o  standby up
+  x  standby down        !  warn              /  n/a
+  ?  undefined
+
+A down or a standby up is gray where the object runs the instances it
+expects, and red where it misses some. An instance icon is followed by the om
+mon marks: ! when its overall is warn, R when a resource runs, L when a copy
+breaches its rpo, # on a drp node, ^ on its ha leader, the instance the
+daemon starts on its own, red when the placement is not optimal, * when
+frozen, = when stopped, and P when not provisioned. A node name is followed
+by * when the node is frozen.
+
+Resource flags:
+
+  R  running             M  monitored         D  disabled
+  O  optional            E  encap             P  not provisioned
+  S  standby             X  stopped           n  restarts remaining, + if 10 or more
+
+With --refresh, every node evaluates again the status of its instances
+first, and the board waits for them to show the fresh ones. A node not
+answering within 30s has its last known status shown, and the command
+fails after the board. Without a daemon, the local instance alone is
+evaluated again. With --monitor, the local instance is evaluated again.
+
+The exit code is 0 whatever the status shown, and non-zero only when the
+command fails to get the status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagRefresh(flags, &options.Refresh)
 	addFlagMonitor(flags, &options.Monitor)
 	cmd.MarkFlagsMutuallyExclusive("refresh", "monitor")

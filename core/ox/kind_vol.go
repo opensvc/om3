@@ -31,6 +31,7 @@ func init() {
 		commoncmd.NewGroupSubsystems(),
 	)
 	cmdObject.AddCommand(
+		newCmdObjectStatus(kind),
 		cmdObjectCollector,
 		cmdObjectConfig,
 		newCmdObjectFS(kind),

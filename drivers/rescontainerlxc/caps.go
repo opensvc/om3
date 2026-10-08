@@ -2,12 +2,10 @@ package rescontainerlxc
 
 import (
 	"context"
-	"strings"
-
-	"github.com/hashicorp/go-version"
 
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/versioncmp"
 )
 
 func init() {
@@ -28,16 +26,7 @@ func capabilitiesScanner(ctx context.Context) ([]string, error) {
 		return l, nil
 	}
 	l = append(l, drvCap)
-	vs := strings.TrimSpace(string(b))
-	v, err := version.NewVersion(vs)
-	if err != nil {
-		return l, nil
-	}
-	constraints, err := version.NewConstraint("> 2.1")
-	if err != nil {
-		return l, nil
-	}
-	if constraints.Check(v) {
+	if newer, err := versioncmp.Newer(string(b), "2.1"); err == nil && newer {
 		l = append(l, drvCap+".cgroup_dir")
 	}
 	return l, nil

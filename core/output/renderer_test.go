@@ -121,3 +121,50 @@ func TestTabHeaders(t *testing.T) {
 	// nothing at all.
 	assert.Equal(t, "NAME  KIND  \na           \nbbb         \n", s)
 }
+
+type (
+	tabEmbedded struct {
+		Avail string `json:"avail"`
+	}
+
+	tabOther struct {
+		Size int `json:"size"`
+	}
+
+	tabStatus struct {
+		Name string `json:"name"`
+		*tabEmbedded
+		*tabOther
+	}
+
+	tabDigest struct {
+		Path   string    `json:"path"`
+		Object tabStatus `json:"object"`
+	}
+)
+
+func TestTabRendersEmbeddedPointerFields(t *testing.T) {
+	// The fields an embedded pointer to a struct promotes are at the top
+	// of the json object, as the avail of an object status: the jsonpath
+	// does not resolve them on the typed value, and the json form of the
+	// row has them.
+	items := []tabDigest{
+		{Path: "svc1", Object: tabStatus{Name: "a", tabEmbedded: &tabEmbedded{Avail: "up"}}},
+		{Path: "vol1", Object: tabStatus{Name: "b", tabOther: &tabOther{Size: 3}}},
+	}
+	assert.Equal(t, "up\n-\n", sprintTab(t, items, "{.object.avail}"))
+	assert.Equal(t, "-\n3\n", sprintTab(t, items, "{.object.size}"))
+	assert.Equal(t, "svc1  up  \nvol1  -   \n", sprintTab(t, items, "{.path},{.object.avail}"))
+	assert.Equal(t, "missing\n-\n-\n", sprintTab(t, items, "missing:{.object.nothing}"))
+
+	t.Run("a sort key", func(t *testing.T) {
+		l := []tabDigest{
+			{Path: "svc1", Object: tabStatus{tabEmbedded: &tabEmbedded{Avail: "up"}}},
+			{Path: "svc2", Object: tabStatus{tabEmbedded: &tabEmbedded{Avail: "down"}}},
+		}
+		r := Renderer{Output: "tab={.path}", Data: l, Sort: "{.object.avail}"}
+		s, err := r.Sprint()
+		require.NoError(t, err)
+		assert.Equal(t, "svc2\nsvc1\n", s)
+	})
+}
