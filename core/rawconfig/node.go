@@ -63,9 +63,9 @@ func Load(env map[string]string) {
 
 	var colors string
 	if s, ok := os.LookupEnv("OSVC_COLORS"); ok {
-		root = s
+		colors = s
 	} else if env != nil {
-		root = env["OSVC_COLORS"]
+		colors = env["OSVC_COLORS"]
 	}
 	setColors(colors)
 
