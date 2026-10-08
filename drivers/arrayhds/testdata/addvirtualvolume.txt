@@ -1,0 +1,17 @@
+RESPONSE:
+An instance of StorageArray
+    objectID=ARRAY.HUSVM.210945
+    name=HUS VM@10.0.0.10
+    serialNumber=210945
+    List of 1 ArrayGroup elements:
+        An instance of ArrayGroup
+            objectID=ARRAYGROUP.HUSVM.210945.52.1
+            chassis=52
+            number=1
+            List of 1 Lu elements:
+                An instance of LogicalUnit
+                    objectID=LU.HUSVM.210945.4660
+                    devNum=4660
+                    displayName=00:12:34
+                    capacityInKB=10,485,760
+                    dpPoolID=1

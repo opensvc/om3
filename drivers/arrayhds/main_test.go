@@ -2,6 +2,8 @@ package arrayhds
 
 import (
 	"bytes"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,7 +58,7 @@ func TestActionsBuildATree(t *testing.T) {
 	}{
 		{" add disk", []string{"name", "pool", "size", "mappings"}},
 		{" add map", []string{"devnum", "mappings", "lun"}},
-		{" resize disk", []string{"devnum", "size"}},
+		{" resize disk", []string{"devnum", "size", "truncate"}},
 		{" del disk", []string{"devnum"}},
 	} {
 		got := make(map[string]bool)
@@ -80,9 +82,9 @@ func TestReportsAreTheV2Sections(t *testing.T) {
 }
 
 // TestToDevnumReadsEveryWayADeviceIsNamed is the conversion three of the four
-// collector commands depend on: the collector names a device
-// "<serial>.<culd>", a host names it by its wwid, and the array writes it with
-// colons. The manager wants a decimal number.
+// collector commands depend on: the collector names a device by the display
+// name "add disk" answered, a host names it by its wwid, and the array writes
+// it with colons. The manager wants a decimal number.
 func TestToDevnumReadsEveryWayADeviceIsNamed(t *testing.T) {
 	cases := []struct {
 		in       string
@@ -92,29 +94,41 @@ func TestToDevnumReadsEveryWayADeviceIsNamed(t *testing.T) {
 		{"00:00:64", "100"},
 		{"00:64", "100"},
 		{"01:23:45", "74565"},
-
-		// The collector inventory, "<serial>.<culd>".
-		{"210945.0064", "100"},
-		{"210945.00FF", "255"},
-
-		// A wwid, of either length, whose last four characters are the device.
-		{"60060e80132b3f0050402b3f00000064", "100"},
-		{"360060e80132b3f0050402b3f00000064", "100"},
+		{"00:12:34", "4660"},
+		{"00:00:c8", "200"},
 
 		// A number already.
 		{"100", "100"},
 		{"0", "0"},
 	}
 	for _, tc := range cases {
-		assert.Equalf(t, tc.expected, toDevnum(tc.in), "toDevnum(%q)", tc.in)
+		got, err := toDevnum(tc.in)
+		require.NoErrorf(t, err, "toDevnum(%q)", tc.in)
+		assert.Equalf(t, tc.expected, got, "toDevnum(%q)", tc.in)
 	}
 }
 
-// TestToDevnumLeavesAloneWhatItCannotRead keeps a value it does not recognise
-// rather than turning it into a device that exists.
-func TestToDevnumLeavesAloneWhatItCannotRead(t *testing.T) {
-	for _, s := range []string{"", "not:hex", "x.y", "abc"} {
-		assert.Equalf(t, s, toDevnum(s), "toDevnum(%q)", s)
+// TestToDevnumRefusesWhatItCannotRead pins that a value it does not read is
+// an error, as v2 raised one, rather than passed to the manager: a device
+// number misread is another volume deleted or resized.
+func TestToDevnumRefusesWhatItCannotRead(t *testing.T) {
+	for _, s := range []string{
+		"",
+		"abc",
+		"not:hex",
+		"0:1:2",                            // groups of one digit read as another device
+		"00:00:00:64",                      // four groups
+		"00:0g",                            // not hexadecimal
+		"0064",                             // hexadecimal on the array, decimal for the manager
+		"-1",                               // not a number
+		"60060e80132b3f0050402b3f0000006z", // a wwid that is not hexadecimal
+		"x.y",                              // a disk id is resolved through the array
+		"60060e80132b3f0050402b3f00000064", // a wwid is resolved through the array
+		"360060e80132b3f0050402b3f00000064",
+		"210945.4660",
+	} {
+		_, err := toDevnum(s)
+		assert.Errorf(t, err, "toDevnum(%q)", s)
 	}
 }
 
@@ -168,9 +182,9 @@ func TestParseReadsNothingFromNothing(t *testing.T) {
 	assert.Empty(t, parse("RESPONSE:\n"))
 }
 
-// TestDevNumOfAnswerFindsTheDeviceAtAnyDepth pins how a creation is read: the
+// TestCreatedVolumeFindsTheDeviceAtAnyDepth pins how a creation is read: the
 // manager answers with the device nested under the group it was carved from.
-func TestDevNumOfAnswerFindsTheDeviceAtAnyDepth(t *testing.T) {
+func TestCreatedVolumeFindsTheDeviceAtAnyDepth(t *testing.T) {
 	out := `RESPONSE:
 An instance of ArrayGroup
     objectID=ARRAYGROUP.210945.1
@@ -178,13 +192,57 @@ An instance of ArrayGroup
         An instance of Lu
             devNum=100
             displayName=00:00:64`
-	devNum, err := devNumOfAnswer(out)
+	devNum, displayName, err := createdVolume(out)
 	require.NoError(t, err)
 	assert.Equal(t, "100", devNum)
+	assert.Equal(t, "00:00:64", displayName)
+}
 
-	// An answer naming no device is an error, not an empty device.
-	_, err = devNumOfAnswer("RESPONSE:\nAn instance of ArrayGroup\n    objectID=x")
-	assert.Error(t, err)
+// TestCreatedVolumeRefusesAnAmbiguousAnswer pins that the volume the rest of
+// "add disk" acts on, and that the collector is told about, is never guessed.
+func TestCreatedVolumeRefusesAnAmbiguousAnswer(t *testing.T) {
+	for name, out := range map[string]string{
+		"no device": "RESPONSE:\nAn instance of ArrayGroup\n    objectID=x",
+		"two devices": `RESPONSE:
+An instance of ArrayGroup
+    List of 2 Lu elements
+        An instance of Lu
+            devNum=100
+            displayName=00:00:64
+        An instance of Lu
+            devNum=101
+            displayName=00:00:65`,
+		"no display name": `RESPONSE:
+An instance of Lu
+    devNum=100`,
+		// The collector names the volume by its display name to resize and
+		// delete it, so one that reads back to another device is refused.
+		"display name of another device": `RESPONSE:
+An instance of Lu
+    devNum=100
+    displayName=00:00:65`,
+		"display name with no colon": `RESPONSE:
+An instance of Lu
+    devNum=100
+    displayName=0064`,
+		"device number not a number": `RESPONSE:
+An instance of Lu
+    devNum=0x64
+    displayName=00:00:64`,
+	} {
+		_, _, err := createdVolume(out)
+		assert.Errorf(t, err, "%s: %s", name, out)
+	}
+}
+
+// TestParseKeepsNamesAsText pins that a display name is not read as a number,
+// which would drop its leading zeros.
+func TestParseKeepsNamesAsText(t *testing.T) {
+	data := parse("RESPONSE:\nAn instance of Lu\n    devNum=100\n    displayName=0064\n    label=007")
+	require.Len(t, data, 1)
+	assert.Equal(t, "0064", data[0]["displayName"])
+	assert.Equal(t, "007", data[0]["label"])
+	assert.Equal(t, int64(100), data[0]["devNum"])
 }
 
 // TestModelAndSerialAreReadFromTheName pins that the array is scoped the way
@@ -202,20 +260,28 @@ func TestModelAndSerialAreReadFromTheName(t *testing.T) {
 	assert.Equal(t, "210945", b.serial())
 }
 
-// TestSizeKBIsWhatTheManagerReads pins the unit the manager is told a capacity
-// in.
-func TestSizeKBIsWhatTheManagerReads(t *testing.T) {
-	for _, tc := range []struct{ in, expected string }{
-		{"1g", "1048576"},
-		{"100mib", "102400"},
-		{"1024", "1"},
+// TestToKBRefusesWhatIsNotAWholeKB pins that a size is never rounded down to
+// a volume smaller than asked for.
+func TestToKBRefusesWhatIsNotAWholeKB(t *testing.T) {
+	for _, tc := range []struct {
+		in       string
+		expected int64
+	}{
+		{"1g", 1048576},
+		{"10GB", 10485760},
+		{"100mib", 102400},
+		{"1024", 1},
 	} {
-		got, err := sizeKB(tc.in)
-		require.NoErrorf(t, err, "sizeKB(%q)", tc.in)
-		assert.Equalf(t, tc.expected, got, "sizeKB(%q)", tc.in)
+		size, err := array.ParseSize(tc.in)
+		require.NoErrorf(t, err, "ParseSize(%q)", tc.in)
+		got, err := toKB(size.Bytes)
+		require.NoErrorf(t, err, "toKB(%q)", tc.in)
+		assert.Equalf(t, tc.expected, got, "toKB(%q)", tc.in)
 	}
-	_, err := sizeKB("not a size")
-	assert.Error(t, err)
+	for _, b := range []int64{0, -1024, 1000, 1025} {
+		_, err := toKB(b)
+		assert.Errorf(t, err, "toKB(%d)", b)
+	}
 }
 
 // TestNormalizedWWNMatchesHowTheArrayStoresOne pins that a name written with
@@ -231,4 +297,40 @@ func TestFreeLUNIsTheLowestNoneOfTheDomainsHandsOut(t *testing.T) {
 	assert.Equal(t, 0, freeLUN(map[int]bool{}))
 	assert.Equal(t, 2, freeLUN(map[int]bool{0: true, 1: true}))
 	assert.Equal(t, 1, freeLUN(map[int]bool{0: true, 2: true}))
+}
+
+// TestParseSkipsWhatComesBeforeTheAnswer pins that a line before the
+// "RESPONSE:" one, as a blank line or a warning, does not hide the answer.
+func TestParseSkipsWhatComesBeforeTheAnswer(t *testing.T) {
+	b, err := os.ReadFile("testdata/addvirtualvolume.txt")
+	require.NoError(t, err)
+	for _, head := range []string{"", "\n", "KAIC12345-W A warning.\n\n"} {
+		devNum, displayName, err := createdVolume(head + string(b))
+		require.NoErrorf(t, err, "%q", head)
+		assert.Equal(t, "4660", devNum)
+		assert.Equal(t, "00:12:34", displayName)
+	}
+}
+
+// TestCreatedVolumeTellsVolumesByDeviceNumber pins that an instance nested
+// in the volume naming its device number again is not a second volume,
+// while a second device number is.
+func TestCreatedVolumeTellsVolumesByDeviceNumber(t *testing.T) {
+	b, err := os.ReadFile("testdata/addvirtualvolume.txt")
+	require.NoError(t, err)
+	nested := strings.Replace(string(b), "                    dpPoolID=1", `                    dpPoolID=1
+                    List of 1 LDEV elements:
+                        An instance of LDEV
+                            devNum=4660
+                            displayName=00:12:34`, 1)
+	devNum, displayName, err := createdVolume(nested)
+	require.NoError(t, err)
+	assert.Equal(t, "4660", devNum)
+	assert.Equal(t, "00:12:34", displayName)
+
+	other := strings.Replace(nested, `                            devNum=4660
+                            displayName=00:12:34`, `                            devNum=4661
+                            displayName=00:12:35`, 1)
+	_, _, err = createdVolume(other)
+	require.ErrorContains(t, err, "names 2 volumes")
 }

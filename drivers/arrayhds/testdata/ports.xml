@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized, not captured from an array: the elements and attributes are
+  the ones v2 (drivers/array/hds.py) and the collector read. The envelope is
+  deeper than the other fixtures' on purpose: the elements are read at any
+  depth, as v2 reads them.
+-->
+<HiCommandServerMessage>
+  <Response>
+    <ResultList>
+      <Wrapper>
+        <StorageArray objectID="ARRAY.HUSVM.210945" serialNumber="210945">
+          <Port objectID="PORT.HUSVM.210945.0" portID="0" portType="Fibre" displayName="CL1-A" worldWidePortName="50.06.0E.80.07.C3.75.00"/>
+          <Port objectID="PORT.HUSVM.210945.16" portID="16" portType="Fibre" displayName="CL2-A" worldWidePortName="50.06.0E.80.07.C3.75.10"/>
+        </StorageArray>
+      </Wrapper>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>

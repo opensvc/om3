@@ -1,0 +1,5 @@
+RESPONSE:
+An instance of ObjectLabel
+    objectID=OBJECTLABEL.HUSVM.210945.4660
+    targetID=LDEV.HUSVM.210945.4660
+    label=svc1_disk0
