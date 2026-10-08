@@ -4927,6 +4927,23 @@ func NewCmdContextLogout() *cobra.Command {
 	return cmd
 }
 
+func NewCmdContextWhoAmI() *cobra.Command {
+	var options commands.CmdContextWhoAmI
+	cmd := &cobra.Command{
+		Use:   "whoami",
+		Short: "show the user the cluster of the context authenticates, and their grants",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(cmd)
+		},
+	}
+	flags := cmd.Flags()
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
+	flags.StringVar(&options.Context, "context", "", "The context to ask, instead of the one OSVC_CONTEXT names")
+	return cmd
+}
+
 func NewCmdContextShow() *cobra.Command {
 	var options commands.CmdContextShow
 
