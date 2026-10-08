@@ -54,14 +54,20 @@ func (t *Manager) orchestrateAfterAction(state, newState instance.MonitorState) 
 	t.cmdC <- cmdOrchestrate{state: state, newState: newState}
 }
 
+// runnerLabel names an action of the instance in the logs of the runner, as
+// "svc1: start".
+func (t *Manager) runnerLabel(what string) string {
+	return t.path.String() + ": " + what
+}
+
 func (t *Manager) queueBoot() error {
-	return runner.Run(t.instConfig.Priority, func() error {
+	return runner.Run(t.instConfig.Priority, t.runnerLabel("boot"), func() error {
 		return t.crmBoot()
 	})
 }
 
 func (t *Manager) queueFreeze() error {
-	return runner.Run(t.instConfig.Priority, func() error {
+	return runner.Run(t.instConfig.Priority, t.runnerLabel("freeze"), func() error {
 		return t.crmFreeze()
 	})
 }
@@ -74,7 +80,7 @@ func (t *Manager) runStatus(prio priority.T) error {
 		t.pubStatelessInstanceStatus()
 		return nil
 	}
-	return runner.Run(prio, func() error {
+	return runner.Run(prio, t.runnerLabel("status"), func() error {
 		return t.crmStatus()
 	})
 
@@ -110,19 +116,19 @@ func (t *Manager) requestStatusRefresh(prio priority.T) {
 }
 
 func (t *Manager) queueResourceStartStandby(rids []string) error {
-	return runner.Run(t.instConfig.Priority, func() error {
+	return runner.Run(t.instConfig.Priority, t.runnerLabel("startstandby "+strings.Join(rids, ",")), func() error {
 		return t.crmResourceStartStandby(rids)
 	})
 }
 
 func (t *Manager) queueResourceStart(rids []string) error {
-	return runner.Run(t.instConfig.Priority, func() error {
+	return runner.Run(t.instConfig.Priority, t.runnerLabel("start "+strings.Join(rids, ",")), func() error {
 		return t.crmResourceStart(rids)
 	})
 }
 
 func (t *Manager) queueUnfreeze() error {
-	return runner.Run(t.instConfig.Priority, func() error {
+	return runner.Run(t.instConfig.Priority, t.runnerLabel("unfreeze"), func() error {
 		return t.crmUnfreeze()
 	})
 }

@@ -21,6 +21,13 @@ type (
 		f        func() error
 		priority priority.T
 		errC     chan error
+
+		// label names the action in the logs, as "svc1: start".
+		label string
+
+		// queuedAt is when the item was queued behind the max running
+		// actions, zero when a slot was free.
+		queuedAt time.Time
 	}
 
 	T struct {
@@ -73,7 +80,10 @@ func (t *T) run() {
 		}
 		item := i.(Item)
 		t.running.Add(1)
-		//t.log.Tracef("priority run dequeue from p%d: %d running %d waiting", item.priority, running, t.queue.Len())
+		if !item.queuedAt.IsZero() {
+			t.log.Infof("%s: runs after waiting %s (%d running, %d waiting)",
+				item.label, time.Since(item.queuedAt).Round(time.Millisecond), running+1, t.queue.Len())
+		}
 		go func() {
 			imStarted <- true
 			err := item.f()
@@ -136,6 +146,14 @@ func (t *T) do(ctx context.Context) {
 			}
 		case item := <-t.stage:
 			// serialize pushes
+			if running := t.running.Load(); int(running)+t.queue.Len() >= t.maxRunning {
+				// The max running actions are reached, counting the ones
+				// queued for the free slots: the item waits for one of them
+				// to end, which is max_parallel at work.
+				item.queuedAt = time.Now()
+				t.log.Infof("%s: queued behind %d running (max %d), %d waiting",
+					item.label, running, t.maxRunning, t.queue.Len()+1)
+			}
 			t.queue.Push(item)
 		case <-ticker.C:
 			t.run()
@@ -194,18 +212,23 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Enqueue(p priority.T, errC chan error, f func() error) {
+// Enqueue queues f, the action label names in the logs, to run when one of
+// the max running slots is free, by priority.
+func (t *T) Enqueue(p priority.T, label string, errC chan error, f func() error) {
 	item := Item{
 		f:        f,
 		priority: p,
 		errC:     errC,
+		label:    label,
 	}
 	t.stage <- item
 }
 
-func (t *T) Run(p priority.T, f func() error) error {
+// Run runs f, the action label names in the logs, when one of the max
+// running slots is free, by priority, and returns its error.
+func (t *T) Run(p priority.T, label string, f func() error) error {
 	errC := make(chan error)
-	t.Enqueue(p, errC, f)
+	t.Enqueue(p, label, errC, f)
 	return <-errC
 }
 
@@ -232,12 +255,12 @@ func Start(ctx context.Context) error {
 	return def.Start(ctx)
 }
 
-func Run(p priority.T, f func() error) error {
-	return def.Run(p, f)
+func Run(p priority.T, label string, f func() error) error {
+	return def.Run(p, label, f)
 }
 
-func Enqueue(p priority.T, errC chan error, f func() error) {
-	def.Enqueue(p, errC, f)
+func Enqueue(p priority.T, label string, errC chan error, f func() error) {
+	def.Enqueue(p, label, errC, f)
 }
 
 func SetMaxRunning(n int) {

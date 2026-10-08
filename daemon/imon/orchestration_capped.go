@@ -41,7 +41,7 @@ func (t *Manager) cappedFromIdle() {
 		t.transitionTo(instance.MonitorStateCapSuccess)
 		return
 	}
-	_ = runner.Run(t.instConfig.Priority, func() error {
+	_ = runner.Run(t.instConfig.Priority, t.runnerLabel("cap"), func() error {
 		t.transitionTo(instance.MonitorStateCapProgress)
 		next := instance.MonitorStateCapSuccess
 		if err := t.crmPGUpdate(); err != nil {
