@@ -33,9 +33,10 @@ func NewStatus() Status {
 }
 
 // GetStatus returns the usage of the network. The usage counts are always
-// set: a network whose range does not parse, such as a network declared with
-// a type that reads no range, has a zero size and says why in its errors,
-// rather than leaving its readers a nil count to dereference.
+// set, rather than leaving its readers a nil count to dereference: a network
+// whose range does not parse has a zero size and says why in its errors, and
+// a network whose driver allows no range, as the loopback one, has a zero
+// size and no error, as IsValid accepts it.
 func GetStatus(t Networker, ips clusterip.L) Status {
 	data := NewStatus()
 	data.Type = t.Type()
@@ -44,6 +45,9 @@ func GetStatus(t Networker, ips clusterip.L) Status {
 	data.Usage.Used = big.NewInt(0)
 	data.Usage.Size = big.NewInt(0)
 	data.Usage.Free = big.NewInt(0)
+	if data.Network == "" && t.AllowEmptyNetwork() {
+		return data
+	}
 	ipn, err := t.IPNet()
 	if err != nil {
 		data.Errors = append(data.Errors, fmt.Sprintf("invalid network %q: %s", data.Network, err))

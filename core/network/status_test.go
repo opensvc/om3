@@ -22,20 +22,36 @@ func TestGetStatusOfAValidNetwork(t *testing.T) {
 	assert.Empty(t, s.Errors)
 }
 
-// A network whose range does not parse, as one declared with a type that
-// reads no range, used to leave its counts nil, and the API handler
-// dereferencing them panicked for every network listing.
-func TestGetStatusOfANetworkWithoutRange(t *testing.T) {
+// A network whose range does not parse used to leave its counts nil, and the
+// API handler dereferencing them panicked for every network listing.
+func TestGetStatusOfANetworkWithAMalformedRange(t *testing.T) {
 	nw := &T{}
 	nw.SetName("broken")
-	nw.SetDriver("lo")
-	nw.SetNetwork("")
+	nw.SetDriver("bridge")
+	nw.SetNetwork("10.99.0.0/99")
 	s := GetStatus(nw, clusterip.L{})
 	if assert.NotNil(t, s.Size) && assert.NotNil(t, s.Used) && assert.NotNil(t, s.Free) {
 		assert.Equal(t, "0", s.Size.String())
 		assert.Equal(t, "0", s.Free.String())
 	}
 	assert.Len(t, s.Errors, 1)
+}
+
+// A network whose driver allows no range, as the loopback one, is valid: it
+// has zero counts and no error.
+func TestGetStatusOfANetworkAllowedNoRange(t *testing.T) {
+	nw := &T{}
+	nw.SetName("lo2")
+	nw.SetDriver("lo")
+	nw.SetAllowEmptyNetwork(true)
+	nw.SetNetwork("")
+	s := GetStatus(nw, clusterip.L{})
+	if assert.NotNil(t, s.Size) && assert.NotNil(t, s.Used) && assert.NotNil(t, s.Free) {
+		assert.Equal(t, "0", s.Size.String())
+		assert.Equal(t, "0", s.Used.String())
+	}
+	assert.Empty(t, s.Errors)
+	assert.True(t, IsValid(nw), "GetStatus and IsValid agree")
 }
 
 func TestGetStatusWithoutAddresses(t *testing.T) {
