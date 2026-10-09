@@ -75,6 +75,13 @@ type (
 		// in between finds it here, on the node that granted it.
 		former map[string]Lock
 
+		// released is the ids of the locks this node was told were released,
+		// until the longest lease any of them could have ends. A rebuild
+		// reads the nodes while the word of a release is still on its way to
+		// some of them, and one that has not heard of it yet still reports
+		// the lock: skipping the ids released keeps it from coming back.
+		released map[string]time.Time
+
 		// changed is closed, and replaced, whenever a lock is released or
 		// the table is dropped, which wakes the requests waiting.
 		changed chan struct{}
@@ -125,10 +132,11 @@ func (t ErrHeld) Error() string {
 // NewTable returns an empty table, not rebuilt.
 func NewTable() *Table {
 	return &Table{
-		locks:   make(map[string]Lock),
-		former:  make(map[string]Lock),
-		changed: make(chan struct{}),
-		now:     time.Now,
+		locks:    make(map[string]Lock),
+		former:   make(map[string]Lock),
+		released: make(map[string]time.Time),
+		changed:  make(chan struct{}),
+		now:      time.Now,
 	}
 }
 
@@ -187,8 +195,12 @@ func (t *Table) Rebuild(generation uint64, locks []Lock) ([]Lock, bool) {
 	now := t.now()
 	t.locks = make(map[string]Lock, len(locks))
 	conflicts := make([]Lock, 0)
+	t.pruneReleased(now)
 	for _, lock := range locks {
 		if !lock.ExpiresAt.After(now) {
+			continue
+		}
+		if _, ok := t.released[lock.ID]; ok {
 			continue
 		}
 		if kept, ok := t.locks[lock.Name]; ok && kept.ID != lock.ID {
@@ -291,6 +303,7 @@ func (t *Table) Release(name, id string) (Lock, bool) {
 	if !ok || held.ID != id {
 		return Lock{}, false
 	}
+	t.released[id] = t.now().Add(MaxLease)
 	delete(t.locks, name)
 	t.wake()
 	return held, true
@@ -321,13 +334,32 @@ func (t *Table) Granted() []Lock {
 	return l
 }
 
-// Forget drops a lock released from another node than the one holding it
-// from the locks this node granted before its table was dropped.
+// Forget says a lock was released: it is dropped from the locks this node
+// granted before its table was dropped, from its table, where a rebuild may
+// have brought it back from a node that had not heard of the release yet,
+// and its id is kept from the rebuilds to come.
 func (t *Table) Forget(name, id string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	now := t.now()
+	t.pruneReleased(now)
+	t.released[id] = now.Add(MaxLease)
 	if lock, ok := t.former[name]; ok && lock.ID == id {
 		delete(t.former, name)
+	}
+	if lock, ok := t.locks[name]; ok && lock.ID == id {
+		delete(t.locks, name)
+		t.wake()
+	}
+}
+
+// pruneReleased forgets the ids released whose lease has ended for sure. The
+// caller holds t.mu.
+func (t *Table) pruneReleased(now time.Time) {
+	for id, until := range t.released {
+		if !until.After(now) {
+			delete(t.released, id)
+		}
 	}
 }
 

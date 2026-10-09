@@ -205,3 +205,36 @@ func TestGrantedOutlivesTheDrop(t *testing.T) {
 	table.Forget("c", other.ID)
 	assert.Empty(t, table.Granted())
 }
+
+// A release reaches the nodes one after the other, and a rebuild may read a
+// node that has not heard of it yet. Forget clears the lock from the table
+// such a rebuild filled, and keeps its id from the rebuilds that follow.
+func TestForgetBeatsARebuildFromAStaleNode(t *testing.T) {
+	now := time.Now()
+	stale := Lock{Name: "a", ID: "1", Node: "n2", ExpiresAt: now.Add(time.Minute)}
+
+	// The rebuild read the stale record before the release reached here.
+	table := NewTable()
+	table.Rebuild(table.Generation(), []Lock{stale})
+	require.Len(t, table.List(), 1)
+	table.Forget("a", "1")
+	assert.Empty(t, table.List(), "the active lock is cleared")
+	_, err := table.Acquire(context.Background(), Request{Name: "a"})
+	assert.NoError(t, err, "and the lock is free again")
+
+	// The release reached here before the rebuild read the stale record.
+	table = NewTable()
+	table.Forget("a", "1")
+	table.Rebuild(table.Generation(), []Lock{stale})
+	assert.Empty(t, table.List(), "a released id is not rebuilt")
+
+	// A release on this table keeps the id from its next rebuild too.
+	table = rebuiltTable()
+	lock, err := table.Acquire(context.Background(), Request{Name: "b"})
+	require.NoError(t, err)
+	_, ok := table.Release("b", lock.ID)
+	require.True(t, ok)
+	table.Drop()
+	table.Rebuild(table.Generation(), []Lock{lock})
+	assert.Empty(t, table.List())
+}
