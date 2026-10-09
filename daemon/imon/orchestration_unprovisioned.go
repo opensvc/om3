@@ -17,12 +17,30 @@ func (t *Manager) orchestrateUnprovisioned() {
 		t.UnprovisionedFromWaitNonLeader()
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
-	case instance.MonitorStateUnprovisionSuccess,
-		instance.MonitorStateUnprovisionFailure:
-		if t.unprovisionedClearIfReached() {
-			return
-		}
+	case instance.MonitorStateUnprovisionSuccess:
+		t.unprovisionedClearIfReached()
+	case instance.MonitorStateUnprovisionFailure:
+		t.unprovisionedFromUnprovisionFailed()
 	}
+}
+
+// unprovisionedFromUnprovisionFailed ends the orchestration on the local
+// instance when its unprovision failed and left it provisioned: a failed
+// action is not retried, so nothing is left to run it, and the instances
+// done with theirs would otherwise wait for this one forever. The failure
+// lingers, so an operator can see what failed, as a purge failure does.
+//
+// An unprovision that failed and left the instance unprovisioned all the
+// same has reached the state asked for, which the reached check says first.
+func (t *Manager) unprovisionedFromUnprovisionFailed() {
+	if t.unprovisionedClearIfReached() {
+		return
+	}
+	if t.state.OrchestrationIsDone {
+		return
+	}
+	t.loggerWithState().Infof("local instance unprovision failed -> set done")
+	t.done()
 }
 
 func (t *Manager) UnprovisionedFromIdle() {
