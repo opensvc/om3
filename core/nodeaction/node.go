@@ -274,8 +274,9 @@ func (t T) DoAsync() error {
 		b      []byte
 
 		// orchestrationID is what the daemon accepted the action as, and
-		// what a wait waits for.
+		// what a wait waits for, on the node that accepted it.
 		orchestrationID uuid.UUID
+		acceptedBy      string
 
 		orchestrationQueued api.OrchestrationQueued
 	)
@@ -378,6 +379,9 @@ func (t T) DoAsync() error {
 			err = errors.New("orchestration rejected")
 		} else {
 			orchestrationID = orchestrationQueued.OrchestrationID
+			if orchestrationQueued.Node != nil {
+				acceptedBy = *orchestrationQueued.Node
+			}
 			result.OrchestrationID = orchestrationID
 			result.Status = "accepted"
 		}
@@ -407,7 +411,7 @@ func (t T) DoAsync() error {
 			}
 			defer orchestrationLogs.Stop()
 		}
-		return actionrouter.WaitOrchestration(ctx, c, orchestrationID)
+		return actionrouter.WaitOrchestration(ctx, c, orchestrationID, acceptedBy)
 	}
 
 	return err

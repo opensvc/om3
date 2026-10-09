@@ -84,7 +84,7 @@ func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node stri
 			o.Expect = value.GlobalExpect.String()
 		}
 		session.AddOrchestrationIfUnknown(o)
-		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID, Node: &node})
 	}
 	switch {
 	case err == nil:

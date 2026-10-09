@@ -8638,6 +8638,12 @@ components:
           type: string
           format: uuid
           x-go-name: OrchestrationID
+        node:
+          description: |
+            the node that accepted the orchestration, which answers for it
+            from the moment it hands the id out, while the other nodes hear
+            of it a heartbeat later
+          type: string
       required:
         - orchestration_id
 

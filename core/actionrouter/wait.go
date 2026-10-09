@@ -28,27 +28,32 @@ const maxHold = time.Hour
 // connection and asks again, is still told how its request went. An end event
 // missed is missed for good.
 //
-// Any node answers for any orchestration, the monitors carrying its id
-// reaching every node, so the node the action was submitted to is the one
-// asked, whichever node a floating address took it to.
+// The node asked is the one that accepted the orchestration, which records it
+// before handing its id out. The other nodes hear of it from the monitors
+// carrying its id, a heartbeat later: asked at once, they answer they do not
+// know it, which is the answer for an id they forgot. An empty node is the
+// node the client talks to, for an answer that names none.
 //
 // The daemon holds one request for an hour at most, so a longer wait is that
 // request asked again: the orchestration outlives it, and asking again
 // resumes the wait rather than restarting it. The wait ends when the caller's
 // own deadline does, and a caller that set none waits for as long as it
 // takes.
-func WaitOrchestration(ctx context.Context, c *client.T, orchestrationID uuid.UUID) error {
+func WaitOrchestration(ctx context.Context, c *client.T, orchestrationID uuid.UUID, node string) error {
 	if orchestrationID == uuid.Nil {
 		// The action was refused, and the refusal is the answer. There is no
 		// orchestration to wait for.
 		return nil
+	}
+	if node == "" {
+		node = api.AliasLocalhost
 	}
 	began := time.Now()
 	for {
 		hold := holdDuration(ctx)
 		holdS := hold.String()
 		params := api.GetDaemonOrchestrationParams{Wait: &holdS}
-		resp, err := c.GetDaemonOrchestrationWithResponse(ctx, api.AliasLocalhost, orchestrationID.String(), &params)
+		resp, err := c.GetDaemonOrchestrationWithResponse(ctx, node, orchestrationID.String(), &params)
 		if err != nil {
 			return err
 		}
@@ -61,7 +66,7 @@ func WaitOrchestration(ctx context.Context, c *client.T, orchestrationID uuid.UU
 			}
 			return fmt.Errorf("orchestration %s has not ended after %s", orchestrationID, time.Since(began).Round(time.Second))
 		case http.StatusGone:
-			return fmt.Errorf("the daemon no longer knows orchestration %s", orchestrationID)
+			return fmt.Errorf("%s no longer knows orchestration %s", nodeOrDaemon(node), orchestrationID)
 		default:
 			return fmt.Errorf("orchestration %s: %s", orchestrationID, resp.Status())
 		}
@@ -114,4 +119,12 @@ func hasTimeLeft(ctx context.Context) bool {
 		return true
 	}
 	return time.Until(deadline) > 100*time.Millisecond
+}
+
+// nodeOrDaemon names the node asked, or the daemon the client talks to.
+func nodeOrDaemon(node string) string {
+	if node == api.AliasLocalhost {
+		return "the daemon"
+	}
+	return node
 }

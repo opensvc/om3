@@ -2118,6 +2118,10 @@ type OrchestrationListKind string
 
 // OrchestrationQueued defines model for OrchestrationQueued.
 type OrchestrationQueued struct {
+	// Node the node that accepted the orchestration, which answers for it
+	// from the moment it hands the id out, while the other nodes hear
+	// of it a heartbeat later
+	Node            *string            `json:"node,omitempty"`
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
