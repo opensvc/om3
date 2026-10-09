@@ -617,7 +617,7 @@ These drivers of v2.1 have no v3 counterpart:
 * disk: `advfs`, `amazon`, `gandi`, `gce`, `hpvm`, `ldom`, `pool`, `vdisk`, `veritas`, `vxdg`, `vxvol`
 * fs: `docker`
 * ip: `amazon`, `crossbow`, `gce`, `rule`
-* sync: `btrfs`, `btrfssnap`, `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
+* sync: `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
 * the `certificate`, `expose`, `hashpolicy`, `route` and `vhost` sections, which
   described the routes of an object to the envoy ingress gateway of v2.
 
@@ -887,6 +887,45 @@ which share the same executor.
     holding snapshots with none in common with the source is also left
     alone rather than overwritten. A peer holding no snapshot of the
     resource is still sent a full copy without asking.
+
+### Driver: sync.btrfs
+
+* **Each peer is synced from its own base run, and a failover is synced incrementally both ways:**
+    The source no longer rotates the `last`, `next` and `temp` snapshots shared by all the peers. Each run takes
+    read-only snapshots in a run directory of its own, `<root of the filesystem>/.osync/<path>/<rid>/<YYYYmmddTHHMMSS.ffffffZ>/`,
+    and sends each peer the changes since the newest run the peer holds in common with the source, the snapshots being
+    matched by uuid and received uuid. So after a failover, the new source sends the old one its writes incrementally,
+    and so does the failback: v2 sent a full copy whenever the source changed. A peer that missed runs catches up at
+    the next one, and a peer failing no longer stops the others. The snapshots of an upgraded agent are not used: the
+    first sync after the upgrade sends each peer a full copy, then deletes them.
+
+* **A peer running the service is not replaced:**
+    The destination subvolume of a peer is replaced by the run it receives, staged and then swapped in. A peer with its
+    destination subvolume mounted is refused, as it runs the service.
+
+* **New keyword `max_lag_age`:**
+    The source keeps the base run of a lagging peer. Once the peer lags for longer than `max_lag_age` (default `24h`),
+    the source deletes it and stops sending to it. The resource status then warns with the command that syncs it again,
+    `om <path> instance full --rid <rid> --target <peer>`. A peer holding runs with none in common with the source is
+    also left alone rather than overwritten, where v2 sent it a full copy. A peer holding no run of the resource is
+    still sent a full copy without asking.
+
+* **The root of the filesystem is mounted for the time of a sync only:**
+    v2 mounted the root of the filesystem on `<var>/btrfs/<label>` and left it mounted, which kept the device busy for
+    the stop of the service. A sync mounts it on a mount point of its own and unmounts it when it ends.
+
+### Driver: sync.btrfssnap
+
+* **The snapshots are taken where the subvolume is mounted:**
+    A subvolume not mounted on the node, as on a node the service does not run on, is not snapshotted, and the
+    resource status is `n/a` there. The snapshots are named as in v2, `<subvol>/.snap/<UTC datetime>Z[,<name>]`.
+
+### Driver: fs.btrfs
+
+* **The label is set with the mkfs options:**
+    v2 labeled the filesystem `<name>.<rid>` when it formatted it, and set the `dev` keyword to `LABEL=<label>`. The
+    label is now the one given in `mkfs_opt`, as `-L <label>`, and the configuration is not changed by the provision.
+    The subvolume the `subvol=` mount option names is created when the resource is provisioned, as in v2.
 
 ### Driver: app
 
