@@ -248,7 +248,8 @@ func (t *Array) get(ctx context.Context, path string, params map[string]string, 
 //
 // The array answers a creation with the location of what it created. The
 // caller reads it from there, and knows from an error wrapping errNoAnswer
-// that the creation may have been done all the same.
+// that the creation may have been done all the same, and from one wrapping
+// errCreatedUnnamed that it was done.
 func (t *Array) create(ctx context.Context, path string, data map[string]any) (string, error) {
 	if data == nil {
 		data = map[string]any{}
@@ -267,10 +268,10 @@ func (t *Array) create(ctx context.Context, path string, data map[string]any) (s
 		} `json:"links"`
 	}
 	if err := json.Unmarshal(b, &created); err != nil {
-		return "", fmt.Errorf("POST %s: the array answered the creation with %q: %w", path, string(b), err)
+		return "", fmt.Errorf("%w: POST %s: the array answered the creation with %q: %w", errCreatedUnnamed, path, string(b), err)
 	}
 	if len(created.Links) == 0 || created.Links[0].Href == "" {
-		return "", fmt.Errorf("POST %s: the array named nothing it created", path)
+		return "", fmt.Errorf("%w: POST %s: the array answered the creation with %q", errCreatedUnnamed, path, string(b))
 	}
 	return created.Links[0].Href, nil
 }
@@ -487,4 +488,8 @@ var (
 	// errNoAnswer is a request sent and not answered. A creation or a removal
 	// may have been done all the same.
 	errNoAnswer = errors.New("no answer from the array")
+
+	// errCreatedUnnamed is a creation the array answered as done, with no
+	// location of what it created.
+	errCreatedUnnamed = errors.New("created, and the array did not say where")
 )

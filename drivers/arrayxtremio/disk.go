@@ -251,9 +251,12 @@ func (t *Array) AddDisk(ctx context.Context, opt OptAddDisk) (any, error) {
 		data["alignment-offset"] = opt.AlignmentOffset
 	}
 	href, err := t.create(ctx, "/volumes", data)
-	if errors.Is(err, errNoAnswer) {
+	switch {
+	case errors.Is(err, errNoAnswer):
 		return nil, fmt.Errorf("volume %s may have been created, the array did not answer its creation: check with list volumes --volume %s: %w", opt.Name, opt.Name, err)
-	} else if err != nil {
+	case errors.Is(err, errCreatedUnnamed):
+		return nil, fmt.Errorf("volume %s was created and is left in place, unmapped: check with list volumes --volume %s: %w", opt.Name, opt.Name, err)
+	case err != nil:
 		return nil, err
 	}
 	created, err := t.readVolume(ctx, href, nil)

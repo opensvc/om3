@@ -55,6 +55,10 @@ type (
 		// failLunMapPost answers the creation of a mapping with an error.
 		failLunMapPost bool
 
+		// unnamedVolumePost answers the creation of a volume as done, with
+		// no link to it.
+		unnamedVolumePost bool
+
 		// dropLunMapIndex lists the mappings without their index.
 		dropLunMapIndex bool
 
@@ -225,6 +229,10 @@ func (t *fakeXMS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		index := t.nextVol
 		t.nextVol++
 		t.addVolume(index, name, mb*1024)
+		if t.unnamedVolumePost {
+			writeJSON(w, http.StatusCreated, map[string]any{})
+			return
+		}
 		writeJSON(w, http.StatusCreated, map[string]any{"links": []any{map[string]any{"href": fmt.Sprintf("%s%s/volumes/%d", t.url, testAPIPrefix, index), "rel": "self"}}})
 	case resource == "volumes" && r.Method == http.MethodPut && index >= 0:
 		v, ok := t.volumes[index]
@@ -499,6 +507,22 @@ func TestAddDiskReportsTheVolumeLeftByAFailedMapping(t *testing.T) {
 	assert.Contains(t, err.Error(), "volume data1 (index 100) was created and is left in place")
 	assert.Contains(t, err.Error(), "lun_already_in_use")
 	assert.Empty(t, x.callsOf(http.MethodDelete), "the volume made is not deleted")
+	assert.Contains(t, x.volumes, 100)
+}
+
+// TestAddDiskReportsAVolumeCreatedUnnamed pins that a creation the array
+// answers as done, with no link to the volume, is reported as a volume made
+// and left in place.
+func TestAddDiskReportsAVolumeCreatedUnnamed(t *testing.T) {
+	x := newFakeXMS()
+	x.unnamedVolumePost = true
+	a, _ := newTestArray(t, x)
+	_, err := a.AddDisk(context.Background(), OptAddDisk{Name: "data1", Size: "1g", Mappings: testMappings})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, errCreatedUnnamed)
+	assert.Contains(t, err.Error(), "volume data1 was created and is left in place, unmapped: check with list volumes --volume data1")
+	assert.Equal(t, []string{"POST /volumes"}, x.callsOf(http.MethodPost), "no mapping of a volume not read back")
+	assert.Empty(t, x.callsOf(http.MethodDelete))
 	assert.Contains(t, x.volumes, 100)
 }
 
