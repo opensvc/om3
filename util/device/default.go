@@ -58,6 +58,10 @@ func (t T) SlaveHosts() ([]string, error) {
 	return []string{}, ErrNotApplicable
 }
 
+func (t T) FlushBufs(_ context.Context) error {
+	return ErrNotApplicable
+}
+
 func (t T) Slaves() (l L, err error) {
 	err = ErrNotApplicable
 	return

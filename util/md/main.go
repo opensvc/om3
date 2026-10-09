@@ -317,6 +317,14 @@ func (t T) wipeDevice(ctx context.Context, devpath string) error {
 	default:
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
+	// Exists finds an array by the superblocks blkid reports, which it
+	// reads from the buffers of every device, the paths of a multipath
+	// device included: the superblock zeroed through the multipath device
+	// lingers there, and the next provision would find the array it is to
+	// create already existing.
+	if err := device.New(devpath, device.WithLogger(t.log)).FlushBufs(ctx); err != nil {
+		t.log.Warnf("%s", err)
+	}
 	return nil
 }
 

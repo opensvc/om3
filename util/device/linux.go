@@ -348,7 +348,51 @@ func (t T) Wipe(ctx context.Context) error {
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
+	if err := t.FlushBufs(ctx); err != nil {
+		t.log.Warnf("%s", err)
+	}
 	return nil
+}
+
+// FlushBufs drops the buffers of the device and of the devices it rests on,
+// as the paths of a multipath device.
+//
+// A write through a device, as a signature wiped or a superblock zeroed,
+// does not reach the buffers of the devices below it, and blkid reads those:
+// it goes on reporting what was erased, under the name of every path, until
+// they are dropped.
+func (t T) FlushBufs(ctx context.Context) error {
+	var errs error
+	seen := make(map[string]bool)
+	var flush func(dev T)
+	flush = func(dev T) {
+		if seen[dev.path] {
+			return
+		}
+		seen[dev.path] = true
+		cmd := command.New(
+			command.WithContext(ctx),
+			command.WithName("blockdev"),
+			command.WithVarArgs("--flushbufs", dev.path),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.DebugLevel),
+			command.WithStdoutLogLevel(zerolog.DebugLevel),
+			command.WithStderrLogLevel(zerolog.DebugLevel),
+			command.WithBufferedStderr(),
+		)
+		if err := cmd.Run(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("flush the buffers of %s: %w: %s", dev.path, err, strings.TrimSpace(string(cmd.Stderr()))))
+		}
+		slaves, err := dev.Slaves()
+		if err != nil {
+			return
+		}
+		for _, slave := range slaves {
+			flush(slave)
+		}
+	}
+	flush(t)
+	return errs
 }
 
 func (t T) ConfigureMultipath(ctx context.Context, verbosity int) error {
