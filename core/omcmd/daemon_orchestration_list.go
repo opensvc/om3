@@ -111,6 +111,15 @@ func (t *CmdDaemonOrchestrationList) keepWaiting(until time.Time) bool {
 }
 
 func (t *CmdDaemonOrchestrationList) run() ([]api.OrchestrationItem, error) {
+	if t.OrchestrationID != "" {
+		// The start of an id, as the status shows it, names the one it
+		// starts.
+		id, err := commoncmd.ResolveOrchestrationID(t.OrchestrationID)
+		if err != nil {
+			return nil, err
+		}
+		t.OrchestrationID = id
+	}
 	c, err := client.New()
 	if err != nil {
 		return nil, err

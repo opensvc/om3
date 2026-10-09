@@ -86,6 +86,28 @@ func (t *CmdDaemonExecList) Run() error {
 // command did. A node that has forgotten an id it is asked for by name is not
 // an error when another still holds it, which is why the by-id answers are
 // folded in rather than returned.
+// resolveIDs replaces the ids given as the start of one, as the listings and
+// the status show them, by the ids they start.
+func (t *CmdDaemonExecList) resolveIDs() error {
+	var err error
+	if t.ExecID != "" {
+		if t.ExecID, err = ResolveExecID(t.NodeSelector, t.ExecID); err != nil {
+			return err
+		}
+	}
+	if t.SessionID != "" {
+		if t.SessionID, err = ResolveSessionID(t.NodeSelector, t.SessionID); err != nil {
+			return err
+		}
+	}
+	if t.OrchestrationID != "" {
+		if t.OrchestrationID, err = ResolveOrchestrationID(t.OrchestrationID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *CmdDaemonExecList) Gather() ([]api.ExecItem, error) {
 	c, err := client.New()
 	if err != nil {
@@ -100,6 +122,9 @@ func (t *CmdDaemonExecList) Gather() ([]api.ExecItem, error) {
 	}
 	if len(nodenames) == 0 {
 		return nil, fmt.Errorf("no node matching %s", t.NodeSelector)
+	}
+	if err := t.resolveIDs(); err != nil {
+		return nil, err
 	}
 
 	// The requests are held for as long as the wait asks, and the grace on
