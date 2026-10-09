@@ -12,6 +12,7 @@ func init() {
 	cmdObjectPrint := commoncmd.NewCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectSSH := commoncmd.NewCmdObjectSSH(kind)
+	cmdClusterLock := commoncmd.NewCmdClusterLock()
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
 	root.AddCommand(
@@ -34,6 +35,7 @@ func init() {
 		commoncmd.NewCmdClusterEvict(),
 		commoncmd.NewCmdClusterRegister(),
 		commoncmd.NewCmdClusterFreeze(),
+		cmdClusterLock,
 		commoncmd.NewCmdClusterLogs(),
 		commoncmd.NewCmdClusterThaw(),
 		commoncmd.NewCmdClusterStatus(),
@@ -62,6 +64,10 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
+	)
+	cmdClusterLock.AddCommand(
+		commoncmd.NewCmdClusterLockList(),
+		commoncmd.NewCmdClusterLockRelease(),
 	)
 	cmdObjectSSH.AddCommand(
 		commoncmd.NewCmdClusterSSHTrust(),

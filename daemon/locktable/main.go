@@ -265,19 +265,19 @@ func (t *Table) Acquire(ctx context.Context, req Request) (Lock, error) {
 	}
 }
 
-// Release frees the lock name granted under id, and says whether it was held
-// under it. A lock that lapsed, or was granted again since, is not this id's
-// to release.
-func (t *Table) Release(name, id string) bool {
+// Release frees the lock name granted under id, and returns it, with whether
+// it was held under it. A lock that lapsed, or was granted again since, is not
+// this id's to release.
+func (t *Table) Release(name, id string) (Lock, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	held, ok := t.locks[name]
 	if !ok || held.ID != id {
-		return false
+		return Lock{}, false
 	}
 	delete(t.locks, name)
 	t.wake()
-	return true
+	return held, true
 }
 
 // List returns the locks held, by name.

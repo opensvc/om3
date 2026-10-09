@@ -47,8 +47,11 @@ func TestAcquireExcludes(t *testing.T) {
 	_, err = table.Acquire(ctx, Request{Name: "b"})
 	assert.NoError(t, err, "another name is another lock")
 
-	assert.False(t, table.Release("a", "not-the-id"))
-	assert.True(t, table.Release("a", first.ID))
+	_, ok := table.Release("a", "not-the-id")
+	assert.False(t, ok)
+	released, ok := table.Release("a", first.ID)
+	assert.True(t, ok)
+	assert.Equal(t, "n1", released.Node)
 	_, err = table.Acquire(ctx, Request{Name: "a", Node: "n2"})
 	assert.NoError(t, err)
 }
@@ -69,7 +72,8 @@ func TestAcquireWaitsForTheRelease(t *testing.T) {
 		second, secondErr = table.Acquire(ctx, Request{Name: "a", Wait: 5 * time.Second})
 	}()
 	time.Sleep(50 * time.Millisecond)
-	require.True(t, table.Release("a", first.ID))
+	_, ok := table.Release("a", first.ID)
+	require.True(t, ok)
 	wg.Wait()
 	require.NoError(t, secondErr)
 	assert.NotEqual(t, first.ID, second.ID)

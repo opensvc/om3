@@ -4156,6 +4156,15 @@ type GetInstanceResourceFileParams struct {
 	Rid InQueryResourceFileRid `form:"rid" json:"rid"`
 }
 
+// DeleteNodeLockParams defines parameters for DeleteNodeLock.
+type DeleteNodeLockParams struct {
+	// Name the name of the lock
+	Name string `form:"name" json:"name"`
+
+	// Id the id the lock was granted under
+	Id string `form:"id" json:"id"`
+}
+
 // GetNodeLogsParams defines parameters for GetNodeLogs.
 type GetNodeLogsParams struct {
 	// Filter list of log filter

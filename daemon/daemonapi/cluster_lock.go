@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -127,10 +128,60 @@ func (a *DaemonAPI) DeleteClusterLock(ctx echo.Context, params api.DeleteCluster
 	if err := a.rebuildLockTable(ctx); err != nil {
 		return JSONProblemf(ctx, http.StatusServiceUnavailable, "Lock table", "%s", err)
 	}
-	if !locktable.SpeakerTable.Release(params.Name, params.Id) {
+	lock, ok := locktable.SpeakerTable.Release(params.Name, params.Id)
+	if !ok {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not held", "lock %s is not held under %s: it was released, or its lease ended", params.Name, params.Id)
 	}
-	LogHandler(ctx, "DeleteClusterLock").Infof("cluster lock %s released", params.Name)
+	log := LogHandler(ctx, "DeleteClusterLock")
+	releasedBy := a.localhost
+	if handedOver {
+		releasedBy = *params.Node
+	}
+	if lock.Node == releasedBy {
+		log.Infof("cluster lock %s released", params.Name)
+		return ctx.NoContent(http.StatusNoContent)
+	}
+	// Released from another node than the one holding it, which is a lock
+	// taken back from a holder: its node still records it, and would bring
+	// it back to a table rebuilt before the lease ends.
+	log.Infof("cluster lock %s held by %s on %s released from %s", lock.Name, lock.Holder, lock.Node, releasedBy)
+	if err := a.forgetNodeLock(ctx, lock); err != nil {
+		log.Warnf("cluster lock %s: %s still records it until %s: %s", lock.Name, lock.Node, lock.ExpiresAt.Format(time.RFC3339), err)
+	}
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+// forgetNodeLock has the node holding a lock forget it.
+func (a *DaemonAPI) forgetNodeLock(ctx echo.Context, lock locktable.Lock) error {
+	if lock.Node == a.localhost {
+		locktable.LocalHeld.Remove(lock.Name, lock.ID)
+		return nil
+	}
+	c, err := newPeerClient(lock.Node)
+	if err != nil {
+		return err
+	}
+	resp, err := c.DeleteNodeLockWithResponse(ctx.Request().Context(), lock.Node, &api.DeleteNodeLockParams{Name: lock.Name, Id: lock.ID})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode() != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code %d", resp.StatusCode())
+	}
+	return nil
+}
+
+// DeleteNodeLock forgets a cluster lock the clients of a node hold.
+func (a *DaemonAPI) DeleteNodeLock(ctx echo.Context, nodename api.InPathNodeName, params api.DeleteNodeLockParams) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
+	if nodename != a.localhost {
+		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+			return c.DeleteNodeLock(ctx.Request().Context(), nodename, &params)
+		})
+	}
+	locktable.LocalHeld.Remove(params.Name, params.Id)
 	return ctx.NoContent(http.StatusNoContent)
 }
 
