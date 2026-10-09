@@ -136,7 +136,12 @@ func ResolveOrchestrationID(nodeSelector, s string) (string, error) {
 		// with no answer at all, "no id starts with" would be a guess.
 		return "", errs
 	}
-	return idWithPrefix("orchestration", s, ids)
+	id, err := idWithPrefix("orchestration", s, ids)
+	if err != nil && errs != nil {
+		// The id may be one only the nodes that did not answer know.
+		return "", errors.Join(err, errs)
+	}
+	return id, err
 }
 
 // orchestrationIDsOf returns the ids of the orchestrations nodename knows.
