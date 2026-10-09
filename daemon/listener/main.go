@@ -78,6 +78,7 @@ func (t *T) Start(ctx context.Context) error {
 			return t.stopCertFS(ctx)
 		})
 	}
+	t.startCertWatch(ctx)
 	if err := daemonauth.Start(ctx, &authOption{}); err != nil {
 		return fmt.Errorf("can't start daemon auth: %w", err)
 	} else {

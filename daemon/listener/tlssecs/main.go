@@ -26,6 +26,19 @@ type (
 		mu     sync.Mutex
 		certs  map[naming.Path]certEntry
 		tokens map[naming.Path]tokensEntry
+
+		// certFile and keyFile are the files of the certificate the
+		// listener presents when no sec names the server the client
+		// asks for, the one of system/sec/cert.
+		certFile, keyFile string
+		defaultCert       defaultCertEntry
+	}
+
+	// defaultCertEntry is the certificate of the files, as read when they
+	// had these modification times.
+	defaultCertEntry struct {
+		certModTime, keyModTime time.Time
+		cert                    *tls.Certificate
 	}
 
 	certEntry struct {
@@ -58,12 +71,23 @@ func Paths() []naming.Path {
 	return object.ListenerTLSSecs(cfg.Listener.TLSSecs)
 }
 
+// WithDefault sets the files of the certificate GetCertificate returns when
+// no sec of listener.tls_secs names the server the client asks for.
+func (t *Store) WithDefault(certFile, keyFile string) *Store {
+	t.certFile, t.keyFile = certFile, keyFile
+	return t
+}
+
 // GetCertificate returns the certificate of the first sec of
-// listener.tls_secs naming the server the client asks for, and none for the
-// listener to present its own, the one of system/sec/cert.
+// listener.tls_secs naming the server the client asks for, else the one of
+// the default files, the one of system/sec/cert.
+//
+// The default files are read again when they change, as when system/sec/cert
+// is renewed. The listener has no certificate of its own: the clients asking
+// no name, as by an ip address, are presented the one of the files too.
 func (t *Store) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	if hello.ServerName == "" {
-		return nil, nil
+		return t.defaultCertificate(), nil
 	}
 	for _, p := range Paths() {
 		cert := t.certificate(p)
@@ -74,7 +98,44 @@ func (t *Store) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, er
 			return cert, nil
 		}
 	}
-	return nil, nil
+	return t.defaultCertificate(), nil
+}
+
+// defaultCertificate returns the certificate of the default files, read again
+// when one of them changed since, and nil when they are not set or can not be
+// read.
+//
+// The two files are written one after the other, so a handshake between the
+// two writes reads a key that is not the one of the certificate: that pair is
+// not kept, and the next handshake reads them again.
+func (t *Store) defaultCertificate() *tls.Certificate {
+	if t.certFile == "" || t.keyFile == "" {
+		return nil
+	}
+	certInfo, err := os.Stat(t.certFile)
+	if err != nil {
+		return nil
+	}
+	keyInfo, err := os.Stat(t.keyFile)
+	if err != nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	e := t.defaultCert
+	if e.cert != nil && e.certModTime.Equal(certInfo.ModTime()) && e.keyModTime.Equal(keyInfo.ModTime()) {
+		return e.cert
+	}
+	cert, err := tls.LoadX509KeyPair(t.certFile, t.keyFile)
+	if err != nil {
+		t.log.Debugf("listener: read %s and %s: %s", t.certFile, t.keyFile, err)
+		return e.cert
+	}
+	t.defaultCert = defaultCertEntry{certModTime: certInfo.ModTime(), keyModTime: keyInfo.ModTime(), cert: &cert}
+	if e.cert != nil {
+		t.log.Infof("listener: certificate of %s loaded again", t.certFile)
+	}
+	return &cert
 }
 
 // certificate returns the certificate of the sec, read again when its
