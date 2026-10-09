@@ -116,7 +116,7 @@ func (t *Set) Create(ctx context.Context, paths []string) ([]string, error) {
 	of := make([]*holder, len(paths))
 	rels := make([]string, len(paths))
 	for i, p := range paths {
-		real, err := filepath.EvalSymlinks(p)
+		real, err := resolve(p)
 		if err != nil {
 			return nil, err
 		}
@@ -154,11 +154,28 @@ func (t *Set) Create(ctx context.Context, paths []string) ([]string, error) {
 	return l, nil
 }
 
+// resolve returns the path p names, its links resolved as a copy reads it: a
+// link named as the source is the link itself, which the copy copies as a
+// link, unless the path ends with a '/', which the copy follows to the
+// directory it points at. Only the directories it is in are resolved then,
+// so the snapshot shows the link where the source shows it, a link pointing
+// nowhere included.
+func resolve(p string) (string, error) {
+	if strings.HasSuffix(p, "/") {
+		return filepath.EvalSymlinks(p)
+	}
+	dir, err := filepath.EvalSymlinks(filepath.Dir(p))
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, filepath.Base(p)), nil
+}
+
 func (t *Set) check() error {
 	if t.Dir == "" || !filepath.IsAbs(t.Dir) {
 		return fmt.Errorf("the snapshot set directory must be an absolute path: %q", t.Dir)
 	}
-	if t.Name == "" || strings.Trim(t.Name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-") != "" {
+	if t.Name == "" || t.Name == "." || t.Name == ".." || strings.Trim(t.Name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-") != "" {
 		return fmt.Errorf("the snapshot set name must hold letters, digits, '_', '.' and '-': %q", t.Name)
 	}
 	return nil

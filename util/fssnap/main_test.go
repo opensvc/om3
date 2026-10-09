@@ -77,6 +77,8 @@ func TestCheck(t *testing.T) {
 	assert.Error(t, (&Set{Dir: "rel", Name: "n"}).check())
 	assert.Error(t, (&Set{Dir: "/x", Name: "sync#1"}).check())
 	assert.NoError(t, (&Set{Dir: "/x", Name: "osvc_sync_2a21fa45_sync.1"}).check())
+	assert.Error(t, (&Set{Dir: "/x", Name: ".."}).check())
+	assert.Error(t, (&Set{Dir: "/x", Name: "."}).check())
 }
 
 // A journal entry names what was about to be made, which a killed run may
@@ -113,4 +115,31 @@ func TestUndoMountRefusesAPathOutsideTheSet(t *testing.T) {
 	s := &Set{Dir: "/var/lib/opensvc/x", Name: "n"}
 	assert.ErrorContains(t, s.undoMount(context.Background(), "/srv"), "refuse to unmount")
 	assert.ErrorContains(t, s.undoMount(context.Background(), "/var/lib/opensvc/x"), "refuse to unmount")
+}
+
+// A link named as the source is the link, which rsync copies as one, and the
+// directory it points at when the path ends with a '/', which rsync follows.
+func TestResolve(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "real", "sub"), 0755))
+	require.NoError(t, os.Symlink(filepath.Join(dir, "real"), filepath.Join(dir, "link")))
+	require.NoError(t, os.Symlink(filepath.Join(dir, "nowhere"), filepath.Join(dir, "broken")))
+	realDir, err := filepath.EvalSymlinks(dir)
+	require.NoError(t, err)
+
+	p, err := resolve(filepath.Join(dir, "link"))
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(realDir, "link"), p, "the link itself")
+
+	p, err = resolve(filepath.Join(dir, "link") + "/")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(realDir, "real"), p, "the directory it points at")
+
+	p, err = resolve(filepath.Join(dir, "link", "sub"))
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(realDir, "real", "sub"), p, "the directories it is in resolved")
+
+	p, err = resolve(filepath.Join(dir, "broken"))
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(realDir, "broken"), p, "a link pointing nowhere copies as such")
 }
