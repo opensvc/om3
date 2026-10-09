@@ -8,3 +8,6 @@ failover service keeps its address on a node it moves to after the others
 crashed. Set it to keep an address drawn before, or unset it to have the
 next start draw another one, and remove the one it replaces from the
 interface.
+
+A configuration copied to create another object leaves it behind, so the
+copy draws an address of its own rather than bring this one up twice.
