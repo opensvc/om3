@@ -33,19 +33,41 @@ func TestBeatingForeignNodes(t *testing.T) {
 	for slot, name := range slots {
 		require.NoError(t, d.writeMetaSlot(slot, append([]byte(name), endOfDataMarker)))
 	}
-	beat := func() {
-		require.NoError(t, d.writeDataSlot(1, []byte("msg")))
-		require.NoError(t, d.writeDataSlot(2, []byte("msg")))
+	beat := func() error {
+		if err := d.writeDataSlot(1, []byte("msg")); err != nil {
+			return err
+		}
+		return d.writeDataSlot(2, []byte("msg"))
 	}
-	beat()
+	require.NoError(t, beat())
 	require.NoError(t, d.writeDataSlot(3, []byte("msg")))
 
+	// Beat all along the window, as a live node does. A single beat at a fixed
+	// delay could land before the first read on a slow runner, and show no
+	// change: whenever the first read happens, a later beat follows it.
 	window := 300 * time.Millisecond
+	done := make(chan struct{})
+	stopped := make(chan struct{})
 	go func() {
-		time.Sleep(window / 3)
-		beat()
+		defer close(stopped)
+		ticker := time.NewTicker(window / 10)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := beat(); err != nil {
+					// require would stop a goroutine that is not the test one.
+					t.Error(err)
+					return
+				}
+			}
+		}
 	}()
 	beating, err := BeatingForeignNodes(context.Background(), dev, maxSlots, []string{"n1", "n2"}, window)
+	close(done)
+	<-stopped
 	require.NoError(t, err)
 	require.Equal(t, []string{"other"}, beating)
 }
