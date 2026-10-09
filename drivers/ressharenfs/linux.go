@@ -93,18 +93,30 @@ func (t Exports) ByPath(s string) Exports {
 	return l
 }
 
+// stop unexports the path to every client of the opts it is exported to,
+// with the options required or not, and whether the kernel exports it or
+// not.
 func (t *T) stop() error {
 	opts, err := t.parseOpts()
 	if err != nil {
 		return err
 	}
+	exports, err := t.getExports()
+	if err != nil {
+		return err
+	}
+	unexported := 0
 	for _, e := range opts {
-		if !slices.Contains(t.issuesNone, e.Client) {
+		if exports.Client(e.Client).IsZero() {
 			continue
 		}
 		if err := t.delExport(e); err != nil {
 			return err
 		}
+		unexported++
+	}
+	if unexported == 0 {
+		t.Log().Infof("already down")
 	}
 	return nil
 }
@@ -140,22 +152,18 @@ func (t *T) isPathExported() (bool, error) {
 	t.issuesNone = make([]string, 0)
 	exports, err := t.getExports()
 	if err != nil {
-		t.StatusLog().Error("%s", err)
 		return false, err
 	}
-	if len(exports) == 0 {
+	opts, err := t.parseOpts()
+	if err != nil {
+		return false, err
+	}
+	// The path is exported when it is to a client of the opts, which stop
+	// unexports, whatever the issues of the export.
+	if !slices.ContainsFunc(opts, func(e OptsEntry) bool { return !exports.Client(e.Client).IsZero() }) {
 		return false, nil
 	}
 	mount, err := t.getShowmount()
-	if err != nil {
-		t.StatusLog().Error("%s", err)
-		return false, err
-	}
-	if mount.IsZero() {
-		t.StatusLog().Info("%s in userland etab but not in kernel etab", t.SharePath)
-		return false, nil
-	}
-	opts, err := t.parseOpts()
 	if err != nil {
 		return false, err
 	}
