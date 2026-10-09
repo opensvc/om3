@@ -1,0 +1,3 @@
+How long a peer may miss the updates before the source stops keeping its base snapshot.
+
+A peer that missed updates is sent the changes since the last snapshot it received, which the source keeps for it. The first update the peer misses starts its lag. Once the lag exceeds this duration, the source deletes that snapshot and stops sending to the peer. From then on the peer needs a full copy, asked with `om <path> instance full --rid <rid> --target <peer>`, and the resource status warns until then.

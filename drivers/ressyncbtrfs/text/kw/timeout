@@ -1,0 +1,3 @@
+Wait for `<duration>` before declaring the `sync` action a failure.
+
+If no timeout is set, the agent waits indefinitely for the `sync` action to exit.
