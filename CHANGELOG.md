@@ -922,10 +922,17 @@ which share the same executor.
 
 ### Driver: fs.btrfs
 
-* **The label is set with the mkfs options:**
+* **New keywords `subvol` and `label`:**
+    The subvolume to mount and the label of the filesystem have keywords of their own, which the sync resources
+    reference rather than repeat: `src = {fs#1.label}:{fs#1.subvol}`. The subvolume is created when the resource is
+    provisioned, as in v2. A `subvol=` option of `mnt_opt` is still read when the `subvol` keyword is not set; one naming
+    another subvolume than the keyword, or a `subvolid=` option, is refused, and so is a `-L` option of `mkfs_opt` naming
+    another label than the `label` keyword.
+
+* **The label is not chosen by the provision:**
     v2 labeled the filesystem `<name>.<rid>` when it formatted it, and set the `dev` keyword to `LABEL=<label>`. The
-    label is now the one given in `mkfs_opt`, as `-L <label>`, and the configuration is not changed by the provision.
-    The subvolume the `subvol=` mount option names is created when the resource is provisioned, as in v2.
+    filesystem is now labeled with the `label` keyword, or a `-L` option of `mkfs_opt`, and the provision does not change
+    the configuration.
 
 ### Driver: app
 

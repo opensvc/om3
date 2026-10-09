@@ -28,7 +28,7 @@ var (
 		},
 		{
 			Attr:     "Src",
-			Example:  "svc1fs:data",
+			Example:  "{fs#1.label}:{fs#1.subvol}",
 			Option:   "src",
 			Required: true,
 			Scopable: true,

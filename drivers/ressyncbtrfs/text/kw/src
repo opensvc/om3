@@ -3,5 +3,7 @@ Source subvolume of the sync, as `<label>:<subvol>`.
 `<label>` is the label of the btrfs filesystem, which the sync finds the
 filesystem by on every node: the device of a filesystem may change from a node
 to another, its label does not. `<subvol>` is the path of the subvolume from
-the root of the filesystem, the one an `fs.btrfs` resource mounts with the
-`subvol=<subvol>` mount option.
+the root of the filesystem.
+
+Reference the `fs.btrfs` resource mounting it rather than repeating its
+values, as `{fs#1.label}:{fs#1.subvol}`, so the two can not drift apart.
