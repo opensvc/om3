@@ -43,7 +43,8 @@ func ClaimLimit(namespace, networkName string) (int, bool, error) {
 // yet. The allocator of this node has no such lag, and this is read where
 // every claim is answered, so what it adds is this node's own reservations,
 // including the ones made before there was anything brokering. An address in
-// both is one address.
+// both is one address. A network every node draws from adds a third view, the
+// stores of the other nodes.
 func ClaimHeldByKey(ctx context.Context, networkName, namespace string) (int, map[string]bool, error) {
 	held := make(map[string]bool)
 	seen := make(map[string]bool)
@@ -82,6 +83,28 @@ func ClaimHeldByKey(ctx context.Context, networkName, namespace string) (int, ma
 		}
 		held[item.IP] = true
 		seen[ipam.Key(p, item.RID)] = true
+	}
+	if i := localAllocator(networkName); i != nil && i.ClusterWide {
+		// Every node draws from the range, under the lock of the network
+		// this claim is asked under, and reserves in its own store. The
+		// stores of the other nodes are read too, so an address a node
+		// reserved before the node answering the claims changed, and has
+		// not published yet, is counted though the grant that let it take
+		// it went with the node answering before.
+		reserved, err := storeAddrs(ctx, c, networkName)
+		if err != nil {
+			return 0, nil, err
+		}
+		for key, ips := range reserved {
+			p, ok := ipam.PathOfKey(key)
+			if !ok || p.Namespace != namespace {
+				continue
+			}
+			for _, ip := range ips {
+				held[ip.String()] = true
+			}
+			seen[key] = true
+		}
 	}
 	return len(held), seen, nil
 }
