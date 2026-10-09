@@ -934,6 +934,26 @@ which share the same executor.
     filesystem is now labeled with the `label` keyword, or a `-L` option of `mkfs_opt`, and the provision does not change
     the configuration.
 
+### Driver: share.nfs
+
+* **The `path` keyword takes the forms of the other paths of a service:**
+    `<vol name>/<path>` in a vol of the namespace, and `volume#1:/<path>` or `fs#1:/<path>` under the mount point of a
+    resource of the service, besides a path of the node. A path in a volume never leads above its mount point. A share
+    is stopped even when its volume is no longer available, on the path it was exported from.
+
+* **A namespace administrator may export a volume:**
+    The `share` sections needed the root grant. A user holding none may now export the mount point of a volume, written
+    `<vol name>` or `volume#<n>:/`, with the export options that keep the clients to it: `rw`, `ro`, `sync`, `async`,
+    `wdelay`, `no_wdelay`, `subtree_check`, `no_subtree_check`, `secure`, `hide`, `root_squash`, `all_squash`,
+    `no_all_squash`, `sec`, and `anonuid` and `anongid` other than 0. A directory in a volume is refused, as the
+    namespace can turn it into a link out of the volume, and so are the other options, as `no_root_squash`, `fsid`,
+    `crossmnt` or `nohide`.
+
+* **A path exported to other clients only is down:**
+    v2 reported a path exported to none of the clients of `opts` as `warn` when it was exported to another client. Such
+    an export is not the resource's, and a stop leaves it in place, so the resource is `down`. A path exported to a
+    client of `opts` with missing options, or not exported by the kernel, is `warn`.
+
 ### Driver: app
 
 * **`environment`**

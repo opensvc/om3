@@ -17,7 +17,7 @@ var (
 
 	kwSharePath = keywords.Keyword{
 		Attr:     "SharePath",
-		Example:  "/srv/{fqdn}/share",
+		Example:  "volume#1:/",
 		Option:   "path",
 		Required: true,
 		Scopable: true,
@@ -46,6 +46,7 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(
+		manifest.ContextObjectPath,
 		&kwSharePath,
 		&kwShareOpts,
 	)

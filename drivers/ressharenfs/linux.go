@@ -170,14 +170,14 @@ func (t *T) isPathExported() (bool, error) {
 	for _, opt := range opts {
 		client := exports.Client(opt.Client)
 		if client.IsZero() {
-			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s", t.SharePath, opt.Client)
+			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s", t.exportPath, opt.Client)
 			t.issuesMissingClient = append(t.issuesMissingClient, opt.Client)
 		} else if !mount.HasClient(opt.Client) {
-			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s in kernel etab", t.SharePath, opt.Client)
+			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s in kernel etab", t.exportPath, opt.Client)
 			t.issuesMissingClient = append(t.issuesMissingClient, opt.Client)
 		} else if !client.HasOpts(opt.Opts) {
 			t.issues[opt.Client] = fmt.Sprintf("%s is exported to client %s with missing options: current '%s', minimum required '%s'",
-				t.SharePath,
+				t.exportPath,
 				opt.Client,
 				strings.Join(client.Opts, ","),
 				strings.Join(opt.Opts, ","),
@@ -225,7 +225,7 @@ func (t *T) addExport(e OptsEntry) error {
 	opts := strings.Join(e.Opts, ",")
 	cmd := command.New(
 		command.WithName(capabilities.GetPath("exportfs")),
-		command.WithVarArgs("-i", "-o", opts, e.Client+":"+t.SharePath),
+		command.WithVarArgs("-i", "-o", opts, e.Client+":"+t.exportPath),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(10*time.Second),
@@ -239,7 +239,7 @@ func (t *T) addExport(e OptsEntry) error {
 func (t *T) delExport(e OptsEntry) error {
 	cmd := command.New(
 		command.WithName(capabilities.GetPath("exportfs")),
-		command.WithVarArgs("-u", e.Client+":"+t.SharePath),
+		command.WithVarArgs("-u", e.Client+":"+t.exportPath),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(10*time.Second),
@@ -253,7 +253,7 @@ func (t *T) delExport(e OptsEntry) error {
 func (t *T) getShowmount() (Mount, error) {
 	if mounts, err := t.getShowmounts(); err != nil {
 		return Mount{}, err
-	} else if mounts = mounts.ByPath(t.SharePath); len(mounts) == 0 {
+	} else if mounts = mounts.ByPath(t.exportPath); len(mounts) == 0 {
 		return Mount{}, nil
 	} else {
 		return mounts[0], nil
@@ -289,7 +289,7 @@ func (t *T) getExports() (Exports, error) {
 	if exports, err := t.getAllExports(); err != nil {
 		return nil, err
 	} else {
-		return exports.ByPath(t.SharePath), nil
+		return exports.ByPath(t.exportPath), nil
 	}
 }
 

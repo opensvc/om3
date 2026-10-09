@@ -1,1 +1,10 @@
-The path of the directory to share.
+The directory to export, written as the other paths of a service are:
+
+* `/srv/data` is a path of the node.
+* `<vol name>/<path>` is a path in a vol of the namespace, as `data` for the
+  whole vol `data`.
+* `volume#1:/<path>` is a path under the mount point of the resource
+  `volume#1`, and `fs#1:/<path>` of the filesystem `fs#1`.
+
+A path in a volume or a filesystem never leads above its mount point.
+
