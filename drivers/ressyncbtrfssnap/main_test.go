@@ -35,21 +35,38 @@ func TestParseSnapName(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// fakeBtrfs makes the snapshot and delete commands act on directories.
+// fakeBtrfs makes the snapshot and delete commands act on directories, the
+// directories of the snapshots taking the inode number of a subvolume root,
+// and the others the one of a placeholder.
 func fakeBtrfs(t *testing.T) *[][]string {
 	t.Helper()
 	calls := &[][]string{}
-	prev := btrfsCmd
-	t.Cleanup(func() { btrfsCmd = prev })
+	subvols := make(map[string]bool)
+	prev, prevInodeOf := btrfsCmd, inodeOf
+	t.Cleanup(func() { btrfsCmd, inodeOf = prev, prevInodeOf })
 	btrfsCmd = func(args ...string) ([]byte, error) {
 		*calls = append(*calls, args)
 		switch {
 		case len(args) == 5 && args[0] == "subvolume" && args[1] == "snapshot" && args[2] == "-r":
+			subvols[args[4]] = true
 			return nil, os.Mkdir(args[4], 0755)
 		case len(args) == 3 && args[0] == "subvolume" && args[1] == "delete":
+			if !subvols[args[2]] {
+				return nil, fmt.Errorf("%s: not a subvolume", args[2])
+			}
+			delete(subvols, args[2])
 			return nil, os.Remove(args[2])
 		}
 		return nil, fmt.Errorf("unexpected btrfs %v", args)
+	}
+	inodeOf = func(path string) (uint64, error) {
+		if _, err := os.Lstat(path); err != nil {
+			return 0, err
+		}
+		if subvols[path] {
+			return subvolRootIno, nil
+		}
+		return placeholderIno, nil
 	}
 	return calls
 }
@@ -65,7 +82,7 @@ func TestSnapAndPruneKeepsTheNewest(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		require.NoError(t, o.snapAndPrune(dir, t0.Add(time.Duration(i)*time.Hour)))
 	}
-	l, err := o.snapshots(dir)
+	l, _, err := o.snapshots(dir)
 	require.NoError(t, err)
 	require.Len(t, l, 2)
 	assert.Equal(t, t0.Add(3*time.Hour), l[0].CreatedAt, "newest first")
@@ -75,7 +92,37 @@ func TestSnapAndPruneKeepsTheNewest(t *testing.T) {
 }
 
 func TestSnapshotsOfASubvolumeNeverSnapshotted(t *testing.T) {
-	l, err := (&T{}).snapshots(t.TempDir())
+	l, placeholders, err := (&T{}).snapshots(t.TempDir())
 	require.NoError(t, err)
 	assert.Empty(t, l)
+	assert.Empty(t, placeholders)
+}
+
+func TestSnapAndPruneRemovesPlaceholders(t *testing.T) {
+	calls := fakeBtrfs(t)
+	dir := t.TempDir()
+	o := &T{Keep: 2}
+	t0 := time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+	var placeholders []string
+	for i := 0; i < 3; i++ {
+		p := filepath.Join(dir, snapDir, o.snapName(t0.Add(time.Duration(i)*time.Minute)))
+		require.NoError(t, os.MkdirAll(p, 0755))
+		placeholders = append(placeholders, p)
+	}
+
+	l, found, err := o.snapshots(dir)
+	require.NoError(t, err)
+	assert.Empty(t, l, "a placeholder is not a snapshot")
+	assert.ElementsMatch(t, placeholders, found)
+
+	require.NoError(t, o.snapAndPrune(dir, t0.Add(time.Hour)))
+	for _, p := range placeholders {
+		assert.NoDirExists(t, p)
+	}
+	l, found, err = o.snapshots(dir)
+	require.NoError(t, err)
+	require.Len(t, l, 1)
+	assert.Equal(t, t0.Add(time.Hour), l[0].CreatedAt)
+	assert.Empty(t, found)
+	assert.Len(t, *calls, 1, "no subvolume delete of a placeholder")
 }

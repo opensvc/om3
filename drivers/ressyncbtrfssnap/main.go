@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -45,6 +46,17 @@ const (
 	// timeFormat is the format of the time a snapshot name starts with,
 	// the UTC time it was taken at, as v2 named them.
 	timeFormat = "2006-01-02T15:04:05.000000Z"
+
+	// subvolRootIno is the inode number of the root directory of a
+	// subvolume, so of a snapshot.
+	subvolRootIno = 256
+
+	// placeholderIno is the inode number of the empty directory a snapshot
+	// holds in place of a subvolume nested in the subvolume snapshotted.
+	// A node the btrfs sync replaces the subvolume of builds the new one on
+	// such a snapshot, so its .snap directory can hold these empty
+	// directories under the names of snapshots it no longer has.
+	placeholderIno = 2
 )
 
 var (
@@ -55,6 +67,20 @@ var (
 	// readMountinfo returns the mounts of the node, replaced by the tests.
 	readMountinfo = func() ([]byte, error) {
 		return os.ReadFile("/proc/self/mountinfo")
+	}
+
+	// inodeOf returns the inode number of the file at path, replaced by
+	// the tests.
+	inodeOf = func(path string) (uint64, error) {
+		fi, err := os.Lstat(path)
+		if err != nil {
+			return 0, err
+		}
+		st, ok := fi.Sys().(*syscall.Stat_t)
+		if !ok {
+			return 0, fmt.Errorf("%s: no inode number", path)
+		}
+		return st.Ino, nil
 	}
 )
 
@@ -100,15 +126,18 @@ func (t *T) parseSnapName(name string) (time.Time, bool) {
 }
 
 // snapshots returns the snapshots of the resource in the .snap directory of
-// the subvolume mounted at dir, the newest first.
-func (t *T) snapshots(dir string) ([]snapshot, error) {
+// the subvolume mounted at dir, the newest first, and the paths of the empty
+// directories named as snapshots of the resource a snapshot left in place of
+// them.
+func (t *T) snapshots(dir string) ([]snapshot, []string, error) {
 	entries, err := os.ReadDir(filepath.Join(dir, snapDir))
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	l := make([]snapshot, 0, len(entries))
+	placeholders := make([]string, 0)
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -117,10 +146,20 @@ func (t *T) snapshots(dir string) ([]snapshot, error) {
 		if !ok {
 			continue
 		}
-		l = append(l, snapshot{Path: filepath.Join(dir, snapDir, e.Name()), CreatedAt: tm})
+		p := filepath.Join(dir, snapDir, e.Name())
+		ino, err := inodeOf(p)
+		if err != nil {
+			return nil, nil, err
+		}
+		switch ino {
+		case subvolRootIno:
+			l = append(l, snapshot{Path: p, CreatedAt: tm})
+		case placeholderIno:
+			placeholders = append(placeholders, p)
+		}
 	}
 	sort.Slice(l, func(i, j int) bool { return l[i].CreatedAt.After(l[j].CreatedAt) })
-	return l, nil
+	return l, placeholders, nil
 }
 
 // dirs returns the directories the writable subvolumes of loc are mounted at
@@ -233,15 +272,21 @@ func (t *T) snapAndPrune(dir string, now time.Time) error {
 	if _, err := btrfsCmd("subvolume", "snapshot", "-r", dir, snap); err != nil {
 		return err
 	}
-	l, err := t.snapshots(dir)
+	l, placeholders, err := t.snapshots(dir)
 	if err != nil {
 		return err
 	}
+	var errs error
+	for _, p := range placeholders {
+		t.Log().Infof("remove %s, the empty directory a snapshot left in place of this one", p)
+		if err := os.Remove(p); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
 	keep := max(t.Keep, 1)
 	if len(l) <= keep {
-		return nil
+		return errs
 	}
-	var errs error
 	for _, s := range l[keep:] {
 		t.Log().Infof("btrfs subvolume delete %s", s.Path)
 		if _, err := btrfsCmd("subvolume", "delete", s.Path); err != nil {
@@ -289,7 +334,7 @@ func (t *T) status(s string) status.T {
 }
 
 func (t *T) statusDir(dir string) status.T {
-	l, err := t.snapshots(dir)
+	l, _, err := t.snapshots(dir)
 	if err != nil {
 		t.StatusLog().Error("%s: %s", dir, err)
 		return status.Undef
