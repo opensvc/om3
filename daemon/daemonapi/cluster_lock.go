@@ -101,10 +101,18 @@ func (a *DaemonAPI) handOverClusterLock(ctx echo.Context, speaker string, payloa
 }
 
 // DeleteClusterLock releases a cluster lock.
+//
+// A release does not depend on the table of the node speaking. Every node
+// forgets a lock it is told was released, from its table too, and keeps its
+// id from the rebuilds to come. So a release the node speaking cannot answer,
+// its table not rebuilt or itself out of reach, is done by telling every node
+// to forget the lock, and answered done: the client let go of it, and a
+// release that failed would leave it held by nobody until its lease ends.
 func (a *DaemonAPI) DeleteClusterLock(ctx echo.Context, params api.DeleteClusterLockParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	log := LogHandler(ctx, "DeleteClusterLock")
 	handedOver := params.Node != nil && *params.Node != ""
 	if !handedOver {
 		// Whatever the speaker answers, the client has let go of it.
@@ -115,28 +123,32 @@ func (a *DaemonAPI) DeleteClusterLock(ctx echo.Context, params api.DeleteCluster
 		if handedOver {
 			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Not the speaker", "%s speaks for the cluster: ask again", speaker)
 		}
-		c, err := newPeerClient(speaker)
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Release", "ask %s: %s", speaker, err)
-		}
-		params.Node = &a.localhost
-		resp, err := c.DeleteClusterLockWithResponse(ctx.Request().Context(), &params)
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Release", "ask %s: %s", speaker, err)
-		}
-		if resp.StatusCode() == http.StatusNoContent {
+		status, body, contentType, err := handOverRelease(ctx, speaker, params, a.localhost)
+		switch {
+		case err != nil:
+			log.Warnf("cluster lock %s: release by %s: %s: every node is told to forget it", params.Name, speaker, err)
+		case status == http.StatusNoContent:
 			return ctx.NoContent(http.StatusNoContent)
+		case status < http.StatusInternalServerError:
+			return ctx.Blob(status, contentType, body)
+		default:
+			log.Warnf("cluster lock %s: release by %s: %d %s: every node is told to forget it", params.Name, speaker, status, body)
 		}
-		return ctx.Blob(resp.StatusCode(), resp.HTTPResponse.Header.Get("Content-Type"), resp.Body)
+		go a.forgetLock(log, locktable.Lock{Name: params.Name, ID: params.Id})
+		return ctx.NoContent(http.StatusNoContent)
 	}
 	if err := a.rebuildLockTable(ctx); err != nil {
-		return JSONProblemf(ctx, http.StatusServiceUnavailable, "Lock table", "%s", err)
+		log.Warnf("cluster lock %s: %s: every node is told to forget it", params.Name, err)
+		go a.forgetLock(log, locktable.Lock{Name: params.Name, ID: params.Id})
+		return ctx.NoContent(http.StatusNoContent)
 	}
 	lock, ok := locktable.SpeakerTable.Release(params.Name, params.Id)
 	if !ok {
+		// Released already, lapsed, or never granted under this id: kept
+		// from the rebuilds all the same, should a node still report it.
+		locktable.SpeakerTable.Forget(params.Name, params.Id)
 		return JSONProblemf(ctx, http.StatusNotFound, "Not held", "lock %s is not held under %s: it was released, or its lease ended", params.Name, params.Id)
 	}
-	log := LogHandler(ctx, "DeleteClusterLock")
 	releasedBy := a.localhost
 	if handedOver {
 		releasedBy = *params.Node
@@ -151,13 +163,29 @@ func (a *DaemonAPI) DeleteClusterLock(ctx echo.Context, params api.DeleteCluster
 	return ctx.NoContent(http.StatusNoContent)
 }
 
+// handOverRelease asks the node speaking to release a lock, and returns its
+// answer.
+func handOverRelease(ctx echo.Context, speaker string, params api.DeleteClusterLockParams, localhost string) (int, []byte, string, error) {
+	c, err := newPeerClient(speaker)
+	if err != nil {
+		return 0, nil, "", err
+	}
+	params.Node = &localhost
+	resp, err := c.DeleteClusterLockWithResponse(ctx.Request().Context(), &params)
+	if err != nil {
+		return 0, nil, "", err
+	}
+	return resp.StatusCode(), resp.Body, resp.HTTPResponse.Header.Get("Content-Type"), nil
+}
+
 // forgetLock has every node alive forget a lock released.
 //
 // A table is rebuilt from what the nodes say their clients hold and what
 // they granted while they spoke. The node of the holder may still record the
 // lock, when it was released from another node, and the node that granted it
 // keeps its grant after it stopped speaking: either would bring the lock back
-// to a table rebuilt before its lease ends, held by nobody.
+// to a table rebuilt before its lease ends, held by nobody. A node told to
+// forget it also drops it from its table, and keeps its id from its rebuilds.
 //
 // It is done after the answer, as the release is done whatever the peers
 // say: a peer that did not hear of it brings the lock back for what is left
@@ -165,12 +193,16 @@ func (a *DaemonAPI) DeleteClusterLock(ctx echo.Context, params api.DeleteCluster
 func (a *DaemonAPI) forgetLock(log *plog.Logger, lock locktable.Lock) {
 	locktable.LocalHeld.Remove(lock.Name, lock.ID)
 	locktable.SpeakerTable.Forget(lock.Name, lock.ID)
+	until := "its lease ends"
+	if !lock.ExpiresAt.IsZero() {
+		until = lock.ExpiresAt.Format(time.RFC3339)
+	}
 	for _, nodename := range clusternode.Get() {
 		if nodename == a.localhost || node.StatusData.GetByNode(nodename) == nil {
 			continue
 		}
 		if err := forgetNodeLock(nodename, lock); err != nil {
-			log.Warnf("cluster lock %s: %s may bring it back until %s: %s", lock.Name, nodename, lock.ExpiresAt.Format(time.RFC3339), err)
+			log.Warnf("cluster lock %s: %s may bring it back until %s: %s", lock.Name, nodename, until, err)
 		}
 	}
 }
