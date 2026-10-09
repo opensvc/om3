@@ -182,7 +182,11 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) error {
 		newest = previous[len(previous)-1].headID()
 	}
 	states := state.validPeers(newest)
-	if len(state.Peers) > 0 && len(states) == 0 {
+	switch {
+	case len(state.Peers) == 0 || len(states) > 0:
+	case newest == "":
+		t.Log().Infof("the filesystem holds no run of this resource, as a new one: forget what it knew of the peers")
+	default:
 		t.Log().Infof("another node was the source since the last run of this one: forget what it knew of the peers")
 	}
 
