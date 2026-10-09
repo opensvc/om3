@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/xerrors"
+	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/loop"
 )
@@ -309,14 +310,117 @@ func HostDevpath(ctx context.Context, s string, namespace string) (string, error
 	return dev.Path(), nil
 }
 
-// HostDevpaths applies the HostDevpath function to each path of the input list
-func HostDevpaths(ctx context.Context, l []string, namespace string) ([]string, error) {
-	for i, s := range l {
-		if s2, err := HostDevpath(ctx, s, namespace); err != nil {
-			return l, err
-		} else {
-			l[i] = s2
+// exposedDeviceser is a resource exposing block devices, as a disk or a
+// volume does.
+type exposedDeviceser interface {
+	ExposedDevices(context.Context) device.L
+}
+
+// devpathChainKey is the context key of the resources a device is being
+// resolved through, the resource whose keyword names it first.
+type devpathChainKey struct{}
+
+// Devpaths returns the devices of the node one element of a device keyword
+// names:
+//
+//	/dev/sdb    a device of the node
+//	/srv/f.img  a loop file, the device it is attached to
+//	data        a vol of the namespace, the device it exposes
+//	disk#1      a resource of the object, the devices it exposes, as a disk
+//	            or a volume does
+//
+// from is the id of the resource whose keyword is resolved, which a resource
+// id may not name, directly or through the devices of the resources it
+// names. A resource exposing no device, as one that is not started, is an
+// ErrAccess, as a vol that is not available is.
+func Devpaths(ctx context.Context, from, s, namespace string, resolver Resolver) ([]string, error) {
+	if !IsResourceRef(s) {
+		p, err := HostDevpath(ctx, s, namespace)
+		if err != nil {
+			return nil, err
+		}
+		return []string{p}, nil
+	}
+	if _, err := resourceid.Parse(s); err != nil {
+		return nil, fmt.Errorf("%s is not a resource id: %w", s, err)
+	}
+	chain, _ := ctx.Value(devpathChainKey{}).([]string)
+	if len(chain) == 0 && from != "" {
+		chain = []string{from}
+	}
+	for _, rid := range chain {
+		if rid == s {
+			return nil, fmt.Errorf("%s: a device can not be its own: %s", s, strings.Join(append(chain, s), " -> "))
 		}
 	}
+	if resolver == nil {
+		return nil, fmt.Errorf("%s: the resource is not known here", s)
+	}
+	r := resolver.ResourceByID(s)
+	if r == nil {
+		return nil, fmt.Errorf("%s: no such resource", s)
+	}
+	x, ok := r.(exposedDeviceser)
+	if !ok {
+		return nil, fmt.Errorf("%s: the resource exposes no device: it is no disk nor volume", s)
+	}
+	ctx = context.WithValue(ctx, devpathChainKey{}, append(chain[:len(chain):len(chain)], s))
+	devs := x.ExposedDevices(ctx)
+	if len(devs) == 0 {
+		switch avail := r.Status(ctx); avail {
+		case status.Up, status.NotApplicable, status.StandbyUp:
+			return nil, fmt.Errorf("%s: the resource exposes no device", s)
+		default:
+			return nil, ErrAccess{RID: s, Avail: avail}
+		}
+	}
+	l := make([]string, len(devs))
+	for i, dev := range devs {
+		l[i] = dev.Path()
+	}
 	return l, nil
+}
+
+// Devpath returns the device of the node one element of a device keyword
+// names, as Devpaths does, for a keyword naming a single device: a resource
+// id must name a resource exposing one.
+func Devpath(ctx context.Context, from, s, namespace string, resolver Resolver) (string, error) {
+	l, err := Devpaths(ctx, from, s, namespace, resolver)
+	if err != nil {
+		return "", err
+	}
+	if len(l) != 1 {
+		return "", fmt.Errorf("%s exposes %d devices (%s), where one is expected", s, len(l), strings.Join(l, " "))
+	}
+	return l[0], nil
+}
+
+// DevpathsOf returns the devices of the node the elements of a device list
+// keyword name, as Devpaths does, in a new list.
+func DevpathsOf(ctx context.Context, from string, elements []string, namespace string, resolver Resolver) ([]string, error) {
+	l := make([]string, 0, len(elements))
+	for _, s := range elements {
+		devs, err := Devpaths(ctx, from, s, namespace, resolver)
+		if err != nil {
+			return nil, err
+		}
+		l = append(l, devs...)
+	}
+	return l, nil
+}
+
+// HostDevpaths applies the HostDevpath function to each path of the input
+// list, and returns the results in a new list: the input is often a keyword
+// value, which must keep naming the vols rather than the devices they
+// exposed once.
+func HostDevpaths(ctx context.Context, l []string, namespace string) ([]string, error) {
+	devpaths := make([]string, len(l))
+	for i, s := range l {
+		s2, err := HostDevpath(ctx, s, namespace)
+		if err != nil {
+			return nil, err
+		}
+		devpaths[i] = s2
+	}
+	return devpaths, nil
 }

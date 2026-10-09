@@ -10,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/device"
 )
 
 type (
@@ -125,4 +126,106 @@ func TestLocateIgnoresTheAvailability(t *testing.T) {
 	got, err := Locate(ctx, "volume#1:/x", "ns1", o)
 	require.NoError(t, err)
 	assert.Equal(t, "/srv/v1/x", got.HostPath)
+}
+
+// HostDevpaths leaves the list it is given as it was: it is often a keyword
+// value, which must keep naming the vols.
+func TestHostDevpathsKeepsItsInput(t *testing.T) {
+	in := []string{"/dev/sdb", "/dev/sdc"}
+	out, err := HostDevpaths(context.Background(), in, "ns1")
+	require.NoError(t, err)
+	assert.Equal(t, in, out)
+	out[0] = "/dev/sdz"
+	assert.Equal(t, "/dev/sdb", in[0])
+}
+
+type (
+	// fakeDisk is a resource exposing devices, as a disk does.
+	fakeDisk struct {
+		resource.Driver
+		devs  []string
+		avail status.T
+	}
+
+	// fakeStacked is a disk exposing the devices of the resource its
+	// keyword names, as a raw disk does.
+	fakeStacked struct {
+		resource.Driver
+		rid, names string
+		object     fakeObject
+	}
+)
+
+func (t fakeDisk) Status(context.Context) status.T { return t.avail }
+
+func (t fakeDisk) ExposedDevices(context.Context) device.L {
+	l := make(device.L, len(t.devs))
+	for i, p := range t.devs {
+		l[i] = device.New(p)
+	}
+	return l
+}
+
+func (t fakeStacked) ExposedDevices(ctx context.Context) device.L {
+	devs, _ := Devpaths(ctx, t.rid, t.names, "ns1", t.object)
+	l := make(device.L, len(devs))
+	for i, p := range devs {
+		l[i] = device.New(p)
+	}
+	return l
+}
+
+func (t fakeStacked) Status(context.Context) status.T { return status.Down }
+
+// A resource id in a device keyword stands for the devices the resource
+// exposes.
+func TestDevpathsOfAResource(t *testing.T) {
+	ctx := context.Background()
+	o := fakeObject{
+		"disk#1":   fakeDisk{devs: []string{"/dev/md/a"}, avail: status.Up},
+		"disk#2":   fakeDisk{devs: []string{"/dev/sdb", "/dev/sdc"}, avail: status.Up},
+		"disk#3":   fakeDisk{avail: status.Down},
+		"disk#4":   fakeDisk{avail: status.Up},
+		"ip#1":     fakeNoHead{},
+		"volume#1": fakeResource{head: "/srv/v1", avail: status.Up},
+	}
+	l, err := DevpathsOf(ctx, "disk#9", []string{"/dev/sda", "disk#2", "disk#1"}, "ns1", o)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/dev/sda", "/dev/sdb", "/dev/sdc", "/dev/md/a"}, l)
+
+	p, err := Devpath(ctx, "disk#9", "disk#1", "ns1", o)
+	require.NoError(t, err)
+	assert.Equal(t, "/dev/md/a", p)
+	_, err = Devpath(ctx, "disk#9", "disk#2", "ns1", o)
+	assert.ErrorContains(t, err, "exposes 2 devices")
+
+	_, err = Devpaths(ctx, "disk#9", "disk#3", "ns1", o)
+	var accessErr ErrAccess
+	require.ErrorAs(t, err, &accessErr, "a resource not started exposes nothing, as a vol not available")
+	assert.Equal(t, "disk#3", accessErr.RID)
+
+	_, err = Devpaths(ctx, "disk#9", "disk#4", "ns1", o)
+	require.Error(t, err)
+	assert.False(t, errors.As(err, &accessErr), "a resource started and exposing nothing is no access error")
+
+	for _, s := range []string{"ip#1", "volume#1", "disk#8"} {
+		_, err = Devpaths(ctx, "disk#9", s, "ns1", o)
+		assert.Error(t, err, s)
+	}
+	_, err = Devpaths(ctx, "disk#9", "disk#1", "ns1", nil)
+	assert.Error(t, err, "no object to find the resource in")
+}
+
+// A resource id naming the resource itself, or a resource naming it back,
+// is refused rather than resolved forever.
+func TestDevpathsRefusesALoop(t *testing.T) {
+	ctx := context.Background()
+	o := fakeObject{}
+	_, err := Devpaths(ctx, "disk#1", "disk#1", "ns1", o)
+	assert.ErrorContains(t, err, "a device can not be its own")
+
+	o["disk#2"] = fakeStacked{rid: "disk#2", names: "disk#3", object: o}
+	o["disk#3"] = fakeStacked{rid: "disk#3", names: "disk#1", object: o}
+	_, err = Devpaths(ctx, "disk#1", "disk#2", "ns1", o)
+	require.Error(t, err)
 }
