@@ -94,6 +94,24 @@ func ResolverOf(o any) Resolver {
 // resources being its own. The resource must hold a mount point, as a volume
 // or a filesystem does, and be available here.
 func Resolve(ctx context.Context, s string, namespace string, resolver Resolver) (Target, error) {
+	return resolve(ctx, s, namespace, resolver, true)
+}
+
+// Locate expands a path as Resolve does, whether the vol or the resource it
+// is in is available here or not. It is for the path something was done to
+// while it was, as an export to undo once the volume went down, and not for
+// a path to read or write.
+func Locate(ctx context.Context, s string, namespace string, resolver Resolver) (Target, error) {
+	return resolve(ctx, s, namespace, resolver, false)
+}
+
+// underHead returns the path rel names under the mount point head. The path
+// is cleaned as a path from the mount point, so it never leads above it.
+func underHead(head, rel string) string {
+	return filepath.Join(head, filepath.Clean("/"+rel))
+}
+
+func resolve(ctx context.Context, s string, namespace string, resolver Resolver, checkAvail bool) (Target, error) {
 	if strings.HasPrefix(s, "/") {
 		return Target{HostPath: s}, nil
 	}
@@ -102,7 +120,7 @@ func Resolve(ctx context.Context, s string, namespace string, resolver Resolver)
 		if ref, _, _ := strings.Cut(s, "/"); strings.Contains(ref, "#") {
 			return Target{}, fmt.Errorf("%s: a path in a resource is written <rid>:/<path>, as volume#1:/etc/nginx", s)
 		}
-		hostPath, vol, err := volHostPath(ctx, s, namespace)
+		hostPath, vol, err := volHostPath(ctx, s, namespace, checkAvail)
 		if err != nil || vol == nil {
 			return Target{HostPath: hostPath}, err
 		}
@@ -125,18 +143,18 @@ func Resolve(ctx context.Context, s string, namespace string, resolver Resolver)
 	if !ok {
 		return Target{}, fmt.Errorf("%s: the resource %s holds no mount point: it is no volume nor filesystem", s, first)
 	}
-	switch avail := r.Status(ctx); avail {
-	case status.Up, status.NotApplicable, status.StandbyUp:
-	default:
-		return Target{}, ErrAccess{RID: first, Avail: avail}
+	if checkAvail {
+		switch avail := r.Status(ctx); avail {
+		case status.Up, status.NotApplicable, status.StandbyUp:
+		default:
+			return Target{}, ErrAccess{RID: first, Avail: avail}
+		}
 	}
 	head := h.Head()
 	if head == "" {
 		return Target{}, fmt.Errorf("%s: the resource %s has no mount point here", s, first)
 	}
-	// The path is cleaned as a path from the mount point, so it never
-	// leads above it.
-	t := Target{HostPath: filepath.Join(head, filepath.Clean(rel)), Head: head}
+	t := Target{HostPath: underHead(head, rel), Head: head}
 	if v, ok := r.(voler); ok {
 		if vol, err := v.Volume(); err == nil {
 			t.Vol = vol
@@ -159,7 +177,7 @@ func HostPathAndVol(ctx context.Context, s string, namespace string) (hostPath s
 }
 
 // volHostPath expands a path in a vol, or of the node, to a path of the node.
-func volHostPath(ctx context.Context, s string, namespace string) (hostPath string, vol object.Vol, err error) {
+func volHostPath(ctx context.Context, s string, namespace string, checkAvail bool) (hostPath string, vol object.Vol, err error) {
 	var volRelativeSourcePath string
 	l := strings.SplitN(s, "/", 2)
 	if len(l[0]) == 0 {
@@ -183,21 +201,29 @@ func volHostPath(ctx context.Context, s string, namespace string) (hostPath stri
 		return
 	}
 
-	volStatus, err1 := vol.Status(ctx)
-	if err1 != nil {
-		err = err1
-		return
-	}
-	switch volStatus.Avail {
-	case status.Up, status.NotApplicable, status.StandbyUp:
-	default:
-		err = ErrAccess{
-			Path:  volPath,
-			Avail: volStatus.Avail,
+	if checkAvail {
+		volStatus, err1 := vol.Status(ctx)
+		if err1 != nil {
+			err = err1
+			return
 		}
+		switch volStatus.Avail {
+		case status.Up, status.NotApplicable, status.StandbyUp:
+		default:
+			err = ErrAccess{
+				Path:  volPath,
+				Avail: volStatus.Avail,
+			}
+			return
+		}
+	}
+	head := vol.Head()
+	if head == "" {
+		// Joined to nothing, the path would be a path of the node.
+		err = fmt.Errorf("%s: the vol %s has no mount point here", s, volPath)
 		return
 	}
-	hostPath = vol.Head() + "/" + volRelativeSourcePath
+	hostPath = underHead(head, volRelativeSourcePath)
 	return
 }
 

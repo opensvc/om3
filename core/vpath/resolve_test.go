@@ -96,3 +96,33 @@ func TestHostPathKeepsItsForms(t *testing.T) {
 	_, err = HostPath(context.Background(), "volume#1:/x", "ns1")
 	assert.Error(t, err)
 }
+
+// A path in a vol or a resource never leads above its mount point, and names
+// the mount point itself when it names nothing under it.
+func TestUnderHead(t *testing.T) {
+	head := "/srv/data.ns1.vol.c1"
+	for rel, want := range map[string]string{
+		"":               head,
+		"/":              head,
+		"www":            head + "/www",
+		"/www/":          head + "/www",
+		"../../etc":      head + "/etc",
+		"www/../../../x": head + "/x",
+		"/a/./b//c":      head + "/a/b/c",
+	} {
+		assert.Equal(t, want, underHead(head, rel), rel)
+	}
+}
+
+// Locate expands a path in a resource that is not available here, which
+// Resolve refuses.
+func TestLocateIgnoresTheAvailability(t *testing.T) {
+	ctx := context.Background()
+	o := fakeObject{"volume#1": fakeResource{head: "/srv/v1", avail: status.Down}}
+	_, err := Resolve(ctx, "volume#1:/x", "ns1", o)
+	var accessErr ErrAccess
+	require.ErrorAs(t, err, &accessErr)
+	got, err := Locate(ctx, "volume#1:/x", "ns1", o)
+	require.NoError(t, err)
+	assert.Equal(t, "/srv/v1/x", got.HostPath)
+}
