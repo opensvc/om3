@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/ressync"
 	"github.com/opensvc/om3/v3/util/btrfs"
+	"github.com/opensvc/om3/v3/util/mountinfo"
 )
 
 type (
@@ -63,6 +64,23 @@ var (
 	// timeFormats are the formats of the times in the snapshot names read:
 	// v2 left the fraction of second out when it was zero.
 	timeFormats = []string{timeFormat, "2006-01-02T15:04:05Z"}
+
+	// labelDevices returns the devices of the btrfs labeled label on this
+	// node, none when no filesystem has the label, replaced by the tests.
+	labelDevices = func(label string) ([]string, error) {
+		var stdout bytes.Buffer
+		cmd := exec.Command("blkid", "-o", "device", "-t", "LABEL="+label)
+		cmd.Stdout = &stdout
+		if err := cmd.Run(); err != nil {
+			var ee *exec.ExitError
+			if errors.As(err, &ee) && ee.ExitCode() == 2 {
+				// blkid finds nothing labeled so.
+				return nil, nil
+			}
+			return nil, fmt.Errorf("%s: %w", cmd, err)
+		}
+		return strings.Fields(stdout.String()), nil
+	}
 
 	// readMountinfo returns the mounts of the node, replaced by the tests.
 	readMountinfo = func() ([]byte, error) {
@@ -170,7 +188,11 @@ func (t *T) dirs(loc btrfs.Location) ([]string, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	mnt, ok := btrfs.MountOfSubvol(mi, loc.Subvol, false)
+	devs, err := labelDevices(loc.Label)
+	if err != nil {
+		return nil, false, err
+	}
+	mnt, ok := mountOfSubvol(mi, devs, loc.Subvol)
 	if !ok {
 		return nil, false, nil
 	}
@@ -205,6 +227,35 @@ func (t *T) dirs(loc btrfs.Location) ([]string, bool, error) {
 	return l, true, nil
 }
 
+// mountOfSubvol returns the mount point of the subvolume subvol of the btrfs
+// on devs, a writable mount of it. Another btrfs can have a subvolume of the
+// same path: the mount is of the filesystem of the label only when its device
+// is one of the devices of the label, a btrfs spanning several being mounted
+// from any of them.
+func mountOfSubvol(mi []byte, devs []string, subvol string) (string, bool) {
+	real := make(map[string]bool, len(devs))
+	for _, dev := range devs {
+		real[dev] = true
+		if p, err := filepath.EvalSymlinks(dev); err == nil {
+			real[p] = true
+		}
+	}
+	root := "/" + strings.Trim(subvol, "/")
+	for _, m := range mountinfo.Parse(mi) {
+		if m.FSType != "btrfs" || m.Root != root {
+			continue
+		}
+		src := m.Source
+		if p, err := filepath.EvalSymlinks(src); err == nil {
+			src = p
+		}
+		if real[src] || real[m.Source] {
+			return m.Target, true
+		}
+	}
+	return "", false
+}
+
 func listSubvols(mnt string, readOnly bool) ([]btrfs.Subvol, error) {
 	b, err := btrfsCmd(btrfs.ListArgs(readOnly, mnt)...)
 	if err != nil {
@@ -225,7 +276,20 @@ var btrfsCmd = func(args ...string) ([]byte, error) {
 	return stdout.Bytes(), nil
 }
 
+// checkName refuses a name that is no part of a single path component: the
+// snapshots are named after it, in the .snap directory of the subvolume, and
+// a '/' would have them taken elsewhere, out of the retention.
+func (t *T) checkName() error {
+	if strings.ContainsAny(t.Name, "/\x00") {
+		return fmt.Errorf("name %q: a snapshot name holds no '/'", t.Name)
+	}
+	return nil
+}
+
 func (t *T) Update(ctx context.Context) error {
+	if err := t.checkName(); err != nil {
+		return err
+	}
 	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
 		t.Log().Tracef("the instance is not sufficiently started (%s). refuse to create snapshots", reason)
 		return nil
@@ -312,6 +376,10 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t *T) status(s string) status.T {
+	if err := t.checkName(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
 	loc, err := btrfs.ParseLocation(s)
 	if err != nil {
 		t.StatusLog().Error("%s", err)

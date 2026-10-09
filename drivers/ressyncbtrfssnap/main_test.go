@@ -126,3 +126,32 @@ func TestSnapAndPruneRemovesPlaceholders(t *testing.T) {
 	assert.Empty(t, found)
 	assert.Len(t, *calls, 1, "no subvolume delete of a placeholder")
 }
+
+// A name is part of the name of the snapshots, in the .snap directory: a '/'
+// would have them taken out of it, out of the retention.
+func TestCheckName(t *testing.T) {
+	assert.NoError(t, (&T{}).checkName())
+	assert.NoError(t, (&T{Name: "daily.1"}).checkName())
+	assert.NoError(t, (&T{Name: ".."}).checkName(), "a part of the component, never one of its own")
+	assert.Error(t, (&T{Name: "../../etc"}).checkName())
+	assert.Error(t, (&T{Name: "a/b"}).checkName())
+}
+
+// Two btrfs have a subvolume data each: the one of the label is the one
+// mounted from one of its devices.
+func TestMountOfSubvolOfTheLabel(t *testing.T) {
+	mi := []byte(`480 22 7:1 /data /srv/a rw,relatime shared:250 - btrfs /dev/loop1 rw,subvol=/data
+481 22 7:2 /data /srv/b rw,relatime shared:251 - btrfs /dev/loop2 rw,subvol=/data
+482 22 7:2 /data/x /srv/c rw,relatime shared:252 - btrfs /dev/loop2 rw,subvol=/data/x
+`)
+	mnt, ok := mountOfSubvol(mi, []string{"/dev/loop2"}, "data")
+	require.True(t, ok)
+	assert.Equal(t, "/srv/b", mnt)
+	mnt, ok = mountOfSubvol(mi, []string{"/dev/loop3", "/dev/loop1"}, "/data/")
+	require.True(t, ok)
+	assert.Equal(t, "/srv/a", mnt, "a btrfs spanning several devices is mounted from any")
+	_, ok = mountOfSubvol(mi, nil, "data")
+	assert.False(t, ok, "no filesystem has the label on this node")
+	_, ok = mountOfSubvol(mi, []string{"/dev/loop1"}, "data/x")
+	assert.False(t, ok)
+}
