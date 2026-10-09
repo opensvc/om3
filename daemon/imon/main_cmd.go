@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"github.com/opensvc/om3/v3/core/network"
 	"net"
 	"slices"
 	"sort"
@@ -372,6 +373,7 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		}
 	}
 
+	t.releaseRemovedAddresses(t.instConfig, srcCmd.Value)
 	t.instConfig = srcCmd.Value
 	t.log.Tracef("refresh resource monitor states on local instance config updated")
 	t.initResourceMonitor()
@@ -1648,4 +1650,47 @@ func (t *Manager) canRefreshOnEvent() bool {
 		}
 	}
 	return true
+}
+
+// releaseRemovedAddresses releases the addresses this node holds for the
+// resources the configuration update took away, which no unprovision released:
+// a section removed is not unprovisioned. It runs aside, the allocator stores
+// being files.
+func (t *Manager) releaseRemovedAddresses(prev, next instance.Config) {
+	if prev.ActorConfig == nil || next.ActorConfig == nil {
+		return
+	}
+	removed := false
+	for rid := range prev.Resources {
+		if _, ok := next.Resources[rid]; !ok {
+			removed = true
+			break
+		}
+	}
+	if !removed {
+		return
+	}
+	rids := make(map[string]bool, len(next.Resources))
+	for rid := range next.Resources {
+		rids[rid] = true
+	}
+	// A resource still running holds its address on the node, root having
+	// taken its section away all the same: releasing it would have the
+	// address drawn for another resource while it is still configured.
+	if st, ok := t.instStatus[t.localhost]; ok {
+		for rid := range prev.Resources {
+			if rstat, ok := st.Resources[rid]; ok && !rstat.Status.Is(status.Down, status.StandbyDown, status.NotApplicable) {
+				rids[rid] = true
+			}
+		}
+	}
+	go func() {
+		n, err := network.ReleaseRemoved(t.path, rids)
+		if err != nil {
+			t.log.Warnf("release the addresses of the resources removed from the configuration: %s", err)
+		}
+		if n > 0 {
+			t.log.Infof("released %d address(es) of the resources removed from the configuration", n)
+		}
+	}()
 }

@@ -3,10 +3,12 @@ package network
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -319,4 +321,39 @@ func adoptClusterAddr(ctx context.Context, i *ipam.T, key string) (net.IP, error
 	}
 	i.InUse = func() ([]net.IP, error) { return others, nil }
 	return nil, nil
+}
+
+// ReleaseRemoved releases the addresses this node holds for the resources of
+// an object that its configuration no longer has, the resources of rids being
+// the ones it still has.
+//
+// A resource is released when it is unprovisioned, which a section taken
+// away from the configuration skips: its reservation would stay, out of the
+// pool and counted against the claim of the namespace, until the object is
+// deleted.
+func ReleaseRemoved(p naming.Path, rids map[string]bool) (int, error) {
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return 0, err
+	}
+	nodename := hostname.Hostname()
+	released := 0
+	var errs error
+	for _, nw := range Networks(node) {
+		a, err := NewAllocator(nw, nodename)
+		if err != nil || a == nil {
+			continue
+		}
+		n, err := a.Reap(func(key string) bool {
+			kp, ok := ipam.PathOfKey(key)
+			if !ok || kp.String() != p.String() {
+				return true
+			}
+			_, rid, _ := strings.Cut(key, "!")
+			return rids[rid]
+		})
+		released += n
+		errs = errors.Join(errs, err)
+	}
+	return released, errs
 }
