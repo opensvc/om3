@@ -1,0 +1,3 @@
+A whitespace separated list of `<label>:<subvol>` to snapshot.
+
+`<label>` is the label of the btrfs filesystem, and `<subvol>` the path of the subvolume from the root of the filesystem, the one an `fs.btrfs` resource mounts with the `subvol=<subvol>` mount option. The snapshots are taken where the subvolume is mounted, in its `.snap` directory: a subvolume not mounted is not snapshotted.
