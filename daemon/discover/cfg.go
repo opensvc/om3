@@ -452,10 +452,6 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			return
 		}
 	}
-	if t.isBeingRemoved(p, node) {
-		log.Infof("cfg: ignore the %s config of node %s: the object is being removed", pathS, node)
-		return
-	}
 	var needStoppedFlag bool
 	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && daemonStartsOnItsOwn(remoteInstanceConfig.ActorConfig.Orchestrate) && len(remoteInstanceConfig.Scope) > 1 {
 		needStoppedFlag = true
@@ -537,8 +533,13 @@ func (t *Manager) onInstanceConfigDeleting(c *msgbus.InstanceConfigDeleting) {
 // are deleting theirs. Fetched, it would land after their delete, and bring
 // back an object the orchestration that removed it is no longer there to
 // remove.
+//
+// The delete of this node counts once it removed the configuration file: a
+// delete that failed leaves the file, and the configurations of the peers
+// are the ones to follow again. While the delete runs, the global expect of
+// the local monitor says the object is being removed.
 func (t *Manager) isBeingRemoved(p naming.Path, peer string) bool {
-	if t.cfgDeleting[p] {
+	if t.cfgDeleting[p] && !file.Exists(p.ConfigFile()) {
 		return true
 	}
 	for _, node := range []string{t.localhost, peer} {
@@ -760,6 +761,12 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt ti
 		return
 	}
 	s := p.String()
+	if t.isBeingRemoved(p, peer) {
+		// Checked here, where every path to a fetch goes, so none starts
+		// one the delete would race.
+		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: the object is being removed", s, peer)
+		return
+	}
 	if n, ok := t.fetcherFrom[s]; ok {
 		t.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
 		return
