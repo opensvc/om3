@@ -877,14 +877,23 @@ func (t *Manager) sortCandidates(candidates []string) []string {
 	}
 }
 
+// sortWithSpreadPolicy sorts candidates by the md5 of the object path and the
+// nodename, as v2 did: each object has an order of its own, so the objects of
+// a cluster spread over its nodes, and the order is stable while the nodes
+// are.
 func (t *Manager) sortWithSpreadPolicy(candidates []string) []string {
+	return spreadOrder(t.path, candidates)
+}
+
+func spreadOrder(p naming.Path, candidates []string) []string {
 	l := append([]string{}, candidates...)
-	sum := func(s string) []byte {
-		b := append([]byte(t.path.String()), []byte(s)...)
-		return md5.New().Sum(b)
+	sums := make(map[string][md5.Size]byte, len(l))
+	for _, nodename := range l {
+		sums[nodename] = md5.Sum([]byte(p.String() + nodename))
 	}
 	sort.SliceStable(l, func(i, j int) bool {
-		return bytes.Compare(sum(l[i]), sum(l[j])) < 0
+		a, b := sums[l[i]], sums[l[j]]
+		return bytes.Compare(a[:], b[:]) < 0
 	})
 	return l
 }
@@ -935,16 +944,20 @@ func (t *Manager) sortWithLastStartPolicy(candidates []string) []string {
 	return l
 }
 
+// sortWithShiftPolicy rotates the nodes order by the index of the scaler
+// slice, as v2 did, so the slices of a scaler lead on successive nodes. An
+// object that is no slice is not rotated.
 func (t *Manager) sortWithShiftPolicy(candidates []string) []string {
-	var i int
-	l := t.sortWithNodesOrderPolicy(candidates)
-	l = append(l, l...)
-	n := len(candidates)
-	scalerSliceIndex := t.path.ScalerSliceIndex()
-	if n > 0 && scalerSliceIndex > n {
-		i = t.path.ScalerSliceIndex() % n
+	return shiftOrder(t.sortWithNodesOrderPolicy(candidates), t.path.ScalerSliceIndex())
+}
+
+func shiftOrder(ordered []string, index int) []string {
+	n := len(ordered)
+	if n == 0 || index <= 0 {
+		return ordered
 	}
-	return candidates[i : i+n]
+	i := index % n
+	return append(append([]string{}, ordered[i:]...), ordered[:i]...)
 }
 
 func (t *Manager) sortWithNodesOrderPolicy(candidates []string) []string {
