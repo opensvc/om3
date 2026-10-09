@@ -1,3 +1,6 @@
 The permissions to apply to installed files, in octal notation.
 
 Also used to compute a default value for `dirperm`.
+
+When not set, a file from a sec is installed with mode `0600`, and a file from
+a cfg with mode `0644`.

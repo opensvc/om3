@@ -89,7 +89,7 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Network event handling**: New daemon network monitor (`netmon`) relays netlink events to pubsub, enabling faster response to network changes.
 
-* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup.
+* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup. A file it installs takes the mode its line sets, else the `perm` keyword of the resource, else `0600` for a sec key and `0644` for a cfg key, as the `secrets` and `configs` keywords read `perm`.
 
 * **Namespace claims on cluster resources**: A namespace can be capped on what it takes of a resource its peers share, declared in its configuration as a `claim` section:
 
