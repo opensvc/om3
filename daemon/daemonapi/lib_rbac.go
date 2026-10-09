@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"errors"
 	"fmt"
+	"github.com/opensvc/om3/v3/core/network"
 	"net/http"
 	"slices"
 	"sort"
@@ -53,7 +54,77 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if err := usrRbac(grants, p, from, cfg); err != nil {
 		return err
 	}
+	if err := hostIPRbac(from, cfg); err != nil {
+		return err
+	}
 	return rootlessRbac(p, from, cfg)
+}
+
+// lookupNetwork returns the network of a name, replaced by the tests.
+var lookupNetwork = func(name string) (network.Networker, error) {
+	nw, _, err := network.Lookup(name)
+	return nw, err
+}
+
+// hostIPRbac refuses a write giving an ip.host resource an address of a
+// network other than a lan one, or another network than the one root gave an
+// address it named.
+//
+// The keyword policy lets a user holding no root grant have an ip.host draw
+// its address from a network, the network saying the address, the interface
+// and the netmask. Only a lan network, a range root made for the cluster on a
+// segment the nodes share, is one to draw a node address from: the addresses
+// of a bridge network are the node's own bridge, and the ones of a
+// routed_bridge the subnet of the node. The network type is known here, from
+// the cluster configuration, and not where the keywords are.
+//
+// Only what the write changes is judged: the type or the network of the
+// section, on any node the object runs on.
+func hostIPRbac(from, to *xconfig.T) error {
+	scopes := rbacScopes(from, to)
+	defaultType := driver.DefaultDriver[driver.NewGroup("ip")]
+	typeOf := func(cfg *xconfig.T, section, nodename string) string {
+		if s := evaluatedOrWrittenAs(cfg, key.New(section, "type"), nodename); s != "" {
+			return s
+		}
+		return defaultType
+	}
+	for _, section := range to.SectionStrings() {
+		group, _, _ := strings.Cut(section, "#")
+		if group != "ip" {
+			continue
+		}
+		kn := key.New(section, "network")
+		for _, nodename := range scopes {
+			if typeOf(to, section, nodename) != "host" {
+				continue
+			}
+			name := evaluatedOrWrittenAs(to, kn, nodename)
+			if from != nil && len(from.Keys(section)) > 0 &&
+				typeOf(from, section, nodename) == "host" &&
+				evaluatedOrWrittenAs(from, kn, nodename) == name {
+				continue
+			}
+			if name == "" {
+				// The keyword policy refused it, or root named the address.
+				continue
+			}
+			if evaluatedOrWrittenAs(to, key.New(section, "name"), nodename) != "" {
+				return fmt.Errorf("%w: %s on %s: the network of an address root named requires the root grant", ErrDenied, section, nodename)
+			}
+			nw, err := lookupNetwork(name)
+			if err != nil {
+				return fmt.Errorf("%s: network %s: %w", section, name, err)
+			}
+			if nw == nil {
+				return fmt.Errorf("%w: %s on %s: no network %s to draw the address from", ErrDenied, section, nodename, name)
+			}
+			if i, ok := nw.(network.ClusterWider); !ok || !i.IsClusterWide() {
+				return fmt.Errorf("%w: %s on %s: a host address drawn from network %s, a %s network rather than a lan one, requires the root grant", ErrDenied, section, nodename, name, nw.Type())
+			}
+		}
+	}
+	return nil
 }
 
 // usrRbac refuses a write of a user giving it more than the writer holds.
@@ -472,7 +543,7 @@ func keyopRbacOn(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac
 // is being taken away from: a user who may not set a keyword to a value may
 // not unset it from that value either.
 func keyUnsetRbac(grants rbac.Grants, kind naming.Kind, k key.T, value string, set keyoprbac.Section) error {
-	if err := keyoprbac.Denied(grants, kind, k.Section, k.Option, value, set); err != nil {
+	if err := keyoprbac.DeniedUnset(grants, kind, k.Section, k.Option, value, set); err != nil {
 		return fmt.Errorf("%w: unset %s: %w", ErrDenied, k, err)
 	}
 	return nil

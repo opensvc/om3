@@ -152,11 +152,14 @@ type = netns
 netns = container#0
 `), "a netns resource drawing from no network has an address of its own")
 
-	assert.Error(t, rbacOf(t, `
+	// A host address is drawn from a lan network only, which the network
+	// check after the keyword policy says.
+	fakeNetworks(t)
+	assert.ErrorContains(t, writeIP(t, "", `
 [ip#0]
 type = host
 network = default
-`))
+`), "rather than a lan one")
 
 	// An ip.cni resource is writable as it was before the ip group gained a
 	// default, including the keywords every section carries.

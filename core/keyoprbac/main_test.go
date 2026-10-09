@@ -194,7 +194,7 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container#1", "dns"))
 	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman.", Doc(naming.KindSvc, "container", "type"))
 	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
-	assert.Equal(t, "Requires the root grant, except for a cni address, and for a netns address om draws from a cluster network.", Doc(naming.KindSvc, "ip", "type"))
+	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
 	assert.Equal(t, "", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
@@ -230,10 +230,14 @@ func TestIPDrawnFromAClusterNetwork(t *testing.T) {
 	// name set for a peer node counts here.
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("network", "name")))
 
-	// Every other ip type addresses a node interface.
-	for _, typ := range []string{"host", "route", "sgcp_dnsalias", "amazon", ""} {
+	// Every other ip type addresses a node interface, but for a host address
+	// drawn from a network: that the network is a lan one is checked where
+	// the network is known, and a host address naming no network names its
+	// own.
+	for _, typ := range []string{"route", "sgcp_dnsalias", "amazon", ""} {
 		assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", typ, section("network")), "type %s", typ)
 	}
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", none))
 
 	// The keywords naming an address, or the link that carries it, are the
 	// node administrator's whatever the type.
@@ -435,4 +439,23 @@ func TestDeniedShareOfAVolume(t *testing.T) {
 	assert.EqualError(t, Denied(noGrant, naming.KindVol, "share#1", "a_keyword_of_a_driver_added_later", "x", none), "a resource of a volume requires the root grant")
 	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "share#1", "a_keyword_of_a_driver_added_later", "x", none), "requires the root grant")
 	require.NoError(t, Denied(noGrant, naming.KindSvc, "share#1", "comment", "x", none))
+}
+
+// A host address om draws from a network is allowed, the network saying the
+// address, the interface and the netmask: a section naming one of them is
+// not, and the addr om writes is judged as a keyword of its own.
+func TestHostIPType(t *testing.T) {
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", section("network")))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", section("network", "addr", "expose")))
+	for _, s := range [][]string{{}, {"network", "name"}, {"network", "dev"}, {"network", "netmask"}} {
+		assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", section(s...)), "%v", s)
+	}
+}
+
+// Setting addr chooses the address. Taking it away releases what om gave.
+func TestAddrMayBeUnset(t *testing.T) {
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "ip#1", "addr", "fd01::5:52", none),
+		"an address of the user's choosing requires the root grant: om writes the address it draws from the network")
+	assert.NoError(t, DeniedUnset(noGrant, naming.KindSvc, "ip#1", "addr", "fd01::5:52", none))
+	assert.Error(t, DeniedUnset(noGrant, naming.KindSvc, "ip#1", "name", "fd01::5:52", none), "a keyword a user may not set stays one they may not unset")
 }

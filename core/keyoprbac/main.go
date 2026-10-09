@@ -54,6 +54,12 @@ type (
 		// A rule with a Denies writes its whole sentence in Reason, values
 		// included, because the policy cannot derive one from a function.
 		Denies func(value string, section Section) bool
+
+		// MayUnset says a user holding no grant may take the keyword away,
+		// whatever it holds. It is for a keyword om writes itself, as the
+		// record of something it gave the object: taking the record away
+		// gives the object nothing, while setting it chooses what it gets.
+		MayUnset bool
 	}
 
 	// Group is the policy of one driver group.
@@ -342,13 +348,24 @@ var rules = map[string]Group{
 			"type": {
 				Grant: rbac.GrantRoot,
 				Reason: "requires the root grant, except for a cni address, " +
-					"and for a netns address om draws from a cluster network",
+					"for a netns address om draws from a cluster network, " +
+					"and for a host address om draws from a lan network, on the interface and with the netmask the network says",
 				Denies: deniesIPType,
 			},
 
 			// The networks are the cluster's, and om hands out the addresses
 			// of the one named here.
 			"network": {},
+
+			// The address om drew from the network, which it writes itself.
+			// Writing it is choosing the address, which is the node
+			// administrator's to do. Taking it away releases the address,
+			// which is how a section holding one is removed.
+			"addr": {
+				Grant:    rbac.GrantRoot,
+				Reason:   "an address of the user's choosing requires the root grant: om writes the address it draws from the network",
+				MayUnset: true,
+			},
 
 			// These say what the object does with its address, inside the
 			// object: which of its containers holds the namespace, what the
@@ -660,6 +677,15 @@ func deniesIPType(value string, section Section) bool {
 		return false
 	case "netns":
 		return !section("network") || section("name")
+	case "host":
+		// The network says the address, the interface and the netmask: a
+		// section naming any of them configures an address of the node
+		// its user chose. The addr om writes is judged as a keyword of its
+		// own, a user setting it choosing the address, so the section it
+		// was written in stays theirs to remove. That the network is a
+		// lan one, whose range root made for the cluster, is checked where
+		// the network is known.
+		return !section("network") || section("name") || section("dev") || section("netmask")
 	default:
 		return true
 	}
@@ -773,6 +799,17 @@ func Denied(grants rbac.Grants, kind naming.Kind, section, option, value string,
 		return nil
 	}
 	return fmt.Errorf("%s", rule.Reason)
+}
+
+// DeniedUnset returns the reason these grants are not enough to take this
+// keyword away from this value, or nil when they are. A keyword a user may
+// not set is one they may not unset either, but for a keyword om writes the
+// record of what it gave in.
+func DeniedUnset(grants rbac.Grants, kind naming.Kind, section, option, value string, set Section) error {
+	if rule, ok := Lookup(kind, section, option); ok && rule.MayUnset {
+		return nil
+	}
+	return Denied(grants, kind, section, option, value, set)
 }
 
 // Doc returns the sentence the documentation of a keyword shows about the
