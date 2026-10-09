@@ -23,6 +23,11 @@ func fakeClusterAddrs(t *testing.T, m map[string][]net.IP, err error) *int {
 		*calls++
 		return m, err
 	}
+	prevLock := lockNetwork
+	t.Cleanup(func() { lockNetwork = prevLock })
+	lockNetwork = func(context.Context, string, string) (func(), error) {
+		return func() {}, nil
+	}
 	return calls
 }
 
@@ -90,4 +95,94 @@ func TestAllocateForNodeRange(t *testing.T) {
 	_, err := AllocateFor(context.Background(), i, p, "ip#1")
 	require.NoError(t, err)
 	assert.Zero(t, *calls)
+}
+
+// A draw from a cluster-wide network holds the network lock while it reads
+// the cluster and reserves, and a draw from a node range takes none.
+func TestAllocateForLocksTheClusterWideNetwork(t *testing.T) {
+	testhelper.Setup(t)
+	p, _ := naming.ParsePath("ns1/svc/san1")
+	fakeClusterAddrs(t, nil, nil)
+	locked, released := 0, 0
+	lockNetwork = func(_ context.Context, name, key string) (func(), error) {
+		assert.Equal(t, "san", name)
+		assert.Equal(t, ipam.Key(p, "ip#1"), key)
+		locked++
+		return func() { released++ }, nil
+	}
+	_, err := AllocateFor(context.Background(), newClusterWide(t), p, "ip#1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, locked)
+	assert.Equal(t, 1, released)
+
+	i := newClusterWide(t)
+	i.ClusterWide = false
+	_, err = AllocateFor(context.Background(), i, p, "ip#2")
+	require.NoError(t, err)
+	assert.Equal(t, 1, locked, "a node range is drawn from by this node alone")
+}
+
+// A network lock not granted is an allocation not made.
+func TestAllocateForNeedsTheNetworkLock(t *testing.T) {
+	testhelper.Setup(t)
+	p, _ := naming.ParsePath("ns1/svc/san1")
+	fakeClusterAddrs(t, nil, nil)
+	lockNetwork = func(context.Context, string, string) (func(), error) {
+		return nil, errors.New("cluster lock held")
+	}
+	_, err := AllocateFor(context.Background(), newClusterWide(t), p, "ip#1")
+	assert.ErrorContains(t, err, "cluster lock held")
+}
+
+// A redraw gives the address the resource held up: it is neither the one
+// drawn again, nor the one taken back from another node.
+func TestRedrawForDrawsAnotherAddress(t *testing.T) {
+	testhelper.Setup(t)
+	p, _ := naming.ParsePath("ns1/svc/san1")
+	key := ipam.Key(p, "ip#1")
+	i := newClusterWide(t)
+	fakeClusterAddrs(t, nil, nil)
+	previous, err := AllocateFor(context.Background(), i, p, "ip#1")
+	require.NoError(t, err)
+
+	// The node the resource ran on before still reports it.
+	fakeClusterAddrs(t, map[string][]net.IP{key: {previous}}, nil)
+	ip, err := RedrawFor(context.Background(), i, p, "ip#1", previous)
+	require.NoError(t, err)
+	assert.NotEqual(t, previous.String(), ip.String())
+	held, err := i.Allocated(key)
+	require.NoError(t, err)
+	assert.Equal(t, ip.String(), held.String())
+}
+
+// A redraw from a node range gives the address up too.
+func TestRedrawForNodeRange(t *testing.T) {
+	testhelper.Setup(t)
+	p, _ := naming.ParsePath("ns1/svc/san1")
+	i := newClusterWide(t)
+	i.ClusterWide = false
+	previous, err := AllocateFor(context.Background(), i, p, "ip#1")
+	require.NoError(t, err)
+	ip, err := RedrawFor(context.Background(), i, p, "ip#1", previous)
+	require.NoError(t, err)
+	assert.NotEqual(t, previous.String(), ip.String())
+}
+
+// A redraw that fails holds the address it was to give up again, so the next
+// one gives it up too rather than draw it.
+func TestRedrawForFailingKeepsThePrevious(t *testing.T) {
+	testhelper.Setup(t)
+	p, _ := naming.ParsePath("ns1/svc/san1")
+	i := newClusterWide(t)
+	fakeClusterAddrs(t, nil, nil)
+	previous, err := AllocateFor(context.Background(), i, p, "ip#1")
+	require.NoError(t, err)
+	lockNetwork = func(context.Context, string, string) (func(), error) {
+		return nil, errors.New("cluster lock held")
+	}
+	_, err = RedrawFor(context.Background(), i, p, "ip#1", previous)
+	require.Error(t, err)
+	held, err := i.Allocated(ipam.Key(p, "ip#1"))
+	require.NoError(t, err)
+	assert.Equal(t, previous.String(), held.String())
 }

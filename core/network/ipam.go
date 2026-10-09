@@ -6,11 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clusterlock"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -217,6 +221,34 @@ func installedPaths() (map[string]bool, error) {
 // would stop an object the cluster let take the address in the first place,
 // and a namespace that reached its limit could no longer restart what it runs.
 func AllocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string) (net.IP, error) {
+	return allocateFor(ctx, i, p, rid, nil)
+}
+
+// RedrawFor releases the address a resource holds, previous, and reserves
+// another one.
+//
+// It is what a resource whose recorded address was taken away asks for: the
+// address it holds is the one it is to give up, so neither the reservation of
+// this node nor the one it holds on another node is taken back.
+//
+// A redraw that fails holds previous again, so the next one still knows what
+// to give up.
+func RedrawFor(ctx context.Context, i *ipam.T, p naming.Path, rid string, previous net.IP) (net.IP, error) {
+	key := ipam.Key(p, rid)
+	if err := i.Free(key); err != nil {
+		return nil, err
+	}
+	ip, err := allocateFor(ctx, i, p, rid, previous)
+	if err != nil {
+		if _, adoptErr := i.Adopt([]ipam.Reservation{{IP: previous, Key: key}}); adoptErr != nil {
+			return nil, errors.Join(err, adoptErr)
+		}
+		return nil, err
+	}
+	return ip, nil
+}
+
+func allocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string, previous net.IP) (net.IP, error) {
 	key := ipam.Key(p, rid)
 	held, err := i.Allocated(key)
 	if err != nil {
@@ -225,31 +257,99 @@ func AllocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string) (net
 	if held != nil {
 		return held, nil
 	}
+	exclude := make([]net.IP, 0)
+	if previous != nil {
+		exclude = append(exclude, previous)
+	}
 	if i.ClusterWide {
-		ip, err := adoptClusterAddr(ctx, i, key)
+		// Every node draws from the range, and what the others drew is read
+		// before drawing: two nodes doing it at once would both read a
+		// cluster without the address the other is about to take.
+		release, err := lockNetwork(ctx, i.Name, key)
+		if err != nil {
+			return nil, fmt.Errorf("network %s: %w", i.Name, err)
+		}
+		defer release()
+		ip, others, err := adoptClusterAddr(ctx, i, key, previous == nil)
 		if err != nil {
 			return nil, err
 		}
 		if ip != nil {
 			return ip, nil
 		}
+		exclude = append(exclude, others...)
 	}
 	if ok, why, err := ClaimFits(ctx, i.Name, p.Namespace, p, rid); err != nil {
 		return nil, fmt.Errorf("network %s claim check: %w", i.Name, err)
 	} else if !ok {
 		return nil, fmt.Errorf("network %s: %s", i.Name, why)
 	}
+	if len(exclude) > 0 {
+		inUse := i.InUse
+		i.InUse = func() ([]net.IP, error) {
+			if inUse == nil {
+				return exclude, nil
+			}
+			l, err := inUse()
+			return append(l, exclude...), err
+		}
+	}
 	return i.Allocate(key)
 }
 
+// lockNetworkWait is how long an allocation waits for another node drawing
+// from the same network.
+const lockNetworkWait = time.Minute
+
+// lockNetwork takes the cluster lock of a network, and returns what releases
+// it.
+var lockNetwork = func(ctx context.Context, networkName, key string) (func(), error) {
+	lock, err := clusterlock.Acquire(ctx, "network/"+networkName, clusterlock.Options{Holder: key, Wait: lockNetworkWait})
+	if err != nil {
+		return nil, err
+	}
+	return func() {
+		// A release that fails leaves the lock to its lease, which only
+		// delays the next allocation.
+		_ = lock.Release(context.Background())
+	}, nil
+}
+
 // clusterAddrs reads the addresses the resources of the cluster hold in a
-// network, by reservation key, from the daemon, which replicates the status
-// of every instance.
+// network, by reservation key.
+//
+// Two readings make it. The status of the objects, which the daemon
+// replicates, has every address a resource reports, on the nodes alive or
+// not. The reservation store of every node alive has the addresses drawn and
+// not reported yet, as the one the node that held the network lock before
+// this one just drew: the object it drew it for publishes its status once its
+// action is over.
 var clusterAddrs = func(ctx context.Context, networkName string) (map[string][]net.IP, error) {
 	c, err := client.New()
 	if err != nil {
 		return nil, err
 	}
+	m, err := statusAddrs(ctx, c, networkName)
+	if err != nil {
+		return nil, err
+	}
+	reserved, err := storeAddrs(ctx, c, networkName)
+	if err != nil {
+		return nil, err
+	}
+	for key, ips := range reserved {
+		for _, ip := range ips {
+			if !slices.ContainsFunc(m[key], ip.Equal) {
+				m[key] = append(m[key], ip)
+			}
+		}
+	}
+	return m, nil
+}
+
+// statusAddrs reads the addresses the resources of the cluster report in a
+// network, by reservation key, from the status the daemon replicates.
+func statusAddrs(ctx context.Context, c *client.T, networkName string) (map[string][]net.IP, error) {
 	resp, err := c.GetNetworkIPWithResponse(ctx, &api.GetNetworkIPParams{Name: &networkName})
 	if err != nil {
 		return nil, err
@@ -273,10 +373,55 @@ var clusterAddrs = func(ctx context.Context, networkName string) (map[string][]n
 	return m, nil
 }
 
+// storeAddrs reads the addresses every node alive reserved in a network, by
+// reservation key, from their reservation stores.
+//
+// A node the daemon has no data of is not alive, and is skipped. One alive
+// that does not answer fails the reading: what it drew is what the reading
+// is for.
+func storeAddrs(ctx context.Context, c *client.T, networkName string) (map[string][]net.IP, error) {
+	ccfg, err := object.NewCluster(object.WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	nodenames, err := ccfg.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string][]net.IP)
+	for _, nodename := range nodenames {
+		resp, err := c.GetNodeNetworkReservationsWithResponse(ctx, nodename, &api.GetNodeNetworkReservationsParams{Name: &networkName})
+		if err != nil {
+			return nil, fmt.Errorf("read the %s network reservations of %s: %w", networkName, nodename, err)
+		}
+		switch {
+		case resp.JSON200 != nil:
+		case resp.StatusCode() == http.StatusNotFound:
+			continue
+		default:
+			return nil, fmt.Errorf("read the %s network reservations of %s: unexpected status code %d", networkName, nodename, resp.StatusCode())
+		}
+		for _, item := range resp.JSON200.Items {
+			p, err := naming.ParsePath(item.Path)
+			if err != nil {
+				continue
+			}
+			ip := net.ParseIP(item.IP)
+			if ip == nil {
+				continue
+			}
+			key := ipam.Key(p, item.RID)
+			m[key] = append(m[key], ip)
+		}
+	}
+	return m, nil
+}
+
 // adoptClusterAddr reserves on this node the address the resource holds on
 // another node of a cluster-wide network, and returns it, nil when it holds
-// none. Otherwise it has the allocation keep clear of the addresses the other
-// resources hold anywhere: this node has no reservation of theirs.
+// none or adopt is false. Otherwise it returns the addresses the other
+// resources hold anywhere, which the allocation keeps clear of: this node has
+// no reservation of theirs.
 //
 // So a failover object moving to another node takes its address along, which
 // is what a floating address is for, rather than drawing one the clients of
@@ -285,15 +430,15 @@ var clusterAddrs = func(ctx context.Context, networkName string) (map[string][]n
 // The cluster is read through the daemon, without which the addresses of the
 // other nodes are unknown: an allocation then fails rather than hand out an
 // address another node may hold.
-func adoptClusterAddr(ctx context.Context, i *ipam.T, key string) (net.IP, error) {
+func adoptClusterAddr(ctx context.Context, i *ipam.T, key string, adopt bool) (net.IP, []net.IP, error) {
 	held, err := clusterAddrs(ctx, i.Name)
 	if err != nil {
-		return nil, fmt.Errorf("network %s: read the addresses the cluster holds: %w", i.Name, err)
+		return nil, nil, fmt.Errorf("network %s: read the addresses the cluster holds: %w", i.Name, err)
 	}
 	var own net.IP
 	others := make([]net.IP, 0)
 	for k, ips := range held {
-		if k != key {
+		if k != key || !adopt {
 			others = append(others, ips...)
 			continue
 		}
@@ -302,25 +447,24 @@ func adoptClusterAddr(ctx context.Context, i *ipam.T, key string) (net.IP, error
 			case own == nil:
 				own = ip
 			case !own.Equal(ip):
-				return nil, fmt.Errorf("network %s: %s holds both %s and %s on the nodes of the cluster: release one", i.Name, key, own, ip)
+				return nil, nil, fmt.Errorf("network %s: %s holds both %s and %s on the nodes of the cluster: release one", i.Name, key, own, ip)
 			}
 		}
 	}
-	if own != nil {
-		if _, err := i.Adopt([]ipam.Reservation{{IP: own, Key: key}}); err != nil {
-			return nil, err
-		}
-		ip, err := i.Allocated(key)
-		if err != nil {
-			return nil, err
-		}
-		if ip == nil || !ip.Equal(own) {
-			return nil, fmt.Errorf("network %s: %s is reserved on this node for another resource than %s, which holds it on another node", i.Name, own, key)
-		}
-		return ip, nil
+	if own == nil {
+		return nil, others, nil
 	}
-	i.InUse = func() ([]net.IP, error) { return others, nil }
-	return nil, nil
+	if _, err := i.Adopt([]ipam.Reservation{{IP: own, Key: key}}); err != nil {
+		return nil, nil, err
+	}
+	ip, err := i.Allocated(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ip == nil || !ip.Equal(own) {
+		return nil, nil, fmt.Errorf("network %s: %s is reserved on this node for another resource than %s, which holds it on another node", i.Name, own, key)
+	}
+	return ip, nil, nil
 }
 
 // ReleaseRemoved releases the addresses this node holds for the resources of
