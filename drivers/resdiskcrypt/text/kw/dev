@@ -1,1 +1,8 @@
-The fullpath of the underlying block device.
+The block device to encrypt, written as the other devices of a service are:
+
+* `/dev/sdb` is a device of the node.
+* `data` is the device a vol of the namespace exposes, as the block volume a
+  pool served.
+* `disk#1` is the device a resource of the service exposes, as a md or a
+  logical volume. The resource must expose one device, and start before
+  this one.

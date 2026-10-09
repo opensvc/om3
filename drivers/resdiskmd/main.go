@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -201,7 +202,13 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("md %s already exists", t.Label(ctx))
 		return nil
 	}
-	if err := devIntf.Create(ctx, t.Level, t.Devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
+	// A member written as the name of a vol of the namespace, or the id of a
+	// resource of the object, is the device it exposes.
+	devs, err := vpath.DevpathsOf(ctx, t.RID(), t.Devs, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
+	if err != nil {
+		return err
+	}
+	if err := devIntf.Create(ctx, t.Level, devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {

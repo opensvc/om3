@@ -11,9 +11,11 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
@@ -23,6 +25,7 @@ import (
 type (
 	T struct {
 		resdisk.T
+		Path              naming.Path  `json:"path"`
 		Devices           []string     `json:"devs"`
 		User              *user.User   `json:"user"`
 		Group             *user.Group  `json:"group"`
@@ -49,26 +52,65 @@ func (t *T) raw() *raw.T {
 	return l
 }
 
-func (t *T) devices() DevPairs {
+// devices returns the device pairs of the devs keyword. A source written as
+// the name of a vol of the namespace, or the id of a resource of the object,
+// is the device it exposes, which needs the vol or the resource available:
+// an entry naming one that is not is left out, and the error says why.
+//
+// A resource exposing several devices stands for all of them, except as the
+// source of a mapping, which is one device.
+func (t *T) devices(ctx context.Context) (DevPairs, error) {
 	l := NewDevPairs()
+	var errs error
+	resolver := vpath.ResolverOf(t.GetObject())
 	for _, e := range t.Devices {
-		x := strings.SplitN(e, ":", 2)
-		if len(x) == 2 {
-			src := device.New(x[0], device.WithLogger(t.Log()))
-			dst := device.New(x[1], device.WithLogger(t.Log()))
+		srcPath, dstPath, isPair := strings.Cut(e, ":")
+		switch {
+		case isNamed(srcPath) && isPair:
+			p, err := vpath.Devpath(ctx, t.RID(), srcPath, t.Path.Namespace, resolver)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			srcPath = p
+		case isNamed(srcPath):
+			devs, err := vpath.Devpaths(ctx, t.RID(), srcPath, t.Path.Namespace, resolver)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			for _, p := range devs {
+				src := device.New(p, device.WithLogger(t.Log()))
+				l = l.Add(&src, nil)
+			}
+			continue
+		case !isPair:
+			matches, err := filepath.Glob(e)
+			if err != nil {
+				continue
+			}
+			for _, p := range matches {
+				src := device.New(p, device.WithLogger(t.Log()))
+				l = l.Add(&src, nil)
+			}
+			continue
+		}
+		src := device.New(srcPath, device.WithLogger(t.Log()))
+		if isPair {
+			dst := device.New(dstPath, device.WithLogger(t.Log()))
 			l = l.Add(&src, &dst)
-			continue
-		}
-		matches, err := filepath.Glob(e)
-		if err != nil {
-			continue
-		}
-		for _, p := range matches {
-			src := device.New(p, device.WithLogger(t.Log()))
+		} else {
 			l = l.Add(&src, nil)
 		}
 	}
-	return l
+	return l, errs
+}
+
+// isNamed says a devs entry source names a vol of the namespace or a
+// resource of the object, rather than a device path or a pattern of device
+// paths.
+func isNamed(s string) bool {
+	return s != "" && !strings.HasPrefix(s, "/") && !strings.ContainsAny(s, "*?[")
 }
 
 func (t *T) stopBlockDevice(ctx context.Context, pair DevPair) error {
@@ -355,7 +397,11 @@ func (t *T) createBlockDevice(ctx context.Context, pair DevPair) error {
 }
 
 func (t *T) startBlockDevices(ctx context.Context) error {
-	for _, pair := range t.devices() {
+	pairs, err := t.devices(ctx)
+	if err != nil {
+		return err
+	}
+	for _, pair := range pairs {
 		if err := t.startBlockDevice(ctx, pair); err != nil {
 			return err
 		}
@@ -364,7 +410,11 @@ func (t *T) startBlockDevices(ctx context.Context) error {
 }
 
 func (t *T) stopBlockDevices(ctx context.Context) error {
-	for _, pair := range t.devices() {
+	pairs, err := t.devices(ctx)
+	if err != nil {
+		t.Log().Warnf("%s", err)
+	}
+	for _, pair := range pairs {
 		if err := t.stopBlockDevice(ctx, pair); err != nil {
 			return err
 		}
@@ -380,7 +430,11 @@ func (t *T) startCharDevices(ctx context.Context) error {
 	if !raw.IsCapable() {
 		return fmt.Errorf("not raw capable")
 	}
-	for _, pair := range t.devices() {
+	pairs, err := t.devices(ctx)
+	if err != nil {
+		return err
+	}
+	for _, pair := range pairs {
 		minor, err := ra.Bind(pair.Src.Path())
 		switch {
 		case errors.Is(err, raw.ErrExist):
@@ -405,7 +459,11 @@ func (t *T) stopCharDevices(ctx context.Context) error {
 	if !raw.IsCapable() {
 		return nil
 	}
-	for _, pair := range t.devices() {
+	pairs, err := t.devices(ctx)
+	if err != nil {
+		t.Log().Warnf("%s", err)
+	}
+	for _, pair := range pairs {
 		p := pair.Src.Path()
 		if err := ra.UnbindBDevPath(p); err != nil {
 			return err
@@ -414,10 +472,10 @@ func (t *T) stopCharDevices(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) statusBlockDevices() status.T {
+func (t *T) statusBlockDevices(pairs DevPairs) status.T {
 	var issues []string
 	s := status.NotApplicable
-	for _, pair := range t.devices() {
+	for _, pair := range pairs {
 		devStatus, devIssues := t.statusBlockDevice(pair)
 		s.Add(devStatus)
 		issues = append(issues, devIssues...)
@@ -430,14 +488,14 @@ func (t *T) statusBlockDevices() status.T {
 	return s
 }
 
-func (t *T) statusCharDevices() status.T {
+func (t *T) statusCharDevices(pairs DevPairs) status.T {
 	down := make([]string, 0)
 	s := status.NotApplicable
 	if !t.CreateCharDevices {
 		return s
 	}
 	ra := t.raw()
-	for _, pair := range t.devices() {
+	for _, pair := range pairs {
 		has, err := ra.HasBlockDev(pair.Src.Path())
 		if err != nil {
 			t.StatusLog().Warn("%s", err)
@@ -484,8 +542,19 @@ func (t *T) Status(ctx context.Context) status.T {
 	if len(t.Devices) == 0 {
 		return status.NotApplicable
 	}
-	s := t.statusCharDevices()
-	s.Add(t.statusBlockDevices())
+	pairs, err := t.devices(ctx)
+	s := t.statusCharDevices(pairs)
+	s.Add(t.statusBlockDevices(pairs))
+	var errAccess vpath.ErrAccess
+	switch {
+	case errors.As(err, &errAccess):
+		// The device of a vol that is not available is not there.
+		t.StatusLog().Info("%s", err)
+		s.Add(status.Down)
+	case err != nil:
+		t.StatusLog().Warn("%s", err)
+		s.Add(status.Warn)
+	}
 	return s
 }
 
@@ -514,7 +583,8 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
-	for _, pair := range t.devices() {
+	pairs, _ := t.devices(ctx)
+	for _, pair := range pairs {
 		if pair.Dst != nil {
 			l = append(l, *pair.Dst)
 		} else {

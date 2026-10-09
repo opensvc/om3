@@ -954,6 +954,25 @@ which share the same executor.
     an export is not the resource's, and a stop leaves it in place, so the resource is `down`. A path exported to a
     client of `opts` with missing options, or not exported by the kernel, is `warn`.
 
+### Driver: fs.directory
+
+* **The `path` keyword takes the forms of the other paths of a service:**
+    `<vol name>/<path>` in a vol of the namespace, and `volume#1:/<path>` under the mount point of a volume resource of
+    the service, besides a path of the node, as a directory with a quota of its own in a volume shared by containers. A
+    path in a volume never leads above its mount point. A path in another resource, as `fs#2:/<path>`, is refused, as
+    a directory is itself a resource paths are written in.
+
+### Driver: disk.crypt, disk.md, disk.raw, disk.vg, fs
+
+* **A device can be the name of a vol of the namespace, or the id of a resource:**
+    The `dev` of `disk.crypt`, the `devs` of `disk.md`, and the sources of the `devs` of `disk.raw` take the name of a
+    vol, which stands for the device the vol exposes, as the `dev` of `fs` and the `pvs` of `disk.vg` did:
+    `dev = data` encrypts the block volume a pool served. All five also take the id of a resource of the service,
+    as `disk#1`, which stands for the devices it exposes, rather than a `{disk#1.exposed_devs[0]}` reference. A keyword
+    naming one device needs a resource exposing one, and a resource can not name itself, directly or through others.
+    The device of a vol that is not available, or of a resource not started, is not there: the resource is `down`, and
+    its unprovision leaves the storage to the unprovision of the vol or the resource below.
+
 ### Driver: app
 
 * **`environment`**
