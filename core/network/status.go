@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/opensvc/om3/v3/core/clusterip"
@@ -31,20 +32,30 @@ func NewStatus() Status {
 	return t
 }
 
+// GetStatus returns the usage of the network. The usage counts are always
+// set: a network whose range does not parse, such as a network declared with
+// a type that reads no range, has a zero size and says why in its errors,
+// rather than leaving its readers a nil count to dereference.
 func GetStatus(t Networker, ips clusterip.L) Status {
 	data := NewStatus()
 	data.Type = t.Type()
 	data.Name = t.Name()
 	data.Network = t.Network()
+	data.Usage.Used = big.NewInt(0)
+	data.Usage.Size = big.NewInt(0)
+	data.Usage.Free = big.NewInt(0)
+	ipn, err := t.IPNet()
+	if err != nil {
+		data.Errors = append(data.Errors, fmt.Sprintf("invalid network %q: %s", data.Network, err))
+		return data
+	}
 	if ips != nil {
 		data.IPs = t.FilterIPs(ips)
 		data.Usage.Used = big.NewInt(int64(len(data.IPs)))
-		if ipn, err := t.IPNet(); err == nil {
-			ones, bits := ipn.Mask.Size()
-			data.Usage.Size = new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
-			data.Usage.Free = new(big.Int).Sub(data.Usage.Size, data.Usage.Used)
-		}
 	}
+	ones, bits := ipn.Mask.Size()
+	data.Usage.Size = new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
+	data.Usage.Free = new(big.Int).Sub(data.Usage.Size, data.Usage.Used)
 	return data
 }
 
