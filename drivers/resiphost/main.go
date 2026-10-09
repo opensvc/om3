@@ -196,11 +196,14 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	}
 	if t.isAllocated() {
-		ip, err := t.reserve(ctx)
+		ip, previous, err := t.reserve(ctx)
 		if err != nil {
 			return err
 		}
 		t._ipaddr, t._ipnet = ip, nil
+		if err := t.dropPrevious(previous); err != nil {
+			return err
+		}
 	}
 	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
 		t.Log().Infof("%s is already up on %s", t.addrName(), t.Dev)
@@ -360,31 +363,70 @@ func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
 
 // reserve returns the address of the resource, reserved on this node: the one
 // the configuration says it drew, or else one drawn now and written to the
-// configuration.
+// configuration. It also returns the address the resource gave up for it,
+// nil when it gave none up.
 //
 // The configuration is what every node holds, whatever became of the node
 // that drew the address: a node the service fails over to after the others
 // crashed reads it there, rather than draw again from a cluster that forgot
 // them.
-func (t *T) reserve(ctx context.Context) (net.IP, error) {
+//
+// A configuration with no address while this node holds one for the resource
+// had it unset, since om writes it as it draws and unsets it as it releases.
+// Unsetting it is asking for another address, so the one held is given up
+// rather than drawn again, which the draw would do, keyed as it is on the
+// resource.
+func (t *T) reserve(ctx context.Context) (net.IP, net.IP, error) {
 	if t.Addr != "" {
 		ip := net.ParseIP(t.Addr)
 		if ip == nil {
-			return nil, fmt.Errorf("addr %q is not an ip address", t.Addr)
+			return nil, nil, fmt.Errorf("addr %q is not an ip address", t.Addr)
 		}
 		if err := t.alloc().Reserve(ip); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return ip, nil
+		return ip, nil, nil
 	}
-	ip, err := t.alloc().Allocate(ctx)
+	previous, err := t.alloc().Allocated()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	var ip net.IP
+	if previous == nil {
+		ip, err = t.alloc().Allocate(ctx)
+	} else {
+		ip, err = t.alloc().Redraw(ctx, previous)
+	}
+	if err != nil {
+		return nil, nil, err
 	}
 	if err := t.setAddr(ctx, ip.String()); err != nil {
-		return nil, fmt.Errorf("record the address %s drawn from network %s: %w", ip, t.Network, err)
+		return nil, nil, fmt.Errorf("record the address %s drawn from network %s: %w", ip, t.Network, err)
 	}
-	return ip, nil
+	return ip, previous, nil
+}
+
+// dropPrevious removes from the interface the address the resource gave up,
+// when it is still there: the resource was started with it, and nothing else
+// would ever remove it, the resource answering for its new address only.
+func (t *T) dropPrevious(previous net.IP) error {
+	if previous == nil || previous.Equal(t._ipaddr) {
+		return nil
+	}
+	dev, _ := resip.SplitDevLabel(t.Dev)
+	i, err := net.InterfaceByName(dev)
+	if err != nil {
+		return nil
+	}
+	addrs, err := i.Addrs()
+	if err != nil {
+		return err
+	}
+	if !Addrs(addrs).Has(previous) {
+		return nil
+	}
+	t.Log().Infof("remove %s from %s, the address given up for %s", previous, dev, t._ipaddr)
+	return t.addrDel(fmt.Sprintf("%s/%d", previous, t.ipmaskOnes()), dev)
 }
 
 // setAddr writes the address drawn from the network in the configuration of

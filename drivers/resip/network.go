@@ -104,6 +104,21 @@ func (t *Allocation) Allocate(ctx context.Context) (net.IP, error) {
 	return ip, nil
 }
 
+// Redraw releases the address the resource holds, previous, and reserves
+// another one.
+func (t *Allocation) Redraw(ctx context.Context, previous net.IP) (net.IP, error) {
+	i, err := t.Allocator()
+	if err != nil || i == nil {
+		return nil, err
+	}
+	ip, err := network.RedrawFor(ctx, i, t.Path, t.RID, previous)
+	if err != nil {
+		return nil, err
+	}
+	t.Log.Infof("allocated %s in network %s, in place of %s", ip, i.Name, previous)
+	return ip, nil
+}
+
 // Allocated returns the address reserved for the resource, nil when it has
 // none. It never reserves one: reading a status must not take an address.
 func (t *Allocation) Allocated() (net.IP, error) {
