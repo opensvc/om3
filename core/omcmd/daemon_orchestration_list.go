@@ -114,7 +114,7 @@ func (t *CmdDaemonOrchestrationList) run() ([]api.OrchestrationItem, error) {
 	if t.OrchestrationID != "" {
 		// The start of an id, as the status shows it, names the one it
 		// starts.
-		id, err := commoncmd.ResolveOrchestrationID(t.OrchestrationID)
+		id, err := commoncmd.ResolveOrchestrationID(t.NodeSelector, t.OrchestrationID)
 		if err != nil {
 			return nil, err
 		}

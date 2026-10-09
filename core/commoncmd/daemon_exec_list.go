@@ -80,12 +80,6 @@ func (t *CmdDaemonExecList) Run() error {
 	return err
 }
 
-// Gather asks every selected node and returns what they answered together.
-//
-// An exec is node-local, so the union over the nodes is the whole of what a
-// command did. A node that has forgotten an id it is asked for by name is not
-// an error when another still holds it, which is why the by-id answers are
-// folded in rather than returned.
 // resolveIDs replaces the ids given as the start of one, as the listings and
 // the status show them, by the ids they start.
 func (t *CmdDaemonExecList) resolveIDs() error {
@@ -101,13 +95,19 @@ func (t *CmdDaemonExecList) resolveIDs() error {
 		}
 	}
 	if t.OrchestrationID != "" {
-		if t.OrchestrationID, err = ResolveOrchestrationID(t.OrchestrationID); err != nil {
+		if t.OrchestrationID, err = ResolveOrchestrationID(t.NodeSelector, t.OrchestrationID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// Gather asks every selected node and returns what they answered together.
+//
+// An exec is node-local, so the union over the nodes is the whole of what a
+// command did. A node that has forgotten an id it is asked for by name is not
+// an error when another still holds it, which is why the by-id answers are
+// folded in rather than returned.
 func (t *CmdDaemonExecList) Gather() ([]api.ExecItem, error) {
 	c, err := client.New()
 	if err != nil {

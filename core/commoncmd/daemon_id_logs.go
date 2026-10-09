@@ -2,16 +2,19 @@ package commoncmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -59,13 +62,6 @@ func (t *CmdDaemonIDLogs) Run() error {
 	return t.Remote()
 }
 
-// newCmdDaemonIDLogs builds the logs command of one kind of id.
-//
-// Every node is asked, because what one id names is not confined to a node: a
-// session reaches the nodes the objects it names are on, and an orchestration
-// reaches every node of the object. An exec runs on one node, and which one
-// is in the listing rather than in the id, so it is looked for on all of them
-// rather than asked for twice.
 // idWithPrefix returns the one id of ids starting with prefix.
 func idWithPrefix(kind, prefix string, ids []string) (string, error) {
 	matches := make([]string, 0)
@@ -88,9 +84,13 @@ func idWithPrefix(kind, prefix string, ids []string) (string, error) {
 }
 
 // ResolveOrchestrationID returns the orchestration id s names: an id, or the
-// start of the one id the daemon answering knows, as the status shows it.
-// Any node answers for any orchestration.
-func ResolveOrchestrationID(s string) (string, error) {
+// start of the one id the daemons of the selected nodes know, as the status
+// shows it.
+//
+// A node answers for the orchestrations of the objects it has an instance of,
+// so the daemon the client talks to may know nothing of the one asked about.
+// No selection asks every node.
+func ResolveOrchestrationID(nodeSelector, s string) (string, error) {
 	if _, err := uuid.Parse(s); err == nil {
 		return s, nil
 	}
@@ -98,20 +98,61 @@ func ResolveOrchestrationID(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	resp, err := c.GetDaemonOrchestrationsWithResponse(ctx, "_", &api.GetDaemonOrchestrationsParams{})
+	if nodeSelector == "" {
+		nodeSelector = "*"
+	}
+	nodenames, err := nodeselector.New(nodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return "", err
 	}
+	if len(nodenames) == 0 {
+		return "", fmt.Errorf("no node matching %s", nodeSelector)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var (
+		mu   sync.Mutex
+		wg   sync.WaitGroup
+		ids  []string
+		errs error
+	)
+	for _, nodename := range nodenames {
+		wg.Add(1)
+		go func(nodename string) {
+			defer wg.Done()
+			l, err := orchestrationIDsOf(ctx, c, nodename)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = errors.Join(errs, err)
+				return
+			}
+			ids = append(ids, l...)
+		}(nodename)
+	}
+	wg.Wait()
+	if errs != nil && len(ids) == 0 {
+		// A node down is no reason to refuse an id another one knows, but
+		// with no answer at all, "no id starts with" would be a guess.
+		return "", errs
+	}
+	return idWithPrefix("orchestration", s, ids)
+}
+
+// orchestrationIDsOf returns the ids of the orchestrations nodename knows.
+func orchestrationIDsOf(ctx context.Context, c *client.T, nodename string) ([]string, error) {
+	resp, err := c.GetDaemonOrchestrationsWithResponse(ctx, nodename, &api.GetDaemonOrchestrationsParams{})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", nodename, err)
+	}
 	if resp.StatusCode() != http.StatusOK || resp.JSON200 == nil {
-		return "", fmt.Errorf("list the orchestrations: %s", resp.Status())
+		return nil, fmt.Errorf("%s: list the orchestrations: %s", nodename, resp.Status())
 	}
 	ids := make([]string, len(resp.JSON200.Items))
 	for i, item := range resp.JSON200.Items {
 		ids[i] = item.OrchestrationID
 	}
-	return idWithPrefix("orchestration", s, ids)
+	return ids, nil
 }
 
 // ResolveSessionID returns the session id s names: an id, or the start of
@@ -141,6 +182,13 @@ func resolveExecID(nodeSelector, s, kind string, idOf func(api.ExecItem) string)
 	return idWithPrefix(kind, s, ids)
 }
 
+// newCmdDaemonIDLogs builds the logs command of one kind of id.
+//
+// Every node is asked, because what one id names is not confined to a node: a
+// session reaches the nodes the objects it names are on, and an orchestration
+// reaches every node of the object. An exec runs on one node, and which one
+// is in the listing rather than in the id, so it is looked for on all of them
+// rather than asked for twice.
 func newCmdDaemonIDLogs(kind, key, arg, long string, resolve func(*CmdDaemonIDLogs) (string, error)) *cobra.Command {
 	options := CmdDaemonIDLogs{Key: key, Resolve: resolve}
 	cmd := &cobra.Command{
@@ -176,7 +224,7 @@ to.
 
 "om daemon orchestration list" reports the orchestrations and their ids. The
 start of an id, as the status shows it, names the one it starts.`, func(t *CmdDaemonIDLogs) (string, error) {
-			return ResolveOrchestrationID(t.ID)
+			return ResolveOrchestrationID(t.NodeSelector, t.ID)
 		})
 }
 
