@@ -43,6 +43,9 @@ var (
 // checked the quota for. v2 read "gib" as a power of 1000, which is not
 // kept: a power of 1024 is what the unit means.
 //
+// The decimal separator is a dot or a comma, "1,5g" being 1.5 GiB as v2 read
+// it.
+//
 // A size below zero, as "-1g", is refused: a volume is shrunk by giving its
 // new size, which a resize checks against the current one.
 func ParseSize(s string) (Size, error) {
@@ -58,12 +61,13 @@ func ParseSize(s string) (Size, error) {
 		v = strings.TrimSpace(v[1:])
 	}
 	i := strings.IndexFunc(v, func(r rune) bool {
-		return (r < '0' || r > '9') && r != '.'
+		return (r < '0' || r > '9') && r != '.' && r != ','
 	})
 	number, unit := v, ""
 	if i >= 0 {
 		number, unit = v[:i], strings.ToLower(strings.TrimSpace(v[i:]))
 	}
+	number = strings.ReplaceAll(number, ",", ".")
 	if number == "" {
 		return size, fmt.Errorf("size %q: no number", s)
 	}

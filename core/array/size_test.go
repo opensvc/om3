@@ -18,6 +18,8 @@ func TestParseSize(t *testing.T) {
 		"10GB":       {Bytes: 10 * gib},
 		"10GiB":      {Bytes: 10 * gib},
 		"1.5g":       {Bytes: gib + gib/2},
+		"1,5g":       {Bytes: gib + gib/2},
+		"1,5 GB":     {Bytes: gib + gib/2},
 		"512m":       {Bytes: 512 * 1024 * 1024},
 		"512MB":      {Bytes: 512 * 1024 * 1024},
 		"1t":         {Bytes: 1024 * gib},
@@ -32,7 +34,7 @@ func TestParseSize(t *testing.T) {
 			assert.Equal(t, want, got)
 		})
 	}
-	for _, s := range []string{"", "-1g", "g", "10x", "10gz", "abc", "0", "1..2g", "8e", "9e"} {
+	for _, s := range []string{"", "-1g", "g", "10x", "10gz", "abc", "0", "1..2g", "1,,2g", "1,2.3g", "8e", "9e"} {
 		t.Run("refuse "+s, func(t *testing.T) {
 			_, err := ParseSize(s)
 			assert.Error(t, err)
