@@ -110,7 +110,10 @@ func (t *T) Provision(ctx context.Context) error {
 }
 
 func (t *T) Unprovision(ctx context.Context) error {
-	head := t.Head()
+	head, err := t.removablePath(ctx)
+	if err != nil || head == "" {
+		return err
+	}
 	statInfo, err := os.Stat(head)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -138,7 +141,10 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 // A quota-backed directory has its project limit dropped with it, or the
 // filesystem keeps a limit on a project nothing is stamped with any more.
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
-	p := t.Head()
+	p, err := t.removablePath(ctx)
+	if err != nil || p == "" {
+		return err
+	}
 	if v, err := file.ExistsAndDir(p); err != nil {
 		return err
 	} else if !v {
@@ -211,6 +217,24 @@ func (t *T) dirPath(ctx context.Context, checkAvail bool) (string, error) {
 		return "", err
 	}
 	return target.HostPath, nil
+}
+
+// removablePath returns the path of the directory to remove, and empty when
+// there is none to remove here.
+//
+// The path Head returns for a volume that is not available is where the
+// directory is once the volume is, and what is there meanwhile is the
+// mountpoint of the volume, or what it hides: removing that is removing
+// something the directory never was. The directory goes with the volume
+// when the volume is unprovisioned, and stays in it when the volume is kept.
+func (t *T) removablePath(ctx context.Context) (string, error) {
+	p, err := t.dirPath(ctx, true)
+	var errAccess vpath.ErrAccess
+	if errors.As(err, &errAccess) {
+		t.Log().Infof("leave %s in place: %s", t.DirPath, err)
+		return "", nil
+	}
+	return p, err
 }
 
 // Head returns the path of the directory on the node, whether the volume it
