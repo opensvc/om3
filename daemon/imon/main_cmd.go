@@ -49,10 +49,29 @@ func (t *Manager) statusRunner() {
 					t.log.Warnf("status evaluation command: %s", err)
 				}
 				t.statusQueued.Store(false)
+				select {
+				case <-t.ctx.Done():
+					return
+				case t.cmdC <- cmdStatusDone{}:
+				}
 			}
 		}
 	}(started)
 	<-started
+}
+
+// onStatusDone orchestrates again once a status evaluation is over.
+//
+// An orchestration waits while one runs, for the status it posts: the
+// InstanceStatusUpdated it publishes is what orchestrates again. That event
+// can be handled before the evaluation is marked over, the command posting
+// the status before it exits, and the orchestration it fires then waits on an
+// evaluation that is about to end, for an event already handled. A status
+// that did not change publishes no event at all. Either way nothing else
+// orchestrates again, and an orchestration halfway through, as one whose
+// action is done and whose state is to settle, stays there.
+func (t *Manager) onStatusDone() {
+	t.updateOrchestrateUpdate()
 }
 
 func (t *Manager) onChange() {
