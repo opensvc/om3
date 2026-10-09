@@ -7,8 +7,10 @@
 //
 // The table is in memory, and the node speaking for the cluster changes. A
 // node taking the speaking over rebuilds its table from what every node says
-// its clients hold, before it grants anything: its own table is the one it
-// had when it last spoke, or none.
+// its clients hold, and what it granted while it spoke, before it grants
+// anything: its own table is the one it had when it last spoke, or none. The
+// grants are read too because a lock granted to a request a node handed over
+// is held before that node hears of it.
 package locktable
 
 import (
@@ -66,6 +68,13 @@ type (
 		// does not mark rebuilt a table it read the nodes for too early.
 		generation uint64
 
+		// former is the locks the table held when it was last dropped, kept
+		// until their leases end. A lock granted to a request handed over
+		// is held from the moment it is granted, and recorded by the node
+		// of its client only once the answer is back there: a table rebuilt
+		// in between finds it here, on the node that granted it.
+		former map[string]Lock
+
 		// changed is closed, and replaced, whenever a lock is released or
 		// the table is dropped, which wakes the requests waiting.
 		changed chan struct{}
@@ -117,6 +126,7 @@ func (t ErrHeld) Error() string {
 func NewTable() *Table {
 	return &Table{
 		locks:   make(map[string]Lock),
+		former:  make(map[string]Lock),
 		changed: make(chan struct{}),
 		now:     time.Now,
 	}
@@ -199,6 +209,9 @@ func (t *Table) Rebuild(generation uint64, locks []Lock) ([]Lock, bool) {
 func (t *Table) Drop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	for name, lock := range t.locks {
+		t.former[name] = lock
+	}
 	t.locks = make(map[string]Lock)
 	t.rebuilt = false
 	t.generation++
@@ -272,6 +285,9 @@ func (t *Table) Release(name, id string) (Lock, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	held, ok := t.locks[name]
+	if former, ok := t.former[name]; ok && former.ID == id {
+		delete(t.former, name)
+	}
 	if !ok || held.ID != id {
 		return Lock{}, false
 	}
@@ -285,6 +301,34 @@ func (t *Table) List() []Lock {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return list(t.locks, t.now())
+}
+
+// Granted returns the locks this node granted and whose lease has not ended:
+// the ones of its table, and the ones it held when it was last dropped. It is
+// what a node rebuilding its table reads of this one, besides the locks its
+// clients hold.
+func (t *Table) Granted() []Lock {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	now := t.now()
+	l := list(t.former, now)
+	for _, lock := range list(t.locks, now) {
+		if former, ok := t.former[lock.Name]; ok && former.ID == lock.ID {
+			continue
+		}
+		l = append(l, lock)
+	}
+	return l
+}
+
+// Forget drops a lock released from another node than the one holding it
+// from the locks this node granted before its table was dropped.
+func (t *Table) Forget(name, id string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if lock, ok := t.former[name]; ok && lock.ID == id {
+		delete(t.former, name)
+	}
 }
 
 // Add records a lock a client of this node was granted.

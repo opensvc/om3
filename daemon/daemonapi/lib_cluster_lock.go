@@ -38,7 +38,7 @@ func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
 		return nil
 	}
 	generation := table.Generation()
-	locks := locktable.LocalHeld.List()
+	locks := append(locktable.LocalHeld.List(), table.Granted()...)
 	asked := 0
 	for _, nodename := range clusternode.Get() {
 		if nodename == a.localhost {

@@ -166,3 +166,42 @@ func TestRebuildOfAnOlderGeneration(t *testing.T) {
 	assert.False(t, ok)
 	assert.False(t, table.IsRebuilt())
 }
+
+// A table dropped keeps what it granted until the leases end, which is where
+// a table rebuilt elsewhere finds a lock granted to a request handed over and
+// not recorded yet by the node of its client.
+func TestGrantedOutlivesTheDrop(t *testing.T) {
+	table := rebuiltTable()
+	ctx := context.Background()
+	lock, err := table.Acquire(ctx, Request{Name: "a", Node: "n2"})
+	require.NoError(t, err)
+	_, err = table.Acquire(ctx, Request{Name: "b", Node: "n2", Lease: 30 * time.Millisecond})
+	require.NoError(t, err)
+	require.Len(t, table.Granted(), 2)
+
+	table.Drop()
+	assert.Empty(t, table.List())
+	l := table.Granted()
+	require.Len(t, l, 2, "the grants of the term outlive it")
+
+	time.Sleep(50 * time.Millisecond)
+	l = table.Granted()
+	require.Len(t, l, 1, "until their lease ends")
+	assert.Equal(t, lock.ID, l[0].ID)
+
+	// Rebuilt, the table holds its former grant again, listed once.
+	table.Rebuild(table.Generation(), l)
+	assert.Len(t, table.Granted(), 1)
+
+	// Released, it is gone from both.
+	_, ok := table.Release("a", lock.ID)
+	assert.True(t, ok)
+	assert.Empty(t, table.Granted())
+
+	// Forget drops a former grant released elsewhere.
+	other, err := table.Acquire(ctx, Request{Name: "c", Node: "n3"})
+	require.NoError(t, err)
+	table.Drop()
+	table.Forget("c", other.ID)
+	assert.Empty(t, table.Granted())
+}

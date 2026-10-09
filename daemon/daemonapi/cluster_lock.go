@@ -182,6 +182,7 @@ func (a *DaemonAPI) DeleteNodeLock(ctx echo.Context, nodename api.InPathNodeName
 		})
 	}
 	locktable.LocalHeld.Remove(params.Name, params.Id)
+	locktable.SpeakerTable.Forget(params.Name, params.Id)
 	return ctx.NoContent(http.StatusNoContent)
 }
 
@@ -213,7 +214,10 @@ func (a *DaemonAPI) GetNodeLocks(ctx echo.Context, nodename api.InPathNodeName) 
 			return c.GetNodeLocks(ctx.Request().Context(), nodename)
 		})
 	}
-	return ctx.JSON(http.StatusOK, lockListToAPI(locktable.LocalHeld.List()))
+	// What the clients of the node hold, and what the node granted while
+	// it spoke, which its clients may not have heard yet.
+	locks := append(locktable.LocalHeld.List(), locktable.SpeakerTable.Granted()...)
+	return ctx.JSON(http.StatusOK, lockListToAPI(locks))
 }
 
 func parseOptionalDuration(s *string) (time.Duration, error) {
