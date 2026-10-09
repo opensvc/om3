@@ -100,6 +100,44 @@ func TestDeniedByValue(t *testing.T) {
 		{"volume#1", "perm", "4755", true},
 		{"volume#1", "dirperm", "6755", true},
 		{"volume#1", "dirperm", "0755", false},
+
+		{"share#1", "type", "nfs", false},
+		{"share#1", "type", "smb", true},
+		{"share#1", "path", "data", false},
+		{"share#1", "path", "data/", false},
+		{"share#1", "path", "data/.", false},
+		{"share#1", "path", "volume#1:/", false},
+		{"share#1", "path", "volume#data:/", false},
+		{"share#1", "path", "volume#1:/x/..", false},
+		{"share#1", "path", "data/www", true},
+		{"share#1", "path", "volume#1:/www", true},
+		{"share#1", "path", "volume#1:", true},
+		{"share#1", "path", "fs#1:/", true},
+		{"share#1", "path", "volume:/", true},
+		{"share#1", "path", "/srv/data", true},
+		{"share#1", "path", "/", true},
+		{"share#1", "path", "", true},
+		{"share#1", "path", "../etc", true},
+		{"share#1", "opts", "*(ro)", false},
+		{"share#1", "opts", "10.0.0.0/24(rw,sync,no_subtree_check,root_squash) client1(ro,all_squash,anonuid=1000,anongid=1000)", false},
+		{"share#1", "opts", "*(rw,sec=krb5:krb5i:krb5p)", false},
+		{"share#1", "opts", "*(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,root_squash,no_all_squash)", false},
+		{"share#1", "opts", "*(rw,no_root_squash)", true},
+		{"share#1", "opts", "*(rw,all_squash,anonuid=0)", true},
+		{"share#1", "opts", "*(rw,anongid=0)", true},
+		{"share#1", "opts", "*(rw,anonuid=root)", true},
+		{"share#1", "opts", "*(rw,fsid=0)", true},
+		{"share#1", "opts", "*(rw,fsid=12)", true},
+		{"share#1", "opts", "*(rw,crossmnt)", true},
+		{"share#1", "opts", "*(rw,nohide)", true},
+		{"share#1", "opts", "*(rw,insecure)", true},
+		{"share#1", "opts", "*(rw,refer=/x@otherhost)", true},
+		{"share#1", "opts", "*(rw,sec=)", true},
+		{"share#1", "opts", "*(ro) *(rw,no_root_squash)", true},
+		{"share#1", "opts", "-a(ro)", true},
+		{"share#1", "opts", "*", true},
+		{"share#1", "opts", "*(ro", true},
+		{"share#1", "opts", "", true},
 	}
 	for _, tc := range cases {
 		err := Denied(noGrant, naming.KindSvc, tc.section, tc.option, tc.value, none)
@@ -385,4 +423,16 @@ func TestVolumeMountFromAResource(t *testing.T) {
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "volume#1:/haproxy/certs:/certs volume#1:/haproxy/haproxy.cfg:/etc/haproxy.cfg:ro", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "volume#1:/../../etc:/x", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "/etc:/x", none))
+}
+
+// The shares of a volume are part of the storage, as its filesystems are, so
+// the values a service may export are refused on a volume.
+func TestDeniedShareOfAVolume(t *testing.T) {
+	for option, value := range map[string]string{"type": "nfs", "path": "volume#1:/", "opts": "*(ro)"} {
+		require.NoErrorf(t, Denied(noGrant, naming.KindSvc, "share#1", option, value, none), "svc share#1.%s=%s", option, value)
+		assert.EqualErrorf(t, Denied(noGrant, naming.KindVol, "share#1", option, value, none), "a resource of a volume requires the root grant", "vol share#1.%s=%s", option, value)
+	}
+	assert.EqualError(t, Denied(noGrant, naming.KindVol, "share#1", "a_keyword_of_a_driver_added_later", "x", none), "a resource of a volume requires the root grant")
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "share#1", "a_keyword_of_a_driver_added_later", "x", none), "requires the root grant")
+	require.NoError(t, Denied(noGrant, naming.KindSvc, "share#1", "comment", "x", none))
 }

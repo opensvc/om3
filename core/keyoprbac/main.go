@@ -11,6 +11,7 @@ package keyoprbac
 
 import (
 	"fmt"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -291,6 +293,45 @@ var rules = map[string]Group{
 		},
 	},
 
+	// A share exports a directory of the node to clients of the network, and
+	// exportfs runs as root, following any symbolic link on the way. So a
+	// namespace exports a volume of its own, whole: a mount point is made by
+	// root, where a directory in the volume is the namespace's to turn into
+	// a link out of it, even between a check and the export. And it exports
+	// it with the options that keep the clients to the volume, as the
+	// clients see it.
+	//
+	// The shares of a volume are part of the volume, as its filesystems are.
+	"share": {
+		Default:      &rootRule,
+		KindDefaults: map[naming.Kind]*Rule{naming.KindVol: &volResourceRule},
+		KindRules: map[naming.Kind]map[string]Rule{
+			naming.KindVol: {
+				"type": volResourceRule,
+				"path": volResourceRule,
+				"opts": volResourceRule,
+			},
+		},
+		Rules: map[string]Rule{
+			"type": {
+				Grant:  rbac.GrantRoot,
+				Reason: reasonRoot,
+				Values: []string{"nfs"},
+			},
+			"path": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a path other than the mount point of a volume, written <vol name> or volume#<n>:/, requires the root grant",
+				Denies: valueOnly(func(s string) bool { return !isVolumeHead(s) }),
+			},
+			"opts": {
+				Grant: rbac.GrantRoot,
+				Reason: "an export option other than " + strings.Join(nfsOpts, ", ") +
+					", sec, anonuid and anongid, or an anonuid or anongid of 0, requires the root grant",
+				Denies: valueOnly(deniesNFSOpts),
+			},
+		},
+	},
+
 	// An ip resource takes an address, and a link to carry it, from the node.
 	// Which address, and which link, are the node administrator's to decide,
 	// so the group is root by default and opens only the keywords that say
@@ -505,6 +546,81 @@ var (
 		Denies: valueOnly(func(s string) bool { return strings.TrimSpace(s) == "host" }),
 	}
 )
+
+// nfsOpts is the nfs export options a user holding no root grant may set,
+// besides sec, anonuid and anongid: the ones that say how the clients reach
+// the volume exported, and nothing beyond it.
+//
+// Every other option is refused until weighed. Among them, no_root_squash
+// lets the root of a client write setuid binaries in a filesystem mounted on
+// the node, fsid names the export to the clients and makes it the root of
+// the nfsv4 pseudo filesystem when 0, which one export may not choose for
+// the others, crossmnt and nohide export the filesystems mounted below the
+// path, and refer and replicas send the clients to another server.
+var nfsOpts = []string{
+	"rw", "ro",
+	"sync", "async",
+	"wdelay", "no_wdelay",
+	"subtree_check", "no_subtree_check",
+	"secure", "hide",
+	"root_squash", "all_squash", "no_all_squash",
+}
+
+// isVolumeHead reports whether a share path is the mount point of a volume:
+// a vol of the namespace, written by its name, or a volume resource of the
+// object, written volume#<n>:/. A path written in a volume and leading
+// nowhere under it, as data/. or volume#1:/x/.., is its mount point too: the
+// driver cleans it as a path from the mount point.
+func isVolumeHead(s string) bool {
+	s = strings.TrimSpace(s)
+	if ref, rel, ok := strings.Cut(s, ":"); ok {
+		group, index, ok := strings.Cut(ref, "#")
+		if !ok || group != "volume" || index == "" || strings.ContainsAny(index, "/:") {
+			return false
+		}
+		return strings.HasPrefix(rel, "/") && path.Clean(rel) == "/"
+	}
+	name, rel, _ := strings.Cut(s, "/")
+	if !hostname.IsValid(name) {
+		return false
+	}
+	return path.Clean("/"+rel) == "/"
+}
+
+// deniesNFSOpts reports whether a share opts value sets an export option a
+// user holding no root grant may not set, or is not one the policy can read,
+// a client(opt,...) entry for each client.
+func deniesNFSOpts(value string) bool {
+	entries := strings.Fields(value)
+	if len(entries) == 0 {
+		return true
+	}
+	for _, entry := range entries {
+		client, opts, ok := strings.Cut(entry, "(")
+		if !ok || client == "" || strings.HasPrefix(client, "-") || !strings.HasSuffix(opts, ")") {
+			return true
+		}
+		for _, opt := range strings.Split(strings.TrimSuffix(opts, ")"), ",") {
+			if !isNFSOptAllowed(opt) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isNFSOptAllowed(opt string) bool {
+	name, value, hasValue := strings.Cut(opt, "=")
+	switch name {
+	case "sec":
+		return hasValue && value != ""
+	case "anonuid", "anongid":
+		id, err := strconv.ParseUint(value, 10, 32)
+		return hasValue && err == nil && id != 0
+	default:
+		return !hasValue && slices.Contains(nfsOpts, name)
+	}
+}
 
 // isTrue reports whether a boolean keyword value is not a false one. A value
 // that does not parse is taken as true: what the driver makes of it is not
