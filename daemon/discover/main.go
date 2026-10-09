@@ -74,6 +74,11 @@ type (
 		// fetcherCancel map[svc] cancel func for svc fetcher
 		fetcherCancel map[string]context.CancelFunc
 
+		// fetcherCtx map[svc] context of the svc fetcher, which says whether
+		// a fetch result is the one of the fetcher running, or of one it
+		// replaced.
+		fetcherCtx map[string]context.Context
+
 		// fetcherNodeCancel map[node]map[svc] cancel func for node
 		fetcherNodeCancel map[string]map[string]context.CancelFunc
 
@@ -148,6 +153,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		debouncers:        make(map[string]*Debouncer),
 		fetcherFrom:       make(map[string]string),
 		fetcherCancel:     make(map[string]context.CancelFunc),
+		fetcherCtx:        make(map[string]context.Context),
 		fetcherNodeCancel: make(map[string]map[string]context.CancelFunc),
 		fetcherUpdated:    make(map[string]time.Time),
 		localhost:         localhost,

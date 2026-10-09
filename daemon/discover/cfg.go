@@ -701,7 +701,7 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		return nil
 	}
 
-	defer t.cancelFetcher(c.Path.String())
+	defer t.endFetcher(c.Path.String(), c.Ctx)
 	select {
 	case <-c.Ctx.Done():
 		c.Err <- nil
@@ -749,10 +749,25 @@ func (t *Manager) cancelFetcher(s string) {
 		t.log.Tracef("cfg: cancelFetcher %s@%s", s, peer)
 		cancel()
 		delete(t.fetcherCancel, s)
+		delete(t.fetcherCtx, s)
 		delete(t.fetcherNodeCancel[peer], s)
 		delete(t.fetcherUpdated, s)
 		delete(t.fetcherFrom, s)
 	}
+}
+
+// endFetcher ends the fetcher of s whose result is the one of ctx.
+//
+// A result is handled after the fetcher that sent it may have been replaced:
+// a more recent configuration cancels the fetcher running and starts another
+// one, while the result of the first is already on its way. Ending the
+// fetcher of s whatever it is would cancel the one fetching the more recent
+// configuration, and the node would keep the older one until the next write.
+func (t *Manager) endFetcher(s string, ctx context.Context) {
+	if t.fetcherCtx[s] != ctx {
+		return
+	}
+	t.cancelFetcher(s)
 }
 
 func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, needStoppedFlag bool, scope []string) {
@@ -773,17 +788,20 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt ti
 	}
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.fetcherCancel[s] = cancel
+	t.fetcherCtx[s] = ctx
 	t.fetcherFrom[s] = peer
 	t.fetcherUpdated[s] = updatedAt
-	if _, ok := t.fetcherNodeCancel[peer]; ok {
-		t.fetcherNodeCancel[peer][s] = cancel
-	} else {
+	if _, ok := t.fetcherNodeCancel[peer]; !ok {
 		t.fetcherNodeCancel[peer] = make(map[string]context.CancelFunc)
 	}
+	t.fetcherNodeCancel[peer][s] = cancel
 
 	cli, err := newDaemonClient(peer)
 	if err != nil {
 		t.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
+		// Left registered, the fetcher would refuse every later one as
+		// already in progress.
+		t.cancelFetcher(s)
 		return
 	}
 	go fetch(ctx, cli, p, peer, t.cfgCmdC, needStoppedFlag, scope)
