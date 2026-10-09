@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
@@ -53,6 +54,21 @@ func (t *T) isLocal(nodename string) bool {
 // shQuote quotes s for a posix shell.
 func shQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// mountDirName is the name the directory the root of the filesystem labeled
+// label is mounted on starts with. A label is any text, a '/' and a ".."
+// included, which a path component is not: what else it holds is replaced,
+// the mount directory staying in the btrfs directory of the agent.
+func mountDirName(label string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+			return r
+		default:
+			return '_'
+		}
+	}, label)
 }
 
 // run runs the shell script on nodename, over the connection of the run to
@@ -109,7 +125,7 @@ btrfs device scan >/dev/null 2>&1 || true
 mkdir -p %[1]s
 p=$(mktemp -d %[4]s)
 if ! mount -t btrfs -o subvolid=5 "$d" "$p"; then rmdir "$p"; exit 1; fi
-echo "$p"`, shQuote(dir), shQuote(label), shQuote("LABEL="+label), shQuote(filepath.Join(dir, label+".XXXXXX")))
+echo "$p"`, shQuote(dir), shQuote(label), shQuote("LABEL="+label), shQuote(filepath.Join(dir, mountDirName(label)+".XXXXXX")))
 	b, err := o.t.run(nodename, script)
 	if err != nil {
 		return "", fmt.Errorf("mount the root of the btrfs filesystem labeled %s: %w", label, err)
@@ -177,6 +193,12 @@ func runsOf(l []btrfs.Subvol, dir string) ([]run, error) {
 		}
 		name, snapPart, ok := strings.Cut(rest, "/")
 		if !ok || strings.Contains(snapPart, "/") {
+			continue
+		}
+		// A run is named after the time it was taken, and is sent to,
+		// installed from and deleted in the directory of that name: a
+		// directory named otherwise is no run of the sync.
+		if _, err := time.Parse(runNameFormat, name); err != nil {
 			continue
 		}
 		rel, err := relOfSnapName(snapPart)

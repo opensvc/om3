@@ -443,20 +443,23 @@ func TestSnapNameRoundTrips(t *testing.T) {
 
 func TestRunsOfIgnoresWhatIsNotASnapshotOfARun(t *testing.T) {
 	dir := ".osync/dev/svc/s1/sync#1"
+	r1 := newRunName(time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC))
+	r2 := newRunName(time.Date(2026, 10, 9, 10, 1, 0, 0, time.UTC))
 	l := []btrfs.Subvol{
 		{ID: 1, CGen: 1, Path: "data", UUID: "h"},
-		{ID: 2, CGen: 5, Path: dir + "/r2/_", UUID: "u2"},
-		{ID: 3, CGen: 3, Path: dir + "/r1/_", UUID: "u1", ReceivedUUID: "x1"},
-		{ID: 4, CGen: 4, Path: dir + "/r1/_a", UUID: "u3"},
-		{ID: 5, CGen: 6, Path: dir + "/r2/notasnap", UUID: "u4"},
+		{ID: 2, CGen: 5, Path: dir + "/" + r2 + "/_", UUID: "u2"},
+		{ID: 3, CGen: 3, Path: dir + "/" + r1 + "/_", UUID: "u1", ReceivedUUID: "x1"},
+		{ID: 4, CGen: 4, Path: dir + "/" + r1 + "/_a", UUID: "u3"},
+		{ID: 5, CGen: 6, Path: dir + "/" + r2 + "/notasnap", UUID: "u4"},
+		{ID: 6, CGen: 7, Path: dir + "/notarun/_", UUID: "u5"},
 	}
 	runs, err := runsOf(l, dir)
 	require.NoError(t, err)
-	require.Len(t, runs, 2)
-	assert.Equal(t, "r1", runs[0].Name, "ordered by the creation of their head snapshot")
+	require.Len(t, runs, 2, "a directory not named as a run is none")
+	assert.Equal(t, r1, runs[0].Name, "ordered by the creation of their head snapshot")
 	assert.Equal(t, "x1", runs[0].headID(), "a received snapshot is identified by its received uuid")
 	assert.Equal(t, []string{"", "a"}, runs[0].rels())
-	assert.Equal(t, "r2", runs[1].Name)
+	assert.Equal(t, r2, runs[1].Name)
 }
 
 func TestNestedOfSkipsTheReadOnlySubvolumes(t *testing.T) {
@@ -500,4 +503,12 @@ func TestProgressWriterRoutesTheProgressLines(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "At subvol _\nAt snapshot _a\n", info.String())
 	assert.Equal(t, "ERROR: cannot find parent subvolume\n", errs.String())
+}
+
+// A label is any text, the directory its root is mounted on a single path
+// component of the btrfs directory of the agent all the same.
+func TestMountDirName(t *testing.T) {
+	assert.Equal(t, "dev_btrfs", mountDirName("dev.btrfs"))
+	assert.Equal(t, "______etc", mountDirName("../../etc"))
+	assert.Equal(t, "a_b", mountDirName("a/b"))
 }
