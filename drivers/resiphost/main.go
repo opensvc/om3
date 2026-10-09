@@ -200,7 +200,7 @@ func (t *T) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		t._ipaddr, t._ipnet = ip, nil
+		t._ipaddr, t._ipnet, t._ipmask = ip, nil, nil
 		if err := t.dropPrevious(previous); err != nil {
 			return err
 		}
@@ -539,9 +539,15 @@ func (t *T) ipaddr() net.IP {
 	return ip
 }
 
+// ipmask returns the mask of the address, and caches it only once the
+// address is known: the mask of no address is not the mask of the address a
+// start draws, and a status read before the draw would leave it cached.
 func (t *T) ipmask() net.IPMask {
 	if t._ipmask != nil {
 		return t._ipmask
+	}
+	if t.ipaddr() == nil {
+		return nil
 	}
 	t._ipmask = t.getIPMask()
 	return t._ipmask
@@ -564,13 +570,16 @@ func (t *T) getIPMask() net.IPMask {
 		return m
 	}
 	// fallback to the mask of the first found ip on the intf
-	if m, err := t.defaultMask(); err == nil {
+	if m, err := t.defaultMask(bits); err == nil {
 		return m
 	}
 	return nil
 }
 
-func (t *T) defaultMask() (net.IPMask, error) {
+// defaultMask returns the mask of the first address of the interface in the
+// family of the address, of bits bits: the mask of an ipv4 address of the
+// interface is no mask for an ipv6 one.
+func (t *T) defaultMask(bits int) (net.IPMask, error) {
 	intf, err := net.InterfaceByName(t.Dev)
 	if err != nil {
 		return nil, err
@@ -579,14 +588,14 @@ func (t *T) defaultMask() (net.IPMask, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("no addr to guess mask from")
+	for _, addr := range addrs {
+		ip, ipnet, err := net.ParseCIDR(addr.String())
+		if err != nil || getIPBits(ip) != bits {
+			continue
+		}
+		return ipnet.Mask, nil
 	}
-	_, net, err := net.ParseCIDR(addrs[0].String())
-	if err != nil {
-		return nil, err
-	}
-	return net.Mask, nil
+	return nil, fmt.Errorf("no addr to guess mask from")
 }
 
 func (t Addrs) Has(ip net.IP) bool {
