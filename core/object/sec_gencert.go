@@ -9,7 +9,11 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -79,7 +83,7 @@ func (t *sec) genSelfSigned() error {
 	if err := t.addKey("fullpem", append(privBytes, certBytes...)); err != nil {
 		return err
 	}
-	if err := t.addKey("serial_number", []byte(tmpl.SerialNumber.String())); err != nil {
+	if err := t.addKey("serial_number", []byte(serialText(tmpl.SerialNumber))); err != nil {
 		return err
 	}
 	return nil
@@ -121,7 +125,7 @@ func (t *sec) genCASigned(ca string) error {
 	if err := t.addKey("fullpem", append(privBytes, chainBytes...)); err != nil {
 		return err
 	}
-	if err := t.addKey("serial_number", []byte(tmpl.SerialNumber.String())); err != nil {
+	if err := t.addKey("serial_number", []byte(serialText(tmpl.SerialNumber))); err != nil {
 		return err
 	}
 	return nil
@@ -136,15 +140,58 @@ func (t *sec) CertInfoBits() int {
 	return int(*sz)
 }
 
-func (t *sec) CertSerial() *big.Int {
-	bi := big.NewInt(int64(0))
-	if b, err := t.DecodeKey("serial_number"); err != nil {
-		return bi
-	} else if v, ok := bi.SetString(string(b), 10); ok && v != nil {
-		return v
-	} else {
-		return bi
+// The serial number of a certificate the sec issues is its generation, the
+// number of certificates the sec issued, and a random uuid: <generation>-<uuid>
+// as the serial_number key says it, generation<<128 | uuid in the
+// certificate, as x509 wants an integer.
+//
+// The generation counts the certificates of one sec, and the secs a ca signs
+// each count from 1: the uuid makes the serial number unique among the ones
+// the ca issued, as RFC 5280 asks.
+const serialUUIDBits = 128
+
+// maxSerialGeneration keeps the serial number within the 20 octets RFC 5280
+// allows, the highest bit clear for it to be positive.
+const maxSerialGeneration = 1<<(20*8-1-serialUUIDBits) - 1
+
+// certGeneration returns the generation of the certificate the sec holds,
+// and 0 when it holds none. A serial_number key of the time it was a counter
+// alone is that counter.
+func (t *sec) certGeneration() uint64 {
+	b, err := t.DecodeKey("serial_number")
+	if err != nil {
+		return 0
 	}
+	s, _, _ := strings.Cut(strings.TrimSpace(string(b)), "-")
+	generation, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return generation
+}
+
+// newCertSerial returns the serial number of the certificate of generation.
+func newCertSerial(generation uint64) (*big.Int, error) {
+	if generation > maxSerialGeneration {
+		return nil, fmt.Errorf("certificate generation %d exceeds %d", generation, uint64(maxSerialGeneration))
+	}
+	id := uuid.New()
+	serial := new(big.Int).SetUint64(generation)
+	serial.Lsh(serial, serialUUIDBits)
+	return serial.Or(serial, new(big.Int).SetBytes(id[:])), nil
+}
+
+// serialText returns serial as the serial_number key says it,
+// <generation>-<uuid>.
+func serialText(serial *big.Int) string {
+	generation := new(big.Int).Rsh(serial, serialUUIDBits)
+	b := make([]byte, serialUUIDBits/8)
+	new(big.Int).Sub(serial, new(big.Int).Lsh(generation, serialUUIDBits)).FillBytes(b)
+	id, err := uuid.FromBytes(b)
+	if err != nil {
+		return serial.String()
+	}
+	return fmt.Sprintf("%s-%s", generation, id)
 }
 
 func (t *sec) CertInfoNotAfter() (time.Time, error) {
@@ -209,9 +256,10 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 	if err != nil {
 		return x509.Certificate{}, err
 	}
-	inc := big.NewInt(1)
-	serial := t.CertSerial()
-	serial = serial.Add(serial, inc)
+	serial, err := newCertSerial(t.certGeneration() + 1)
+	if err != nil {
+		return x509.Certificate{}, err
+	}
 	template := x509.Certificate{
 		SerialNumber:          serial,
 		Subject:               t.subject(),

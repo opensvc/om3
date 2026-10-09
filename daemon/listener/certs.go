@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/filesystems"
 	"github.com/opensvc/om3/v3/util/findmnt"
-	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -29,6 +28,13 @@ var (
 	caPath   = naming.SecCa
 	certPath = naming.SecCert
 )
+
+// certAltNames are the names the certificate of system/sec/cert is issued
+// for: the cluster nodes, as a client or a peer reaches each of them by its
+// name, and a node joining reaches the one enrolling it. The reference is
+// evaluated when the certificate is issued, so the certificate the speaker
+// renews when the cluster nodes change names the new ones.
+const certAltNames = "{clusternodes}"
 
 func (t *T) startCertFS(ctx context.Context) error {
 	clusterName, err := getClusterName()
@@ -259,7 +265,7 @@ func (t *T) bootStrapCertPath() error {
 	}
 	ops := []*keyop.T{
 		keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0),
-		keyop.New(key.New("DEFAULT", "alt_names"), keyop.Set, hostname.Hostname(), 0),
+		keyop.New(key.New("DEFAULT", "alt_names"), keyop.Set, certAltNames, 0),
 	}
 	for _, op := range ops {
 		if err := certSec.Config().PrepareSet(*op); err != nil {
