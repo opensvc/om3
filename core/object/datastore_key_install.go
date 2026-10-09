@@ -249,10 +249,10 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 
 func (t *dataStore) chmod(p string, perm os.FileMode, info os.FileInfo, fs confined.FS, log *plog.Logger) error {
 	if info != nil {
-		if perm == info.Mode().Perm() {
+		if perm == info.Mode()&file.ModeBits {
 			return nil
 		}
-		log.Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), perm)
+		log.Infof("change %s permissions from %s to %s", p, info.Mode()&file.ModeBits, perm)
 	} else {
 		log.Tracef("set %s permissions to %s", p, perm)
 	}
@@ -391,10 +391,14 @@ func (t *dataStore) makedir(path string, opt KVInstallAccessControl, fs confined
 		return nil
 	} else {
 		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, opt.MakedirPerm)
-		if err := fs.MkdirAll(path, opt.MakedirPerm); err != nil {
-			return err
-		}
-		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, fs, log); err != nil {
+		// Every missing directory on the way gets the configured mode, special
+		// bits included, and owner: not the last one only.
+		if err := confined.MkdirAllEach(fs, path, opt.MakedirPerm, func(p string) error {
+			if err := fs.Chmod(p, opt.MakedirPerm); err != nil {
+				return err
+			}
+			return t.chown(p, opt.MakedirUser, opt.MakedirGroup, nil, fs, log)
+		}); err != nil {
 			return err
 		}
 	}

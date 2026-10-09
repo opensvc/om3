@@ -1147,8 +1147,8 @@ func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, g
 		if !info.IsDir() {
 			t.to.StatusLog().Warn("%s is already occupied by a non-directory", p)
 		}
-		if info.Mode().Perm() != perm {
-			t.to.StatusLog().Warn("%s permissions are %s instead of %s", p, info.Mode().Perm(), perm)
+		if info.Mode()&file.ModeBits != perm {
+			t.to.StatusLog().Warn("%s permissions are %s instead of %s", p, info.Mode()&file.ModeBits, perm)
 		}
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 			currentUID := int(stat.Uid)
@@ -1194,10 +1194,14 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 	switch {
 	case os.IsNotExist(err):
 		t.to.Log().Infof("install directory %s with owner %s:%s and perm %s", p, user, group, perm)
-		if err := tree.MkdirAll(p, perm); err != nil {
-			return err
-		}
-		if err := t.chown(tree, p, user, group, nil); err != nil {
+		// Every missing directory on the way gets the configured mode, special
+		// bits included, and owner: not the last one only.
+		if err := confined.MkdirAllEach(tree, p, perm, func(dir string) error {
+			if err := t.chmod(tree, dir, &perm); err != nil {
+				return err
+			}
+			return t.chown(tree, dir, user, group, nil)
+		}); err != nil {
 			return err
 		}
 	case err != nil:
@@ -1206,11 +1210,11 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 		if !info.IsDir() {
 			return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
 		}
-		if t.report && info.Mode().Perm() == perm {
+		if t.report && info.Mode()&file.ModeBits == perm {
 			t.to.Log().Infof("%s directory is in place", p)
 		}
-		if info.Mode().Perm() != perm {
-			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)
+		if info.Mode()&file.ModeBits != perm {
+			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode()&file.ModeBits, perm)
 			if err := t.chmod(tree, p, &perm); err != nil {
 				return err
 			}
