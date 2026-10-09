@@ -86,5 +86,7 @@ func (a *DaemonAPI) GetObjectDataKeys(ctx echo.Context, namespace string, kind n
 		}
 	}
 
-	return nil
+	// No node holds the object: say so rather than answering an empty
+	// body with a 200 status, which a client decodes as an error.
+	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object %s not found", p)
 }
