@@ -5,6 +5,13 @@
 // A lock is granted for a lease, and lapses when the lease ends whatever its
 // holder became: a process that died holding one does not hold it forever.
 //
+// A lease is counted on the clock of the node keeping the lock, which is the
+// monotonic clock of the process: a step of the wall clock does not end it
+// early. The nodes pass a lease to one another as the time left, which each
+// adds to its own clock, so their clocks need not agree on the time, only
+// tick at the same rate. The holder is to be done before the lease ends,
+// which it counts on its own clock the same way.
+//
 // The table is in memory, and the node speaking for the cluster changes. A
 // node taking the speaking over rebuilds its table from what every node says
 // its clients hold, and what it granted while it spoke, before it grants

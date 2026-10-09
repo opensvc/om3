@@ -6531,6 +6531,15 @@ components:
           description: when the lease ends, which frees a lock never released
           type: string
           format: date-time
+        expires_in:
+          description: |
+            how long the lease runs from the moment the answer is written. The
+            nodes rebase a lock on their own clock from this rather than from
+            expires_at, which is the clock of the node that granted it: the
+            clocks of the nodes need not agree on the time, only tick at the
+            same rate.
+          type: string
+          example: 29.5s
 
     ClusterLockList:
       type: object

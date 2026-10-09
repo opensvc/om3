@@ -265,11 +265,14 @@ func allocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string, prev
 		// Every node draws from the range, and what the others drew is read
 		// before drawing: two nodes doing it at once would both read a
 		// cluster without the address the other is about to take.
-		release, err := lockNetwork(ctx, i.Name, key)
+		lockCtx, release, err := lockNetwork(ctx, i.Name, key)
 		if err != nil {
 			return nil, fmt.Errorf("network %s: %w", i.Name, err)
 		}
 		defer release()
+		// What follows is read and reserved under the lease of the lock,
+		// and stops when it ends: another node may draw then.
+		ctx = lockCtx
 		ip, others, err := adoptClusterAddr(ctx, i, key, previous == nil)
 		if err != nil {
 			return nil, err
@@ -294,21 +297,35 @@ func allocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string, prev
 			return append(l, exclude...), err
 		}
 	}
-	return i.Allocate(key)
+	ip, err := i.Allocate(key)
+	if err != nil || !i.ClusterWide {
+		return ip, err
+	}
+	if err := ctx.Err(); err != nil {
+		// The lease ended before the address was reserved: another node
+		// may have drawn it meanwhile, from a cluster that did not show it.
+		if freeErr := i.Free(key); freeErr != nil {
+			err = errors.Join(err, freeErr)
+		}
+		return nil, fmt.Errorf("network %s: the lock lease ended before %s was reserved: %w", i.Name, ip, err)
+	}
+	return ip, nil
 }
 
 // lockNetworkWait is how long an allocation waits for another node drawing
 // from the same network.
 const lockNetworkWait = time.Minute
 
-// lockNetwork takes the cluster lock of a network, and returns what releases
-// it.
-var lockNetwork = func(ctx context.Context, networkName, key string) (func(), error) {
+// lockNetwork takes the cluster lock of a network, and returns a context
+// ending with its lease, and what releases it.
+var lockNetwork = func(ctx context.Context, networkName, key string) (context.Context, func(), error) {
 	lock, err := clusterlock.Acquire(ctx, "network/"+networkName, clusterlock.Options{Holder: key, Wait: lockNetworkWait})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return func() {
+	lockCtx, cancel := lock.WithDeadline(ctx)
+	return lockCtx, func() {
+		cancel()
 		// A release that fails leaves the lock to its lease, which only
 		// delays the next allocation.
 		_ = lock.Release(context.Background())

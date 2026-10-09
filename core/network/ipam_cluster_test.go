@@ -25,8 +25,8 @@ func fakeClusterAddrs(t *testing.T, m map[string][]net.IP, err error) *int {
 	}
 	prevLock := lockNetwork
 	t.Cleanup(func() { lockNetwork = prevLock })
-	lockNetwork = func(context.Context, string, string) (func(), error) {
-		return func() {}, nil
+	lockNetwork = func(ctx context.Context, _, _ string) (context.Context, func(), error) {
+		return ctx, func() {}, nil
 	}
 	return calls
 }
@@ -104,11 +104,11 @@ func TestAllocateForLocksTheClusterWideNetwork(t *testing.T) {
 	p, _ := naming.ParsePath("ns1/svc/san1")
 	fakeClusterAddrs(t, nil, nil)
 	locked, released := 0, 0
-	lockNetwork = func(_ context.Context, name, key string) (func(), error) {
+	lockNetwork = func(ctx context.Context, name, key string) (context.Context, func(), error) {
 		assert.Equal(t, "san", name)
 		assert.Equal(t, ipam.Key(p, "ip#1"), key)
 		locked++
-		return func() { released++ }, nil
+		return ctx, func() { released++ }, nil
 	}
 	_, err := AllocateFor(context.Background(), newClusterWide(t), p, "ip#1")
 	require.NoError(t, err)
@@ -127,8 +127,8 @@ func TestAllocateForNeedsTheNetworkLock(t *testing.T) {
 	testhelper.Setup(t)
 	p, _ := naming.ParsePath("ns1/svc/san1")
 	fakeClusterAddrs(t, nil, nil)
-	lockNetwork = func(context.Context, string, string) (func(), error) {
-		return nil, errors.New("cluster lock held")
+	lockNetwork = func(context.Context, string, string) (context.Context, func(), error) {
+		return nil, nil, errors.New("cluster lock held")
 	}
 	_, err := AllocateFor(context.Background(), newClusterWide(t), p, "ip#1")
 	assert.ErrorContains(t, err, "cluster lock held")
@@ -177,12 +177,31 @@ func TestRedrawForFailingKeepsThePrevious(t *testing.T) {
 	fakeClusterAddrs(t, nil, nil)
 	previous, err := AllocateFor(context.Background(), i, p, "ip#1")
 	require.NoError(t, err)
-	lockNetwork = func(context.Context, string, string) (func(), error) {
-		return nil, errors.New("cluster lock held")
+	lockNetwork = func(context.Context, string, string) (context.Context, func(), error) {
+		return nil, nil, errors.New("cluster lock held")
 	}
 	_, err = RedrawFor(context.Background(), i, p, "ip#1", previous)
 	require.Error(t, err)
 	held, err := i.Allocated(ipam.Key(p, "ip#1"))
 	require.NoError(t, err)
 	assert.Equal(t, previous.String(), held.String())
+}
+
+// A draw whose lease ended before the address was reserved gives the address
+// back and fails: another node may have drawn it meanwhile.
+func TestAllocateForGivesBackADrawPastTheLease(t *testing.T) {
+	testhelper.Setup(t)
+	p, _ := naming.ParsePath("ns1/svc/san1")
+	fakeClusterAddrs(t, nil, nil)
+	lockNetwork = func(ctx context.Context, _, _ string) (context.Context, func(), error) {
+		ended, cancel := context.WithCancel(ctx)
+		cancel()
+		return ended, func() {}, nil
+	}
+	i := newClusterWide(t)
+	_, err := AllocateFor(context.Background(), i, p, "ip#1")
+	assert.ErrorContains(t, err, "the lock lease ended")
+	held, err := i.Allocated(ipam.Key(p, "ip#1"))
+	require.NoError(t, err)
+	assert.Nil(t, held, "the address was given back")
 }

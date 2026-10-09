@@ -1133,6 +1133,13 @@ type ClusterLock struct {
 	// ExpiresAt when the lease ends, which frees a lock never released
 	ExpiresAt time.Time `json:"expires_at"`
 
+	// ExpiresIn how long the lease runs from the moment the answer is written. The
+	// nodes rebase a lock on their own clock from this rather than from
+	// expires_at, which is the clock of the node that granted it: the
+	// clocks of the nodes need not agree on the time, only tick at the
+	// same rate.
+	ExpiresIn *string `json:"expires_in,omitempty"`
+
 	// Holder who holds the lock, as its holder said
 	Holder *string `json:"holder,omitempty"`
 

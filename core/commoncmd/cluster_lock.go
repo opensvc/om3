@@ -123,6 +123,13 @@ func (t *CmdClusterLockList) Run() error {
 			ExpiresAt:  item.ExpiresAt,
 			ExpiresIn:  item.ExpiresAt.Sub(now).Round(time.Second).String(),
 		}
+		if item.ExpiresIn != nil {
+			// The time left as the node speaking counts it, rather than its
+			// expiry read on the clock of this host.
+			if d, err := time.ParseDuration(*item.ExpiresIn); err == nil {
+				views[i].ExpiresIn = d.Round(time.Second).String()
+			}
+		}
 		if item.Holder != nil {
 			views[i].Holder = *item.Holder
 		}

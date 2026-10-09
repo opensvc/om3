@@ -91,6 +91,15 @@ func nodeLocks(ctx context.Context, nodename string) ([]locktable.Lock, error) {
 	return l, nil
 }
 
+// lockFromAPI returns the lock a node answered, its lease rebased on the
+// clock of this node.
+//
+// The expiry the answer carries is read on the clock of the node that granted
+// the lock, and the clocks of the nodes need not agree: one ahead would see a
+// lock expire before its holder is done, and grant it again. The time left,
+// added to the clock of this node, needs no such agreement, and what the
+// answer spent on the way only makes the lease look longer, which errs on
+// the side of the holder.
 func lockFromAPI(item api.ClusterLock) locktable.Lock {
 	lock := locktable.Lock{
 		Name:       item.Name,
@@ -98,6 +107,11 @@ func lockFromAPI(item api.ClusterLock) locktable.Lock {
 		Node:       item.Node,
 		AcquiredAt: item.AcquiredAt,
 		ExpiresAt:  item.ExpiresAt,
+	}
+	if item.ExpiresIn != nil {
+		if d, err := time.ParseDuration(*item.ExpiresIn); err == nil {
+			lock.ExpiresAt = time.Now().Add(d)
+		}
 	}
 	if item.Holder != nil {
 		lock.Holder = *item.Holder
@@ -113,6 +127,8 @@ func lockToAPI(lock locktable.Lock) api.ClusterLock {
 		AcquiredAt: lock.AcquiredAt,
 		ExpiresAt:  lock.ExpiresAt,
 	}
+	expiresIn := time.Until(lock.ExpiresAt).String()
+	item.ExpiresIn = &expiresIn
 	if lock.Holder != "" {
 		holder := lock.Holder
 		item.Holder = &holder
