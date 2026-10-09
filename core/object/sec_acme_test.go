@@ -9,14 +9,17 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // testCert returns a certificate for names expiring at notAfter, signed by a
@@ -115,4 +118,153 @@ func TestAcmeDirectoryAliases(t *testing.T) {
 	assert.Equal(t, AcmeLetsEncryptStaging, acmeDirectory("letsencrypt-staging"))
 	assert.Equal(t, "https://acme.example/dir", acmeDirectory("https://acme.example/dir"))
 	assert.Equal(t, "", acmeDirectory(""))
+}
+
+// A certificate the sec did not issue, as one installed from elsewhere, names
+// what it was installed for, never alt_names: a renewal keeps it, and a
+// forced one only replaces it.
+func TestRenewKeepsACertificateTheSecDidNotIssue(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "web", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\nalt_names = node1\nbits = 2048\n")))
+	require.NoError(t, err)
+	installed := testCert(t, []string{"*.example.com"}, time.Now().Add(365*24*time.Hour), false)
+	require.NoError(t, o.AddKey("certificate", installed))
+
+	_, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.ErrorIs(t, err, ErrCertificateNotIssued)
+	current, err := o.DecodeKey("certificate")
+	require.NoError(t, err)
+	assert.Equal(t, installed, current, "the installed certificate is kept")
+
+	r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{Force: true})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, "a forced renewal replaces it")
+}
+
+// A certificate issued for alt_names = {clusternodes} by the ca of the sec
+// names the cluster nodes, and is renewed when they change.
+func TestRenewNamesTheClusterNodes(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	caPath := naming.Path{Name: "ca", Kind: naming.KindSec, Namespace: "ns1"}
+	ca, err := NewSec(caPath, WithConfigData([]byte("[DEFAULT]\nbits = 2048\n")))
+	require.NoError(t, err)
+	require.NoError(t, ca.GenCert())
+
+	p := naming.Path{Name: "cert", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\nca = ns1/sec/ca\nalt_names = {clusternodes}\nbits = 2048\n")))
+	require.NoError(t, err)
+	names := func() []string {
+		b, err := o.DecodeKey("certificate")
+		require.NoError(t, err)
+		cert, err := certFromPEM(b)
+		require.NoError(t, err)
+		return cert.DNSNames
+	}
+
+	r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, r.Reason)
+	assert.Equal(t, []string{"node1"}, names())
+
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.False(t, r.Renewed, "the certificate names the cluster nodes: not due")
+
+	cluster, err := NewCluster(WithVolatile(false))
+	require.NoError(t, err)
+	require.NoError(t, cluster.Config().Set(*keyop.New(key.New("cluster", "nodes"), keyop.Set, "node1 node2", 0)))
+	_, err = SetClusterConfig()
+	require.NoError(t, err)
+
+	// The daemon reads the sec anew for each renewal, as here: the
+	// reference is evaluated with the cluster nodes of the time.
+	o, err = NewSec(p, WithVolatile(false))
+	require.NoError(t, err)
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, "a node joined: due")
+	assert.Equal(t, []string{"node1", "node2"}, names())
+}
+
+// A generated certificate is renewed when alt_names changes, an ip address
+// as well as a name: a certificate issued for the alt_names of the time is
+// not due anymore.
+func TestRenewFollowsAltNames(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "web", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\nalt_names = node1\nbits = 2048\n")))
+	require.NoError(t, err)
+	r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	require.True(t, r.Renewed, r.Reason)
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	require.False(t, r.Renewed, r.Reason)
+
+	for _, tc := range []struct {
+		altNames string
+		dns      []string
+		ips      []string
+	}{
+		// An ip address is a dns name too, as the certificates are
+		// generated since 2022.
+		{"node1 10.0.0.1", []string{"node1", "10.0.0.1"}, []string{"127.0.0.1", "10.0.0.1"}},
+		{"node1 node2 10.0.0.1", []string{"node1", "node2", "10.0.0.1"}, []string{"127.0.0.1", "10.0.0.1"}},
+		{"node2", []string{"node2"}, []string{"127.0.0.1"}},
+	} {
+		require.NoError(t, o.Config().Set(*keyop.New(key.New("DEFAULT", "alt_names"), keyop.Set, tc.altNames, 0)))
+		o, err = NewSec(p, WithVolatile(false))
+		require.NoError(t, err)
+		r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+		require.NoError(t, err)
+		assert.True(t, r.Renewed, "alt_names = %s: %s", tc.altNames, r.Reason)
+		b, err := o.DecodeKey("certificate")
+		require.NoError(t, err)
+		cert, err := certFromPEM(b)
+		require.NoError(t, err)
+		assert.Equal(t, tc.dns, cert.DNSNames)
+		ips := make([]string, len(cert.IPAddresses))
+		for i, ip := range cert.IPAddresses {
+			ips[i] = ip.String()
+		}
+		assert.Equal(t, tc.ips, ips)
+	}
+}
+
+// A certificate whose ip addresses are not the ones of alt_names is due, its
+// dns names alike.
+func TestCertificateIPsDue(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		DNSNames:     []string{"node1"},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("10.0.0.1")},
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &priv.PublicKey, priv)
+	require.NoError(t, err)
+	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+
+	due, _ := certificateIPsDue(cert, []net.IP{net.ParseIP("10.0.0.1"), net.ParseIP("127.0.0.1")}, "valid")
+	assert.False(t, due, "the same ip addresses, in another order")
+	due, reason := certificateIPsDue(cert, []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("10.0.0.2")}, "valid")
+	assert.True(t, due)
+	assert.Contains(t, reason, "10.0.0.2")
 }
