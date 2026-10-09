@@ -152,12 +152,14 @@ func (t *T) StatusLastSync(nodenames []string, receiving bool) status.T {
 
 // WritePeerLastSync records that peer was synced now, and sends it the
 // records it reads: its own last sync, which its status tells the freshness of
-// its copy from, the last sync of this node, and the last run of the schedule,
-// which keeps its scheduler from syncing again too soon if it becomes the
-// source.
+// its copy from, the last syncs of this node and of the other peers, and the
+// last run of the schedule, which keeps its scheduler from syncing again too
+// soon if it becomes the source.
 //
-// The records of the other peers are not sent: a node reads them only once it
-// is the source, and its first sync writes them.
+// The last syncs of the other peers are what a node that becomes the source
+// tells the freshness of their copies from, until its first sync: a copy is as
+// fresh as the last sync it received, whichever node sent it. v2 sent them all
+// too.
 func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 	head := t.GetObjectDriver().VarDir()
 	lastSyncFile := t.lastSyncFile(peer)
@@ -187,8 +189,15 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 			return err
 		}
 		defer file.Close()
+		info, err := file.Stat()
+		if err != nil {
+			return err
+		}
 		response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
+			// A record says when by its modification time, which the
+			// peer keeps rather than the time it received it.
+			req.Header.Add(api.HeaderLastModified, info.ModTime().Format(time.RFC3339Nano))
 			return nil
 		})
 		if err != nil {
@@ -201,8 +210,18 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 		return nil
 	}
 
+	others, err := filepath.Glob(t.lastSyncFile("*"))
+	if err != nil {
+		return err
+	}
+	filenames := []string{schedTimestampFile}
+	for _, filename := range append([]string{lastSyncFile, lastSyncFileSrc}, others...) {
+		if !slices.Contains(filenames, filename) {
+			filenames = append(filenames, filename)
+		}
+	}
 	var errs error
-	for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
+	for _, filename := range filenames {
 		if err := send(filename); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("send state file %s to node %s: %w", filename, peer, err))
 			continue
