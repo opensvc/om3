@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/fssnap"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/proc"
 )
@@ -113,6 +114,24 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return err
 	}
 	defer done()
+	sources, err := filepath.Glob(t.Src)
+	if err != nil {
+		return err
+	}
+	if t.Snap && len(sources) > 0 {
+		set := t.snapSet()
+		// Whatever the outcome, and the snapshots of an interrupted run
+		// with them: a snapshot left fills its volume, and a mount left
+		// is a mount nobody asked for.
+		defer func() {
+			if rmErr := set.RemoveDetached(); rmErr != nil {
+				err = errors.Join(err, fmt.Errorf("remove the snapshots: %w", rmErr))
+			}
+		}()
+		if sources, err = set.Create(ctx, sources); err != nil {
+			return err
+		}
+	}
 	// The peers are synced at once, each on its own: one failing, or slow,
 	// does not hold the others back, and all the failures are reported.
 	var (
@@ -131,7 +150,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := t.peerSync(ctx, mode, nodename); err != nil {
+			if err := t.peerSync(ctx, mode, nodename, sources); err != nil {
 				errs[i] = fmt.Errorf("%s: %w", nodename, err)
 				return
 			}
@@ -142,6 +161,35 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	}
 	wg.Wait()
 	return errors.Join(errs...)
+}
+
+// snapSet is the snapshots an update copies from when snap is set, in the
+// var directory of the resource, named after the object and the resource:
+// the snapshots of two resources never collide, and the ones an interrupted
+// run left are known to the next.
+func (t *T) snapSet() *fssnap.Set {
+	return &fssnap.Set{
+		Dir:           filepath.Join(t.VarDir(), "snap"),
+		Name:          "osvc_sync_" + strings.ReplaceAll(t.ObjectID.String(), "-", "")[:8] + "_" + strings.ReplaceAll(t.RID(), "#", "."),
+		Log:           t.Log(),
+		OneFileSystem: isOneFileSystem(t.fullOptions()),
+	}
+}
+
+// isOneFileSystem says the rsync options keep the copy on the filesystem of
+// each source, as -x, in a group of short options or alone, and
+// --one-file-system do.
+func isOneFileSystem(options []string) bool {
+	for _, o := range options {
+		switch {
+		case o == "--one-file-system":
+			return true
+		case strings.HasPrefix(o, "--"):
+		case strings.HasPrefix(o, "-") && strings.Contains(o[1:], "x"):
+			return true
+		}
+	}
+	return false
 }
 
 func (t *T) Kill(ctx context.Context) error {
@@ -158,7 +206,12 @@ func (t *T) Status(ctx context.Context) status.T {
 		isSourceNode = true
 	}
 	nodenames := t.getTargetNodenames(isSourceNode)
-	return t.StatusLastSync(nodenames, !isSourceNode)
+	state := t.StatusLastSync(nodenames, !isSourceNode)
+	if t.Snap && fssnap.Pending(t.snapSet().Dir) {
+		t.StatusLog().Warn("an interrupted update left snapshots, which the next update removes")
+		state.Add(status.Warn)
+	}
+	return state
 }
 
 func (t *T) getTargetNodenames(isSourceNode bool) []string {
@@ -253,7 +306,7 @@ func (t *T) user() string {
 	}
 }
 
-func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) (err error) {
+func (t *T) peerSync(ctx context.Context, mode modeT, nodename string, sources []string) (err error) {
 	if v, err := t.isDstFSMounted(nodename); err != nil {
 		return err
 	} else if !v {
@@ -263,11 +316,7 @@ func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) (err erro
 	options := t.fullOptions()
 	dst := t.user() + "@" + nodename + ":" + t.Dst
 	args := append([]string{}, options...)
-	if matches, err := filepath.Glob(t.Src); err != nil {
-		return err
-	} else {
-		args = append(args, matches...)
-	}
+	args = append(args, sources...)
 	args = append(args, dst)
 	var timeout time.Duration
 	if t.Timeout != nil {

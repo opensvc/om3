@@ -864,6 +864,17 @@ which share the same executor.
     started included, before stopping the resources. No scheduled sync starts
     on a node being drained.
 
+### Driver: sync.rsync
+
+* **`snap = true` copies a snapshot of the filesystem holding `src`:**
+    v2 snapshotted the logical volume of the filesystem resource holding `src`, on Linux. The filesystem is now the
+    one mounted deepest under `src`, whether a resource of the service mounts it or not, and it is snapshotted as a
+    logical volume, thick or thin, as a btrfs subvolume, or as a zfs dataset. v2 copied `src` itself when it could not
+    snapshot it; the update now fails. A filesystem mounted below `src` fails the update too, unless the rsync options
+    keep the copy on one filesystem, as the default `-x` does: the snapshot does not hold it, and `--delete` would
+    remove its copy on the peers. The snapshots are removed when the update ends, and the ones an interrupted update
+    left are removed by the next, the status warning of them meanwhile.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**
