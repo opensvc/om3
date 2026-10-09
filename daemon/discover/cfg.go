@@ -452,6 +452,10 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			return
 		}
 	}
+	if t.isBeingRemoved(p, node) {
+		log.Infof("cfg: ignore the %s config of node %s: the object is being removed", pathS, node)
+		return
+	}
 	var needStoppedFlag bool
 	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && daemonStartsOnItsOwn(remoteInstanceConfig.ActorConfig.Orchestrate) && len(remoteInstanceConfig.Scope) > 1 {
 		needStoppedFlag = true
@@ -519,6 +523,35 @@ func (t *Manager) onInstanceConfigDeleting(c *msgbus.InstanceConfigDeleting) {
 		return
 	}
 	t.cfgDeleting[c.Path] = true
+	// A fetch started before is for a configuration the delete is about to
+	// remove: installed after it, it would bring the object back.
+	t.cancelFetcher(c.Path.String())
+}
+
+// isBeingRemoved says the object is being deleted or purged, on this node or
+// on the peer a configuration comes from.
+//
+// A configuration a peer writes meanwhile is not one to install: the node
+// leading a purge unprovisions after the others, and what its resources
+// unset of the configuration as they unprovision is written while the others
+// are deleting theirs. Fetched, it would land after their delete, and bring
+// back an object the orchestration that removed it is no longer there to
+// remove.
+func (t *Manager) isBeingRemoved(p naming.Path, peer string) bool {
+	if t.cfgDeleting[p] {
+		return true
+	}
+	for _, node := range []string{t.localhost, peer} {
+		mon := instance.MonitorData.GetByPathAndNode(p, node)
+		if mon == nil {
+			continue
+		}
+		switch mon.GlobalExpect {
+		case instance.MonitorGlobalExpectDeleted, instance.MonitorGlobalExpectPurged:
+			return true
+		}
+	}
+	return false
 }
 
 // onInstanceConfigFor is called on InstanceConfigFor event.
@@ -672,6 +705,11 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	case <-c.Ctx.Done():
 		c.Err <- nil
 	default:
+		if t.isBeingRemoved(c.Path, c.Node) {
+			log.Infof("cfg: drop the %s config fetched from node %s: the object is being removed", c.Path, c.Node)
+			c.Err <- nil
+			return
+		}
 		confFile := c.Path.ConfigFile()
 		if err := handleStoppedFlag(confFile); err != nil {
 			c.Err <- err
