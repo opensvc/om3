@@ -62,7 +62,7 @@ func New(ctx context.Context, opts ...funcopt.O) *T {
 		return nil
 	}
 	t.log = t.log.Attr("lsnr_addr", t.addr)
-	t.tlsSecs = tlssecs.New(t.log)
+	t.tlsSecs = tlssecs.New(t.log).WithDefault(t.certFile, t.keyFile)
 	return t
 }
 
@@ -109,12 +109,19 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 			return
 		}
 	}
+	if _, err := tls.LoadX509KeyPair(t.certFile, t.keyFile); err != nil {
+		errC <- fmt.Errorf("can't listen: %w", err)
+		return
+	}
 	t.listener = &http.Server{
 		Addr:    t.addr,
 		Handler: routehttp.New(ctx, true),
 		TLSConfig: &tls.Config{
 			// The certificate of system/sec/cert, from certFile, unless
-			// the client asks a name of one of listener.tls_secs.
+			// the client asks a name of one of listener.tls_secs. It is
+			// the only source of certificates: a certificate loaded by
+			// ServeTLS would be presented to the clients asking no name,
+			// as by an ip address, the one of the start forever.
 			GetCertificate: t.tlsSecs.GetCertificate,
 			ClientAuth:     tls.RequestClientCert,
 			MinVersion:     tls.VersionTLS13,
@@ -170,7 +177,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	}()
 	t.log.Infof("started")
 	errC <- nil
-	if err := t.listener.ServeTLS(lsnr, t.certFile, t.keyFile); err != nil {
+	if err := t.listener.ServeTLS(lsnr, "", ""); err != nil {
 		if errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) {
 			t.log.Tracef("listener serve ends with expected error")
 		} else {
