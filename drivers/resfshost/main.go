@@ -484,7 +484,23 @@ func (t *T) SubDevices(ctx context.Context) device.L {
 		l = append(l, t.device(ctx))
 		return l
 	}
-	t.Log().Warnf("TODO: multi dev SubDevices()")
+	i, ok := fs.(filesystems.DeviceLister)
+	if !ok {
+		t.Log().Warnf("TODO: multi dev SubDevices()")
+		return l
+	}
+	devpath := t.devpath(ctx)
+	if devpath == "" {
+		return l
+	}
+	paths, err := i.Devices(ctx, devpath)
+	if err != nil {
+		t.Log().Debugf("list the devices of the %s on %s: %s", fs, devpath, err)
+		return append(l, t.device(ctx))
+	}
+	for _, p := range paths {
+		l = append(l, device.New(p, device.WithLogger(t.Log())))
+	}
 	return l
 }
 
@@ -571,6 +587,23 @@ func (t *T) isMounted(ctx context.Context) (bool, error) {
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
+	if err := t.mkfs(ctx); err != nil {
+		return err
+	}
+	// The parts of the filesystem the mount options name, as the
+	// subvolume of a btrfs, are created on a filesystem already formatted
+	// too: the mount needs them.
+	if i, ok := t.fs().(filesystems.MountOptionsProvisioner); ok {
+		devpath := t.devpath(ctx)
+		if devpath == "" {
+			return fmt.Errorf("%s real dev path is empty", t.Device)
+		}
+		return i.ProvisionMountOptions(ctx, devpath, t.MountOptions)
+	}
+	return nil
+}
+
+func (t *T) mkfs(ctx context.Context) error {
 	fs := t.fs()
 	i1, ok := fs.(IsFormateder)
 	if !ok {
