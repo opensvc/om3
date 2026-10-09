@@ -55,7 +55,7 @@ func GetStatus(t Networker, ips clusterip.L) Status {
 	}
 	if ips != nil {
 		data.IPs = t.FilterIPs(ips)
-		data.Usage.Used = big.NewInt(int64(len(data.IPs)))
+		data.Usage.Used = big.NewInt(int64(usedCount(t, data.IPs)))
 	}
 	ones, bits := ipn.Mask.Size()
 	data.Usage.Size = new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
@@ -99,4 +99,19 @@ func ShowNetworksByName(noder Noder, name string, ips clusterip.L) StatusList {
 
 func ShowNetworks(noder Noder, ips clusterip.L) StatusList {
 	return ShowNetworksByName(noder, "", ips)
+}
+
+// usedCount is how many addresses of the network are used. Every node of a
+// cluster-wide network reports the address a failover object holds, which is
+// one address: the addresses are counted. The addresses of a node local
+// network are the node's own, the same one on two nodes being two.
+func usedCount(t Networker, ips clusterip.L) int {
+	if i, ok := t.(ClusterWider); !ok || !i.IsClusterWide() {
+		return len(ips)
+	}
+	seen := make(map[string]bool, len(ips))
+	for _, ip := range ips {
+		seen[ip.IP.String()] = true
+	}
+	return len(seen)
 }

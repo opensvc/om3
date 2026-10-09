@@ -126,6 +126,30 @@ type (
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
 	}
+
+	// ClusterWider is implemented by the network drivers whose range is
+	// the same on every node, its addresses routable to whichever node
+	// holds them: an address drawn there is one of the cluster, which a
+	// failover object takes along to the node it moves to, rather than one
+	// of a node.
+	ClusterWider interface {
+		IsClusterWide() bool
+	}
+
+	// Netmasker is implemented by the network drivers whose addresses are
+	// configured with a prefix length other than the one of their range,
+	// as the range om hands out in a segment the nodes share is configured
+	// with the prefix length of the segment.
+	Netmasker interface {
+		Netmask() (int, error)
+	}
+
+	// HostDever is implemented by the network drivers whose addresses are
+	// configured on an interface of the node, rather than on a bridge the
+	// network sets up. It returns the interface of this node.
+	HostDever interface {
+		HostDev() (string, error)
+	}
 	logger interface {
 		Log() *plog.Logger
 	}

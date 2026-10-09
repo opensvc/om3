@@ -1,0 +1,6 @@
+The interface of the node on the segment, which the addresses drawn from this
+network are configured on, as `eth1`.
+
+When not set, it is the interface holding the address of the node on the
+segment, the one whose prefix holds the range of the network. Set it when the
+nodes have no address on the segment, or when several interfaces hold one.
