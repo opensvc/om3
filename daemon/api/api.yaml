@@ -665,6 +665,117 @@ paths:
         - cluster
       x-internal: true
 
+  /api/cluster/lock:
+    get:
+      description: |
+        Return the cluster locks held, as the node speaking for the cluster
+        granted them.
+      operationId: GetClusterLocks
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterLockList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
+    post:
+      description: |
+        Acquire a cluster lock, waiting for as long as asked when another
+        holds it.
+
+        Every lock of the cluster is granted by the node speaking for it,
+        which the node asked hands the request over to. A lock is held until
+        it is released or its lease ends.
+      operationId: PostClusterLock
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostClusterLock'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterLock'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
+    delete:
+      description: |
+        Release a cluster lock.
+      operationId: DeleteClusterLock
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: name
+          description: the name of the lock
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: id
+          description: the id the lock was granted under
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: node
+          description: |
+            the node whose client releases, set by the node handing the
+            request over to the node speaking for the cluster
+          required: false
+          schema:
+            type: string
+      responses:
+        204:
+          description: Released
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
+
   /api/cluster/register:
     post:
       description: |
@@ -2435,6 +2546,73 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
+
+  /api/node/name/{nodename}/lock:
+    get:
+      description: |
+        For internal use only.
+
+        Return the cluster locks the clients of the node hold, which a node
+        taking the speaking for the cluster over rebuilds its lock table from.
+      operationId: GetNodeLocks
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterLockList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+      x-internal: true
+
+  /api/node/name/{nodename}/network/reservation:
+    get:
+      description: |
+        For internal use only.
+
+        Return the addresses the node reserved in its networks, read from its
+        reservation store rather than from the object status, so an address
+        shows up the moment it is reserved.
+      operationId: GetNodeNetworkReservations
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: name
+          description: the name of a cluster backend network
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkReservationList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+      x-internal: true
 
   /api/node/name/{nodename}/drbd/allocation:
     get:
@@ -6285,6 +6463,79 @@ components:
           default: 1h
           example: 1h
 
+    ClusterLock:
+      type: object
+      required:
+        - name
+        - id
+        - node
+        - acquired_at
+        - expires_at
+      properties:
+        name:
+          type: string
+        id:
+          description: the id the lock was granted under, which releases it
+          type: string
+          x-go-name: ID
+        node:
+          description: the node whose client holds the lock
+          type: string
+        holder:
+          description: who holds the lock, as its holder said
+          type: string
+        acquired_at:
+          type: string
+          format: date-time
+        expires_at:
+          description: when the lease ends, which frees a lock never released
+          type: string
+          format: date-time
+
+    ClusterLockList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ClusterLockList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClusterLock'
+
+    PostClusterLock:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          description: the name of the lock
+          type: string
+        holder:
+          description: who holds the lock, for the reader of a listing
+          type: string
+        lease:
+          description: |
+            how long the lock is held unless released before, 30s by default,
+            10m at most
+          type: string
+          example: 30s
+        wait:
+          description: |
+            how long to wait for the lock while another holds it, not at all
+            by default
+          type: string
+          example: 10s
+        node:
+          description: |
+            the node whose client asks, set by the node handing the request
+            over to the node speaking for the cluster
+          type: string
+
     ClusterNode:
       type: object
 
@@ -7775,6 +8026,40 @@ components:
             - NetworkIPList
         items:
           $ref: '#/components/schemas/NetworkIPItems'
+
+    NetworkReservation:
+      type: object
+      required:
+        - network
+        - ip
+        - path
+        - rid
+      properties:
+        network:
+          type: string
+        ip:
+          type: string
+          x-go-name: IP
+        path:
+          type: string
+        rid:
+          type: string
+          x-go-name: RID
+
+    NetworkReservationList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - NetworkReservationList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkReservation'
 
     NetworkIPNetwork:
       type: object
