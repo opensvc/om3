@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/v3/core/actionresdeps"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -65,12 +64,11 @@ type (
 		Expose        []string       `json:"expose"`
 
 		// cache
-		_network         network.Networker
-		_networkResolved bool
-		_ipaddr          net.IP
-		_ipaddrAge       time.Duration
-		_ipmask          net.IPMask
-		_ipnet           *net.IPNet
+		_alloc     *resip.Allocation
+		_ipaddr    net.IP
+		_ipaddrAge time.Duration
+		_ipmask    net.IPMask
+		_ipnet     *net.IPNet
 	}
 
 	Addrs []net.Addr

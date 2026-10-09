@@ -6,12 +6,20 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
-	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/drivers/resip"
 )
+
+// alloc is the address this resource draws from the network its network
+// keyword names, as every ip driver draws it.
+func (t *T) alloc() *resip.Allocation {
+	if t._alloc == nil {
+		t._alloc = &resip.Allocation{Network: t.Network, Path: t.Path, RID: t.RID(), Log: t.Log()}
+	}
+	return t._alloc
+}
 
 // resolveNetwork returns the om network the network keyword names.
 //
@@ -20,109 +28,42 @@ import (
 // destination is the connected route the kernel adds along with the address,
 // so it is derived from the address and the mask now, and the keyword names
 // the network the address is drawn from, as it does on ip.cni.
-//
-// A value that is still an address is therefore obsolete rather than wrong:
-// it is reported and ignored. A value that is neither an address nor a
-// network is a mistake worth stopping for, a renamed network or a typo.
 func (t *T) resolveNetwork() (network.Networker, error) {
-	if t._networkResolved {
-		return t._network, nil
-	}
-	t._networkResolved = true
-	if t.Network == "" {
-		return nil, nil
-	}
-	nw, names, err := network.Lookup(t.Network)
-	if err != nil {
-		return nil, err
-	}
-	if nw != nil {
-		t._network = nw
-		return nw, nil
-	}
-	if isAddr(t.Network) {
-		t.Log().Warnf("the network keyword holds the address %s, which is obsolete and ignored: the route del_net_route removes is derived from the address and the netmask. The keyword names the network the address is drawn from now", t.Network)
-		return nil, nil
-	}
-	return nil, fmt.Errorf("unknown network %s, expected one of %s", t.Network, strings.Join(names, ", "))
-}
-
-// isAddr reports whether a value is an address or a subnet, which is what the
-// network keyword used to hold.
-func isAddr(s string) bool {
-	if net.ParseIP(s) != nil {
-		return true
-	}
-	_, _, err := net.ParseCIDR(s)
-	return err == nil
+	return t.alloc().Resolve()
 }
 
 // ipam returns the allocator of the network this resource draws from, or nil
 // when it draws from none.
 //
-// The addresses the cluster holds on its other nodes are not consulted: a
-// routed_bridge gives this node a range of its own, and the addresses of a
-// bridge are node local and not routable, so an address in use elsewhere is
-// never one this node could hand out by mistake.
+// The addresses the cluster holds on its other nodes are consulted only for a
+// network whose range every node draws from: a routed_bridge gives this node
+// a range of its own, and the addresses of a bridge are node local and not
+// routable, so an address in use elsewhere is never one this node could hand
+// out by mistake.
 func (t *T) ipam() (*ipam.T, error) {
-	nw, err := t.resolveNetwork()
-	if err != nil {
-		return nil, err
-	}
-	if nw == nil {
-		return nil, nil
-	}
-	return network.NewAllocator(nw, hostname.Hostname())
+	return t.alloc().Allocator()
 }
 
-// ipamKey names the reservation of this resource. An instance holds as many ip
-// resources as it needs, several of them in one network, so the address
-// belongs to the resource rather than to the object.
+// ipamKey names the reservation of this resource.
 func (t *T) ipamKey() string {
-	return ipam.Key(t.Path, t.RID())
+	return t.alloc().Key()
 }
 
 // allocateIP reserves the address of this resource, and returns the one it
 // already holds when it holds one.
 func (t *T) allocateIP(ctx context.Context) (net.IP, error) {
-	i, err := t.ipam()
-	if err != nil {
-		return nil, err
-	}
-	if i == nil {
-		return nil, nil
-	}
-	ip, err := network.AllocateFor(ctx, i, t.Path, t.RID())
-	if err != nil {
-		return nil, err
-	}
-	t.Log().Infof("allocated %s in network %s", ip, i.Name)
-	return ip, nil
+	return t.alloc().Allocate(ctx)
 }
 
 // allocatedIP returns the address reserved for this resource, or nil when it
 // has none. It never reserves one: reading a status must not take an address.
 func (t *T) allocatedIP() (net.IP, error) {
-	i, err := t.ipam()
-	if err != nil {
-		return nil, err
-	}
-	if i == nil {
-		return nil, nil
-	}
-	return i.Allocated(t.ipamKey())
+	return t.alloc().Allocated()
 }
 
 // freeIP releases the address of this resource.
 func (t *T) freeIP() error {
-	i, err := t.ipam()
-	if err != nil {
-		return err
-	}
-	if i == nil {
-		return nil
-	}
-	return i.Free(t.ipamKey())
+	return t.alloc().Free()
 }
 
 // networkDev returns the device of the network this resource draws from.
