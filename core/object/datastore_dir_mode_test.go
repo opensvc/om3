@@ -49,3 +49,37 @@ func TestAnInstallCreatesDirectoriesWithTheirSpecialBits(t *testing.T) {
 	install()
 	install()
 }
+
+// A key installed under parents that are all missing gets every one of them
+// created with the configured mode, not only the closest one.
+func TestAnInstallCreatesEveryMissingParentWithTheSpecialBits(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	head := t.TempDir()
+	p := naming.Path{Name: "web", Kind: naming.KindCfg, Namespace: naming.NsRoot}
+	o, err := NewDataStore(p)
+	require.NoError(t, err)
+	require.NoError(t, o.AddKey("index.html", []byte("installed")))
+	want := 0o750 | os.ModeSetgid
+	_, err = o.InstallKeyTo(KVInstall{
+		ToHead:      head,
+		ToPath:      filepath.Join(head, "a", "b", "index.html"),
+		FromPattern: "index.html",
+		FromStore:   p,
+		AccessControl: KVInstallAccessControl{
+			Perm:        0o644,
+			DirPerm:     want,
+			MakedirPerm: want,
+		},
+	})
+	require.NoError(t, err)
+	for _, dir := range []string{"a", filepath.Join("a", "b")} {
+		info, err := os.Stat(filepath.Join(head, dir))
+		require.NoError(t, err)
+		assert.Equal(t, want, info.Mode()&file.ModeBits, dir)
+	}
+}

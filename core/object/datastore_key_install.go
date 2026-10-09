@@ -391,16 +391,14 @@ func (t *dataStore) makedir(path string, opt KVInstallAccessControl, fs confined
 		return nil
 	} else {
 		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, opt.MakedirPerm)
-		// The confined mkdir refuses the setuid, setgid and sticky flags, and
-		// mkdir applies the umask: create with the rwx bits, then set the
-		// configured mode explicitly.
-		if err := fs.MkdirAll(path, opt.MakedirPerm.Perm()); err != nil {
-			return err
-		}
-		if err := fs.Chmod(path, opt.MakedirPerm); err != nil {
-			return err
-		}
-		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, fs, log); err != nil {
+		// Every missing directory on the way gets the configured mode, special
+		// bits included, and owner: not the last one only.
+		if err := confined.MkdirAllEach(fs, path, opt.MakedirPerm, func(p string) error {
+			if err := fs.Chmod(p, opt.MakedirPerm); err != nil {
+				return err
+			}
+			return t.chown(p, opt.MakedirUser, opt.MakedirGroup, nil, fs, log)
+		}); err != nil {
 			return err
 		}
 	}

@@ -1194,16 +1194,14 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 	switch {
 	case os.IsNotExist(err):
 		t.to.Log().Infof("install directory %s with owner %s:%s and perm %s", p, user, group, perm)
-		// The confined mkdir refuses the setuid, setgid and sticky flags, and
-		// mkdir applies the umask: create with the rwx bits, then set the
-		// configured mode explicitly.
-		if err := tree.MkdirAll(p, perm.Perm()); err != nil {
-			return err
-		}
-		if err := t.chmod(tree, p, &perm); err != nil {
-			return err
-		}
-		if err := t.chown(tree, p, user, group, nil); err != nil {
+		// Every missing directory on the way gets the configured mode, special
+		// bits included, and owner: not the last one only.
+		if err := confined.MkdirAllEach(tree, p, perm, func(dir string) error {
+			if err := t.chmod(tree, dir, &perm); err != nil {
+				return err
+			}
+			return t.chown(tree, dir, user, group, nil)
+		}); err != nil {
 			return err
 		}
 	case err != nil:

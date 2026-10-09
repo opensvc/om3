@@ -213,3 +213,34 @@ func (host) WriteFile(name string, data []byte, perm fs.FileMode) error {
 }
 func (host) Remove(name string) error    { return os.Remove(name) }
 func (host) RemoveAll(name string) error { return os.RemoveAll(name) }
+
+// MkdirAllEach creates name and its missing parents one at a time, from the
+// outermost, and calls made on each directory it creates. Unlike MkdirAll, it
+// lets the caller give every created directory its configured mode and owner:
+// mkdir drops the setuid, setgid and sticky flags and applies the umask, and
+// a confined tree refuses them.
+func MkdirAllEach(fsys FS, name string, perm fs.FileMode, made func(string) error) error {
+	var missing []string
+	for p := filepath.Clean(name); ; {
+		if _, err := fsys.Lstat(p); err == nil {
+			break
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		missing = append(missing, p)
+		parent := filepath.Dir(p)
+		if parent == p {
+			break
+		}
+		p = parent
+	}
+	for i := len(missing) - 1; i >= 0; i-- {
+		if err := fsys.Mkdir(missing[i], perm.Perm()); err != nil && !errors.Is(err, fs.ErrExist) {
+			return err
+		}
+		if err := made(missing[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -80,3 +80,24 @@ func TestDirModeIncludesSpecialBits(t *testing.T) {
 		})
 	}
 }
+
+// A directory whose parents are missing too gets every one of them created
+// with the configured mode, not only the last one.
+func TestDirModeOfEveryMissingParent(t *testing.T) {
+	user, group := strconv.Itoa(os.Getuid()), strconv.Itoa(os.Getgid())
+	want := 0o750 | os.ModeSetgid
+	head := t.TempDir()
+	recv := &DataRecv{to: dirModeReceiver{head: head, log: plog.NewLogger(zerolog.Nop()), status: resource.NewStatusLog()}}
+	if err := recv.installDir(filepath.Join("a", "b"), head, want, user, group); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{"a", filepath.Join("a", "b")} {
+		info, err := os.Stat(filepath.Join(head, dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode() & file.ModeBits; got != want {
+			t.Fatalf("%s mode = %s, want %s", dir, got, want)
+		}
+	}
+}
