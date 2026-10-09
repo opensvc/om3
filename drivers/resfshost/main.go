@@ -319,7 +319,7 @@ func (t *T) devpath(ctx context.Context) string {
 	if t.hasMountOption("loop") {
 		return t.Device
 	}
-	if p, err := vpath.HostDevpath(ctx, t.Device, t.Path.Namespace); err == nil {
+	if p, err := vpath.Devpath(ctx, t.RID(), t.Device, t.Path.Namespace, vpath.ResolverOf(t.GetObject())); err == nil {
 		return p
 	} else {
 		t.Log().Tracef("resolve host devpath for device %s in namespace %s: %s", t.Device, t.Path.Namespace, err)
@@ -639,7 +639,7 @@ func (t *T) mkfs(ctx context.Context) error {
 	}
 	i2, ok := fs.(filesystems.MKFSer)
 	if ok {
-		return i2.MKFS(ctx, t.Device, t.mkfsOptions())
+		return i2.MKFS(ctx, devpath, t.mkfsOptions())
 	}
 	t.Log().Infof("skip mkfs, not implemented for type %s", fs)
 	return nil
