@@ -1,5 +1,8 @@
 The interface name to setup the ip address on.
 
+When not set, the interface the network the address is drawn from names: the
+interface of the node on the segment of a `lan` network.
+
 This interface can be different from one node to the other, in which case the
 `dev@<nodename>` scoping syntax can be used.
 

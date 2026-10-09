@@ -1,5 +1,8 @@
 The DNS name or IP address of the ip resource.
 
+When not set, the address is drawn from the om network the `network` keyword
+names.
+
 Scoping
 -------
 

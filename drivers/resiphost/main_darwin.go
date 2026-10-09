@@ -15,6 +15,9 @@ import (
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
+	if t.ipaddr() == nil && t.isAllocated() {
+		return fmt.Sprintf("from network %s %s", t.Network, t.Dev)
+	}
 	dev, idx := resip.SplitDevLabel(t.Dev)
 	s := fmt.Sprintf("%s %s", t.ipnet(), dev)
 	if t.Alias && idx == "" {

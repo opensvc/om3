@@ -89,6 +89,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Network event handling**: New daemon network monitor (`netmon`) relays netlink events to pubsub, enabling faster response to network changes.
 
+* **Floating addresses from a cluster network**: The new `lan` network type is a range of a segment the nodes share, whose addresses om hands out to the cluster rather than to a node. An `ip.host` resource naming such a network and no address draws one, the same on every node: a failover service takes it along to the node it moves to, and the address other resources hold anywhere in the cluster is never drawn twice.
+
 * **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup. A file it installs takes the mode its line sets, else the `perm` keyword of the resource, else `0600` for a sec key and `0644` for a cfg key, as the `secrets` and `configs` keywords read `perm`.
 
 * **Namespace claims on cluster resources**: A namespace can be capped on what it takes of a resource its peers share, declared in its configuration as a `claim` section:
@@ -725,6 +727,20 @@ which share the same executor.
 * **Changed default:**
     The `alias` keyword default value is now `true`, activating the ip stacking behaviour.
     Setting `dev=eth0:0` still forces the address labelling mode.
+
+* **`ip.host` draws its address from an om network:**
+    The `network` keyword names the om network the address is drawn from when `name` is not set, as it does on
+    `ip.netns`. The address is drawn at the first start and written to the new `addr` keyword, which every node then
+    uses, so a failover service keeps its address on a node it moves to after the others crashed. It is kept until the
+    resource is unprovisioned, a stop keeping it. `dev`
+    and `netmask` are taken from the network when not set, so `dev` is no longer required. The keyword used to hold
+    the address of the network in dotted notation, which nothing read: such a value is reported and ignored.
+
+* **`ip.host` IPv6 addresses are added with `nodad` and announced:**
+    An IPv6 address is usable as soon as it is added, rather than tentative for the second the duplicate address
+    detection takes, which failed the services binding it at start: the start already checks nothing answers it. It
+    is announced by an unsolicited neighbor advertisement, as an IPv4 address is by a gratuitous arp, so the neighbors
+    of an address moved to another node send to it there at once. v2 announced neither.
 
 * **Changed default DNS search list:**
     The fqdn of the object is no longer the first domain a container searches a

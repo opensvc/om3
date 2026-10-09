@@ -1,0 +1,9 @@
+The address drawn from the om network the `network` keyword names, which om
+writes here when the resource first starts, and removes when it is
+unprovisioned.
+
+Every node holds the configuration, so every node uses this address for the
+resource, whichever node drew it and whatever became of that node: a
+failover service keeps its address on a node it moves to after the others
+crashed. Set it to keep an address drawn before, or unset it to have the
+next start draw one.
