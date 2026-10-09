@@ -2580,10 +2580,10 @@ paths:
       description: |
         For internal use only.
 
-        Forget a cluster lock the clients of the node hold, which the node
-        speaking for the cluster asks when another node released it: the
-        lock would otherwise come back from the node holding it, should the
-        speaking move before its lease ends.
+        Forget a cluster lock the clients of the node hold, or that the node
+        granted while it spoke, which the node speaking for the cluster asks
+        of every node when the lock is released: the lock would otherwise
+        come back to a table rebuilt before its lease ends.
       operationId: DeleteNodeLock
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'

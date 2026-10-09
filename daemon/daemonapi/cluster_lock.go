@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,8 +10,11 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/locktable"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // PostClusterLock acquires a cluster lock.
@@ -139,29 +143,47 @@ func (a *DaemonAPI) DeleteClusterLock(ctx echo.Context, params api.DeleteCluster
 	}
 	if lock.Node == releasedBy {
 		log.Infof("cluster lock %s released", params.Name)
-		return ctx.NoContent(http.StatusNoContent)
+	} else {
+		// A lock taken back from its holder.
+		log.Infof("cluster lock %s held by %s on %s released from %s", lock.Name, lock.Holder, lock.Node, releasedBy)
 	}
-	// Released from another node than the one holding it, which is a lock
-	// taken back from a holder: its node still records it, and would bring
-	// it back to a table rebuilt before the lease ends.
-	log.Infof("cluster lock %s held by %s on %s released from %s", lock.Name, lock.Holder, lock.Node, releasedBy)
-	if err := a.forgetNodeLock(ctx, lock); err != nil {
-		log.Warnf("cluster lock %s: %s still records it until %s: %s", lock.Name, lock.Node, lock.ExpiresAt.Format(time.RFC3339), err)
-	}
+	go a.forgetLock(log, lock)
 	return ctx.NoContent(http.StatusNoContent)
 }
 
-// forgetNodeLock has the node holding a lock forget it.
-func (a *DaemonAPI) forgetNodeLock(ctx echo.Context, lock locktable.Lock) error {
-	if lock.Node == a.localhost {
-		locktable.LocalHeld.Remove(lock.Name, lock.ID)
-		return nil
+// forgetLock has every node alive forget a lock released.
+//
+// A table is rebuilt from what the nodes say their clients hold and what
+// they granted while they spoke. The node of the holder may still record the
+// lock, when it was released from another node, and the node that granted it
+// keeps its grant after it stopped speaking: either would bring the lock back
+// to a table rebuilt before its lease ends, held by nobody.
+//
+// It is done after the answer, as the release is done whatever the peers
+// say: a peer that did not hear of it brings the lock back for what is left
+// of its lease at most.
+func (a *DaemonAPI) forgetLock(log *plog.Logger, lock locktable.Lock) {
+	locktable.LocalHeld.Remove(lock.Name, lock.ID)
+	locktable.SpeakerTable.Forget(lock.Name, lock.ID)
+	for _, nodename := range clusternode.Get() {
+		if nodename == a.localhost || node.StatusData.GetByNode(nodename) == nil {
+			continue
+		}
+		if err := forgetNodeLock(nodename, lock); err != nil {
+			log.Warnf("cluster lock %s: %s may bring it back until %s: %s", lock.Name, nodename, lock.ExpiresAt.Format(time.RFC3339), err)
+		}
 	}
-	c, err := newPeerClient(lock.Node)
+}
+
+// forgetNodeLock has a peer forget a lock.
+func forgetNodeLock(nodename string, lock locktable.Lock) error {
+	c, err := newPeerClient(nodename)
 	if err != nil {
 		return err
 	}
-	resp, err := c.DeleteNodeLockWithResponse(ctx.Request().Context(), lock.Node, &api.DeleteNodeLockParams{Name: lock.Name, Id: lock.ID})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	resp, err := c.DeleteNodeLockWithResponse(ctx, nodename, &api.DeleteNodeLockParams{Name: lock.Name, Id: lock.ID})
 	if err != nil {
 		return err
 	}
@@ -171,7 +193,8 @@ func (a *DaemonAPI) forgetNodeLock(ctx echo.Context, lock locktable.Lock) error 
 	return nil
 }
 
-// DeleteNodeLock forgets a cluster lock the clients of a node hold.
+// DeleteNodeLock forgets a cluster lock the clients of a node hold, or that
+// the node granted while it spoke.
 func (a *DaemonAPI) DeleteNodeLock(ctx echo.Context, nodename api.InPathNodeName, params api.DeleteNodeLockParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
