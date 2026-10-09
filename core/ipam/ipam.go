@@ -58,6 +58,12 @@ type (
 		// node local and not routable. It is here for a network type that is
 		// neither.
 		InUse func() ([]net.IP, error)
+
+		// ClusterWide says every node draws from Range, as the nodes of a
+		// lan network do: an address is the cluster's, not this node's, so
+		// a resource takes the address it holds on another node, and the
+		// addresses the other resources hold anywhere are taken.
+		ClusterWide bool
 	}
 
 	// Reservation is an address already held by a resource, which an adoption

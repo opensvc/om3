@@ -8,10 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -32,6 +34,16 @@ func NewAllocator(nw Networker, nodename string) (*ipam.T, error) {
 	}
 	if rng == nil {
 		return nil, nil
+	}
+	if i, ok := nw.(ClusterWider); ok && i.IsClusterWide() {
+		// No bridge answers for an address of the range, and no plugin
+		// ever allocated in it.
+		return &ipam.T{
+			Name:        nw.Name(),
+			Range:       rng,
+			Dir:         ipam.StoreDir(nw.Name()),
+			ClusterWide: true,
+		}, nil
 	}
 	return &ipam.T{
 		Name:    nw.Name(),
@@ -211,10 +223,100 @@ func AllocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string) (net
 	if held != nil {
 		return held, nil
 	}
+	if i.ClusterWide {
+		ip, err := adoptClusterAddr(ctx, i, key)
+		if err != nil {
+			return nil, err
+		}
+		if ip != nil {
+			return ip, nil
+		}
+	}
 	if ok, why, err := ClaimFits(ctx, i.Name, p.Namespace, p, rid); err != nil {
 		return nil, fmt.Errorf("network %s claim check: %w", i.Name, err)
 	} else if !ok {
 		return nil, fmt.Errorf("network %s: %s", i.Name, why)
 	}
 	return i.Allocate(key)
+}
+
+// clusterAddrs reads the addresses the resources of the cluster hold in a
+// network, by reservation key, from the daemon, which replicates the status
+// of every instance.
+var clusterAddrs = func(ctx context.Context, networkName string) (map[string][]net.IP, error) {
+	c, err := client.New()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.GetNetworkIPWithResponse(ctx, &api.GetNetworkIPParams{Name: &networkName})
+	if err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("read the %s network addresses: unexpected status code %d", networkName, resp.StatusCode())
+	}
+	m := make(map[string][]net.IP)
+	for _, item := range resp.JSON200.Items {
+		p, err := naming.ParsePath(item.Path)
+		if err != nil {
+			continue
+		}
+		ip := net.ParseIP(item.IP)
+		if ip == nil {
+			continue
+		}
+		key := ipam.Key(p, item.RID)
+		m[key] = append(m[key], ip)
+	}
+	return m, nil
+}
+
+// adoptClusterAddr reserves on this node the address the resource holds on
+// another node of a cluster-wide network, and returns it, nil when it holds
+// none. Otherwise it has the allocation keep clear of the addresses the other
+// resources hold anywhere: this node has no reservation of theirs.
+//
+// So a failover object moving to another node takes its address along, which
+// is what a floating address is for, rather than drawing one the clients of
+// the address it had do not know.
+//
+// The cluster is read through the daemon, without which the addresses of the
+// other nodes are unknown: an allocation then fails rather than hand out an
+// address another node may hold.
+func adoptClusterAddr(ctx context.Context, i *ipam.T, key string) (net.IP, error) {
+	held, err := clusterAddrs(ctx, i.Name)
+	if err != nil {
+		return nil, fmt.Errorf("network %s: read the addresses the cluster holds: %w", i.Name, err)
+	}
+	var own net.IP
+	others := make([]net.IP, 0)
+	for k, ips := range held {
+		if k != key {
+			others = append(others, ips...)
+			continue
+		}
+		for _, ip := range ips {
+			switch {
+			case own == nil:
+				own = ip
+			case !own.Equal(ip):
+				return nil, fmt.Errorf("network %s: %s holds both %s and %s on the nodes of the cluster: release one", i.Name, key, own, ip)
+			}
+		}
+	}
+	if own != nil {
+		if _, err := i.Adopt([]ipam.Reservation{{IP: own, Key: key}}); err != nil {
+			return nil, err
+		}
+		ip, err := i.Allocated(key)
+		if err != nil {
+			return nil, err
+		}
+		if ip == nil || !ip.Equal(own) {
+			return nil, fmt.Errorf("network %s: %s is reserved on this node for another resource than %s, which holds it on another node", i.Name, own, key)
+		}
+		return ip, nil
+	}
+	i.InUse = func() ([]net.IP, error) { return others, nil }
+	return nil, nil
 }
