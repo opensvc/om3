@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/nftables"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -121,4 +122,16 @@ func TestSetupDockerFWWithoutDocker(t *testing.T) {
 
 func TestFWDockerRestore(t *testing.T) {
 	assert.Equal(t, "*filter\n:OSVC-FORWARD - [0:0]\n-A OSVC-FORWARD -i br0 -j ACCEPT\n-A OSVC-FORWARD -o br0 -j ACCEPT\nCOMMIT\n", fwDockerRestore([]string{"br0"}))
+}
+
+// A device name that would end a rule and write the next is left out of the
+// documents.
+func TestFWDockerDevsRefusesBrokenNames(t *testing.T) {
+	networks := []fwNetwork{
+		{CIDR: "fd01::/64", Dev: "obr_ok"},
+		{CIDR: "fd02::/64", Dev: "a\n-A X -j DROP"},
+		{CIDR: "fd03::/64", Dev: "a b"},
+		{CIDR: "fd04::/64", Dev: `a"b`},
+	}
+	assert.Equal(t, []string{"obr_ok"}, fwDockerDevs(nftables.TableFamilyIPv6, networks))
 }

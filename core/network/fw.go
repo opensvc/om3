@@ -224,9 +224,19 @@ const maxDevNameLen = 16
 // public network is left alone. A device named past what the kernel accepts
 // cannot exist, so it is treated the same rather than rendered into a rule nft
 // would refuse, and the ruleset being one transaction, refuse the rest with
-// it.
+// it. So is a name holding a space, a quote, a slash or a character that is
+// not printable, which the kernel refuses too: rendered into the documents
+// nft and iptables-restore read, it would end a rule, and write the next.
 func isDevNameValid(dev string) bool {
-	return dev != "" && len(dev) < maxDevNameLen
+	if dev == "" || len(dev) >= maxDevNameLen {
+		return false
+	}
+	for _, c := range dev {
+		if c <= ' ' || c > '~' || c == '"' || c == '/' {
+			return false
+		}
+	}
+	return true
 }
 
 // fwNetworks returns what the ruleset is rendered from.
@@ -245,7 +255,7 @@ func fwNetworks(nws []Networker) []fwNetwork {
 		if i, ok := nw.(backendDevNamer); ok {
 			n.Dev = i.BackendDevName()
 			if n.Dev != "" && !isDevNameValid(n.Dev) {
-				nw.Log().Warnf("device %s is named past the %d characters the kernel accepts, so it cannot exist and this network is left out of the firewall rules", n.Dev, maxDevNameLen-1)
+				nw.Log().Warnf("device %q is no name the kernel accepts, of %d printable characters at most with no space, quote or slash, so it cannot exist and this network is left out of the firewall rules", n.Dev, maxDevNameLen-1)
 			}
 		}
 		l = append(l, n)
