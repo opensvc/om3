@@ -133,6 +133,13 @@ func setupIPAM(nws []Networker) error {
 		if adopted > 0 {
 			nw.Log().Infof("ipam: adopted %d address(es) already held in this network", adopted)
 		}
+		dropped, err := a.DropReplaced()
+		if err != nil {
+			return err
+		}
+		if dropped > 0 {
+			nw.Log().Infof("ipam: released %d address(es) out of the network ranges, replaced by one in them", dropped)
+		}
 		reaped, err := a.Reap(func(key string) bool {
 			p, ok := ipam.PathOfKey(key)
 			if !ok {

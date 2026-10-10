@@ -131,7 +131,11 @@ func (t *T) Allocate(key string) (net.IP, error) {
 			if ok, err := t.reserve(ip, key); err != nil {
 				return nil, err
 			} else if ok && stale != nil {
-				return ip, t.DropStale(key)
+				// The replacement is held and is the one Allocated
+				// returns: a stale address that could not be dropped
+				// is left to the next network setup, DropReplaced.
+				_ = t.DropStale(key)
+				return ip, nil
 			} else if ok {
 				return ip, nil
 			}
@@ -287,6 +291,53 @@ func (t *T) DropStale(key string) error {
 		return err
 	}
 	return t.freeHeld(key, func(ip net.IP) bool { return !t.Contains(ip) })
+}
+
+// DropReplaced releases the addresses held out of the ranges by the keys
+// holding one in them, as a replacement drawn by a key whose stale address
+// could not be dropped then, or adopted at the address its resource has
+// configured, leaves them. It returns the number of addresses released.
+func (t *T) DropReplaced() (int, error) {
+	if t.Range == nil {
+		return 0, nil
+	}
+	entries, err := os.ReadDir(t.Dir)
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	stale := make(map[string][]net.IP)
+	current := make(map[string]bool)
+	for _, entry := range entries {
+		ip := net.ParseIP(entry.Name())
+		if ip == nil {
+			continue
+		}
+		key, err := t.holder(entry.Name())
+		if err != nil {
+			return 0, err
+		} else if key == "" {
+			continue
+		} else if t.Contains(ip) {
+			current[key] = true
+		} else {
+			stale[key] = append(stale[key], ip)
+		}
+	}
+	n := 0
+	for key, ips := range stale {
+		if !current[key] {
+			continue
+		}
+		for _, ip := range ips {
+			if err := t.freeAddr(ip, key); err != nil {
+				return n, err
+			}
+			n++
+		}
+	}
+	return n, nil
 }
 
 // freeHeld releases the addresses key holds that drop says to.

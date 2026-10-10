@@ -157,3 +157,31 @@ func TestAllocateOutOfNarrowedFullPools(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, reservations, 1, "the address out of the ranges is released once replaced")
 }
+
+// A key holding an address in the ranges gives up the ones it holds out of
+// them, and a key holding only an address out of them keeps it.
+func TestDropReplaced(t *testing.T) {
+	_, segment, _ := net.ParseCIDR("192.168.10.0/24")
+	pools, err := ParsePools([]string{"192.168.10.100-192.168.10.199"})
+	require.NoError(t, err)
+	i := &T{Name: "lan1", Range: segment, Pools: pools, Dir: t.TempDir()}
+	for addr, key := range map[string]string{
+		"192.168.10.10":  "a",
+		"192.168.10.110": "a",
+		"192.168.10.20":  "b",
+	} {
+		ok, err := i.reserve(net.ParseIP(addr), key)
+		require.NoError(t, err)
+		require.True(t, ok)
+	}
+	n, err := i.DropReplaced()
+	require.NoError(t, err)
+	assert.Equal(t, 1, n)
+	got := make(map[string]string)
+	reservations, err := i.Reservations()
+	require.NoError(t, err)
+	for _, r := range reservations {
+		got[r.IP.String()] = r.Key
+	}
+	assert.Equal(t, map[string]string{"192.168.10.110": "a", "192.168.10.20": "b"}, got)
+}
