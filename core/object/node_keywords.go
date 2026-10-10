@@ -1431,6 +1431,14 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/node/network.lan.dev"),
 		Types:    []string{"lan"},
 	}
+	kwNodeNetworkLANGateway = keywords.Keyword{
+		Example:  "fd01:2345:6789:4599::1",
+		Option:   "gateway",
+		Scopable: true,
+		Section:  "network",
+		Text:     keywords.NewText(fs, "text/kw/node/network.lan.gateway"),
+		Types:    []string{"lan"},
+	}
 	kwNodeNetworkDev = keywords.Keyword{
 		Option:  "dev",
 		Section: "network",
@@ -2049,6 +2057,7 @@ var (
 		&kwNodeNetworkLANNetwork,
 		&kwNodeNetworkLANNetmask,
 		&kwNodeNetworkLANDev,
+		&kwNodeNetworkLANGateway,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

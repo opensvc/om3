@@ -138,3 +138,25 @@ func TestTwoInterfacesOnTheSegment(t *testing.T) {
 	_, err := newLAN(t, sanRange).HostDev()
 	assert.ErrorContains(t, err, "set the dev keyword")
 }
+
+// The gateway is the router of the segment: an address of the segment, out of
+// the range om hands out.
+func TestGateway(t *testing.T) {
+	const segment = sanRange + "netmask = 64\n"
+	gw, err := newLAN(t, segment).Gateway()
+	require.NoError(t, err)
+	assert.Nil(t, gw, "none when not set")
+
+	gw, err = newLAN(t, segment+"gateway = fd01:2345:6789:2902::1\n").Gateway()
+	require.NoError(t, err)
+	assert.Equal(t, "fd01:2345:6789:2902::1", gw.String())
+
+	_, err = newLAN(t, segment+"gateway = fd01:2345:6789:2902::5:1\n").Gateway()
+	assert.ErrorContains(t, err, "which om hands out")
+
+	_, err = newLAN(t, segment+"gateway = fd01:2345:6789:2903::1\n").Gateway()
+	assert.ErrorContains(t, err, "is not on the segment")
+
+	_, err = newLAN(t, segment+"gateway = router\n").Gateway()
+	assert.ErrorContains(t, err, "is not an ip address")
+}

@@ -144,6 +144,13 @@ type (
 		Netmask() (int, error)
 	}
 
+	// Gatewayer is implemented by the network drivers that name the router
+	// the addresses drawn from them reach beyond the segment through, nil
+	// when they name none.
+	Gatewayer interface {
+		Gateway() (net.IP, error)
+	}
+
 	// HostDever is implemented by the network drivers whose addresses are
 	// configured on an interface of the node, rather than on a bridge the
 	// network sets up. It returns the interface of this node.

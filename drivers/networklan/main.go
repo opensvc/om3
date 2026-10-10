@@ -82,6 +82,36 @@ func (t *T) Netmask() (int, error) {
 	return n, err
 }
 
+// Gateway returns the router of the segment, the gateway keyword, nil when
+// it is not set. It must be an address of the segment, and not one om hands
+// out: the range is all om's.
+func (t *T) Gateway() (net.IP, error) {
+	s := t.GetString("gateway")
+	if s == "" {
+		return nil, nil
+	}
+	ip := net.ParseIP(s)
+	if ip == nil {
+		return nil, fmt.Errorf("network#%s.gateway %q is not an ip address", t.Name(), s)
+	}
+	rng, err := t.IPNet()
+	if err != nil {
+		return nil, err
+	}
+	if rng.Contains(ip) {
+		return nil, fmt.Errorf("network#%s.gateway %s is in the range %s, which om hands out", t.Name(), ip, rng)
+	}
+	n, err := t.Netmask()
+	if err != nil {
+		return nil, err
+	}
+	segment := &net.IPNet{IP: rng.IP.Mask(net.CIDRMask(n, len(rng.IP)*8)), Mask: net.CIDRMask(n, len(rng.IP)*8)}
+	if !segment.Contains(ip) {
+		return nil, fmt.Errorf("network#%s.gateway %s is not on the segment %s", t.Name(), ip, segment)
+	}
+	return ip, nil
+}
+
 // HostDev returns the interface of this node on the segment: the dev keyword,
 // or else the interface holding the address of this node on the segment.
 func (t *T) HostDev() (string, error) {
