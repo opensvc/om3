@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -430,18 +431,11 @@ func storeAddrs(ctx context.Context, c *client.T, networkName string) (map[strin
 	}
 	m := make(map[string][]net.IP)
 	for _, nodename := range nodenames {
-		resp, err := c.GetNodeNetworkReservationsWithResponse(ctx, nodename, &api.GetNodeNetworkReservationsParams{Name: &networkName})
+		items, err := nodeReservations(ctx, c, networkName, nodename)
 		if err != nil {
-			return nil, fmt.Errorf("read the %s network reservations of %s: %w", networkName, nodename, err)
+			return nil, err
 		}
-		switch {
-		case resp.JSON200 != nil:
-		case resp.StatusCode() == http.StatusNotFound:
-			continue
-		default:
-			return nil, fmt.Errorf("read the %s network reservations of %s: unexpected status code %d", networkName, nodename, resp.StatusCode())
-		}
-		for _, item := range resp.JSON200.Items {
+		for _, item := range items {
 			p, err := naming.ParsePath(item.Path)
 			if err != nil {
 				continue
@@ -455,6 +449,52 @@ func storeAddrs(ctx context.Context, c *client.T, networkName string) (map[strin
 		}
 	}
 	return m, nil
+}
+
+// maintenanceWaitMargin is what a draw keeps of its deadline after waiting
+// for a node in maintenance, to reserve the address it then draws.
+const maintenanceWaitMargin = 3 * time.Second
+
+// nodeReservations returns the reservations of a node, none when it is not
+// alive.
+//
+// A node stopped cleanly is in maintenance, which ends when it is back, as
+// after a restart, or when its grace period does, and its daemon says until
+// when. It is waited for as long as both the maintenance and the deadline of
+// the draw allow: back, what it holds is read from it, and not back, the draw
+// goes on with what the peer records remember of it.
+func nodeReservations(ctx context.Context, c *client.T, networkName, nodename string) ([]api.NetworkReservation, error) {
+	for {
+		resp, err := c.GetNodeNetworkReservationsWithResponse(ctx, nodename, &api.GetNodeNetworkReservationsParams{Name: &networkName})
+		if err != nil {
+			return nil, fmt.Errorf("read the %s network reservations of %s: %w", networkName, nodename, err)
+		}
+		switch {
+		case resp.JSON200 != nil:
+			return resp.JSON200.Items, nil
+		case resp.StatusCode() == http.StatusNotFound:
+			return nil, nil
+		case resp.StatusCode() == http.StatusServiceUnavailable:
+			retryAfter, err := strconv.Atoi(resp.HTTPResponse.Header.Get("Retry-After"))
+			if err != nil {
+				return nil, fmt.Errorf("read the %s network reservations of %s: %s", networkName, nodename, resp.Body)
+			}
+			limit := time.Now().Add(time.Duration(retryAfter) * time.Second)
+			if deadline, ok := ctx.Deadline(); ok && deadline.Add(-maintenanceWaitMargin).Before(limit) {
+				limit = deadline.Add(-maintenanceWaitMargin)
+			}
+			if !time.Now().Before(limit) {
+				return nil, nil
+			}
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(min(time.Second, time.Until(limit))):
+			}
+		default:
+			return nil, fmt.Errorf("read the %s network reservations of %s: unexpected status code %d", networkName, nodename, resp.StatusCode())
+		}
+	}
 }
 
 // adoptClusterAddr reserves on this node the address the resource holds on

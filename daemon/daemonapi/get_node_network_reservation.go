@@ -1,14 +1,18 @@
 package daemonapi
 
 import (
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
@@ -26,13 +30,29 @@ func (a *DaemonAPI) GetNodeNetworkReservations(ctx echo.Context, nodename api.In
 		return err
 	}
 	if nodename != a.localhost {
+		if until, ok := maintenanceEndsAt(a.localhost, nodename); ok {
+			// Stopped cleanly, as for a restart, which is soon over: the
+			// draw may wait for it rather than go without what it holds.
+			// Its heartbeats may still be counted beating, but its daemon,
+			// stopping or stopped, has nothing to answer.
+			ctx.Response().Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(time.Until(until).Seconds()))))
+			return JSONProblemf(ctx, http.StatusServiceUnavailable, "In maintenance", "the daemon of %s is stopped, in maintenance until %s at most", nodename, until.Format(time.RFC3339))
+		}
 		if !hearsPeer(a.localhost, nodename) {
 			// Not alive, for what a draw reads of it: what it holds is in
-			// the status the cluster kept of it, if it stopped cleanly.
+			// the status the cluster kept of it, and in the peer records.
 			return JSONProblemf(ctx, http.StatusNotFound, "Not alive", "the daemon of %s does not answer: no heartbeat is received from it", nodename)
 		}
-		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return a.proxyOr(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetNodeNetworkReservations(ctx.Request().Context(), nodename, &params)
+		}, func(err error) error {
+			if mon := node.MonitorData.GetByNode(nodename); mon == nil || mon.State != node.MonitorStateRejoin {
+				return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+			}
+			// Its daemon just started: it beats before it listens, and
+			// answers in a moment.
+			ctx.Response().Header().Set("Retry-After", "1")
+			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Starting", "the daemon of %s is starting: %s", nodename, err)
 		})
 	}
 	n, err := object.NewNode(object.WithVolatile(true))

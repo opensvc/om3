@@ -51,6 +51,11 @@ func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
 			// daemon its clients could have asked a lock through.
 			continue
 		}
+		if _, ok := maintenanceEndsAt(a.localhost, nodename); ok {
+			// Its daemon is stopping or stopped, and the locks of its
+			// clients went with it.
+			continue
+		}
 		l, err := nodeLocks(ctx.Request().Context(), nodename)
 		if err != nil {
 			return fmt.Errorf("ask %s the cluster locks its clients hold: %w", nodename, err)
@@ -167,4 +172,38 @@ func hearsPeer(localhost, nodename string) bool {
 		}
 	}
 	return false
+}
+
+// maintenanceEndsAt returns when this node drops the data of a peer in
+// maintenance, which is when its heartbeats went stale and the maintenance
+// grace period of this node later, and whether the peer is in maintenance at
+// all. A peer whose heartbeats are not stale yet has the whole grace period
+// ahead of it.
+func maintenanceEndsAt(localhost, nodename string) (time.Time, bool) {
+	mon := node.MonitorData.GetByNode(nodename)
+	if mon == nil || mon.State != node.MonitorStateMaintenance {
+		return time.Time{}, false
+	}
+	cfg := node.ConfigData.GetByNode(localhost)
+	hb := daemonsubsystem.DataHeartbeat.Get(localhost)
+	if cfg == nil || hb == nil {
+		return time.Time{}, false
+	}
+	var staleAt time.Time
+	for _, stream := range hb.Streams {
+		if !strings.HasSuffix(stream.ID, ".rx") {
+			continue
+		}
+		if peer, ok := stream.Peers[nodename]; ok && !peer.IsBeating && peer.ChangedAt.After(staleAt) {
+			staleAt = peer.ChangedAt
+		}
+	}
+	if staleAt.IsZero() || hearsPeer(localhost, nodename) {
+		staleAt = time.Now()
+	}
+	until := staleAt.Add(cfg.MaintenanceGracePeriod)
+	if !until.After(time.Now()) {
+		return time.Time{}, false
+	}
+	return until, true
 }

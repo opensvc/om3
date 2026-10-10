@@ -5,3 +5,10 @@ Every node draws from the whole of it, so an address is the same wherever the
 object runs, and an object moving to another node takes its address along.
 Keep it clear of the addresses of the nodes and of the other hosts of the
 segment: om hands out every address of it but the first.
+
+A draw is made under the cluster lock of the network, and keeps clear of the
+addresses the nodes hold: the ones each node alive has reserved, the ones the
+cluster status reports, and the ones each node remembers the others last
+reported holding, which outlive a node the cluster stops hearing from. A node
+stopped cleanly, as for a restart, is waited for until its maintenance grace
+period ends, for as long as the lease of the lock allows.
