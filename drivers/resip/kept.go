@@ -95,7 +95,8 @@ func (t *Kept) HasOwnAddr(obj any) bool {
 // Reserve returns the address of the resource, reserved on this node: addr,
 // the one the configuration says it drew, or else one drawn now and written
 // to the configuration. It also returns the address the resource gave up for
-// it, nil when it gave none up.
+// it, nil when it gave none up: the one this node held for it before a redraw,
+// or before addr was changed.
 //
 // A configuration with no address while this node holds one for the resource
 // had it unset, since om writes it as it draws and unsets it as it releases.
@@ -108,10 +109,11 @@ func (t *Kept) Reserve(ctx context.Context, addr string) (net.IP, net.IP, error)
 		if ip == nil {
 			return nil, nil, fmt.Errorf("addr %q is not an ip address", addr)
 		}
-		if err := t.Alloc().Reserve(ip); err != nil {
+		previous, err := t.Alloc().Reserve(ip)
+		if err != nil {
 			return nil, nil, err
 		}
-		return ip, nil, nil
+		return ip, previous, nil
 	}
 	if t.PerInstance {
 		// The address of this instance is kept in the reservation store of

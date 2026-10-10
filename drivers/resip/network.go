@@ -141,36 +141,37 @@ func (t *Allocation) Free() error {
 // Reserve records ip as the address of the resource on this node, the one its
 // configuration says it drew on another node or earlier: the address is the
 // resource's, whichever node drew it. A reservation of another address for
-// the resource is released, and an address another resource holds on this
-// node is refused.
-func (t *Allocation) Reserve(ip net.IP) error {
+// the resource is released, and returned, for the resource to give it up on
+// the node too: the addr keyword changed. An address another resource holds
+// on this node is refused.
+func (t *Allocation) Reserve(ip net.IP) (net.IP, error) {
 	i, err := t.Allocator()
 	if err != nil || i == nil {
-		return err
+		return nil, err
 	}
 	if i.Range == nil || !i.Range.Contains(ip) {
-		return fmt.Errorf("%s is not an address of network %s (%s): unset the addr keyword to draw one", ip, i.Name, i.Range)
+		return nil, fmt.Errorf("%s is not an address of network %s (%s): unset the addr keyword to draw one", ip, i.Name, i.Range)
 	}
 	key := t.Key()
 	held, err := i.Allocated(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if held != nil && held.Equal(ip) {
-		return nil
+		return nil, nil
 	}
 	if held != nil {
 		if err := i.Free(key); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if _, err := i.Adopt([]ipam.Reservation{{IP: ip, Key: key}}); err != nil {
-		return err
+		return nil, err
 	}
 	if got, err := i.Allocated(key); err != nil {
-		return err
+		return nil, err
 	} else if got == nil || !got.Equal(ip) {
-		return fmt.Errorf("%s is reserved on this node for another resource than %s", ip, key)
+		return nil, fmt.Errorf("%s is reserved on this node for another resource than %s", ip, key)
 	}
-	return nil
+	return held, nil
 }
