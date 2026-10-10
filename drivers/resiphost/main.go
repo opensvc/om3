@@ -11,19 +11,14 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
-	"github.com/opensvc/om3/v3/core/ipam"
-	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/network"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
-	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/drivers/resip"
 	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/getaddr"
-	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/netif"
 	"github.com/opensvc/om3/v3/util/ping"
@@ -61,7 +56,7 @@ type (
 		_ipaddrAge time.Duration
 		_ipmask    net.IPMask
 		_ipnet     *net.IPNet
-		_alloc     *resip.Allocation
+		_kept      *resip.Kept
 
 		// netErr says why the network the address is drawn from does not
 		// tell the interface or the prefix length of the address on this
@@ -78,51 +73,25 @@ func New() resource.Driver {
 	return t
 }
 
-// alloc is the address this resource draws from the network its network
-// keyword names, when it names no address of its own.
+// kept is the address this resource draws from the network its network
+// keyword names, when it names no address of its own, and keeps.
+func (t *T) kept() *resip.Kept {
+	if t._kept == nil {
+		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.GetObject(), t.Log())
+	}
+	return t._kept
+}
+
 func (t *T) alloc() *resip.Allocation {
-	if t._alloc == nil {
-		rid := t.RID()
-		if t.perInstance() {
-			// The reservation of this instance, apart from the ones of the
-			// instances of the other nodes.
-			rid += "@" + hostname.Hostname()
-		}
-		t._alloc = &resip.Allocation{Network: t.Network, Path: t.Path, RID: rid, Log: t.Log()}
-	}
-	return t._alloc
+	return t.kept().Alloc()
 }
 
-// perInstance says each instance draws an address of its own, which is the
-// case of a resource not shared of a flex object: its instances run at once,
-// and an address they all brought up would be one address on several nodes.
-//
-// A failover object runs one instance at a time, which takes the address
-// along when it moves. A shared resource of a flex object is one address for
-// all its instances, should that be the point.
 func (t *T) perInstance() bool {
-	if t.Shared {
-		return false
-	}
-	o, ok := t.GetObject().(interface{ Topology() topology.T })
-	return ok && o.Topology() == topology.Flex
+	return t.kept().PerInstance
 }
 
-// hasOwnAddr says the configuration records an address for this instance
-// under its own key, rather than one the evaluation fell back on.
-func (t *T) hasOwnAddr() bool {
-	o, ok := t.GetObject().(object.Configurer)
-	return ok && o.Config().HasKey(t.addrKey())
-}
-
-// addrKey is where the address drawn is recorded: addr, the same on every
-// node, or addr@<node>, the address root chose for this instance when each
-// instance draws its own.
 func (t *T) addrKey() key.T {
-	if t.perInstance() {
-		return key.New(t.RID(), "addr@"+hostname.Hostname())
-	}
-	return key.New(t.RID(), "addr")
+	return t.kept().AddrKey()
 }
 
 // isAllocated says the address is drawn from an om network: the
@@ -143,7 +112,7 @@ func (t *T) Configure() error {
 	if nw == nil {
 		return nil
 	}
-	if t.Addr != "" && t.perInstance() && !t.hasOwnAddr() {
+	if t.Addr != "" && t.perInstance() && !t.kept().HasOwnAddr(t.GetObject()) {
 		// The address of all the instances, as a failover object records
 		// it, read here for want of one chosen for this instance: each
 		// instance of a flex resource draws its own.
@@ -243,9 +212,13 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	}
 	if t.isAllocated() {
-		ip, previous, err := t.reserve(ctx)
+		ip, previous, err := t.kept().Reserve(ctx, t.Addr)
 		if err != nil {
 			return err
+		}
+		if t.Addr == "" && !t.perInstance() {
+			// Recorded in the configuration as it was drawn.
+			t.Addr = ip.String()
 		}
 		t._ipaddr, t._ipnet, t._ipmask = ip, nil, nil
 		if err := t.dropPrevious(previous); err != nil {
@@ -298,44 +271,13 @@ func (t *T) Status(ctx context.Context) status.T {
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
 	}
-	if dups := t.duplicates(); len(dups) > 0 {
+	if dups := t.kept().Duplicates(t.ipaddr()); len(dups) > 0 {
 		t.StatusLog().Warn("%s is also held by %s: one of them is to be given another address", t.ipaddr(), strings.Join(dups, ", "))
 		if s == status.Up {
 			return status.Warn
 		}
 	}
 	return s
-}
-
-// duplicates returns the resources of the other nodes the peer records say
-// hold the address of this one, as "<key> on <node>".
-//
-// The address of a failover resource is the same on every node, a stopped
-// instance reporting it too, which is no duplicate. Another resource holding
-// it, or another instance of a resource drawing per instance, is: two halves
-// of a cluster not hearing each other draw from the same range blind to each
-// other, and the duplicate is for an administrator to clean up.
-func (t *T) duplicates() []string {
-	ip := t.ipaddr()
-	if ip == nil || t.Network == "" {
-		return nil
-	}
-	records, err := ipam.ReadPeerRecords(ipam.PeerDir(t.Network))
-	if err != nil {
-		return nil
-	}
-	key := ipam.Key(t.Path, t.RID())
-	l := make([]string, 0)
-	for _, record := range records {
-		if !record.IP.Equal(ip) || record.Node == hostname.Hostname() {
-			continue
-		}
-		if record.Key == key && !t.perInstance() {
-			continue
-		}
-		l = append(l, fmt.Sprintf("%s on %s", record.Key, record.Node))
-	}
-	return l
 }
 
 func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
@@ -436,73 +378,16 @@ func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
 		// its address too.
 		return nil
 	}
-	if err := t.alloc().Free(); err != nil {
+	if t.Name != "" {
+		return t.alloc().Free()
+	}
+	if err := t.kept().Release(ctx, t.Addr, leader); err != nil {
 		return err
 	}
-	if t.Addr == "" || t.Name != "" || t.perInstance() {
-		// An address of one instance is not recorded: an addr@<node> is
-		// one root chose, and stays.
-		return nil
+	if leader && !t.perInstance() {
+		t.Addr = ""
 	}
-	if !leader {
-		// The address of all the instances, which the leader removes.
-		return nil
-	}
-	return t.setAddr(ctx, "")
-}
-
-// reserve returns the address of the resource, reserved on this node: the one
-// the configuration says it drew, or else one drawn now and written to the
-// configuration. It also returns the address the resource gave up for it,
-// nil when it gave none up.
-//
-// The configuration is what every node holds, whatever became of the node
-// that drew the address: a node the service fails over to after the others
-// crashed reads it there, rather than draw again from a cluster that forgot
-// them.
-//
-// A configuration with no address while this node holds one for the resource
-// had it unset, since om writes it as it draws and unsets it as it releases.
-// Unsetting it is asking for another address, so the one held is given up
-// rather than drawn again, which the draw would do, keyed as it is on the
-// resource.
-func (t *T) reserve(ctx context.Context) (net.IP, net.IP, error) {
-	if t.Addr != "" {
-		ip := net.ParseIP(t.Addr)
-		if ip == nil {
-			return nil, nil, fmt.Errorf("addr %q is not an ip address", t.Addr)
-		}
-		if err := t.alloc().Reserve(ip); err != nil {
-			return nil, nil, err
-		}
-		return ip, nil, nil
-	}
-	if t.perInstance() {
-		// The address of this instance is kept in the reservation store of
-		// this node, which holds it from a start to the next until the
-		// instance is unprovisioned. Recording it in the configuration, as
-		// the address of all the instances is, would have the instances
-		// starting at once write it at once, each over the others.
-		ip, err := t.alloc().Allocate(ctx)
-		return ip, nil, err
-	}
-	previous, err := t.alloc().Allocated()
-	if err != nil {
-		return nil, nil, err
-	}
-	var ip net.IP
-	if previous == nil {
-		ip, err = t.alloc().Allocate(ctx)
-	} else {
-		ip, err = t.alloc().Redraw(ctx, previous)
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := t.setAddr(ctx, ip.String()); err != nil {
-		return nil, nil, fmt.Errorf("record the address %s drawn from network %s: %w", ip, t.Network, err)
-	}
-	return ip, previous, nil
+	return nil
 }
 
 // dropPrevious removes from the interface the address the resource gave up,
@@ -526,30 +411,6 @@ func (t *T) dropPrevious(previous net.IP) error {
 	}
 	t.Log().Infof("remove %s from %s, the address given up for %s", previous, dev, t._ipaddr)
 	return t.addrDel(fmt.Sprintf("%s/%d", previous, t.ipmaskOnes()), dev)
-}
-
-// setAddr writes the address drawn from the network in the configuration of
-// the object, which the daemon brings to the other nodes, and unsets it when
-// empty.
-func (t *T) setAddr(ctx context.Context, addr string) error {
-	obj, err := object.NewConfigurer(t.Path)
-	if err != nil {
-		return err
-	}
-	k := t.addrKey()
-	if addr == "" {
-		if err := obj.Unset(ctx, k); err != nil {
-			return err
-		}
-		t.Log().Infof("address %s drawn from network %s removed from the configuration", t.Addr, t.Network)
-	} else {
-		if err := obj.Set(ctx, keyop.T{Key: k, Op: keyop.Set, Value: addr}); err != nil {
-			return err
-		}
-		t.Log().Infof("address %s drawn from network %s recorded in the configuration", addr, t.Network)
-	}
-	t.Addr = addr
-	return nil
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
