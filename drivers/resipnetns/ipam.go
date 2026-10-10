@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
@@ -169,6 +171,12 @@ func (t *T) Configure() error {
 	return nil
 }
 
+// isLinuxBridge says a link is a linux bridge, replaced by the tests.
+var isLinuxBridge = func(dev string) bool {
+	_, err := os.Stat(filepath.Join("/sys/class/net", dev, "bridge"))
+	return err == nil
+}
+
 // configureLan fills from a lan network what the configuration did not say:
 // the interface of this node on the segment, which the link of the namespace
 // is a child of, and the prefix length of the segment.
@@ -207,6 +215,14 @@ func (t *T) configureLan(nw network.Networker, i network.HostDever) {
 		if t.netErr != nil {
 			return
 		}
+	}
+	if t.Mode == "bridge" && !isLinuxBridge(t.Dev) {
+		// The veth of the namespace is plugged into dev, which only a
+		// bridge takes. The interface of the node on the segment is one
+		// when the node is reached through a bridge, and a physical one
+		// otherwise.
+		t.netErr = fmt.Errorf("mode bridge plugs the namespace into a bridge on the segment of network %s, and %s is not one: set dev to a bridge on the segment, or use macvlan", nw.Name(), t.Dev)
+		return
 	}
 	if t.Gateway == "" {
 		if g, ok := nw.(network.Gatewayer); ok {

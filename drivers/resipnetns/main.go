@@ -289,7 +289,7 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 // gateway. The default route of the family of the address is the one looked
 // at, and set.
 func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
-	if owner := t.routeOwner(); owner != t {
+	if owner := t.routeOwner(ctx); owner != t {
 		t.Log().Infof("leave the default route of the namespace to %s", owner.RID())
 		return nil
 	}
@@ -475,7 +475,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
 	}
-	if owner := t.routeOwner(); owner != t && t.gatewayRank == gatewayOwn && owner.Gateway != t.Gateway {
+	if owner := t.routeOwner(ctx); owner != t && t.gatewayRank == gatewayOwn && owner.Gateway != t.Gateway {
 		t.StatusLog().Warn("gateway %s is not used: %s sets the default route of the namespace, through %s", t.Gateway, owner.RID(), owner.Gateway)
 	}
 	if t.keeps() {

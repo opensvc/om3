@@ -32,13 +32,16 @@ func TestConfigureLan(t *testing.T) {
 		name        string
 		mode        string
 		dev         string
+		bridges     string
 		wantDev     string
 		wantNetmask string
 		wantErr     bool
 	}{
 		{name: "macvlan is a child of the node interface", mode: "macvlan", wantDev: "eth0", wantNetmask: "64"},
 		{name: "ipvlan-l2 is a child of the node interface", mode: "ipvlan-l2", wantDev: "eth0", wantNetmask: "64"},
-		{name: "bridge plugs into the node interface", mode: "bridge", wantDev: "eth0", wantNetmask: "64"},
+		{name: "bridge plugs into the node interface when it is a bridge", mode: "bridge", bridges: "eth0", wantDev: "eth0", wantNetmask: "64"},
+		{name: "bridge refuses a node interface not a bridge", mode: "bridge", wantErr: true},
+		{name: "bridge plugs into the bridge dev names", mode: "bridge", dev: "br1", bridges: "br1", wantDev: "br1", wantNetmask: "64"},
 		{name: "an explicit dev wins", mode: "macvlan", dev: "eth1", wantDev: "eth1", wantNetmask: "64"},
 		{name: "ipvlan-l3 is refused", mode: "ipvlan-l3", wantErr: true},
 		{name: "ipvlan-l3s is refused", mode: "ipvlan-l3s", wantErr: true},
@@ -47,6 +50,9 @@ func TestConfigureLan(t *testing.T) {
 		{name: "dedicated on an interface of its own", mode: "dedicated", dev: "eth1", wantDev: "eth1", wantNetmask: "64"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			prev := isLinuxBridge
+			isLinuxBridge = func(dev string) bool { return dev == tc.bridges }
+			defer func() { isLinuxBridge = prev }()
 			r := &T{Mode: tc.mode, Dev: tc.dev}
 			r.Tags = set.New()
 			nw := fakeLan{}

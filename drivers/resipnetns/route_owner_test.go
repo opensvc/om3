@@ -3,6 +3,8 @@
 package resipnetns
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net"
 	"testing"
@@ -11,7 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -22,6 +26,7 @@ type fakeObject struct {
 	resources resource.Drivers
 }
 
+func (t fakeObject) Path() naming.Path                   { return naming.Path{Name: "svc1", Kind: naming.KindSvc} }
 func (t fakeObject) Log() *plog.Logger                   { return plog.NewLogger(zerolog.New(io.Discard)) }
 func (t fakeObject) VarDir() string                      { return "" }
 func (t fakeObject) ResourceByID(string) resource.Driver { return nil }
@@ -67,9 +72,9 @@ func TestRouteOwner(t *testing.T) {
 				r.SetObject(obj)
 			}
 			for _, r := range l {
-				assert.Equal(t, tc.want, r.routeOwner().RID(), "seen from %s", r.RID())
+				assert.Equal(t, tc.want, r.routeOwner(context.Background()).RID(), "seen from %s", r.RID())
 			}
-			assert.Equal(t, "ip#99", other.routeOwner().RID())
+			assert.Equal(t, "ip#99", other.routeOwner(context.Background()).RID())
 		})
 	}
 }
@@ -84,6 +89,25 @@ func TestRouteOwnerByFamily(t *testing.T) {
 	obj.resources = resource.Drivers{v6, v4}
 	v6.SetObject(obj)
 	v4.SetObject(obj)
-	assert.Equal(t, "ip#0", v6.routeOwner().RID())
-	assert.Equal(t, "ip#1", v4.routeOwner().RID())
+	assert.Equal(t, "ip#0", v6.routeOwner(context.Background()).RID())
+	assert.Equal(t, "ip#1", v4.routeOwner(context.Background()).RID())
+}
+
+// A resource that cannot start, or that the running action leaves out, is no
+// owner: the namespace would be left with no default route.
+func TestRouteOwnerStarts(t *testing.T) {
+	obj := &fakeObject{}
+	own := newRouteTestResource(t, "ip#1", "container#0", gatewayOwn)
+	lan := newRouteTestResource(t, "ip#0", "container#0", gatewayOfNetwork)
+	obj.resources = resource.Drivers{own, lan}
+	own.SetObject(obj)
+	lan.SetObject(obj)
+	ctx := context.Background()
+	assert.Equal(t, "ip#1", lan.routeOwner(ctx).RID())
+
+	selected := actioncontext.WithSelectedRIDs(ctx, obj.Path(), []string{"ip#0"})
+	assert.Equal(t, "ip#0", lan.routeOwner(selected).RID(), "ip#1 is not started")
+
+	own.netErr = errors.New("misfit")
+	assert.Equal(t, "ip#0", lan.routeOwner(ctx).RID(), "ip#1 cannot start")
 }
