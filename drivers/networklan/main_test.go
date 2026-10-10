@@ -71,7 +71,7 @@ func TestRanges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 64, n)
 
-	nw = newLAN(t, "[network#lan1]\ntype = lan\nnetwork = 192.168.10.0/24\nranges = 192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199\n")
+	nw = newLAN(t, "[network#san]\ntype = lan\nnetwork = 192.168.10.0/24\nranges = 192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199\n")
 	pools, err := nw.Pools()
 	require.NoError(t, err)
 	assert.Equal(t, "192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199", ipam.PoolsString(pools))
