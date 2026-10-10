@@ -42,6 +42,8 @@ func TestConfigureLan(t *testing.T) {
 		{name: "bridge plugs into the node interface when it is a bridge", mode: "bridge", bridges: "eth0", wantDev: "eth0", wantNetmask: "64"},
 		{name: "bridge refuses a node interface not a bridge", mode: "bridge", wantErr: true},
 		{name: "bridge plugs into the bridge dev names", mode: "bridge", dev: "br1", bridges: "br1", wantDev: "br1", wantNetmask: "64"},
+		{name: "ovs without dev is refused", mode: "ovs", wantErr: true},
+		{name: "ovs plugs into the bridge dev names", mode: "ovs", dev: "ovsbr0", wantDev: "ovsbr0", wantNetmask: "64"},
 		{name: "an explicit dev wins", mode: "macvlan", dev: "eth1", wantDev: "eth1", wantNetmask: "64"},
 		{name: "ipvlan-l3 is refused", mode: "ipvlan-l3", wantErr: true},
 		{name: "ipvlan-l3s is refused", mode: "ipvlan-l3s", wantErr: true},

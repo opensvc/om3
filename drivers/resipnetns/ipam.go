@@ -210,6 +210,12 @@ func (t *T) configureLan(nw network.Networker, i network.HostDever) {
 			t.netErr = fmt.Errorf("mode dedicated would move %s, the interface of this node on the segment of network %s, into the namespace: set dev to an interface of its own", dev, nw.Name())
 			return
 		}
+	case t.Mode == "ovs" && t.Dev == "":
+		// The veth of the namespace is a port of the openvswitch bridge
+		// dev names, which the interface of this node on the segment
+		// says nothing of.
+		t.netErr = fmt.Errorf("mode ovs plugs the namespace into an openvswitch bridge on the segment of network %s: set dev to that bridge", nw.Name())
+		return
 	case t.Dev == "":
 		t.Dev, t.netErr = i.HostDev()
 		if t.netErr != nil {
