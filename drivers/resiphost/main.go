@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/network"
@@ -297,7 +298,44 @@ func (t *T) Status(ctx context.Context) status.T {
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
 	}
+	if dups := t.duplicates(); len(dups) > 0 {
+		t.StatusLog().Warn("%s is also held by %s: one of them is to be given another address", t.ipaddr(), strings.Join(dups, ", "))
+		if s == status.Up {
+			return status.Warn
+		}
+	}
 	return s
+}
+
+// duplicates returns the resources of the other nodes the peer records say
+// hold the address of this one, as "<key> on <node>".
+//
+// The address of a failover resource is the same on every node, a stopped
+// instance reporting it too, which is no duplicate. Another resource holding
+// it, or another instance of a resource drawing per instance, is: two halves
+// of a cluster not hearing each other draw from the same range blind to each
+// other, and the duplicate is for an administrator to clean up.
+func (t *T) duplicates() []string {
+	ip := t.ipaddr()
+	if ip == nil || t.Network == "" {
+		return nil
+	}
+	records, err := ipam.ReadPeerRecords(ipam.PeerDir(t.Network))
+	if err != nil {
+		return nil
+	}
+	key := ipam.Key(t.Path, t.RID())
+	l := make([]string, 0)
+	for _, record := range records {
+		if !record.IP.Equal(ip) || record.Node == hostname.Hostname() {
+			continue
+		}
+		if record.Key == key && !t.perInstance() {
+			continue
+		}
+		l = append(l, fmt.Sprintf("%s on %s", record.Key, record.Node))
+	}
+	return l
 }
 
 func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
