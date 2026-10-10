@@ -552,7 +552,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				// Select some nodes automatically.
 				dst := t.nextPlacedAtCandidate()
 				if dst == "" {
-					err := fmt.Errorf("no destination node candidate")
+					err := fmt.Errorf("no destination node candidate: a switch moves the object to an instance not up and provisioned")
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err
@@ -573,7 +573,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 					return err2
 				}
 				if can == "" {
-					err := fmt.Errorf("no destination node could be selected from %s", want)
+					err := fmt.Errorf("no destination node could be selected from %s: a switch moves the object to a provisioned instance", want)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err
@@ -584,7 +584,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				globalExpectOptions = options
 			}
 		case instance.MonitorGlobalExpectStarted:
-			if v, reason := t.isStartable(); !v {
+			if v, reason := t.isRequestedStartable(); !v {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: refuse to start %s: %s", t.path, err)
 				globalExpectRefused()
@@ -824,6 +824,53 @@ func (t *Manager) hasInstanceMonitorAndStatusOnPeers() (bool, string) {
 	return true, ""
 }
 
+// isRequestedStartable says whether a start someone asks for is accepted.
+//
+// The daemon starts an object on its own only when every instance is
+// provisioned, a mixed object being one whose state is to be looked at
+// first. A start asked for has a way to work as soon as one instance is
+// provisioned, as the start candidates are the provisioned instances only:
+// it is refused when none is, which would leave the orchestration with no
+// instance to start, and never ending.
+func (t *Manager) isRequestedStartable() (bool, string) {
+	if (t.objStatus.Topology == topology.Failover) && (t.objStatus.Avail == status.Warn) {
+		return false, "failover object is warn state"
+	}
+	switch t.objStatus.Provisioned {
+	case provisioned.False:
+		return false, "false object provisioned state"
+	case provisioned.Mixed:
+		if len(t.provisionedInstances(nil)) == 0 {
+			return false, "mixed object provisioned state, and no instance provisioned to start"
+		}
+	}
+	if ok, reason := t.hasInstanceMonitorAndStatusOnPeers(); !ok {
+		return false, reason
+	}
+	if t.isStarted() {
+		return false, "already started"
+	}
+	return true, "object is startable"
+}
+
+// provisionedInstances returns the nodes of the scope whose instance is
+// provisioned, or has nothing to provision, and that accept says yes to when
+// it is not nil.
+func (t *Manager) provisionedInstances(accept func(instance.Status) bool) []string {
+	var l []string
+	for _, node := range t.scopeNodes {
+		instStatus, ok := t.instStatus[node]
+		if !ok || !instStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+			continue
+		}
+		if accept != nil && !accept(instStatus) {
+			continue
+		}
+		l = append(l, node)
+	}
+	return l
+}
+
 func (t *Manager) isStartable() (bool, string) {
 	if v, reason := t.isHAOrchestrateable(); !v {
 		return false, reason
@@ -996,8 +1043,14 @@ func (t *Manager) nextPlacedAtCandidates(want []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	provisionedNodes := t.provisionedInstances(nil)
 	for _, node := range nodes {
 		if _, ok := t.instStatus[node]; !ok {
+			continue
+		}
+		if !slices.Contains(provisionedNodes, node) {
+			// A switch starts the destination, which an unprovisioned
+			// instance cannot be.
 			continue
 		}
 		wantNodes = append(wantNodes, node)
@@ -1013,12 +1066,13 @@ func (t *Manager) nextPlacedAtCandidate() string {
 	candidates = append(candidates, t.scopeNodes...)
 	candidates = t.sortCandidates(candidates)
 
+	// A switch starts the destination: an instance not up, and provisioned.
+	provisionedNodes := t.provisionedInstances(func(instStatus instance.Status) bool {
+		return instStatus.Avail.Is(status.Down, status.StandbyDown, status.StandbyUp)
+	})
 	for _, candidate := range candidates {
-		if instStatus, ok := t.instStatus[candidate]; ok {
-			switch instStatus.Avail {
-			case status.Down, status.StandbyDown, status.StandbyUp:
-				return candidate
-			}
+		if slices.Contains(provisionedNodes, candidate) {
+			return candidate
 		}
 	}
 	return ""

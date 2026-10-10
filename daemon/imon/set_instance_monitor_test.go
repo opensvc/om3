@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -149,4 +150,42 @@ func TestARequestChangingNothingIsRefused(t *testing.T) {
 	}
 	require.NotNil(t, refused)
 	assert.Equal(t, id.String(), refused.ID)
+}
+
+// A start someone asks for is accepted as soon as one instance is provisioned,
+// the start candidates being the provisioned instances only. It is refused
+// when none is: the orchestration would have no instance to start.
+func TestARequestedStartNeedsAProvisionedInstance(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2"}
+	m.objStatus.Provisioned = provisioned.Mixed
+	m.instStatus["node1"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	ok, reason := m.isRequestedStartable()
+	assert.True(t, ok, reason)
+
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.Mixed}
+	ok, reason = m.isRequestedStartable()
+	assert.False(t, ok)
+	assert.Contains(t, reason, "no instance provisioned")
+
+	m.objStatus.Provisioned = provisioned.False
+	ok, reason = m.isRequestedStartable()
+	assert.False(t, ok)
+	assert.Contains(t, reason, "false object provisioned state")
+}
+
+// A switch moves the object to an instance not up and provisioned: an
+// unprovisioned instance is no destination.
+func TestASwitchDestinationIsProvisioned(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2", "node3"}
+	m.objStatus.PlacementPolicy = placement.NodesOrder
+	m.instStatus["node1"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	assert.Equal(t, "", m.nextPlacedAtCandidate(), "no instance not up is provisioned")
+
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	assert.Equal(t, "node3", m.nextPlacedAtCandidate())
 }
