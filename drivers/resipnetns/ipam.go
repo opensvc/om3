@@ -13,12 +13,54 @@ import (
 )
 
 // alloc is the address this resource draws from the network its network
-// keyword names, as every ip driver draws it.
+// keyword names, as every ip driver draws it: the one it keeps on a lan
+// network, see keeps.
 func (t *T) alloc() *resip.Allocation {
+	if t.onLan() {
+		return t.kept().Alloc()
+	}
+	return t.drawn()
+}
+
+// drawn is the address this resource draws at each start, which also
+// resolves the network.
+func (t *T) drawn() *resip.Allocation {
 	if t._alloc == nil {
 		t._alloc = &resip.Allocation{Network: t.Network, Path: t.Path, RID: t.RID(), Log: t.Log()}
 	}
 	return t._alloc
+}
+
+// kept is the address this resource keeps on a lan network.
+func (t *T) kept() *resip.Kept {
+	if t._kept == nil {
+		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.GetObject(), t.Log())
+	}
+	return t._kept
+}
+
+// onLan says the network the address is drawn from is a segment every node
+// is on, and draws from.
+func (t *T) onLan() bool {
+	nw, err := t.resolveNetwork()
+	if err != nil || nw == nil {
+		return false
+	}
+	_, ok := nw.(network.HostDever)
+	return ok
+}
+
+// keeps says the resource keeps its address from a start to the next, until
+// it is unprovisioned, as ip.host does, rather than draw one at each start
+// and release it at each stop.
+//
+// The address of a container on a bridge or routed_bridge network is reached
+// through its DNS record, which follows the address the status reports, so a
+// new one at each start is no change to its clients. A lan network is a
+// segment the clients of the service are on, and they know it by its address
+// rather than by a record they may not be able to resolve.
+func (t *T) keeps() bool {
+	return t.Name == "" && t.onLan()
 }
 
 // resolveNetwork returns the om network the network keyword names.
@@ -29,7 +71,7 @@ func (t *T) alloc() *resip.Allocation {
 // so it is derived from the address and the mask now, and the keyword names
 // the network the address is drawn from, as it does on ip.cni.
 func (t *T) resolveNetwork() (network.Networker, error) {
-	return t.alloc().Resolve()
+	return t.drawn().Resolve()
 }
 
 // ipam returns the allocator of the network this resource draws from, or nil
@@ -92,6 +134,10 @@ func (t *T) Configure() error {
 	if nw == nil {
 		return nil
 	}
+	if i, ok := nw.(network.HostDever); ok {
+		t.configureLan(nw, i)
+		return nil
+	}
 	if t.Dev == "" {
 		t.Dev = t.networkDev()
 	}
@@ -118,4 +164,55 @@ func (t *T) Configure() error {
 		}
 	}
 	return nil
+}
+
+// configureLan fills from a lan network what the configuration did not say:
+// the interface of this node on the segment, which the link of the namespace
+// is a child of, and the prefix length of the segment, which the range of
+// the network is only a part of.
+//
+// No gateway is filled: the first address of the range, which a bridge
+// network answers on, is an address om hands out on a lan network, and the
+// router of the segment is the network administrator's to name.
+//
+// What does not fit is reported when the resource is started or its status
+// read, rather than failing every load of the object.
+func (t *T) configureLan(nw network.Networker, i network.HostDever) {
+	if t.Addr != "" && t.kept().PerInstance && !t.kept().HasOwnAddr(t.GetObject()) {
+		// The address of all the instances, as a failover object records
+		// it, read here for want of one chosen for this instance: each
+		// instance of a flex resource draws its own.
+		t.Addr = ""
+	}
+	switch {
+	case t.Mode == "ipvlan-l3" || t.Mode == "ipvlan-l3s":
+		t.netErr = fmt.Errorf("mode %s routes the address through this node, where the hosts of the segment of network %s do not look for it: use macvlan or ipvlan-l2", t.Mode, nw.Name())
+		return
+	case t.Mode == "dedicated" || t.Tags.Has(tagDedicated):
+		// The interface of this node on the segment is what the node
+		// itself is reached by, and moving it into the namespace takes it
+		// away from the node.
+		if t.Dev == "" {
+			t.netErr = fmt.Errorf("mode dedicated moves dev into the namespace, and network %s names no interface but the one of this node on the segment: set dev to an interface of its own", nw.Name())
+			return
+		}
+		if dev, err := i.HostDev(); err == nil && dev == t.Dev {
+			t.netErr = fmt.Errorf("mode dedicated would move %s, the interface of this node on the segment of network %s, into the namespace: set dev to an interface of its own", dev, nw.Name())
+			return
+		}
+	case t.Dev == "":
+		t.Dev, t.netErr = i.HostDev()
+		if t.netErr != nil {
+			return
+		}
+	}
+	if t.Netmask == "" {
+		if m, ok := nw.(network.Netmasker); ok {
+			if n, err := m.Netmask(); err == nil {
+				t.Netmask = fmt.Sprint(n)
+			} else {
+				t.netErr = err
+			}
+		}
+	}
 }

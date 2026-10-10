@@ -58,13 +58,21 @@ type (
 		Netmask       string         `json:"netmask"`
 		Gateway       string         `json:"gateway"`
 		Network       string         `json:"network"`
+		Addr          string         `json:"addr"`
 		WaitDNS       *time.Duration `json:"wait_dns"`
 		CheckCarrier  bool           `json:"check_carrier"`
 		Alias         bool           `json:"alias"`
 		Expose        []string       `json:"expose"`
 
 		// cache
-		_alloc     *resip.Allocation
+		_alloc    *resip.Allocation
+		_kept     *resip.Kept
+		_previous net.IP
+
+		// netErr says why the network the address is drawn from does not
+		// fit the resource, reported when the resource is started or its
+		// status read rather than failing every load of the object.
+		netErr     error
 		_ipaddr    net.IP
 		_ipaddrAge time.Duration
 		_ipmask    net.IPMask
@@ -153,8 +161,22 @@ func (t *T) Start(ctx context.Context) error {
 	// none: a resource setting its name uses that address, and a reservation
 	// taken all the same would be an address nobody uses, counted against the
 	// network claim of the namespace.
+	if t.netErr != nil {
+		return t.netErr
+	}
 	var allocated net.IP
-	if t.Name == "" {
+	switch {
+	case t.keeps():
+		ip, previous, err := t.kept().Reserve(ctx, t.Addr)
+		if err != nil {
+			return err
+		}
+		if t.Addr == "" && !t.kept().PerInstance {
+			// Recorded in the configuration as it was drawn.
+			t.Addr = ip.String()
+		}
+		t._ipaddr, t._ipnet, t._ipmask, t._previous = ip, nil, nil, previous
+	case t.Name == "":
 		var err error
 		if allocated, err = t.allocateIP(ctx); err != nil {
 			return err
@@ -168,6 +190,9 @@ func (t *T) Start(ctx context.Context) error {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.freeIP()
 		})
+	}
+	if err := t.dropPrevious(ctx); err != nil {
+		return err
 	}
 	if err := t.startMode(ctx); err != nil {
 		return err
@@ -344,12 +369,57 @@ func (t *T) Stop(ctx context.Context) error {
 	if err := t.stopMode(ctx); err != nil {
 		return err
 	}
+	if t.keeps() {
+		// The address is the service's until it is unprovisioned.
+		return nil
+	}
 	// The reservation is released last: an address still configured in a
 	// namespace this stop failed to clean is an address om must not hand to
 	// another resource. It is released whether or not the configuration
 	// names the address, so the reservation an earlier start took by
 	// mistake, when a named address still drew one, goes too.
 	return t.freeIP()
+}
+
+// UnprovisionStop stops the resource, and releases the address it keeps on a
+// lan network, which a stop does not: every node releases its reservation,
+// and the leader removes the address from the configuration, once for all of
+// them.
+func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
+	if err := t.Stop(ctx); err != nil {
+		return err
+	}
+	if !t.keeps() || t.IsUnprovisionDisabled() {
+		// A resource set to keep what it was given at unprovision keeps
+		// its address too.
+		return nil
+	}
+	if err := t.kept().Release(ctx, t.Addr, leader); err != nil {
+		return err
+	}
+	if leader && !t.kept().PerInstance {
+		t.Addr = ""
+	}
+	return nil
+}
+
+// dropPrevious stops the link of the address the resource gave up for the
+// one it starts with, when the namespace still has it: the resource was
+// started with it, and nothing else would ever remove it, the resource
+// answering for its new address only. The link is found by its address, so
+// the new one would be brought up on a link of its own beside it.
+func (t *T) dropPrevious(ctx context.Context) error {
+	previous := t._previous
+	if previous == nil || previous.Equal(t._ipaddr) {
+		return nil
+	}
+	ip := t._ipaddr
+	t._ipaddr, t._ipnet = previous, nil
+	defer func() {
+		t._ipaddr, t._ipnet = ip, nil
+	}()
+	t.Log().Infof("stop %s, the address given up for %s", previous, ip)
+	return t.stopMode(ctx)
 }
 
 func (t *T) stopMode(ctx context.Context) error {
@@ -383,9 +453,21 @@ func (t *T) devMTU() (int, error) {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	if t.netErr != nil {
+		t.StatusLog().Error("%s", t.netErr)
+		return status.Undef
+	}
 	s := t.statusWithIPAddrCacheTrust(ctx)
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
+	}
+	if t.keeps() {
+		if dups := t.kept().Duplicates(t.ipaddr()); len(dups) > 0 {
+			t.StatusLog().Warn("%s is also held by %s: one of them is to be given another address", t.ipaddr(), strings.Join(dups, ", "))
+			if s == status.Up {
+				return status.Warn
+			}
+		}
 	}
 	return s
 }
@@ -571,6 +653,11 @@ func (t *T) ipnet() *net.IPNet {
 
 func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
+		return t._ipaddr
+	}
+	if t.Name == "" && t.Addr != "" && t.keeps() {
+		// The address the resource drew, the same on every node.
+		t._ipaddr = net.ParseIP(t.Addr)
 		return t._ipaddr
 	}
 	if t.Name == "" {

@@ -6,7 +6,22 @@ object needs nothing more than `network=default` to receive an address.
 Naming a network is enough: the `dev`, `netmask` and `gateway` of the resource
 are the network's to know, and are taken from it when the configuration does
 not set them. Leaving `name` empty has the address allocated from the network
-too, and the same resource keeps the same address across restarts.
+too.
+
+On a bridge or routed_bridge network, the address is drawn at each start and
+released at each stop, and the clients reach the service by its DNS record,
+which follows the address.
+
+On a lan network, the address is kept from a start to the next until the
+resource is unprovisioned, and recorded in `addr`. The `dev` is the interface
+of the node on the segment, and the `netmask` the prefix length of the
+segment. No `gateway` is taken from the network: set it to the router of the
+segment when the namespace has no default route of its own. The `macvlan` and
+`ipvlan-l2` modes put the address on the segment. The `bridge` and `ovs` modes
+need `dev` to be a bridge on the segment. The `ipvlan-l3` and `ipvlan-l3s`
+modes are refused, as the hosts of the segment would not reach the address,
+and the `dedicated` mode needs a `dev` of its own, not the interface of the
+node on the segment.
 
 This keyword used to hold the address of the network, in dotted notation, to
 set the destination of the route removed by `del_net_route`. That destination
