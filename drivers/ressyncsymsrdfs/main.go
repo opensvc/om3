@@ -547,7 +547,7 @@ func (t *T) updateWWNMap() error {
 		if device.RDF == nil {
 			continue
 		}
-		l = append(l, [2]string{device.Product.WWN, device.RDF.Remote.WWN})
+		l = append(l, [2]string{device.Product.WWN, device.RDF.RemoteWWN()})
 	}
 
 	// dump map in a json file

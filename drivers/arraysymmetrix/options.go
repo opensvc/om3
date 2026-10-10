@@ -5,10 +5,12 @@ import "github.com/opensvc/om3/v3/core/array"
 // The options each action of this array is asked for.
 
 type OptResizeDisk struct {
-	Dev   string
-	SID   string
-	Size  string
-	Force bool
+	Dev  string
+	SID  string
+	Size string
+
+	// Truncate allows a shrink, which drops the end of the device.
+	Truncate bool
 }
 
 type OptUnmapDisk struct {

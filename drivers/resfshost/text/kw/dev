@@ -1,4 +1,9 @@
 The block device file or filesystem image file hosting the filesystem to mount.
 
+The device is written as the other devices of a service are: `/dev/sdb` is a
+device of the node, `data` the device a vol of the namespace exposes, and
+`disk#1` the device a resource of the service exposes, which must expose one
+device.
+
 A different device can be set up on different nodes using the `dev@<nodename>`
 scoping syntax.

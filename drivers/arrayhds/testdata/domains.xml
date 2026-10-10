@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized, not captured from an array: the envelope is the
+  HiCommandServerMessage one of the Device Manager xml api, and the elements
+  and attributes are the ones v2 (drivers/array/hds.py) reads.
+  The domain id 1 exists on both ports, as domain ids are per port.
+-->
+<HiCommandServerMessage>
+  <Response>
+    <ResultList>
+      <StorageArray objectID="ARRAY.HUSVM.210945" serialNumber="210945">
+        <HostStorageDomain objectID="HSD.HUSVM.210945.0.1" portID="0" portName="CL1-A" domainID="1" nickname="node1">
+          <WWN objectID="WWN.HUSVM.210945.0.1.1" WWN="10.00.00.00.C9.AA.BB.01" nickname="node1_hba1"/>
+          <WWN objectID="WWN.HUSVM.210945.0.1.2" WWN="10.00.00.00.C9.AA.BB.02" nickname="node1_hba2"/>
+          <Path objectID="PATH.HUSVM.210945.0.1.0" devNum="100" portName="CL1-A" domainID="1" LUN="0"/>
+          <Path objectID="PATH.HUSVM.210945.0.1.1" devNum="101" portName="CL1-A" domainID="1" LUN="1"/>
+        </HostStorageDomain>
+        <HostStorageDomain objectID="HSD.HUSVM.210945.16.1" portID="16" portName="CL2-A" domainID="1" nickname="node1">
+          <WWN objectID="WWN.HUSVM.210945.16.1.1" WWN="10.00.00.00.C9.AA.BB.01" nickname="node1_hba1"/>
+          <WWN objectID="WWN.HUSVM.210945.16.1.2" WWN="10.00.00.00.C9.AA.BB.02" nickname="node1_hba2"/>
+          <Path objectID="PATH.HUSVM.210945.16.1.0" devNum="100" portName="CL2-A" domainID="1" LUN="0"/>
+        </HostStorageDomain>
+        <HostStorageDomain objectID="HSD.HUSVM.210945.16.2" portID="16" portName="CL2-A" domainID="2" nickname="node2">
+          <WWN objectID="WWN.HUSVM.210945.16.2.1" WWN="10.00.00.00.C9.CC.DD.01" nickname="node2_hba1"/>
+          <Path objectID="PATH.HUSVM.210945.16.2.0" devNum="200" portName="CL2-A" domainID="2" LUN="0"/>
+        </HostStorageDomain>
+      </StorageArray>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>

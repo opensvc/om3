@@ -1,0 +1,3 @@
+A name included in the snapshot name to avoid retention conflicts between multiple btrfs snapshot resources.
+
+A full snapshot name is formatted as `<subvol>/.snap/<UTC datetime>Z,<name>`, or `<subvol>/.snap/<UTC datetime>Z` without a name. Example: `data/.snap/2026-10-09T10:09:52.000000Z,weekly`.

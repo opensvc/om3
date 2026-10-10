@@ -239,6 +239,9 @@ type (
 		Files ridFiles
 	}
 
+	// cmdStatusDone says a status evaluation the status runner ran is over.
+	cmdStatusDone struct{}
+
 	Factory struct {
 		DrainDuration time.Duration
 		SubQS         pubsub.QueueSizer
@@ -544,6 +547,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.resourceRestart(c.rids, c.standby)
 			case cmdFetchDone:
 				t.onFetchDone(c)
+			case cmdStatusDone:
+				t.onStatusDone()
 			}
 		case <-t.delayTimer.C:
 			t.onDelayTimer()

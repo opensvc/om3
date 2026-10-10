@@ -233,12 +233,22 @@ command = /bin/evil
 schedule = @1
 `), "the task runs its command on the node, and never says so")
 
-	assert.Error(t, create(`
+	// An ip falls back to the host driver too, which draws its address from
+	// a lan network alone: the network check after the keyword policy says
+	// so of the fallback as of the type written.
+	fakeNetworks(t)
+	assert.Error(t, writeIP(t, "", `
 nodes = *
 
 [ip#1]
 network = default
 `), "an ip falls back to the host driver too")
+	assert.NoError(t, writeIP(t, "", `
+nodes = *
+
+[ip#1]
+network = san
+`), "a lan network is one to draw a host address from")
 
 	// A container falls back to oci, which is a type the policy opens, so
 	// leaving it out is as writable as writing it.

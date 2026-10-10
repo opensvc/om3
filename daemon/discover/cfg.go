@@ -519,6 +519,40 @@ func (t *Manager) onInstanceConfigDeleting(c *msgbus.InstanceConfigDeleting) {
 		return
 	}
 	t.cfgDeleting[c.Path] = true
+	// A fetch started before is for a configuration the delete is about to
+	// remove: installed after it, it would bring the object back.
+	t.cancelFetcher(c.Path.String())
+}
+
+// isBeingRemoved says the object is being deleted or purged, on this node or
+// on the peer a configuration comes from.
+//
+// A configuration a peer writes meanwhile is not one to install: the node
+// leading a purge unprovisions after the others, and what its resources
+// unset of the configuration as they unprovision is written while the others
+// are deleting theirs. Fetched, it would land after their delete, and bring
+// back an object the orchestration that removed it is no longer there to
+// remove.
+//
+// The delete of this node counts once it removed the configuration file: a
+// delete that failed leaves the file, and the configurations of the peers
+// are the ones to follow again. While the delete runs, the global expect of
+// the local monitor says the object is being removed.
+func (t *Manager) isBeingRemoved(p naming.Path, peer string) bool {
+	if t.cfgDeleting[p] && !file.Exists(p.ConfigFile()) {
+		return true
+	}
+	for _, node := range []string{t.localhost, peer} {
+		mon := instance.MonitorData.GetByPathAndNode(p, node)
+		if mon == nil {
+			continue
+		}
+		switch mon.GlobalExpect {
+		case instance.MonitorGlobalExpectDeleted, instance.MonitorGlobalExpectPurged:
+			return true
+		}
+	}
+	return false
 }
 
 // onInstanceConfigFor is called on InstanceConfigFor event.
@@ -667,11 +701,16 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		return nil
 	}
 
-	defer t.cancelFetcher(c.Path.String())
+	defer t.endFetcher(c.Path.String(), c.Ctx)
 	select {
 	case <-c.Ctx.Done():
 		c.Err <- nil
 	default:
+		if t.isBeingRemoved(c.Path, c.Node) {
+			log.Infof("cfg: drop the %s config fetched from node %s: the object is being removed", c.Path, c.Node)
+			c.Err <- nil
+			return
+		}
 		confFile := c.Path.ConfigFile()
 		if err := handleStoppedFlag(confFile); err != nil {
 			c.Err <- err
@@ -710,10 +749,25 @@ func (t *Manager) cancelFetcher(s string) {
 		t.log.Tracef("cfg: cancelFetcher %s@%s", s, peer)
 		cancel()
 		delete(t.fetcherCancel, s)
+		delete(t.fetcherCtx, s)
 		delete(t.fetcherNodeCancel[peer], s)
 		delete(t.fetcherUpdated, s)
 		delete(t.fetcherFrom, s)
 	}
+}
+
+// endFetcher ends the fetcher of s whose result is the one of ctx.
+//
+// A result is handled after the fetcher that sent it may have been replaced:
+// a more recent configuration cancels the fetcher running and starts another
+// one, while the result of the first is already on its way. Ending the
+// fetcher of s whatever it is would cancel the one fetching the more recent
+// configuration, and the node would keep the older one until the next write.
+func (t *Manager) endFetcher(s string, ctx context.Context) {
+	if t.fetcherCtx[s] != ctx {
+		return
+	}
+	t.cancelFetcher(s)
 }
 
 func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, needStoppedFlag bool, scope []string) {
@@ -722,23 +776,32 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt ti
 		return
 	}
 	s := p.String()
+	if t.isBeingRemoved(p, peer) {
+		// Checked here, where every path to a fetch goes, so none starts
+		// one the delete would race.
+		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: the object is being removed", s, peer)
+		return
+	}
 	if n, ok := t.fetcherFrom[s]; ok {
 		t.objectLogger(p).Errorf("cfg: fetcher already in progress for %s from node %s", s, n)
 		return
 	}
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.fetcherCancel[s] = cancel
+	t.fetcherCtx[s] = ctx
 	t.fetcherFrom[s] = peer
 	t.fetcherUpdated[s] = updatedAt
-	if _, ok := t.fetcherNodeCancel[peer]; ok {
-		t.fetcherNodeCancel[peer][s] = cancel
-	} else {
+	if _, ok := t.fetcherNodeCancel[peer]; !ok {
 		t.fetcherNodeCancel[peer] = make(map[string]context.CancelFunc)
 	}
+	t.fetcherNodeCancel[peer][s] = cancel
 
 	cli, err := newDaemonClient(peer)
 	if err != nil {
 		t.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
+		// Left registered, the fetcher would refuse every later one as
+		// already in progress.
+		t.cancelFetcher(s)
 		return
 	}
 	go fetch(ctx, cli, p, peer, t.cfgCmdC, needStoppedFlag, scope)

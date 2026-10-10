@@ -16,6 +16,12 @@ import (
 )
 
 func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error)) error {
+	return a.proxyOr(ctx, nodename, fn, nil)
+}
+
+// proxyOr is proxy, with onErr answering a request the peer did not answer,
+// in place of the internal error proxy answers.
+func (a *DaemonAPI) proxyOr(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error), onErr func(error) error) error {
 	if data := node.StatusData.GetByNode(nodename); data == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "node status data not found", "%s", nodename)
 	}
@@ -27,7 +33,9 @@ func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) 
 	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	if resp, err := fn(c); err != nil {
+	if resp, err := fn(c); err != nil && onErr != nil {
+		return onErr(err)
+	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else {
 		for key, values := range resp.Header {

@@ -1,1 +1,10 @@
-The fullpath of the directory to create.
+The directory to create, written as the other paths of a service are:
+
+* `/srv/data` is a path of the node.
+* `<vol name>/<path>` is a path in a vol of the namespace.
+* `volume#1:/<path>` is a path under the mount point of the resource
+  `volume#1`.
+
+A path in a volume never leads above its mount point. The directory is
+created when the volume is available, and is itself a place the other paths
+of the service can be written in, as `fs#2:/<path>`.

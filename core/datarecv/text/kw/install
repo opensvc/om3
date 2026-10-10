@@ -26,7 +26,9 @@ Where:
   * if not specified, defaults to the `<path>` with the leading `/` stripped.
     e.g. `fs#1.install = /a/b from ./sec/sec1` will install `<fs#1 head>/a/b` from the `./sec/sec1` key named `a/b`.
 
-* `<mode>`, `<user>`, `<group>` default values are defined by the `mode`, `user` and `group` resource keyword.
+* `<mode>`, `<user>`, `<group>` default values are defined by the `perm`, `user` and `group` resource keywords,
+  and the `<mode>` of a directory by the `dirperm` resource keyword. Without `perm`, a file from a sec is installed
+  with mode `0600`, and a file from a cfg with mode `0644`.
 
 * `<sig>:<rid>` (e.g. `HUP:container#haproxy`)
   * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified.

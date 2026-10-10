@@ -626,7 +626,7 @@ func (t T) DoAsync() error {
 			// expires: an unbuffered send of the id, from a submission that
 			// took the whole of that deadline, would then block for ever and
 			// the command would never return.
-			idC = make(chan uuid.UUID, 1)
+			idC = make(chan api.OrchestrationQueued, 1)
 		)
 		if wait {
 			t.waitExpectation(ctx, c, idC, target, p, waitC, t.TargetOptions)
@@ -641,7 +641,7 @@ func (t T) DoAsync() error {
 				Status: err.Error(),
 			}
 			if wait {
-				idC <- uuid.Nil
+				idC <- api.OrchestrationQueued{}
 			}
 		} else {
 			toWait++
@@ -653,7 +653,7 @@ func (t T) DoAsync() error {
 					Status:          "accepted",
 				}
 				if wait {
-					idC <- r.OrchestrationID
+					idC <- orchestrationQueued
 				}
 			} else {
 				r = asyncResult{
@@ -661,7 +661,7 @@ func (t T) DoAsync() error {
 					Status: err.Error(),
 				}
 				if wait {
-					idC <- uuid.Nil
+					idC <- api.OrchestrationQueued{}
 				}
 			}
 		}
@@ -977,15 +977,15 @@ func (t T) instanceDo(ctx context.Context, resultQ chan actionrouter.Result, nod
 // asks again, is still told how its request went. An end event missed is
 // missed for good, which is what made this fail on a slow client.
 //
-// Any node answers for any orchestration, the instance monitors carrying its
-// id reaching every node, so the node the action was submitted to is the one
-// asked, whichever node a floating address took it to.
+// The node asked is the one that accepted the orchestration, which knows it
+// from the moment it hands the id out, while the others hear of it a
+// heartbeat later.
 //
 // The verdict is the orchestration's own. The states the object reached are
 // not read back and judged here any more: the daemon knows what its instances
 // ended on, and the assertions this used to make were a second description of
 // the same thing, which went stale twice when the first one changed.
-func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUID, globalExpect instance.MonitorGlobalExpect, p naming.Path, errC chan<- error, targetOptions any) {
+func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan api.OrchestrationQueued, globalExpect instance.MonitorGlobalExpect, p naming.Path, errC chan<- error, targetOptions any) {
 	go func() {
 		var err error
 		defer func() {
@@ -998,19 +998,23 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 			}
 		}()
 
-		var orchestrationID uuid.UUID
+		var queued api.OrchestrationQueued
 		select {
 		case <-ctx.Done():
 			return
-		case orchestrationID = <-idC:
+		case queued = <-idC:
 		}
-		if orchestrationID == uuid.Nil {
+		if queued.OrchestrationID == uuid.Nil {
 			// The action was refused, and the refusal is the answer. There
 			// is no orchestration to wait for.
 			return
 		}
 
-		err = actionrouter.WaitOrchestration(ctx, c, orchestrationID)
+		var acceptedBy string
+		if queued.Node != nil {
+			acceptedBy = *queued.Node
+		}
+		err = actionrouter.WaitOrchestration(ctx, c, queued.OrchestrationID, acceptedBy)
 	}()
 }
 

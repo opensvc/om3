@@ -57,9 +57,24 @@ type (
 	}
 )
 
+// collectorRequestTimeout is how long a request of the dequeue to the
+// collector may take.
+const collectorRequestTimeout = 10 * time.Second
+
+// collectorContext returns the context of one request to the collector.
+func collectorContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), collectorRequestTimeout)
+}
+
+// Dequeue runs the actions the collector queued for the node, and posts
+// their results.
+//
+// Each request to the collector has a deadline of its own, and the actions
+// have none, as in v2: an action is an array disk creation or a service
+// action, which can run for minutes, and killing it midway would leave the
+// array or the service half changed, with no result telling the collector
+// so.
 func (t *Node) Dequeue() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	log.Info().Msg("fetch actions from collector")
 
 	oc3, err := t.CollectorFeeder()
@@ -69,7 +84,9 @@ func (t *Node) Dequeue() error {
 
 	runner := &oc3dequeue{oc3: oc3}
 
+	ctx, cancel := collectorContext()
 	queuedActions, err := runner.getActions(ctx)
+	cancel()
 	if err != nil {
 		return fmt.Errorf("dequeue actions: %w", err)
 	}
@@ -83,12 +100,15 @@ func (t *Node) Dequeue() error {
 	for _, a := range queuedActions {
 		ids = append(ids, a.Id)
 	}
-	if err := runner.ackReceive(ctx, ids); err != nil {
+	ctx, cancel = collectorContext()
+	err = runner.ackReceive(ctx, ids)
+	cancel()
+	if err != nil {
 		return fmt.Errorf("dequeue action running: %w", err)
 	}
 
 	for _, action := range queuedActions {
-		done, err1 := action.exec(ctx)
+		done, err1 := action.exec(context.Background())
 		if err1 != nil {
 			log.Error().Msgf("dequeue action %d: %d", action.Id, done.Ret)
 		} else {
@@ -96,7 +116,9 @@ func (t *Node) Dequeue() error {
 		}
 		err = errors.Join(err, err1)
 
+		ctx, cancel := collectorContext()
 		err2 := runner.sendDone(ctx, done)
+		cancel()
 		err = errors.Join(err, err2)
 	}
 

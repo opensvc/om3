@@ -1,0 +1,6 @@
+Destination subvolume of the sync, as `<label>:<subvol>`. It defaults to `src`.
+
+On a peer, the destination subvolume is replaced by a writable snapshot of the
+last copy received, at every sync. A peer with its destination subvolume
+mounted, which is a peer running the service, is refused: its data would be
+replaced.

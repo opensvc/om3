@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -28,9 +29,13 @@ func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace 
 		return a.postLocalObjectStateFile(ctx, namespace, kind, name)
 	}
 	relativePath := ctx.Request().Header.Get(api.HeaderRelativePath)
+	lastModified := ctx.Request().Header.Get(api.HeaderLastModified)
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 		addHeader := func(ctx context.Context, req *http.Request) error {
 			req.Header.Add(api.HeaderRelativePath, relativePath)
+			if lastModified != "" {
+				req.Header.Add(api.HeaderLastModified, lastModified)
+			}
 			return nil
 		}
 		return c.PostInstanceStateFileWithBody(ctx.Request().Context(), nodename, namespace, kind, name, "application/octet-stream", ctx.Request().Body, addHeader)
@@ -73,6 +78,18 @@ func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string,
 	defer file.Close()
 	if _, err := io.Copy(file, ctx.Request().Body); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Copy body to state file", "%s", err)
+	}
+	// A state file can say when something happened by its modification
+	// time, as the last sync of a peer does, which writing it here would
+	// make the time it was received.
+	if s := ctx.Request().Header.Get(api.HeaderLastModified); s != "" {
+		mtime, err := time.Parse(time.RFC3339Nano, s)
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "Header '%s': %s", api.HeaderLastModified, err)
+		}
+		if err := os.Chtimes(joinedPath, mtime, mtime); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Set the state file modification time", "%s", err)
+		}
 	}
 	a.Bus.Pub(&msgbus.InstanceStateFileUpdated{Path: p, Node: a.localhost, File: relPath},
 		a.LabelLocalhost,

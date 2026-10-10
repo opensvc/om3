@@ -74,6 +74,15 @@ var (
 // srdfFlags is the options describing an SRDF mirror.
 var srdfFlags = []array.Flag{flagSRDF, flagSRDFMode, flagSRDFType, flagRDFG}
 
+// flagTruncate allows a resize to shrink a device. v2 spelled it --force,
+// which the collector and the scripts written for v2 may still write, so
+// that spelling is answered too, and not offered.
+var flagTruncate = func() array.Flag {
+	f := array.FlagTruncate
+	f.Aliases = []string{"force"}
+	return f
+}()
+
 // optMappings reads the mappings, in the grammar the collector writes them.
 func optMappings(in array.Input) (array.Mappings, error) {
 	return array.ParseMappings(in.StringSlice(array.FlagMapping.Name))
@@ -89,6 +98,19 @@ func (t *Array) Actions() []array.Action {
 				return fn(ctx)
 			},
 		}
+	}
+	mapDisk := func(ctx context.Context, in array.Input) (any, error) {
+		mappings, err := optMappings(in)
+		if err != nil {
+			return nil, err
+		}
+		return t.MapDisk(ctx, OptMapDisk{
+			Dev:      in.String(flagDev.Name),
+			Mappings: mappings,
+			SLO:      in.String(flagSLO.Name),
+			SRP:      in.String(flagSRP.Name),
+			SG:       in.String(flagSG.Name),
+		})
 	}
 	return []array.Action{
 		{
@@ -107,6 +129,7 @@ func (t *Array) Actions() []array.Action {
 					Size:     in.String(array.FlagSize.Name),
 					SLO:      in.String(flagSLO.Name),
 					SRP:      in.String(flagSRP.Name),
+					SG:       in.String(flagSG.Name),
 					SRDF:     in.Bool(flagSRDF.Name),
 					SRDFMode: in.String(flagSRDFMode.Name),
 					SRDFType: in.String(flagSRDFType.Name),
@@ -150,12 +173,12 @@ func (t *Array) Actions() []array.Action {
 		{
 			Path:  []string{"resize", "disk"},
 			Short: "resize a volume",
-			Flags: []array.Flag{flagDev, array.FlagSize, array.FlagForce},
+			Flags: []array.Flag{flagDev, array.FlagSize, flagTruncate},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
 				return t.ResizeDisk(ctx, OptResizeDisk{
-					Dev:   in.String(flagDev.Name),
-					Size:  in.String(array.FlagSize.Name),
-					Force: in.Bool(array.FlagForce.Name),
+					Dev:      in.String(flagDev.Name),
+					Size:     in.String(array.FlagSize.Name),
+					Truncate: in.Bool(flagTruncate.Name),
 				})
 			},
 		},
@@ -174,19 +197,16 @@ func (t *Array) Actions() []array.Action {
 			Path:  []string{"map", "disk"},
 			Short: "map a device",
 			Flags: []array.Flag{flagDev, array.FlagMapping, flagSLO, flagSRP, flagSG},
-			Run: func(ctx context.Context, in array.Input) (any, error) {
-				mappings, err := optMappings(in)
-				if err != nil {
-					return nil, err
-				}
-				return t.MapDisk(ctx, OptMapDisk{
-					Dev:      in.String(flagDev.Name),
-					Mappings: mappings,
-					SLO:      in.String(flagSLO.Name),
-					SRP:      in.String(flagSRP.Name),
-					SG:       in.String(flagSG.Name),
-				})
-			},
+			Run:   mapDisk,
+		},
+		{
+			// "add map" is the v2 name of "map disk", which the
+			// collector queues a mapping form as.
+			Path:   []string{"add", "map"},
+			Short:  "map a device",
+			Flags:  []array.Flag{flagDev, array.FlagMapping, flagSLO, flagSRP, flagSG},
+			Hidden: true,
+			Run:    mapDisk,
 		},
 		{
 			Path:  []string{"unmap", "disk"},
@@ -223,7 +243,13 @@ func (t *Array) Actions() []array.Action {
 			Short: "delete a SRDF pairing for the device",
 			Flags: []array.Flag{flagDev},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.DeletePair(ctx, OptDeletePair{Dev: in.String(flagDev.Name)})
+				rdf, err := t.DeletePair(ctx, OptDeletePair{Dev: in.String(flagDev.Name)})
+				if err != nil || rdf == nil {
+					// A device in no pair renders nothing, as in v2,
+					// rather than a null.
+					return nil, err
+				}
+				return rdf, nil
 			},
 		},
 		{

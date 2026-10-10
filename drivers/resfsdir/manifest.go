@@ -19,7 +19,7 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "Path",
+			Attr:     "DirPath",
 			Option:   "path",
 			Required: true,
 			Scopable: true,
@@ -68,6 +68,7 @@ func (t *T) DriverID() driver.ID {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(kws...)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
 	return m

@@ -118,6 +118,27 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/tmpfs.mode"),
 	}
 
+	// KeywordBtrfsSubvol is the subvolume of a btrfs to mount.
+	KeywordBtrfsSubvol = keywords.Keyword{
+		Attr:     "Subvol",
+		Example:  "data",
+		Option:   "subvol",
+		Scopable: true,
+		Since:    "v3.0.0-rc47",
+		Text:     keywords.NewText(fs, "text/kw/btrfs.subvol"),
+	}
+
+	// KeywordBtrfsLabel is the label of a btrfs, set when it is formatted.
+	KeywordBtrfsLabel = keywords.Keyword{
+		Attr:         "BtrfsLabel",
+		Example:      "{name}.fs1",
+		Option:       "label",
+		Provisioning: true,
+		Scopable:     true,
+		Since:        "v3.0.0-rc47",
+		Text:         keywords.NewText(fs, "text/kw/btrfs.label"),
+	}
+
 	KeywordsBase = []*keywords.Keyword{
 		&KeywordMountPoint,
 		&KeywordDevice,
@@ -148,6 +169,9 @@ func (t *T) Manifest() *manifest.T {
 	m.AddKeywords(KeywordsBase...)
 	if t.isTmpfs() {
 		m.AddKeywords(&KeywordTmpfsSize, &KeywordTmpfsMode)
+	}
+	if t.isBtrfs() {
+		m.AddKeywords(&KeywordBtrfsSubvol, &KeywordBtrfsLabel)
 	}
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)

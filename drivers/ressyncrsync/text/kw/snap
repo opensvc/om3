@@ -1,2 +1,21 @@
-If `true`, OpenSVC will try to snapshot the first snapshottable parent of the
-`src` and replicate from the snap instead of the `src`.
+If `true`, each update copies a read-only snapshot of the filesystem holding
+`src` rather than `src` itself, so the copy is of the data at one point in
+time, whatever is written to it while it is copied. The filesystem is the one
+mounted deepest under `src`:
+
+* a logical volume, thick or thin, whose snapshot is mounted read-only. A
+  thick volume is given a tenth of its size to hold the writes made while
+  the snapshot lives, from the free space of its volume group: lvm drops a
+  snapshot running out of it, and the update fails.
+* a btrfs subvolume, snapshotted read-only.
+* a zfs dataset, snapshotted.
+
+Another filesystem fails the update rather than copying `src` itself.
+
+A filesystem mounted below `src` is not in the snapshot: the update is
+refused unless the rsync options keep the copy on one filesystem, as the
+default `-x` does.
+
+The snapshots are removed when the update ends, whether it succeeded or not.
+An update interrupted before it removed them leaves them to the next one,
+and the resource status says so meanwhile.

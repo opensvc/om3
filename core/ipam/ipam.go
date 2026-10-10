@@ -8,6 +8,7 @@
 package ipam
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"math/big"
@@ -15,9 +16,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/lock"
 )
 
 // StoreDir returns where the reservations of a network are recorded.
@@ -34,8 +37,13 @@ type (
 		// Name is the network the addresses are drawn from.
 		Name string
 
-		// Range is the addresses this node draws from.
+		// Range is the subnet of the addresses this node draws from: its
+		// first address, and the last of an ipv4 one, are never handed out.
 		Range *net.IPNet
+
+		// Pools are the addresses of Range this node draws from, all of
+		// them when there is none.
+		Pools []Pool
 
 		// Gateway is not allocated: it is the address of the bridge.
 		Gateway net.IP
@@ -49,6 +57,11 @@ type (
 		// out has no reservation here, and would be handed out twice.
 		PeerDirs []string
 
+		// ClusterDir holds the addresses the other nodes reported holding
+		// in a range every node draws from, which this node remembers for
+		// as long as it is not told otherwise: see PeerDir.
+		ClusterDir string
+
 		// InUse reports the addresses the cluster says are taken. The daemon
 		// replicates the resource status of every instance, so this sees the
 		// addresses of objects whose reservation file this node cannot read.
@@ -58,6 +71,12 @@ type (
 		// node local and not routable. It is here for a network type that is
 		// neither.
 		InUse func() ([]net.IP, error)
+
+		// ClusterWide says every node draws from the pools, as the nodes of a
+		// lan network do: an address is the cluster's, not this node's, so
+		// a resource takes the address it holds on another node, and the
+		// addresses the other resources hold anywhere are taken.
+		ClusterWide bool
 	}
 
 	// Reservation is an address already held by a resource, which an adoption
@@ -87,18 +106,22 @@ func (t *T) Allocate(key string) (net.IP, error) {
 	if t.Range == nil {
 		return nil, fmt.Errorf("network %s allocates no address on this node", t.Name)
 	}
-	if ip, err := t.Allocated(key); err != nil {
+	// An address the ranges no longer hold, as they changed, is given up
+	// for one they hold, once that one is reserved: an address still
+	// configured is never left with no reservation, as when the ranges hold
+	// no free address.
+	stale, err := t.Allocated(key)
+	if err != nil {
 		return nil, err
-	} else if ip != nil {
-		return ip, nil
+	} else if stale != nil && t.Contains(stale) {
+		return stale, nil
 	}
 	taken, err := t.taken()
 	if err != nil {
 		return nil, err
 	}
-	ones, bits := t.Range.Mask.Size()
-	size := new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
-	first := ipToInt(t.Range.IP)
+	pools := t.pools()
+	size := poolsSize(pools)
 	offset := new(big.Int).Mod(keyOffset(key), size)
 
 	probes := maxProbes
@@ -106,10 +129,16 @@ func (t *T) Allocate(key string) (net.IP, error) {
 		probes = int(size.Int64())
 	}
 	for i := 0; i < probes; i++ {
-		ip := intToIP(new(big.Int).Add(first, offset), t.Range.IP.To4() != nil)
-		if t.isAllocatable(ip, size) && !taken[ip.String()] {
+		ip := poolsAddr(pools, offset)
+		if t.isAllocatable(ip) && !taken[ip.String()] {
 			if ok, err := t.reserve(ip, key); err != nil {
 				return nil, err
+			} else if ok && stale != nil {
+				// The replacement is held and is the one Allocated
+				// returns: a stale address that could not be dropped
+				// is left to the next network setup, DropReplaced.
+				_ = t.DropStale(key)
+				return ip, nil
 			} else if ok {
 				return ip, nil
 			}
@@ -117,7 +146,62 @@ func (t *T) Allocate(key string) (net.IP, error) {
 		offset.Add(offset, big.NewInt(1))
 		offset.Mod(offset, size)
 	}
-	return nil, fmt.Errorf("network %s: no free address in %s after %d probes", t.Name, t.Range, probes)
+	return nil, fmt.Errorf("network %s: no free address in %s after %d probes", t.Name, PoolsString(pools), probes)
+}
+
+// pools returns the pools this node draws from: Pools, or else the whole of
+// Range.
+func (t *T) pools() []Pool {
+	if len(t.Pools) > 0 {
+		return t.Pools
+	}
+	return []Pool{PoolOf(t.Range)}
+}
+
+// PoolsString returns the addresses this node draws from, as they are
+// written.
+func (t *T) PoolsString() string {
+	if t.Range == nil {
+		return ""
+	}
+	return PoolsString(t.pools())
+}
+
+// Contains says ip is one of the addresses this node draws from, whether it
+// may be handed out or not.
+func (t *T) Contains(ip net.IP) bool {
+	if t.Range == nil || !t.Range.Contains(ip) {
+		return false
+	}
+	for _, p := range t.pools() {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// poolsSize returns the number of addresses of the pools.
+func poolsSize(pools []Pool) *big.Int {
+	size := big.NewInt(0)
+	for _, p := range pools {
+		size.Add(size, p.Size())
+	}
+	return size
+}
+
+// poolsAddr returns the address at offset in the pools, walked one after
+// the other, offset being less than their size.
+func poolsAddr(pools []Pool, offset *big.Int) net.IP {
+	rest := new(big.Int).Set(offset)
+	for _, p := range pools {
+		size := p.Size()
+		if rest.Cmp(size) < 0 {
+			return intToIP(rest.Add(rest, ipToInt(p.First)), p.First.To4() != nil)
+		}
+		rest.Sub(rest, size)
+	}
+	return nil
 }
 
 // Adopt records the addresses resources already hold, so the allocator hands
@@ -140,7 +224,7 @@ func (t *T) Adopt(reservations []Reservation) (int, error) {
 		if reservation.IP == nil || reservation.Key == "" {
 			continue
 		}
-		if t.Range != nil && !t.Range.Contains(reservation.IP) {
+		if t.Range != nil && !t.Contains(reservation.IP) {
 			continue
 		}
 		ok, err := t.reserve(reservation.IP, reservation.Key)
@@ -162,6 +246,9 @@ func (t *T) Allocated(key string) (net.IP, error) {
 	} else if err != nil {
 		return nil, err
 	}
+	// A key holds two addresses for the moment an address out of the ranges
+	// is given up for one in them: the one in them is the one it holds.
+	var stale net.IP
 	for _, entry := range entries {
 		ip := net.ParseIP(entry.Name())
 		if ip == nil {
@@ -169,30 +256,146 @@ func (t *T) Allocated(key string) (net.IP, error) {
 		}
 		if held, err := t.holder(entry.Name()); err != nil {
 			return nil, err
-		} else if held == key {
+		} else if held != key {
+			continue
+		} else if t.Range == nil || t.Contains(ip) {
 			return ip, nil
+		} else if stale == nil {
+			stale = ip
 		}
 	}
-	return nil, nil
+	return stale, nil
 }
 
-// Free releases the address key holds, and does nothing when it holds none.
+// freeLockTimeout bounds the wait for another release of the network to end,
+// which takes a file read and a removal.
+const freeLockTimeout = 10 * time.Second
+
+// freeAddr releases ip, when key is the one holding it.
 //
-// Only the holder frees an address: the file names who took it, and a
-// reservation another key made is left alone.
-func (t *T) Free(key string) error {
-	ip, err := t.Allocated(key)
+// The releases run one at a time: the holder is read and the file removed in
+// two steps, and a release interleaved between them could free the address
+// for a new reservation that this one would then remove. A reservation alone
+// needs no lock, the file being created exclusively.
+func (t *T) freeAddr(ip net.IP, key string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), freeLockTimeout)
+	defer cancel()
+	release, err := lock.Exclusive(ctx, filepath.Clean(t.Dir)+".lock")
 	if err != nil {
-		return err
+		return fmt.Errorf("network %s: release %s: %w", t.Name, ip, err)
 	}
-	if ip == nil {
-		return nil
+	defer release()
+	if held, err := t.holder(ip.String()); err != nil || held != key {
+		return err
 	}
 	err = os.Remove(filepath.Join(t.Dir, ip.String()))
 	if os.IsNotExist(err) {
 		return nil
 	}
 	return err
+}
+
+// Free releases the addresses key holds, and does nothing when it holds none.
+//
+// Only the holder frees an address: the file names who took it, and a
+// reservation another key made is left alone.
+func (t *T) Free(key string) error {
+	return t.freeHeld(key, func(net.IP) bool { return true })
+}
+
+// DropStale releases the addresses key holds out of the ranges, once it
+// holds one in them: the one the ranges hold replaced them.
+func (t *T) DropStale(key string) error {
+	if ip, err := t.Allocated(key); err != nil || ip == nil || !t.Contains(ip) {
+		return err
+	}
+	return t.freeHeld(key, func(ip net.IP) bool { return !t.Contains(ip) })
+}
+
+// Keep reserves ip for key, in the ranges or out of them, and releases the
+// other addresses key holds: ip is the address the resource has configured,
+// and could not give up for the one it drew. An address another key holds
+// is refused.
+func (t *T) Keep(ip net.IP, key string) error {
+	if held, err := t.holder(ip.String()); err != nil {
+		return err
+	} else if held != "" && held != key {
+		return fmt.Errorf("network %s: %s is reserved on this node for another resource than %s", t.Name, ip, key)
+	} else if held == "" {
+		if ok, err := t.reserve(ip, key); err != nil {
+			return err
+		} else if !ok {
+			return fmt.Errorf("network %s: %s was reserved meanwhile on this node for another resource than %s", t.Name, ip, key)
+		}
+	}
+	return t.freeHeld(key, func(other net.IP) bool { return !other.Equal(ip) })
+}
+
+// DropReplaced releases the addresses held out of the ranges by the keys
+// holding one in them, as a replacement drawn by a key whose stale address
+// could not be dropped then, or adopted at the address its resource has
+// configured, leaves them. It returns the number of addresses released.
+func (t *T) DropReplaced() (int, error) {
+	if t.Range == nil {
+		return 0, nil
+	}
+	entries, err := os.ReadDir(t.Dir)
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	stale := make(map[string][]net.IP)
+	current := make(map[string]bool)
+	for _, entry := range entries {
+		ip := net.ParseIP(entry.Name())
+		if ip == nil {
+			continue
+		}
+		key, err := t.holder(entry.Name())
+		if err != nil {
+			return 0, err
+		} else if key == "" {
+			continue
+		} else if t.Contains(ip) {
+			current[key] = true
+		} else {
+			stale[key] = append(stale[key], ip)
+		}
+	}
+	n := 0
+	for key, ips := range stale {
+		if !current[key] {
+			continue
+		}
+		for _, ip := range ips {
+			if err := t.freeAddr(ip, key); err != nil {
+				return n, err
+			}
+			n++
+		}
+	}
+	return n, nil
+}
+
+// freeHeld releases the addresses key holds that drop says to.
+func (t *T) freeHeld(key string, drop func(net.IP) bool) error {
+	entries, err := os.ReadDir(t.Dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		ip := net.ParseIP(entry.Name())
+		if ip == nil || !drop(ip) {
+			continue
+		}
+		if err := t.freeAddr(ip, key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // reserve creates the reservation of an address, and reports whether this
@@ -358,7 +561,11 @@ func (t *T) Reservations() ([]Reservation, error) {
 // cluster reports in use.
 func (t *T) taken() (map[string]bool, error) {
 	m := make(map[string]bool)
-	for _, dir := range append([]string{t.Dir}, t.PeerDirs...) {
+	dirs := append([]string{t.Dir}, t.PeerDirs...)
+	if t.ClusterDir != "" {
+		dirs = append(dirs, t.ClusterDir)
+	}
+	for _, dir := range dirs {
 		found, err := recorded(dir)
 		if err != nil {
 			return nil, err
@@ -379,20 +586,20 @@ func (t *T) taken() (map[string]bool, error) {
 	return m, nil
 }
 
-// isAllocatable reports whether an address of the range may be handed to an
+// isAllocatable reports whether an address of the pools may be handed to an
 // object.
 //
-// The first address of a range names the range, the last of an ipv4 range is
-// its broadcast address, and the gateway answers for the bridge.
-func (t *T) isAllocatable(ip net.IP, size *big.Int) bool {
-	if !t.Range.Contains(ip) {
+// The first address of the subnet names it, the last of an ipv4 subnet is its
+// broadcast address, and the gateway answers for the bridge.
+func (t *T) isAllocatable(ip net.IP) bool {
+	if ip == nil || !t.Contains(ip) {
 		return false
 	}
-	offset := new(big.Int).Sub(ipToInt(ip), ipToInt(t.Range.IP))
-	if offset.Sign() == 0 {
+	subnet := PoolOf(t.Range)
+	if ip.Equal(subnet.First) {
 		return false
 	}
-	if ip.To4() != nil && offset.Cmp(new(big.Int).Sub(size, big.NewInt(1))) == 0 {
+	if ip.To4() != nil && ip.Equal(subnet.Last) {
 		return false
 	}
 	if t.Gateway != nil && t.Gateway.Equal(ip) {

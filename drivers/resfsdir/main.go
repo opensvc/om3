@@ -7,12 +7,15 @@ import (
 	"hash/fnv"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/datarecv"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/util/df"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/findmnt"
@@ -29,9 +32,10 @@ type (
 		resource.T
 		resource.Restart
 		datarecv.DataRecv
-		Path      string `json:"path"`
-		Size      *int64 `json:"size"`
-		ProjectID int    `json:"project_id"`
+		Path      naming.Path `json:"-"`
+		DirPath   string      `json:"path"`
+		Size      *int64      `json:"size"`
+		ProjectID int         `json:"project_id"`
 		//Zone string `json:"zone"`
 	}
 )
@@ -65,9 +69,9 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	p := t.Head()
-	if p == "" {
-		t.StatusLog().Error("path is not defined")
+	p, err := t.dirPath(ctx, false)
+	if err != nil {
+		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
 	if v, err := file.ExistsAndDir(p); err != nil {
@@ -90,10 +94,11 @@ func (t *T) Status(ctx context.Context) status.T {
 // A directory with no size is bounded by nothing, and what it takes is not a
 // number anything can be rationed by.
 func (t *T) PoolCharge() (string, int64) {
-	if t.Size == nil || t.Path == "" {
+	p := t.Head()
+	if t.Size == nil || p == "" {
 		return "", 0
 	}
-	return filepath.Dir(t.Path), *t.Size
+	return filepath.Dir(p), *t.Size
 }
 
 func (t *T) Label(_ context.Context) string {
@@ -105,7 +110,10 @@ func (t *T) Provision(ctx context.Context) error {
 }
 
 func (t *T) Unprovision(ctx context.Context) error {
-	head := t.Head()
+	head, err := t.removablePath(ctx)
+	if err != nil || head == "" {
+		return err
+	}
 	statInfo, err := os.Stat(head)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -133,7 +141,10 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 // A quota-backed directory has its project limit dropped with it, or the
 // filesystem keeps a limit on a project nothing is stamped with any more.
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
-	p := t.Head()
+	p, err := t.removablePath(ctx)
+	if err != nil || p == "" {
+		return err
+	}
 	if v, err := file.ExistsAndDir(p); err != nil {
 		return err
 	} else if !v {
@@ -156,7 +167,10 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 }
 
 func (t *T) create(ctx context.Context) error {
-	p := t.Head()
+	p, err := t.dirPath(ctx, true)
+	if err != nil {
+		return err
+	}
 	if v, err := file.ExistsAndDir(p); err != nil {
 		return err
 	} else if v {
@@ -179,8 +193,59 @@ func (t *T) create(ctx context.Context) error {
 	return nil
 }
 
+// dirPath returns the path of the node the path keyword names: a path of the
+// node, a path in a vol of the namespace, or a path in a volume resource of
+// the object, written volume#1:/<path>. The volume is required available when
+// checkAvail, for a directory to create.
+//
+// A path in another resource is refused: a directory is itself a resource
+// paths are written in, as fs#2:/www, so one could name another directory
+// naming it back.
+func (t *T) dirPath(ctx context.Context, checkAvail bool) (string, error) {
+	if t.DirPath == "" {
+		return "", fmt.Errorf("path is not defined")
+	}
+	if ref, _, ok := strings.Cut(t.DirPath, ":"); ok && vpath.IsResourceRef(ref) && !strings.HasPrefix(ref, "volume#") {
+		return "", fmt.Errorf("%s: a directory is made in a volume resource, written volume#<n>:/<path>", t.DirPath)
+	}
+	resolve := vpath.Locate
+	if checkAvail {
+		resolve = vpath.Resolve
+	}
+	target, err := resolve(ctx, t.DirPath, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
+	if err != nil {
+		return "", err
+	}
+	return target.HostPath, nil
+}
+
+// removablePath returns the path of the directory to remove, and empty when
+// there is none to remove here.
+//
+// The path Head returns for a volume that is not available is where the
+// directory is once the volume is, and what is there meanwhile is the
+// mountpoint of the volume, or what it hides: removing that is removing
+// something the directory never was. The directory goes with the volume
+// when the volume is unprovisioned, and stays in it when the volume is kept.
+func (t *T) removablePath(ctx context.Context) (string, error) {
+	p, err := t.dirPath(ctx, true)
+	var errAccess vpath.ErrAccess
+	if errors.As(err, &errAccess) {
+		t.Log().Infof("leave %s in place: %s", t.DirPath, err)
+		return "", nil
+	}
+	return p, err
+}
+
+// Head returns the path of the directory on the node, whether the volume it
+// is in is available or not, and empty when the path names nothing.
 func (t *T) Head() string {
-	return t.Path
+	p, err := t.dirPath(context.Background(), false)
+	if err != nil {
+		t.Log().Tracef("%s", err)
+		return ""
+	}
+	return p
 }
 
 func (t *T) CanInstall(ctx context.Context) (bool, error) {
@@ -204,7 +269,7 @@ func (t *T) projectID() uint32 {
 		return uint32(t.ProjectID)
 	}
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(t.Path))
+	_, _ = h.Write([]byte(t.Head()))
 	id := h.Sum32() & 0x7fffffff
 	if id == 0 {
 		// Project 0 is "no project", so never hand it out.
@@ -215,19 +280,23 @@ func (t *T) projectID() uint32 {
 
 // holderMount is the filesystem holding the directory.
 func (t *T) holderMount(ctx context.Context) (findmnt.MountInfo, error) {
-	entries, err := df.ContainingMountUsage(ctx, t.Path)
+	p, err := t.dirPath(ctx, false)
+	if err != nil {
+		return findmnt.MountInfo{}, err
+	}
+	entries, err := df.ContainingMountUsage(ctx, p)
 	if err != nil {
 		return findmnt.MountInfo{}, err
 	}
 	if len(entries) == 0 {
-		return findmnt.MountInfo{}, fmt.Errorf("no filesystem holds %s", t.Path)
+		return findmnt.MountInfo{}, fmt.Errorf("no filesystem holds %s", p)
 	}
 	mounts, err := findmnt.List(ctx, "", entries[0].MountPoint)
 	if err != nil {
 		return findmnt.MountInfo{}, err
 	}
 	if len(mounts) == 0 {
-		return findmnt.MountInfo{}, fmt.Errorf("%s holds %s but reports nothing about itself", entries[0].MountPoint, t.Path)
+		return findmnt.MountInfo{}, fmt.Errorf("%s holds %s but reports nothing about itself", entries[0].MountPoint, p)
 	}
 	return mounts[0], nil
 }
@@ -241,7 +310,7 @@ func (t *T) quota(ctx context.Context) (*xfsquota.T, uint32, error) {
 	}
 	if !xfsquota.CanHoldProjectQuota(mnt) {
 		return nil, 0, fmt.Errorf("%s is held by %s, a %s filesystem mounted %s: giving a directory a size of its own needs xfs mounted with the prjquota option",
-			t.Path, mnt.Target, mnt.FsType, mnt.Options)
+			t.Head(), mnt.Target, mnt.FsType, mnt.Options)
 	}
 	return xfsquota.New(mnt.Target, xfsquota.WithLogger(t.Log())), t.projectID(), nil
 }
@@ -264,7 +333,7 @@ func (t *T) applyQuota(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := q.SetProject(ctx, t.Path, id); err != nil {
+	if err := q.SetProject(ctx, t.Head(), id); err != nil {
 		return err
 	}
 	if _, hard, err := q.Get(ctx, id); err != nil {
@@ -332,16 +401,20 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 			return 0, err
 		}
 		if hard == 0 {
-			return 0, fmt.Errorf("%s has no quota set yet, so its size cannot be read", t.Path)
+			return 0, fmt.Errorf("%s has no quota set yet, so its size cannot be read", t.Head())
 		}
 		return hard, nil
 	}
-	entries, err := df.ContainingMountUsage(ctx, t.Path)
+	p, err := t.dirPath(ctx, false)
+	if err != nil {
+		return 0, err
+	}
+	entries, err := df.ContainingMountUsage(ctx, p)
 	if err != nil {
 		return 0, err
 	}
 	if len(entries) == 0 {
-		return 0, fmt.Errorf("no filesystem holds %s", t.Path)
+		return 0, fmt.Errorf("no filesystem holds %s", p)
 	}
 	return entries[0].Total, nil
 }
@@ -366,7 +439,7 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	}
 	if to < used {
 		return 0, fmt.Errorf("%s already holds %s: a quota under that does not fail, it breaks the next write",
-			t.Path, sizeconv.BSizeCompact(float64(used)))
+			t.Head(), sizeconv.BSizeCompact(float64(used)))
 	}
 	return to, nil
 }

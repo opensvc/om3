@@ -147,6 +147,17 @@ type ClientInterface interface {
 	// PostClusterLeave request
 	PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteClusterLock request
+	DeleteClusterLock(ctx context.Context, params *DeleteClusterLockParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClusterLocks request
+	GetClusterLocks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostClusterLockWithBody request with any body
+	PostClusterLockWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostClusterLock(ctx context.Context, body PostClusterLockJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostClusterRegisterWithBody request with any body
 	PostClusterRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -457,11 +468,20 @@ type ClientInterface interface {
 	// PostInstanceStateFileWithBody request with any body
 	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteNodeLock request
+	DeleteNodeLock(ctx context.Context, nodename InPathNodeName, params *DeleteNodeLockParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeLocks request
+	GetNodeLocks(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeLogs request
 	GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeMetrics request
 	GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeNetworkReservations request
+	GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodePing request
 	GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -874,6 +894,54 @@ func (c *Client) PostClusterJoin(ctx context.Context, params *PostClusterJoinPar
 
 func (c *Client) PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterLeaveRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteClusterLock(ctx context.Context, params *DeleteClusterLockParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteClusterLockRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterLocks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterLocksRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterLockWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterLockRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterLock(ctx context.Context, body PostClusterLockJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterLockRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2168,6 +2236,30 @@ func (c *Client) PostInstanceStateFileWithBody(ctx context.Context, nodename InP
 	return c.Client.Do(req)
 }
 
+func (c *Client) DeleteNodeLock(ctx context.Context, nodename InPathNodeName, params *DeleteNodeLockParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteNodeLockRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeLocks(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeLocksRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodeLogs(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeLogsRequest(c.Server, nodename, params)
 	if err != nil {
@@ -2182,6 +2274,18 @@ func (c *Client) GetNodeLogs(ctx context.Context, nodename InPathNodeName, param
 
 func (c *Client) GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeMetricsRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeNetworkReservationsRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3837,6 +3941,143 @@ func NewPostClusterLeaveRequest(server string, params *PostClusterLeaveParams) (
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDeleteClusterLockRequest generates requests for DeleteClusterLock
+func NewDeleteClusterLockRequest(server string, params *DeleteClusterLockParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/lock")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Node != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "node", *params.Node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterLocksRequest generates requests for GetClusterLocks
+func NewGetClusterLocksRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/lock")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterLockRequest calls the generic PostClusterLock builder with application/json body
+func NewPostClusterLockRequest(server string, body PostClusterLockJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostClusterLockRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostClusterLockRequestWithBody generates requests for PostClusterLock with any type of body
+func NewPostClusterLockRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/lock")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -12182,6 +12423,105 @@ func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeN
 	return req, nil
 }
 
+// NewDeleteNodeLockRequest generates requests for DeleteNodeLock
+func NewDeleteNodeLockRequest(server string, nodename InPathNodeName, params *DeleteNodeLockParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/lock", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNodeLocksRequest generates requests for GetNodeLocks
+func NewGetNodeLocksRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/lock", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeLogsRequest generates requests for GetNodeLogs
 func NewGetNodeLogsRequest(server string, nodename InPathNodeName, params *GetNodeLogsParams) (*http.Request, error) {
 	var err error
@@ -12315,6 +12655,67 @@ func NewGetNodeMetricsRequest(server string, nodename InPathNodeName) (*http.Req
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNodeNetworkReservationsRequest generates requests for GetNodeNetworkReservations
+func NewGetNodeNetworkReservationsRequest(server string, nodename InPathNodeName, params *GetNodeNetworkReservationsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/network/reservation", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Name != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -15628,6 +16029,17 @@ type ClientWithResponsesInterface interface {
 	// PostClusterLeaveWithResponse request
 	PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error)
 
+	// DeleteClusterLockWithResponse request
+	DeleteClusterLockWithResponse(ctx context.Context, params *DeleteClusterLockParams, reqEditors ...RequestEditorFn) (*DeleteClusterLockResponse, error)
+
+	// GetClusterLocksWithResponse request
+	GetClusterLocksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterLocksResponse, error)
+
+	// PostClusterLockWithBodyWithResponse request with any body
+	PostClusterLockWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterLockResponse, error)
+
+	PostClusterLockWithResponse(ctx context.Context, body PostClusterLockJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterLockResponse, error)
+
 	// PostClusterRegisterWithBodyWithResponse request with any body
 	PostClusterRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterRegisterResponse, error)
 
@@ -15938,11 +16350,20 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceStateFileWithBodyWithResponse request with any body
 	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
 
+	// DeleteNodeLockWithResponse request
+	DeleteNodeLockWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteNodeLockParams, reqEditors ...RequestEditorFn) (*DeleteNodeLockResponse, error)
+
+	// GetNodeLocksWithResponse request
+	GetNodeLocksWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeLocksResponse, error)
+
 	// GetNodeLogsWithResponse request
 	GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error)
 
 	// GetNodeMetricsWithResponse request
 	GetNodeMetricsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsResponse, error)
+
+	// GetNodeNetworkReservationsWithResponse request
+	GetNodeNetworkReservationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*GetNodeNetworkReservationsResponse, error)
 
 	// GetNodePingWithResponse request
 	GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error)
@@ -16733,6 +17154,111 @@ func (r PostClusterLeaveResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostClusterLeaveResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteClusterLockResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+	JSON503      *N503
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteClusterLockResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteClusterLockResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteClusterLockResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetClusterLocksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterLockList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+	JSON503      *N503
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterLocksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterLocksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClusterLocksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostClusterLockResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterLock
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+	JSON503      *N503
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterLockResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterLockResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostClusterLockResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -20015,6 +20541,72 @@ func (r PostInstanceStateFileResponse) ContentType() string {
 	return ""
 }
 
+type DeleteNodeLockResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteNodeLockResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteNodeLockResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteNodeLockResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNodeLocksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterLockList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeLocksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeLocksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNodeLocksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetNodeLogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20074,6 +20666,39 @@ func (r GetNodeMetricsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNodeMetricsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNodeNetworkReservationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NetworkReservationList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeNetworkReservationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeNetworkReservationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNodeNetworkReservationsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22200,6 +22825,41 @@ func (c *ClientWithResponses) PostClusterLeaveWithResponse(ctx context.Context, 
 	return ParsePostClusterLeaveResponse(rsp)
 }
 
+// DeleteClusterLockWithResponse request returning *DeleteClusterLockResponse
+func (c *ClientWithResponses) DeleteClusterLockWithResponse(ctx context.Context, params *DeleteClusterLockParams, reqEditors ...RequestEditorFn) (*DeleteClusterLockResponse, error) {
+	rsp, err := c.DeleteClusterLock(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteClusterLockResponse(rsp)
+}
+
+// GetClusterLocksWithResponse request returning *GetClusterLocksResponse
+func (c *ClientWithResponses) GetClusterLocksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterLocksResponse, error) {
+	rsp, err := c.GetClusterLocks(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterLocksResponse(rsp)
+}
+
+// PostClusterLockWithBodyWithResponse request with arbitrary body returning *PostClusterLockResponse
+func (c *ClientWithResponses) PostClusterLockWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterLockResponse, error) {
+	rsp, err := c.PostClusterLockWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterLockResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostClusterLockWithResponse(ctx context.Context, body PostClusterLockJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterLockResponse, error) {
+	rsp, err := c.PostClusterLock(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterLockResponse(rsp)
+}
+
 // PostClusterRegisterWithBodyWithResponse request with arbitrary body returning *PostClusterRegisterResponse
 func (c *ClientWithResponses) PostClusterRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterRegisterResponse, error) {
 	rsp, err := c.PostClusterRegisterWithBody(ctx, contentType, body, reqEditors...)
@@ -23152,6 +23812,24 @@ func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx cont
 	return ParsePostInstanceStateFileResponse(rsp)
 }
 
+// DeleteNodeLockWithResponse request returning *DeleteNodeLockResponse
+func (c *ClientWithResponses) DeleteNodeLockWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteNodeLockParams, reqEditors ...RequestEditorFn) (*DeleteNodeLockResponse, error) {
+	rsp, err := c.DeleteNodeLock(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteNodeLockResponse(rsp)
+}
+
+// GetNodeLocksWithResponse request returning *GetNodeLocksResponse
+func (c *ClientWithResponses) GetNodeLocksWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeLocksResponse, error) {
+	rsp, err := c.GetNodeLocks(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeLocksResponse(rsp)
+}
+
 // GetNodeLogsWithResponse request returning *GetNodeLogsResponse
 func (c *ClientWithResponses) GetNodeLogsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeLogsParams, reqEditors ...RequestEditorFn) (*GetNodeLogsResponse, error) {
 	rsp, err := c.GetNodeLogs(ctx, nodename, params, reqEditors...)
@@ -23168,6 +23846,15 @@ func (c *ClientWithResponses) GetNodeMetricsWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParseGetNodeMetricsResponse(rsp)
+}
+
+// GetNodeNetworkReservationsWithResponse request returning *GetNodeNetworkReservationsResponse
+func (c *ClientWithResponses) GetNodeNetworkReservationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*GetNodeNetworkReservationsResponse, error) {
+	rsp, err := c.GetNodeNetworkReservations(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeNetworkReservationsResponse(rsp)
 }
 
 // GetNodePingWithResponse request returning *GetNodePingResponse
@@ -24702,6 +25389,189 @@ func ParsePostClusterLeaveResponse(rsp *http.Response) (*PostClusterLeaveRespons
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteClusterLockResponse parses an HTTP response from a DeleteClusterLockWithResponse call
+func ParseDeleteClusterLockResponse(rsp *http.Response) (*DeleteClusterLockResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteClusterLockResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterLocksResponse parses an HTTP response from a GetClusterLocksWithResponse call
+func ParseGetClusterLocksResponse(rsp *http.Response) (*GetClusterLocksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterLocksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterLockList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterLockResponse parses an HTTP response from a PostClusterLockWithResponse call
+func ParsePostClusterLockResponse(rsp *http.Response) (*PostClusterLockResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterLockResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterLock
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 
@@ -29976,6 +30846,100 @@ func ParsePostInstanceStateFileResponse(rsp *http.Response) (*PostInstanceStateF
 	return response, nil
 }
 
+// ParseDeleteNodeLockResponse parses an HTTP response from a DeleteNodeLockWithResponse call
+func ParseDeleteNodeLockResponse(rsp *http.Response) (*DeleteNodeLockResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteNodeLockResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeLocksResponse parses an HTTP response from a GetNodeLocksWithResponse call
+func ParseGetNodeLocksResponse(rsp *http.Response) (*GetNodeLocksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeLocksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterLockList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetNodeLogsResponse parses an HTTP response from a GetNodeLogsWithResponse call
 func ParseGetNodeLogsResponse(rsp *http.Response) (*GetNodeLogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -30036,6 +31000,53 @@ func ParseGetNodeMetricsResponse(rsp *http.Response) (*GetNodeMetricsResponse, e
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeNetworkReservationsResponse parses an HTTP response from a GetNodeNetworkReservationsWithResponse call
+func ParseGetNodeNetworkReservationsResponse(rsp *http.Response) (*GetNodeNetworkReservationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeNetworkReservationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NetworkReservationList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

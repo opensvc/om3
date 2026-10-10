@@ -1,0 +1,214 @@
+package daemonapi
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/labstack/echo/v4"
+
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/locktable"
+)
+
+// lockTableRebuilding serializes the rebuilds of the lock table: two run at
+// once would each replace the table, the later one without what the earlier
+// granted in between.
+var lockTableRebuilding sync.Mutex
+
+// rebuildLockTable rebuilds the lock table this node grants from, from what
+// the clients of every node hold, unless it is rebuilt already.
+//
+// The table is in memory, and is this node's to keep only while it speaks for
+// the cluster. A node taking the speaking over has the table it had when it
+// last spoke, or none, while the clients of the cluster hold the locks the
+// node speaking before granted. Every node records the locks its own clients
+// hold, which is what the table is rebuilt from.
+//
+// A node heard that does not answer leaves the table not rebuilt, and no lock
+// is granted: the locks its clients hold are the ones a grant would break.
+func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
+	lockTableRebuilding.Lock()
+	defer lockTableRebuilding.Unlock()
+	table := locktable.SpeakerTable
+	if table.IsRebuilt() {
+		return nil
+	}
+	generation := table.Generation()
+	locks := append(locktable.LocalHeld.List(), table.Granted()...)
+	asked := 0
+	for _, nodename := range clusternode.Get() {
+		if nodename == a.localhost {
+			continue
+		}
+		if node.StatusData.GetByNode(nodename) == nil {
+			// A node this one has no data of has no daemon its clients
+			// could have asked a lock through.
+			continue
+		}
+		if _, ok := maintenanceEndsAt(a.localhost, nodename); ok {
+			// Its daemon is stopping or stopped, and the locks of its
+			// clients went with it.
+			continue
+		}
+		l, err := nodeLocks(ctx.Request().Context(), nodename)
+		if err != nil && !hearsPeer(a.localhost, nodename) {
+			// Neither heard nor answering: its daemon is gone, the
+			// cluster not dropping its data yet. A node whose heartbeats
+			// are lost but whose daemon answers is asked all the same.
+			continue
+		} else if err != nil {
+			return fmt.Errorf("ask %s the cluster locks its clients hold: %w", nodename, err)
+		}
+		locks = append(locks, l...)
+		asked++
+	}
+	conflicts, ok := table.Rebuild(generation, locks)
+	if !ok {
+		return locktable.ErrNotRebuilt
+	}
+	log := LogHandler(ctx, "rebuildLockTable")
+	for _, lock := range conflicts {
+		log.Warnf("cluster lock %s granted twice: %s on %s holds it until %s too", lock.Name, lock.Holder, lock.Node, lock.ExpiresAt.Format(time.RFC3339))
+	}
+	log.Infof("cluster locks: table rebuilt from %d peers, %d lock(s) held", asked, len(table.List()))
+	return nil
+}
+
+// nodeLocks returns the cluster locks the clients of a peer hold.
+func nodeLocks(ctx context.Context, nodename string) ([]locktable.Lock, error) {
+	// The node asks, not whoever asked it: a lock is no user's to see.
+	c, err := newPeerClient(nodename)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	resp, err := c.GetNodeLocksWithResponse(ctx, nodename)
+	if err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode())
+	}
+	l := make([]locktable.Lock, len(resp.JSON200.Items))
+	for i, item := range resp.JSON200.Items {
+		l[i] = lockFromAPI(item)
+	}
+	return l, nil
+}
+
+// lockFromAPI returns the lock a node answered, its lease rebased on the
+// clock of this node.
+//
+// The expiry the answer carries is read on the clock of the node that granted
+// the lock, and the clocks of the nodes need not agree: one ahead would see a
+// lock expire before its holder is done, and grant it again. The time left,
+// added to the clock of this node, needs no such agreement, and what the
+// answer spent on the way only makes the lease look longer, which errs on
+// the side of the holder.
+func lockFromAPI(item api.ClusterLock) locktable.Lock {
+	lock := locktable.Lock{
+		Name:       item.Name,
+		ID:         item.ID,
+		Node:       item.Node,
+		AcquiredAt: item.AcquiredAt,
+		ExpiresAt:  item.ExpiresAt,
+	}
+	if item.ExpiresIn != nil {
+		if d, err := time.ParseDuration(*item.ExpiresIn); err == nil {
+			lock.ExpiresAt = time.Now().Add(d)
+		}
+	}
+	if item.Holder != nil {
+		lock.Holder = *item.Holder
+	}
+	return lock
+}
+
+func lockToAPI(lock locktable.Lock) api.ClusterLock {
+	item := api.ClusterLock{
+		Name:       lock.Name,
+		ID:         lock.ID,
+		Node:       lock.Node,
+		AcquiredAt: lock.AcquiredAt,
+		ExpiresAt:  lock.ExpiresAt,
+	}
+	expiresIn := time.Until(lock.ExpiresAt).String()
+	item.ExpiresIn = &expiresIn
+	if lock.Holder != "" {
+		holder := lock.Holder
+		item.Holder = &holder
+	}
+	return item
+}
+
+func lockListToAPI(locks []locktable.Lock) api.ClusterLockList {
+	items := make([]api.ClusterLock, len(locks))
+	for i, lock := range locks {
+		items[i] = lockToAPI(lock)
+	}
+	return api.ClusterLockList{Kind: "ClusterLockList", Items: items}
+}
+
+// hearsPeer says this node receives the heartbeats of a peer, which is the
+// peer daemon answering.
+//
+// A peer whose daemon stopped cleanly is left in maintenance: the cluster
+// keeps its data, its last status among it, as the objects it runs go on
+// running. Its data being there says nothing of its daemon, which a request
+// handed to it finds gone.
+func hearsPeer(localhost, nodename string) bool {
+	hb := daemonsubsystem.DataHeartbeat.Get(localhost)
+	if hb == nil {
+		return false
+	}
+	for _, stream := range hb.Streams {
+		if !strings.HasSuffix(stream.ID, ".rx") {
+			continue
+		}
+		if peer, ok := stream.Peers[nodename]; ok && peer.IsBeating {
+			return true
+		}
+	}
+	return false
+}
+
+// maintenanceEndsAt returns when this node drops the data of a peer in
+// maintenance, which is when its heartbeats went stale and the maintenance
+// grace period of this node later, and whether the peer is in maintenance at
+// all. A peer whose heartbeats are not stale yet has the whole grace period
+// ahead of it.
+func maintenanceEndsAt(localhost, nodename string) (time.Time, bool) {
+	mon := node.MonitorData.GetByNode(nodename)
+	if mon == nil || mon.State != node.MonitorStateMaintenance {
+		return time.Time{}, false
+	}
+	cfg := node.ConfigData.GetByNode(localhost)
+	hb := daemonsubsystem.DataHeartbeat.Get(localhost)
+	if cfg == nil || hb == nil {
+		return time.Time{}, false
+	}
+	var staleAt time.Time
+	for _, stream := range hb.Streams {
+		if !strings.HasSuffix(stream.ID, ".rx") {
+			continue
+		}
+		if peer, ok := stream.Peers[nodename]; ok && !peer.IsBeating && peer.ChangedAt.After(staleAt) {
+			staleAt = peer.ChangedAt
+		}
+	}
+	if staleAt.IsZero() || hearsPeer(localhost, nodename) {
+		staleAt = time.Now()
+	}
+	until := staleAt.Add(cfg.MaintenanceGracePeriod)
+	if !until.After(time.Now()) {
+		return time.Time{}, false
+	}
+	return until, true
+}

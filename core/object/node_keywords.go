@@ -1325,7 +1325,7 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/hook.command"),
 	}
 	kwNodeNetworkType = keywords.Keyword{
-		Candidates: []string{"bridge", "routed_bridge"},
+		Candidates: []string{"bridge", "routed_bridge", "lan"},
 		Default:    "bridge",
 		Option:     "type",
 		Section:    "network",
@@ -1407,6 +1407,37 @@ var (
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.network"),
 		Types:   []string{"routed_bridge"},
+	}
+	kwNodeNetworkLANNetwork = keywords.Keyword{
+		Example: "192.168.10.0/24",
+		Option:  "network",
+		Section: "network",
+		Text:    keywords.NewText(fs, "text/kw/node/network.lan.network"),
+		Types:   []string{"lan"},
+	}
+	kwNodeNetworkLANRanges = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199",
+		Option:    "ranges",
+		Section:   "network",
+		Text:      keywords.NewText(fs, "text/kw/node/network.lan.ranges"),
+		Types:     []string{"lan"},
+	}
+	kwNodeNetworkLANDev = keywords.Keyword{
+		Example:  "eth1",
+		Option:   "dev",
+		Scopable: true,
+		Section:  "network",
+		Text:     keywords.NewText(fs, "text/kw/node/network.lan.dev"),
+		Types:    []string{"lan"},
+	}
+	kwNodeNetworkLANGateway = keywords.Keyword{
+		Example:  "192.168.10.254",
+		Option:   "gateway",
+		Scopable: true,
+		Section:  "network",
+		Text:     keywords.NewText(fs, "text/kw/node/network.lan.gateway"),
+		Types:    []string{"lan"},
 	}
 	kwNodeNetworkDev = keywords.Keyword{
 		Option:  "dev",
@@ -2023,6 +2054,10 @@ var (
 		&kwNodeNetworkRoutedBridgeNetwork,
 		&kwNodeNetworkDev,
 		&kwNodeNetworkPublic,
+		&kwNodeNetworkLANNetwork,
+		&kwNodeNetworkLANRanges,
+		&kwNodeNetworkLANDev,
+		&kwNodeNetworkLANGateway,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

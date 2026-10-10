@@ -90,6 +90,21 @@ func (e CapabilityListKind) Valid() bool {
 	}
 }
 
+// Defines values for ClusterLockListKind.
+const (
+	ClusterLockListKindClusterLockList ClusterLockListKind = "ClusterLockList"
+)
+
+// Valid indicates whether the value is a known member of the ClusterLockListKind enum.
+func (e ClusterLockListKind) Valid() bool {
+	switch e {
+	case ClusterLockListKindClusterLockList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DaemonListenerName.
 const (
 	ApiInet DaemonListenerName = "api.inet"
@@ -372,6 +387,21 @@ const (
 func (e NetworkListKind) Valid() bool {
 	switch e {
 	case NetworkListKindNetworkList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NetworkReservationListKind.
+const (
+	NetworkReservationListKindNetworkReservationList NetworkReservationListKind = "NetworkReservationList"
+)
+
+// Valid indicates whether the value is a known member of the NetworkReservationListKind enum.
+func (e NetworkReservationListKind) Valid() bool {
+	switch e {
+	case NetworkReservationListKindNetworkReservationList:
 		return true
 	default:
 		return false
@@ -1096,6 +1126,40 @@ type ClusterEvictBody struct {
 	Timeout *string `json:"timeout,omitempty"`
 }
 
+// ClusterLock defines model for ClusterLock.
+type ClusterLock struct {
+	AcquiredAt time.Time `json:"acquired_at"`
+
+	// ExpiresAt when the lease ends, which frees a lock never released
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// ExpiresIn how long the lease runs from the moment the answer is written. The
+	// nodes rebase a lock on their own clock from this rather than from
+	// expires_at, which is the clock of the node that granted it: the
+	// clocks of the nodes need not agree on the time, only tick at the
+	// same rate.
+	ExpiresIn *string `json:"expires_in,omitempty"`
+
+	// Holder who holds the lock, as its holder said
+	Holder *string `json:"holder,omitempty"`
+
+	// ID the id the lock was granted under, which releases it
+	ID   string `json:"id"`
+	Name string `json:"name"`
+
+	// Node the node whose client holds the lock
+	Node string `json:"node"`
+}
+
+// ClusterLockList defines model for ClusterLockList.
+type ClusterLockList struct {
+	Items []ClusterLock       `json:"items"`
+	Kind  ClusterLockListKind `json:"kind"`
+}
+
+// ClusterLockListKind defines model for ClusterLockList.Kind.
+type ClusterLockListKind string
+
 // ClusterRegisterBody defines model for ClusterRegisterBody.
 type ClusterRegisterBody struct {
 	// App Register the nodes in this app. Without it, the node app keyword
@@ -1710,6 +1774,23 @@ type NetworkList struct {
 // NetworkListKind defines model for NetworkList.Kind.
 type NetworkListKind string
 
+// NetworkReservation defines model for NetworkReservation.
+type NetworkReservation struct {
+	IP      string `json:"ip"`
+	Network string `json:"network"`
+	Path    string `json:"path"`
+	RID     string `json:"rid"`
+}
+
+// NetworkReservationList defines model for NetworkReservationList.
+type NetworkReservationList struct {
+	Items []NetworkReservation       `json:"items"`
+	Kind  NetworkReservationListKind `json:"kind"`
+}
+
+// NetworkReservationListKind defines model for NetworkReservationList.Kind.
+type NetworkReservationListKind string
+
 // Node defines model for Node.
 type Node struct {
 	Config  *NodeConfig  `json:"config,omitempty"`
@@ -2044,6 +2125,10 @@ type OrchestrationListKind string
 
 // OrchestrationQueued defines model for OrchestrationQueued.
 type OrchestrationQueued struct {
+	// Node the node that accepted the orchestration, which answers for it
+	// from the moment it hands the id out, while the other nodes hear
+	// of it a heartbeat later
+	Node            *string            `json:"node,omitempty"`
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
@@ -2188,6 +2273,27 @@ type PoolVolumeList struct {
 
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
+
+// PostClusterLock defines model for PostClusterLock.
+type PostClusterLock struct {
+	// Holder who holds the lock, for the reader of a listing
+	Holder *string `json:"holder,omitempty"`
+
+	// Lease how long the lock is held unless released before, 30s by default,
+	// 10m at most
+	Lease *string `json:"lease,omitempty"`
+
+	// Name the name of the lock
+	Name string `json:"name"`
+
+	// Node the node whose client asks, set by the node handing the request
+	// over to the node speaking for the cluster
+	Node *string `json:"node,omitempty"`
+
+	// Wait how long to wait for the lock while another holds it, not at all
+	// by default
+	Wait *string `json:"wait,omitempty"`
+}
 
 // PostComputeClaim defines model for PostComputeClaim.
 type PostComputeClaim struct {
@@ -3065,6 +3171,19 @@ type PostClusterJoinParams struct {
 type PostClusterLeaveParams struct {
 	// Node The leaving cluster node
 	Node string `form:"node" json:"node"`
+}
+
+// DeleteClusterLockParams defines parameters for DeleteClusterLock.
+type DeleteClusterLockParams struct {
+	// Name the name of the lock
+	Name string `form:"name" json:"name"`
+
+	// Id the id the lock was granted under
+	Id string `form:"id" json:"id"`
+
+	// Node the node whose client releases, set by the node handing the
+	// request over to the node speaking for the cluster
+	Node *string `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetClusterStatusParams defines parameters for GetClusterStatus.
@@ -4048,6 +4167,15 @@ type GetInstanceResourceFileParams struct {
 	Rid InQueryResourceFileRid `form:"rid" json:"rid"`
 }
 
+// DeleteNodeLockParams defines parameters for DeleteNodeLock.
+type DeleteNodeLockParams struct {
+	// Name the name of the lock
+	Name string `form:"name" json:"name"`
+
+	// Id the id the lock was granted under
+	Id string `form:"id" json:"id"`
+}
+
 // GetNodeLogsParams defines parameters for GetNodeLogs.
 type GetNodeLogsParams struct {
 	// Filter list of log filter
@@ -4064,6 +4192,12 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
+}
+
+// GetNodeNetworkReservationsParams defines parameters for GetNodeNetworkReservations.
+type GetNodeNetworkReservationsParams struct {
+	// Name the name of a cluster backend network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.
@@ -4303,6 +4437,9 @@ type PostClusterEnrollJSONRequestBody = ClusterEnrollBody
 
 // PostClusterEvictJSONRequestBody defines body for PostClusterEvict for application/json ContentType.
 type PostClusterEvictJSONRequestBody = ClusterEvictBody
+
+// PostClusterLockJSONRequestBody defines body for PostClusterLock for application/json ContentType.
+type PostClusterLockJSONRequestBody = PostClusterLock
 
 // PostClusterRegisterJSONRequestBody defines body for PostClusterRegister for application/json ContentType.
 type PostClusterRegisterJSONRequestBody = ClusterRegisterBody

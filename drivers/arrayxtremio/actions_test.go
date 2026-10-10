@@ -103,4 +103,6 @@ func TestConvertIDsSendsANumberedIDAsANumber(t *testing.T) {
 	assert.Equal(t, 12, got["vol-id"])
 	assert.Equal(t, "grp1", got["ig-id"])
 	assert.Equal(t, "42", got["vol-name"], "only an id is converted")
+	got = convertIDs(map[string]any{"cluster-id": "2"})
+	assert.Equal(t, "2", got["cluster-id"], "a cluster is named, not numbered")
 }

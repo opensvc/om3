@@ -1,0 +1,5 @@
+Which nodes should receive this data sync from the `PRD` node where the
+instance is up and running.
+
+`target=local` allows updating a `dst` subvolume of another filesystem on the
+same server that sends the data from the `src` subvolume.

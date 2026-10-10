@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -57,7 +58,11 @@ func (a *DaemonAPI) PostNetworkClaim(ctx echo.Context) error {
 	}
 	held, seen, err := network.ClaimHeldByKey(ctx.Request().Context(), payload.Network, payload.Namespace)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Network addresses", "%s", err)
+		// Refused rather than failed: a failure is a claim the client lets
+		// through, as one nobody brokers, and this one is brokered. What the
+		// namespace holds is unknown, which is no reason to let it hold more.
+		why := fmt.Sprintf("the addresses the %s namespace holds of network %s could not be read: %s", payload.Namespace, payload.Network, err)
+		return ctx.JSON(http.StatusOK, api.NetworkClaim{Granted: false, Reason: &why})
 	}
 	now := time.Now()
 	granted, why := networkClaimGrants.Fits(payload.Namespace, payload.Network, ipam.Key(p, payload.RID), limit, held, seen, now)

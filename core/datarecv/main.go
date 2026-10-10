@@ -817,7 +817,12 @@ func Split(text []string) [][]string {
 }
 
 func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KVInstall) {
-	path := t.to.GetObject().(object.Core).Path()
+	return t.parseInstall(head, t.to.GetObject().(object.Core).Path())
+}
+
+// parseInstall reads the install keyword of the object at path, whose
+// relative datastore paths are in its namespace.
+func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition, []object.KVInstall) {
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
 	if head == "" {
@@ -911,10 +916,10 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		}
 
 		switch fromStore.Kind {
-		case naming.KindSec:
-			item.AccessControl.Perm = defaultSecPerm
-		case naming.KindCfg:
-			item.AccessControl.Perm = defaultPerm
+		case naming.KindSec, naming.KindCfg:
+			// The perm keyword, as the configs and secrets keywords
+			// read it, else the default of the kind of datastore.
+			item.AccessControl.Perm = t.getPerm(fromStore.Kind)
 		default:
 			return
 		}

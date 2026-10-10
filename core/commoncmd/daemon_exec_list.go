@@ -80,6 +80,28 @@ func (t *CmdDaemonExecList) Run() error {
 	return err
 }
 
+// resolveIDs replaces the ids given as the start of one, as the listings and
+// the status show them, by the ids they start.
+func (t *CmdDaemonExecList) resolveIDs() error {
+	var err error
+	if t.ExecID != "" {
+		if t.ExecID, err = ResolveExecID(t.NodeSelector, t.ExecID); err != nil {
+			return err
+		}
+	}
+	if t.SessionID != "" {
+		if t.SessionID, err = ResolveSessionID(t.NodeSelector, t.SessionID); err != nil {
+			return err
+		}
+	}
+	if t.OrchestrationID != "" {
+		if t.OrchestrationID, err = ResolveOrchestrationID(t.NodeSelector, t.OrchestrationID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Gather asks every selected node and returns what they answered together.
 //
 // An exec is node-local, so the union over the nodes is the whole of what a
@@ -100,6 +122,9 @@ func (t *CmdDaemonExecList) Gather() ([]api.ExecItem, error) {
 	}
 	if len(nodenames) == 0 {
 		return nil, fmt.Errorf("no node matching %s", t.NodeSelector)
+	}
+	if err := t.resolveIDs(); err != nil {
+		return nil, err
 	}
 
 	// The requests are held for as long as the wait asks, and the grace on

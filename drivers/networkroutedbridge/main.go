@@ -4,12 +4,14 @@ package networkroutedbridge
 
 import (
 	"fmt"
+	"hash/fnv"
 	"math/big"
 	"math/bits"
 	"net"
 	"strings"
 
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/network"
@@ -316,7 +318,7 @@ func (t *T) Setup() error {
 		// is up with its gateway address, no tunnel or route reaches a peer,
 		// and setupNetwork returns before writing the cni configuration. An
 		// object using this network does not start on this node.
-		t.Log().Errorf("no %s address for this node, so this network is left with its bridge up, no tunnel or route to the peer nodes, and no cni configuration written: an object using it will not start on this node. Set the addr keyword scoped to this node, or give the node an address of that family", t.getAF())
+		t.Log().Errorf("%s: this network is left with its bridge up, no tunnel or route to the peer nodes, and no cni configuration written, so an object using it will not start on this node. Set the addr keyword scoped to this node to an %s address of the node out of the network, or give the node one", err, t.getAF())
 		return fmt.Errorf("get local %s address of this node: %w", t.getAF(), err)
 	}
 	nodes, err := t.Nodes()
@@ -355,7 +357,7 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 	} else if v, err := t.mustTunnel(tunnel, peerIP); err != nil {
 		return fmt.Errorf("must tunnel: %w", err)
 	} else if v {
-		name := tunName(peerIP, nodeIndex)
+		name := tunName(localIP, peerIP)
 		if err := t.setupNodeTunnelLink(nodename, name, localIP, peerIP); err != nil {
 			return fmt.Errorf("setup tunnel: %w", err)
 		}
@@ -679,9 +681,19 @@ func (t *T) addTunnelIp4(name string, localIP, peerIP net.IP) error {
 	return netlink.LinkAdd(link)
 }
 
-func tunName(peerIP net.IP, nodeIndex int) string {
+// tunName returns the name of the tunnel between two nodes, which every
+// network tunneling between the same two addresses shares, and no other: a
+// network whose nodes use other addresses than another's has tunnels of its
+// own, rather than rewrite the endpoints of the other's.
+//
+// An ipv6 address does not fit the 15 characters of a link name, so the name
+// of an ipv6 tunnel is a hash of its endpoints.
+func tunName(localIP, peerIP net.IP) string {
 	if peerIP.To4() == nil {
-		return fmt.Sprintf("otun%d", nodeIndex)
+		h := fnv.New32a()
+		h.Write(localIP.To16())
+		h.Write(peerIP.To16())
+		return fmt.Sprintf("otun%08x", h.Sum32())
 	} else {
 		return fmt.Sprintf("tun%s", strings.ReplaceAll(peerIP.String(), ".", ""))
 	}
@@ -786,19 +798,34 @@ func (t *T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 	ipnet.IP = brIP
 	ipnetStr := ipnet.String()
 
-	if intf, err := net.InterfaceByName(brName); err != nil {
+	// The duplicate address detection of an ipv6 address waits for the
+	// carrier of the bridge, which it has once a container is plugged in:
+	// until then the address is tentative, and the kernel refuses it as the
+	// source of the routes to the peers, so a node starting with no container
+	// had no route. The address is om's, on a bridge of om's: there is no
+	// duplicate to detect.
+	flags := 0
+	if brIP.To4() == nil {
+		flags = unix.IFA_F_NODAD
+	}
+	addrs, err := netlink.AddrList(br, netlink.FAMILY_ALL)
+	if err != nil {
 		return err
-	} else if addrs, err := intf.Addrs(); err != nil {
-		return err
-	} else {
-		for _, addr := range addrs {
-			if addr.String() == ipnetStr {
-				t.Log().Infof("bridge ip %s already added to %s", ipnet, brName)
-				return nil
-			}
+	}
+	for _, addr := range addrs {
+		if addr.IPNet.String() != ipnetStr {
+			continue
+		}
+		if addr.Flags&(unix.IFA_F_TENTATIVE|unix.IFA_F_DADFAILED) == 0 {
+			t.Log().Infof("bridge ip %s already added to %s", ipnet, brName)
+			return nil
+		}
+		t.Log().Infof("bridge ip %s of %s is tentative: add it again with no duplicate address detection", ipnet, brName)
+		if err := netlink.AddrDel(br, &addr); err != nil {
+			return err
 		}
 	}
-	addr := &netlink.Addr{IPNet: ipnet}
+	addr := &netlink.Addr{IPNet: ipnet, Flags: flags}
 	if err := netlink.AddrAdd(br, addr); err != nil {
 		return err
 	}
@@ -809,6 +836,19 @@ func (t *T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 // getNodeIP returns the addr scoped for nodename from the network config.
 // Defaults to the first resolved ip address with the network address family (ip4 or ip6).
 func (t *T) getNodeIP(nodename string) (net.IP, error) {
+	ip, err := t.nodeIP(nodename)
+	if err != nil {
+		return nil, err
+	}
+	if ipnet, err := t.IPNet(); err == nil && ipnet.Contains(ip) {
+		// The tunnels and routes to the node carry the network: an address
+		// of it is reached through them, which reach the node through it.
+		return nil, fmt.Errorf("the address %s of node %s is in the network %s itself, which the tunnels and routes to the node carry: set addr@%s to an address of the node out of it", ip, nodename, ipnet, nodename)
+	}
+	return ip, nil
+}
+
+func (t *T) nodeIP(nodename string) (net.IP, error) {
 	var addr string
 	if nodename == hostname.Hostname() {
 		addr = t.GetString("addr")

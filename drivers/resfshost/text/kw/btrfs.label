@@ -1,0 +1,5 @@
+The label of the btrfs, set when it is formatted.
+
+The sync resources find the filesystem by its label on every node, the device of the filesystem changing from a node to another, so the label is set in a keyword of its own they can reference, as `src = {fs#1.label}:{fs#1.subvol}`.
+
+A `-L` or `--label` option of mkfs_opt naming another label is refused.

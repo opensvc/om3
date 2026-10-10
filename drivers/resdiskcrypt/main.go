@@ -4,6 +4,7 @@ package resdiskcrypt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -18,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
@@ -73,7 +75,7 @@ func genPassphrase() []byte {
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "name", Value: t.getName()},
-		{Key: "dev", Value: t.getDev()},
+		{Key: "dev", Value: t.Dev},
 		{Key: "secret", Value: t.Secret},
 		{Key: "label", Value: t.FormatLabel},
 		{Key: "manage_passphrase", Value: fmt.Sprint(t.ManagePassphrase)},
@@ -159,7 +161,16 @@ func (t *T) sec() (object.Sec, error) {
 }
 
 func (t *T) exists(ctx context.Context) (bool, error) {
-	dev := t.getDev()
+	dev, err := t.devpath(ctx)
+	var errAccess vpath.ErrAccess
+	if errors.As(err, &errAccess) {
+		// The device of a vol that is not available is not here, as the
+		// device of a volume group not activated is not.
+		t.Log().Tracef("%s", err)
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
 	if dev == "" {
 		return false, nil
 	}
@@ -192,7 +203,10 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 }
 
 func (t *T) activate(ctx context.Context) error {
-	devp := t.getDev()
+	devp, err := t.devpath(ctx)
+	if err != nil {
+		return fmt.Errorf("abort luksOpen: %w", err)
+	}
 	if devp == "" {
 		return fmt.Errorf("abort luksOpen: no dev")
 	}
@@ -299,16 +313,24 @@ func (t *T) removeHolders(ctx context.Context) error {
 	return t.exposedDevice().RemoveHolders(ctx)
 }
 
-func (t *T) getDev() string {
-	return t.Dev
+// devpath returns the device the dev keyword names: a device path, the name
+// of a vol of the namespace, or the id of a resource of the object, whose
+// exposed device it is.
+func (t *T) devpath(ctx context.Context) (string, error) {
+	if t.Dev == "" {
+		return "", nil
+	}
+	return vpath.Devpath(ctx, t.RID(), t.Dev, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
 }
 
 func (t *T) getName() string {
 	if t.Name != "" {
 		return t.Name
 	}
-	dev := t.getDev()
-	return filepath.Base(dev) + "-crypt"
+	// The written value, a device path, a vol name or a resource id, rather
+	// than the device it exposes, which can change from a start to the
+	// next. A device-mapper name is better off without the '#' of an id.
+	return strings.ReplaceAll(filepath.Base(t.Dev), "#", ".") + "-crypt"
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -328,7 +350,10 @@ func (t *T) Label(_ context.Context) string {
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
-	dev := t.getDev()
+	dev, err := t.devpath(ctx)
+	if err != nil {
+		return err
+	}
 	if dev == "" {
 		return fmt.Errorf("no dev")
 	}
@@ -336,10 +361,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if name == "" {
 		return fmt.Errorf("no name")
 	}
-	var (
-		b   []byte
-		err error
-	)
+	var b []byte
 	if v, err := t.exists(ctx); err != nil {
 		return err
 	} else if v {
@@ -398,7 +420,16 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
-	dev := t.getDev()
+	dev, err := t.devpath(ctx)
+	var errAccess vpath.ErrAccess
+	if errors.As(err, &errAccess) {
+		// An unprovision runs with the vol stopped, and unprovisioning the
+		// vol is what erases the storage, header included.
+		t.Log().Infof("%s: the luks header is left to the vol", err)
+		return nil
+	} else if err != nil {
+		return err
+	}
 	if dev == "" {
 		return nil
 	}
@@ -577,7 +608,10 @@ func (t *T) ReservableDevices(ctx context.Context) device.L {
 }
 
 func (t *T) SubDevices(ctx context.Context) device.L {
-	devp := t.getDev()
+	devp, err := t.devpath(ctx)
+	if err != nil {
+		t.Log().Tracef("%s", err)
+	}
 	if devp == "" {
 		return device.L{}
 	}

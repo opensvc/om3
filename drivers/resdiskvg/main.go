@@ -312,7 +312,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("Volume group %s is already provisioned", vg.FQN())
 		return nil
 	}
-	if pvs, err := vpath.HostDevpaths(ctx, t.PVs, t.Path.Namespace); err != nil {
+	if pvs, err := vpath.DevpathsOf(ctx, t.RID(), t.PVs, t.Path.Namespace, vpath.ResolverOf(t.GetObject())); err != nil {
 		return err
 	} else {
 		return vgi.Create(ctx, t.Size, pvs, t.Options)

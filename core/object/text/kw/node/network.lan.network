@@ -1,0 +1,20 @@
+The segment the nodes share, as `192.168.10.0/24`, which the addresses drawn
+from this network are configured with the prefix length of. Its first
+address, and the last of an ipv4 segment, are never handed out.
+
+om hands out the addresses of the ranges keyword only. Every node draws from
+all of them, so an address is the same wherever the object runs, and an
+object moving to another node takes its address along.
+
+A draw is made under the cluster lock of the network, and keeps clear of the
+addresses the nodes hold: the ones each node alive has reserved, the ones the
+cluster status reports, and the ones each node remembers the others last
+reported holding, which outlive a node the cluster stops hearing from. A node
+stopped cleanly, as for a restart, is waited for until its maintenance grace
+period ends, for as long as the lease of the lock allows.
+
+Two parts of a split cluster, each not hearing the other, draw blind to what
+the other draws, and can hand out the same address twice. The ip.host
+resources report such an address as held elsewhere too, and an administrator
+gives one of them another address: unset the addr of the resource and
+restart it, or unprovision and provision it.

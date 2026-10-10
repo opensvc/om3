@@ -3,11 +3,11 @@ package arrayfreenas
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/array"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 // The options this array needs and no other declares. Everything else comes
@@ -121,14 +121,21 @@ var (
 )
 
 // zvolFlags is the options describing a zvol to create.
+//
+// The blocksize is not one of them: it is the one the extent exports, and
+// the zvol is left the volblocksize the array chooses, as v2 leaves it.
 var zvolFlags = []array.Flag{
 	array.FlagName,
-	flagBlocksizeInt,
 	array.FlagSize,
 	flagSparse,
 	flagDedup,
 	flagCompression,
 }
+
+// diskFlags is the options describing a disk to create: a zvol and how it is
+// exported.
+var diskFlags = append(append([]array.Flag{}, zvolFlags...),
+	flagBlocksizeInt, flagInsecureTPC, array.FlagLUN, array.FlagMapping)
 
 // optAddZvol reads what a zvol is made of.
 func optAddZvol(in array.Input, name string) AddZvolOptions {
@@ -200,24 +207,29 @@ func (t *Array) Actions() []array.Action {
 		{
 			Path:  []string{"add", "disk"},
 			Short: "add a zvol-type dataset and map",
-			Flags: append(append([]array.Flag{}, zvolFlags...),
-				flagInsecureTPC, array.FlagLUN, array.FlagMapping),
+			Flags: diskFlags,
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.AddDisk(ctx, optAddDisk(in, in.String(array.FlagName.Name)))
+				return t.addDiskReport(ctx, optAddDisk(in, in.String(array.FlagName.Name)))
 			},
 		},
 		{
-			// The name of the dataset is the volume and the name together.
-			// The collector writes this one, so it stays answered, and out of
-			// the help so nobody else starts writing it.
+			// The name of the dataset is the volume and the name together,
+			// and the extent is named by the name alone, as v2 names it: the
+			// collector knows the disk by this name, and deletes and resizes
+			// it by it. The collector writes this one, so it stays answered,
+			// and out of the help so nobody else starts writing it.
 			Path:   []string{"add", "iscsi", "zvol"},
 			Short:  "add a zvol-type dataset",
 			Hidden: true,
-			Flags: append(append([]array.Flag{flagVolume}, zvolFlags...),
-				flagInsecureTPC, array.FlagLUN, array.FlagMapping),
+			Flags:  append([]array.Flag{flagVolume}, diskFlags...),
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				name := in.String(flagVolume.Name) + "/" + in.String(array.FlagName.Name)
-				return t.AddDisk(ctx, optAddDisk(in, name))
+				volume, name := in.String(flagVolume.Name), in.String(array.FlagName.Name)
+				if volume == "" || name == "" {
+					return nil, fmt.Errorf("--volume and --name are required")
+				}
+				opt := optAddDisk(in, volume+"/"+name)
+				opt.ExtentName = name
+				return t.addDiskReport(ctx, opt)
 			},
 		},
 		{
@@ -241,7 +253,7 @@ func (t *Array) Actions() []array.Action {
 			Short: "del a zvol-type dataset",
 			Flags: []array.Flag{array.FlagName},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.DeleteDataset(ctx, in.String(array.FlagName.Name))
+				return t.DelZvol(ctx, in.String(array.FlagName.Name))
 			},
 		},
 		{
@@ -271,17 +283,17 @@ func (t *Array) Actions() []array.Action {
 			// The collector writes this one, and v2 answers to it.
 			Path:  []string{"resize", "zvol"},
 			Short: "resize a zvol-type dataset",
-			Flags: []array.Flag{array.FlagName, array.FlagSize},
+			Flags: []array.Flag{array.FlagName, array.FlagSize, array.FlagTruncate},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.updateDatasetSize(ctx, in.String(array.FlagName.Name), in.String(array.FlagSize.Name))
+				return t.resizeZvol(ctx, in.String(array.FlagName.Name), in.String(array.FlagSize.Name), in.Bool(array.FlagTruncate.Name))
 			},
 		},
 		{
 			Path:  []string{"update", "dataset"},
 			Short: "update a dataset",
-			Flags: []array.Flag{array.FlagName, array.FlagSize},
+			Flags: []array.Flag{array.FlagName, array.FlagSize, array.FlagTruncate},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.updateDatasetSize(ctx, in.String(array.FlagName.Name), in.String(array.FlagSize.Name))
+				return t.resizeZvol(ctx, in.String(array.FlagName.Name), in.String(array.FlagSize.Name), in.Bool(array.FlagTruncate.Name))
 			},
 		},
 		{
@@ -410,41 +422,139 @@ func parseListen(l []string) ([]ISCSIPortalListenIp, error) {
 	return out, nil
 }
 
-// updateDatasetSize resizes a dataset. A size beginning with a sign is added
-// to, or taken from, the size the dataset has.
-func (t *Array) updateDatasetSize(ctx context.Context, name, size string) (any, error) {
-	var (
-		params UpdateDatasetParams
-		result int64
-		sign   string
-	)
-	if strings.HasPrefix(size, "+") || strings.HasPrefix(size, "-") {
-		sign = string(size[0])
-		size = size[1:]
-		ds, err := t.GetDataset(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-		i, err := sizeconv.FromSize(ds.Volsize.Rawvalue)
-		if err != nil {
-			return nil, err
-		}
-		result = i
-	}
-	i, err := sizeconv.FromSize(size)
+// resizeZvol resizes the zvol a command line names, read as resolveZvol
+// reads it: the collector names a disk by its extent name. A size beginning
+// with "+" is added to the size the zvol has. A size below the current one
+// is refused unless truncate is set: the array drops the end of the zvol.
+func (t *Array) resizeZvol(ctx context.Context, name, size string, truncate bool) (*Dataset, error) {
+	newSize, err := array.ParseSize(size)
 	if err != nil {
 		return nil, err
 	}
-	switch sign {
-	case "+":
-		result += i
-	case "-":
-		result -= i
-	default:
-		result = i
+	ref, err := t.resolveZvol(ctx, name)
+	if err != nil {
+		return nil, err
 	}
-	params.Volsize = &result
-	return t.UpdateDataset(ctx, name, params)
+	if ref.dataset.Volsize == nil {
+		return nil, fmt.Errorf("zvol %s: the array reports no volsize", ref.dataset.Name)
+	}
+	current, err := strconv.ParseInt(ref.dataset.Volsize.Rawvalue, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("zvol %s: volsize %q: %w", ref.dataset.Name, ref.dataset.Volsize.Rawvalue, err)
+	}
+	target := newSize.Target(current)
+	if err := array.CheckResize(current, target, truncate); err != nil {
+		return nil, fmt.Errorf("zvol %s: %w", ref.dataset.Name, err)
+	}
+	return t.UpdateDataset(ctx, ref.dataset.Id, UpdateDatasetParams{Volsize: &target})
+}
+
+// AddDiskReport is what an add reports, in the keys v2 reports it with: the
+// collector stores it as the result of its disk form. The dataset and the
+// targetextents are reported too, for a reader of the command line.
+type AddDiskReport struct {
+	DriverData    ISCSIExtent        `json:"driver_data"`
+	DiskID        string             `json:"disk_id"`
+	DiskDevID     int                `json:"disk_devid"`
+	Mappings      []DiskMapping      `json:"mappings"`
+	Warnings      []string           `json:"warnings,omitempty"`
+	Dataset       *Dataset           `json:"dataset,omitempty"`
+	TargetExtents ISCSITargetExtents `json:"targetextents"`
+}
+
+// DiskMapping is an initiator reaching a disk through a target, as v2's
+// list_mappings reports it.
+type DiskMapping struct {
+	TargetGroup ISCSITargetGroup  `json:"targetgroup"`
+	Extent      ISCSITargetExtent `json:"extent"`
+	DiskID      string            `json:"disk_id"`
+	TgtID       string            `json:"tgt_id"`
+	HBAID       string            `json:"hba_id"`
+}
+
+// addDiskReport adds a disk and reports it as v2 does.
+//
+// The mappings are read back from the array once the disk is made. Failing
+// to read them is a warning, not an error: the disk exists and is exported,
+// and a caller told the add failed forgets a disk the array serves.
+func (t *Array) addDiskReport(ctx context.Context, opt AddDiskOptions) (*AddDiskReport, error) {
+	disk, err := t.AddDisk(ctx, opt)
+	if err != nil {
+		return nil, err
+	}
+	extent := *disk.ISCSI.Extent
+	report := AddDiskReport{
+		DriverData:    extent,
+		DiskID:        t.DiskId(*disk),
+		DiskDevID:     extent.Id,
+		Mappings:      make([]DiskMapping, 0),
+		Dataset:       disk.Dataset,
+		TargetExtents: disk.ISCSI.TargetExtents,
+	}
+	if mappings, err := t.diskMappings(ctx, extent); err != nil {
+		report.Warnings = append(report.Warnings, fmt.Sprintf("list the mappings of extent %d: %s", extent.Id, err))
+	} else {
+		report.Mappings = mappings
+	}
+	return &report, nil
+}
+
+// diskMappings returns the initiators reaching an extent, and the targets
+// they reach it through, sorted as v2 sorts them. They are the initiators
+// the target groups of its targets allow, not the ones a command line asked
+// for: they are who sees the disk.
+func (t *Array) diskMappings(ctx context.Context, extent ISCSIExtent) ([]DiskMapping, error) {
+	targetExtents, err := t.GetISCSITargetExtents(ctx)
+	if err != nil {
+		return nil, err
+	}
+	targets, err := t.GetISCSITargets(ctx)
+	if err != nil {
+		return nil, err
+	}
+	initiators, err := t.GetISCSIInitiators(ctx)
+	if err != nil {
+		return nil, err
+	}
+	diskID := strings.TrimPrefix(extent.NAA, "0x")
+	byKey := make(map[string]DiskMapping)
+	for _, targetExtent := range targetExtents.WithExtent(extent) {
+		target, ok := targets.GetById(targetExtent.TargetId)
+		if !ok {
+			return nil, fmt.Errorf("target id %d of targetextent %d not found", targetExtent.TargetId, targetExtent.Id)
+		}
+		for _, group := range target.Groups {
+			names, any, err := groupInitiators(group, initiators)
+			if err != nil {
+				return nil, fmt.Errorf("target %s: %w", target.Name, err)
+			}
+			if any {
+				// Every initiator sees the disk through this target, which
+				// the report says rather than listing none.
+				names = []string{anyInitiator}
+			}
+			for _, hba := range names {
+				byKey[hba+":"+target.Name+":"+diskID] = DiskMapping{
+					TargetGroup: group,
+					Extent:      targetExtent,
+					DiskID:      diskID,
+					TgtID:       target.Name,
+					HBAID:       hba,
+				}
+			}
+		}
+	}
+	l := make([]DiskMapping, 0, len(byKey))
+	for _, m := range byKey {
+		l = append(l, m)
+	}
+	sort.Slice(l, func(i, j int) bool {
+		if l[i].HBAID != l[j].HBAID {
+			return l[i].HBAID < l[j].HBAID
+		}
+		return l[i].TgtID < l[j].TgtID
+	})
+	return l, nil
 }
 
 // Reports returns the sections of its configuration this array pushes to the

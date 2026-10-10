@@ -82,6 +82,7 @@ func (t *T) DriverID() driver.ID {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
 	return m

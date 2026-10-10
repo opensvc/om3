@@ -140,9 +140,9 @@ func (t *Array) Actions() []array.Action {
 		{
 			Path:  []string{"resize", "disk"},
 			Short: "resize a volume",
-			Flags: []array.Flag{flagVolume, array.FlagSize},
+			Flags: []array.Flag{flagVolume, array.FlagSize, array.FlagTruncate},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.ResizeDisk(ctx, in.String(flagVolume.Name), in.String(array.FlagSize.Name))
+				return t.ResizeDisk(ctx, in.String(flagVolume.Name), in.String(array.FlagSize.Name), in.Bool(array.FlagTruncate.Name))
 			},
 		},
 		{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -11,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -47,9 +47,13 @@ func TestFile(t *testing.T) {
 			_, _ = w.Write([]byte("a response\n"))
 		})
 		s := http.Server{Addr: addr, Handler: mux}
+		// Listening before returning, so the server accepts the first
+		// request of the test: started in the goroutine, it raced it.
+		ln, err := net.Listen("tcp", addr)
+		require.NoError(t, err)
+		t.Logf("started server %s", addr)
 		go func() {
-			t.Logf("starting server %s", addr)
-			_ = s.ListenAndServe()
+			_ = s.Serve(ln)
 		}()
 		return func() {
 			_ = s.Shutdown(context.Background())
@@ -58,7 +62,6 @@ func TestFile(t *testing.T) {
 	}
 
 	defer startServer(":8080")()
-	time.Sleep(time.Millisecond)
 	t.Run("ensure fake web server is running", func(t *testing.T) {
 		get, err := http.Get("http://localhost:8080/")
 		require.NoError(t, err)

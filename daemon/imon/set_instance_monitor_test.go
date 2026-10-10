@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -149,4 +150,75 @@ func TestARequestChangingNothingIsRefused(t *testing.T) {
 	}
 	require.NotNil(t, refused)
 	assert.Equal(t, id.String(), refused.ID)
+}
+
+// A start someone asks for is accepted as soon as one instance is provisioned,
+// the start candidates being the provisioned instances only. It is refused
+// when none is: the orchestration would have no instance to start.
+func TestARequestedStartNeedsAProvisionedInstance(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2"}
+	m.objStatus.Provisioned = provisioned.Mixed
+	m.instStatus["node1"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	ok, reason := m.isRequestedStartable()
+	assert.True(t, ok, reason)
+
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.Mixed}
+	ok, reason = m.isRequestedStartable()
+	assert.False(t, ok)
+	assert.Contains(t, reason, "no instance provisioned")
+
+	m.objStatus.Provisioned = provisioned.False
+	ok, reason = m.isRequestedStartable()
+	assert.False(t, ok)
+	assert.Contains(t, reason, "false object provisioned state")
+}
+
+// A switch moves the object to an instance not up and provisioned: an
+// unprovisioned instance is no destination.
+func TestASwitchDestinationIsProvisioned(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2", "node3"}
+	m.objStatus.PlacementPolicy = placement.NodesOrder
+	m.instStatus["node1"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	assert.Equal(t, "", m.nextPlacedAtCandidate(), "no instance not up is provisioned")
+
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	assert.Equal(t, "node3", m.nextPlacedAtCandidate())
+}
+
+// A failover object running on a node is provisioned from there: the
+// placement leader would start a second instance of it.
+func TestAProvisionIsLedFromWhereTheObjectRuns(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.instMonitor["node3"] = instance.Monitor{IsLeader: true}
+	m.instStatus["node1"] = instance.Status{Avail: status.Down}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down}
+	assert.Equal(t, "node3", m.provisioningLeader(), "the placement leader, when the object runs nowhere")
+
+	m.instStatus["node2"] = instance.Status{Avail: status.Up}
+	assert.Equal(t, "node2", m.provisioningLeader(), "where the object runs")
+	assert.False(t, m.isProvisioningLeader())
+
+	m.instStatus["node1"] = instance.Status{Avail: status.Warn}
+	assert.Equal(t, "node1", m.provisioningLeader())
+	assert.True(t, m.isProvisioningLeader())
+}
+
+// The leader of an unprovision of a failover object that runs is where it
+// runs, and the non-leaders are told apart by the same rule: the leader
+// counting itself among them would wait for itself, forever.
+func TestTheUnprovisionLeaderIsNoNonLeader(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.instMonitor["node3"] = instance.Monitor{IsLeader: true}
+	m.instStatus["node1"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	assert.True(t, m.isUnprovisionLeader())
+	assert.False(t, m.hasNonLeaderProvisioned(), "the running instance is the leader, not a non-leader")
+
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	assert.True(t, m.hasNonLeaderProvisioned(), "the placement leader is a non-leader of this unprovision")
 }

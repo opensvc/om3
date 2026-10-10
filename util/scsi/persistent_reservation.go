@@ -252,10 +252,15 @@ func (t *PersistentReservationHandle) Start() error {
 		return err
 	}
 	for _, dev := range t.Devices {
-		deviceStatus := t.DeviceStatus(dev)
-		if t.CurrentStatus.ReservedBy != nil && *t.CurrentStatus.ReservedBy != "" && *t.CurrentStatus.ReservedBy != t.Key && !t.Force {
-			return fmt.Errorf("%s is already reserved by the foreign key %s: use --force to preempt if you are sure the key owner can be fenced", dev, *t.CurrentStatus.ReservedBy)
+		// Read here, and not taken from the status: a read that failed
+		// leaves the status saying nothing of the reservation, and a
+		// reservation another key holds is not to be found out by taking it.
+		if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
+			return fmt.Errorf("%s read reservation, to check no foreign key holds it: %w", dev, err)
+		} else if err := t.checkForeign(dev, reservation); err != nil {
+			return err
 		}
+		deviceStatus := t.DeviceStatus(dev)
 		if deviceStatus == status.Up {
 			t.Log.Infof("%s is already registered and reserved", dev)
 			continue
@@ -273,6 +278,14 @@ func (t *PersistentReservationHandle) Start() error {
 			if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
 				return fmt.Errorf("%s spr reserve: %w", dev.Path(), err)
 			}
+		} else if err := t.checkForeign(dev, reservation); err != nil {
+			// Reserved by another key since the check, as by a node
+			// starting at the same time: not taking it, and leaving the
+			// device as it was found.
+			if unregErr := t.persistentReservationDriver.Unregister(dev, t.Key); unregErr != nil {
+				return errors.Join(err, fmt.Errorf("%s spr unregister: %w", dev.Path(), unregErr))
+			}
+			return err
 		} else if t.NoPreemptAbort {
 			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
 				return fmt.Errorf("%s spr preempt (no_preempt_abort kw): %w", dev.Path(), err)
@@ -288,6 +301,14 @@ func (t *PersistentReservationHandle) Start() error {
 		}
 	}
 	return nil
+}
+
+// checkForeign refuses a reservation held by another key, unless forced.
+func (t *PersistentReservationHandle) checkForeign(dev device.T, reservation string) error {
+	if reservation == "" || reservation == t.Key || t.Force {
+		return nil
+	}
+	return fmt.Errorf("%s is already reserved by the foreign key %s: use --force to preempt if you are sure the key owner can be fenced", dev, reservation)
 }
 
 func (t *PersistentReservationHandle) Stop() error {

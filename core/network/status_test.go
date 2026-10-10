@@ -63,3 +63,27 @@ func TestGetStatusWithoutAddresses(t *testing.T) {
 	assert.Equal(t, "65536", s.Size.String())
 	assert.Equal(t, "0", s.Used.String())
 }
+
+type clusterWideNetwork struct {
+	Networker
+	wide bool
+}
+
+func (t clusterWideNetwork) IsClusterWide() bool { return t.wide }
+
+// Every node of a cluster-wide network reports the address a failover object
+// holds, which is one address. The same address on two nodes of a node local
+// network is two.
+func TestUsedCount(t *testing.T) {
+	ips := clusterip.L{
+		{IP: net.ParseIP("fd01::5:1"), Node: "n1"},
+		{IP: net.ParseIP("fd01::5:1"), Node: "n2"},
+		{IP: net.ParseIP("fd01::5:2"), Node: "n1"},
+	}
+	if got := usedCount(clusterWideNetwork{wide: true}, ips); got != 2 {
+		t.Errorf("cluster-wide: got %d, want 2", got)
+	}
+	if got := usedCount(clusterWideNetwork{wide: false}, ips); got != 3 {
+		t.Errorf("node local: got %d, want 3", got)
+	}
+}

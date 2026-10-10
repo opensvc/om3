@@ -1,0 +1,1 @@
+Also snapshot the writable subvolumes nested in the subvolumes, each in its own `.snap` directory.

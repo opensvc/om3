@@ -5,6 +5,7 @@ package driverdb
 import (
 	// Uncomment to load
 	_ "github.com/opensvc/om3/v3/drivers/networkbridge"
+	_ "github.com/opensvc/om3/v3/drivers/networklan"
 	_ "github.com/opensvc/om3/v3/drivers/networklo"
 	_ "github.com/opensvc/om3/v3/drivers/networkroutedbridge"
 	_ "github.com/opensvc/om3/v3/drivers/pooldrbd"

@@ -27,7 +27,7 @@ var (
 
 // Actions returns what this array answers to.
 func (t *Array) Actions() []array.Action {
-	return []array.Action{
+	actions := []array.Action{
 		{
 			Path:  []string{"add", "disk"},
 			Short: "add a volume and map",
@@ -55,9 +55,15 @@ func (t *Array) Actions() []array.Action {
 		{
 			Path:  []string{"resize", "disk"},
 			Short: "resize a volume",
-			Flags: []array.Flag{flagDevNum, array.FlagSize},
+			Long: "Resize a volume to --size, or by --size when it begins with a plus.\n\n" +
+				"A size below the current one drops the end of the volume, and is refused unless --truncate is set.",
+			Flags: []array.Flag{flagDevNum, array.FlagSize, array.FlagTruncate},
 			Run: func(ctx context.Context, in array.Input) (any, error) {
-				return t.ResizeDisk(ctx, in.String(flagDevNum.Name), in.String(array.FlagSize.Name))
+				return t.ResizeDisk(ctx, OptResizeDisk{
+					DevNum:   in.String(flagDevNum.Name),
+					Size:     in.String(array.FlagSize.Name),
+					Truncate: in.Bool(array.FlagTruncate.Name),
+				})
 			},
 		},
 		{
@@ -97,6 +103,16 @@ func (t *Array) Actions() []array.Action {
 			},
 		},
 	}
+	// Each action starts a journal of its own, so the log it returns holds
+	// the commands it ran and none of an action run before it.
+	for i := range actions {
+		run := actions[i].Run
+		actions[i].Run = func(ctx context.Context, in array.Input) (any, error) {
+			t.journal = nil
+			return run(ctx, in)
+		}
+	}
+	return actions
 }
 
 // Reports returns the sections of its configuration this array pushes to the

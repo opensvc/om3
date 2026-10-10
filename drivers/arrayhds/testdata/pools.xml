@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized, not captured from an array: the envelope is the
+  HiCommandServerMessage one of the Device Manager xml api, and the elements
+  and attributes are the ones v2 (drivers/array/hds.py) and the collector read.
+-->
+<HiCommandServerMessage>
+  <APIInfo version="8.8.0"/>
+  <Response>
+    <EchoCommand name="GetStorageArray" status="COMPLETED" result="0"/>
+    <ResultList>
+      <StorageArray objectID="ARRAY.HUSVM.210945" name="HUS VM@10.0.0.10" serialNumber="210945" arrayType="HUS VM">
+        <Pool objectID="POOL.HUSVM.210945.1" name="dp_gold" poolID="1" raidLevel="RAID6(6D+2P)" capacityInKB="1073741824" freeCapacityInKB="536870912" poolFunction="5"/>
+        <Pool objectID="POOL.HUSVM.210945.2" name="dp_silver" poolID="2" raidLevel="RAID5(7D+1P)" capacityInKB="2147483648" freeCapacityInKB="1073741824" poolFunction="5"/>
+      </StorageArray>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>

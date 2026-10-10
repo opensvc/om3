@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -35,6 +36,10 @@ type (
 		ConvertPV       string `json:"convert_pv"`
 		MirrorLog       string `json:"mirror_log"`
 		Devices         string `json:"devices"`
+
+		// SegType is the type of the volume, as thin, which is not
+		// snapshotted as a linear one is.
+		SegType string `json:"segtype"`
 	}
 	LV struct {
 		driver
@@ -143,7 +148,7 @@ func (t *LV) Show(ctx context.Context) (*LVInfo, error) {
 		// --units b --nosuffix because the default display rounds, and
 		// prefixes a "<" when it rounded up: a 5364514816 bytes volume
 		// reports "<5.00g", which is neither parsable nor its size.
-		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", fqn),
+		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", "-o", "+segtype", fqn),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -281,6 +286,76 @@ func (t *LV) Create(ctx context.Context, size string, args []string) error {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
 	return nil
+}
+
+// CreateSnapshot creates the snapshot name of the volume, and returns it. A
+// thin volume is snapshotted in its pool, and size is ignored. A thick one is
+// given size bytes to hold what is written to the volume while the snapshot
+// lives: lvm drops a snapshot running out of it.
+//
+// Taking the snapshot suspends the volume, which freezes the filesystem on it
+// first, so the snapshot holds a clean filesystem.
+func (t *LV) CreateSnapshot(ctx context.Context, name string, size int64) (*LV, error) {
+	info, err := t.Show(ctx)
+	if err != nil {
+		return nil, err
+	}
+	args := []string{"--yes", "-s", "-n", name}
+	if info.SegType == "thin" {
+		// Activated, which a thin snapshot is not by default.
+		args = append(args, "-kn")
+	} else {
+		// lvm takes a size in sectors, and rounds it up to its extents.
+		const mib = 1024 * 1024
+		args = append(args, "-L", fmt.Sprintf("%dm", (size+mib-1)/mib))
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvcreate"),
+		command.WithArgs(append(args, t.FQN())),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		// lvm warns on stderr of what it does anyway, as a thin pool
+		// overcommitted, and a failure is the error returned.
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return nil, fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return NewLV(t.VGName, name, WithLogger(t.Log())), nil
+}
+
+// LVOfDevice returns the logical volume dev is, and nil when it is none, or
+// when lvm is not installed.
+func LVOfDevice(ctx context.Context, dev string, opts ...funcopt.O) (*LV, error) {
+	if _, err := exec.LookPath("lvs"); err != nil {
+		return nil, nil
+	}
+	data := ShowData{}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvs"),
+		command.WithVarArgs("--reportformat", "json", "-o", "vg_name,lv_name", dev),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithBufferedStdout(),
+	)
+	if err := cmd.Run(); err != nil {
+		// lvs refuses a device that is no logical volume, with a code
+		// depending on the version, which is no error of the caller's.
+		return nil, nil
+	}
+	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
+		return nil, err
+	}
+	if len(data.Report) != 1 || len(data.Report[0].LV) != 1 {
+		return nil, nil
+	}
+	info := data.Report[0].LV[0]
+	return NewLV(info.VGName, info.LVName, opts...), nil
 }
 
 func (t *LV) Wipe(ctx context.Context) error {

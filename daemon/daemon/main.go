@@ -39,6 +39,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/hook"
 	"github.com/opensvc/om3/v3/daemon/imon"
+	"github.com/opensvc/om3/v3/daemon/ipampeers"
 	"github.com/opensvc/om3/v3/daemon/istat"
 	"github.com/opensvc/om3/v3/daemon/listener"
 	"github.com/opensvc/om3/v3/daemon/mntmon"
@@ -251,6 +252,7 @@ func (t *T) Start(ctx context.Context) error {
 		istat.New(qsLarge),
 		listener.New(),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		ipampeers.New(qsMedium),
 		netmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		mntmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		drbdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),

@@ -1,0 +1,10 @@
+RESPONSE:
+An instance of StorageArray
+    objectID=ARRAY.HUSVM.210945
+    List of 1 Path elements:
+        An instance of Path
+            objectID=PATH.HUSVM.210945.0.1.2
+            devNum=4660
+            portName=CL1-A
+            domainID=1
+            LUN=2

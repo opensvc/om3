@@ -6,12 +6,64 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
+	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
-	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/drivers/resip"
 )
+
+// alloc is the address this resource draws from the network its network
+// keyword names, as every ip driver draws it: the one it keeps on a lan
+// network, see keeps.
+func (t *T) alloc() *resip.Allocation {
+	if t.onLan() {
+		return t.kept().Alloc()
+	}
+	return t.drawn()
+}
+
+// drawn is the address this resource draws at each start, which also
+// resolves the network.
+func (t *T) drawn() *resip.Allocation {
+	if t._alloc == nil {
+		t._alloc = &resip.Allocation{Network: t.Network, Path: t.Path, RID: t.RID(), Log: t.Log()}
+	}
+	return t._alloc
+}
+
+// kept is the address this resource keeps on a lan network.
+func (t *T) kept() *resip.Kept {
+	if t._kept == nil {
+		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.GetObject(), t.Log())
+	}
+	return t._kept
+}
+
+// onLan says the network the address is drawn from is a segment every node
+// is on, and draws from.
+func (t *T) onLan() bool {
+	nw, err := t.resolveNetwork()
+	if err != nil || nw == nil {
+		return false
+	}
+	_, ok := nw.(network.HostDever)
+	return ok
+}
+
+// keeps says the resource keeps its address from a start to the next, until
+// it is unprovisioned, as ip.host does, rather than draw one at each start
+// and release it at each stop.
+//
+// The address of a container on a bridge or routed_bridge network is reached
+// through its DNS record, which follows the address the status reports, so a
+// new one at each start is no change to its clients. A lan network is a
+// segment the clients of the service are on, and they know it by its address
+// rather than by a record they may not be able to resolve.
+func (t *T) keeps() bool {
+	return t.Name == "" && t.onLan()
+}
 
 // resolveNetwork returns the om network the network keyword names.
 //
@@ -20,109 +72,42 @@ import (
 // destination is the connected route the kernel adds along with the address,
 // so it is derived from the address and the mask now, and the keyword names
 // the network the address is drawn from, as it does on ip.cni.
-//
-// A value that is still an address is therefore obsolete rather than wrong:
-// it is reported and ignored. A value that is neither an address nor a
-// network is a mistake worth stopping for, a renamed network or a typo.
 func (t *T) resolveNetwork() (network.Networker, error) {
-	if t._networkResolved {
-		return t._network, nil
-	}
-	t._networkResolved = true
-	if t.Network == "" {
-		return nil, nil
-	}
-	nw, names, err := network.Lookup(t.Network)
-	if err != nil {
-		return nil, err
-	}
-	if nw != nil {
-		t._network = nw
-		return nw, nil
-	}
-	if isAddr(t.Network) {
-		t.Log().Warnf("the network keyword holds the address %s, which is obsolete and ignored: the route del_net_route removes is derived from the address and the netmask. The keyword names the network the address is drawn from now", t.Network)
-		return nil, nil
-	}
-	return nil, fmt.Errorf("unknown network %s, expected one of %s", t.Network, strings.Join(names, ", "))
-}
-
-// isAddr reports whether a value is an address or a subnet, which is what the
-// network keyword used to hold.
-func isAddr(s string) bool {
-	if net.ParseIP(s) != nil {
-		return true
-	}
-	_, _, err := net.ParseCIDR(s)
-	return err == nil
+	return t.drawn().Resolve()
 }
 
 // ipam returns the allocator of the network this resource draws from, or nil
 // when it draws from none.
 //
-// The addresses the cluster holds on its other nodes are not consulted: a
-// routed_bridge gives this node a range of its own, and the addresses of a
-// bridge are node local and not routable, so an address in use elsewhere is
-// never one this node could hand out by mistake.
+// The addresses the cluster holds on its other nodes are consulted only for a
+// network whose range every node draws from: a routed_bridge gives this node
+// a range of its own, and the addresses of a bridge are node local and not
+// routable, so an address in use elsewhere is never one this node could hand
+// out by mistake.
 func (t *T) ipam() (*ipam.T, error) {
-	nw, err := t.resolveNetwork()
-	if err != nil {
-		return nil, err
-	}
-	if nw == nil {
-		return nil, nil
-	}
-	return network.NewAllocator(nw, hostname.Hostname())
+	return t.alloc().Allocator()
 }
 
-// ipamKey names the reservation of this resource. An instance holds as many ip
-// resources as it needs, several of them in one network, so the address
-// belongs to the resource rather than to the object.
+// ipamKey names the reservation of this resource.
 func (t *T) ipamKey() string {
-	return ipam.Key(t.Path, t.RID())
+	return t.alloc().Key()
 }
 
 // allocateIP reserves the address of this resource, and returns the one it
 // already holds when it holds one.
 func (t *T) allocateIP(ctx context.Context) (net.IP, error) {
-	i, err := t.ipam()
-	if err != nil {
-		return nil, err
-	}
-	if i == nil {
-		return nil, nil
-	}
-	ip, err := network.AllocateFor(ctx, i, t.Path, t.RID())
-	if err != nil {
-		return nil, err
-	}
-	t.Log().Infof("allocated %s in network %s", ip, i.Name)
-	return ip, nil
+	return t.alloc().Allocate(ctx)
 }
 
 // allocatedIP returns the address reserved for this resource, or nil when it
 // has none. It never reserves one: reading a status must not take an address.
 func (t *T) allocatedIP() (net.IP, error) {
-	i, err := t.ipam()
-	if err != nil {
-		return nil, err
-	}
-	if i == nil {
-		return nil, nil
-	}
-	return i.Allocated(t.ipamKey())
+	return t.alloc().Allocated()
 }
 
 // freeIP releases the address of this resource.
 func (t *T) freeIP() error {
-	i, err := t.ipam()
-	if err != nil {
-		return err
-	}
-	if i == nil {
-		return nil
-	}
-	return i.Free(t.ipamKey())
+	return t.alloc().Free()
 }
 
 // networkDev returns the device of the network this resource draws from.
@@ -148,7 +133,14 @@ func (t *T) Configure() error {
 	if err != nil {
 		return err
 	}
+	if t.Gateway != "" {
+		t.gatewayRank = gatewayOwn
+	}
 	if nw == nil {
+		return nil
+	}
+	if i, ok := nw.(network.HostDever); ok {
+		t.configureLan(nw, i)
 		return nil
 	}
 	if t.Dev == "" {
@@ -173,8 +165,88 @@ func (t *T) Configure() error {
 	}
 	if t.Gateway == "" {
 		if gw := ipam.Gateway(i.Range); gw != nil {
-			t.Gateway = gw.String()
+			t.Gateway, t.gatewayRank = gw.String(), gatewayOfNetwork
 		}
 	}
 	return nil
+}
+
+// isLinuxBridge says a link is a linux bridge, replaced by the tests.
+var isLinuxBridge = func(dev string) bool {
+	_, err := os.Stat(filepath.Join("/sys/class/net", dev, "bridge"))
+	return err == nil
+}
+
+// configureLan fills from a lan network what the configuration did not say:
+// the interface of this node on the segment, which the link of the namespace
+// is a child of, and the prefix length of the segment.
+//
+// The gateway is the one the network names, the router of the segment: the
+// first address of the segment plus one, which a bridge network answers on,
+// may be an address om hands out on a lan network.
+//
+// What does not fit is reported when the resource is started or its status
+// read, rather than failing every load of the object.
+func (t *T) configureLan(nw network.Networker, i network.HostDever) {
+	if t.Addr != "" && t.kept().PerInstance && !t.kept().HasOwnAddr(t.GetObject()) {
+		// The address of all the instances, as a failover object records
+		// it, read here for want of one chosen for this instance: each
+		// instance of a flex resource draws its own.
+		t.Addr = ""
+	}
+	switch {
+	case t.Mode == "ipvlan-l3" || t.Mode == "ipvlan-l3s":
+		t.netErr = fmt.Errorf("mode %s routes the address through this node, where the hosts of the segment of network %s do not look for it: use macvlan or ipvlan-l2", t.Mode, nw.Name())
+		return
+	case t.Mode == "dedicated" || t.Tags.Has(tagDedicated):
+		// The interface of this node on the segment is what the node
+		// itself is reached by, and moving it into the namespace takes it
+		// away from the node.
+		if t.Dev == "" {
+			t.netErr = fmt.Errorf("mode dedicated moves dev into the namespace, and network %s names no interface but the one of this node on the segment: set dev to an interface of its own", nw.Name())
+			return
+		}
+		if dev, err := i.HostDev(); err == nil && dev == t.Dev {
+			t.netErr = fmt.Errorf("mode dedicated would move %s, the interface of this node on the segment of network %s, into the namespace: set dev to an interface of its own", dev, nw.Name())
+			return
+		}
+	case t.Mode == "ovs" && t.Dev == "":
+		// The veth of the namespace is a port of the openvswitch bridge
+		// dev names, which the interface of this node on the segment
+		// says nothing of.
+		t.netErr = fmt.Errorf("mode ovs plugs the namespace into an openvswitch bridge on the segment of network %s: set dev to that bridge", nw.Name())
+		return
+	case t.Dev == "":
+		t.Dev, t.netErr = i.HostDev()
+		if t.netErr != nil {
+			return
+		}
+	}
+	if t.Mode == "bridge" && !isLinuxBridge(t.Dev) {
+		// The veth of the namespace is plugged into dev, which only a
+		// bridge takes. The interface of the node on the segment is one
+		// when the node is reached through a bridge, and a physical one
+		// otherwise.
+		t.netErr = fmt.Errorf("mode bridge plugs the namespace into a bridge on the segment of network %s, and %s is not one: set dev to a bridge on the segment, or use macvlan", nw.Name(), t.Dev)
+		return
+	}
+	if t.Gateway == "" {
+		if g, ok := nw.(network.Gatewayer); ok {
+			if gw, err := g.Gateway(); err != nil {
+				t.netErr = err
+				return
+			} else if gw != nil {
+				t.Gateway, t.gatewayRank = gw.String(), gatewayOfNetwork
+			}
+		}
+	}
+	if t.Netmask == "" {
+		if m, ok := nw.(network.Netmasker); ok {
+			if n, err := m.Netmask(); err == nil {
+				t.Netmask = fmt.Sprint(n)
+			} else {
+				t.netErr = err
+			}
+		}
+	}
 }

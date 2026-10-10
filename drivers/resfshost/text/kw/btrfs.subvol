@@ -1,0 +1,5 @@
+The path of the subvolume of the btrfs to mount, from the root of the filesystem, as `data`.
+
+The subvolume is created when the resource is provisioned. It is the `subvol=` mount option, set in a keyword of its own so the sync resources can reference it, as `src = {fs#1.label}:{fs#1.subvol}`.
+
+A `subvol=` option of mnt_opt naming the same subvolume is ignored, and one naming another subvolume, or a `subvolid=` option, is refused: the resource does not start rather than mount another subvolume than the one replicated.

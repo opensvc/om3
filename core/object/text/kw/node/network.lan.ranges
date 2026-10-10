@@ -1,0 +1,12 @@
+The addresses of the segment om hands out, as a list of subnets, as
+`192.168.10.128/26`, and of spans from a first to a last address, as
+`192.168.10.100-192.168.10.199`, the form nftables and ipset read.
+
+Required: the segment holds the addresses of the nodes, of the router and of
+the other hosts, which om knows nothing of. Keep the ranges clear of them,
+leaving out a host in the middle of a span by writing the span in two:
+
+    ranges = 192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199
+
+The ranges must be in the segment, and must not overlap, nor overlap the
+ranges of another lan network of the same segment.

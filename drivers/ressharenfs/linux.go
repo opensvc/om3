@@ -93,18 +93,30 @@ func (t Exports) ByPath(s string) Exports {
 	return l
 }
 
+// stop unexports the path to every client of the opts it is exported to,
+// with the options required or not, and whether the kernel exports it or
+// not.
 func (t *T) stop() error {
 	opts, err := t.parseOpts()
 	if err != nil {
 		return err
 	}
+	exports, err := t.getExports()
+	if err != nil {
+		return err
+	}
+	unexported := 0
 	for _, e := range opts {
-		if !slices.Contains(t.issuesNone, e.Client) {
+		if exports.Client(e.Client).IsZero() {
 			continue
 		}
 		if err := t.delExport(e); err != nil {
 			return err
 		}
+		unexported++
+	}
+	if unexported == 0 {
+		t.Log().Infof("already down")
 	}
 	return nil
 }
@@ -140,36 +152,32 @@ func (t *T) isPathExported() (bool, error) {
 	t.issuesNone = make([]string, 0)
 	exports, err := t.getExports()
 	if err != nil {
-		t.StatusLog().Error("%s", err)
 		return false, err
 	}
-	if len(exports) == 0 {
+	opts, err := t.parseOpts()
+	if err != nil {
+		return false, err
+	}
+	// The path is exported when it is to a client of the opts, which stop
+	// unexports, whatever the issues of the export.
+	if !slices.ContainsFunc(opts, func(e OptsEntry) bool { return !exports.Client(e.Client).IsZero() }) {
 		return false, nil
 	}
 	mount, err := t.getShowmount()
-	if err != nil {
-		t.StatusLog().Error("%s", err)
-		return false, err
-	}
-	if mount.IsZero() {
-		t.StatusLog().Info("%s in userland etab but not in kernel etab", t.SharePath)
-		return false, nil
-	}
-	opts, err := t.parseOpts()
 	if err != nil {
 		return false, err
 	}
 	for _, opt := range opts {
 		client := exports.Client(opt.Client)
 		if client.IsZero() {
-			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s", t.SharePath, opt.Client)
+			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s", t.exportPath, opt.Client)
 			t.issuesMissingClient = append(t.issuesMissingClient, opt.Client)
 		} else if !mount.HasClient(opt.Client) {
-			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s in kernel etab", t.SharePath, opt.Client)
+			t.issues[opt.Client] = fmt.Sprintf("%s not exported to client %s in kernel etab", t.exportPath, opt.Client)
 			t.issuesMissingClient = append(t.issuesMissingClient, opt.Client)
 		} else if !client.HasOpts(opt.Opts) {
 			t.issues[opt.Client] = fmt.Sprintf("%s is exported to client %s with missing options: current '%s', minimum required '%s'",
-				t.SharePath,
+				t.exportPath,
 				opt.Client,
 				strings.Join(client.Opts, ","),
 				strings.Join(opt.Opts, ","),
@@ -217,7 +225,7 @@ func (t *T) addExport(e OptsEntry) error {
 	opts := strings.Join(e.Opts, ",")
 	cmd := command.New(
 		command.WithName(capabilities.GetPath("exportfs")),
-		command.WithVarArgs("-i", "-o", opts, e.Client+":"+t.SharePath),
+		command.WithVarArgs("-i", "-o", opts, e.Client+":"+t.exportPath),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(10*time.Second),
@@ -231,7 +239,7 @@ func (t *T) addExport(e OptsEntry) error {
 func (t *T) delExport(e OptsEntry) error {
 	cmd := command.New(
 		command.WithName(capabilities.GetPath("exportfs")),
-		command.WithVarArgs("-u", e.Client+":"+t.SharePath),
+		command.WithVarArgs("-u", e.Client+":"+t.exportPath),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(10*time.Second),
@@ -245,7 +253,7 @@ func (t *T) delExport(e OptsEntry) error {
 func (t *T) getShowmount() (Mount, error) {
 	if mounts, err := t.getShowmounts(); err != nil {
 		return Mount{}, err
-	} else if mounts = mounts.ByPath(t.SharePath); len(mounts) == 0 {
+	} else if mounts = mounts.ByPath(t.exportPath); len(mounts) == 0 {
 		return Mount{}, nil
 	} else {
 		return mounts[0], nil
@@ -281,7 +289,7 @@ func (t *T) getExports() (Exports, error) {
 	if exports, err := t.getAllExports(); err != nil {
 		return nil, err
 	} else {
-		return exports.ByPath(t.SharePath), nil
+		return exports.ByPath(t.exportPath), nil
 	}
 }
 

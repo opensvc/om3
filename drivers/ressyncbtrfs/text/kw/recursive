@@ -1,0 +1,5 @@
+Also replicate the writable subvolumes nested in the `src` subvolume.
+
+Each nested subvolume is sent on its own, and put back in place on the peer.
+The read-only subvolumes nested in `src`, as the snapshots a `sync.btrfssnap`
+resource takes, are not replicated.

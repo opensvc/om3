@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized: an answer holding no domain, as an envelope this driver does
+  not know would read.
+-->
+<HiCommandServerMessage>
+  <Response>
+    <ResultList>
+      <StorageArray objectID="ARRAY.HUSVM.210945" serialNumber="210945"/>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>

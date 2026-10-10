@@ -89,7 +89,9 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Network event handling**: New daemon network monitor (`netmon`) relays netlink events to pubsub, enabling faster response to network changes.
 
-* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup.
+* **Floating addresses from a cluster network**: The new `lan` network type is a range of a segment the nodes share, whose addresses om hands out to the cluster rather than to a node. An `ip.host` resource naming such a network and no address draws one, the same on every node: a failover service takes it along to the node it moves to, and the address other resources hold anywhere in the cluster is never drawn twice.
+
+* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup. A file it installs takes the mode its line sets, else the `perm` keyword of the resource, else `0600` for a sec key and `0644` for a cfg key, as the `secrets` and `configs` keywords read `perm`.
 
 * **Namespace claims on cluster resources**: A namespace can be capped on what it takes of a resource its peers share, declared in its configuration as a `claim` section:
 
@@ -501,6 +503,26 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **`om <selector> config unset`:**
     Now accepts `--section <name>` to remove a cluster, node or object configuration section.
 
+* **Array disk commands (`om array <name> ...`, and `om node array ... -a <name>` as the collector queues them):**
+    The commands the collector disk forms queue on an array proxy behave as in v2, with these differences, all made to
+    refuse what v2 did to the wrong disk or reported done when it was not:
+
+    * A `--size` unit is a power of 1024 whatever it is written as: `10g`, `10gb` and `10GiB` are all 10 GiB. v2 read
+      `gib` as a power of 1000. A size can not be negative: a volume is shrunk by giving its new size.
+    * A resize to a size below the current one is refused unless `--truncate` is given (the symmetrix `--force` is an
+      alias), as the arrays shrink a volume by dropping its end. A resize to the current size changes nothing.
+    * A mapping that can not be made is an error before anything is created, rather than a volume created and left
+      unexported. A failure after the volume is created names it and leaves it in place: nothing is deleted on a
+      failure.
+    * freenas: an existing zvol or extent is refused rather than reused, `del` refuses a dataset that is not a zvol,
+      and a disk name no extent or zvol has is an error rather than a success.
+    * hds: a device number the driver can not read is refused rather than sent to the array, and a wwid resolves only
+      to a volume of the array named, by its ldkc, cu and ldev, where v2 read the last 4 digits of any wwid.
+    * symmetrix: `del disk` refuses the R2 of a SRDF pair, which the collector deletes after its R1, as the result of
+      deleting an R2 named its R1 for the collector to delete next.
+    * xtremio: a volume name made of digits only is refused, as the array reads it as a volume index, and the
+      `password` keyword is a secret reference, as for the other arrays.
+
 * **`om monitor`:**
     Instance availability icons changes:
     ```
@@ -597,7 +619,7 @@ These drivers of v2.1 have no v3 counterpart:
 * disk: `advfs`, `amazon`, `gandi`, `gce`, `hpvm`, `ldom`, `pool`, `vdisk`, `veritas`, `vxdg`, `vxvol`
 * fs: `docker`
 * ip: `amazon`, `crossbow`, `gce`, `rule`
-* sync: `btrfs`, `btrfssnap`, `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
+* sync: `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
 * the `certificate`, `expose`, `hashpolicy`, `route` and `vhost` sections, which
   described the routes of an object to the envoy ingress gateway of v2.
 
@@ -705,6 +727,20 @@ which share the same executor.
 * **Changed default:**
     The `alias` keyword default value is now `true`, activating the ip stacking behaviour.
     Setting `dev=eth0:0` still forces the address labelling mode.
+
+* **`ip.host` draws its address from an om network:**
+    The `network` keyword names the om network the address is drawn from when `name` is not set, as it does on
+    `ip.netns`. The address is drawn at the first start and written to the new `addr` keyword, which every node then
+    uses, so a failover service keeps its address on a node it moves to after the others crashed. It is kept until the
+    resource is unprovisioned, a stop keeping it. `dev`
+    and `netmask` are taken from the network when not set, so `dev` is no longer required. The keyword used to hold
+    the address of the network in dotted notation, which nothing read: such a value is reported and ignored.
+
+* **`ip.host` IPv6 addresses are added with `nodad` and announced:**
+    An IPv6 address is usable as soon as it is added, rather than tentative for the second the duplicate address
+    detection takes, which failed the services binding it at start: the start already checks nothing answers it. It
+    is announced by an unsolicited neighbor advertisement, as an IPv4 address is by a gratuitous arp, so the neighbors
+    of an address moved to another node send to it there at once. v2 announced neither.
 
 * **Changed default DNS search list:**
     The fqdn of the object is no longer the first domain a container searches a
@@ -844,6 +880,17 @@ which share the same executor.
     started included, before stopping the resources. No scheduled sync starts
     on a node being drained.
 
+### Driver: sync.rsync
+
+* **`snap = true` copies a snapshot of the filesystem holding `src`:**
+    v2 snapshotted the logical volume of the filesystem resource holding `src`, on Linux. The filesystem is now the
+    one mounted deepest under `src`, whether a resource of the service mounts it or not, and it is snapshotted as a
+    logical volume, thick or thin, as a btrfs subvolume, or as a zfs dataset. v2 copied `src` itself when it could not
+    snapshot it; the update now fails. A filesystem mounted below `src` fails the update too, unless the rsync options
+    keep the copy on one filesystem, as the default `-x` does: the snapshot does not hold it, and `--delete` would
+    remove its copy on the peers. The snapshots are removed when the update ends, and the ones an interrupted update
+    left are removed by the next, the status warning of them meanwhile.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**
@@ -867,6 +914,91 @@ which share the same executor.
     holding snapshots with none in common with the source is also left
     alone rather than overwritten. A peer holding no snapshot of the
     resource is still sent a full copy without asking.
+
+### Driver: sync.btrfs
+
+* **Each peer is synced from its own base run, and a failover is synced incrementally both ways:**
+    The source no longer rotates the `last`, `next` and `temp` snapshots shared by all the peers. Each run takes
+    read-only snapshots in a run directory of its own, `<root of the filesystem>/.osync/<path>/<rid>/<YYYYmmddTHHMMSS.ffffffZ>/`,
+    and sends each peer the changes since the newest run the peer holds in common with the source, the snapshots being
+    matched by uuid and received uuid. So after a failover, the new source sends the old one its writes incrementally,
+    and so does the failback: v2 sent a full copy whenever the source changed. A peer that missed runs catches up at
+    the next one, and a peer failing no longer stops the others. The snapshots of an upgraded agent are not used: the
+    first sync after the upgrade sends each peer a full copy, then deletes them.
+
+* **A peer running the service is not replaced:**
+    The destination subvolume of a peer is replaced by the run it receives, staged and then swapped in. A peer with its
+    destination subvolume mounted is refused, as it runs the service.
+
+* **New keyword `max_lag_age`:**
+    The source keeps the base run of a lagging peer. Once the peer lags for longer than `max_lag_age` (default `24h`),
+    the source deletes it and stops sending to it. The resource status then warns with the command that syncs it again,
+    `om <path> instance full --rid <rid> --target <peer>`. A peer holding runs with none in common with the source is
+    also left alone rather than overwritten, where v2 sent it a full copy. A peer holding no run of the resource is
+    still sent a full copy without asking.
+
+* **The root of the filesystem is mounted for the time of a sync only:**
+    v2 mounted the root of the filesystem on `<var>/btrfs/<label>` and left it mounted, which kept the device busy for
+    the stop of the service. A sync mounts it on a mount point of its own and unmounts it when it ends.
+
+### Driver: sync.btrfssnap
+
+* **The snapshots are taken where the subvolume is mounted:**
+    A subvolume not mounted on the node, as on a node the service does not run on, is not snapshotted, and the
+    resource status is `n/a` there. The snapshots are named as in v2, `<subvol>/.snap/<UTC datetime>Z[,<name>]`.
+
+### Driver: fs.btrfs
+
+* **New keywords `subvol` and `label`:**
+    The subvolume to mount and the label of the filesystem have keywords of their own, which the sync resources
+    reference rather than repeat: `src = {fs#1.label}:{fs#1.subvol}`. The subvolume is created when the resource is
+    provisioned, as in v2. A `subvol=` option of `mnt_opt` is still read when the `subvol` keyword is not set; one naming
+    another subvolume than the keyword, or a `subvolid=` option, is refused, and so is a `-L` option of `mkfs_opt` naming
+    another label than the `label` keyword.
+
+* **The label is not chosen by the provision:**
+    v2 labeled the filesystem `<name>.<rid>` when it formatted it, and set the `dev` keyword to `LABEL=<label>`. The
+    filesystem is now labeled with the `label` keyword, or a `-L` option of `mkfs_opt`, and the provision does not change
+    the configuration.
+
+### Driver: share.nfs
+
+* **The `path` keyword takes the forms of the other paths of a service:**
+    `<vol name>/<path>` in a vol of the namespace, and `volume#1:/<path>` or `fs#1:/<path>` under the mount point of a
+    resource of the service, besides a path of the node. A path in a volume never leads above its mount point. A share
+    is stopped even when its volume is no longer available, on the path it was exported from.
+
+* **A namespace administrator may export a volume:**
+    The `share` sections needed the root grant. A user holding none may now export the mount point of a volume, written
+    `<vol name>` or `volume#<n>:/`, with the export options that keep the clients to it: `rw`, `ro`, `sync`, `async`,
+    `wdelay`, `no_wdelay`, `subtree_check`, `no_subtree_check`, `secure`, `hide`, `root_squash`, `all_squash`,
+    `no_all_squash`, `sec`, and `anonuid` and `anongid` other than 0. A directory in a volume is refused, as the
+    namespace can turn it into a link out of the volume, and so are the other options, as `no_root_squash`, `fsid`,
+    `crossmnt` or `nohide`.
+
+* **A path exported to other clients only is down:**
+    v2 reported a path exported to none of the clients of `opts` as `warn` when it was exported to another client. Such
+    an export is not the resource's, and a stop leaves it in place, so the resource is `down`. A path exported to a
+    client of `opts` with missing options, or not exported by the kernel, is `warn`.
+
+### Driver: fs.directory
+
+* **The `path` keyword takes the forms of the other paths of a service:**
+    `<vol name>/<path>` in a vol of the namespace, and `volume#1:/<path>` under the mount point of a volume resource of
+    the service, besides a path of the node, as a directory with a quota of its own in a volume shared by containers. A
+    path in a volume never leads above its mount point. A path in another resource, as `fs#2:/<path>`, is refused, as
+    a directory is itself a resource paths are written in.
+
+### Driver: disk.crypt, disk.md, disk.raw, disk.vg, fs
+
+* **A device can be the name of a vol of the namespace, or the id of a resource:**
+    The `dev` of `disk.crypt`, the `devs` of `disk.md`, and the sources of the `devs` of `disk.raw` take the name of a
+    vol, which stands for the device the vol exposes, as the `dev` of `fs` and the `pvs` of `disk.vg` did:
+    `dev = data` encrypts the block volume a pool served. All five also take the id of a resource of the service,
+    as `disk#1`, which stands for the devices it exposes, rather than a `{disk#1.exposed_devs[0]}` reference. A keyword
+    naming one device needs a resource exposing one, and a resource can not name itself, directly or through others.
+    The device of a vol that is not available, or of a resource not started, is not there: the resource is `down`, and
+    its unprovision leaves the storage to the unprovision of the vol or the resource below.
 
 ### Driver: app
 

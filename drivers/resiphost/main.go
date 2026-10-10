@@ -12,12 +12,14 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resip"
 	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/getaddr"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/netif"
 	"github.com/opensvc/om3/v3/util/ping"
 )
@@ -41,6 +43,7 @@ type (
 		Dev          string         `json:"dev"`
 		Netmask      string         `json:"netmask"`
 		Network      string         `json:"network"`
+		Addr         string         `json:"addr"`
 		Gateway      string         `json:"gateway"`
 		Provisioner  string         `json:"provisioner"`
 		CheckCarrier bool           `json:"check_carrier"`
@@ -53,6 +56,13 @@ type (
 		_ipaddrAge time.Duration
 		_ipmask    net.IPMask
 		_ipnet     *net.IPNet
+		_kept      *resip.Kept
+
+		// netErr says why the network the address is drawn from does not
+		// tell the interface or the prefix length of the address on this
+		// node, reported when they are needed rather than failing every
+		// load of the object.
+		netErr error
 	}
 
 	Addrs []net.Addr
@@ -61,6 +71,108 @@ type (
 func New() resource.Driver {
 	t := &T{}
 	return t
+}
+
+// kept is the address this resource draws from the network its network
+// keyword names, when it names no address of its own, and keeps.
+func (t *T) kept() *resip.Kept {
+	if t._kept == nil {
+		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.GetObject(), t.Log())
+	}
+	return t._kept
+}
+
+func (t *T) alloc() *resip.Allocation {
+	return t.kept().Alloc()
+}
+
+func (t *T) perInstance() bool {
+	return t.kept().PerInstance
+}
+
+func (t *T) addrKey() key.T {
+	return t.kept().AddrKey()
+}
+
+// isAllocated says the address is drawn from an om network: the
+// configuration names none, and names a network.
+func (t *T) isAllocated() bool {
+	return t.Name == "" && t.Network != ""
+}
+
+// Configure fills from the network what the configuration did not say: the
+// interface of this node the address is configured on, and the prefix length
+// it is configured with. They are the network's to know, so naming the
+// network is enough, and an explicit value always wins.
+func (t *T) Configure() error {
+	nw, err := t.alloc().Resolve()
+	if err != nil {
+		return err
+	}
+	if nw == nil {
+		return nil
+	}
+	if t.Addr != "" && t.perInstance() && !t.kept().HasOwnAddr(t.GetObject()) {
+		// The address of all the instances, as a failover object records
+		// it, read here for want of one chosen for this instance: each
+		// instance of a flex resource draws its own.
+		t.Addr = ""
+	}
+	if t.Dev == "" {
+		t.Dev, t.netErr = networkDev(nw)
+	}
+	if t.Netmask == "" {
+		if i, ok := nw.(network.Netmasker); ok {
+			if n, err := i.Netmask(); err == nil {
+				t.Netmask = fmt.Sprint(n)
+			} else if t.netErr == nil {
+				t.netErr = err
+			}
+		} else if i, err := t.alloc().Allocator(); err == nil && i != nil && i.Range != nil {
+			ones, _ := i.Range.Mask.Size()
+			t.Netmask = fmt.Sprint(ones)
+		}
+	}
+	return nil
+}
+
+// networkDev returns the interface of this node the addresses of a network are
+// configured on: the interface of the node on the segment of a lan network,
+// the bridge of a bridge network.
+func networkDev(nw network.Networker) (string, error) {
+	switch i := nw.(type) {
+	case network.HostDever:
+		return i.HostDev()
+	case interface{ BackendDevName() string }:
+		if dev := i.BackendDevName(); dev != "" {
+			return dev, nil
+		}
+	}
+	return "", fmt.Errorf("network %s names no interface of this node to configure the address on: set dev", nw.Name())
+}
+
+// addrName is how the messages name the address: the configured name, or the
+// address drawn from the network.
+func (t *T) addrName() string {
+	if t.Name != "" {
+		return t.Name
+	}
+	if ip := t.ipaddr(); ip != nil {
+		return ip.String()
+	}
+	return "the address of network " + t.Network
+}
+
+// checkDev returns why the address has no interface, or no prefix length, to
+// be configured with.
+func (t *T) checkDev() error {
+	if t.netErr != nil {
+		return t.netErr
+	}
+	if t.Dev == "" {
+		return fmt.Errorf("dev is not set")
+	}
+	return nil
 }
 
 // StatusInfo implements resource.StatusInfoer
@@ -96,8 +208,28 @@ func (t *T) getDevAndLabel() (string, string, error) {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if err := t.checkDev(); err != nil {
+		return err
+	}
+	if t.isAllocated() {
+		ip, previous, err := t.kept().Reserve(ctx, t.Addr)
+		if err != nil {
+			return err
+		}
+		if t.Addr == "" && !t.perInstance() {
+			// Recorded in the configuration as it was drawn.
+			t.Addr = ip.String()
+		}
+		t._ipaddr, t._ipnet, t._ipmask = ip, nil, nil
+		if err := t.dropPrevious(previous); err != nil {
+			if rerr := t.kept().Restore(ctx, previous, ip); rerr != nil {
+				return fmt.Errorf("%w, and %w", err, rerr)
+			}
+			return fmt.Errorf("%w: the resource keeps %s, the address it could not give up", err, previous)
+		}
+	}
 	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
-		t.Log().Infof("%s is already up on %s", t.Name, t.Dev)
+		t.Log().Infof("%s is already up on %s", t.addrName(), t.Dev)
 		return nil
 	}
 	if t._ipaddrAge > maxIPAddrAge {
@@ -142,16 +274,28 @@ func (t *T) Status(ctx context.Context) status.T {
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
 	}
+	if dups := t.kept().Duplicates(t.ipaddr()); len(dups) > 0 {
+		t.StatusLog().Warn("%s is also held by %s: one of them is to be given another address", t.ipaddr(), strings.Join(dups, ", "))
+		if s == status.Up {
+			return status.Warn
+		}
+	}
 	return s
 }
 
 func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
-	if t.Name == "" {
+	switch {
+	case t.isAllocated():
+		if t.ipaddr() == nil {
+			t.StatusLog().Info("no address drawn from network %s yet: a start draws one", t.Network)
+			return status.Down
+		}
+	case t.Name == "":
 		t.StatusLog().Warn("name not set")
 		return status.NotApplicable
 	}
-	if t.Dev == "" {
-		t.StatusLog().Warn("dev not set")
+	if err := t.checkDev(); err != nil {
+		t.StatusLog().Warn("%s", err)
 		return status.NotApplicable
 	}
 	dev, _ := resip.SplitDevLabel(t.Dev)
@@ -181,11 +325,13 @@ func (t *T) statusOfAddr(ctx context.Context, dev string) status.T {
 		err   error
 		addrs Addrs
 	)
-	if t.Name == "" {
+	if t.Name == "" && !t.isAllocated() {
 		return status.NotApplicable
 	}
 	ip := t.ipaddr()
-	if ip == nil {
+	if ip == nil && t.isAllocated() {
+		return status.Down
+	} else if ip == nil {
 		t.StatusLog().Error("ip %s lookup issue, cache miss", t.Name)
 		return status.Undef
 	} else if t._ipaddrAge > maxIPAddrAge {
@@ -219,6 +365,55 @@ func (t *T) Provision(ctx context.Context) error {
 
 func (t *T) Unprovision(ctx context.Context) error {
 	return nil
+}
+
+// UnprovisionStop stops the resource, and releases the address drawn from
+// the network, which a stop keeps: the address is the service's, which its
+// clients know it by, until the service is unprovisioned. Every node releases
+// its reservation, and the leader removes the address from the configuration,
+// once for all of them.
+func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
+	if err := t.Stop(ctx); err != nil {
+		return err
+	}
+	if t.Network == "" || t.IsUnprovisionDisabled() {
+		// A resource set to keep what it was given at unprovision keeps
+		// its address too.
+		return nil
+	}
+	if t.Name != "" {
+		return t.alloc().Free()
+	}
+	if err := t.kept().Release(ctx, t.Addr, leader); err != nil {
+		return err
+	}
+	if leader && !t.perInstance() {
+		t.Addr = ""
+	}
+	return nil
+}
+
+// dropPrevious removes from the interface the address the resource gave up,
+// when it is still there: the resource was started with it, and nothing else
+// would ever remove it, the resource answering for its new address only.
+func (t *T) dropPrevious(previous net.IP) error {
+	if previous == nil || previous.Equal(t._ipaddr) {
+		return nil
+	}
+	dev, _ := resip.SplitDevLabel(t.Dev)
+	i, err := net.InterfaceByName(dev)
+	if err != nil {
+		return nil
+	}
+	addrs, err := i.Addrs()
+	if err != nil {
+		return err
+	}
+	if !Addrs(addrs).Has(previous) {
+		return nil
+	}
+	t.Log().Infof("remove %s from %s, the address given up for %s", previous, dev, t._ipaddr)
+	return t.addrDel(fmt.Sprintf("%s/%d", previous, t.ipmaskOnes()), dev)
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
@@ -284,6 +479,20 @@ func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
+	if t.isAllocated() && t.Addr != "" {
+		// The address the resource drew, the same on every node.
+		t._ipaddr = net.ParseIP(t.Addr)
+		return t._ipaddr
+	}
+	if t.isAllocated() {
+		// Reading it never draws one: only a start does.
+		ip, err := t.alloc().Allocated()
+		if err != nil {
+			t.StatusLog().Warn("%s", err)
+		}
+		t._ipaddr = ip
+		return ip
+	}
 	ip, age, err := getaddr.Lookup(t.Name)
 	if getaddr.IsErrManyAddr(err) {
 		t.StatusLog().Warn("%s", err)
@@ -293,9 +502,15 @@ func (t *T) ipaddr() net.IP {
 	return ip
 }
 
+// ipmask returns the mask of the address, and caches it only once the
+// address is known: the mask of no address is not the mask of the address a
+// start draws, and a status read before the draw would leave it cached.
 func (t *T) ipmask() net.IPMask {
 	if t._ipmask != nil {
 		return t._ipmask
+	}
+	if t.ipaddr() == nil {
+		return nil
 	}
 	t._ipmask = t.getIPMask()
 	return t._ipmask
@@ -318,13 +533,16 @@ func (t *T) getIPMask() net.IPMask {
 		return m
 	}
 	// fallback to the mask of the first found ip on the intf
-	if m, err := t.defaultMask(); err == nil {
+	if m, err := t.defaultMask(bits); err == nil {
 		return m
 	}
 	return nil
 }
 
-func (t *T) defaultMask() (net.IPMask, error) {
+// defaultMask returns the mask of the first address of the interface in the
+// family of the address, of bits bits: the mask of an ipv4 address of the
+// interface is no mask for an ipv6 one.
+func (t *T) defaultMask(bits int) (net.IPMask, error) {
 	intf, err := net.InterfaceByName(t.Dev)
 	if err != nil {
 		return nil, err
@@ -333,14 +551,14 @@ func (t *T) defaultMask() (net.IPMask, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("no addr to guess mask from")
+	for _, addr := range addrs {
+		ip, ipnet, err := net.ParseCIDR(addr.String())
+		if err != nil || getIPBits(ip) != bits {
+			continue
+		}
+		return ipnet.Mask, nil
 	}
-	_, net, err := net.ParseCIDR(addrs[0].String())
-	if err != nil {
-		return nil, err
-	}
-	return net.Mask, nil
+	return nil, fmt.Errorf("no addr to guess mask from")
 }
 
 func (t Addrs) Has(ip net.IP) bool {
@@ -408,13 +626,16 @@ func (t *T) arpAnnounce(dev string) error {
 		t.Log().Tracef("skip arp announce on link local unicast address %s", ip)
 		return nil
 	}
-	if ip.To4() == nil {
-		t.Log().Tracef("skip arp announce on non-ip4 address %s", ip)
-		return nil
-	}
 	if i, err := net.InterfaceByName(dev); err == nil && i.Flags&net.FlagLoopback != 0 {
 		t.Log().Tracef("skip arp announce on loopback interface %s", t.Dev)
 		return nil
+	}
+	if ip.To4() == nil {
+		// The neighbors of the segment learn the address moved, as an ipv4
+		// gratuitous arp tells them, rather than keep sending to the node
+		// it left until their cache expires.
+		t.Log().Infof("send an unsolicited neighbor advertisement to announce %s over %s", ip, dev)
+		return t.neighborAdvertise(dev)
 	}
 	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)
 	return t.arpGratuitous(dev)
@@ -432,7 +653,7 @@ func (t *T) start(dev, label string) error {
 
 func (t *T) stopAddr(ctx context.Context, dev string) error {
 	if t.statusOfAddr(ctx, dev) == status.Down {
-		t.Log().Infof("%s is already down on %s", t.Name, t.Dev)
+		t.Log().Infof("%s is already down on %s", t.addrName(), t.Dev)
 		return nil
 	}
 	addr := fmt.Sprintf("%s/%d", t.ipaddr(), t.ipmaskOnes())

@@ -4,6 +4,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 )
 
 func (t *Manager) orchestrateUnprovisioned() {
@@ -17,12 +18,30 @@ func (t *Manager) orchestrateUnprovisioned() {
 		t.UnprovisionedFromWaitNonLeader()
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
-	case instance.MonitorStateUnprovisionSuccess,
-		instance.MonitorStateUnprovisionFailure:
-		if t.unprovisionedClearIfReached() {
-			return
-		}
+	case instance.MonitorStateUnprovisionSuccess:
+		t.unprovisionedClearIfReached()
+	case instance.MonitorStateUnprovisionFailure:
+		t.unprovisionedFromUnprovisionFailed()
 	}
+}
+
+// unprovisionedFromUnprovisionFailed ends the orchestration on the local
+// instance when its unprovision failed and left it provisioned: a failed
+// action is not retried, so nothing is left to run it, and the instances
+// done with theirs would otherwise wait for this one forever. The failure
+// lingers, so an operator can see what failed, as a purge failure does.
+//
+// An unprovision that failed and left the instance unprovisioned all the
+// same has reached the state asked for, which the reached check says first.
+func (t *Manager) unprovisionedFromUnprovisionFailed() {
+	if t.unprovisionedClearIfReached() {
+		return
+	}
+	if t.state.OrchestrationIsDone {
+		return
+	}
+	t.loggerWithState().Infof("local instance unprovision failed -> set done")
+	t.done()
 }
 
 func (t *Manager) UnprovisionedFromIdle() {
@@ -65,13 +84,7 @@ func (t *Manager) UnprovisionedFromWaitNonLeader() {
 
 func (t *Manager) hasNonLeaderWithState(states ...instance.MonitorState) bool {
 	for node, instMon := range t.instMonitor {
-		var isLeader bool
-		if node == t.localhost {
-			isLeader = t.state.IsLeader
-		} else {
-			isLeader = instMon.IsLeader
-		}
-		if isLeader {
+		if t.isUnprovisionLeaderNode(node) {
 			continue
 		}
 		if instMon.State.IsOneOf(states...) {
@@ -83,13 +96,7 @@ func (t *Manager) hasNonLeaderWithState(states ...instance.MonitorState) bool {
 
 func (t *Manager) hasNonLeaderProvisioned() bool {
 	for node, otherInstStatus := range t.instStatus {
-		var isLeader bool
-		if node == t.localhost {
-			isLeader = t.state.IsLeader
-		} else if instMon, ok := t.instMonitor[node]; ok {
-			isLeader = instMon.IsLeader
-		}
-		if isLeader {
+		if t.isUnprovisionLeaderNode(node) {
 			continue
 		}
 		if otherInstStatus.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {
@@ -125,4 +132,19 @@ func (t *Manager) unprovisionedClearIfReached() bool {
 
 func (t *Manager) isUnprovisionLeader() bool {
 	return t.isProvisioningLeader()
+}
+
+// isUnprovisionLeaderNode says the instance of node is the one unprovisioned
+// last, by the rule isUnprovisionLeader applies to the local one: the leaders
+// of a flex object, and the provisioning leader of a failover one, which is
+// where it runs when it runs. The non-leaders are told apart by the same
+// rule, or the leader would count itself among them and wait for itself.
+func (t *Manager) isUnprovisionLeaderNode(node string) bool {
+	if t.objStatus.Topology == topology.Flex {
+		if node == t.localhost {
+			return t.state.IsLeader
+		}
+		return t.instMonitor[node].IsLeader
+	}
+	return node == t.provisioningLeader()
 }

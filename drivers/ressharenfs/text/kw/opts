@@ -1,5 +1,3 @@
-The NFS share export options.
+The export options of each client, as they would be set in `/etc/exports`, a
+`client(opt,...)` entry per client: `10.0.0.0/24(rw,sync) client1(ro)`.
 
-On Linux, as they would be set in `/etc/exports`
-
-On Solaris, as they would be passed to the `share` command.

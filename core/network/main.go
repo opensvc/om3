@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/clusterip"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
@@ -125,6 +126,42 @@ type (
 	}
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
+	}
+
+	// ClusterWider is implemented by the network drivers whose range is
+	// the same on every node, its addresses routable to whichever node
+	// holds them: an address drawn there is one of the cluster, which a
+	// failover object takes along to the node it moves to, rather than one
+	// of a node.
+	ClusterWider interface {
+		IsClusterWide() bool
+	}
+
+	// Netmasker is implemented by the network drivers whose addresses are
+	// configured with the prefix length of the segment they are drawn from,
+	// rather than the one of a bridge.
+	Netmasker interface {
+		Netmask() (int, error)
+	}
+
+	// Pooler is implemented by the network drivers handing out some of the
+	// addresses of their range only, which it returns.
+	Pooler interface {
+		Pools() ([]ipam.Pool, error)
+	}
+
+	// Gatewayer is implemented by the network drivers that name the router
+	// the addresses drawn from them reach beyond the segment through, nil
+	// when they name none.
+	Gatewayer interface {
+		Gateway() (net.IP, error)
+	}
+
+	// HostDever is implemented by the network drivers whose addresses are
+	// configured on an interface of the node, rather than on a bridge the
+	// network sets up. It returns the interface of this node.
+	HostDever interface {
+		HostDev() (string, error)
 	}
 	logger interface {
 		Log() *plog.Logger

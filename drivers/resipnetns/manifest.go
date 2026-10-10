@@ -135,6 +135,14 @@ var (
 			Text:         keywords.NewText(fs, "text/kw/gateway"),
 		},
 		{
+			Attr:     "Addr",
+			Example:  "fd01:2345:6789:2902::5:e8",
+			Option:   "addr",
+			Recorded: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/addr"),
+		},
+		{
 			Attr:     "Network",
 			Example:  "default",
 			Option:   "network",

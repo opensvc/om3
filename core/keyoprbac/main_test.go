@@ -100,6 +100,44 @@ func TestDeniedByValue(t *testing.T) {
 		{"volume#1", "perm", "4755", true},
 		{"volume#1", "dirperm", "6755", true},
 		{"volume#1", "dirperm", "0755", false},
+
+		{"share#1", "type", "nfs", false},
+		{"share#1", "type", "smb", true},
+		{"share#1", "path", "data", false},
+		{"share#1", "path", "data/", false},
+		{"share#1", "path", "data/.", false},
+		{"share#1", "path", "volume#1:/", false},
+		{"share#1", "path", "volume#data:/", false},
+		{"share#1", "path", "volume#1:/x/..", false},
+		{"share#1", "path", "data/www", true},
+		{"share#1", "path", "volume#1:/www", true},
+		{"share#1", "path", "volume#1:", true},
+		{"share#1", "path", "fs#1:/", true},
+		{"share#1", "path", "volume:/", true},
+		{"share#1", "path", "/srv/data", true},
+		{"share#1", "path", "/", true},
+		{"share#1", "path", "", true},
+		{"share#1", "path", "../etc", true},
+		{"share#1", "opts", "*(ro)", false},
+		{"share#1", "opts", "10.0.0.0/24(rw,sync,no_subtree_check,root_squash) client1(ro,all_squash,anonuid=1000,anongid=1000)", false},
+		{"share#1", "opts", "*(rw,sec=krb5:krb5i:krb5p)", false},
+		{"share#1", "opts", "*(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,root_squash,no_all_squash)", false},
+		{"share#1", "opts", "*(rw,no_root_squash)", true},
+		{"share#1", "opts", "*(rw,all_squash,anonuid=0)", true},
+		{"share#1", "opts", "*(rw,anongid=0)", true},
+		{"share#1", "opts", "*(rw,anonuid=root)", true},
+		{"share#1", "opts", "*(rw,fsid=0)", true},
+		{"share#1", "opts", "*(rw,fsid=12)", true},
+		{"share#1", "opts", "*(rw,crossmnt)", true},
+		{"share#1", "opts", "*(rw,nohide)", true},
+		{"share#1", "opts", "*(rw,insecure)", true},
+		{"share#1", "opts", "*(rw,refer=/x@otherhost)", true},
+		{"share#1", "opts", "*(rw,sec=)", true},
+		{"share#1", "opts", "*(ro) *(rw,no_root_squash)", true},
+		{"share#1", "opts", "-a(ro)", true},
+		{"share#1", "opts", "*", true},
+		{"share#1", "opts", "*(ro", true},
+		{"share#1", "opts", "", true},
 	}
 	for _, tc := range cases {
 		err := Denied(noGrant, naming.KindSvc, tc.section, tc.option, tc.value, none)
@@ -156,7 +194,7 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container#1", "dns"))
 	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman.", Doc(naming.KindSvc, "container", "type"))
 	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
-	assert.Equal(t, "Requires the root grant, except for a cni address, and for a netns address om draws from a cluster network.", Doc(naming.KindSvc, "ip", "type"))
+	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
 	assert.Equal(t, "", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
@@ -192,10 +230,14 @@ func TestIPDrawnFromAClusterNetwork(t *testing.T) {
 	// name set for a peer node counts here.
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("network", "name")))
 
-	// Every other ip type addresses a node interface.
-	for _, typ := range []string{"host", "route", "sgcp_dnsalias", "amazon", ""} {
+	// Every other ip type addresses a node interface, but for a host address
+	// drawn from a network: that the network is a lan one is checked where
+	// the network is known, and a host address naming no network names its
+	// own.
+	for _, typ := range []string{"route", "sgcp_dnsalias", "amazon", ""} {
 		assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", typ, section("network")), "type %s", typ)
 	}
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", none))
 
 	// The keywords naming an address, or the link that carries it, are the
 	// node administrator's whatever the type.
@@ -385,4 +427,35 @@ func TestVolumeMountFromAResource(t *testing.T) {
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "volume#1:/haproxy/certs:/certs volume#1:/haproxy/haproxy.cfg:/etc/haproxy.cfg:ro", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "volume#1:/../../etc:/x", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "/etc:/x", none))
+}
+
+// The shares of a volume are part of the storage, as its filesystems are, so
+// the values a service may export are refused on a volume.
+func TestDeniedShareOfAVolume(t *testing.T) {
+	for option, value := range map[string]string{"type": "nfs", "path": "volume#1:/", "opts": "*(ro)"} {
+		require.NoErrorf(t, Denied(noGrant, naming.KindSvc, "share#1", option, value, none), "svc share#1.%s=%s", option, value)
+		assert.EqualErrorf(t, Denied(noGrant, naming.KindVol, "share#1", option, value, none), "a resource of a volume requires the root grant", "vol share#1.%s=%s", option, value)
+	}
+	assert.EqualError(t, Denied(noGrant, naming.KindVol, "share#1", "a_keyword_of_a_driver_added_later", "x", none), "a resource of a volume requires the root grant")
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "share#1", "a_keyword_of_a_driver_added_later", "x", none), "requires the root grant")
+	require.NoError(t, Denied(noGrant, naming.KindSvc, "share#1", "comment", "x", none))
+}
+
+// A host address om draws from a network is allowed, the network saying the
+// address, the interface and the netmask: a section naming one of them is
+// not, and the addr om writes is judged as a keyword of its own.
+func TestHostIPType(t *testing.T) {
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", section("network")))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", section("network", "addr", "expose")))
+	for _, s := range [][]string{{}, {"network", "name"}, {"network", "dev"}, {"network", "netmask"}} {
+		assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "host", section(s...)), "%v", s)
+	}
+}
+
+// Setting addr chooses the address. Taking it away releases what om gave.
+func TestAddrMayBeUnset(t *testing.T) {
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "ip#1", "addr", "fd01::5:52", none),
+		"an address of the user's choosing requires the root grant: om writes the address it draws from the network")
+	assert.NoError(t, DeniedUnset(noGrant, naming.KindSvc, "ip#1", "addr", "fd01::5:52", none))
+	assert.Error(t, DeniedUnset(noGrant, naming.KindSvc, "ip#1", "name", "fd01::5:52", none), "a keyword a user may not set stays one they may not unset")
 }

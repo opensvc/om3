@@ -1,3 +1,14 @@
-The ip address network, in dotted notation.
+The name of the om network the address is drawn from, when `name` is not set.
 
-Used to set the network route if `del_net_route=true`.
+The address is drawn when the resource first starts, and written to the
+`addr` keyword: every node then uses it, so the address follows a failover
+service to whichever node it moves to, the floating address of the service,
+which its clients know it by. It is kept until the resource is unprovisioned,
+a stop keeping it.
+
+The `dev` and `netmask` of the resource are the network's to know, and are
+taken from it when the configuration does not set them: the interface of the
+node on the segment of a `lan` network, and the prefix length of the segment.
+
+This keyword used to hold the address of the network, in dotted notation. A
+value that is still an address is obsolete, reported and ignored.

@@ -1,0 +1,24 @@
+The address drawn from the lan network the `network` keyword names, which om
+writes here when the resource first starts, and removes when it is
+unprovisioned.
+
+On a lan network the resource keeps its address from a start to the next,
+until it is unprovisioned, as an ip.host resource does: the hosts of the
+segment know the service by its address. Every node holds the
+configuration, so every node uses this address for the resource, whichever
+node drew it and whatever became of that node. Set it to keep an address
+drawn before, or unset it to have the next start draw another one, and
+remove the one it replaces from the namespace.
+
+On the other networks the address is drawn at each start and released at
+each stop, and the clients reach the service by its DNS record, which
+follows the address: this keyword is not used.
+
+A configuration copied to create another object leaves it behind, so the
+copy draws an address of its own rather than bring this one up twice.
+
+A resource not shared of a flex object draws an address per instance, as
+its instances run at once. The address of an instance is not written here:
+the node keeps it in its reservation store, from a start to the next, until
+the instance is unprovisioned. Set addr@<nodename> to choose the address of
+an instance; an addr without a node is not taken as one.

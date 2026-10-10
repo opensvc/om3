@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized, not captured from an array: the volume created by the add disk
+  test, as a query narrowed to its display name answers it once mapped. The
+  query also answers volume 100 first, so the volume is picked by its device
+  number rather than by its place in the answer.
+-->
+<HiCommandServerMessage>
+  <Response>
+    <ResultList>
+      <StorageArray objectID="ARRAY.HUSVM.210945" serialNumber="210945">
+        <LogicalUnit objectID="LU.HUSVM.210945.100" devNum="100" displayName="00:00:64" capacityInKB="10485760" consumedCapacityInKB="1048576" dpPoolID="1"/>
+        <LogicalUnit objectID="LU.HUSVM.210945.4660" devNum="4660" displayName="00:12:34" capacityInKB="10485760" consumedCapacityInKB="0" dpPoolID="1" emulation="OPEN-V">
+          <Path objectID="PATH.HUSVM.210945.0.1.2" devNum="4660" portName="CL1-A" domainID="1" LUN="2"/>
+          <Path objectID="PATH.HUSVM.210945.16.1.2" devNum="4660" portName="CL2-A" domainID="1" LUN="2"/>
+          <LDEV objectID="LDEV.HUSVM.210945.4660" devNum="4660"><ObjectLabel label="svc1_disk0"/></LDEV>
+        </LogicalUnit>
+      </StorageArray>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>

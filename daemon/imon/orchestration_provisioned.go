@@ -178,7 +178,18 @@ func (t *Manager) leaders() []string {
 
 // provisioningLeader returns one of all leaders.
 // Select the first in alphalexical order.
+//
+// A failover object running somewhere is led from where it runs. The leader
+// provisions and starts, the others provision and stay down: the placement
+// leader, when the object runs elsewhere, would start a second instance of
+// it.
 func (t *Manager) provisioningLeader() string {
+	if t.objStatus.Topology != topology.Flex {
+		if running := t.runningInstances(); len(running) > 0 {
+			sort.Strings(running)
+			return running[0]
+		}
+	}
 	leaders := t.leaders()
 	switch len(leaders) {
 	case 0:
@@ -189,6 +200,17 @@ func (t *Manager) provisioningLeader() string {
 		sort.StringSlice(leaders).Sort()
 		return leaders[0]
 	}
+}
+
+// runningInstances returns the nodes whose instance is up, or warn.
+func (t *Manager) runningInstances() []string {
+	l := make([]string, 0)
+	for node, instStatus := range t.instStatus {
+		if instStatus.Avail.Is(status.Up, status.Warn) {
+			l = append(l, node)
+		}
+	}
+	return l
 }
 
 func (t *Manager) isProvisioningLeader() bool {

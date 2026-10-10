@@ -41,6 +41,32 @@ func TestActionsBuildATree(t *testing.T) {
 	}
 }
 
+// TestAddMapIsHidden pins the v2 spelling the collector queues a mapping
+// as: answered, and not offered.
+func TestAddMapIsHidden(t *testing.T) {
+	var found bool
+	for _, action := range (&Array{}).Actions() {
+		if len(action.Path) == 2 && action.Path[0] == "add" && action.Path[1] == "map" {
+			found = true
+			assert.True(t, action.Hidden)
+		}
+	}
+	assert.True(t, found, "no action named add map")
+}
+
+// TestResizeOffersTruncateNotForce pins that a shrink is allowed by
+// --truncate, the name every array uses, and that --force, the v2 spelling,
+// is answered without being offered.
+func TestResizeOffersTruncateNotForce(t *testing.T) {
+	cmd, err := array.NewCommand((&Array{}).Actions(), &bytes.Buffer{})
+	require.NoError(t, err)
+	leaf, _, err := cmd.Find([]string{"resize", "disk"})
+	require.NoError(t, err)
+	usage := leaf.UsageString()
+	assert.Contains(t, usage, "--truncate")
+	assert.NotContains(t, usage, "--force")
+}
+
 // TestTheSRDFOptionsAreTheirOwn is the bug the declaration fixes: three
 // options were bound to one variable, so --srdf-type and --srdf-mode set the
 // storage resource pool instead of themselves, and the type and the mode were

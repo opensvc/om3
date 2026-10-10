@@ -71,11 +71,16 @@ func (t Paths) Mapping() string {
 	return strings.Join(t.MappingList(), ",")
 }
 
+// MappingList returns the paths in the mapping grammar the array commands
+// read, "<hba_id>:<tgt_id>", one per path.
+//
+// It is not the String of the paths, which names the target first: a pool
+// handing that to an array had the array look its target up as an initiator,
+// and present the disk to the host the target name happened to match, if any.
 func (t Paths) MappingList() []string {
 	l := make([]string, 0)
 	for _, p := range t {
-		s := p.String()
-		l = append(l, s)
+		l = append(l, p.Initiator.Name+":"+p.Target.Name)
 	}
 	return l
 }
@@ -283,9 +288,9 @@ func ParseMappings(l []string) (Paths, error) {
 		if s == "" {
 			continue
 		}
-		hba, targets, ok := strings.Cut(s, ":")
-		if !ok || hba == "" || targets == "" {
-			return paths, fmt.Errorf("san paths parser: %s is not a <hba_id>:<tgt_id>[,<tgt_id>...] mapping", s)
+		hba, targets, err := cutMapping(s)
+		if err != nil {
+			return paths, err
 		}
 		for _, target := range strings.Split(targets, ",") {
 			if target == "" {
@@ -295,6 +300,34 @@ func ParseMappings(l []string) (Paths, error) {
 		}
 	}
 	return paths, nil
+}
+
+// cutMapping splits a mapping into its initiator and its targets.
+//
+// An iscsi initiator name holds colons of its own, as in
+// "iqn.1993-08.org.debian:01:abcdef", so a mapping holding ":iqn." is cut
+// there, where its first iscsi target begins, as v2 cuts it. A mapping
+// holding two is refused rather than guessed: either cut exports a disk to
+// a name nobody asked for. A mapping holding none is cut at its first colon,
+// which is the fibre channel form, where no name holds one.
+func cutMapping(s string) (string, string, error) {
+	var (
+		hba, targets string
+		ok           bool
+	)
+	switch strings.Count(s, ":iqn.") {
+	case 0:
+		hba, targets, ok = strings.Cut(s, ":")
+	case 1:
+		hba, targets, ok = strings.Cut(s, ":iqn.")
+		targets = "iqn." + targets
+	default:
+		return "", "", fmt.Errorf("san paths parser: %s holds more than one \":iqn.\", where the initiator ends is ambiguous", s)
+	}
+	if !ok || hba == "" || targets == "" {
+		return "", "", fmt.Errorf("san paths parser: %s is not a <hba_id>:<tgt_id>[,<tgt_id>...] mapping", s)
+	}
+	return hba, targets, nil
 }
 
 // newPath returns the path of an initiator to a target, of the transport their

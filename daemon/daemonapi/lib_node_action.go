@@ -28,7 +28,7 @@ func JSONFromSetNodeMonitorError(eCtx echo.Context, nodename string, value *node
 			OrchestrationID: value.CandidateOrchestrationID.String(),
 			Node:            nodename,
 		})
-		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID})
+		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID, Node: &nodename})
 	case errors.Is(err, context.DeadlineExceeded):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set node monitor", "timeout publishing %s", *value)
 	case errors.Is(err, context.Canceled):

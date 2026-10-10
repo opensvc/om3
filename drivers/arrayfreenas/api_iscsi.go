@@ -1,5 +1,11 @@
 package arrayfreenas
 
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
+
 // CreateISCSIExtentParams defines model for CreateISCSIExtentParams.
 type CreateISCSIExtentParams struct {
 	Name        string `json:"name"`
@@ -162,6 +168,76 @@ func (t ISCSIExtents) GetByPath(s string) *ISCSIExtent {
 	return nil
 }
 
+// GetByNAA returns the extent of a naa, written with or without its 0x
+// prefix, as v2 accepts it.
+func (t ISCSIExtents) GetByNAA(naa string) *ISCSIExtent {
+	want := strings.TrimPrefix(strings.ToLower(naa), "0x")
+	if want == "" {
+		return nil
+	}
+	for _, e := range t {
+		if strings.TrimPrefix(strings.ToLower(e.NAA), "0x") == want {
+			return &e
+		}
+	}
+	return nil
+}
+
+// WithZvol returns the extents exporting a zvol.
+func (t ISCSIExtents) WithZvol(name string) ISCSIExtents {
+	l := make(ISCSIExtents, 0)
+	for _, e := range t {
+		if s, ok := e.zvol(); ok && s == name {
+			l = append(l, e)
+		}
+	}
+	return l
+}
+
+// Names returns the extents as an error message names them.
+func (t ISCSIExtents) Names() string {
+	l := make([]string, len(t))
+	for i, e := range t {
+		l[i] = fmt.Sprintf("%d (%s)", e.Id, e.Name)
+	}
+	return strings.Join(l, ", ")
+}
+
+// checkFree returns an error when an extent is named name, or exports disk:
+// the array refuses the first, and the second exports the zvol twice.
+func (t ISCSIExtents) checkFree(name, disk string) error {
+	if e := t.GetByName(name); e != nil {
+		return fmt.Errorf("extent %s already exists (id %d, exporting %s)", name, e.Id, e.diskPath())
+	}
+	for _, e := range t {
+		if e.diskPath() == disk {
+			return fmt.Errorf("%s is already exported by extent %d (%s)", disk, e.Id, e.Name)
+		}
+	}
+	return nil
+}
+
+// diskPath returns what the extent exports. The api says it in "disk" for
+// a DISK extent and in "path" for a FILE one, and some versions say it in
+// both.
+func (t ISCSIExtent) diskPath() string {
+	if t.Disk != "" {
+		return t.Disk
+	}
+	return t.Path
+}
+
+// zvol returns the name of the zvol the extent exports, the whole of it, as
+// in "pool/dir/name". v2 read its first component only, which is the pool
+// of a zvol in a subdirectory.
+func (t ISCSIExtent) zvol() (string, bool) {
+	if t.Type != "DISK" {
+		return "", false
+	}
+	name, ok := strings.CutPrefix(t.diskPath(), "zvol/")
+	return name, ok && name != ""
+}
+
 // ISCSIInitiator defines model for ISCSIInitiator.
 //
 //	{
@@ -179,6 +255,41 @@ type ISCSIInitiator struct {
 }
 
 type ISCSIInitiators []ISCSIInitiator
+
+// anyInitiator is the hba id a mapping report gives the initiators of a
+// target group that admits any initiator.
+const anyInitiator = "*"
+
+// groupInitiators returns the initiators a target group admits, and true
+// when it admits any: the group names no initiator group, which the array
+// answers as a null id decoded as 0, or names one listing no initiator.
+func groupInitiators(group ISCSITargetGroup, initiators ISCSIInitiators) ([]string, bool, error) {
+	if group.InitiatorId == 0 {
+		return nil, true, nil
+	}
+	initiator, ok := initiators.GetById(group.InitiatorId)
+	if !ok {
+		return nil, false, fmt.Errorf("initiator group id %d not found", group.InitiatorId)
+	}
+	if len(initiator.Initiators) == 0 {
+		return nil, true, nil
+	}
+	return initiator.Initiators, false, nil
+}
+
+// targetAdmits returns true when a group of the target admits the initiator.
+func targetAdmits(target ISCSITarget, hba string, initiators ISCSIInitiators) (bool, error) {
+	for _, group := range target.Groups {
+		names, any, err := groupInitiators(group, initiators)
+		if err != nil {
+			return false, fmt.Errorf("target %s: %w", target.Name, err)
+		}
+		if any || slices.Contains(names, hba) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // GetISCSIInitiatorsParams defines parameters for GetISCSIInitiators.
 type GetISCSIInitiatorsParams struct {
