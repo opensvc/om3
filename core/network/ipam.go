@@ -48,6 +48,7 @@ func NewAllocator(nw Networker, nodename string) (*ipam.T, error) {
 			Name:        nw.Name(),
 			Range:       rng,
 			Dir:         ipam.StoreDir(nw.Name()),
+			ClusterDir:  ipam.PeerDir(nw.Name()),
 			ClusterWide: true,
 		}, nil
 	}
@@ -335,12 +336,13 @@ var lockNetwork = func(ctx context.Context, networkName, key string) (context.Co
 // clusterAddrs reads the addresses the resources of the cluster hold in a
 // network, by reservation key.
 //
-// Two readings make it. The status of the objects, which the daemon
+// Three readings make it. The status of the objects, which the daemon
 // replicates, has every address a resource reports, on the nodes alive or
 // not. The reservation store of every node alive has the addresses drawn and
 // not reported yet, as the one the node that held the network lock before
 // this one just drew: the object it drew it for publishes its status once its
-// action is over.
+// action is over. The peer records have what the nodes the cluster stopped
+// hearing from reported holding, which the status forgets.
 var clusterAddrs = func(ctx context.Context, networkName string) (map[string][]net.IP, error) {
 	c, err := client.New()
 	if err != nil {
@@ -354,12 +356,33 @@ var clusterAddrs = func(ctx context.Context, networkName string) (map[string][]n
 	if err != nil {
 		return nil, err
 	}
-	for key, ips := range reserved {
-		for _, ip := range ips {
-			if !slices.ContainsFunc(m[key], ip.Equal) {
-				m[key] = append(m[key], ip)
+	records, err := peerRecordAddrs(networkName)
+	if err != nil {
+		return nil, err
+	}
+	for _, more := range []map[string][]net.IP{reserved, records} {
+		for key, ips := range more {
+			for _, ip := range ips {
+				if !slices.ContainsFunc(m[key], ip.Equal) {
+					m[key] = append(m[key], ip)
+				}
 			}
 		}
+	}
+	return m, nil
+}
+
+// peerRecordAddrs returns the addresses the other nodes reported holding in
+// a network, by reservation key, as this node remembers them: what a node
+// whose daemon is down holds is in there, though the cluster no longer says.
+func peerRecordAddrs(networkName string) (map[string][]net.IP, error) {
+	records, err := ipam.ReadPeerRecords(ipam.PeerDir(networkName))
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string][]net.IP)
+	for _, record := range records {
+		m[record.Key] = append(m[record.Key], record.IP)
 	}
 	return m, nil
 }

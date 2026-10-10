@@ -49,6 +49,11 @@ type (
 		// out has no reservation here, and would be handed out twice.
 		PeerDirs []string
 
+		// ClusterDir holds the addresses the other nodes reported holding
+		// in a range every node draws from, which this node remembers for
+		// as long as it is not told otherwise: see PeerDir.
+		ClusterDir string
+
 		// InUse reports the addresses the cluster says are taken. The daemon
 		// replicates the resource status of every instance, so this sees the
 		// addresses of objects whose reservation file this node cannot read.
@@ -364,7 +369,11 @@ func (t *T) Reservations() ([]Reservation, error) {
 // cluster reports in use.
 func (t *T) taken() (map[string]bool, error) {
 	m := make(map[string]bool)
-	for _, dir := range append([]string{t.Dir}, t.PeerDirs...) {
+	dirs := append([]string{t.Dir}, t.PeerDirs...)
+	if t.ClusterDir != "" {
+		dirs = append(dirs, t.ClusterDir)
+	}
+	for _, dir := range dirs {
 		found, err := recorded(dir)
 		if err != nil {
 			return nil, err
