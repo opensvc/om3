@@ -7,3 +7,8 @@ The type of network.
 * `lan`: a range of a segment the nodes share, the addresses of which an
   object takes along when it moves to another node, as the floating address
   of a failover service.
+
+The traffic the nodes forward for the `bridge` and `routed_bridge` networks
+is accepted in the om nft table, and, on a node running docker, whose
+forward chain drops what docker did not accept, in a chain the docker
+`DOCKER-USER` chain jumps to.

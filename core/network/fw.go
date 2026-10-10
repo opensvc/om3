@@ -455,9 +455,13 @@ func setupFW(n logger, nws []Networker) error {
 	if err != nil {
 		return err
 	}
-	ruleset, err := fwRuleset(fwNetworks(nws), legacy)
+	networks := fwNetworks(nws)
+	ruleset, err := fwRuleset(networks, legacy)
 	if err != nil {
 		return err
 	}
-	return h.apply(ruleset)
+	if err := h.apply(ruleset); err != nil {
+		return err
+	}
+	return setupDockerFW(n, networks)
 }
