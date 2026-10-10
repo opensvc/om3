@@ -189,3 +189,36 @@ func TestASwitchDestinationIsProvisioned(t *testing.T) {
 	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
 	assert.Equal(t, "node3", m.nextPlacedAtCandidate())
 }
+
+// A failover object running on a node is provisioned from there: the
+// placement leader would start a second instance of it.
+func TestAProvisionIsLedFromWhereTheObjectRuns(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.instMonitor["node3"] = instance.Monitor{IsLeader: true}
+	m.instStatus["node1"] = instance.Status{Avail: status.Down}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down}
+	assert.Equal(t, "node3", m.provisioningLeader(), "the placement leader, when the object runs nowhere")
+
+	m.instStatus["node2"] = instance.Status{Avail: status.Up}
+	assert.Equal(t, "node2", m.provisioningLeader(), "where the object runs")
+	assert.False(t, m.isProvisioningLeader())
+
+	m.instStatus["node1"] = instance.Status{Avail: status.Warn}
+	assert.Equal(t, "node1", m.provisioningLeader())
+	assert.True(t, m.isProvisioningLeader())
+}
+
+// The leader of an unprovision of a failover object that runs is where it
+// runs, and the non-leaders are told apart by the same rule: the leader
+// counting itself among them would wait for itself, forever.
+func TestTheUnprovisionLeaderIsNoNonLeader(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	m.instMonitor["node3"] = instance.Monitor{IsLeader: true}
+	m.instStatus["node1"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	assert.True(t, m.isUnprovisionLeader())
+	assert.False(t, m.hasNonLeaderProvisioned(), "the running instance is the leader, not a non-leader")
+
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	assert.True(t, m.hasNonLeaderProvisioned(), "the placement leader is a non-leader of this unprovision")
+}
