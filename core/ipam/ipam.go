@@ -8,6 +8,7 @@
 package ipam
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"math/big"
@@ -15,9 +16,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/lock"
 )
 
 // StoreDir returns where the reservations of a network are recorded.
@@ -264,12 +267,28 @@ func (t *T) Allocated(key string) (net.IP, error) {
 	return stale, nil
 }
 
+// freeLockTimeout bounds the wait for another release of the network to end,
+// which takes a file read and a removal.
+const freeLockTimeout = 10 * time.Second
+
 // freeAddr releases ip, when key is the one holding it.
+//
+// The releases run one at a time: the holder is read and the file removed in
+// two steps, and a release interleaved between them could free the address
+// for a new reservation that this one would then remove. A reservation alone
+// needs no lock, the file being created exclusively.
 func (t *T) freeAddr(ip net.IP, key string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), freeLockTimeout)
+	defer cancel()
+	release, err := lock.Exclusive(ctx, filepath.Clean(t.Dir)+".lock")
+	if err != nil {
+		return fmt.Errorf("network %s: release %s: %w", t.Name, ip, err)
+	}
+	defer release()
 	if held, err := t.holder(ip.String()); err != nil || held != key {
 		return err
 	}
-	err := os.Remove(filepath.Join(t.Dir, ip.String()))
+	err = os.Remove(filepath.Join(t.Dir, ip.String()))
 	if os.IsNotExist(err) {
 		return nil
 	}
