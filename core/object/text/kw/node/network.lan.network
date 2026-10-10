@@ -1,10 +1,10 @@
-The addresses om hands out in this network, as a subnet of the segment the
-nodes share, as `fd01:2345:6789:4599::1:0/112` in `fd01:2345:6789:4599::/64`.
+The segment the nodes share, as `192.168.10.0/24`, which the addresses drawn
+from this network are configured with the prefix length of. Its first
+address, and the last of an ipv4 segment, are never handed out.
 
-Every node draws from the whole of it, so an address is the same wherever the
-object runs, and an object moving to another node takes its address along.
-Keep it clear of the addresses of the nodes and of the other hosts of the
-segment: om hands out every address of it but the first.
+om hands out the addresses of the ranges keyword only. Every node draws from
+all of them, so an address is the same wherever the object runs, and an
+object moving to another node takes its address along.
 
 A draw is made under the cluster lock of the network, and keeps clear of the
 addresses the nodes hold: the ones each node alive has reserved, the ones the

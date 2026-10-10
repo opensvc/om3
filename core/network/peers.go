@@ -43,7 +43,7 @@ func InstanceAddrs(allocators []*ipam.T, p naming.Path, st instance.Status) map[
 			continue
 		}
 		for _, i := range allocators {
-			if i.Range.Contains(ip) {
+			if i.Contains(ip) {
 				m[i.Name][ip.String()] = ipam.Key(p, rid)
 			}
 		}

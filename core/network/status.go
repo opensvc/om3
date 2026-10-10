@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/opensvc/om3/v3/core/clusterip"
+	"github.com/opensvc/om3/v3/core/ipam"
 )
 
 type (
@@ -53,14 +54,38 @@ func GetStatus(t Networker, ips clusterip.L) Status {
 		data.Errors = append(data.Errors, fmt.Sprintf("invalid network %q: %s", data.Network, err))
 		return data
 	}
+	pools := []ipam.Pool{ipam.PoolOf(ipn)}
+	if i, ok := t.(Pooler); ok {
+		if pools, err = i.Pools(); err != nil {
+			data.Errors = append(data.Errors, err.Error())
+			return data
+		}
+	}
 	if ips != nil {
-		data.IPs = t.FilterIPs(ips)
+		data.IPs = inPools(t.FilterIPs(ips), pools)
 		data.Usage.Used = big.NewInt(int64(usedCount(t, data.IPs)))
 	}
-	ones, bits := ipn.Mask.Size()
-	data.Usage.Size = new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
+	for _, p := range pools {
+		data.Usage.Size.Add(data.Usage.Size, p.Size())
+	}
 	data.Usage.Free = new(big.Int).Sub(data.Usage.Size, data.Usage.Used)
 	return data
+}
+
+// inPools returns the addresses of the pools: a network handing out some of
+// the addresses of its segment only counts those, the others being the ones
+// of the nodes and of the other hosts of the segment.
+func inPools(ips clusterip.L, pools []ipam.Pool) clusterip.L {
+	l := make(clusterip.L, 0, len(ips))
+	for _, ip := range ips {
+		for _, p := range pools {
+			if p.Contains(ip.IP) {
+				l = append(l, ip)
+				break
+			}
+		}
+	}
+	return l
 }
 
 func NewStatusList() StatusList {

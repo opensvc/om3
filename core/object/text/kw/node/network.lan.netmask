@@ -1,9 +1,0 @@
-The prefix length of the segment the nodes share, which the addresses drawn
-from this network are configured with, as `64`.
-
-When not set, it is the prefix length of the address of the node on the
-segment, the one whose prefix holds the range of the network: a node with an
-address `fd01:2345:6789:2902::11/64` configures the addresses drawn from
-`fd01:2345:6789:2902::5:0/120` with `/64`. Set it when the nodes have no
-address on the segment, as on a segment dedicated to the addresses of the
-services.

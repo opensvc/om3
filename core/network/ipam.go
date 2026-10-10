@@ -42,12 +42,19 @@ func NewAllocator(nw Networker, nodename string) (*ipam.T, error) {
 	if rng == nil {
 		return nil, nil
 	}
+	var pools []ipam.Pool
+	if i, ok := nw.(Pooler); ok {
+		if pools, err = i.Pools(); err != nil {
+			return nil, err
+		}
+	}
 	if i, ok := nw.(ClusterWider); ok && i.IsClusterWide() {
 		// No bridge answers for an address of the range, and no plugin
 		// ever allocated in it.
 		return &ipam.T{
 			Name:        nw.Name(),
 			Range:       rng,
+			Pools:       pools,
 			Dir:         ipam.StoreDir(nw.Name()),
 			ClusterDir:  ipam.PeerDir(nw.Name()),
 			ClusterWide: true,

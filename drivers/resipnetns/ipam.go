@@ -171,12 +171,11 @@ func (t *T) Configure() error {
 
 // configureLan fills from a lan network what the configuration did not say:
 // the interface of this node on the segment, which the link of the namespace
-// is a child of, and the prefix length of the segment, which the range of
-// the network is only a part of.
+// is a child of, and the prefix length of the segment.
 //
 // The gateway is the one the network names, the router of the segment: the
-// first address of the range, which a bridge network answers on, is an
-// address om hands out on a lan network.
+// first address of the segment plus one, which a bridge network answers on,
+// may be an address om hands out on a lan network.
 //
 // What does not fit is reported when the resource is started or its status
 // read, rather than failing every load of the object.

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -53,110 +54,96 @@ func fakeInterfaces(t *testing.T, m map[string][]string) {
 	}
 }
 
-// Every node draws from the whole range, and the range belongs to the cluster.
-func TestRange(t *testing.T) {
-	nw := newLAN(t, "[network#san]\ntype = lan\nnetwork = fd01:2345:6789:4599::1:0/112\nnetmask = 64\n")
+const san = "[network#san]\ntype = lan\nnetwork = fd01:2345:6789:2902::/64\nranges = fd01:2345:6789:2902::5:0/120\n"
+
+// Every node draws from the same ranges of the segment, and the addresses
+// belong to the cluster.
+func TestRanges(t *testing.T) {
+	nw := newLAN(t, san)
 	a, err := nw.AllocatableRange("n1")
 	require.NoError(t, err)
 	b, err := nw.AllocatableRange("n2")
 	require.NoError(t, err)
 	assert.Equal(t, a.String(), b.String())
-	assert.Equal(t, "fd01:2345:6789:4599::1:0/112", a.String())
+	assert.Equal(t, "fd01:2345:6789:2902::/64", a.String())
 	assert.True(t, nw.IsClusterWide())
+	n, err := nw.Netmask()
+	require.NoError(t, err)
+	assert.Equal(t, 64, n)
+
+	nw = newLAN(t, "[network#lan1]\ntype = lan\nnetwork = 192.168.10.0/24\nranges = 192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199\n")
+	pools, err := nw.Pools()
+	require.NoError(t, err)
+	assert.Equal(t, "192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199", ipam.PoolsString(pools))
 }
 
-const sanRange = "[network#san]\ntype = lan\nnetwork = fd01:2345:6789:2902::5:0/120\n"
+// The ranges are required, in the segment, and do not overlap.
+func TestRangesRefused(t *testing.T) {
+	for _, tc := range []struct {
+		ranges string
+		want   string
+	}{
+		{ranges: "", want: "ranges is not set"},
+		{ranges: "ranges = fd01:2345:6789:2903::5:0/120\n", want: "is not in the segment"},
+		{ranges: "ranges = fd01:2345:6789:2902::5:0/120 fd01:2345:6789:2902::5:10-fd01:2345:6789:2902::5:20\n", want: "overlaps"},
+		{ranges: "ranges = fd01:2345:6789:2902::5:10\n", want: "is neither a subnet"},
+	} {
+		_, err := newLAN(t, "[network#san]\ntype = lan\nnetwork = fd01:2345:6789:2902::/64\n"+tc.ranges).Pools()
+		assert.ErrorContains(t, err, tc.want, tc.ranges)
+	}
+}
 
-// The interface and the prefix length come from the address of the node whose
-// prefix holds the range.
-func TestFromTheNodeAddress(t *testing.T) {
+// The interface is the one holding an address of the segment, an address of
+// the ranges a service left on another interface not counting.
+func TestHostDev(t *testing.T) {
 	fakeInterfaces(t, map[string][]string{
 		"enp2s0": {"10.29.1.11/24", "fd01:2345:6789:2901::11/64"},
 		"enp3s0": {"fe80::1/64", "fd01:2345:6789:2902::11/64"},
+		"eth9":   {"fd01:2345:6789:2902::5:12/64"},
 	})
-	nw := newLAN(t, sanRange)
-	dev, err := nw.HostDev()
+	dev, err := newLAN(t, san).HostDev()
 	require.NoError(t, err)
 	assert.Equal(t, "enp3s0", dev)
-	n, err := nw.Netmask()
+
+	dev, err = newLAN(t, san+"dev = bond0\n").HostDev()
 	require.NoError(t, err)
-	assert.Equal(t, 64, n)
+	assert.Equal(t, "bond0", dev, "the keyword wins")
 }
 
-// The keywords override what the node address says.
-func TestKeywordsOverride(t *testing.T) {
-	fakeInterfaces(t, map[string][]string{
-		"enp3s0": {"fd01:2345:6789:2902::11/64"},
-		"bond0":  {"fd01:2345:6789:2902::21/56"},
-	})
-	nw := newLAN(t, sanRange+"netmask = 96\n")
-	n, err := nw.Netmask()
-	require.NoError(t, err)
-	assert.Equal(t, 96, n)
-	dev, err := nw.HostDev()
-	require.NoError(t, err)
-	assert.Equal(t, "enp3s0", dev, "the deepest prefix wins")
-
-	nw = newLAN(t, sanRange+"dev = bond0\n")
-	n, err = nw.Netmask()
-	require.NoError(t, err)
-	assert.Equal(t, 56, n, "the address of the interface dev names")
-
-	_, err = newLAN(t, sanRange+"netmask = 121\n").Netmask()
-	assert.ErrorContains(t, err, "the segment must hold the range")
-}
-
-// A node with no address on the segment has the keywords say it all.
-func TestNoNodeAddress(t *testing.T) {
+// A node with no address on the segment, or with several interfaces holding
+// one, has the dev keyword say which.
+func TestHostDevAmbiguous(t *testing.T) {
 	fakeInterfaces(t, map[string][]string{
 		"enp2s0": {"10.29.1.11/24"},
-		"vlan9":  {"fe80::1/64"},
 	})
-	_, err := newLAN(t, sanRange).HostDev()
-	assert.ErrorContains(t, err, "set the dev and netmask keywords")
+	_, err := newLAN(t, san).HostDev()
+	assert.ErrorContains(t, err, "set the dev keyword")
 
-	nw := newLAN(t, sanRange+"dev = vlan9\n")
-	dev, err := nw.HostDev()
-	require.NoError(t, err)
-	assert.Equal(t, "vlan9", dev)
-	_, err = nw.Netmask()
-	assert.ErrorContains(t, err, "set the netmask keyword")
-
-	nw = newLAN(t, sanRange+"dev = vlan9\nnetmask = 64\n")
-	n, err := nw.Netmask()
-	require.NoError(t, err)
-	assert.Equal(t, 64, n)
-}
-
-// Two interfaces with an address of an equally deep prefix holding the range
-// leave the interface to the dev keyword.
-func TestTwoInterfacesOnTheSegment(t *testing.T) {
 	fakeInterfaces(t, map[string][]string{
 		"eth1": {"fd01:2345:6789:2902::11/64"},
 		"eth2": {"fd01:2345:6789:2902::12/64"},
 	})
-	_, err := newLAN(t, sanRange).HostDev()
+	_, err = newLAN(t, san).HostDev()
 	assert.ErrorContains(t, err, "set the dev keyword")
 }
 
 // The gateway is the router of the segment: an address of the segment, out of
-// the range om hands out.
+// the ranges om hands out.
 func TestGateway(t *testing.T) {
-	const segment = sanRange + "netmask = 64\n"
-	gw, err := newLAN(t, segment).Gateway()
+	gw, err := newLAN(t, san).Gateway()
 	require.NoError(t, err)
 	assert.Nil(t, gw, "none when not set")
 
-	gw, err = newLAN(t, segment+"gateway = fd01:2345:6789:2902::1\n").Gateway()
+	gw, err = newLAN(t, san+"gateway = fd01:2345:6789:2902::1\n").Gateway()
 	require.NoError(t, err)
 	assert.Equal(t, "fd01:2345:6789:2902::1", gw.String())
 
-	_, err = newLAN(t, segment+"gateway = fd01:2345:6789:2902::5:1\n").Gateway()
+	_, err = newLAN(t, san+"gateway = fd01:2345:6789:2902::5:1\n").Gateway()
 	assert.ErrorContains(t, err, "which om hands out")
 
-	_, err = newLAN(t, segment+"gateway = fd01:2345:6789:2903::1\n").Gateway()
+	_, err = newLAN(t, san+"gateway = fd01:2345:6789:2903::1\n").Gateway()
 	assert.ErrorContains(t, err, "is not on the segment")
 
-	_, err = newLAN(t, segment+"gateway = router\n").Gateway()
+	_, err = newLAN(t, san+"gateway = router\n").Gateway()
 	assert.ErrorContains(t, err, "is not an ip address")
 }

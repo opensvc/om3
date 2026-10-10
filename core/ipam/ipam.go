@@ -34,8 +34,13 @@ type (
 		// Name is the network the addresses are drawn from.
 		Name string
 
-		// Range is the addresses this node draws from.
+		// Range is the subnet of the addresses this node draws from: its
+		// first address, and the last of an ipv4 one, are never handed out.
 		Range *net.IPNet
+
+		// Pools are the addresses of Range this node draws from, all of
+		// them when there is none.
+		Pools []Pool
 
 		// Gateway is not allocated: it is the address of the bridge.
 		Gateway net.IP
@@ -64,7 +69,7 @@ type (
 		// neither.
 		InUse func() ([]net.IP, error)
 
-		// ClusterWide says every node draws from Range, as the nodes of a
+		// ClusterWide says every node draws from the pools, as the nodes of a
 		// lan network do: an address is the cluster's, not this node's, so
 		// a resource takes the address it holds on another node, and the
 		// addresses the other resources hold anywhere are taken.
@@ -107,9 +112,8 @@ func (t *T) Allocate(key string) (net.IP, error) {
 	if err != nil {
 		return nil, err
 	}
-	ones, bits := t.Range.Mask.Size()
-	size := new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
-	first := ipToInt(t.Range.IP)
+	pools := t.pools()
+	size := poolsSize(pools)
 	offset := new(big.Int).Mod(keyOffset(key), size)
 
 	probes := maxProbes
@@ -117,8 +121,8 @@ func (t *T) Allocate(key string) (net.IP, error) {
 		probes = int(size.Int64())
 	}
 	for i := 0; i < probes; i++ {
-		ip := intToIP(new(big.Int).Add(first, offset), t.Range.IP.To4() != nil)
-		if t.isAllocatable(ip, size) && !taken[ip.String()] {
+		ip := poolsAddr(pools, offset)
+		if t.isAllocatable(ip) && !taken[ip.String()] {
 			if ok, err := t.reserve(ip, key); err != nil {
 				return nil, err
 			} else if ok {
@@ -128,7 +132,62 @@ func (t *T) Allocate(key string) (net.IP, error) {
 		offset.Add(offset, big.NewInt(1))
 		offset.Mod(offset, size)
 	}
-	return nil, fmt.Errorf("network %s: no free address in %s after %d probes", t.Name, t.Range, probes)
+	return nil, fmt.Errorf("network %s: no free address in %s after %d probes", t.Name, PoolsString(pools), probes)
+}
+
+// pools returns the pools this node draws from: Pools, or else the whole of
+// Range.
+func (t *T) pools() []Pool {
+	if len(t.Pools) > 0 {
+		return t.Pools
+	}
+	return []Pool{PoolOf(t.Range)}
+}
+
+// PoolsString returns the addresses this node draws from, as they are
+// written.
+func (t *T) PoolsString() string {
+	if t.Range == nil {
+		return ""
+	}
+	return PoolsString(t.pools())
+}
+
+// Contains says ip is one of the addresses this node draws from, whether it
+// may be handed out or not.
+func (t *T) Contains(ip net.IP) bool {
+	if t.Range == nil || !t.Range.Contains(ip) {
+		return false
+	}
+	for _, p := range t.pools() {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// poolsSize returns the number of addresses of the pools.
+func poolsSize(pools []Pool) *big.Int {
+	size := big.NewInt(0)
+	for _, p := range pools {
+		size.Add(size, p.Size())
+	}
+	return size
+}
+
+// poolsAddr returns the address at offset in the pools, walked one after
+// the other, offset being less than their size.
+func poolsAddr(pools []Pool, offset *big.Int) net.IP {
+	rest := new(big.Int).Set(offset)
+	for _, p := range pools {
+		size := p.Size()
+		if rest.Cmp(size) < 0 {
+			return intToIP(rest.Add(rest, ipToInt(p.First)), p.First.To4() != nil)
+		}
+		rest.Sub(rest, size)
+	}
+	return nil
 }
 
 // Adopt records the addresses resources already hold, so the allocator hands
@@ -151,7 +210,7 @@ func (t *T) Adopt(reservations []Reservation) (int, error) {
 		if reservation.IP == nil || reservation.Key == "" {
 			continue
 		}
-		if t.Range != nil && !t.Range.Contains(reservation.IP) {
+		if t.Range != nil && !t.Contains(reservation.IP) {
 			continue
 		}
 		ok, err := t.reserve(reservation.IP, reservation.Key)
@@ -394,20 +453,20 @@ func (t *T) taken() (map[string]bool, error) {
 	return m, nil
 }
 
-// isAllocatable reports whether an address of the range may be handed to an
+// isAllocatable reports whether an address of the pools may be handed to an
 // object.
 //
-// The first address of a range names the range, the last of an ipv4 range is
-// its broadcast address, and the gateway answers for the bridge.
-func (t *T) isAllocatable(ip net.IP, size *big.Int) bool {
-	if !t.Range.Contains(ip) {
+// The first address of the subnet names it, the last of an ipv4 subnet is its
+// broadcast address, and the gateway answers for the bridge.
+func (t *T) isAllocatable(ip net.IP) bool {
+	if ip == nil || !t.Contains(ip) {
 		return false
 	}
-	offset := new(big.Int).Sub(ipToInt(ip), ipToInt(t.Range.IP))
-	if offset.Sign() == 0 {
+	subnet := PoolOf(t.Range)
+	if ip.Equal(subnet.First) {
 		return false
 	}
-	if ip.To4() != nil && offset.Cmp(new(big.Int).Sub(size, big.NewInt(1))) == 0 {
+	if ip.To4() != nil && ip.Equal(subnet.Last) {
 		return false
 	}
 	if t.Gateway != nil && t.Gateway.Equal(ip) {

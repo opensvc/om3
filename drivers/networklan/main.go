@@ -1,7 +1,7 @@
-// Package networklan is the lan network driver: a range of the segment the
-// nodes share, whose addresses om hands out to the cluster rather than to a
-// node, for an object to take its address along to the node it moves to, as
-// the floating address of a failover service.
+// Package networklan is the lan network driver: a segment the nodes share,
+// of which om hands out the addresses of the ranges it is given to the
+// cluster rather than to a node, for an object to take its address along to
+// the node it moves to, as the floating address of a failover service.
 //
 // Nothing is set up on the nodes: the addresses are configured on an
 // interface of the node on the segment, which is reached as the rest of the
@@ -12,9 +12,9 @@ package networklan
 import (
 	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
 )
 
@@ -48,10 +48,35 @@ func New() *T {
 	return &T{}
 }
 
-// AllocatableRange returns the whole range, whatever the node: every node
-// draws from it, so an object draws the same address wherever it runs.
+// AllocatableRange returns the segment, whatever the node: every node draws
+// from the same ranges of it, so an object draws the same address wherever it
+// runs.
 func (t *T) AllocatableRange(_ string) (*net.IPNet, error) {
 	return t.IPNet()
+}
+
+// Pools returns the ranges of the segment om hands out, which the ranges
+// keyword lists. It is required: the segment holds the addresses of the
+// nodes, of the router and of the other hosts, which om knows nothing of.
+func (t *T) Pools() ([]ipam.Pool, error) {
+	segment, err := t.IPNet()
+	if err != nil {
+		return nil, err
+	}
+	l := t.GetStrings("ranges")
+	if len(l) == 0 {
+		return nil, fmt.Errorf("network#%s.ranges is not set: list the addresses of the segment %s om hands out, as 192.168.10.100-192.168.10.199 or 192.168.10.128/26", t.Name(), segment)
+	}
+	pools, err := ipam.ParsePools(l)
+	if err != nil {
+		return nil, fmt.Errorf("network#%s.ranges: %w", t.Name(), err)
+	}
+	for _, p := range pools {
+		if !p.In(segment) {
+			return nil, fmt.Errorf("network#%s.ranges: %s is not in the segment %s", t.Name(), p, segment)
+		}
+	}
+	return pools, nil
 }
 
 // IsClusterWide says the addresses of a lan network belong to the cluster.
@@ -59,32 +84,20 @@ func (t *T) IsClusterWide() bool {
 	return true
 }
 
-// Netmask returns the prefix length of the segment, which holds the range:
-// the netmask keyword, or else the prefix length of the address of this node
-// on the segment, the one whose prefix holds the range.
+// Netmask returns the prefix length of the segment, which the addresses drawn
+// from it are configured with.
 func (t *T) Netmask() (int, error) {
-	rng, err := t.IPNet()
+	segment, err := t.IPNet()
 	if err != nil {
 		return 0, err
 	}
-	ones, _ := rng.Mask.Size()
-	if s := t.GetString("netmask"); s != "" {
-		n, err := strconv.Atoi(s)
-		if err != nil {
-			return 0, fmt.Errorf("network#%s.netmask %q: %w", t.Name(), s, err)
-		}
-		if n < 0 || n > ones {
-			return 0, fmt.Errorf("network#%s.netmask %d: the segment must hold the range %s, so its prefix length is at most %d", t.Name(), n, rng, ones)
-		}
-		return n, nil
-	}
-	_, n, err := t.hostAddr()
-	return n, err
+	ones, _ := segment.Mask.Size()
+	return ones, nil
 }
 
 // Gateway returns the router of the segment, the gateway keyword, nil when
 // it is not set. It must be an address of the segment, and not one om hands
-// out: the range is all om's.
+// out.
 func (t *T) Gateway() (net.IP, error) {
 	s := t.GetString("gateway")
 	if s == "" {
@@ -94,60 +107,42 @@ func (t *T) Gateway() (net.IP, error) {
 	if ip == nil {
 		return nil, fmt.Errorf("network#%s.gateway %q is not an ip address", t.Name(), s)
 	}
-	rng, err := t.IPNet()
+	segment, err := t.IPNet()
 	if err != nil {
 		return nil, err
 	}
-	if rng.Contains(ip) {
-		return nil, fmt.Errorf("network#%s.gateway %s is in the range %s, which om hands out", t.Name(), ip, rng)
-	}
-	n, err := t.Netmask()
-	if err != nil {
-		return nil, err
-	}
-	segment := &net.IPNet{IP: rng.IP.Mask(net.CIDRMask(n, len(rng.IP)*8)), Mask: net.CIDRMask(n, len(rng.IP)*8)}
 	if !segment.Contains(ip) {
 		return nil, fmt.Errorf("network#%s.gateway %s is not on the segment %s", t.Name(), ip, segment)
+	}
+	pools, err := t.Pools()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range pools {
+		if p.Contains(ip) {
+			return nil, fmt.Errorf("network#%s.gateway %s is in the range %s, which om hands out", t.Name(), ip, p)
+		}
 	}
 	return ip, nil
 }
 
 // HostDev returns the interface of this node on the segment: the dev keyword,
-// or else the interface holding the address of this node on the segment.
+// or else the interface holding an address of the segment.
 func (t *T) HostDev() (string, error) {
 	if s := t.GetString("dev"); s != "" {
 		return s, nil
 	}
-	dev, _, err := t.hostAddr()
-	return dev, err
-}
-
-// hostAddr returns the interface and the prefix length of the address of this
-// node on the segment: the address whose prefix holds the range, on the
-// interface the dev keyword names when it names one. The deepest prefix wins,
-// as the route to it does.
-//
-// A node with no address on the segment, as on a segment dedicated to the
-// addresses of the services, has neither: the netmask keyword, and the dev
-// keyword, say them then.
-func (t *T) hostAddr() (string, int, error) {
-	rng, err := t.IPNet()
+	segment, err := t.IPNet()
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
-	rngOnes, _ := rng.Mask.Size()
-	devKw := t.GetString("dev")
 	l, err := interfaces()
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
-	var (
-		dev  string
-		ones = -1
-		tie  bool
-	)
+	devs := make([]string, 0)
 	for _, i := range l {
-		if i.Flags&net.FlagLoopback != 0 || (devKw != "" && i.Name != devKw) {
+		if i.Flags&net.FlagLoopback != 0 {
 			continue
 		}
 		addrs, err := addrsOf(i)
@@ -155,41 +150,48 @@ func (t *T) hostAddr() (string, int, error) {
 			continue
 		}
 		for _, addr := range addrs {
-			_, prefix, err := net.ParseCIDR(addr.String())
-			if err != nil {
+			ip, _, err := net.ParseCIDR(addr.String())
+			if err != nil || !segment.Contains(ip) || t.holds(ip) {
 				continue
 			}
-			n, _ := prefix.Mask.Size()
-			if n > rngOnes || !prefix.Contains(rng.IP) {
-				continue
-			}
-			switch {
-			case n > ones:
-				dev, ones, tie = i.Name, n, false
-			case n == ones && i.Name != dev:
-				tie = true
-			}
+			devs = append(devs, i.Name)
+			break
 		}
 	}
-	switch {
-	case ones < 0 && devKw != "":
-		return "", 0, fmt.Errorf("no address of interface %s holds the range %s of the network %s, so the prefix length of its segment is unknown: set the netmask keyword of the network", devKw, rng, t.Name())
-	case ones < 0:
-		return "", 0, fmt.Errorf("no address of this node holds the range %s of the network %s, so neither the interface nor the prefix length of its segment is known: set the dev and netmask keywords of the network", rng, t.Name())
-	case tie:
-		return "", 0, fmt.Errorf("several interfaces of this node hold an address of a /%d prefix holding the range %s of the network %s: set the dev keyword of the network", ones, rng, t.Name())
+	switch len(devs) {
+	case 0:
+		return "", fmt.Errorf("no interface of this node holds an address of the segment %s of the network %s: set the dev keyword of the network", segment, t.Name())
+	case 1:
+		return devs[0], nil
+	default:
+		return "", fmt.Errorf("the interfaces %v of this node hold an address of the segment %s of the network %s: set the dev keyword of the network", devs, segment, t.Name())
 	}
-	return dev, ones, nil
 }
 
-// Setup checks the node is on the segment, which is all a lan network needs
-// of it.
-func (t *T) Setup() error {
-	dev, err := t.HostDev()
+// holds says ip is one om hands out, which an interface holding says nothing
+// of it being the interface of the node on the segment: a service address
+// left on another interface would make it look like one.
+func (t *T) holds(ip net.IP) bool {
+	pools, err := t.Pools()
 	if err != nil {
+		return false
+	}
+	for _, p := range pools {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// Setup checks the node is on the segment, and the ranges are, which is all
+// a lan network needs of it.
+func (t *T) Setup() error {
+	if _, err := t.Pools(); err != nil {
 		return err
 	}
-	if _, err := t.Netmask(); err != nil {
+	dev, err := t.HostDev()
+	if err != nil {
 		return err
 	}
 	if _, err := net.InterfaceByName(dev); err != nil {

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/file"
@@ -83,6 +84,7 @@ func checkOverlap(nw Networker, nws []Networker) error {
 		// ex: 172.10.10.0/22 prefix addr 172.10.10.0 does not match the prefix length (expected 172.10.8.0)
 		return fmt.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), refIPNet.IP)
 	}
+	refPools := overlapPools(nw, refIPNet)
 	for _, other := range nws {
 		if nw == other {
 			continue
@@ -91,11 +93,30 @@ func checkOverlap(nw Networker, nws []Networker) error {
 		if err != nil {
 			continue
 		}
-		if intersect(refIPNet, otherIPNet) {
-			return fmt.Errorf("%s overlaps %s (%s)", refIPNet, otherIPNet, other.Name())
+		if !intersect(refIPNet, otherIPNet) {
+			continue
+		}
+		for _, p := range refPools {
+			for _, o := range overlapPools(other, otherIPNet) {
+				if p.Overlaps(o) {
+					return fmt.Errorf("%s overlaps %s (%s)", p, o, other.Name())
+				}
+			}
 		}
 	}
 	return nil
+}
+
+// overlapPools returns the addresses of a network another must not hand out:
+// the ranges of a network handing out some of its segment only, as two lan
+// networks of the same segment do, else the whole of it.
+func overlapPools(nw Networker, ipnet *net.IPNet) []ipam.Pool {
+	if i, ok := nw.(Pooler); ok {
+		if pools, err := i.Pools(); err == nil {
+			return pools
+		}
+	}
+	return []ipam.Pool{ipam.PoolOf(ipnet)}
 }
 
 func setupNetwork(n *object.Node, nw Networker, dir string) error {

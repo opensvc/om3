@@ -3,6 +3,6 @@ network route the traffic of their namespace through, unless they set a
 gateway of their own. The ip.host resources do not use it: their addresses
 are configured on the node, which has its own routes.
 
-It must be an address of the segment, and not one of the range om hands out.
+It must be an address of the segment, and not one of the ranges om hands out.
 When not set, the ip.netns resources set no gateway, and a namespace with no
 default route of its own reaches the segment only.

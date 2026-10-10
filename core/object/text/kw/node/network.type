@@ -4,7 +4,7 @@ The type of network.
   traffic masqueraded out of the node.
 * `routed_bridge`: a subnet cut into one range per node, routed between the
   nodes.
-* `lan`: a range of a segment the nodes share, the addresses of which an
+* `lan`: ranges of a segment the nodes share, the addresses of which an
   object takes along when it moves to another node, as the floating address
   of a failover service.
 

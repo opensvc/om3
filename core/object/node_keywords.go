@@ -1409,18 +1409,18 @@ var (
 		Types:   []string{"routed_bridge"},
 	}
 	kwNodeNetworkLANNetwork = keywords.Keyword{
-		Example: "fd01:2345:6789:4599::1:0/112",
+		Example: "192.168.10.0/24",
 		Option:  "network",
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.lan.network"),
 		Types:   []string{"lan"},
 	}
-	kwNodeNetworkLANNetmask = keywords.Keyword{
-		Converter: converters.Int,
-		Example:   "64",
-		Option:    "netmask",
+	kwNodeNetworkLANRanges = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199",
+		Option:    "ranges",
 		Section:   "network",
-		Text:      keywords.NewText(fs, "text/kw/node/network.lan.netmask"),
+		Text:      keywords.NewText(fs, "text/kw/node/network.lan.ranges"),
 		Types:     []string{"lan"},
 	}
 	kwNodeNetworkLANDev = keywords.Keyword{
@@ -1432,7 +1432,7 @@ var (
 		Types:    []string{"lan"},
 	}
 	kwNodeNetworkLANGateway = keywords.Keyword{
-		Example:  "fd01:2345:6789:4599::1",
+		Example:  "192.168.10.254",
 		Option:   "gateway",
 		Scopable: true,
 		Section:  "network",
@@ -2055,7 +2055,7 @@ var (
 		&kwNodeNetworkDev,
 		&kwNodeNetworkPublic,
 		&kwNodeNetworkLANNetwork,
-		&kwNodeNetworkLANNetmask,
+		&kwNodeNetworkLANRanges,
 		&kwNodeNetworkLANDev,
 		&kwNodeNetworkLANGateway,
 		&kwNodeSwitchType,

@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/clusterip"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
@@ -137,11 +138,16 @@ type (
 	}
 
 	// Netmasker is implemented by the network drivers whose addresses are
-	// configured with a prefix length other than the one of their range,
-	// as the range om hands out in a segment the nodes share is configured
-	// with the prefix length of the segment.
+	// configured with the prefix length of the segment they are drawn from,
+	// rather than the one of a bridge.
 	Netmasker interface {
 		Netmask() (int, error)
+	}
+
+	// Pooler is implemented by the network drivers handing out some of the
+	// addresses of their range only, which it returns.
+	Pooler interface {
+		Pools() ([]ipam.Pool, error)
 	}
 
 	// Gatewayer is implemented by the network drivers that name the router

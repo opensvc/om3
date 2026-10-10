@@ -149,8 +149,8 @@ func (t *Allocation) Reserve(ip net.IP) (net.IP, error) {
 	if err != nil || i == nil {
 		return nil, err
 	}
-	if i.Range == nil || !i.Range.Contains(ip) {
-		return nil, fmt.Errorf("%s is not an address of network %s (%s): unset the addr keyword to draw one", ip, i.Name, i.Range)
+	if !i.Contains(ip) {
+		return nil, fmt.Errorf("%s is not an address of network %s (%s): unset the addr keyword to draw one", ip, i.Name, i.PoolsString())
 	}
 	key := t.Key()
 	held, err := i.Allocated(key)

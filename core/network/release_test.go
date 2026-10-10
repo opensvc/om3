@@ -24,7 +24,7 @@ import (
 // and nothing else: its other resources, and the other objects, keep theirs.
 func TestReleaseRemoved(t *testing.T) {
 	testhelper.Setup(t)
-	require.NoError(t, os.WriteFile(rawconfig.NodeConfigFile(), []byte("[network#san]\ntype = lan\nnetwork = fd01::5:0/120\nnetmask = 64\n"), 0600))
+	require.NoError(t, os.WriteFile(rawconfig.NodeConfigFile(), []byte("[network#san]\ntype = lan\nnetwork = fd01::/64\nranges = fd01::5:0/120\n"), 0600))
 	nw, _, err := network.Lookup("san")
 	require.NoError(t, err)
 	require.NotNil(t, nw)
