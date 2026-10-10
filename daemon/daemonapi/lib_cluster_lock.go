@@ -30,8 +30,8 @@ var lockTableRebuilding sync.Mutex
 // node speaking before granted. Every node records the locks its own clients
 // hold, which is what the table is rebuilt from.
 //
-// A node that does not answer leaves the table not rebuilt, and no lock is
-// granted: the locks its clients hold are the ones a grant would break.
+// A node heard that does not answer leaves the table not rebuilt, and no lock
+// is granted: the locks its clients hold are the ones a grant would break.
 func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
 	lockTableRebuilding.Lock()
 	defer lockTableRebuilding.Unlock()
@@ -46,9 +46,9 @@ func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
 		if nodename == a.localhost {
 			continue
 		}
-		if node.StatusData.GetByNode(nodename) == nil || !hearsPeer(a.localhost, nodename) {
-			// A node this one has no data of, or does not hear, has no
-			// daemon its clients could have asked a lock through.
+		if node.StatusData.GetByNode(nodename) == nil {
+			// A node this one has no data of has no daemon its clients
+			// could have asked a lock through.
 			continue
 		}
 		if _, ok := maintenanceEndsAt(a.localhost, nodename); ok {
@@ -57,7 +57,12 @@ func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
 			continue
 		}
 		l, err := nodeLocks(ctx.Request().Context(), nodename)
-		if err != nil {
+		if err != nil && !hearsPeer(a.localhost, nodename) {
+			// Neither heard nor answering: its daemon is gone, the
+			// cluster not dropping its data yet. A node whose heartbeats
+			// are lost but whose daemon answers is asked all the same.
+			continue
+		} else if err != nil {
 			return fmt.Errorf("ask %s the cluster locks its clients hold: %w", nodename, err)
 		}
 		locks = append(locks, l...)
