@@ -125,3 +125,35 @@ func prevIP(ip net.IP) net.IP {
 func nextIP(ip net.IP) net.IP {
 	return intToIP(new(big.Int).Add(ipToInt(ip), big.NewInt(1)), ip.To4() != nil)
 }
+
+// A reservation the ranges no longer hold is kept when they hold no free
+// address to replace it: the address is still configured, and no other
+// resource may draw it.
+func TestAllocateOutOfNarrowedFullPools(t *testing.T) {
+	_, segment, _ := net.ParseCIDR("192.168.10.0/24")
+	dir := t.TempDir()
+	wide, err := ParsePools([]string{"192.168.10.100-192.168.10.101"})
+	require.NoError(t, err)
+	i := &T{Name: "lan1", Range: segment, Pools: wide, Dir: dir}
+	a, err := i.Allocate("a")
+	require.NoError(t, err)
+	b, err := i.Allocate("b")
+	require.NoError(t, err)
+
+	narrowed, err := ParsePools([]string{b.String() + "-" + b.String()})
+	require.NoError(t, err)
+	i = &T{Name: "lan1", Range: segment, Pools: narrowed, Dir: dir}
+	_, err = i.Allocate("a")
+	assert.Error(t, err, "no free address")
+	held, err := i.Allocated("a")
+	require.NoError(t, err)
+	assert.True(t, held.Equal(a), "the address out of the ranges stays reserved")
+
+	require.NoError(t, i.Free("b"))
+	got, err := i.Allocate("a")
+	require.NoError(t, err)
+	assert.True(t, got.Equal(b))
+	reservations, err := i.Reservations()
+	require.NoError(t, err)
+	assert.Len(t, reservations, 1, "the address out of the ranges is released once replaced")
+}

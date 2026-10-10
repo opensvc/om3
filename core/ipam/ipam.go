@@ -103,16 +103,15 @@ func (t *T) Allocate(key string) (net.IP, error) {
 	if t.Range == nil {
 		return nil, fmt.Errorf("network %s allocates no address on this node", t.Name)
 	}
-	if ip, err := t.Allocated(key); err != nil {
+	// An address the ranges no longer hold, as they changed, is given up
+	// for one they hold, once that one is reserved: an address still
+	// configured is never left with no reservation, as when the ranges hold
+	// no free address.
+	stale, err := t.Allocated(key)
+	if err != nil {
 		return nil, err
-	} else if ip != nil && t.Contains(ip) {
-		return ip, nil
-	} else if ip != nil {
-		// The ranges changed, and no longer hold the address: it is
-		// given up for one they hold.
-		if err := t.Free(key); err != nil {
-			return nil, err
-		}
+	} else if stale != nil && t.Contains(stale) {
+		return stale, nil
 	}
 	taken, err := t.taken()
 	if err != nil {
@@ -131,6 +130,8 @@ func (t *T) Allocate(key string) (net.IP, error) {
 		if t.isAllocatable(ip) && !taken[ip.String()] {
 			if ok, err := t.reserve(ip, key); err != nil {
 				return nil, err
+			} else if ok && stale != nil {
+				return ip, t.DropStale(key)
 			} else if ok {
 				return ip, nil
 			}
@@ -238,6 +239,9 @@ func (t *T) Allocated(key string) (net.IP, error) {
 	} else if err != nil {
 		return nil, err
 	}
+	// A key holds two addresses for the moment an address out of the ranges
+	// is given up for one in them: the one in them is the one it holds.
+	var stale net.IP
 	for _, entry := range entries {
 		ip := net.ParseIP(entry.Name())
 		if ip == nil {
@@ -245,30 +249,64 @@ func (t *T) Allocated(key string) (net.IP, error) {
 		}
 		if held, err := t.holder(entry.Name()); err != nil {
 			return nil, err
-		} else if held == key {
+		} else if held != key {
+			continue
+		} else if t.Range == nil || t.Contains(ip) {
 			return ip, nil
+		} else if stale == nil {
+			stale = ip
 		}
 	}
-	return nil, nil
+	return stale, nil
 }
 
-// Free releases the address key holds, and does nothing when it holds none.
-//
-// Only the holder frees an address: the file names who took it, and a
-// reservation another key made is left alone.
-func (t *T) Free(key string) error {
-	ip, err := t.Allocated(key)
-	if err != nil {
+// freeAddr releases ip, when key is the one holding it.
+func (t *T) freeAddr(ip net.IP, key string) error {
+	if held, err := t.holder(ip.String()); err != nil || held != key {
 		return err
 	}
-	if ip == nil {
-		return nil
-	}
-	err = os.Remove(filepath.Join(t.Dir, ip.String()))
+	err := os.Remove(filepath.Join(t.Dir, ip.String()))
 	if os.IsNotExist(err) {
 		return nil
 	}
 	return err
+}
+
+// Free releases the addresses key holds, and does nothing when it holds none.
+//
+// Only the holder frees an address: the file names who took it, and a
+// reservation another key made is left alone.
+func (t *T) Free(key string) error {
+	return t.freeHeld(key, func(net.IP) bool { return true })
+}
+
+// DropStale releases the addresses key holds out of the ranges, once it
+// holds one in them: the one the ranges hold replaced them.
+func (t *T) DropStale(key string) error {
+	if ip, err := t.Allocated(key); err != nil || ip == nil || !t.Contains(ip) {
+		return err
+	}
+	return t.freeHeld(key, func(ip net.IP) bool { return !t.Contains(ip) })
+}
+
+// freeHeld releases the addresses key holds that drop says to.
+func (t *T) freeHeld(key string, drop func(net.IP) bool) error {
+	entries, err := os.ReadDir(t.Dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		ip := net.ParseIP(entry.Name())
+		if ip == nil || !drop(ip) {
+			continue
+		}
+		if err := t.freeAddr(ip, key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // reserve creates the reservation of an address, and reports whether this

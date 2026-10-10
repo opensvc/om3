@@ -264,13 +264,9 @@ func allocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string, prev
 		return nil, err
 	}
 	if held != nil && i.Contains(held) {
+		// An address the ranges no longer hold is given up by Allocate,
+		// once it reserved one they hold.
 		return held, nil
-	} else if held != nil {
-		// The ranges changed, and no longer hold the address: it is given
-		// up for one they hold.
-		if err := i.Free(key); err != nil {
-			return nil, err
-		}
 	}
 	exclude := make([]net.IP, 0)
 	if previous != nil {
@@ -559,6 +555,9 @@ func adoptClusterAddr(ctx context.Context, i *ipam.T, key string, adopt bool) (n
 	}
 	if ip == nil || !ip.Equal(own) {
 		return nil, nil, fmt.Errorf("network %s: %s is reserved on this node for another resource than %s, which holds it on another node", i.Name, own, key)
+	}
+	if err := i.DropStale(key); err != nil {
+		return nil, nil, err
 	}
 	return ip, nil, nil
 }
