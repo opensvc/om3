@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/locktable"
 )
 
@@ -44,9 +46,9 @@ func (a *DaemonAPI) rebuildLockTable(ctx echo.Context) error {
 		if nodename == a.localhost {
 			continue
 		}
-		if node.StatusData.GetByNode(nodename) == nil {
-			// A node this one has no data of is not alive, and neither are
-			// the clients it had.
+		if node.StatusData.GetByNode(nodename) == nil || !hearsPeer(a.localhost, nodename) {
+			// A node this one has no data of, or does not hear, has no
+			// daemon its clients could have asked a lock through.
 			continue
 		}
 		l, err := nodeLocks(ctx.Request().Context(), nodename)
@@ -142,4 +144,27 @@ func lockListToAPI(locks []locktable.Lock) api.ClusterLockList {
 		items[i] = lockToAPI(lock)
 	}
 	return api.ClusterLockList{Kind: "ClusterLockList", Items: items}
+}
+
+// hearsPeer says this node receives the heartbeats of a peer, which is the
+// peer daemon answering.
+//
+// A peer whose daemon stopped cleanly is left in maintenance: the cluster
+// keeps its data, its last status among it, as the objects it runs go on
+// running. Its data being there says nothing of its daemon, which a request
+// handed to it finds gone.
+func hearsPeer(localhost, nodename string) bool {
+	hb := daemonsubsystem.DataHeartbeat.Get(localhost)
+	if hb == nil {
+		return false
+	}
+	for _, stream := range hb.Streams {
+		if !strings.HasSuffix(stream.ID, ".rx") {
+			continue
+		}
+		if peer, ok := stream.Peers[nodename]; ok && peer.IsBeating {
+			return true
+		}
+	}
+	return false
 }

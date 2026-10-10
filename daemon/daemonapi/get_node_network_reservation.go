@@ -26,6 +26,11 @@ func (a *DaemonAPI) GetNodeNetworkReservations(ctx echo.Context, nodename api.In
 		return err
 	}
 	if nodename != a.localhost {
+		if !hearsPeer(a.localhost, nodename) {
+			// Not alive, for what a draw reads of it: what it holds is in
+			// the status the cluster kept of it, if it stopped cleanly.
+			return JSONProblemf(ctx, http.StatusNotFound, "Not alive", "the daemon of %s does not answer: no heartbeat is received from it", nodename)
+		}
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetNodeNetworkReservations(ctx.Request().Context(), nodename, &params)
 		})
