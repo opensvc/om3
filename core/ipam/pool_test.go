@@ -185,3 +185,31 @@ func TestDropReplaced(t *testing.T) {
 	}
 	assert.Equal(t, map[string]string{"192.168.10.110": "a", "192.168.10.20": "b"}, got)
 }
+
+// An address the ranges no longer hold, still configured, is reserved again
+// for the key that could not give it up, and the replacement it drew is
+// released. An address another key holds is refused.
+func TestKeep(t *testing.T) {
+	_, segment, _ := net.ParseCIDR("192.168.10.0/24")
+	pools, err := ParsePools([]string{"192.168.10.100-192.168.10.199"})
+	require.NoError(t, err)
+	i := &T{Name: "lan1", Range: segment, Pools: pools, Dir: t.TempDir()}
+	_, err = i.Allocate("a")
+	require.NoError(t, err)
+	previous := net.ParseIP("192.168.10.10")
+
+	require.NoError(t, i.Keep(previous, "a"))
+	held, err := i.Allocated("a")
+	require.NoError(t, err)
+	assert.True(t, held.Equal(previous))
+	reservations, err := i.Reservations()
+	require.NoError(t, err)
+	assert.Len(t, reservations, 1, "the address drawn is released")
+	require.NoError(t, i.Keep(previous, "a"), "kept twice")
+
+	_, err = i.Allocate("b")
+	require.NoError(t, err)
+	b, err := i.Allocated("b")
+	require.NoError(t, err)
+	assert.Error(t, i.Keep(b, "a"))
+}

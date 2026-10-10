@@ -159,7 +159,7 @@ func (t *Kept) Reserve(ctx context.Context, addr string) (net.IP, net.IP, error)
 // which it could not take off the node: reserved again, and recorded again,
 // so no other resource draws an address still configured. ip is released.
 func (t *Kept) Restore(ctx context.Context, previous, ip net.IP) error {
-	if _, err := t.Alloc().Reserve(previous); err != nil {
+	if err := t.Alloc().Keep(previous); err != nil {
 		return fmt.Errorf("reserve again %s, still configured: %w", previous, err)
 	}
 	if t.PerInstance {

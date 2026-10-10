@@ -138,6 +138,18 @@ func (t *Allocation) Free() error {
 	return i.Free(t.Key())
 }
 
+// Keep reserves again ip, the address the resource has configured on this
+// node and could not give up for the one it drew, which is released. Unlike
+// Reserve, it takes an address the ranges of the network no longer hold, as
+// such an address is the one a resource is most often made to give up.
+func (t *Allocation) Keep(ip net.IP) error {
+	i, err := t.Allocator()
+	if err != nil || i == nil {
+		return err
+	}
+	return i.Keep(ip, t.Key())
+}
+
 // Reserve records ip as the address of the resource on this node, the one its
 // configuration says it drew on another node or earlier: the address is the
 // resource's, whichever node drew it. A reservation of another address for

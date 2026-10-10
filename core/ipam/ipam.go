@@ -293,6 +293,25 @@ func (t *T) DropStale(key string) error {
 	return t.freeHeld(key, func(ip net.IP) bool { return !t.Contains(ip) })
 }
 
+// Keep reserves ip for key, in the ranges or out of them, and releases the
+// other addresses key holds: ip is the address the resource has configured,
+// and could not give up for the one it drew. An address another key holds
+// is refused.
+func (t *T) Keep(ip net.IP, key string) error {
+	if held, err := t.holder(ip.String()); err != nil {
+		return err
+	} else if held != "" && held != key {
+		return fmt.Errorf("network %s: %s is reserved on this node for another resource than %s", t.Name, ip, key)
+	} else if held == "" {
+		if ok, err := t.reserve(ip, key); err != nil {
+			return err
+		} else if !ok {
+			return fmt.Errorf("network %s: %s was reserved meanwhile on this node for another resource than %s", t.Name, ip, key)
+		}
+	}
+	return t.freeHeld(key, func(other net.IP) bool { return !other.Equal(ip) })
+}
+
 // DropReplaced releases the addresses held out of the ranges by the keys
 // holding one in them, as a replacement drawn by a key whose stale address
 // could not be dropped then, or adopted at the address its resource has
