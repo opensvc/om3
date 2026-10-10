@@ -120,9 +120,21 @@ func (t *Kept) Reserve(ctx context.Context, addr string) (net.IP, net.IP, error)
 		// this node, which holds it from a start to the next until the
 		// instance is unprovisioned. Recording it in the configuration, as
 		// the address of all the instances is, would have the instances
-		// starting at once write it at once, each over the others.
+		// starting at once write it at once, each over the others. The
+		// address held is given up for another when the ranges of the
+		// network no longer hold it.
+		held, err := t.Alloc().Allocated()
+		if err != nil {
+			return nil, nil, err
+		}
 		ip, err := t.Alloc().Allocate(ctx)
-		return ip, nil, err
+		if err != nil {
+			return nil, nil, err
+		}
+		if held != nil && !held.Equal(ip) {
+			return ip, held, nil
+		}
+		return ip, nil, nil
 	}
 	previous, err := t.Alloc().Allocated()
 	if err != nil {
@@ -141,6 +153,22 @@ func (t *Kept) Reserve(ctx context.Context, addr string) (net.IP, net.IP, error)
 		return nil, nil, fmt.Errorf("record the address %s drawn from network %s: %w", ip, t.Network, err)
 	}
 	return ip, previous, nil
+}
+
+// Restore gives the resource back previous, the address it gave up for ip,
+// which it could not take off the node: reserved again, and recorded again,
+// so no other resource draws an address still configured. ip is released.
+func (t *Kept) Restore(ctx context.Context, previous, ip net.IP) error {
+	if _, err := t.Alloc().Reserve(previous); err != nil {
+		return fmt.Errorf("reserve again %s, still configured: %w", previous, err)
+	}
+	if t.PerInstance {
+		return nil
+	}
+	if err := t.Record(ctx, ip.String(), previous.String()); err != nil {
+		return fmt.Errorf("record again %s, still configured: %w", previous, err)
+	}
+	return nil
 }
 
 // Release releases the reservation of this node, and, on the leader, removes

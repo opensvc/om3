@@ -105,8 +105,14 @@ func (t *T) Allocate(key string) (net.IP, error) {
 	}
 	if ip, err := t.Allocated(key); err != nil {
 		return nil, err
-	} else if ip != nil {
+	} else if ip != nil && t.Contains(ip) {
 		return ip, nil
+	} else if ip != nil {
+		// The ranges changed, and no longer hold the address: it is
+		// given up for one they hold.
+		if err := t.Free(key); err != nil {
+			return nil, err
+		}
 	}
 	taken, err := t.taken()
 	if err != nil {

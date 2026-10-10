@@ -1,6 +1,7 @@
 package ipam
 
 import (
+	"math/big"
 	"net"
 	"testing"
 
@@ -80,4 +81,47 @@ func TestAllocateFromPools(t *testing.T) {
 	assert.True(t, i.Contains(net.ParseIP("192.168.10.0")))
 	assert.False(t, i.Contains(net.ParseIP("192.168.10.3")))
 	assert.Equal(t, "192.168.10.0-192.168.10.2 192.168.10.150/32 192.168.10.253-192.168.10.255", i.PoolsString())
+}
+
+// A reservation the ranges no longer hold, as after they were narrowed, is
+// given up for an address they hold.
+func TestAllocateOutOfNarrowedPools(t *testing.T) {
+	_, segment, _ := net.ParseCIDR("192.168.10.0/24")
+	dir := t.TempDir()
+	wide, err := ParsePools([]string{"192.168.10.100-192.168.10.199"})
+	require.NoError(t, err)
+	i := &T{Name: "lan1", Range: segment, Pools: wide, Dir: dir}
+	before, err := i.Allocate("a")
+	require.NoError(t, err)
+
+	others := make([]string, 0)
+	for _, p := range wide {
+		if !p.Contains(before) {
+			continue
+		}
+		if !before.Equal(p.First) {
+			others = append(others, p.First.String()+"-"+prevIP(before).String())
+		}
+		if !before.Equal(p.Last) {
+			others = append(others, nextIP(before).String()+"-"+p.Last.String())
+		}
+	}
+	narrowed, err := ParsePools(others)
+	require.NoError(t, err)
+	i = &T{Name: "lan1", Range: segment, Pools: narrowed, Dir: dir}
+	after, err := i.Allocate("a")
+	require.NoError(t, err)
+	assert.False(t, after.Equal(before))
+	assert.True(t, i.Contains(after))
+	held, err := i.Allocated("a")
+	require.NoError(t, err)
+	assert.True(t, held.Equal(after), "the address out of the ranges is released")
+}
+
+func prevIP(ip net.IP) net.IP {
+	return intToIP(new(big.Int).Sub(ipToInt(ip), big.NewInt(1)), ip.To4() != nil)
+}
+
+func nextIP(ip net.IP) net.IP {
+	return intToIP(new(big.Int).Add(ipToInt(ip), big.NewInt(1)), ip.To4() != nil)
 }

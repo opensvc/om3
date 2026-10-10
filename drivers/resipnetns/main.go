@@ -196,6 +196,12 @@ func (t *T) Start(ctx context.Context) error {
 		})
 	}
 	if err := t.dropPrevious(ctx); err != nil {
+		if t.keeps() {
+			if rerr := t.kept().Restore(ctx, t._previous, t._ipaddr); rerr != nil {
+				return fmt.Errorf("%w, and %w", err, rerr)
+			}
+			return fmt.Errorf("%w: the resource keeps %s, the address it could not give up", err, t._previous)
+		}
 		return err
 	}
 	if err := t.startMode(ctx); err != nil {

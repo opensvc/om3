@@ -222,7 +222,10 @@ func (t *T) Start(ctx context.Context) error {
 		}
 		t._ipaddr, t._ipnet, t._ipmask = ip, nil, nil
 		if err := t.dropPrevious(previous); err != nil {
-			return err
+			if rerr := t.kept().Restore(ctx, previous, ip); rerr != nil {
+				return fmt.Errorf("%w, and %w", err, rerr)
+			}
+			return fmt.Errorf("%w: the resource keeps %s, the address it could not give up", err, previous)
 		}
 	}
 	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
