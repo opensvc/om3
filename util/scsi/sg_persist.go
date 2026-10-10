@@ -36,13 +36,7 @@ func (t SGPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
 
 func (t SGPersistDriver) readRegistrations(dev device.T) ([]string, error) {
 	l := make([]string, 0)
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("-n", "--in", "--read-keys", dev.Path()),
-		command.WithBufferedStdout(),
-		command.WithEnv(t.env("1")),
-	)
-	b, err := cmd.Output()
+	b, err := t.readIn(dev, "--read-keys")
 	if err != nil {
 		return l, err
 	}
@@ -104,13 +98,7 @@ func (t SGPersistDriver) ReadReservation(dev device.T) (string, error) {
 }
 
 func (t SGPersistDriver) readReservation(dev device.T) (string, error) {
-	cmd := command.New(
-		command.WithName("sg_persist"),
-		command.WithVarArgs("-n", "--in", "--read-reservation", dev.Path()),
-		command.WithEnv(t.env("1")),
-		command.WithBufferedStdout(),
-	)
-	b, err := cmd.Output()
+	b, err := t.readIn(dev, "--read-reservation")
 	if err != nil {
 		return "", err
 	}
@@ -236,11 +224,41 @@ func (t SGPersistDriver) env(val string) []string {
 	}
 }
 
+// readIn runs a --in command, and runs it again on a Unit Attention.
+//
+// A change of the registrations or of the reservation, made from another node
+// or another path, raises a Unit Attention on the paths of this one, and the
+// next command on each fails on it, which is what acknowledges it. A read
+// failing on it on every path reads nothing: a reservation another key holds
+// then goes unseen, and is taken over.
+func (t SGPersistDriver) readIn(dev device.T, what string) ([]byte, error) {
+	for countdown := 10; ; countdown-- {
+		cmd := command.New(
+			command.WithName("sg_persist"),
+			command.WithVarArgs("-n", "--in", what, dev.Path()),
+			command.WithEnv(t.env("1")),
+			command.WithBufferedStdout(),
+		)
+		b, err := cmd.Output()
+		if err == nil || cmd.ExitCode() != 6 || countdown == 1 {
+			return b, err
+		}
+		t.Log.Tracef("Unit Attention received from %s on %s: acknowledged, read again", dev, what)
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
 // ackUnitAttention does a --in command to acknowledge a unit attention, likely
 // caused by the previous --out command.
 func (t SGPersistDriver) ackUnitAttention(dev device.T) {
 	t.Log.Tracef("ack Unit Attention on %s.", dev)
-	_, _ = t.readReservation(dev)
+	cmd := command.New(
+		command.WithName("sg_persist"),
+		command.WithVarArgs("-n", "--in", "--read-reservation", dev.Path()),
+		command.WithEnv(t.env("1")),
+		command.WithBufferedStdout(),
+	)
+	_, _ = cmd.Output()
 }
 
 func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O) error {
