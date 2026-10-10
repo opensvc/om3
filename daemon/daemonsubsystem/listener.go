@@ -29,6 +29,11 @@ func PeerURL(nodename string) string {
 	lsnr := DataListener.Get(nodename)
 	addr := nodename
 	port := fmt.Sprintf("%d", daemonenv.HTTPPort)
+	if lsnr == nil {
+		// Nothing heard of its listener yet, as just after a restart of
+		// the cluster: the defaults.
+		return daemonenv.HTTPNodeAndPortURL(addr, port)
+	}
 	if lsnr.Port != "" {
 		port = lsnr.Port
 	}
