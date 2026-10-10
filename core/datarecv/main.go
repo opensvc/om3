@@ -1,7 +1,6 @@
 package datarecv
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"text/template"
 
 	"github.com/anmitsu/go-shlex"
 	"golang.org/x/sys/unix"
@@ -36,8 +34,9 @@ import (
 // seedKeyFromSource fetches data from a URI or local file and adds it as a key to the datastore.
 // It only seeds the key if it doesn't already exist.
 // Supports both HTTP/HTTPS URIs (http://, https://) and local file paths.
-// If isTemplate is true, the content is executed as a Go template with the config env section exposed.
-func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger, config *xconfig.T, isTemplate bool) error {
+// A template is seeded as it is written, and rendered on each node at each
+// install.
+func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger) error {
 	log.Infof("seeding key %s from source %s", keyName, sourceURI)
 
 	var data []byte
@@ -73,25 +72,6 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 		}
 	}
 
-	// If template flag is set, execute the content as a Go template
-	if isTemplate && config != nil {
-		log.Infof("executing template for key %s from source %s", keyName, sourceURI)
-		// Build template data from the env section of the config
-		templateData := buildEnvTemplateData(config)
-
-		tmpl, err := template.New("source").Parse(string(data))
-		if err != nil {
-			return fmt.Errorf("failed to parse template for key %s: %w", keyName, err)
-		}
-
-		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, templateData); err != nil {
-			return fmt.Errorf("failed to execute template for key %s: %w", keyName, err)
-		}
-
-		data = buf.Bytes()
-	}
-
 	// Add the data as a key to the datastore
 	if err := ds.AddKey(keyName, data); err != nil {
 		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
@@ -100,7 +80,8 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 	return nil
 }
 
-// buildEnvTemplateData builds a map of environment variables from the config's env section
+// buildEnvTemplateData builds a map of environment variables from the config's env section,
+// the data of the templates an install renders.
 func buildEnvTemplateData(config *xconfig.T) map[string]string {
 	data := make(map[string]string)
 
@@ -635,9 +616,7 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
 			if !from.HasKey(md.FromPattern) {
-				// Get the config from the receiver object
-				config := t.to.GetObject().(object.Core).Config()
-				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log(), config, md.IsTemplate); err != nil {
+				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -744,9 +723,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
 			if !dataStore.HasKey(md.FromPattern) {
-				// Get the config from the receiver object
-				config := t.to.GetObject().(object.Core).Config()
-				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log(), config, md.IsTemplate); err != nil {
+				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -956,7 +933,7 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 				word, line = Pop(line)
 				item.Source = word
 			case "template":
-				item.IsTemplate = true
+				item.Render = t.render
 			}
 		}
 

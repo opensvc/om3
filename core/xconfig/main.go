@@ -1224,6 +1224,13 @@ func (t *T) mayDescope(k key.T, kw *keywords.Keyword, impersonate string) (strin
 	return v, err
 }
 
+// DereferenceAs returns the value of ref, a reference as a keyword value
+// writes it between braces, evaluated in section for the node impersonate,
+// and an error for a reference that resolves to nothing.
+func (t *T) DereferenceAs(ref, section, impersonate string) (string, error) {
+	return t.dereference("{"+ref+"}", section, impersonate, false, newDereferenceTrace())
+}
+
 func (t *T) replaceReferences(v string, section string, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	if v == "" {
 		return "", nil

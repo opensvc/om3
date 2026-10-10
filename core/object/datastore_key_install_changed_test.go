@@ -57,3 +57,42 @@ func TestInstallKeyToReportsContentChanges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "v2", string(b))
 }
+
+// A rendered file is compared to what its key renders to at each install, the
+// rendering reading more than the key: a change of what it reads is a change
+// of the file, though the store is the same.
+func TestInstallKeyToRendersAtEachInstall(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	head := t.TempDir()
+	p := naming.Path{Name: "web", Kind: naming.KindCfg, Namespace: naming.NsRoot}
+	o, err := NewDataStore(p)
+	require.NoError(t, err)
+	require.NoError(t, o.AddKey("app.conf", []byte("peer=")))
+	peer := "n2"
+	install := func() bool {
+		changed, err := o.InstallKeyTo(KVInstall{
+			ToHead:        head,
+			ToPath:        filepath.Join(head, "app.conf"),
+			FromPattern:   "app.conf",
+			FromStore:     p,
+			AccessControl: KVInstallAccessControl{Perm: 0644, MakedirPerm: 0755},
+			Render: func(_ string, b []byte) ([]byte, error) {
+				return append(b, peer...), nil
+			},
+		})
+		require.NoError(t, err)
+		return changed
+	}
+	assert.True(t, install(), "a file created")
+	assert.False(t, install(), "the same rendering installed again")
+	peer = "n3"
+	assert.True(t, install(), "a rendering changed, the store the same")
+	b, err := os.ReadFile(filepath.Join(head, "app.conf"))
+	require.NoError(t, err)
+	assert.Equal(t, "peer=n3", string(b))
+}

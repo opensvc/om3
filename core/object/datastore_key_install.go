@@ -39,9 +39,14 @@ type (
 		FromPattern   string
 		FromStore     naming.Path
 		Source        string
-		IsTemplate    bool
 		AccessControl KVInstallAccessControl
 		Signals       *volsignal.T
+
+		// Render, when set, makes the file installed from a key out of the
+		// key content: a template rendered on the node. The file then
+		// depends on more than the key, so it is compared to what it
+		// renders to at each install, its time saying nothing.
+		Render func(key string, b []byte) ([]byte, error)
 
 		// LogUnchanged logs what the install leaves as it is, a file up to
 		// date or a key the store does not hold, as an install report asked
@@ -195,6 +200,11 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	b, err := t.decode(vk.Key)
 	if err != nil {
 		return false, err
+	}
+	if opt.Render != nil {
+		if b, err = opt.Render(vk.Key, b); err != nil {
+			return false, fmt.Errorf("render key %s: %w", vk.Key, err)
+		}
 	}
 	if info, err := opt.fs.Lstat(opt.ToPath); err == nil && info.IsDir() {
 		opt.ToLog.Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
@@ -350,7 +360,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	if err := t.chown(dst, usr, grp, info, opt.fs, opt.ToLog); err != nil {
 		return false, err
 	}
-	if mtime == info.ModTime() {
+	if mtime == info.ModTime() && opt.Render == nil {
 		if opt.LogUnchanged {
 			opt.ToLog.Infof("%s from key %s of %s is up to date", dst, vk.Key, t.path)
 		}

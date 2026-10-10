@@ -42,6 +42,23 @@ Where:
   * stop installing items if this item install failed.
 
 * `source <uri>`
-  * seed the datastore key with the content of `<uri>`.
-  * if `template` is also set, treat the `<uri>` content as a go template, and execute using the [env] section keys as the dataset.
-    e.g. {{.foo}} is replaced by the evaluated value of `env.foo`.
+  * seed the datastore key with the content of `<uri>`, as it is written: a template is stored as a template.
+
+* `template`
+  * the key content is a go template, rendered on each node at each install into the installed file. The key
+    keeps the template, so a file says what the node it is installed on knows when it is installed.
+  * the data is the [env] section: `{{.foo}}` is replaced by the evaluated value of `env.foo`.
+  * the functions are:
+    * `ref "<reference>"`: the value of an om reference, written without its braces, evaluated for this node.
+      e.g. `{{ref "nodename"}}`, `{{ref "clusternodes"}}`, `{{ref "volume#1.mnt"}}`.
+    * `split <string>`: the words of a string, as a list a reference returns.
+      e.g. `{{range split (ref "clusternodes")}}{{.}} {{end}}`.
+    * `key "<obj_path|obj_relpath>" "<key>"`: the content of a datastore key, the datastore sharing its keys with
+      the installing object namespace. The installed file mode is the line's, so a file rendering a sec key
+      wants a `mode` as tight as the key's.
+    * `network "<name>"`: the network `<name>`, with the fields `Name`, `Type`, `Network` and `Peers`. A
+      routed_bridge network lists the other nodes in `Peers`, as this node reaches them, with the fields
+      `Nodename`, `Local` and `Remote` (the addresses of this node and the peer the network joins), `Subnet`,
+      and `Tunnel` (the tunnel device, empty when the network is routed to the peer). Other networks list none.
+  * the file is compared to what the template renders at each install, so the `signal` follows a change of
+    what the template reads too, at the next install.
