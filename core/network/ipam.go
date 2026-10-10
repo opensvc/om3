@@ -511,6 +511,9 @@ func ReleaseRemoved(p naming.Path, rids map[string]bool) (int, error) {
 				return true
 			}
 			_, rid, _ := strings.Cut(key, "!")
+			// The reservation of one instance is the resource id and the
+			// node, as each instance of a flex resource draws its own.
+			rid, _, _ = strings.Cut(rid, "@")
 			return rids[rid]
 		})
 		released += n

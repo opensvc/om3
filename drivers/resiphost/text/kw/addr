@@ -11,3 +11,9 @@ interface.
 
 A configuration copied to create another object leaves it behind, so the
 copy draws an address of its own rather than bring this one up twice.
+
+A resource not shared of a flex object draws an address per instance, as
+its instances run at once. The address of an instance is not written here:
+the node keeps it in its reservation store, from a start to the next, until
+the instance is unprovisioned. Set addr@<nodename> to choose the address of
+an instance; an addr without a node is not taken as one.

@@ -18,9 +18,11 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/drivers/resip"
 	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/getaddr"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/netif"
 	"github.com/opensvc/om3/v3/util/ping"
@@ -79,9 +81,47 @@ func New() resource.Driver {
 // keyword names, when it names no address of its own.
 func (t *T) alloc() *resip.Allocation {
 	if t._alloc == nil {
-		t._alloc = &resip.Allocation{Network: t.Network, Path: t.Path, RID: t.RID(), Log: t.Log()}
+		rid := t.RID()
+		if t.perInstance() {
+			// The reservation of this instance, apart from the ones of the
+			// instances of the other nodes.
+			rid += "@" + hostname.Hostname()
+		}
+		t._alloc = &resip.Allocation{Network: t.Network, Path: t.Path, RID: rid, Log: t.Log()}
 	}
 	return t._alloc
+}
+
+// perInstance says each instance draws an address of its own, which is the
+// case of a resource not shared of a flex object: its instances run at once,
+// and an address they all brought up would be one address on several nodes.
+//
+// A failover object runs one instance at a time, which takes the address
+// along when it moves. A shared resource of a flex object is one address for
+// all its instances, should that be the point.
+func (t *T) perInstance() bool {
+	if t.Shared {
+		return false
+	}
+	o, ok := t.GetObject().(interface{ Topology() topology.T })
+	return ok && o.Topology() == topology.Flex
+}
+
+// hasOwnAddr says the configuration records an address for this instance
+// under its own key, rather than one the evaluation fell back on.
+func (t *T) hasOwnAddr() bool {
+	o, ok := t.GetObject().(object.Configurer)
+	return ok && o.Config().HasKey(t.addrKey())
+}
+
+// addrKey is where the address drawn is recorded: addr, the same on every
+// node, or addr@<node>, the address root chose for this instance when each
+// instance draws its own.
+func (t *T) addrKey() key.T {
+	if t.perInstance() {
+		return key.New(t.RID(), "addr@"+hostname.Hostname())
+	}
+	return key.New(t.RID(), "addr")
 }
 
 // isAllocated says the address is drawn from an om network: the
@@ -101,6 +141,12 @@ func (t *T) Configure() error {
 	}
 	if nw == nil {
 		return nil
+	}
+	if t.Addr != "" && t.perInstance() && !t.hasOwnAddr() {
+		// The address of all the instances, as a failover object records
+		// it, read here for want of one chosen for this instance: each
+		// instance of a flex resource draws its own.
+		t.Addr = ""
 	}
 	if t.Dev == "" {
 		t.Dev, t.netErr = networkDev(nw)
@@ -355,7 +401,13 @@ func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
 	if err := t.alloc().Free(); err != nil {
 		return err
 	}
-	if !leader || t.Addr == "" || t.Name != "" {
+	if t.Addr == "" || t.Name != "" || t.perInstance() {
+		// An address of one instance is not recorded: an addr@<node> is
+		// one root chose, and stays.
+		return nil
+	}
+	if !leader {
+		// The address of all the instances, which the leader removes.
 		return nil
 	}
 	return t.setAddr(ctx, "")
@@ -386,6 +438,15 @@ func (t *T) reserve(ctx context.Context) (net.IP, net.IP, error) {
 			return nil, nil, err
 		}
 		return ip, nil, nil
+	}
+	if t.perInstance() {
+		// The address of this instance is kept in the reservation store of
+		// this node, which holds it from a start to the next until the
+		// instance is unprovisioned. Recording it in the configuration, as
+		// the address of all the instances is, would have the instances
+		// starting at once write it at once, each over the others.
+		ip, err := t.alloc().Allocate(ctx)
+		return ip, nil, err
 	}
 	previous, err := t.alloc().Allocated()
 	if err != nil {
@@ -437,7 +498,7 @@ func (t *T) setAddr(ctx context.Context, addr string) error {
 	if err != nil {
 		return err
 	}
-	k := key.New(t.RID(), "addr")
+	k := t.addrKey()
 	if addr == "" {
 		if err := obj.Unset(ctx, k); err != nil {
 			return err
