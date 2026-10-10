@@ -69,6 +69,10 @@ type (
 		_kept     *resip.Kept
 		_previous net.IP
 
+		// gatewayRank says where the gateway comes from, which decides the
+		// resource setting the default route of a namespace several share.
+		gatewayRank int
+
 		// netErr says why the network the address is drawn from does not
 		// fit the resource, reported when the resource is started or its
 		// status read rather than failing every load of the object.
@@ -285,6 +289,10 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 // gateway. The default route of the family of the address is the one looked
 // at, and set.
 func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
+	if owner := t.routeOwner(); owner != t {
+		t.Log().Infof("leave the default route of the namespace to %s", owner.RID())
+		return nil
+	}
 	v6 := t.isIPv6()
 	defaults, err := t.listDefaultRoutesIn(netns.Path(), v6)
 	if err != nil {
@@ -323,8 +331,14 @@ func firstLine(s string) string {
 // isIPv6 says whether the address is an ipv6 one, which is the family of the
 // routes set for it.
 func (t *T) isIPv6() bool {
-	ip := t.ipaddr()
-	return ip != nil && ip.To4() == nil
+	if ip := t.ipaddr(); ip != nil {
+		return ip.To4() == nil
+	}
+	// No address drawn yet: the one the network will hand out.
+	if i, err := t.ipam(); err == nil && i != nil && i.Range != nil {
+		return i.Range.IP.To4() == nil
+	}
+	return false
 }
 
 func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string) error {
@@ -460,6 +474,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	s := t.statusWithIPAddrCacheTrust(ctx)
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
+	}
+	if owner := t.routeOwner(); owner != t && t.gatewayRank == gatewayOwn && owner.Gateway != t.Gateway {
+		t.StatusLog().Warn("gateway %s is not used: %s sets the default route of the namespace, through %s", t.Gateway, owner.RID(), owner.Gateway)
 	}
 	if t.keeps() {
 		if dups := t.kept().Duplicates(t.ipaddr()); len(dups) > 0 {

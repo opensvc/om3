@@ -1,1 +1,15 @@
-The gateway to configure in the network namespace.
+The gateway the default route of the network namespace goes through.
+
+When not set, it is the gateway of the network the address is drawn from:
+the address of the bridge of a bridge or routed_bridge network, the gateway
+keyword of a lan network. With no gateway at all, the default route goes
+through the interface of the resource.
+
+Several ip resources may share a namespace, and a namespace has one default
+route. The resource setting it is the one whose gateway is set here, rather
+than taken from its network, rather than none; the lowest resource id among
+equals, whatever the order the resources start in. The others leave the route
+alone, and a gateway set here that is not used is reported in the status.
+
+The default route is set only when the namespace has none: one another
+resource of the container set, as an ip.cni one, is kept.

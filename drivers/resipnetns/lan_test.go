@@ -3,10 +3,12 @@
 package resipnetns
 
 import (
+	"net"
 	"testing"
 
 	"github.com/golang-collections/collections/set"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/network"
 )
@@ -59,4 +61,30 @@ func TestConfigureLan(t *testing.T) {
 			assert.Empty(t, r.Gateway)
 		})
 	}
+}
+
+// fakeLanRouted is a lan network naming the router of its segment.
+type fakeLanRouted struct {
+	fakeLan
+}
+
+func (fakeLanRouted) Gateway() (net.IP, error) { return net.ParseIP("fd01::1"), nil }
+
+// The gateway of a lan network is the router it names, unless the resource
+// names its own, which then prevails to set the default route.
+func TestConfigureLanGateway(t *testing.T) {
+	nw := fakeLanRouted{}
+	r := &T{Mode: "macvlan"}
+	r.Tags = set.New()
+	r.configureLan(nw, nw)
+	require.NoError(t, r.netErr)
+	assert.Equal(t, "fd01::1", r.Gateway)
+	assert.Equal(t, gatewayOfNetwork, r.gatewayRank)
+
+	r = &T{Mode: "macvlan", Gateway: "fd01::fe", gatewayRank: gatewayOwn}
+	r.Tags = set.New()
+	r.configureLan(nw, nw)
+	require.NoError(t, r.netErr)
+	assert.Equal(t, "fd01::fe", r.Gateway)
+	assert.Equal(t, gatewayOwn, r.gatewayRank)
 }

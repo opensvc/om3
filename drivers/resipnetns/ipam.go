@@ -131,6 +131,9 @@ func (t *T) Configure() error {
 	if err != nil {
 		return err
 	}
+	if t.Gateway != "" {
+		t.gatewayRank = gatewayOwn
+	}
 	if nw == nil {
 		return nil
 	}
@@ -160,7 +163,7 @@ func (t *T) Configure() error {
 	}
 	if t.Gateway == "" {
 		if gw := ipam.Gateway(i.Range); gw != nil {
-			t.Gateway = gw.String()
+			t.Gateway, t.gatewayRank = gw.String(), gatewayOfNetwork
 		}
 	}
 	return nil
@@ -171,9 +174,9 @@ func (t *T) Configure() error {
 // is a child of, and the prefix length of the segment, which the range of
 // the network is only a part of.
 //
-// No gateway is filled: the first address of the range, which a bridge
-// network answers on, is an address om hands out on a lan network, and the
-// router of the segment is the network administrator's to name.
+// The gateway is the one the network names, the router of the segment: the
+// first address of the range, which a bridge network answers on, is an
+// address om hands out on a lan network.
 //
 // What does not fit is reported when the resource is started or its status
 // read, rather than failing every load of the object.
@@ -204,6 +207,16 @@ func (t *T) configureLan(nw network.Networker, i network.HostDever) {
 		t.Dev, t.netErr = i.HostDev()
 		if t.netErr != nil {
 			return
+		}
+	}
+	if t.Gateway == "" {
+		if g, ok := nw.(network.Gatewayer); ok {
+			if gw, err := g.Gateway(); err != nil {
+				t.netErr = err
+				return
+			} else if gw != nil {
+				t.Gateway, t.gatewayRank = gw.String(), gatewayOfNetwork
+			}
 		}
 	}
 	if t.Netmask == "" {
