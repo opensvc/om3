@@ -233,28 +233,65 @@ func (t *T) removeMountPoint() error {
 }
 
 // mountPointCreatedFile records the mount point a start of the resource
-// created, which the unprovision may remove.
+// created, which the unprovision may remove: its path, and the identity of
+// the directory or the file it was, its device and its inode, for a path
+// replaced since to be told apart.
 func (t *T) mountPointCreatedFile() string {
 	return filepath.Join(t.VarDir(), "mnt_created")
 }
 
-// createdMountPoint says if the mount point mnt is the one a start of the
-// resource created: a change of mnt leaves the new one to the operator.
+// mountPointIdentity returns the identity of what is at mnt, its device and
+// its inode, which a path replaced does not keep.
+func mountPointIdentity(mnt string) (string, error) {
+	fi, err := os.Lstat(mnt)
+	if err != nil {
+		return "", err
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return "", fmt.Errorf("%s: no device and inode", mnt)
+	}
+	return fmt.Sprintf("%d %d", st.Dev, st.Ino), nil
+}
+
+// createdMountPoint says if what is at mnt is the mount point a start of the
+// resource created: a change of mnt, or a path replaced since, as by an
+// operator once the resource stopped, leaves it to the operator, and the
+// record is forgotten.
 func (t *T) createdMountPoint(mnt string) bool {
 	b, err := os.ReadFile(t.mountPointCreatedFile())
 	if err != nil {
 		return false
 	}
-	return strings.TrimSpace(string(b)) == mnt
+	recorded, identity, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
+	if recorded != mnt {
+		return false
+	}
+	current, err := mountPointIdentity(mnt)
+	if errors.Is(err, os.ErrNotExist) {
+		t.forgetMountPointCreated()
+		return false
+	}
+	if err != nil || current != identity {
+		t.Log().Infof("leave the mount point %s: it is not the one the resource created", mnt)
+		t.forgetMountPointCreated()
+		return false
+	}
+	return true
 }
 
 func (t *T) markMountPointCreated(mnt string) {
+	identity, err := mountPointIdentity(mnt)
+	if err != nil {
+		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
+		return
+	}
 	p := t.mountPointCreatedFile()
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
 		return
 	}
-	if err := os.WriteFile(p, []byte(mnt+"\n"), 0600); err != nil {
+	if err := os.WriteFile(p, []byte(mnt+"\n"+identity+"\n"), 0600); err != nil {
 		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
 	}
 }
