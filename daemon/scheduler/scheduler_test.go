@@ -12,7 +12,10 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/testhelper"
 )
 
@@ -364,4 +367,30 @@ func TestPathKeyMapUnsetPath(t *testing.T) {
 	assert.True(t, ok)
 	m.Unset(other, "a")
 	assert.Empty(t, m)
+}
+
+// The runs require the local instance provisioned, not the object: a peer
+// instance not provisioned, as the one of a node joining, leaves the object
+// mixed and blocks none of the runs of the provisioned local instance.
+func TestProvisionedIsTheLocalInstance(t *testing.T) {
+	s := newTestScheduler(t)
+	update := func(node string, local, aggregated provisioned.T) {
+		s.onObjectStatusUpdated(&msgbus.ObjectStatusUpdated{
+			Path:  testPath,
+			Value: object.Status{ActorStatus: &object.ActorStatus{Provisioned: aggregated}},
+			SrcEv: &msgbus.InstanceStatusUpdated{
+				Path:  testPath,
+				Node:  node,
+				Value: instance.Status{Provisioned: local},
+			},
+		})
+	}
+	update(s.localhost, provisioned.True, provisioned.Mixed)
+	assert.True(t, s.isProvisioned(testPath), "a peer not provisioned does not count")
+
+	update(s.localhost, provisioned.False, provisioned.Mixed)
+	assert.False(t, s.isProvisioned(testPath), "the local instance not provisioned does")
+
+	update("peer", provisioned.True, provisioned.True)
+	assert.False(t, s.isProvisioned(testPath), "nor does a peer provisioned")
 }

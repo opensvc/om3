@@ -680,6 +680,18 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 	t.localStatus[c.Path] = c.Value
 	changed := t.updateNotSource(c.Path, c.Value)
 
+	// The runs require the local instance provisioned, not the object: a
+	// peer instance not provisioned, as the one of a node joining, blocks
+	// none of them here.
+	if c.Value.Provisioned == provisioned.Undef {
+		if _, ok := t.provisioned[c.Path]; ok {
+			delete(t.provisioned, c.Path)
+			changed = true
+		}
+	} else if t.updateProvisioned(c.Path, c.Value.Provisioned) {
+		changed = true
+	}
+
 	schedules, ok := t.schedules[c.Path]
 	if !ok {
 		return changed
@@ -898,14 +910,7 @@ func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 			changed = true
 		}
 	}
-	if c.Value.Provisioned == provisioned.Undef {
-		delete(t.provisioned, c.Path)
-		return
-	}
 	if t.updateFailover(c.Path, c.Value.Topology) {
-		changed = true
-	}
-	if t.updateProvisioned(c.Path, c.Value.Provisioned) {
 		changed = true
 	}
 	if changed {
