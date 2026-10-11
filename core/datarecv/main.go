@@ -650,6 +650,7 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		}
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
+		md.Wrote = func(p string) { installed = appendNew(installed, p) }
 		// A file whose content did not change gives what reads it nothing
 		// to reload: its signals are sent for a change only.
 		fileChanged, err := store.InstallKeyTo(md)
@@ -658,7 +659,6 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
-			installed = appendNew(installed, md.RelativeToPath())
 			changed = true
 		}
 	}
@@ -762,13 +762,13 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
+		md.Wrote = func(p string) { installed = appendNew(installed, p) }
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
-			installed = appendNew(installed, md.RelativeToPath())
 			changed = true
 		}
 	}
@@ -1072,14 +1072,12 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 		}
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
+		md.Wrote = func(p string) { installed = appendNew(installed, p) }
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil {
 			return changed, err
 		}
-		if fileChanged {
-			installed = appendNew(installed, md.RelativeToPath())
-			changed = true
-		}
+		changed = changed || fileChanged
 	}
 	return changed, nil
 }

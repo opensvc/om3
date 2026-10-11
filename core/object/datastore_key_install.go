@@ -54,6 +54,11 @@ type (
 		// changed.
 		LogUnchanged bool
 
+		// Wrote, when set, is called with each file the install wrote,
+		// relative to ToHead: the files of a key pattern or a directory
+		// key one by one, rather than the destination of the line.
+		Wrote func(path string)
+
 		// fs is where the install writes: the tree of ToHead, which the
 		// install cannot leave, or the node for an install naming no head.
 		fs confined.FS
@@ -234,7 +239,11 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 			return false, err
 		}
 	}
-	return t.writeKey(vk, b, opt)
+	changed, err := t.writeKey(vk, b, opt)
+	if changed && opt.Wrote != nil {
+		opt.Wrote(opt.RelativeToPath())
+	}
+	return changed, err
 }
 
 // installDirKey creates a directory to host projected keys
