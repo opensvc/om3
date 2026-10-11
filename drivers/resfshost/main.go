@@ -190,6 +190,42 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
+// UnprovisionAsLeader removes the mount point, as UnprovisionAsFollower
+// does: it is on each node.
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	return t.removeMountPoint()
+}
+
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
+	return t.removeMountPoint()
+}
+
+// removeMountPoint removes the mount point a start created, a directory or
+// the empty file of a file bind mount, once unmounted and left empty: what
+// it still holds, or a filesystem still mounted on it, is not the
+// resource's to remove, and is left with a log.
+func (t *T) removeMountPoint() error {
+	mnt := t.mountPoint()
+	if mnt == "." || file.IsProtected(mnt) {
+		return nil
+	}
+	fi, err := os.Lstat(mnt)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if !fi.IsDir() && !(fi.Mode().IsRegular() && fi.Size() == 0) {
+		return nil
+	}
+	if err := os.Remove(mnt); err != nil {
+		t.Log().Infof("leave the mount point %s: %s", mnt, err)
+		return nil
+	}
+	t.Log().Infof("removed the mount point %s", mnt)
+	return nil
+}
+
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	fs := t.fs()
 	v, err := filesystems.DevicesFormated(ctx, fs, t)
