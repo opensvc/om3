@@ -821,7 +821,13 @@ func (t *T) readLastRunOnFile(path naming.Path, rid string) (time.Time, string, 
 func (t *T) updateLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
 	lastTm, err := t.lastRunOnFileModTime(path, rid)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(filepath.Dir(t.lastRunOnFile(path, rid)), 0755); err != nil {
+		// The var dir of an instance deleted, as a purge removes it
+		// before its peers report their last status, is not created
+		// again: only the directory of the resource is.
+		if _, err := os.Stat(path.VarDir()); errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		if err := os.Mkdir(filepath.Dir(t.lastRunOnFile(path, rid)), 0755); err != nil && !errors.Is(err, os.ErrExist) {
 			return err
 		}
 		return t.writeLastRunOnFile(path, rid, nodename, tm)
