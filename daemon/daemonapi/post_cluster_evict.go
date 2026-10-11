@@ -82,12 +82,9 @@ func (a *DaemonAPI) PostClusterEvict(ctx echo.Context) error {
 		}
 	}
 
-	if reason := notDrainedReason(nodename); reason != "" {
-		log.Infof("evict %s refused: %s", nodename, reason)
-		return JSONProblemf(ctx, http.StatusConflict, "Invalid state",
-			"node '%s' is not drained: %s: drain it first, else what it runs would stay up on a node "+
-				"the cluster no longer knows about", nodename, reason)
-	}
+	// The node evicted tells whether it is drained, in its leave handler:
+	// this node sees its state a heartbeat late, and would refuse a node a
+	// drain waited for has just drained.
 
 	timeoutStr := timeout.String()
 	leaveBody := api.PostDaemonLeaveJSONRequestBody{

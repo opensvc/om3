@@ -71,6 +71,15 @@ func (a *DaemonAPI) localPostDaemonLeave(ctx echo.Context, payload api.DaemonLea
 			"localhost is a single node cluster: there is no peer to be removed by")
 	}
 
+	// The node leaving tells whether it is drained, as it is the one to
+	// know its state as it is, and not a heartbeat late.
+	if reason := notDrainedReason(a.localhost); reason != "" {
+		log.Infof("leave refused: %s", reason)
+		return JSONProblemf(ctx, http.StatusConflict, "Invalid state",
+			"node '%s' is not drained: %s: drain it first, else what it runs would stay up on a node "+
+				"the cluster no longer knows about", a.localhost, reason)
+	}
+
 	timeout := evictDefaultTimeout
 	if payload.Timeout != nil && *payload.Timeout != "" {
 		v, err := converters.Duration.Convert(*payload.Timeout)
