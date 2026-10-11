@@ -197,7 +197,22 @@ func (t *dataStore) installKey(vk vKey, opt KVInstall) (bool, error) {
 }
 
 // installFileKey installs a key content in the host storage
-func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
+func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err error) {
+	// removed are the paths the install removed what was at, which a
+	// failure past their removal leaves changed: what reads them is told,
+	// a file written there or not.
+	var removed []string
+	defer func() {
+		for _, p := range removed {
+			if changed && p == opt.RelativeToPath() {
+				continue
+			}
+			if opt.Wrote != nil {
+				opt.Wrote(p)
+			}
+			changed = true
+		}
+	}()
 	if strings.Contains(opt.ToPath, "..") {
 		// paranoid checks before RemoveAll() and Remove()
 		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", opt.ToPath)
@@ -216,6 +231,7 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 		if err := opt.fs.RemoveAll(opt.ToPath); err != nil {
 			return false, err
 		}
+		removed = append(removed, opt.RelativeToPath())
 	}
 	vdir := filepath.Dir(opt.ToPath)
 	// The parent is read without following a link: a link there is replaced
@@ -235,11 +251,12 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 		if err := opt.fs.Remove(vdir); err != nil {
 			return false, err
 		}
+		removed = append(removed, strings.TrimPrefix(vdir, opt.ToHead))
 		if err := t.makedir(vdir, opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 			return false, err
 		}
 	}
-	changed, err := t.writeKey(vk, b, opt)
+	changed, err = t.writeKey(vk, b, opt)
 	if changed && opt.Wrote != nil {
 		opt.Wrote(opt.RelativeToPath())
 	}
@@ -343,28 +360,31 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	grp := opt.AccessControl.Group
 	mtime := t.configModTime()
 	info, err := opt.fs.Lstat(dst)
+	replaced := false
 	if err == nil && info.Mode()&os.ModeSymlink != 0 {
 		opt.ToLog.Infof("remove the link at %s to install key %s", dst, vk.Key)
 		if err := opt.fs.Remove(dst); err != nil {
 			return false, err
 		}
+		replaced = true
 		info, err = opt.fs.Lstat(dst)
 	}
 
 	if errors.Is(err, os.ErrNotExist) {
 		opt.ToLog.Infof("install key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
 		// A write that failed wrote nothing what reads the file is to
-		// read again: the file is not reported changed. An owner or a
-		// time that fails to be set after it is on a file written.
+		// read again: the file is not reported changed, unless a link
+		// was removed in its place. An owner or a time that fails to be
+		// set after it is on a file written.
 		if err := opt.fs.WriteFile(dst, b, perm); err != nil {
-			return false, err
+			return replaced, err
 		}
 		if err := t.chown(dst, usr, grp, nil, opt.fs, opt.ToLog); err != nil {
 			return true, err
 		}
 		return true, opt.fs.Chtimes(dst, mtime, mtime)
 	} else if err != nil {
-		return false, err
+		return replaced, err
 	}
 	if err := t.chmod(dst, perm, info, opt.fs, opt.ToLog); err != nil {
 		return false, err

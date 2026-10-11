@@ -141,3 +141,45 @@ func TestAFailedWriteIsNoChange(t *testing.T) {
 	assert.Error(t, err)
 	assert.False(t, changed, "a file the write failed to rewrite")
 }
+
+// A write that failed past the removal of what was at its destination, a
+// directory or a link, leaves the destination changed: what reads it is told,
+// though no file was written there.
+func TestAFailedWritePastARemovalIsAChange(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "web", Kind: naming.KindCfg, Namespace: naming.NsRoot}
+	o, err := NewDataStore(p)
+	require.NoError(t, err)
+	require.NoError(t, o.AddKey("app.conf", []byte("v1")))
+	ds := &o.(*cfg).dataStore
+
+	for name, setup := range map[string]func(dst string){
+		"a directory": func(dst string) { require.NoError(t, os.Mkdir(dst, 0755)) },
+		"a link":      func(dst string) { require.NoError(t, os.Symlink("/etc/hostname", dst)) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			head := t.TempDir()
+			dst := filepath.Join(head, "app.conf")
+			setup(dst)
+			var wrote []string
+			opt := KVInstall{
+				ToHead:        head,
+				ToPath:        dst,
+				AccessControl: KVInstallAccessControl{Perm: 0644, MakedirPerm: 0755},
+				ToLog:         plog.NewLogger(zerolog.Nop()),
+				Wrote:         func(p string) { wrote = append(wrote, p) },
+				fs:            failingWriteFS{confined.Host()},
+			}
+			changed, err := ds.installFileKey(vKey{Key: "app.conf"}, opt)
+			assert.Error(t, err)
+			assert.True(t, changed, "the destination removed is a change")
+			assert.Equal(t, []string{"/app.conf"}, wrote, "named once")
+			assert.NoFileExists(t, dst)
+		})
+	}
+}
