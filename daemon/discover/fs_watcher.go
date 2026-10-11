@@ -2,6 +2,7 @@ package discover
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -303,7 +304,9 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						log.Errorf("init fs watches walking %s: %s", filename, err)
 					}
 				case dirRemoved(event):
-					if err := t.fsWatcher.Remove(filename); err != nil {
+					if err := t.fsWatcher.Remove(filename); errors.Is(err, fsnotify.ErrNonExistentWatch) {
+						// The watch went with the directory.
+					} else if err != nil {
 						log.Errorf("remove dir watch %s: %s", filename, err)
 					} else {
 						log.Infof("remove dir watch %s", filename)

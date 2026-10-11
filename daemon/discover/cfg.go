@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -220,7 +222,10 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	}
 	for runDir, _ := range prevWatched {
 		if _, ok := watched[runDir]; !ok {
-			if err := t.fsWatcher.Remove(runDir); err != nil {
+			if err := t.fsWatcher.Remove(runDir); errors.Is(err, fsnotify.ErrNonExistentWatch) {
+				// The watch went with the directory, removed
+				// before.
+			} else if err != nil {
 				t.log.Warnf("fs: failed to remove dir watch %s (resource deleted): %s", runDir, err)
 			} else {
 				t.log.Infof("fs: remove dir watch %s (resource deleted)", runDir)
@@ -248,7 +253,10 @@ func mustWatchInstalled(rid string) bool {
 func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if watched, ok := t.watched[c.Path]; ok {
 		for runDir, _ := range watched {
-			if err := t.fsWatcher.Remove(runDir); err != nil {
+			if err := t.fsWatcher.Remove(runDir); errors.Is(err, fsnotify.ErrNonExistentWatch) {
+				// The watch went with the directory, removed
+				// before.
+			} else if err != nil {
 				t.log.Warnf("fs: failed to remove dir watch %s (instance deleted): %s", runDir, err)
 			} else {
 				t.log.Infof("fs: remove dir watch %s (instance deleted)", runDir)
