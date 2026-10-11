@@ -423,7 +423,13 @@ func (t *T) logErrorExitCode(exitCode int, err error) {
 // itself ready, and a container that is not a service never does: the
 // container runs, "runc start" never returns, and the start that asked for it
 // waits until its own timeout ends it.
+//
+// INVOCATION_ID tells a process systemd runs it as the service: an om daemon
+// command finding it acts as the service rather than asking systemd, so the
+// cluster leave and join the daemon forks, stopping and starting the daemon,
+// would run it themselves, out of the unit.
 var serviceManagerEnv = []string{
+	"INVOCATION_ID",
 	"NOTIFY_SOCKET",
 	"LISTEN_FDNAMES",
 	"LISTEN_FDS",
