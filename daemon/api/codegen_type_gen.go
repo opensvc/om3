@@ -2699,15 +2699,15 @@ type Schedule struct {
 
 // ScheduleConfig defines model for ScheduleConfig.
 type ScheduleConfig struct {
-	Action             string   `json:"action"`
-	Key                string   `json:"key"`
-	MaxParallel        int      `json:"max_parallel"`
-	On                 []string `json:"on"`
-	Pace               string   `json:"pace"`
-	Require            string   `json:"require"`
-	RequireCollector   bool     `json:"require_collector"`
-	RequireProvisioned bool     `json:"require_provisioned"`
-	Schedule           string   `json:"schedule"`
+	Action             string    `json:"action"`
+	Key                string    `json:"key"`
+	MaxParallel        int       `json:"max_parallel"`
+	On                 *[]string `json:"on,omitempty"`
+	Pace               *string   `json:"pace,omitempty"`
+	Require            string    `json:"require"`
+	RequireCollector   bool      `json:"require_collector"`
+	RequireProvisioned bool      `json:"require_provisioned"`
+	Schedule           string    `json:"schedule"`
 }
 
 // ScheduleItem defines model for ScheduleItem.

@@ -9840,8 +9840,6 @@ components:
         - require
         - require_collector
         - require_provisioned
-        - "on"
-        - pace
       properties:
         action:
           type: string
