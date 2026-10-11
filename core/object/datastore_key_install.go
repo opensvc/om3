@@ -353,8 +353,11 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 
 	if errors.Is(err, os.ErrNotExist) {
 		opt.ToLog.Infof("install key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
+		// A write that failed wrote nothing what reads the file is to
+		// read again: the file is not reported changed. An owner or a
+		// time that fails to be set after it is on a file written.
 		if err := opt.fs.WriteFile(dst, b, perm); err != nil {
-			return true, err
+			return false, err
 		}
 		if err := t.chown(dst, usr, grp, nil, opt.fs, opt.ToLog); err != nil {
 			return true, err
@@ -388,7 +391,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 		return false, opt.fs.Chtimes(dst, mtime, mtime)
 	}
 	if err := opt.fs.WriteFile(dst, b, info.Mode()); err != nil {
-		return true, err
+		return false, err
 	}
 	opt.ToLog.Infof("reinstall key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
 	return true, nil

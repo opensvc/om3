@@ -1,16 +1,21 @@
 package object
 
 import (
+	"errors"
+	iofs "io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/confined"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // An install says whether the content of the file changed: a file created
@@ -95,4 +100,44 @@ func TestInstallKeyToRendersAtEachInstall(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(head, "app.conf"))
 	require.NoError(t, err)
 	assert.Equal(t, "peer=n3", string(b))
+}
+
+// failingWriteFS is the node, but for its writes, which fail.
+type failingWriteFS struct{ confined.FS }
+
+func (failingWriteFS) WriteFile(string, []byte, iofs.FileMode) error {
+	return errors.New("no space left on device")
+}
+
+// A write that failed is no change of the file: what reads it has nothing
+// to read again, and an install record naming it would tell otherwise.
+func TestAFailedWriteIsNoChange(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "web", Kind: naming.KindCfg, Namespace: naming.NsRoot}
+	o, err := NewDataStore(p)
+	require.NoError(t, err)
+	ds := &o.(*cfg).dataStore
+
+	head := t.TempDir()
+	dst := filepath.Join(head, "app.conf")
+	opt := KVInstall{
+		ToHead:        head,
+		ToPath:        dst,
+		AccessControl: KVInstallAccessControl{Perm: 0644},
+		ToLog:         plog.NewLogger(zerolog.Nop()),
+		fs:            failingWriteFS{confined.Host()},
+	}
+	changed, err := ds.writeKey(vKey{Key: "app.conf"}, []byte("v1"), opt)
+	assert.Error(t, err)
+	assert.False(t, changed, "a file the write failed to create")
+
+	require.NoError(t, os.WriteFile(dst, []byte("v0"), 0644))
+	changed, err = ds.writeKey(vKey{Key: "app.conf"}, []byte("v1"), opt)
+	assert.Error(t, err)
+	assert.False(t, changed, "a file the write failed to rewrite")
 }
