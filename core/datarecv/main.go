@@ -596,6 +596,7 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	}
 
 	signals := volsignal.New()
+	installed := make([]string, 0)
 	readKeys := readTemplateKeys(t.templateKeysFile())
 
 	for _, md := range files {
@@ -654,12 +655,14 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
+			installed = appendNew(installed, md.RelativeToPath())
 			changed = true
 		}
 	}
 
 	t.SendSignals(ctx, signals)
 
+	t.recordInstalled(installed)
 	return changed, nil
 }
 
@@ -705,6 +708,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 	}
 	signals := volsignal.New()
+	installed := make([]string, 0)
 
 	for _, md := range files {
 		var dataStore object.DataStore
@@ -759,12 +763,14 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
+			installed = appendNew(installed, md.RelativeToPath())
 			changed = true
 		}
 	}
 
 	t.SendSignals(ctx, signals)
 
+	t.recordInstalled(installed)
 	return changed, nil
 }
 
@@ -1006,6 +1012,16 @@ func (t *DataRecv) Do(ctx context.Context) error {
 	return nil
 }
 
+// appendNew appends to l the elements of add it does not hold.
+func appendNew(l []string, add ...string) []string {
+	for _, s := range add {
+		if !slices.Contains(l, s) {
+			l = append(l, s)
+		}
+	}
+	return l
+}
+
 func (t *DataRecv) OldSendSignals(ctx context.Context) error {
 	return t.SendSignals(ctx, volsignal.New(t.Signal))
 }
@@ -1031,6 +1047,7 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 	var changed bool
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
+	installed := make([]string, 0)
 
 	for _, md := range t.getMetadataByKind(head, kind) {
 		if !md.FromStore.Exists() {
@@ -1052,8 +1069,12 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 		if err != nil {
 			return changed, err
 		}
-		changed = changed || fileChanged
+		if fileChanged {
+			installed = appendNew(installed, md.RelativeToPath())
+			changed = true
+		}
 	}
+	t.recordInstalled(installed)
 	return changed, nil
 }
 

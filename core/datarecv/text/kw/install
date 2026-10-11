@@ -67,3 +67,6 @@ Where:
     what the template reads too, at the next install.
   * a change of a key the `key` function read at the last render installs the file again, on each node, as a
     change of the template key does: a file rendered from a sec follows the sec.
+
+An install writing files, whatever runs it, a start, a provision or a change of a key, publishes a
+`FileInstalled` event, and none when it finds them up to date.

@@ -268,6 +268,8 @@ var (
 
 		"RunFileUpdated": func() any { return &RunFileUpdated{} },
 
+		"FileInstalled": func() any { return &FileInstalled{} },
+
 		"InstanceStateFileUpdated": func() any { return &InstanceStateFileUpdated{} },
 
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
@@ -1109,6 +1111,23 @@ type (
 		At         time.Time   `json:"at" yaml:"at"`
 	}
 
+	// FileInstalled is published when an install of a resource of a local
+	// instance wrote files, by a start, a provision or a change of
+	// a key, and not when it found them up to date: what reads them is to
+	// read them again.
+	FileInstalled struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string      `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		RID        string      `json:"rid" yaml:"rid"`
+
+		// Files are the files written, relative to the head of the
+		// resource.
+		Files []string `json:"files" yaml:"files"`
+
+		At time.Time `json:"at" yaml:"at"`
+	}
+
 	// InstanceStateFileUpdated is emitted by the api when a peer wrote a
 	// state file of a local instance, as the source of a sync writes the
 	// last sync record of a peer it synced. The status of the instance
@@ -1783,6 +1802,14 @@ func (e *InstanceStateFileUpdated) Kind() string {
 
 func (e *RunFileUpdated) Kind() string {
 	return "RunFileUpdated"
+}
+
+func (e *FileInstalled) Kind() string {
+	return "FileInstalled"
+}
+
+func (e *FileInstalled) Key() string {
+	return fmt.Sprintf("FileInstalled,node=%s,path=%s,rid=%s", e.Node, e.Path, e.RID)
 }
 
 func (e *SetInstanceMonitor) Kind() string {

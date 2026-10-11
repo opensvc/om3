@@ -88,6 +88,21 @@ func TestParseInstallTemplate(t *testing.T) {
 	assert.Nil(t, files[1].Render)
 }
 
+// The record of an install replaces the previous one whole, and leaves no
+// temporary file in the directory a watcher reads.
+func TestWriteInstalled(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "installed")
+	require.NoError(t, writeInstalled(dir, "fs#1", []string{"/a.conf"}))
+	require.NoError(t, writeInstalled(dir, "fs#1", []string{"/b.conf", "/c.conf"}))
+	v, err := ReadInstalled(filepath.Join(dir, "fs#1"))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/b.conf", "/c.conf"}, v.Files)
+	assert.False(t, v.At.IsZero())
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1)
+}
+
 // Networks joining the same two addresses share a tunnel, listed once, and a
 // peer the network is routed to is no tunnel.
 func TestUniqueTunnels(t *testing.T) {

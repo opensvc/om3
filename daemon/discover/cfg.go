@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -201,13 +202,21 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			t.PubDebounce(filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 		}
 	}
+	installs := false
 	for rid, _ := range c.Value.Resources {
+		installs = installs || mustWatchInstalled(rid)
 		if !mustWatch(rid) {
 			continue
 		}
 		runDir := filepath.Join(c.Path.VarDir(), rid, "run")
 		publishInitialRunFileUpdatedEvents(c.Path, c.Node, rid, runDir)
 		watch(runDir)
+	}
+	if installs {
+		// The records of the installs writing files, the files of a
+		// record present before the watch told no one: they were
+		// installed by a start, which what reads them follows.
+		watch(datarecv.InstalledDir(c.Path))
 	}
 	for runDir, _ := range prevWatched {
 		if _, ok := watched[runDir]; !ok {
@@ -219,6 +228,21 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 	}
 	t.watched[c.Path] = watched
+}
+
+// mustWatchInstalled says if the resource rid may install files, a volume or
+// a fs, whose records of the installs writing files are to be watched.
+func mustWatchInstalled(rid string) bool {
+	resourceId, err := resourceid.Parse(rid)
+	if err != nil || resourceId == nil {
+		return false
+	}
+	switch resourceId.DriverGroup() {
+	case driver.GroupFS, driver.GroupVolume:
+		return true
+	default:
+		return false
+	}
 }
 
 func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
