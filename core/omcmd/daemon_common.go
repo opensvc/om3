@@ -2,10 +2,13 @@ package omcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -13,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/mountinfo"
 )
 
 type (
@@ -65,33 +69,67 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 	return nil
 }
 
-func (t *CmdDaemonCommon) cleanupAndMandatoryDirectories() error {
-	if err := t.cleanupVarDir(); err != nil {
-		return fmt.Errorf("cleanup opensvc var dir: %w", err)
+// cleanupVarDir removes the entries of the opensvc var directory, but the
+// backup directory and the filesystems mounted under it, as the one of a
+// pool: they are the node's, not the cluster's, and what they hold is not
+// removed. An entry that can not be removed does not stop the removal of the
+// others, so the node left with a daemon to start has as little as possible
+// of the cluster it left.
+func (t *CmdDaemonCommon) cleanupVarDir() error {
+	varDir, err := filepath.EvalSymlinks(rawconfig.Paths.Var)
+	if err != nil {
+		return err
 	}
-
-	return rawconfig.CreateMandatoryDirectories()
+	backup := filepath.Join(varDir, filepath.Base(rawconfig.Paths.Backup))
+	mounts, err := mountsUnder(varDir)
+	if err != nil {
+		return err
+	}
+	return removeTree(varDir, append(mounts, backup))
 }
 
-// cleanupVarDir removes all entries in the opensvc var directory except for
-// the backup directory.
-func (t *CmdDaemonCommon) cleanupVarDir() error {
-	varDir := rawconfig.Paths.Var
-	backupName := filepath.Base(rawconfig.Paths.Backup)
-
-	files, err := os.ReadDir(varDir)
+// mountsUnder returns the mount points under dir.
+func mountsUnder(dir string) ([]string, error) {
+	entries, err := mountinfo.Read()
 	if err != nil {
-		return fmt.Errorf("unable to read base directory: %w", err)
+		return nil, fmt.Errorf("read the mounts: %w", err)
 	}
+	l := make([]string, 0)
+	for _, e := range entries {
+		if strings.HasPrefix(e.Target, dir+"/") {
+			l = append(l, e.Target)
+		}
+	}
+	return l, nil
+}
 
-	for _, file := range files {
-		if file.Name() == backupName {
+// removeTree removes the entries of dir, but the paths of keep and what they
+// hold. A directory holding a path of keep is not removed, its other entries
+// are.
+func removeTree(dir string, keep []string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read directory %s: %w", dir, err)
+	}
+	var errs []error
+	for _, entry := range entries {
+		p := filepath.Join(dir, entry.Name())
+		if slices.Contains(keep, p) {
+			_, _ = fmt.Fprintf(os.Stdout, "Keep %s\n", p)
 			continue
 		}
-		path := filepath.Join(varDir, file.Name())
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("unable to remove path %s: %w", path, err)
+		holds := slices.ContainsFunc(keep, func(s string) bool {
+			return strings.HasPrefix(s, p+"/")
+		})
+		if holds && entry.IsDir() {
+			if err := removeTree(p, keep); err != nil {
+				errs = append(errs, err)
+			}
+			continue
+		}
+		if err := os.RemoveAll(p); err != nil {
+			errs = append(errs, fmt.Errorf("remove %s: %w", p, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
