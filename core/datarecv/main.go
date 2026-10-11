@@ -597,6 +597,9 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 
 	signals := volsignal.New()
 	installed := make([]string, 0)
+	// The files written are recorded whatever ends the install, an error
+	// of a required item included: what reads them is to read them again.
+	defer func() { t.recordInstalled(installed) }()
 	readKeys := readTemplateKeys(t.templateKeysFile())
 
 	for _, md := range files {
@@ -662,7 +665,6 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 
 	t.SendSignals(ctx, signals)
 
-	t.recordInstalled(installed)
 	return changed, nil
 }
 
@@ -709,6 +711,9 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	}
 	signals := volsignal.New()
 	installed := make([]string, 0)
+	// The files written are recorded whatever ends the install, an error
+	// of a required item included: what reads them is to read them again.
+	defer func() { t.recordInstalled(installed) }()
 
 	for _, md := range files {
 		var dataStore object.DataStore
@@ -770,7 +775,6 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 
 	t.SendSignals(ctx, signals)
 
-	t.recordInstalled(installed)
 	return changed, nil
 }
 
@@ -1048,6 +1052,9 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
 	installed := make([]string, 0)
+	// The files written are recorded whatever ends the install, an error
+	// of a required item included: what reads them is to read them again.
+	defer func() { t.recordInstalled(installed) }()
 
 	for _, md := range t.getMetadataByKind(head, kind) {
 		if !md.FromStore.Exists() {
@@ -1074,7 +1081,6 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 			changed = true
 		}
 	}
-	t.recordInstalled(installed)
 	return changed, nil
 }
 
