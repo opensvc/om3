@@ -62,6 +62,12 @@ func (t *DataRecv) render(k string, b []byte) ([]byte, error) {
 		},
 		// network returns the network name, and its peers.
 		"network": templateNetworkOf,
+		// networks returns the networks of the node, and their peers.
+		"networks": templateNetworks,
+		// tunnels returns the tunnels the networks of the node carry
+		// their addresses to the other nodes by, once each: networks
+		// joining the same two addresses share a tunnel.
+		"tunnels": templateTunnels,
 	}
 	tmpl, err := template.New(k).Option("missingkey=error").Funcs(funcs).Parse(string(b))
 	if err != nil {
@@ -109,13 +115,60 @@ func templateNetworkOf(name string) (templateNetwork, error) {
 	if nw == nil {
 		return templateNetwork{}, fmt.Errorf("network %s not found among %s", name, strings.Join(names, ", "))
 	}
+	return newTemplateNetwork(nw)
+}
+
+func templateNetworks() ([]templateNetwork, error) {
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	l := make([]templateNetwork, 0)
+	for _, nw := range network.Networks(node) {
+		data, err := newTemplateNetwork(nw)
+		if err != nil {
+			return nil, err
+		}
+		l = append(l, data)
+	}
+	return l, nil
+}
+
+func templateTunnels() ([]network.Peer, error) {
+	nws, err := templateNetworks()
+	if err != nil {
+		return nil, err
+	}
+	return uniqueTunnels(nws), nil
+}
+
+// uniqueTunnels returns the peers of the networks reached by a tunnel, once
+// each tunnel.
+func uniqueTunnels(nws []templateNetwork) []network.Peer {
+	l := make([]network.Peer, 0)
+	done := make(map[string]bool)
+	for _, nw := range nws {
+		for _, peer := range nw.Peers {
+			if peer.Tunnel == "" || done[peer.Tunnel] {
+				continue
+			}
+			done[peer.Tunnel] = true
+			l = append(l, peer)
+		}
+	}
+	return l
+}
+
+func newTemplateNetwork(nw network.Networker) (templateNetwork, error) {
+	name := nw.Name()
 	data := templateNetwork{
-		Name:    nw.Name(),
+		Name:    name,
 		Type:    nw.Type(),
 		Network: nw.Network(),
 		Peers:   []network.Peer{},
 	}
 	if p, ok := nw.(network.Peerer); ok {
+		var err error
 		if data.Peers, err = p.Peers(); err != nil {
 			return templateNetwork{}, fmt.Errorf("network %s peers: %w", name, err)
 		}

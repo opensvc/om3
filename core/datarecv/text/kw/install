@@ -60,5 +60,8 @@ Where:
       routed_bridge network lists the other nodes in `Peers`, as this node reaches them, with the fields
       `Nodename`, `Local` and `Remote` (the addresses of this node and the peer the network joins), `Subnet`,
       and `Tunnel` (the tunnel device, empty when the network is routed to the peer). Other networks list none.
+    * `networks`: the networks of the node, each as `network` returns it.
+    * `tunnels`: the peers the networks of the node reach by a tunnel, each tunnel once, as networks joining the
+      same two addresses share one. e.g. `{{range tunnels}}{{.Nodename}} {{.Local}} {{.Remote}}{{end}}`.
   * the file is compared to what the template renders at each install, so the `signal` follows a change of
     what the template reads too, at the next install.

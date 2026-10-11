@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/testhelper"
@@ -71,4 +72,17 @@ func TestRender(t *testing.T) {
 			assert.Equal(t, tc.want, string(b))
 		})
 	}
+}
+
+// Networks joining the same two addresses share a tunnel, listed once, and a
+// peer the network is routed to is no tunnel.
+func TestUniqueTunnels(t *testing.T) {
+	nws := []templateNetwork{
+		{Name: "a", Peers: []network.Peer{{Nodename: "n2", Tunnel: "otun1"}, {Nodename: "n3"}}},
+		{Name: "b", Peers: []network.Peer{{Nodename: "n2", Tunnel: "otun1"}, {Nodename: "n3", Tunnel: "otun2"}}},
+	}
+	got := uniqueTunnels(nws)
+	require.Len(t, got, 2)
+	assert.Equal(t, "otun1", got[0].Tunnel)
+	assert.Equal(t, "otun2", got[1].Tunnel)
 }
