@@ -493,3 +493,35 @@ func TestNewTriggerPacesFromTheLastRun(t *testing.T) {
 	assert.False(t, g.onEvent(s.clock), "an event within the pace of the last run does not run at once")
 	assert.True(t, g.dueAt.Equal(s.clock.Add(20*time.Second)), "it runs at the end of the pace: %s", g.dueAt)
 }
+
+// A trigger made new for a change of the events of an entry that also has a
+// schedule paces from the last scheduled run, which the job holds and the
+// last run file says, rather than from the older time of the entry.
+func TestRebuiltTriggerPacesFromTheLastScheduledRun(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		Schedule:     "@1h",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+		Pace:         "@30s",
+	}
+	e := schedule.Entry{Config: config, Node: s.localhost, Path: testPath}
+	require.NoError(t, os.MkdirAll(filepath.Dir(e.LastRunFile()), 0755))
+	require.NoError(t, e.SetLastRun(s.clock.Add(-2*time.Hour)), "an event run, the time the entry holds")
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	require.True(t, e.LastRunAt.Equal(s.clock.Add(-2*time.Hour)))
+	require.NoError(t, e.SetLastRun(s.clock.Add(-10*time.Second)), "a scheduled run since, the job's")
+
+	config.On = []string{"FileInstalled,rid=fs#1"}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok = s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	assert.False(t, g.onEvent(s.clock), "an event within the pace of the scheduled run does not run at once")
+	assert.True(t, g.dueAt.Equal(s.clock.Add(20*time.Second)), "it runs at the end of the pace: %s", g.dueAt)
+}
