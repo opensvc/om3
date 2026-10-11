@@ -163,6 +163,13 @@ type (
 	HostDever interface {
 		HostDev() (string, error)
 	}
+	// NodeAddresser is implemented by the network drivers giving each node
+	// a subnet of its own, whose first address is the node's: what reaches
+	// a node in the network, as the drbd traffic a disk.drbd sends there.
+	NodeAddresser interface {
+		NodeAddr(nodename string) (net.IP, error)
+	}
+
 	// Peerer is implemented by the network drivers reaching the other nodes
 	// themselves, by a route or a tunnel. It returns how this node reaches
 	// each of them.

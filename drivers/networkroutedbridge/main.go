@@ -287,6 +287,12 @@ func (t *T) AllocatableRange(nodename string) (*net.IPNet, error) {
 	return t.NodeSubnet(nodename)
 }
 
+// NodeAddr returns the address of nodename in the network, the first of the
+// subnet the node was assigned.
+func (t *T) NodeAddr(nodename string) (net.IP, error) {
+	return t.NodeSubnetIP(nodename)
+}
+
 func (t *T) Setup() error {
 	var (
 		localIP net.IP
