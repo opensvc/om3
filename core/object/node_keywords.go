@@ -1182,6 +1182,13 @@ var (
 		Text:         keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers"),
 		Types:        []string{"drbd"},
 	}
+	kwNodePoolDRBDNetwork = keywords.Keyword{
+		Example: "backend1",
+		Option:  "network",
+		Section: "pool",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.network"),
+		Types:   []string{"drbd"},
+	}
 	kwNodePoolDRBDTemplate = keywords.Keyword{
 		Attr:    "Template",
 		Example: "live-migration",
@@ -2022,6 +2029,7 @@ var (
 		&kwNodePoolName,
 		&kwNodePoolDRBDAddr,
 		&kwNodePoolDRBDMaxPeers,
+		&kwNodePoolDRBDNetwork,
 		&kwNodePoolDRBDTemplate,
 		&kwNodePoolDRBDVG,
 		&kwNodePoolZpoolName,

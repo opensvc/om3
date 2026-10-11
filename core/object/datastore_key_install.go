@@ -39,15 +39,25 @@ type (
 		FromPattern   string
 		FromStore     naming.Path
 		Source        string
-		IsTemplate    bool
 		AccessControl KVInstallAccessControl
 		Signals       *volsignal.T
+
+		// Render, when set, makes the file installed from a key out of the
+		// key content: a template rendered on the node. The file then
+		// depends on more than the key, so it is compared to what it
+		// renders to at each install, its time saying nothing.
+		Render func(key string, b []byte) ([]byte, error)
 
 		// LogUnchanged logs what the install leaves as it is, a file up to
 		// date or a key the store does not hold, as an install report asked
 		// by the user shows them. A start installs quietly what has not
 		// changed.
 		LogUnchanged bool
+
+		// Wrote, when set, is called with each file the install wrote,
+		// relative to ToHead: the files of a key pattern or a directory
+		// key one by one, rather than the destination of the line.
+		Wrote func(path string)
 
 		// fs is where the install writes: the tree of ToHead, which the
 		// install cannot leave, or the node for an install naming no head.
@@ -187,7 +197,22 @@ func (t *dataStore) installKey(vk vKey, opt KVInstall) (bool, error) {
 }
 
 // installFileKey installs a key content in the host storage
-func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
+func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err error) {
+	// removed are the paths the install removed what was at, which a
+	// failure past their removal leaves changed: what reads them is told,
+	// a file written there or not.
+	var removed []string
+	defer func() {
+		for _, p := range removed {
+			if changed && p == opt.RelativeToPath() {
+				continue
+			}
+			if opt.Wrote != nil {
+				opt.Wrote(p)
+			}
+			changed = true
+		}
+	}()
 	if strings.Contains(opt.ToPath, "..") {
 		// paranoid checks before RemoveAll() and Remove()
 		return false, fmt.Errorf("install file key not allowed: %s contains \"..\"", opt.ToPath)
@@ -196,11 +221,17 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if opt.Render != nil {
+		if b, err = opt.Render(vk.Key, b); err != nil {
+			return false, fmt.Errorf("render key %s: %w", vk.Key, err)
+		}
+	}
 	if info, err := opt.fs.Lstat(opt.ToPath); err == nil && info.IsDir() {
 		opt.ToLog.Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
 		if err := opt.fs.RemoveAll(opt.ToPath); err != nil {
 			return false, err
 		}
+		removed = append(removed, opt.RelativeToPath())
 	}
 	vdir := filepath.Dir(opt.ToPath)
 	// The parent is read without following a link: a link there is replaced
@@ -220,11 +251,16 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 		if err := opt.fs.Remove(vdir); err != nil {
 			return false, err
 		}
+		removed = append(removed, strings.TrimPrefix(vdir, opt.ToHead))
 		if err := t.makedir(vdir, opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 			return false, err
 		}
 	}
-	return t.writeKey(vk, b, opt)
+	changed, err = t.writeKey(vk, b, opt)
+	if changed && opt.Wrote != nil {
+		opt.Wrote(opt.RelativeToPath())
+	}
+	return changed, err
 }
 
 // installDirKey creates a directory to host projected keys
@@ -324,25 +360,31 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	grp := opt.AccessControl.Group
 	mtime := t.configModTime()
 	info, err := opt.fs.Lstat(dst)
+	replaced := false
 	if err == nil && info.Mode()&os.ModeSymlink != 0 {
 		opt.ToLog.Infof("remove the link at %s to install key %s", dst, vk.Key)
 		if err := opt.fs.Remove(dst); err != nil {
 			return false, err
 		}
+		replaced = true
 		info, err = opt.fs.Lstat(dst)
 	}
 
 	if errors.Is(err, os.ErrNotExist) {
 		opt.ToLog.Infof("install key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
+		// A write that failed wrote nothing what reads the file is to
+		// read again: the file is not reported changed, unless a link
+		// was removed in its place. An owner or a time that fails to be
+		// set after it is on a file written.
 		if err := opt.fs.WriteFile(dst, b, perm); err != nil {
-			return true, err
+			return replaced, err
 		}
 		if err := t.chown(dst, usr, grp, nil, opt.fs, opt.ToLog); err != nil {
 			return true, err
 		}
 		return true, opt.fs.Chtimes(dst, mtime, mtime)
 	} else if err != nil {
-		return false, err
+		return replaced, err
 	}
 	if err := t.chmod(dst, perm, info, opt.fs, opt.ToLog); err != nil {
 		return false, err
@@ -350,7 +392,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	if err := t.chown(dst, usr, grp, info, opt.fs, opt.ToLog); err != nil {
 		return false, err
 	}
-	if mtime == info.ModTime() {
+	if mtime == info.ModTime() && opt.Render == nil {
 		if opt.LogUnchanged {
 			opt.ToLog.Infof("%s from key %s of %s is up to date", dst, vk.Key, t.path)
 		}
@@ -369,7 +411,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 		return false, opt.fs.Chtimes(dst, mtime, mtime)
 	}
 	if err := opt.fs.WriteFile(dst, b, info.Mode()); err != nil {
-		return true, err
+		return false, err
 	}
 	opt.ToLog.Infof("reinstall key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
 	return true, nil

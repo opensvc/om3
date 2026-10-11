@@ -3,6 +3,8 @@ package scheduler
 import (
 	"errors"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,7 +14,10 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/testhelper"
 )
 
@@ -364,4 +369,159 @@ func TestPathKeyMapUnsetPath(t *testing.T) {
 	assert.True(t, ok)
 	m.Unset(other, "a")
 	assert.Empty(t, m)
+}
+
+// The runs require the local instance provisioned, not the object: a peer
+// instance not provisioned, as the one of a node joining, leaves the object
+// mixed and blocks none of the runs of the provisioned local instance.
+func TestProvisionedIsTheLocalInstance(t *testing.T) {
+	s := newTestScheduler(t)
+	update := func(node string, local, aggregated provisioned.T) {
+		s.onObjectStatusUpdated(&msgbus.ObjectStatusUpdated{
+			Path:  testPath,
+			Value: object.Status{ActorStatus: &object.ActorStatus{Provisioned: aggregated}},
+			SrcEv: &msgbus.InstanceStatusUpdated{
+				Path:  testPath,
+				Node:  node,
+				Value: instance.Status{Provisioned: local},
+			},
+		})
+	}
+	update(s.localhost, provisioned.True, provisioned.Mixed)
+	assert.True(t, s.isProvisioned(testPath), "a peer not provisioned does not count")
+
+	update(s.localhost, provisioned.False, provisioned.Mixed)
+	assert.False(t, s.isProvisioned(testPath), "the local instance not provisioned does")
+
+	update("peer", provisioned.True, provisioned.True)
+	assert.False(t, s.isProvisioned(testPath), "nor does a peer provisioned")
+}
+
+// A run held due for events is dropped when the events of its entry change:
+// it was for events the entry no longer runs on. A change of nothing else
+// keeps it.
+func TestTriggerGoesWithTheEventsItWasFor(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action: "run",
+		Key:    "task#1.schedule",
+		On:     []string{"NetworkPeersUpdated"},
+		Pace:   "@30s",
+	}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	g.dueAt = s.clock.Add(30 * time.Second)
+
+	config.MaxParallel = 2
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	_, ok = s.triggers.Get(testPath, config.Key)
+	assert.True(t, ok, "a change of something else keeps the run due")
+
+	config.On = []string{"FileInstalled,rid=fs#1"}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	_, ok = s.triggers.Get(testPath, config.Key)
+	assert.False(t, ok, "a change of the events drops it")
+}
+
+// A run the events ask for is a run of the entry: it is its last run, kept
+// in its last run file and shown in the listings, and its scheduled run is
+// planned from it. An event run skipped is no run.
+func TestEventRunIsTheLastRun(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		Schedule:     "@1h",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+		Pace:         "@30s",
+	}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	planned := s.job(t, e).entry.NextRunAt
+
+	s.clock = s.clock.Add(10 * time.Minute)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	s.runTrigger(testPath, e, g, s.clock, false)
+	require.Equal(t, 1, s.ranCount())
+
+	assert.Equal(t, s.clock.Add(time.Hour), s.job(t, e).entry.NextRunAt, "the scheduled run is planned from the event run")
+	assert.True(t, s.clock.Equal(e.GetLastRun()), "the last run file says it")
+	exposed := schedule.TableData.GetByPath(testPath)
+	require.NotNil(t, exposed)
+	for _, x := range *exposed {
+		if x.Key == config.Key {
+			assert.True(t, s.clock.Equal(x.LastRunAt), "and the listings")
+		}
+	}
+	assert.NotEqual(t, planned, s.job(t, e).entry.NextRunAt)
+
+	e.RequireProvisioned = true
+	s.provisioned[testPath] = false
+	last := s.clock
+	s.clock = s.clock.Add(10 * time.Minute)
+	s.runTrigger(testPath, e, g, s.clock, false)
+	assert.True(t, last.Equal(e.GetLastRun()), "an event run skipped is no run")
+}
+
+// The pace of a trigger made new, as after a daemon restart, counts from the
+// last run of the entry: an event coming within it runs the entry at its end,
+// not at once.
+func TestNewTriggerPacesFromTheLastRun(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+		Pace:         "@30s",
+	}
+	e := schedule.Entry{Config: config, Node: s.localhost, Path: testPath}
+	require.NoError(t, os.MkdirAll(filepath.Dir(e.LastRunFile()), 0755))
+	require.NoError(t, e.SetLastRun(s.clock.Add(-10*time.Second)))
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	assert.False(t, g.onEvent(s.clock), "an event within the pace of the last run does not run at once")
+	assert.True(t, g.dueAt.Equal(s.clock.Add(20*time.Second)), "it runs at the end of the pace: %s", g.dueAt)
+}
+
+// A trigger made new for a change of the events of an entry that also has a
+// schedule paces from the last scheduled run, which the job holds and the
+// last run file says, rather than from the older time of the entry.
+func TestRebuiltTriggerPacesFromTheLastScheduledRun(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		Schedule:     "@1h",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+		Pace:         "@30s",
+	}
+	e := schedule.Entry{Config: config, Node: s.localhost, Path: testPath}
+	require.NoError(t, os.MkdirAll(filepath.Dir(e.LastRunFile()), 0755))
+	require.NoError(t, e.SetLastRun(s.clock.Add(-2*time.Hour)), "an event run, the time the entry holds")
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	require.True(t, e.LastRunAt.Equal(s.clock.Add(-2*time.Hour)))
+	require.NoError(t, e.SetLastRun(s.clock.Add(-10*time.Second)), "a scheduled run since, the job's")
+
+	config.On = []string{"FileInstalled,rid=fs#1"}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok = s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	assert.False(t, g.onEvent(s.clock), "an event within the pace of the scheduled run does not run at once")
+	assert.True(t, g.dueAt.Equal(s.clock.Add(20*time.Second)), "it runs at the end of the pace: %s", g.dueAt)
 }

@@ -74,6 +74,8 @@ func (t *CmdNodeScheduleList) extractLocal() (api.ScheduleItems, error) {
 				RequireCollector:   e.RequireCollector,
 				RequireProvisioned: e.RequireProvisioned,
 				Schedule:           e.Schedule,
+				On:                 append([]string{}, e.On...),
+				Pace:               e.Pace,
 			},
 		}
 		items = append(items, item)

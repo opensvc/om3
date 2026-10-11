@@ -163,6 +163,38 @@ type (
 	HostDever interface {
 		HostDev() (string, error)
 	}
+	// NodeAddresser is implemented by the network drivers giving each node
+	// a subnet of its own, whose first address is the node's: what reaches
+	// a node in the network, as the drbd traffic a disk.drbd sends there.
+	NodeAddresser interface {
+		NodeAddr(nodename string) (net.IP, error)
+	}
+
+	// Peerer is implemented by the network drivers reaching the other nodes
+	// themselves, by a route or a tunnel. It returns how this node reaches
+	// each of them.
+	Peerer interface {
+		Peers() ([]Peer, error)
+	}
+
+	// Peer is another node of a network, as this node reaches it.
+	Peer struct {
+		// Nodename is the name of the peer node.
+		Nodename string
+
+		// Local is the address of this node the network reaches the peer
+		// from, and Remote the address of the peer it reaches.
+		Local  net.IP
+		Remote net.IP
+
+		// Subnet is the part of the network the peer hands out.
+		Subnet string
+
+		// Tunnel is the device of the tunnel carrying the network to the
+		// peer, empty when the network is routed to it.
+		Tunnel string
+	}
+
 	logger interface {
 		Log() *plog.Logger
 	}

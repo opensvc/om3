@@ -2,6 +2,8 @@ package object
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -41,6 +43,22 @@ func (t *actor) Install(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return t.installResource(ctx, r)
 	})
+}
+
+// InstallResources installs the resources rids, all of them when rids is
+// empty, as the install action does, for a resource of the instance running
+// in an action asking for it: a task installing again the files a change of
+// what the node knows changed.
+//
+// The lock of the object is taken, so an action holding it is waited for.
+func (t *actor) InstallResources(ctx context.Context, rids []string) error {
+	if action, ok := os.LookupEnv("OPENSVC_ACTION"); ok {
+		defer os.Setenv("OPENSVC_ACTION", action)
+	}
+	ctx = actioncontext.WithRID(ctx, strings.Join(rids, ","))
+	ctx = actioncontext.WithTag(ctx, "")
+	ctx = actioncontext.WithSubset(ctx, "")
+	return t.Install(ctx)
 }
 
 func (t *actor) installResource(ctx context.Context, r resource.Driver) error {

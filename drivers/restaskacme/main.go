@@ -60,6 +60,9 @@ func (t *T) Run(ctx context.Context) error {
 // lockedRun renews the certificate of each sec, those after a failed one
 // included, and says which failed.
 func (t *T) lockedRun(ctx context.Context) error {
+	if err := t.RunInstall(ctx); err != nil {
+		return err
+	}
 	if t.Timeout != nil && *t.Timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, *t.Timeout)

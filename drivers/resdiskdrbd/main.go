@@ -547,11 +547,15 @@ func (t *T) getNodeIPWithNetwork(nodename string) (net.IP, error) {
 		if nw.Name() != t.Network {
 			continue
 		}
-		if ip, err := nw.NodeSubnetIP(nodename); err != nil {
-			return nil, err
-		} else {
-			return ip, nil
+		// A network giving the nodes no subnet of their own, as a lan
+		// whose addresses belong to the cluster, has no address of the
+		// node to send the drbd traffic to: one carved out of its range
+		// would be held by no one, or by another.
+		i, ok := nw.(network.NodeAddresser)
+		if !ok {
+			return nil, fmt.Errorf("network %s is a %s network, which gives the nodes no address of their own: use a routed_bridge network, or set addr", t.Network, nw.Type())
 		}
+		return i.NodeAddr(nodename)
 	}
 	return nil, fmt.Errorf("node %s ip not found on network %s", nodename, t.Network)
 }

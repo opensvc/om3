@@ -111,6 +111,10 @@ type (
 		// clusterConfig is a cache of published ClusterConfigUpdated
 		clusterConfig cluster.Config
 
+		// networkPeersSigs is the signature of the peers of each network
+		// of the node, the NetworkPeersUpdated events are published from.
+		networkPeersSigs map[string]string
+
 		// hbSecret defines the local heartbeat secret
 		hbSecret hbsecret.Secret
 
@@ -455,6 +459,7 @@ func (t *Manager) worker() {
 	t.updateStats()
 	t.refreshSanPaths()
 	t.updateIfChange()
+	t.networkPeersSigs = t.getNetworkPeersSigs(nil)
 	defer t.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
 	defer node.MonitorData.Unset(t.localhost)
 

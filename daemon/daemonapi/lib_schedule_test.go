@@ -38,12 +38,31 @@ func TestScheduleItemUsesNullForUnknownDates(t *testing.T) {
 			"last_run_at": null,
 			"max_parallel": 0,
 			"next_run_at": null,
+			"on": [],
+			"pace": "",
 			"require": "",
 			"require_collector": false,
 			"require_provisioned": false,
 			"schedule": "@10m"
 		}
 	}`, string(b))
+}
+
+// The events a task runs on and their pace are listed with its schedule: a
+// task running on events only has no schedule to tell it does.
+func TestScheduleItemListsTheEventsATaskRunsOn(t *testing.T) {
+	item := scheduleItem(schedule.Entry{
+		Config: schedule.Config{
+			Action: "run",
+			Key:    "task#refresh.schedule",
+			On:     []string{"NetworkPeersUpdated"},
+			Pace:   "@30s backoff @1m",
+		},
+		Node: "node1",
+		Path: naming.Path{Namespace: "ns1", Kind: naming.KindSvc, Name: "app"},
+	})
+	assert.Equal(t, []string{"NetworkPeersUpdated"}, item.Data.On)
+	assert.Equal(t, "@30s backoff @1m", item.Data.Pace)
 }
 
 func TestScheduleItemKeepsKnownDates(t *testing.T) {

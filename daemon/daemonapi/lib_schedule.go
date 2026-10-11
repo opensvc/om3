@@ -31,6 +31,8 @@ func scheduleItem(e schedule.Entry) api.ScheduleItem {
 			RequireCollector:   e.RequireCollector,
 			RequireProvisioned: e.RequireProvisioned,
 			Schedule:           e.Schedule,
+			On:                 append([]string{}, e.On...),
+			Pace:               e.Pace,
 		},
 	}
 }

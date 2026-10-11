@@ -51,6 +51,7 @@ Receive only events matching the filtering expression formatted as:
 
 ### Instance
 
+     FileInstalled
      InstanceActionPending, InstanceActionSent
      InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
      InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
@@ -85,6 +86,10 @@ Receive only events matching the filtering expression formatted as:
 ### Netlink
 
      NetLinkDown, NetLinkUp, NetIPAddrAdded, NetIPAddrDeleted
+
+### Network
+
+     NetworkPeersUpdated
 
 ### Event Subscription
 

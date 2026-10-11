@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -152,17 +153,19 @@ func (t *CmdClusterLeave) run() (err error) {
 		return err
 	}
 
-	if err := t.cleanupVarDir(); err != nil {
-		return fmt.Errorf("cleanup opensvc var dir: %w", err)
-	}
-
-	if err := t.cleanupAndMandatoryDirectories(); err != nil {
+	// The config is gone: the daemon is to start alone whatever the
+	// cleanup left, so the node stays reachable.
+	cleanupErr := t.cleanupVarDir()
+	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return err
 	}
 
 	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
+	}
+	if cleanupErr != nil {
+		return fmt.Errorf("cleanup opensvc var dir: %w", cleanupErr)
 	}
 
 	if username != "" {

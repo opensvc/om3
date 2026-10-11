@@ -268,6 +268,8 @@ var (
 
 		"RunFileUpdated": func() any { return &RunFileUpdated{} },
 
+		"FileInstalled": func() any { return &FileInstalled{} },
+
 		"InstanceStateFileUpdated": func() any { return &InstanceStateFileUpdated{} },
 
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
@@ -286,10 +288,11 @@ var (
 
 		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
 
-		"NetLinkDown":      func() any { return &NetLinkDown{} },
-		"NetLinkUp":        func() any { return &NetLinkUp{} },
-		"NetIPAddrAdded":   func() any { return &NetIPAddrAdded{} },
-		"NetIPAddrDeleted": func() any { return &NetIPAddrDeleted{} },
+		"NetLinkDown":         func() any { return &NetLinkDown{} },
+		"NetLinkUp":           func() any { return &NetLinkUp{} },
+		"NetworkPeersUpdated": func() any { return &NetworkPeersUpdated{} },
+		"NetIPAddrAdded":      func() any { return &NetIPAddrAdded{} },
+		"NetIPAddrDeleted":    func() any { return &NetIPAddrDeleted{} },
 
 		"FSMounted":   func() any { return &FSMounted{} },
 		"FSUmounted":  func() any { return &FSUmounted{} },
@@ -1109,6 +1112,23 @@ type (
 		At         time.Time   `json:"at" yaml:"at"`
 	}
 
+	// FileInstalled is published when an install of a resource of a local
+	// instance wrote files, by a start, a provision, a task or a change of
+	// a key, and not when it found them up to date: what reads them is to
+	// read them again.
+	FileInstalled struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string      `json:"node" yaml:"node"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		RID        string      `json:"rid" yaml:"rid"`
+
+		// Files are the files written, relative to the head of the
+		// resource.
+		Files []string `json:"files" yaml:"files"`
+
+		At time.Time `json:"at" yaml:"at"`
+	}
+
 	// InstanceStateFileUpdated is emitted by the api when a peer wrote a
 	// state file of a local instance, as the source of a sync writes the
 	// last sync record of a peer it synced. The status of the instance
@@ -1174,6 +1194,16 @@ type (
 		Type       string      `json:"type" yaml:"type"`
 		TTL        int         `json:"ttl" yaml:"ttl"`
 		Content    string      `json:"content" yaml:"content"`
+	}
+
+	// NetworkPeersUpdated is published when the peers of a network of the
+	// node changed, after its setup: a node joined or left the network, an
+	// address of a node changed, or the tunnel to a node. A file rendered from
+	// the peers is to be rendered again.
+	NetworkPeersUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
 	}
 
 	// NetLinkDown is published when a network link goes down
@@ -1785,6 +1815,14 @@ func (e *RunFileUpdated) Kind() string {
 	return "RunFileUpdated"
 }
 
+func (e *FileInstalled) Kind() string {
+	return "FileInstalled"
+}
+
+func (e *FileInstalled) Key() string {
+	return fmt.Sprintf("FileInstalled,node=%s,path=%s,rid=%s", e.Node, e.Path, e.RID)
+}
+
 func (e *SetInstanceMonitor) Kind() string {
 	return "SetInstanceMonitor"
 }
@@ -1833,6 +1871,14 @@ func (e *NetLinkUp) Kind() string {
 
 func (e *NetLinkUp) Key() string {
 	return fmt.Sprintf("NetLinkUp,node=%s,link_name=%s", e.Node, e.LinkName)
+}
+
+func (e *NetworkPeersUpdated) Kind() string {
+	return "NetworkPeersUpdated"
+}
+
+func (e *NetworkPeersUpdated) Key() string {
+	return fmt.Sprintf("NetworkPeersUpdated,node=%s,name=%s", e.Node, e.Name)
 }
 
 func (e *NetIPAddrAdded) Kind() string {

@@ -1,0 +1,28 @@
+The volumes and filesystems whose files the task installs again before its
+own work, as the `install` action does for them: `fs#1 volume#data`. A host
+task installing files needs no `command`.
+
+The files rendered from a template are rendered from what the node knows at
+the time, and the install publishes a `FileInstalled` event for the ones it
+wrote. With `on`, the files follow what the events say changed, and the
+tasks on `FileInstalled` have what reads them read them again:
+
+    [task#refresh]
+    type = host
+    install = fs#1
+    on = NetworkPeersUpdated
+
+    [task#load_all]
+    type = host
+    container = container#swanctl
+    command = swanctl --load-all
+    on = FileInstalled,rid=fs#1
+
+    [fs#1]
+    install = /swanctl.conf from ./cfg/{name} key swanctl.conf template
+
+The install takes the lock of the object, as the install action does. It
+writes only in the volumes and filesystems of the object, from the install
+lines they declare, so a task of any type may ask for it.
+
+A failed install is a failed run, the task's own work not done.

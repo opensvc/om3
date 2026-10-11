@@ -287,6 +287,12 @@ func (t *T) AllocatableRange(nodename string) (*net.IPNet, error) {
 	return t.NodeSubnet(nodename)
 }
 
+// NodeAddr returns the address of nodename in the network, the first of the
+// subnet the node was assigned.
+func (t *T) NodeAddr(nodename string) (net.IP, error) {
+	return t.NodeSubnetIP(nodename)
+}
+
 func (t *T) Setup() error {
 	var (
 		localIP net.IP
@@ -335,46 +341,39 @@ func (t *T) Setup() error {
 
 func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) error {
 	var route network.Route
-	tunnel := t.tunnel()
-	peerIP, err := t.getNodeIP(nodename)
+	peer, err := t.peer(nodename, localIP, t.subnetMap)
 	if err != nil {
-		return fmt.Errorf("get peer ip: %w", err)
+		return err
 	}
-	subnet, ok := t.subnetMap[nodename]
-	if !ok {
-		return fmt.Errorf("no peer subnet: %w", err)
-	}
-	_, dst, err := net.ParseCIDR(subnet)
+	_, dst, err := net.ParseCIDR(peer.Subnet)
 	if err != nil {
-		return fmt.Errorf("parse peer subnet %s: %w", subnet, err)
+		return fmt.Errorf("parse peer subnet %s: %w", peer.Subnet, err)
 	}
-	if hostname.Hostname() == nodename {
+	switch {
+	case hostname.Hostname() == nodename:
 		route = network.Route{
 			Nodename: nodename,
 			Dst:      dst,
 			Dev:      t.brName(),
 		}
-	} else if v, err := t.mustTunnel(tunnel, peerIP); err != nil {
-		return fmt.Errorf("must tunnel: %w", err)
-	} else if v {
-		name := tunName(localIP, peerIP)
-		if err := t.setupNodeTunnelLink(nodename, name, localIP, peerIP); err != nil {
+	case peer.Tunnel != "":
+		if err := t.setupNodeTunnelLink(nodename, peer.Tunnel, localIP, peer.Remote); err != nil {
 			return fmt.Errorf("setup tunnel: %w", err)
 		}
-		if err := t.setupNodeTunnelLinkUp(name); err != nil {
+		if err := t.setupNodeTunnelLinkUp(peer.Tunnel); err != nil {
 			return fmt.Errorf("setup tunnel: %w", err)
 		}
 		route = network.Route{
 			Nodename: nodename,
 			Dst:      dst,
-			Dev:      name,
+			Dev:      peer.Tunnel,
 			Src:      brIP,
 		}
-	} else {
+	default:
 		route = network.Route{
 			Nodename: nodename,
 			Dst:      dst,
-			Gateway:  peerIP,
+			Gateway:  peer.Remote,
 		}
 	}
 	if route.Gateway == nil && route.Dev == "" {
@@ -385,6 +384,64 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 		return fmt.Errorf("setup route: %w", err)
 	}
 	return nil
+}
+
+// peer returns how this node, at localIP, reaches nodename: the address of
+// the node, its subnet, and the tunnel carrying the network to it, when it
+// is not routed. This node reaches itself through the bridge, by no tunnel.
+func (t *T) peer(nodename string, localIP net.IP, subnets map[string]string) (network.Peer, error) {
+	peerIP, err := t.getNodeIP(nodename)
+	if err != nil {
+		return network.Peer{}, fmt.Errorf("get peer ip: %w", err)
+	}
+	subnet, ok := subnets[nodename]
+	if !ok || subnet == "" {
+		return network.Peer{}, fmt.Errorf("no subnet of node %s", nodename)
+	}
+	peer := network.Peer{
+		Nodename: nodename,
+		Local:    localIP,
+		Remote:   peerIP,
+		Subnet:   subnet,
+	}
+	if hostname.Hostname() == nodename {
+		return peer, nil
+	}
+	if v, err := t.mustTunnel(t.tunnel(), peerIP); err != nil {
+		return network.Peer{}, fmt.Errorf("must tunnel: %w", err)
+	} else if v {
+		peer.Tunnel = tunName(localIP, peerIP)
+	}
+	return peer, nil
+}
+
+// Peers returns how this node reaches the other nodes of the network, as
+// its setup made it: the tunnels and routes it set up.
+func (t *T) Peers() ([]network.Peer, error) {
+	localIP, err := t.getLocalIP()
+	if err != nil {
+		return nil, fmt.Errorf("get local %s address of this node: %w", t.getAF(), err)
+	}
+	subnets, err := t.subnets()
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := t.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	peers := make([]network.Peer, 0, len(nodes))
+	for _, nodename := range nodes {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		peer, err := t.peer(nodename, localIP, subnets)
+		if err != nil {
+			return nil, fmt.Errorf("node %s: %w", nodename, err)
+		}
+		peers = append(peers, peer)
+	}
+	return peers, nil
 }
 
 func (t *T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {

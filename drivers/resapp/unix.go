@@ -317,6 +317,24 @@ func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, exe
 	return args, cred, nil
 }
 
+// EncapEnv returns the environment of a command run in a container: the one
+// of a command run on the node, but its PATH, which is the container's.
+func (t *T) EncapEnv(ctx context.Context) ([]string, error) {
+	env, err := t.getEnv(ctx, func(err error) {
+		t.Log().Infof("prepare the environment: %s", err)
+	})
+	if err != nil {
+		return nil, err
+	}
+	l := make([]string, 0, len(env))
+	for _, s := range env {
+		if !strings.HasPrefix(s, "PATH=") {
+			l = append(l, s)
+		}
+	}
+	return l, nil
+}
+
 // GetFuncOpts returns a list of functional options to use with command.New()
 func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt.O, error) {
 	cmdArgs, cred, err := t.CmdArgs(ctx, s, action)

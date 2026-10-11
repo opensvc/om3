@@ -114,6 +114,9 @@ func (t *T) Stop(ctx context.Context) (err error) {
 }
 
 func (t *T) lockedRun(ctx context.Context) (err error) {
+	if err := t.RunInstall(ctx); err != nil {
+		return err
+	}
 	container := t.containerDetachedGetter.GetContainerDetached()
 
 	if container == nil {

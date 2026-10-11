@@ -76,6 +76,8 @@ func (t *actor) Schedules() schedule.Table {
 		e.MaxParallel = opts.MaxParallel
 		e.Require = opts.Require
 		e.RequireReplicationSource = opts.RequireReplicationSource
+		e.On = opts.On
+		e.Pace = opts.Pace
 		table = table.Add(e)
 	}
 	if needResMon {

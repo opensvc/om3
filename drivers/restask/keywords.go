@@ -2,8 +2,10 @@ package restask
 
 import (
 	"embed"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/util/converters"
 )
 
@@ -27,6 +29,15 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/confirmation"),
 		},
 		{
+			Attr:      "Install",
+			Converter: converters.List,
+			Example:   "fs#1",
+			Option:    "install",
+			Scopable:  true,
+			Validate:  validInstall,
+			Text:      keywords.NewText(fs, "text/kw/install"),
+		},
+		{
 			Attr:      "LogOutputs",
 			Converter: converters.Bool,
 			Default:   "true",
@@ -42,6 +53,24 @@ var (
 			Option:    "max_parallel",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/max_parallel"),
+		},
+		{
+			Attr:      "On",
+			Converter: converters.List,
+			Example:   "NetworkPeersUpdated,name=backend1",
+			Option:    "on",
+			Scopable:  true,
+			Validate:  validOn,
+			Text:      keywords.NewText(fs, "text/kw/on"),
+		},
+		{
+			Attr:     "Pace",
+			Default:  schedule.DefaultPace,
+			Example:  "@30s backoff @1m",
+			Option:   "pace",
+			Scopable: true,
+			Validate: validPace,
+			Text:     keywords.NewText(fs, "text/kw/pace"),
 		},
 		{
 			Attr:     "OnErrorCmd",
@@ -93,3 +122,19 @@ var (
 		},
 	}
 )
+
+// validOn refuses an on value naming an event no task runs on.
+func validOn(v string) error {
+	for _, s := range strings.Fields(v) {
+		if _, err := schedule.ParseOn(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validPace refuses a pace value not @<interval>[ backoff @<max>].
+func validPace(v string) error {
+	_, err := schedule.ParsePace(v)
+	return err
+}

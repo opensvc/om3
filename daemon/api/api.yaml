@@ -9798,6 +9798,8 @@ components:
         - require
         - require_collector
         - require_provisioned
+        - "on"
+        - pace
       properties:
         action:
           type: string
@@ -9821,6 +9823,12 @@ components:
           type: boolean
         require_provisioned:
           type: boolean
+        "on":
+          type: array
+          items:
+            type: string
+        pace:
+          type: string
 
     ScheduleConfig:
       type: object
@@ -9847,6 +9855,12 @@ components:
           type: boolean
         require_provisioned:
           type: boolean
+        "on":
+          type: array
+          items:
+            type: string
+        pace:
+          type: string
 
     ScheduleItem:
       type: object

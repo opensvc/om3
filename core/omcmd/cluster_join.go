@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -247,11 +248,11 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		naming.SecHb,
 	}
 	downloadedFiles := make([]string, 0)
-	defer func([]string) {
+	defer func() {
 		for _, f := range downloadedFiles {
 			_ = os.Remove(f)
 		}
-	}(downloadedFiles)
+	}()
 
 	fetchObjectConfigData := make(map[naming.Path][]byte)
 	for _, p := range toFetch {
@@ -287,7 +288,10 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		return err
 	}
 
-	if err := t.cleanupAndMandatoryDirectories(); err != nil {
+	// The config is gone: the daemon is to start with the fetched one
+	// whatever the cleanup left, so the node joins.
+	cleanupErr := t.cleanupVarDir()
+	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return err
 	}
 
@@ -314,6 +318,9 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		return err
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Joined\n")
+	if cleanupErr != nil {
+		return fmt.Errorf("cleanup opensvc var dir: %w", cleanupErr)
+	}
 	return nil
 }
 

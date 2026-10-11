@@ -1,7 +1,6 @@
 package datarecv
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"text/template"
 
 	"github.com/anmitsu/go-shlex"
 	"golang.org/x/sys/unix"
@@ -36,8 +34,9 @@ import (
 // seedKeyFromSource fetches data from a URI or local file and adds it as a key to the datastore.
 // It only seeds the key if it doesn't already exist.
 // Supports both HTTP/HTTPS URIs (http://, https://) and local file paths.
-// If isTemplate is true, the content is executed as a Go template with the config env section exposed.
-func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger, config *xconfig.T, isTemplate bool) error {
+// A template is seeded as it is written, and rendered on each node at each
+// install.
+func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger) error {
 	log.Infof("seeding key %s from source %s", keyName, sourceURI)
 
 	var data []byte
@@ -73,25 +72,6 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 		}
 	}
 
-	// If template flag is set, execute the content as a Go template
-	if isTemplate && config != nil {
-		log.Infof("executing template for key %s from source %s", keyName, sourceURI)
-		// Build template data from the env section of the config
-		templateData := buildEnvTemplateData(config)
-
-		tmpl, err := template.New("source").Parse(string(data))
-		if err != nil {
-			return fmt.Errorf("failed to parse template for key %s: %w", keyName, err)
-		}
-
-		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, templateData); err != nil {
-			return fmt.Errorf("failed to execute template for key %s: %w", keyName, err)
-		}
-
-		data = buf.Bytes()
-	}
-
 	// Add the data as a key to the datastore
 	if err := ds.AddKey(keyName, data); err != nil {
 		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
@@ -100,7 +80,8 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 	return nil
 }
 
-// buildEnvTemplateData builds a map of environment variables from the config's env section
+// buildEnvTemplateData builds a map of environment variables from the config's env section,
+// the data of the templates an install renders.
 func buildEnvTemplateData(config *xconfig.T) map[string]string {
 	data := make(map[string]string)
 
@@ -459,7 +440,9 @@ func (t *DataRecv) HasMetadata(path naming.Path, k string) bool {
 			return true
 		}
 	}
-	return false
+	// A template reading the key at its last render is to be rendered
+	// again.
+	return readTemplateKeys(t.templateKeysFile()).readsFrom(path, k)
 }
 
 func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) object.KVInstall {
@@ -613,10 +596,29 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	}
 
 	signals := volsignal.New()
+	installed := make([]string, 0)
+	// The files written are recorded whatever ends the install, an error
+	// of a required item included: what reads them is to read them again.
+	defer func() { t.recordInstalled(installed) }()
+	readKeys := readTemplateKeys(t.templateKeysFile())
 
 	for _, md := range files {
+		store := from
 		if md.FromStore != from.Path() {
-			continue
+			// A template of another datastore reading a key of
+			// from renders again. The key changed is not known,
+			// and a file rendered the same is left as it is.
+			if md.Render == nil || !readKeys.reads(md.FromStore, from.Path(), "") {
+				continue
+			}
+			if !md.FromStore.Exists() {
+				continue
+			}
+			var err error
+			if store, err = object.NewDataStore(md.FromStore, object.WithVolatile(true)); err != nil {
+				t.to.Log().Warnf("store %s init error: %s", md.FromStore, err)
+				continue
+			}
 		}
 		if !md.FromStore.Exists() {
 			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
@@ -627,17 +629,15 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 				continue
 			}
 		}
-		shares := from.Shares()
+		shares := store.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
-			if !from.HasKey(md.FromPattern) {
-				// Get the config from the receiver object
-				config := t.to.GetObject().(object.Core).Config()
-				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log(), config, md.IsTemplate); err != nil {
+			if !store.HasKey(md.FromPattern) {
+				if err := seedKeyFromSource(store, md.FromPattern, md.Source, t.to.Log()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -650,9 +650,10 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		}
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
+		md.Wrote = func(p string) { installed = appendNew(installed, p) }
 		// A file whose content did not change gives what reads it nothing
 		// to reload: its signals are sent for a change only.
-		fileChanged, err := from.InstallKeyTo(md)
+		fileChanged, err := store.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
 		}
@@ -709,6 +710,10 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 	}
 	signals := volsignal.New()
+	installed := make([]string, 0)
+	// The files written are recorded whatever ends the install, an error
+	// of a required item included: what reads them is to read them again.
+	defer func() { t.recordInstalled(installed) }()
 
 	for _, md := range files {
 		var dataStore object.DataStore
@@ -744,9 +749,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
 			if !dataStore.HasKey(md.FromPattern) {
-				// Get the config from the receiver object
-				config := t.to.GetObject().(object.Core).Config()
-				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log(), config, md.IsTemplate); err != nil {
+				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -759,6 +762,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
+		md.Wrote = func(p string) { installed = appendNew(installed, p) }
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
@@ -956,7 +960,7 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 				word, line = Pop(line)
 				item.Source = word
 			case "template":
-				item.IsTemplate = true
+				item.Render = t.renderer(fromStore)
 			}
 		}
 
@@ -1012,6 +1016,16 @@ func (t *DataRecv) Do(ctx context.Context) error {
 	return nil
 }
 
+// appendNew appends to l the elements of add it does not hold.
+func appendNew(l []string, add ...string) []string {
+	for _, s := range add {
+		if !slices.Contains(l, s) {
+			l = append(l, s)
+		}
+	}
+	return l
+}
+
 func (t *DataRecv) OldSendSignals(ctx context.Context) error {
 	return t.SendSignals(ctx, volsignal.New(t.Signal))
 }
@@ -1037,6 +1051,10 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 	var changed bool
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
+	installed := make([]string, 0)
+	// The files written are recorded whatever ends the install, an error
+	// of a required item included: what reads them is to read them again.
+	defer func() { t.recordInstalled(installed) }()
 
 	for _, md := range t.getMetadataByKind(head, kind) {
 		if !md.FromStore.Exists() {
@@ -1054,6 +1072,7 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 		}
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
+		md.Wrote = func(p string) { installed = appendNew(installed, p) }
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil {
 			return changed, err

@@ -2,6 +2,7 @@ package discover
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/configannounce"
@@ -231,6 +233,25 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						}
 						t.PubDebounce(filename, &msgbus.RunFileUpdated{File: filename, Path: path, RID: rid, At: file.ModTime(filename)}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 					}
+				case filepath.Base(filepath.Dir(filename)) == "installed":
+					if event.Op&fsnotify.Create == 0 || strings.HasPrefix(filepath.Base(filename), ".") {
+						// The record is renamed in place: the
+						// temporary file it is written to, and its
+						// removal, tell nothing.
+						continue
+					}
+					path, rid, err := installedFilenameToPathAndRID(filename)
+					if err != nil {
+						log.Warnf("failed to parse path and rid from %s: %s", filename, err)
+						continue
+					}
+					v, err := datarecv.ReadInstalled(filename)
+					if err != nil {
+						log.Warnf("read install record %s: %s", filename, err)
+						continue
+					}
+					log.Tracef("detect install record %s", filename)
+					t.PubDebounce(filename, &msgbus.FileInstalled{Node: t.localhost, Path: path, RID: rid, Files: v.Files, At: v.At}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 				case strings.HasSuffix(filename, "frozen"):
 					if filename != nodeFrozenFile {
 						// TODO: track instance frozen flag ? the namespace var is not yet watched
@@ -283,7 +304,9 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						log.Errorf("init fs watches walking %s: %s", filename, err)
 					}
 				case dirRemoved(event):
-					if err := t.fsWatcher.Remove(filename); err != nil {
+					if err := t.fsWatcher.Remove(filename); errors.Is(err, fsnotify.ErrNonExistentWatch) {
+						// The watch went with the directory.
+					} else if err != nil {
 						log.Errorf("remove dir watch %s: %s", filename, err)
 					} else {
 						log.Infof("remove dir watch %s", filename)
@@ -293,6 +316,17 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 		}
 	}()
 	return stop, nil
+}
+
+// installedFilenameToPathAndRID returns the path and the rid of the install
+// record filename, <var>/<path>/installed/<rid>.
+func installedFilenameToPathAndRID(filename string) (naming.Path, string, error) {
+	rid := filepath.Base(filename)
+	s := filepath.Dir(filepath.Dir(filename)) // discard the /installed/<rid> suffix
+	s = strings.TrimPrefix(s, rawconfig.Paths.VarNs+"/")
+	s = strings.TrimPrefix(s, rawconfig.Paths.Var+"/")
+	path, err := naming.ParsePath(s)
+	return path, rid, err
 }
 
 func cfgFilenameToPath(filename string) (naming.Path, error) {

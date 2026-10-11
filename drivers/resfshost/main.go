@@ -190,6 +190,118 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
+// UnprovisionAsLeader removes the mount point, as UnprovisionAsFollower
+// does: it is on each node.
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	return t.removeMountPoint()
+}
+
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
+	return t.removeMountPoint()
+}
+
+// removeMountPoint removes the mount point a start of the resource created,
+// a directory or the empty file of a file bind mount, once unmounted and
+// left empty. A mount point the resource found in place is the operator's,
+// and what it still holds, or a filesystem still mounted on it, is not the
+// resource's to remove: they are left, with a log.
+func (t *T) removeMountPoint() error {
+	mnt := t.mountPoint()
+	if mnt == "." || file.IsProtected(mnt) {
+		return nil
+	}
+	if !t.createdMountPoint(mnt) {
+		return nil
+	}
+	fi, err := os.Lstat(mnt)
+	if errors.Is(err, os.ErrNotExist) {
+		t.forgetMountPointCreated()
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if !fi.IsDir() && !(fi.Mode().IsRegular() && fi.Size() == 0) {
+		return nil
+	}
+	if err := os.Remove(mnt); err != nil {
+		t.Log().Infof("leave the mount point %s: %s", mnt, err)
+		return nil
+	}
+	t.forgetMountPointCreated()
+	t.Log().Infof("removed the mount point %s", mnt)
+	return nil
+}
+
+// mountPointCreatedFile records the mount point a start of the resource
+// created, which the unprovision may remove: its path, and the identity of
+// the directory or the file it was, its device and its inode, for a path
+// replaced since to be told apart.
+func (t *T) mountPointCreatedFile() string {
+	return filepath.Join(t.VarDir(), "mnt_created")
+}
+
+// mountPointIdentity returns the identity of what is at mnt, its device and
+// its inode, which a path replaced does not keep.
+func mountPointIdentity(mnt string) (string, error) {
+	fi, err := os.Lstat(mnt)
+	if err != nil {
+		return "", err
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return "", fmt.Errorf("%s: no device and inode", mnt)
+	}
+	return fmt.Sprintf("%d %d", st.Dev, st.Ino), nil
+}
+
+// createdMountPoint says if what is at mnt is the mount point a start of the
+// resource created: a change of mnt, or a path replaced since, as by an
+// operator once the resource stopped, leaves it to the operator, and the
+// record is forgotten.
+func (t *T) createdMountPoint(mnt string) bool {
+	b, err := os.ReadFile(t.mountPointCreatedFile())
+	if err != nil {
+		return false
+	}
+	recorded, identity, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
+	if recorded != mnt {
+		return false
+	}
+	current, err := mountPointIdentity(mnt)
+	if errors.Is(err, os.ErrNotExist) {
+		t.forgetMountPointCreated()
+		return false
+	}
+	if err != nil || current != identity {
+		t.Log().Infof("leave the mount point %s: it is not the one the resource created", mnt)
+		t.forgetMountPointCreated()
+		return false
+	}
+	return true
+}
+
+func (t *T) markMountPointCreated(mnt string) {
+	identity, err := mountPointIdentity(mnt)
+	if err != nil {
+		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
+		return
+	}
+	p := t.mountPointCreatedFile()
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
+		return
+	}
+	if err := os.WriteFile(p, []byte(mnt+"\n"+identity+"\n"), 0600); err != nil {
+		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
+	}
+}
+
+func (t *T) forgetMountPointCreated() {
+	if err := os.Remove(t.mountPointCreatedFile()); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Log().Warnf("forget the mount point created: %s", err)
+	}
+}
+
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	fs := t.fs()
 	v, err := filesystems.DevicesFormated(ctx, fs, t)
@@ -382,13 +494,24 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) createMountPoint(ctx context.Context) error {
-	if isRegular, err := file.ExistsAndRegular(t.Device); err != nil {
+	_, lstatErr := os.Lstat(t.mountPoint())
+	existed := lstatErr == nil
+	isRegular, err := file.ExistsAndRegular(t.Device)
+	if err != nil {
 		return err
-	} else if isRegular && t.isBind() {
-		return t.createMountPointFile()
-	} else {
-		return t.createMountPointDir(t.MountPoint)
 	}
+	if isRegular && t.isBind() {
+		err = t.createMountPointFile()
+	} else {
+		err = t.createMountPointDir(t.MountPoint)
+	}
+	if err != nil {
+		return err
+	}
+	if !existed {
+		t.markMountPointCreated(t.mountPoint())
+	}
+	return nil
 }
 
 // createMountPointFile handles the creation of the hosting dir and mnt

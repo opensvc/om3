@@ -95,6 +95,9 @@ type (
 		// This map is updated from the InstanceStatusUpdated events
 		// received via ObjectStatusUpdated.SrcEv for the local node.
 		reqSatisfied errMap
+
+		// triggers paces the runs the on events of the entries ask for.
+		triggers triggerMap
 	}
 
 	Schedules map[naming.Path]map[string]schedule.Entry
@@ -222,6 +225,7 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		subQS:             subQS,
 		lastRunOnAllPeers: make(timeMap),
 		reqSatisfied:      make(errMap),
+		triggers:          make(triggerMap),
 
 		status: daemonsubsystem.Scheduler{
 			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
@@ -321,6 +325,7 @@ func (t *T) onTick() {
 	for _, j := range t.jobs.popDue(now) {
 		t.onJobDue(j, now)
 	}
+	t.onTriggersDue(now)
 }
 
 // armTimer sets the timer to wake the loop when the soonest job is due, and
@@ -340,11 +345,14 @@ func (t *T) armTimer() {
 // nextWake returns how long the loop may sleep before a job is due, and
 // false when no job is planned.
 func (t *T) nextWake(now time.Time) (time.Duration, bool) {
-	j := t.jobs.first()
-	if j == nil {
+	next, ok := t.nextTriggerAt()
+	if j := t.jobs.first(); j != nil && (!ok || j.entry.NextRunAt.Before(next)) {
+		next, ok = j.entry.NextRunAt, true
+	}
+	if !ok {
 		return 0, false
 	}
-	return max(0, min(j.entry.NextRunAt.Sub(now), maxSleep)), true
+	return max(0, min(next.Sub(now), maxSleep)), true
 }
 
 // onJobDue takes a job that is due: it plans the next run of the job, then
@@ -571,6 +579,8 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.NetworkPeersUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.FileInstalled{}, labelLocalhost)
 	sub.Start()
 	return sub
 }
@@ -633,6 +643,10 @@ func (t *T) loop() {
 				t.onObjectStatusDeleted(c)
 			case *msgbus.DaemonCollectorUpdated:
 				t.onDaemonCollectorUpdated(c)
+			case *msgbus.NetworkPeersUpdated:
+				t.onNetworkPeersUpdated(c)
+			case *msgbus.FileInstalled:
+				t.onFileInstalled(c)
 			}
 		case <-t.timer.C:
 			t.onTick()
@@ -665,6 +679,18 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 	// scheduleObject evaluates the requirements of the jobs from it.
 	t.localStatus[c.Path] = c.Value
 	changed := t.updateNotSource(c.Path, c.Value)
+
+	// The runs require the local instance provisioned, not the object: a
+	// peer instance not provisioned, as the one of a node joining, blocks
+	// none of them here.
+	if c.Value.Provisioned == provisioned.Undef {
+		if _, ok := t.provisioned[c.Path]; ok {
+			delete(t.provisioned, c.Path)
+			changed = true
+		}
+	} else if t.updateProvisioned(c.Path, c.Value.Provisioned) {
+		changed = true
+	}
 
 	schedules, ok := t.schedules[c.Path]
 	if !ok {
@@ -807,7 +833,13 @@ func (t *T) readLastRunOnFile(path naming.Path, rid string) (time.Time, string, 
 func (t *T) updateLastRunOnFile(path naming.Path, rid, nodename string, tm time.Time) error {
 	lastTm, err := t.lastRunOnFileModTime(path, rid)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(filepath.Dir(t.lastRunOnFile(path, rid)), 0755); err != nil {
+		// The var dir of an instance deleted, as a purge removes it
+		// before its peers report their last status, is not created
+		// again: only the directory of the resource is.
+		if _, err := os.Stat(path.VarDir()); errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		if err := os.Mkdir(filepath.Dir(t.lastRunOnFile(path, rid)), 0755); err != nil && !errors.Is(err, os.ErrExist) {
 			return err
 		}
 		return t.writeLastRunOnFile(path, rid, nodename, tm)
@@ -878,14 +910,7 @@ func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 			changed = true
 		}
 	}
-	if c.Value.Provisioned == provisioned.Undef {
-		delete(t.provisioned, c.Path)
-		return
-	}
 	if t.updateFailover(c.Path, c.Value.Topology) {
-		changed = true
-	}
-	if t.updateProvisioned(c.Path, c.Value.Provisioned) {
 		changed = true
 	}
 	if changed {
@@ -980,6 +1005,7 @@ func (t *T) toggleEnabled(state node.MonitorState) {
 	case !isNodeStateCompatible && t.enabled:
 		t.log.Infof("disable scheduling (node monitor status is now %s)", state)
 		t.jobs.purge()
+		t.triggers = make(triggerMap)
 		t.enabled = false
 	case isNodeStateCompatible && !t.enabled:
 		t.log.Infof("enable scheduling (node monitor status is now %s)", state)
@@ -1032,6 +1058,14 @@ func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
 		}
 		seen[e.Key] = true
 		prev, hadSchedule := t.schedules.Get(path, e.Key)
+		// The last run of an entry the events run is kept, or read from
+		// its last run file after a daemon start, as the job of a
+		// scheduled entry keeps it: the listings show it.
+		if hadSchedule {
+			e.LastRunAt = prev.LastRunAt
+		} else if len(e.On) > 0 {
+			e.LastRunAt = e.GetLastRun()
+		}
 		t.schedules.Add(path, e)
 		j, hasJob := t.jobs.get(path, e.Key)
 		logger := t.jobLogger(e)
@@ -1042,13 +1076,9 @@ func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
 			}
 		}
 
-		if e.Schedule == "" || e.Schedule == "@0" {
-			unschedule("schedule is @0")
-			continue
-		}
-
 		// The requirements not evaluated yet are evaluated from the last
-		// status of the instance, when one came before the schedules.
+		// status of the instance, when one came before the schedules: the
+		// runs the on events ask for require them too, scheduled or not.
 		if st, ok := t.localStatus[path]; ok && !path.IsZero() {
 			if _, ok := t.notSource[path]; !ok && e.RequireReplicationSource {
 				t.updateNotSource(path, st)
@@ -1056,6 +1086,11 @@ func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
 			if _, ok := t.reqSatisfied.Get(path, e.Key); !ok && e.Require != "" {
 				t.updateReqSatisfied(path, e, st)
 			}
+		}
+
+		if e.Schedule == "" || e.Schedule == "@0" {
+			unschedule("schedule is @0")
+			continue
 		}
 		if reason := t.blockReason(e); reason != "" {
 			unschedule(reason)
@@ -1091,6 +1126,14 @@ func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
 			t.schedules.Del(path, key)
 		}
 	}
+	// A trigger of an entry gone, or whose pace or events changed, goes
+	// with the run it held due: that run was for events the entry no longer
+	// runs on.
+	for key, g := range t.triggers[path] {
+		if e, ok := t.schedules.Get(path, key); !ok || len(e.On) == 0 || !g.isFor(e) {
+			t.triggers.Unset(path, key)
+		}
+	}
 
 	t.updateExposedSchedules(path)
 }
@@ -1110,6 +1153,7 @@ func (t *T) unschedule(path naming.Path) {
 	delete(t.localStatus, path)
 	t.schedules.DelPath(path)
 	t.jobs.delPath(path)
+	t.triggers.UnsetPath(path)
 	schedule.TableData.Unset(path)
 }
 

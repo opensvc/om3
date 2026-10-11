@@ -1,6 +1,7 @@
 package nmon
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/toc"
 )
 
@@ -53,8 +55,15 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
 	t.checkRejoinTicker()
 
-	if len(c.NetworkChanged) > 0 {
+	switch {
+	case len(c.NetworkChanged) > 0:
 		t.onNetworkChanged(c.NetworkChanged)
+	case len(c.NodesAdded) > 0 || len(c.NodesRemoved) > 0:
+		// The networks reaching the other nodes themselves, routing
+		// to their subnets or tunneling to them, reach the nodes of the
+		// cluster.
+		t.log.Infof("cluster nodes changed: added %v, removed %v", c.NodesAdded, c.NodesRemoved)
+		t.onNetworkChanged(nil)
 	}
 }
 
@@ -80,6 +89,7 @@ func (t *Manager) onNetworkChanged(sectionsChanged []string) {
 	if err := network.Setup(n, networkNames...); err != nil {
 		t.log.Infof("reconfigure networks failed: %s", err.Error())
 	}
+	t.publishNetworkPeersUpdated(n)
 }
 
 func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
@@ -120,7 +130,67 @@ func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
 		if err := network.Setup(n, matchingNetworks...); err != nil {
 			t.log.Infof("netlink up: network setup for %v: %s", matchingNetworks, err.Error())
 		}
+		t.publishNetworkPeersUpdated(n)
 	}
+}
+
+// publishNetworkPeersUpdated publishes a NetworkPeersUpdated event for each
+// network of the node whose peers changed since the last network setup, or
+// since the daemon started: a network added, removed, or whose peers differ.
+func (t *Manager) publishNetworkPeersUpdated(n *object.Node) {
+	sigs := t.getNetworkPeersSigs(n)
+	changed := make([]string, 0)
+	for name, sig := range sigs {
+		if last, ok := t.networkPeersSigs[name]; !ok || last != sig {
+			changed = append(changed, name)
+		}
+	}
+	for name := range t.networkPeersSigs {
+		if _, ok := sigs[name]; !ok {
+			changed = append(changed, name)
+		}
+	}
+	sort.Strings(changed)
+	for _, name := range changed {
+		t.log.Infof("network %s peers changed", name)
+		t.publisher.Pub(&msgbus.NetworkPeersUpdated{Node: t.localhost, Name: name}, t.labelLocalhost, pubsub.Label{"name", name})
+	}
+	t.networkPeersSigs = sigs
+}
+
+// getNetworkPeersSigs returns the signature of the peers of each network of
+// the node saying its peers. A network whose peers can not be read keeps its
+// last signature.
+func (t *Manager) getNetworkPeersSigs(n *object.Node) map[string]string {
+	sigs := make(map[string]string)
+	if n == nil {
+		var err error
+		if n, err = object.NewNode(object.WithVolatile(true)); err != nil {
+			t.log.Warnf("network peers: %s", err)
+			return sigs
+		}
+	}
+	for _, nw := range network.Networks(n) {
+		peerer, ok := nw.(network.Peerer)
+		if !ok {
+			continue
+		}
+		name := nw.Name()
+		peers, err := peerer.Peers()
+		if err != nil {
+			t.log.Tracef("network %s peers: %s", name, err)
+			if last, ok := t.networkPeersSigs[name]; ok {
+				sigs[name] = last
+			}
+			continue
+		}
+		b, err := json.Marshal(peers)
+		if err != nil {
+			continue
+		}
+		sigs[name] = string(b)
+	}
+	return sigs
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated

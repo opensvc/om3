@@ -79,6 +79,8 @@ func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList,
 					RequireCollector:   e.RequireCollector,
 					RequireProvisioned: e.RequireProvisioned,
 					Schedule:           e.Schedule,
+					On:                 append([]string{}, e.On...),
+					Pace:               e.Pace,
 				},
 			}
 			data.Items = append(data.Items, item)
@@ -141,7 +143,7 @@ func (t *CmdObjectScheduleList) Run(kind string) error {
 	}
 	data, err := t.extract(mergedSelector, c)
 	err = errors.Join(err, output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
+		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule,ON:data.on[*],PACE:data.pace",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
