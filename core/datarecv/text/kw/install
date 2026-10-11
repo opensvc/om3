@@ -65,3 +65,5 @@ Where:
       same two addresses share one. e.g. `{{range tunnels}}{{.Nodename}} {{.Local}} {{.Remote}}{{end}}`.
   * the file is compared to what the template renders at each install, so the `signal` follows a change of
     what the template reads too, at the next install.
+  * a change of a key the `key` function read at the last render installs the file again, on each node, as a
+    change of the template key does: a file rendered from a sec follows the sec.

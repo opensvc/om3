@@ -2,6 +2,7 @@ package datarecv
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -63,7 +64,7 @@ func TestRender(t *testing.T) {
 		{name: "not a datastore", tmpl: `{{key "./svc/web" "psk"}}`, wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			b, err := recv.render("k", []byte(tc.tmpl))
+			b, err := recv.render("k", []byte(tc.tmpl), &[]templateKey{})
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -72,6 +73,19 @@ func TestRender(t *testing.T) {
 			assert.Equal(t, tc.want, string(b))
 		})
 	}
+}
+
+// A template line renders, the others install the key as it is.
+func TestParseInstallTemplate(t *testing.T) {
+	p := naming.Path{Name: "web", Kind: naming.KindSvc, Namespace: naming.NsRoot}
+	recv := &DataRecv{Install: []string{
+		"/a.conf", "from", "./cfg/web", "key", "a.conf", "template",
+		"/b.conf", "from", "./cfg/web", "key", "b.conf",
+	}}
+	_, files := recv.parseInstall("/head", p)
+	require.Len(t, files, 2)
+	assert.NotNil(t, files[0].Render)
+	assert.Nil(t, files[1].Render)
 }
 
 // Networks joining the same two addresses share a tunnel, listed once, and a
@@ -85,4 +99,26 @@ func TestUniqueTunnels(t *testing.T) {
 	require.Len(t, got, 2)
 	assert.Equal(t, "otun1", got[0].Tunnel)
 	assert.Equal(t, "otun2", got[1].Tunnel)
+}
+
+// The keys a template read are matched by the datastore and the key changed,
+// and by the datastore of the template reading them.
+func TestTemplateKeys(t *testing.T) {
+	cfg := naming.Path{Name: "web", Kind: naming.KindCfg, Namespace: "ns1"}
+	sec := naming.Path{Name: "web", Kind: naming.KindSec, Namespace: "ns1"}
+	other := naming.Path{Name: "other", Kind: naming.KindSec, Namespace: "ns1"}
+	filename := filepath.Join(t.TempDir(), "fs#1", "template_keys")
+	require.NoError(t, writeTemplateKeys(filename, templateKeys{
+		templateID(cfg, "a.conf"): {{Path: sec.String(), Key: "psk"}},
+	}))
+	m := readTemplateKeys(filename)
+	assert.True(t, m.readsFrom(sec, "psk"))
+	assert.True(t, m.readsFrom(sec, ""))
+	assert.False(t, m.readsFrom(sec, "other"))
+	assert.False(t, m.readsFrom(other, ""))
+	assert.True(t, m.reads(cfg, sec, ""))
+	assert.False(t, m.reads(other, sec, ""))
+
+	require.NoError(t, writeTemplateKeys(filename, templateKeys{}))
+	assert.NoFileExists(t, filename)
 }

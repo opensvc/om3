@@ -3,6 +3,7 @@ package datarecv
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -29,12 +30,27 @@ type (
 	}
 )
 
+// renderer returns the function rendering a key of the datastore store as a
+// template, recording the keys it reads.
+func (t *DataRecv) renderer(store naming.Path) func(string, []byte) ([]byte, error) {
+	return func(k string, b []byte) ([]byte, error) {
+		keys := make([]templateKey, 0)
+		out, err := t.render(k, b, &keys)
+		if err != nil {
+			return nil, err
+		}
+		t.recordTemplateKeys(templateID(store, k), keys)
+		return out, nil
+	}
+}
+
 // render renders b, the content of the key k, as a template: the env section
-// of the object is the data, and the functions read what the node knows.
+// of the object is the data, and the functions read what the node knows. The
+// datastore keys it reads are appended to keys.
 //
 // It runs on each node at each install, so a file says what the node it is
 // installed on knows when it is: its name, its peers, the tunnels to them.
-func (t *DataRecv) render(k string, b []byte) ([]byte, error) {
+func (t *DataRecv) render(k string, b []byte, keys *[]templateKey) ([]byte, error) {
 	o, ok := t.to.GetObject().(object.Core)
 	if !ok {
 		return nil, fmt.Errorf("the receiver of key %s is not an object", k)
@@ -58,7 +74,14 @@ func (t *DataRecv) render(k string, b []byte) ([]byte, error) {
 		// path, relative to the namespace of the object, which must be
 		// allowed to read it.
 		"key": func(path, name string) (string, error) {
-			return templateKey(namespace, path, name)
+			p, s, err := readTemplateKey(namespace, path, name)
+			if err != nil {
+				return "", err
+			}
+			if !slices.Contains(*keys, templateKey{Path: p.String(), Key: name}) {
+				*keys = append(*keys, templateKey{Path: p.String(), Key: name})
+			}
+			return s, nil
 		},
 		// network returns the network name, and its peers.
 		"network": templateNetworkOf,
@@ -80,31 +103,33 @@ func (t *DataRecv) render(k string, b []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func templateKey(namespace, path, name string) (string, error) {
+// readTemplateKey returns the datastore path, relative to namespace, and the
+// content of its key name, which namespace must be allowed to read.
+func readTemplateKey(namespace, path, name string) (naming.Path, string, error) {
 	p, err := naming.ParsePathRel(path, namespace)
 	if err != nil {
-		return "", err
+		return p, "", err
 	}
 	switch p.Kind {
 	case naming.KindSec, naming.KindCfg:
 	default:
-		return "", fmt.Errorf("%s is not a cfg or sec datastore", p)
+		return p, "", fmt.Errorf("%s is not a cfg or sec datastore", p)
 	}
 	if !p.Exists() {
-		return "", fmt.Errorf("datastore %s does not exist", p)
+		return p, "", fmt.Errorf("datastore %s does not exist", p)
 	}
 	ds, err := object.NewDataStore(p, object.WithVolatile(true))
 	if err != nil {
-		return "", err
+		return p, "", err
 	}
 	if !ds.Allow(namespace) {
-		return "", fmt.Errorf("the %s namespace is not allowed to read %s keys", namespace, p)
+		return p, "", fmt.Errorf("the %s namespace is not allowed to read %s keys", namespace, p)
 	}
 	b, err := ds.DecodeKey(name)
 	if err != nil {
-		return "", err
+		return p, "", err
 	}
-	return string(b), nil
+	return p, string(b), nil
 }
 
 func templateNetworkOf(name string) (templateNetwork, error) {

@@ -440,7 +440,9 @@ func (t *DataRecv) HasMetadata(path naming.Path, k string) bool {
 			return true
 		}
 	}
-	return false
+	// A template reading the key at its last render is to be rendered
+	// again.
+	return readTemplateKeys(t.templateKeysFile()).readsFrom(path, k)
 }
 
 func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) object.KVInstall {
@@ -594,10 +596,25 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	}
 
 	signals := volsignal.New()
+	readKeys := readTemplateKeys(t.templateKeysFile())
 
 	for _, md := range files {
+		store := from
 		if md.FromStore != from.Path() {
-			continue
+			// A template of another datastore reading a key of
+			// from renders again. The key changed is not known,
+			// and a file rendered the same is left as it is.
+			if md.Render == nil || !readKeys.reads(md.FromStore, from.Path(), "") {
+				continue
+			}
+			if !md.FromStore.Exists() {
+				continue
+			}
+			var err error
+			if store, err = object.NewDataStore(md.FromStore, object.WithVolatile(true)); err != nil {
+				t.to.Log().Warnf("store %s init error: %s", md.FromStore, err)
+				continue
+			}
 		}
 		if !md.FromStore.Exists() {
 			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
@@ -608,15 +625,15 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 				continue
 			}
 		}
-		shares := from.Shares()
+		shares := store.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
-			if !from.HasKey(md.FromPattern) {
-				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log()); err != nil {
+			if !store.HasKey(md.FromPattern) {
+				if err := seedKeyFromSource(store, md.FromPattern, md.Source, t.to.Log()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -631,7 +648,7 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		md.LogUnchanged = t.report
 		// A file whose content did not change gives what reads it nothing
 		// to reload: its signals are sent for a change only.
-		fileChanged, err := from.InstallKeyTo(md)
+		fileChanged, err := store.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
 		}
@@ -933,7 +950,7 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 				word, line = Pop(line)
 				item.Source = word
 			case "template":
-				item.Render = t.render
+				item.Render = t.renderer(fromStore)
 			}
 		}
 
