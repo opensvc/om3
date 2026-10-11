@@ -1118,8 +1118,11 @@ func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
 			t.schedules.Del(path, key)
 		}
 	}
-	for key := range t.triggers[path] {
-		if e, ok := t.schedules.Get(path, key); !ok || len(e.On) == 0 {
+	// A trigger of an entry gone, or whose pace or events changed, goes
+	// with the run it held due: that run was for events the entry no longer
+	// runs on.
+	for key, g := range t.triggers[path] {
+		if e, ok := t.schedules.Get(path, key); !ok || len(e.On) == 0 || !g.isFor(e) {
 			t.triggers.Unset(path, key)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 // once at its end, and each interval ending with such a run doubles the next
 // one, up to the max.
 func TestTriggerBacksOff(t *testing.T) {
-	g, err := newTrigger("@10s backoff @40s")
+	g, err := newTrigger("@10s backoff @40s", nil)
 	require.NoError(t, err)
 	t0 := time.Unix(0, 0)
 	require.True(t, g.onEvent(t0))
@@ -38,7 +38,7 @@ func TestTriggerBacksOff(t *testing.T) {
 
 // Each interval passing without an event halves the interval back.
 func TestTriggerEases(t *testing.T) {
-	g, err := newTrigger("@10s backoff @40s")
+	g, err := newTrigger("@10s backoff @40s", nil)
 	require.NoError(t, err)
 	t0 := time.Unix(0, 0)
 	g.ran(t0, false)
@@ -56,7 +56,7 @@ func TestTriggerEases(t *testing.T) {
 
 // Without backoff, the interval stays.
 func TestTriggerWithoutBackoff(t *testing.T) {
-	g, err := newTrigger("@10s")
+	g, err := newTrigger("@10s", nil)
 	require.NoError(t, err)
 	t0 := time.Unix(0, 0)
 	g.ran(t0, false)

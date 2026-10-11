@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -22,6 +23,10 @@ type (
 		pace     schedule.OnPace
 		interval time.Duration
 
+		// on are the events of the entry the trigger was made for: a run
+		// due for one of them is not one of other events.
+		on []string
+
 		// lastRunAt is when the entry last ran for an event.
 		lastRunAt time.Time
 
@@ -33,12 +38,18 @@ type (
 	triggerMap = pathKeyMap[*trigger]
 )
 
-func newTrigger(spec string) (*trigger, error) {
+func newTrigger(spec string, on []string) (*trigger, error) {
 	pace, err := schedule.ParsePace(spec)
 	if err != nil {
 		return nil, err
 	}
-	return &trigger{spec: spec, pace: pace, interval: pace.Interval}, nil
+	return &trigger{spec: spec, on: slices.Clone(on), pace: pace, interval: pace.Interval}, nil
+}
+
+// isFor says if the trigger was made for the pace and the events of e, and
+// holds no run due for events e no longer runs on.
+func (g *trigger) isFor(e schedule.Entry) bool {
+	return g.spec == e.Pace && slices.Equal(g.on, e.On)
 }
 
 // onEvent says if an event received at now runs the entry now. When it does
@@ -129,12 +140,13 @@ func matchOn(e schedule.Entry, key string) bool {
 	return false
 }
 
-// getTrigger returns the trigger of e, new when its pace changed.
+// getTrigger returns the trigger of e, new when its pace or its events
+// changed.
 func (t *T) getTrigger(e schedule.Entry) (*trigger, error) {
-	if g, ok := t.triggers.Get(e.Path, e.Key); ok && g.spec == e.Pace {
+	if g, ok := t.triggers.Get(e.Path, e.Key); ok && g.isFor(e) {
 		return g, nil
 	}
-	g, err := newTrigger(e.Pace)
+	g, err := newTrigger(e.Pace, e.On)
 	if err != nil {
 		return nil, err
 	}

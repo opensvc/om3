@@ -394,3 +394,32 @@ func TestProvisionedIsTheLocalInstance(t *testing.T) {
 	update("peer", provisioned.True, provisioned.True)
 	assert.False(t, s.isProvisioned(testPath), "nor does a peer provisioned")
 }
+
+// A run held due for events is dropped when the events of its entry change:
+// it was for events the entry no longer runs on. A change of nothing else
+// keeps it.
+func TestTriggerGoesWithTheEventsItWasFor(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action: "run",
+		Key:    "task#1.schedule",
+		On:     []string{"NetworkPeersUpdated"},
+		Pace:   "@30s",
+	}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	g.dueAt = s.clock.Add(30 * time.Second)
+
+	config.MaxParallel = 2
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	_, ok = s.triggers.Get(testPath, config.Key)
+	assert.True(t, ok, "a change of something else keeps the run due")
+
+	config.On = []string{"FileInstalled,rid=fs#1"}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	_, ok = s.triggers.Get(testPath, config.Key)
+	assert.False(t, ok, "a change of the events drops it")
+}
