@@ -179,16 +179,24 @@ func (t *T) runTrigger(path naming.Path, e schedule.Entry, g *trigger, now time.
 		return
 	}
 	g.ran(now, late)
-	jobRunCount.WithLabelValues(e.Action).Inc()
-	jobRunByPathCount.WithLabelValues(e.Action, path.String()).Inc()
-	jobRunByPathKeyCount.WithLabelValues(e.Action, path.String(), e.Key).Inc()
-	t.running.Add(1)
-	go func() {
-		defer t.running.Done()
-		if err := t.exec(e); err != nil {
-			logger.Errorf("on exec: %s", err)
-		}
-	}()
+	t.recordEventRun(path, e, now)
+	t.run(e, now, logger)
+}
+
+// recordEventRun records a run of the entry e the events asked for as a run
+// of e, as a scheduled run is: it is its last run, which the listings show
+// and the peers hear of, and the scheduled run is planned from it, the work
+// it would do being done.
+func (t *T) recordEventRun(path naming.Path, e schedule.Entry, now time.Time) {
+	e.LastRunAt = now
+	t.schedules.Add(path, e)
+	if j, ok := t.jobs.get(path, e.Key); ok {
+		next := j.entry
+		next.LastRunAt = now
+		t.planJob(next, now)
+	}
+	t.lastRunOnAllPeers.Set(path, e.Key, now)
+	t.updateExposedSchedules(path)
 }
 
 // onTriggersDue runs the entries whose events are due.

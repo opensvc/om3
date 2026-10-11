@@ -1058,6 +1058,14 @@ func (t *T) scheduleEntries(path naming.Path, configs []schedule.Config) {
 		}
 		seen[e.Key] = true
 		prev, hadSchedule := t.schedules.Get(path, e.Key)
+		// The last run of an entry the events run is kept, or read from
+		// its last run file after a daemon start, as the job of a
+		// scheduled entry keeps it: the listings show it.
+		if hadSchedule {
+			e.LastRunAt = prev.LastRunAt
+		} else if len(e.On) > 0 {
+			e.LastRunAt = e.GetLastRun()
+		}
 		t.schedules.Add(path, e)
 		j, hasJob := t.jobs.get(path, e.Key)
 		logger := t.jobLogger(e)

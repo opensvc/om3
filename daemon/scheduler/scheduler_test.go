@@ -423,3 +423,46 @@ func TestTriggerGoesWithTheEventsItWasFor(t *testing.T) {
 	_, ok = s.triggers.Get(testPath, config.Key)
 	assert.False(t, ok, "a change of the events drops it")
 }
+
+// A run the events ask for is a run of the entry: it is its last run, kept
+// in its last run file and shown in the listings, and its scheduled run is
+// planned from it. An event run skipped is no run.
+func TestEventRunIsTheLastRun(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		Schedule:     "@1h",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+		Pace:         "@30s",
+	}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	planned := s.job(t, e).entry.NextRunAt
+
+	s.clock = s.clock.Add(10 * time.Minute)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	s.runTrigger(testPath, e, g, s.clock, false)
+	require.Equal(t, 1, s.ranCount())
+
+	assert.Equal(t, s.clock.Add(time.Hour), s.job(t, e).entry.NextRunAt, "the scheduled run is planned from the event run")
+	assert.True(t, s.clock.Equal(e.GetLastRun()), "the last run file says it")
+	exposed := schedule.TableData.GetByPath(testPath)
+	require.NotNil(t, exposed)
+	for _, x := range *exposed {
+		if x.Key == config.Key {
+			assert.True(t, s.clock.Equal(x.LastRunAt), "and the listings")
+		}
+	}
+	assert.NotEqual(t, planned, s.job(t, e).entry.NextRunAt)
+
+	e.RequireProvisioned = true
+	s.provisioned[testPath] = false
+	last := s.clock
+	s.clock = s.clock.Add(10 * time.Minute)
+	s.runTrigger(testPath, e, g, s.clock, false)
+	assert.True(t, last.Equal(e.GetLastRun()), "an event run skipped is no run")
+}
