@@ -6,8 +6,10 @@ package restaskhost
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 
@@ -53,6 +55,10 @@ type T struct {
 	StopCmd string
 
 	RunCmd string
+
+	// Container is the container resource the command runs in, by its
+	// runtime, rather than on the node.
+	Container string
 }
 
 func New() resource.Driver {
@@ -98,6 +104,9 @@ func (t *T) loggerWithCmd(cmd *command.T) *plog.Logger {
 }
 
 func (t *T) lockedRun(ctx context.Context) (err error) {
+	if t.Container != "" {
+		return t.lockedRunInContainer(ctx)
+	}
 	var opts []funcopt.O
 	app := t.App()
 	if opts, err = app.GetFuncOpts(ctx, t.RunCmd, "run"); err != nil {
@@ -133,6 +142,75 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		return err
 	} else if s != status.Up {
 		return fmt.Errorf("command exited with code %d", cmd.ExitCode())
+	}
+	return nil
+}
+
+// lockedRunInContainer runs the command in the container resource the
+// container keyword names, by the runtime of the container, which the
+// configuration never names. A container not up is not run in: what the
+// command acts on runs in it, and does what the command would have it do
+// when it starts.
+func (t *T) lockedRunInContainer(ctx context.Context) error {
+	r := t.GetObjectDriver().ResourceByID(t.Container)
+	if r == nil {
+		return fmt.Errorf("container %s not found", t.Container)
+	}
+	encaper, ok := r.(resource.Encaper)
+	if !ok {
+		return fmt.Errorf("resource %s runs no command", t.Container)
+	}
+	if st := r.Status(ctx); st != status.Up {
+		t.Log().Infof("skip run: %s is %s", t.Container, st)
+		return nil
+	}
+	args, err := command.CmdArgsFromString(t.RunCmd)
+	if err != nil {
+		return err
+	}
+	if len(args) == 0 {
+		return nil
+	}
+	app := t.App()
+	env, err := app.EncapEnv(ctx)
+	if err != nil {
+		return err
+	}
+	if timeout := app.GetTimeout("run"); timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+	cmd, err := encaper.EncapCmd(ctx, args, env, strings.NewReader(""))
+	if err != nil {
+		return err
+	}
+	t.Log().Attr("cmd", t.RunCmd).Infof("run %s in %s", t.RunCmd, t.Container)
+	out, err := cmd.CombinedOutput()
+	if t.LogOutputs {
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			if line != "" {
+				t.Log().Infof("%s", line)
+			}
+		}
+	}
+	exitCode := 0
+	var exitErr interface{ ExitCode() int }
+	if errors.As(err, &exitErr) {
+		exitCode = exitErr.ExitCode()
+	} else if err != nil {
+		return fmt.Errorf("run in %s: %w", t.Container, err)
+	}
+	if err := t.WriteLastRun(exitCode); err != nil {
+		return err
+	}
+	if s, err := t.BaseTask.ExitCodeToStatus(exitCode); err != nil {
+		return err
+	} else if s != status.Up {
+		if err := t.onError(ctx); err != nil {
+			t.Log().Warnf("on error: %s", err)
+		}
+		return fmt.Errorf("command exited with code %d", exitCode)
 	}
 	return nil
 }

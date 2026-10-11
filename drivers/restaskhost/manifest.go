@@ -25,6 +25,13 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/command"),
 		},
 		{
+			Option:   "container",
+			Attr:     "Container",
+			Example:  "container#1",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/container"),
+		},
+		{
 			Attr:     "StopCmd",
 			Example:  "/usr/bin/rm -f /tmp/{fqdn}.{rindex}",
 			Option:   "stop",

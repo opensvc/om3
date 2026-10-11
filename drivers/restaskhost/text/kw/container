@@ -1,0 +1,10 @@
+The container resource the command runs in, by the runtime of the container,
+rather than on the node. e.g. `container#1`.
+
+The command is the `command` keyword, run with the `environment`,
+`configs_environment` and `secrets_environment` of the task, within its
+`timeout`. The `cwd`, `user`, `group`, `umask` and limits of the task apply to
+a command run on the node only.
+
+A container not up is not run in, and the run does nothing: what the command
+acts on runs in the container, and does it when it starts.
