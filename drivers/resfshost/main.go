@@ -200,17 +200,22 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	return t.removeMountPoint()
 }
 
-// removeMountPoint removes the mount point a start created, a directory or
-// the empty file of a file bind mount, once unmounted and left empty: what
-// it still holds, or a filesystem still mounted on it, is not the
-// resource's to remove, and is left with a log.
+// removeMountPoint removes the mount point a start of the resource created,
+// a directory or the empty file of a file bind mount, once unmounted and
+// left empty. A mount point the resource found in place is the operator's,
+// and what it still holds, or a filesystem still mounted on it, is not the
+// resource's to remove: they are left, with a log.
 func (t *T) removeMountPoint() error {
 	mnt := t.mountPoint()
 	if mnt == "." || file.IsProtected(mnt) {
 		return nil
 	}
+	if !t.createdMountPoint(mnt) {
+		return nil
+	}
 	fi, err := os.Lstat(mnt)
 	if errors.Is(err, os.ErrNotExist) {
+		t.forgetMountPointCreated()
 		return nil
 	} else if err != nil {
 		return err
@@ -222,8 +227,42 @@ func (t *T) removeMountPoint() error {
 		t.Log().Infof("leave the mount point %s: %s", mnt, err)
 		return nil
 	}
+	t.forgetMountPointCreated()
 	t.Log().Infof("removed the mount point %s", mnt)
 	return nil
+}
+
+// mountPointCreatedFile records the mount point a start of the resource
+// created, which the unprovision may remove.
+func (t *T) mountPointCreatedFile() string {
+	return filepath.Join(t.VarDir(), "mnt_created")
+}
+
+// createdMountPoint says if the mount point mnt is the one a start of the
+// resource created: a change of mnt leaves the new one to the operator.
+func (t *T) createdMountPoint(mnt string) bool {
+	b, err := os.ReadFile(t.mountPointCreatedFile())
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(b)) == mnt
+}
+
+func (t *T) markMountPointCreated(mnt string) {
+	p := t.mountPointCreatedFile()
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
+		return
+	}
+	if err := os.WriteFile(p, []byte(mnt+"\n"), 0600); err != nil {
+		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
+	}
+}
+
+func (t *T) forgetMountPointCreated() {
+	if err := os.Remove(t.mountPointCreatedFile()); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Log().Warnf("forget the mount point created: %s", err)
+	}
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
@@ -418,13 +457,24 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) createMountPoint(ctx context.Context) error {
-	if isRegular, err := file.ExistsAndRegular(t.Device); err != nil {
+	_, lstatErr := os.Lstat(t.mountPoint())
+	existed := lstatErr == nil
+	isRegular, err := file.ExistsAndRegular(t.Device)
+	if err != nil {
 		return err
-	} else if isRegular && t.isBind() {
-		return t.createMountPointFile()
-	} else {
-		return t.createMountPointDir(t.MountPoint)
 	}
+	if isRegular && t.isBind() {
+		err = t.createMountPointFile()
+	} else {
+		err = t.createMountPointDir(t.MountPoint)
+	}
+	if err != nil {
+		return err
+	}
+	if !existed {
+		t.markMountPointCreated(t.mountPoint())
+	}
+	return nil
 }
 
 // createMountPointFile handles the creation of the hosting dir and mnt
