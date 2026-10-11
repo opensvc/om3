@@ -2,8 +2,10 @@ package object
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/util/file"
@@ -78,7 +80,14 @@ func (t *core) tryDeleteInstanceFile(fpath string) bool {
 		t.log.Attr("path", fpath).Warnf("block attempt to remove the protected file %s", fpath)
 		return false
 	}
-	if err := os.RemoveAll(fpath); err != nil {
+	// The daemon may write a file in a directory being removed, as the
+	// scheduler records the last run of a peer: the removal is tried
+	// again on the directory found not empty.
+	err := os.RemoveAll(fpath)
+	for i := 0; i < 3 && errors.Is(err, syscall.ENOTEMPTY); i++ {
+		err = os.RemoveAll(fpath)
+	}
+	if err != nil {
 		t.log.Attr("path", fpath).Warnf("removing %s: %s", fpath, err)
 		return false
 	}
