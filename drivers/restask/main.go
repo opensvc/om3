@@ -33,8 +33,11 @@ type (
 		resource.T
 		Check        string
 		Confirmation bool
+		Install      []string
 		LogOutputs   bool
 		MaxParallel  int
+		On           []string
+		Pace         string
 		OnErrorCmd   string
 		RetCodes     string
 		RunTimeout   *time.Duration
@@ -60,6 +63,8 @@ func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 		RequireProvisioned:  true,
 		RequireCollector:    false,
 		RunDir:              filepath.Join(t.VarDir(), "run"),
+		On:                  t.On,
+		Pace:                t.Pace,
 	}
 }
 

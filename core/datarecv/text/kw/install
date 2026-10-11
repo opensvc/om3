@@ -68,5 +68,6 @@ Where:
   * a change of a key the `key` function read at the last render installs the file again, on each node, as a
     change of the template key does: a file rendered from a sec follows the sec.
 
-An install writing files, whatever runs it, a start, a provision or a change of a key, publishes a
-`FileInstalled` event, and none when it finds them up to date.
+An install writing files, whatever runs it, a start, a provision, a task or a change of a key, publishes a
+`FileInstalled` event, and none when it finds them up to date. A task with `on = FileInstalled,rid=<rid>` has
+what reads them read them again, e.g. a host task with `container` running `swanctl --load-all`.

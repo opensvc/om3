@@ -46,6 +46,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Task management**: New commands for task operations including `om <svc> task ls` and `om <svc> task run <id>`.
 
+* **Event-triggered tasks**: A task's new `on` keyword runs it on events of its node, `NetworkPeersUpdated` when the peers of a network changed, `FileInstalled` when an install of a resource of its object wrote files, whatever ran it, paced by `pace` (`@30s backoff @1m`), with the `run_requires` and the frozen policy of its scheduled runs. A task's new `install = <rid>...` installs the files of volumes and filesystems again before its own work, a host task's command then being optional, so files rendered from the networks follow them.
+
 * **Resource group commands**: New per-driver-group command sets for more targeted resource management.
 
 ### Configuration & Operations

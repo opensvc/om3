@@ -8,3 +8,6 @@ a command run on the node only.
 
 A container not up is not run in, and the run does nothing: what the command
 acts on runs in the container, and does it when it starts.
+
+Such a task with `on = FileInstalled,rid=<rid>` has a container read again
+the files a volume or fs `install` wrote, e.g. `swanctl --load-all`.

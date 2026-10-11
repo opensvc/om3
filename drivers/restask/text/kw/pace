@@ -1,0 +1,10 @@
+The pace of the runs the `on` events ask for, `@<interval>[ backoff @<max>]`,
+written as the interval of a schedule.
+
+The task runs at the first event, then once at most each interval: the events
+coming during an interval run it once at its end.
+
+With `backoff`, each interval ending with such a run doubles the next one, up
+to `<max>`, and each interval passing without an event halves it back, down to
+`<interval>`: `@30s backoff @1m` runs at most each 30s, and at most each minute
+while the events keep coming faster.

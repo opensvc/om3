@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/flatten"
 	"github.com/opensvc/om3/v3/util/label"
 	"github.com/opensvc/om3/v3/util/xmap"
@@ -51,7 +52,7 @@ type (
 func (cfg *Config) DeepCopy() *Config {
 	newCfg := *cfg
 	newCfg.Issues = append([]string{}, cfg.Issues...)
-	newCfg.Schedules = append([]schedule.Config{}, cfg.Schedules...)
+	newCfg.Schedules = deepcopy.Any(cfg.Schedules)
 	newCfg.Labels = cfg.Labels.DeepCopy()
 	newCfg.Hooks = cfg.Hooks.DeepCopy()
 	newCfg.Collector = cfg.Collector.DeepCopy()
@@ -89,7 +90,7 @@ func (c Config) Equal(other Config) bool {
 		return false
 	}
 	for i := range c.Schedules {
-		if c.Schedules[i] != other.Schedules[i] {
+		if !c.Schedules[i].Equal(other.Schedules[i]) {
 			return false
 		}
 	}

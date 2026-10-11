@@ -147,7 +147,7 @@ func (cfg *ActorConfig) DeepCopy() *ActorConfig {
 	newCfg.Children = deepcopy.Slice(cfg.Children)
 	newCfg.MonitorAction = deepcopy.Slice(cfg.MonitorAction)
 	newCfg.Parents = deepcopy.Slice(cfg.Parents)
-	newCfg.Schedules = deepcopy.Slice(cfg.Schedules)
+	newCfg.Schedules = deepcopy.Any(cfg.Schedules)
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
 	newCfg.Claims = deepcopy.Any(cfg.Claims)

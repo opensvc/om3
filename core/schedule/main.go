@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,6 +32,16 @@ type (
 		// StatefileKey is used in the last run filename and last run success formatters.
 		// Defaults to Action if empty.
 		StatefileKey string `json:"-"`
+
+		// On are the events running the action, each one an event kind
+		// and the values of the fields of the event it requires:
+		// "NetworkPeersUpdated,name=backend1".
+		On []string `json:"on,omitempty"`
+
+		// Pace paces the runs the events ask for: "@30s" runs at
+		// most once each 30s, "@30s backoff @1m" stretches the interval
+		// up to 1m while the events keep coming.
+		Pace string `json:"pace,omitempty"`
 	}
 
 	Entry struct {
@@ -41,6 +52,22 @@ type (
 		Path      naming.Path `json:"path"`
 	}
 )
+
+// Equal says if c and other are the same schedule configuration.
+func (c Config) Equal(other Config) bool {
+	return c.Action == other.Action &&
+		c.Schedule == other.Schedule &&
+		c.Key == other.Key &&
+		c.MaxParallel == other.MaxParallel &&
+		c.Require == other.Require &&
+		c.RequireCollector == other.RequireCollector &&
+		c.RequireProvisioned == other.RequireProvisioned &&
+		c.RunDir == other.RunDir &&
+		c.RequireReplicationSource == other.RequireReplicationSource &&
+		c.StatefileKey == other.StatefileKey &&
+		slices.Equal(c.On, other.On) &&
+		c.Pace == other.Pace
+}
 
 func NewTable(entries ...Entry) Table {
 	t := make([]Entry, 0)

@@ -104,6 +104,17 @@ func (t *T) loggerWithCmd(cmd *command.T) *plog.Logger {
 }
 
 func (t *T) lockedRun(ctx context.Context) (err error) {
+	if len(t.Install) > 0 {
+		if err := t.RunInstall(ctx); err != nil {
+			if err := t.onError(ctx); err != nil {
+				t.Log().Warnf("on error: %s", err)
+			}
+			return err
+		}
+		if t.RunCmd == "" {
+			return t.WriteLastRun(0)
+		}
+	}
 	if t.Container != "" {
 		return t.lockedRunInContainer(ctx)
 	}

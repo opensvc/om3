@@ -1,0 +1,28 @@
+The events of the node running the task, each one an event kind and the values
+of the fields of the event it requires, as in `om node events --filter`:
+`NetworkPeersUpdated` runs it when the peers of any network of the node
+changed, `NetworkPeersUpdated,name=backend1` when the ones of backend1 did.
+
+The kinds are:
+
+* `FileInstalled`: an install of a resource of the object wrote files, by a
+  start, a provision, a task or a change of a key. It is not published for
+  an install finding its files up to date. Its fields are `node`, `path` and
+  `rid`, the resource, and the events of the other objects are not the
+  task's.
+
+* `NetworkPeersUpdated`: a node joined or left a network, the address of a
+  node changed, or the tunnel to it. Its fields are `node` and `name`, the
+  network.
+
+The runs are paced by `pace`, and require what the scheduled runs
+require: the instance provisioned, and `run_requires`. They run whether the
+instance is frozen or not, as the scheduled runs do.
+
+A task installing again the files rendered from the networks with
+`install` has them follow the networks:
+
+    [task#refresh]
+    type = host
+    install = fs#1
+    on = NetworkPeersUpdated

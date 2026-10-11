@@ -317,6 +317,11 @@ type (
 		RunDir              string
 		Require             string
 
+		// On are the events running the action, and Pace paces
+		// these runs.
+		On   []string
+		Pace string
+
 		// RequireReplicationSource schedules the action on the node the
 		// data of the object is replicated from only, the one
 		// instance.Status.ReplicationSource says is.

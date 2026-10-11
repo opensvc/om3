@@ -288,10 +288,11 @@ var (
 
 		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
 
-		"NetLinkDown":      func() any { return &NetLinkDown{} },
-		"NetLinkUp":        func() any { return &NetLinkUp{} },
-		"NetIPAddrAdded":   func() any { return &NetIPAddrAdded{} },
-		"NetIPAddrDeleted": func() any { return &NetIPAddrDeleted{} },
+		"NetLinkDown":         func() any { return &NetLinkDown{} },
+		"NetLinkUp":           func() any { return &NetLinkUp{} },
+		"NetworkPeersUpdated": func() any { return &NetworkPeersUpdated{} },
+		"NetIPAddrAdded":      func() any { return &NetIPAddrAdded{} },
+		"NetIPAddrDeleted":    func() any { return &NetIPAddrDeleted{} },
 
 		"FSMounted":   func() any { return &FSMounted{} },
 		"FSUmounted":  func() any { return &FSUmounted{} },
@@ -1112,7 +1113,7 @@ type (
 	}
 
 	// FileInstalled is published when an install of a resource of a local
-	// instance wrote files, by a start, a provision or a change of
+	// instance wrote files, by a start, a provision, a task or a change of
 	// a key, and not when it found them up to date: what reads them is to
 	// read them again.
 	FileInstalled struct {
@@ -1193,6 +1194,16 @@ type (
 		Type       string      `json:"type" yaml:"type"`
 		TTL        int         `json:"ttl" yaml:"ttl"`
 		Content    string      `json:"content" yaml:"content"`
+	}
+
+	// NetworkPeersUpdated is published when the peers of a network of the
+	// node changed, after its setup: a node joined or left the network, an
+	// address of a node changed, or the tunnel to a node. A file rendered from
+	// the peers is to be rendered again.
+	NetworkPeersUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
 	}
 
 	// NetLinkDown is published when a network link goes down
@@ -1860,6 +1871,14 @@ func (e *NetLinkUp) Kind() string {
 
 func (e *NetLinkUp) Key() string {
 	return fmt.Sprintf("NetLinkUp,node=%s,link_name=%s", e.Node, e.LinkName)
+}
+
+func (e *NetworkPeersUpdated) Kind() string {
+	return "NetworkPeersUpdated"
+}
+
+func (e *NetworkPeersUpdated) Key() string {
+	return fmt.Sprintf("NetworkPeersUpdated,node=%s,name=%s", e.Node, e.Name)
 }
 
 func (e *NetIPAddrAdded) Kind() string {

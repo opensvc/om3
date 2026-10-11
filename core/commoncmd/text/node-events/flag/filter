@@ -87,6 +87,10 @@ Receive only events matching the filtering expression formatted as:
 
      NetLinkDown, NetLinkUp, NetIPAddrAdded, NetIPAddrDeleted
 
+### Network
+
+     NetworkPeersUpdated
+
 ### Event Subscription
 
      ClientSubscribed, ClientUnsubscribed, SubscriptionError, SubscriptionQueueThreshold
