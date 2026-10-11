@@ -57,3 +57,13 @@ func TestParsePace(t *testing.T) {
 		})
 	}
 }
+
+// A copy of a table keeps every field of its entries, the events and the
+// pace of a task included, and shares no slice with it.
+func TestTableDeepCopyKeepsEveryField(t *testing.T) {
+	table := Table{{Config: Config{Action: "run", Key: "task#1.schedule", On: []string{"NetworkPeersUpdated"}, Pace: "@30s"}}}
+	c := table.DeepCopy()
+	assert.Equal(t, table, *c)
+	(*c)[0].On[0] = "FileInstalled"
+	assert.Equal(t, "NetworkPeersUpdated", table[0].On[0])
+}

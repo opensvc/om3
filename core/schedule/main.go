@@ -137,25 +137,10 @@ func (t Table) AddEntries(l ...Entry) Table {
 func (t Table) DeepCopy() *Table {
 	r := make(Table, 0, len(t))
 	for _, x := range t {
-		r = append(r, Entry{
-			Config: Config{
-				Action:             x.Action,
-				Key:                x.Key,
-				MaxParallel:        x.MaxParallel,
-				Require:            x.Require,
-				RequireCollector:   x.RequireCollector,
-				RequireProvisioned: x.RequireProvisioned,
-				RunDir:             x.RunDir,
-
-				RequireReplicationSource: x.RequireReplicationSource,
-				Schedule:                 x.Schedule,
-				StatefileKey:             x.StatefileKey,
-			},
-			LastRunAt: x.LastRunAt,
-			NextRunAt: x.NextRunAt,
-			Node:      x.Node,
-			Path:      x.Path,
-		})
+		// The configuration is copied whole, its slices cloned: a field
+		// listed one by one is a field a new one is forgotten from.
+		x.Config.On = slices.Clone(x.Config.On)
+		r = append(r, x)
 	}
 	return &r
 }
