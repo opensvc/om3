@@ -35,8 +35,9 @@ type (
 	T struct {
 		actionrouter.T
 		// AsyncFunc submits the action and answers the orchestration it was
-		// accepted as, which is what a wait waits for.
-		AsyncFunc  func(context.Context) (uuid.UUID, error)
+		// accepted as, which is what a wait waits for, and the node that
+		// accepted it, which a wait asks.
+		AsyncFunc  func(context.Context) (api.OrchestrationQueued, error)
 		LocalFunc  func() (any, error)
 		RemoteFunc func(context.Context, string) (any, error)
 	}
@@ -78,7 +79,7 @@ func WithRemoteNodes(s string) funcopt.O {
 }
 
 // WithAsyncFunc sets a function to run if the action is async
-func WithAsyncFunc(f func(context.Context) (uuid.UUID, error)) funcopt.O {
+func WithAsyncFunc(f func(context.Context) (api.OrchestrationQueued, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.AsyncFunc = f
@@ -292,10 +293,13 @@ func (t T) DoAsync() error {
 		defer cancel()
 	}
 	if t.AsyncFunc != nil {
-		if id, e := t.AsyncFunc(ctx); e != nil {
+		if queued, e := t.AsyncFunc(ctx); e != nil {
 			return e
 		} else {
-			orchestrationID = id
+			orchestrationID = queued.OrchestrationID
+			if queued.Node != nil {
+				acceptedBy = *queued.Node
+			}
 		}
 	} else {
 		switch t.Target {

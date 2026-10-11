@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
 	"os"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/monitor"
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -54,9 +54,9 @@ func (t *CmdNodeDrain) doRemote() error {
 				nodeaction.WithFormat(t.Output),
 				nodeaction.WithSort(t.Sort),
 				nodeaction.WithColor(t.Color),
-				nodeaction.WithAsyncFunc(func(ctx context.Context) (uuid.UUID, error) {
+				nodeaction.WithAsyncFunc(func(ctx context.Context) (api.OrchestrationQueued, error) {
 					if resp, err := c.PostPeerActionDrainWithResponse(ctx, nodename); err != nil {
-						return uuid.Nil, err
+						return api.OrchestrationQueued{}, err
 					} else {
 						switch resp.StatusCode() {
 						case http.StatusOK:
@@ -65,21 +65,21 @@ func (t *CmdNodeDrain) doRemote() error {
 							if !t.Follow {
 								fmt.Printf("%s: %s\n", nodename, resp.JSON200.OrchestrationID)
 							}
-							return resp.JSON200.OrchestrationID, nil
+							return *resp.JSON200, nil
 						case 400:
-							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON400)
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: %s", nodename, *resp.JSON400)
 						case 401:
-							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON401)
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: %s", nodename, *resp.JSON401)
 						case 403:
-							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON403)
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: %s", nodename, *resp.JSON403)
 						case 408:
-							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON408)
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: %s", nodename, *resp.JSON408)
 						case 409:
-							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON409)
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: %s", nodename, *resp.JSON409)
 						case 500:
-							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON500)
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: %s", nodename, *resp.JSON500)
 						default:
-							return uuid.Nil, fmt.Errorf("%s: unexpected status [%d]", nodename, resp.StatusCode())
+							return api.OrchestrationQueued{}, fmt.Errorf("%s: unexpected status [%d]", nodename, resp.StatusCode())
 						}
 					}
 				}),
