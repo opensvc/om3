@@ -3,6 +3,8 @@ package scheduler
 import (
 	"errors"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -465,4 +467,29 @@ func TestEventRunIsTheLastRun(t *testing.T) {
 	s.clock = s.clock.Add(10 * time.Minute)
 	s.runTrigger(testPath, e, g, s.clock, false)
 	assert.True(t, last.Equal(e.GetLastRun()), "an event run skipped is no run")
+}
+
+// The pace of a trigger made new, as after a daemon restart, counts from the
+// last run of the entry: an event coming within it runs the entry at its end,
+// not at once.
+func TestNewTriggerPacesFromTheLastRun(t *testing.T) {
+	s := newTestScheduler(t)
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+		Pace:         "@30s",
+	}
+	e := schedule.Entry{Config: config, Node: s.localhost, Path: testPath}
+	require.NoError(t, os.MkdirAll(filepath.Dir(e.LastRunFile()), 0755))
+	require.NoError(t, e.SetLastRun(s.clock.Add(-10*time.Second)))
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	assert.False(t, g.onEvent(s.clock), "an event within the pace of the last run does not run at once")
+	assert.True(t, g.dueAt.Equal(s.clock.Add(20*time.Second)), "it runs at the end of the pace: %s", g.dueAt)
 }

@@ -150,6 +150,12 @@ func (t *T) getTrigger(e schedule.Entry) (*trigger, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The pace counts from the last run of the entry, whatever ran it, as
+	// a daemon restarted reads it from the last run file: a trigger made
+	// new does not run the entry again sooner than its pace allows.
+	if g.lastRunAt = e.LastRunAt; g.lastRunAt.IsZero() {
+		g.lastRunAt = e.GetLastRun()
+	}
 	t.triggers.Set(e.Path, e.Key, g)
 	return g, nil
 }
