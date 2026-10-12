@@ -36,7 +36,40 @@ func Parse(s string) (*T, error) {
 	if !valid {
 		return nil, fmt.Errorf("invalid resource id: %s", s)
 	}
+	if err := CheckName(s); err != nil {
+		return nil, err
+	}
 	return &T{Name: s}, nil
+}
+
+// CheckName returns an error when s holds a character no resource id, nor
+// pattern of them, is made of.
+func CheckName(s string) error {
+	if i := strings.IndexFunc(s, isNotNameRune); i >= 0 {
+		return fmt.Errorf("invalid resource id: %q: %q is not a character of a resource id", s, s[i:i+1])
+	}
+	return nil
+}
+
+// isNotNameRune reports whether r is no character of a resource id, or of a
+// pattern of them.
+//
+// A resource id is the section name of the resource in the configuration of
+// its object, which the administrator of the namespace writes, and it names
+// the directory of the resource in the var directory of the object, and the
+// files the drivers make, some of them on the peers through a shell: a '/'
+// would lead out of the directory, a shell character into the command. So it
+// is letters, digits, '_', '-' and '.', with the '#' parting the group from
+// the index, and the wildcards of a pattern.
+func isNotNameRune(r rune) bool {
+	switch {
+	case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		return false
+	case strings.ContainsRune("_-.#*?[]!", r):
+		return false
+	default:
+		return true
+	}
 }
 
 func (t *T) IsZero() bool {

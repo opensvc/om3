@@ -255,6 +255,15 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
         Replaced by `standby=true`.
         This keyword was already marked deprecated in v2.1.
 
+* **Resource ids are letters, digits, `_`, `-` and `.`**
+
+    The index of a resource section, after the `#`, names the directory of
+    the resource in the var directory of its object, and the files its
+    driver makes there and on the peers. A section named with another
+    character, as `fs#a/b` or `app#a b`, is no resource: `config validate`
+    reports it as an invalid section name, and a configuration write naming
+    one is refused. Rename such a section before upgrading.
+
 * **Driver Group Names Removed:**
 
     Drop support for driver-group names:**

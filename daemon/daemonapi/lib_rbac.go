@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/rootless"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -48,6 +49,9 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
+	}
+	if err := sectionNameRbac(cfg); err != nil {
+		return err
 	}
 	from := currentConfig(p)
 	if err := configRbacChanges(grants, p.Kind, from, cfg); err != nil {
@@ -286,6 +290,27 @@ func currentConfig(p naming.Path) *xconfig.T {
 		return nil
 	}
 	return configurer.Config()
+}
+
+// sectionNameRbac refuses a section named with a character no resource id is
+// made of.
+//
+// The policy judges a section by the driver group before its '#', and the
+// rest of the name is the id of the resource, which names its paths on the
+// node and is written in the commands the drivers run: a "fs#x/../.." is a
+// flag the policy allows, kept outside the var directory of the object.
+// Parsing refuses such an id, so the resource would be silently ignored: the
+// write is refused instead, so its author knows.
+func sectionNameRbac(cfg *xconfig.T) error {
+	for _, section := range cfg.SectionStrings() {
+		if strings.HasPrefix(section, "subset#") {
+			continue
+		}
+		if err := resourceid.CheckName(section); err != nil {
+			return fmt.Errorf("%w: section %s: %w", ErrDenied, section, err)
+		}
+	}
+	return nil
 }
 
 // configRbacChanges checks the keywords a write changes against the policy.
