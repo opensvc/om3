@@ -166,12 +166,23 @@ func snapName(rel string) string {
 
 // relOfSnapName is the path from the head of the subvolume a snapshot of the
 // name is of.
+//
+// The path is joined to the head a peer installs the run in, so a name
+// escaping it, as one holding a "..", is no snapshot of a run: the sync never
+// names one so, a nested subvolume being a path below the head.
 func relOfSnapName(name string) (string, error) {
 	s, ok := strings.CutPrefix(name, headSnapName)
 	if !ok {
 		return "", fmt.Errorf("%s is not a snapshot name of a run", name)
 	}
-	return url.PathUnescape(s)
+	rel, err := url.PathUnescape(s)
+	if err != nil {
+		return "", err
+	}
+	if rel != "" && (!filepath.IsLocal(rel) || rel != filepath.Clean(rel)) {
+		return "", fmt.Errorf("%s is not a snapshot name of a run: %s is not a path below the head", name, rel)
+	}
+	return rel, nil
 }
 
 // runsDir is the directory of the run directories of the resource, relative to

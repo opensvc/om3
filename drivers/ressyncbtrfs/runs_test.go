@@ -441,6 +441,26 @@ func TestSnapNameRoundTrips(t *testing.T) {
 	assert.Equal(t, "_a%2Fb", snapName("a/b"))
 }
 
+func TestSnapNameEscapingTheHeadIsRefused(t *testing.T) {
+	for _, name := range []string{"_..", "_..%2Fx", "_a%2F..%2F..%2Fx", "_%2Fetc", "_a%2F.%2Fb", "_a%2F%2Fb"} {
+		_, err := relOfSnapName(name)
+		assert.Error(t, err, name)
+	}
+}
+
+func TestRunsOfIgnoresASnapshotEscapingTheHead(t *testing.T) {
+	dir := ".osync/dev/svc/s1/sync#1"
+	r1 := newRunName(time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC))
+	l := []btrfs.Subvol{
+		{ID: 1, CGen: 1, Path: dir + "/" + r1 + "/_", UUID: "u1"},
+		{ID: 2, CGen: 2, Path: dir + "/" + r1 + "/_..%2F..%2Fx", UUID: "u2"},
+	}
+	runs, err := runsOf(l, dir)
+	require.NoError(t, err)
+	require.Len(t, runs, 1)
+	assert.Equal(t, []string{""}, runs[0].rels(), "a peer installs no snapshot outside its head")
+}
+
 func TestRunsOfIgnoresWhatIsNotASnapshotOfARun(t *testing.T) {
 	dir := ".osync/dev/svc/s1/sync#1"
 	r1 := newRunName(time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC))
