@@ -36,6 +36,11 @@ type (
 		MaxDelay *time.Duration `json:"max_delay"`
 		Schedule string         `json:"schedule"`
 		Path     naming.Path    `json:"path"`
+
+		// ObjectEnv and NodeEnv are the env of the object and of this
+		// node, for the drivers whose manifest binds them.
+		ObjectEnv string `json:"object_env"`
+		NodeEnv   string `json:"node_env"`
 	}
 )
 
@@ -65,6 +70,20 @@ var (
 		&KWSchedule,
 	}
 )
+
+// EnvSkipReason returns why a sync from this node is skipped, or "" when it
+// is not.
+//
+// A PRD object running on a node that is not PRD, as on a DRP node after a
+// failover, does not sync: its copies on the PRD nodes are the data to fall
+// back to, which a sync from here would overwrite. The other envs sync
+// wherever they run, as in v2.
+func (t *T) EnvSkipReason() string {
+	if t.ObjectEnv == "PRD" && t.NodeEnv != "PRD" {
+		return fmt.Sprintf("won't sync a PRD object running on a %s node", t.NodeEnv)
+	}
+	return ""
+}
 
 // GetMaxDelay is how long after lastSync the copy is stale: max_delay when
 // set, or else derived from the schedule, 0 meaning neither is.

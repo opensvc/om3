@@ -499,6 +499,16 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			if err := attr.SetValue(r, c.Attr, s); err != nil {
 				return err
 			}
+		case c.Ref == "object.env":
+			if err := attr.SetValue(r, c.Attr, t.Env()); err != nil {
+				return err
+			}
+		case c.Ref == "node.env":
+			if node, err := t.Node(); err != nil {
+				return err
+			} else if err := attr.SetValue(r, c.Attr, node.Env()); err != nil {
+				return err
+			}
 		case c.Ref == "node.dns":
 			if dns, err := getDNS(); err != nil {
 				return err

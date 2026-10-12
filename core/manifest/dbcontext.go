@@ -56,6 +56,16 @@ var (
 		Attr: "Topology",
 		Ref:  "object.topology",
 	}
+	ContextObjectEnv = Context{
+		Key:  "object_env",
+		Attr: "ObjectEnv",
+		Ref:  "object.env",
+	}
+	ContextNodeEnv = Context{
+		Key:  "node_env",
+		Attr: "NodeEnv",
+		Ref:  "node.env",
+	}
 	ContextCNIPlugins = Context{
 		Key:  "cni_plugins",
 		Attr: "CNIPlugins",
