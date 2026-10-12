@@ -40,6 +40,9 @@ func (t *T) ipam() (*ipam.T, error) {
 // it, or when it is a network of the cluster, whose configuration a network
 // setup writes. A name that is neither is a renamed network or a typo.
 func (t *T) Configure() error {
+	if err := t.checkNetwork(); err != nil {
+		return err
+	}
 	if _, err := os.Stat(t.netConfFile()); err == nil {
 		return nil
 	}

@@ -196,7 +196,7 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
 	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
-	assert.Equal(t, "", Doc(naming.KindSvc, "ip", "network"))
+	assert.Equal(t, "A network named by a path requires the root grant.", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
 	assert.Equal(t, "A server-local source uri, or a setuid or setgid mode, requires the root grant.", Doc(naming.KindSvc, "volume", "install"))
 	assert.Equal(t, "Requires the prioritizer grant.", Doc(naming.KindSvc, "DEFAULT", "priority"))
@@ -207,6 +207,17 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	// nothing on every keyword of every driver.
 	assert.Equal(t, "", Doc(naming.KindSvc, "container", "image"))
 	assert.Equal(t, "", Doc(naming.KindSvc, "env", "anything"))
+}
+
+// A network is a name: a cni address reads the configuration named after it,
+// and runs the plugin it names, so a path to a configuration elsewhere is
+// root's to write.
+func TestANetworkIsNamedNotPathed(t *testing.T) {
+	for _, v := range []string{"../../tmp/evil", "/tmp/evil", "a/b", "..", "."} {
+		assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "network", v, section("type")), v)
+	}
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "network", "backend1", section("type")))
+	assert.NoError(t, Denied(rbac.Grants{rbac.GrantRoot}, naming.KindSvc, "ip#1", "network", "../x", section("type")))
 }
 
 func TestIPDrawnFromAClusterNetwork(t *testing.T) {

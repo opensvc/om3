@@ -354,8 +354,14 @@ var rules = map[string]Group{
 			},
 
 			// The networks are the cluster's, and om hands out the addresses
-			// of the one named here.
-			"network": {},
+			// of the one named here. A cni address reads the configuration
+			// named after it, whose type names the plugin run as root, so it
+			// is a name, and not a path to a configuration elsewhere.
+			"network": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a network named by a path requires the root grant",
+				Denies: valueOnly(isNoName),
+			},
 
 			// The address om drew from the network, which it writes itself.
 			// Writing it is choosing the address, which is the node
@@ -649,6 +655,12 @@ func isTrue(s string) bool {
 	}
 	v, err := strconv.ParseBool(s)
 	return err != nil || v
+}
+
+// isNoName reports whether s is no name of a file in a directory, but a path
+// leading elsewhere.
+func isNoName(s string) bool {
+	return s == "." || s == ".." || strings.ContainsAny(s, `/\`)
 }
 
 // valueOnly adapts a check that only reads the value to the rule signature.
