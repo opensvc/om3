@@ -424,22 +424,35 @@ func acmeDirectory(s string) string {
 	}
 }
 
-// renewGeneratedCertificate generates the certificate of a sec issued by no
-// ACME directory, as certificate create does, when it is due: self-signed,
-// or signed by the ca the sec names. The private key is kept.
 // ErrCertificateNotIssued is the refusal to renew a certificate the sec did
 // not issue, as one installed from elsewhere: generating one would replace it,
 // with the names of the sec rather than the ones it was installed for.
 var ErrCertificateNotIssued = errors.New("the certificate was not issued by the sec")
 
 // issuedCertificate says whether certPEM is a certificate the sec issued: one
-// its ca signed, or a self-signed one when it names no ca.
+// its ca signed, or a self-signed one when it names no ca, of the serial
+// number the serial_number key says. GenCert records the serial number with
+// the certificate: a certificate installed in its place has another one.
+//
+// A sec has no serial_number key when its certificate was generated before
+// the serial numbers were recorded, or installed from elsewhere. Its
+// certificate is the one the sec issued when the ca of the sec signed it, as
+// the one of system/sec/cert, and is not when the sec names no ca: an
+// imported self-signed certificate passes the signature check too.
 func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
 	cert, err := certFromPEM(certPEM)
 	if err != nil {
 		return false, err
 	}
-	if t.CertInfo("ca") == "" {
+	ca := t.CertInfo("ca")
+	if b, err := t.DecodeKey("serial_number"); err == nil {
+		if serial, ok := parseSerialText(string(b)); !ok || serial.Cmp(cert.SerialNumber) != 0 {
+			return false, nil
+		}
+	} else if ca == "" {
+		return false, nil
+	}
+	if ca == "" {
 		return cert.CheckSignatureFrom(cert) == nil, nil
 	}
 	caCert, _, err := t.getCACert()
@@ -449,6 +462,9 @@ func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
 	return cert.CheckSignatureFrom(caCert) == nil, nil
 }
 
+// renewGeneratedCertificate generates the certificate of a sec issued by no
+// ACME directory, as certificate create does, when it is due: self-signed,
+// or signed by the ca the sec names. The private key is kept.
 func (t *sec) renewGeneratedCertificate(force bool) (CertificateRenewal, error) {
 	// The names the certificate is issued for, as the result says them:
 	// the subject first. The alternate names are what it is compared

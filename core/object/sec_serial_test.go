@@ -95,3 +95,22 @@ func TestGenCertSerialAfterCounter(t *testing.T) {
 	s, _ := serialOf(t, o)
 	assert.True(t, strings.HasPrefix(s, "16-"), s)
 }
+
+// The serial_number key is read back as the serial number it says, of either
+// format.
+func TestParseSerialText(t *testing.T) {
+	serial, err := newCertSerial(16)
+	require.NoError(t, err)
+	parsed, ok := parseSerialText(serialText(serial))
+	require.True(t, ok)
+	assert.Equal(t, 0, serial.Cmp(parsed), "<generation>-<uuid>")
+
+	parsed, ok = parseSerialText("7\n")
+	require.True(t, ok)
+	assert.Equal(t, int64(7), parsed.Int64(), "a counter alone")
+
+	for _, s := range []string{"", "x", "-1", "1-x"} {
+		_, ok := parseSerialText(s)
+		assert.False(t, ok, "%q", s)
+	}
+}

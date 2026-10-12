@@ -268,3 +268,60 @@ func TestCertificateIPsDue(t *testing.T) {
 	assert.True(t, due)
 	assert.Contains(t, reason, "10.0.0.2")
 }
+
+// A certificate that is not readable is kept, and the renewal says so rather
+// than failing on it.
+func TestRenewKeepsAnUnreadableCertificate(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "web", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\nalt_names = node1\nbits = 2048\n")))
+	require.NoError(t, err)
+	require.NoError(t, o.AddKey("certificate", []byte("not a certificate")))
+
+	require.NotPanics(t, func() {
+		_, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	})
+	require.Error(t, err)
+	current, err := o.DecodeKey("certificate")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("not a certificate"), current, "kept")
+}
+
+// A self-signed certificate installed in a sec naming no ca is kept, in place
+// of the certificate the sec generated or in a sec that generated none:
+// self-signed, it is not told from a generated one by its signature, but by
+// the serial number the sec recorded.
+func TestRenewKeepsAnInstalledSelfSignedCertificate(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	installed := testCert(t, []string{"www.example.com"}, time.Now().Add(365*24*time.Hour), true)
+	for _, generated := range []bool{true, false} {
+		p := naming.Path{Name: "web", Kind: naming.KindSec, Namespace: "ns1"}
+		if generated {
+			p.Name = "generated"
+		}
+		o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\nalt_names = node1\nbits = 2048\n")))
+		require.NoError(t, err)
+		if generated {
+			require.NoError(t, o.GenCert())
+			require.NoError(t, o.ChangeKey("certificate", installed))
+		} else {
+			require.NoError(t, o.AddKey("certificate", installed))
+		}
+
+		_, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+		require.ErrorIs(t, err, ErrCertificateNotIssued, "generated before: %v", generated)
+		current, err := o.DecodeKey("certificate")
+		require.NoError(t, err)
+		assert.Equal(t, installed, current, "kept, generated before: %v", generated)
+	}
+}

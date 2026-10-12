@@ -194,6 +194,26 @@ func serialText(serial *big.Int) string {
 	return fmt.Sprintf("%s-%s", generation, id)
 }
 
+// parseSerialText returns the serial number the serial_number key says, as
+// serialText writes it, or as a counter alone, as it was before.
+func parseSerialText(s string) (*big.Int, bool) {
+	s = strings.TrimSpace(s)
+	generationText, idText, hasID := strings.Cut(s, "-")
+	serial, ok := new(big.Int).SetString(generationText, 10)
+	if !ok || serial.Sign() < 0 {
+		return nil, false
+	}
+	if !hasID {
+		return serial, true
+	}
+	id, err := uuid.Parse(idText)
+	if err != nil {
+		return nil, false
+	}
+	serial.Lsh(serial, serialUUIDBits)
+	return serial.Or(serial, new(big.Int).SetBytes(id[:])), true
+}
+
 func (t *sec) CertInfoNotAfter() (time.Time, error) {
 	if v, err := t.config.GetDurationStrict(key.Parse("validity")); err != nil {
 		return time.Now(), err
@@ -344,6 +364,9 @@ func (t *sec) getCACert() (*x509.Certificate, []byte, error) {
 
 func certFromPEM(b []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(b)
+	if block == nil {
+		return nil, fmt.Errorf("certFromPEM: no PEM block")
+	}
 	if block.Type != "CERTIFICATE" {
 		return nil, fmt.Errorf("certFromPEM: the PEM block type is not CERTIFICATE")
 	}
