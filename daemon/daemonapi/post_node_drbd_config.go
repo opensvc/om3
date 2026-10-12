@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -34,7 +33,7 @@ func (a *DaemonAPI) postLocalDRBDConfig(ctx echo.Context, params api.PostNodeDRB
 	if a, ok := pendingDRBDAllocations.get(payload.AllocationID); !ok || time.Now().After(a.ExpiredAt) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "drbd allocation expired: %#v", a)
 	}
-	if strings.Contains(params.Name, "..") || strings.HasPrefix(params.Name, "/") {
+	if !isDRBDResName(params.Name) {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid body", "The 'name' parameter must be a basename.")
 	}
 	cf := fmt.Sprintf("/etc/drbd.d/%s.res", params.Name)
