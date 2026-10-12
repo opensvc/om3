@@ -240,3 +240,28 @@ func TestLoginDeviceExpired(t *testing.T) {
 	_, err = p.LoginDevice(context.Background(), "om3", func(string, string, string) {})
 	assert.ErrorContains(t, err, "the code WXYZ expired before the login was approved")
 }
+
+// An endpoint is a web address the user can trust with credentials: https,
+// or http on this machine. What the browser opener is handed is one of them,
+// not a local file nor another scheme.
+func TestCheckEndpoint(t *testing.T) {
+	for s, ok := range map[string]bool{
+		"https://idp.example.com/authorize": true,
+		"http://127.0.0.1:8080/authorize":   true,
+		"http://[::1]:8080/authorize":       true,
+		"http://localhost:8080/authorize":   true,
+		"http://idp.example.com/authorize":  false,
+		"file:///etc/passwd":                false,
+		"smb://host/share":                  false,
+		"-a evil":                           false,
+		"/etc/passwd":                       false,
+		"https:///nohost":                   false,
+	} {
+		if ok {
+			assert.NoError(t, CheckEndpoint(s), s)
+		} else {
+			assert.Error(t, CheckEndpoint(s), s)
+		}
+	}
+	assert.Error(t, OpenBrowser("file:///etc/passwd"))
+}
