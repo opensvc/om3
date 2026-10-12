@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kballard/go-shellquote"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
@@ -64,7 +65,9 @@ func (t *T) Abort(ctx context.Context) bool {
 		defer session.Close()
 		var b bytes.Buffer
 		session.Stdout = &b
-		err = session.Run("test -f " + t.file())
+		// The peer runs the command through its login shell: the path,
+		// which holds the resource id, is quoted for it.
+		err = session.Run("test -f " + shellquote.Join(t.file()))
 		if err == nil {
 			return true
 		}
