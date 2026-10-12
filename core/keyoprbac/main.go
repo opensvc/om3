@@ -801,6 +801,31 @@ func Denied(grants rbac.Grants, kind naming.Kind, section, option, value string,
 	return fmt.Errorf("%s", rule.Reason)
 }
 
+// DeniedByDriver returns the reason these grants are not enough to change a
+// keyword of a section running the driver typ, or nil when they are.
+//
+// The policy of a group names the keywords it guards, and the type is guarded
+// by value: the container group opens the types an engine confines, and says
+// nothing of the keywords only the other types read, as the rcmd of a kvm or
+// the command of a task running on the node. Root writing such a section
+// does not make those keywords the namespace administrator's: a section
+// running a driver the writer may not choose is root's whole, but for the
+// common keywords, which are about the lifecycle of the object and not what
+// the resource takes from the node.
+//
+// typ is the driver the section runs where the keyword changed, the one its
+// group falls back to when it names none, and "" when it runs none.
+func DeniedByDriver(grants rbac.Grants, kind naming.Kind, section, option, typ string, set Section) error {
+	option, _, _ = strings.Cut(option, "@")
+	if typ == "" || option == "type" || commonKeywords[option] {
+		return nil
+	}
+	if err := Denied(grants, kind, section, "type", typ, set); err != nil {
+		return fmt.Errorf("a keyword of a section running the %s driver: %w", typ, err)
+	}
+	return nil
+}
+
 // DeniedUnset returns the reason these grants are not enough to take this
 // keyword away from this value, or nil when they are. A keyword a user may
 // not set is one they may not unset either, but for a keyword om writes the

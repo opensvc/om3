@@ -339,6 +339,9 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			if err := keyopRbacOn(grants, kind, kop, set, nodename); err != nil {
 				return err
 			}
+			if err := driverRbacOn(grants, kind, to, k, set, nodename); err != nil {
+				return err
+			}
 		}
 		if err := sectionDriverRbac(grants, kind, from, to, section, set, scopes); err != nil {
 			return err
@@ -359,6 +362,9 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				continue
 			}
 			if err := keyUnsetRbac(grants, kind, k, evaluatedOrWritten(from, k), set); err != nil {
+				return err
+			}
+			if err := driverRbacOn(grants, kind, from, k, set, ""); err != nil {
 				return err
 			}
 		}
@@ -611,6 +617,28 @@ func keyopRbacOn(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac
 		return fmt.Errorf("%w: %s: %w", ErrDenied, op, err)
 	default:
 		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, op, nodename, err)
+	}
+}
+
+// driverRbacOn refuses a change to a keyword of a section running, on
+// nodename, a driver the grants may not choose: the type written there, or
+// the one the group falls back to when it names none. cfg is the
+// configuration the section runs that driver in, the one written for a
+// keyword set, the one before the write for a keyword taken away.
+func driverRbacOn(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T, k key.T, set keyoprbac.Section, nodename string) error {
+	typ := cfg.GetStringAs(key.New(k.Section, "type"), nodename)
+	if typ == "" {
+		group, _, _ := strings.Cut(k.Section, "#")
+		typ = driver.DefaultDriver[driver.NewGroup(group)]
+	}
+	err := keyoprbac.DeniedByDriver(grants, kind, k.Section, k.Option, typ, set)
+	switch {
+	case err == nil:
+		return nil
+	case nodename == "" || nodename == hostname.Hostname():
+		return fmt.Errorf("%w: %s: %w", ErrDenied, k, err)
+	default:
+		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, k, nodename, err)
 	}
 }
 
