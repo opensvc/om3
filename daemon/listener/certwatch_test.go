@@ -61,3 +61,47 @@ func certFromPEMForTest(b []byte) (*x509.Certificate, error) {
 	}
 	return x509.ParseCertificate(block.Bytes)
 }
+
+// The alt_names the bootstrap set before {clusternodes}, the hostname of the
+// node bootstrapping system/sec/cert, is set to {clusternodes}: alt_names
+// naming anything else is the operator's choice, and is kept.
+func TestIsLegacyCertAltNames(t *testing.T) {
+	nodes := []string{"node1", "node2"}
+	for s, legacy := range map[string]bool{
+		"node1":           true,
+		"Node2":           true,
+		"":                false,
+		"node3":           false,
+		"node1 node2":     false,
+		"node1,10.0.0.1":  false,
+		"{clusternodes}":  false,
+		"www.example.com": false,
+		"{nodename}":      false,
+	} {
+		assert.Equal(t, legacy, isLegacyCertAltNames(s, nodes), "%q", s)
+	}
+}
+
+// A system/sec/cert bootstrapped with alt_names = <hostname>, as om3 did
+// before {clusternodes}, is renewed for the cluster nodes.
+func TestRenewCertReplacesTheLegacyAltNames(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+
+	ca, err := object.NewSec(caPath, object.WithVolatile(false))
+	require.NoError(t, err)
+	require.NoError(t, ca.GenCert())
+	sec, err := object.NewSec(certPath, object.WithConfigData([]byte("[DEFAULT]\nca = "+caPath.String()+"\nalt_names = node1\n")))
+	require.NoError(t, err)
+	require.NoError(t, sec.GenCert())
+
+	lsnr := &T{log: plog.NewDefaultLogger()}
+	lsnr.renewCert(context.Background())
+
+	b, err := os.ReadFile(certPath.ConfigFile())
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "alt_names = "+certAltNames)
+}

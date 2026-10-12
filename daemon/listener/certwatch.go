@@ -3,7 +3,10 @@ package listener
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
@@ -95,8 +98,9 @@ func (t *T) reinstallCertFiles() {
 // the ones alt_names evaluates to. A certificate it did not issue, as one
 // installed from elsewhere, is kept: its names are what the operator chose.
 //
-// A system/sec/cert without alt_names, as the bootstrap of the clusters
-// created before it set {clusternodes} made, has it set first.
+// A system/sec/cert without alt_names, as one migrated from a v2 cluster, or
+// with the alt_names the bootstrap set before {clusternodes}, the hostname of
+// the node bootstrapping it, has it set first.
 func (t *T) renewCert(ctx context.Context) {
 	sec, err := object.NewSec(certPath, object.WithVolatile(false))
 	if err != nil {
@@ -108,7 +112,7 @@ func (t *T) renewCert(ctx context.Context) {
 		return
 	}
 	altNames := key.New("DEFAULT", "alt_names")
-	if !sec.Config().HasKey(altNames) {
+	if !sec.Config().HasKey(altNames) || isLegacyCertAltNames(sec.Config().Get(altNames), clusterNodes()) {
 		t.log.Infof("cert watch: %s: set alt_names = %s", certPath, certAltNames)
 		if err := sec.Config().Set(*keyop.New(altNames, keyop.Set, certAltNames, 0)); err != nil {
 			t.log.Warnf("cert watch: %s: set alt_names: %s", certPath, err)
@@ -126,4 +130,26 @@ func (t *T) renewCert(ctx context.Context) {
 	default:
 		t.log.Debugf("cert watch: %s: not renewed: %s", certPath, result.Reason)
 	}
+}
+
+// isLegacyCertAltNames says whether s, the alt_names of system/sec/cert, is
+// the one its bootstrap set before {clusternodes}: the hostname of the node
+// bootstrapping it, a cluster node. A certificate naming that node alone is
+// never due when the cluster nodes change.
+func isLegacyCertAltNames(s string, nodes []string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" || strings.ContainsAny(s, " \t,{") {
+		return false
+	}
+	return slices.ContainsFunc(nodes, func(node string) bool {
+		return strings.EqualFold(node, s)
+	})
+}
+
+// clusterNodes returns the cluster nodes, as the cluster config cache says.
+func clusterNodes() []string {
+	if cfg := cluster.ConfigData.Get(); cfg != nil {
+		return cfg.Nodes
+	}
+	return nil
 }
