@@ -112,8 +112,14 @@ func (t *T) renewCert(ctx context.Context) {
 		return
 	}
 	altNames := key.New("DEFAULT", "alt_names")
-	if !sec.Config().HasKey(altNames) || isLegacyCertAltNames(sec.Config().Get(altNames), clusterNodes()) {
-		t.log.Infof("cert watch: %s: set alt_names = %s", certPath, certAltNames)
+	hasAltNames := sec.Config().HasKey(altNames)
+	if was := sec.Config().Get(altNames); !hasAltNames || isLegacyCertAltNames(was, clusterNodes()) {
+		if hasAltNames {
+			// Said, for an operator who chose this name to set it back.
+			t.log.Infof("cert watch: %s: set alt_names = %s, was %s", certPath, certAltNames, was)
+		} else {
+			t.log.Infof("cert watch: %s: set alt_names = %s", certPath, certAltNames)
+		}
 		if err := sec.Config().Set(*keyop.New(altNames, keyop.Set, certAltNames, 0)); err != nil {
 			t.log.Warnf("cert watch: %s: set alt_names: %s", certPath, err)
 			return
