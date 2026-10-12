@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
@@ -83,6 +84,32 @@ func (t *T) EnvSkipReason() string {
 		return fmt.Sprintf("won't sync a PRD object running on a %s node", t.NodeEnv)
 	}
 	return ""
+}
+
+// PeerEnvRefusal returns why the peer nodename is not sent the data of the
+// resource, or nil when it is.
+//
+// A node that is not PRD sends nothing to a PRD node, whatever the env of the
+// object: its data would overwrite the production one there. It completes the
+// rule of EnvSkipReason, which is about the object, with the one about the
+// nodes.
+func (t *T) PeerEnvRefusal(nodename string) error {
+	nodesInfo, err := nodesinfo.Load()
+	if err != nil {
+		return fmt.Errorf("get nodes info: %w", err)
+	}
+	peer, ok := nodesInfo[nodename]
+	if !ok {
+		return fmt.Errorf("node %s not found in nodes_info.json", nodename)
+	}
+	return peerEnvRefusal(t.NodeEnv, peer.Env)
+}
+
+func peerEnvRefusal(localEnv, peerEnv string) error {
+	if localEnv != "PRD" && peerEnv == "PRD" {
+		return fmt.Errorf("refuse to sync from a non-PRD node to a PRD node")
+	}
+	return nil
 }
 
 // GetMaxDelay is how long after lastSync the copy is stale: max_delay when

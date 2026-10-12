@@ -162,6 +162,14 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		results  = make([]*peerState, len(nodenames))
 	)
 	for i, nodename := range nodenames {
+		if err := t.PeerEnvRefusal(nodename); err != nil {
+			if isCron {
+				t.Log().Tracef("%s", err)
+			} else {
+				t.Log().Infof("%s", err)
+			}
+			continue
+		}
 		st := states[nodename]
 		results[i] = &st
 		wg.Add(1)

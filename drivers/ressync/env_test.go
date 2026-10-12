@@ -24,3 +24,20 @@ func TestAPRDObjectOnANonPRDNodeDoesNotSync(t *testing.T) {
 		assert.Equal(t, tc.skip, r.EnvSkipReason() != "", "%s object on a %s node", tc.objectEnv, tc.nodeEnv)
 	}
 }
+
+// A node that is not PRD sends nothing to a PRD node, whatever the env of the
+// object: its data would overwrite the production one there.
+func TestANonPRDNodeDoesNotSyncToAPRDNode(t *testing.T) {
+	for _, tc := range []struct {
+		localEnv, peerEnv string
+		refused           bool
+	}{
+		{"TST", "PRD", true},
+		{"DRP", "PRD", true},
+		{"PRD", "PRD", false},
+		{"PRD", "DRP", false},
+		{"TST", "TST", false},
+	} {
+		assert.Equal(t, tc.refused, peerEnvRefusal(tc.localEnv, tc.peerEnv) != nil, "from a %s node to a %s node", tc.localEnv, tc.peerEnv)
+	}
+}
