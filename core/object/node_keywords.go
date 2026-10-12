@@ -258,6 +258,13 @@ var (
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	}
+	kwNodeAllowEnvs = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "PRD PPRD",
+		Option:    "allow_envs",
+		Section:   "node",
+		Text:      keywords.NewText(fs, "text/kw/node/node.allow_envs"),
+	}
 	kwNodeConsolePort = keywords.Keyword{
 		Converter: converters.Int,
 		Option:    "port",
@@ -1898,6 +1905,7 @@ var (
 		&kwNodeMinAvailMem,
 		&kwNodeMinAvailSwap,
 		&kwNodeEnv,
+		&kwNodeAllowEnvs,
 		&kwNodeConsolePort,
 		&kwNodeConsoleURL,
 		&kwNodeMaxParallel,
