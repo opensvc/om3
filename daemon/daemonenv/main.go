@@ -63,6 +63,19 @@ var (
 
 	// HeartbeatStatusRefreshMaximumInterval is the maximum interval for refreshing daemon heartbeat statistics
 	HeartbeatStatusRefreshMaximumInterval = 60 * time.Second
+
+	// HTTPReadHeaderTimeout is how long the api listeners wait for a client
+	// to send the headers of a request, the tls handshake included. A
+	// client sending them a byte at a time would otherwise hold a
+	// connection, and a goroutine, for as long as it likes.
+	//
+	// The body and the response are not timed: an event stream, a log
+	// follow or a console last as long as their client reads them.
+	HTTPReadHeaderTimeout = 10 * time.Second
+
+	// HTTPIdleTimeout is how long the api listeners keep a connection open
+	// waiting for its next request.
+	HTTPIdleTimeout = 2 * time.Minute
 )
 
 var (

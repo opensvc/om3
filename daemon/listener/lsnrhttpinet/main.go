@@ -110,8 +110,10 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		}
 	}
 	t.listener = &http.Server{
-		Addr:    t.addr,
-		Handler: routehttp.New(ctx, true),
+		Addr:              t.addr,
+		Handler:           routehttp.New(ctx, true),
+		ReadHeaderTimeout: daemonenv.HTTPReadHeaderTimeout,
+		IdleTimeout:       daemonenv.HTTPIdleTimeout,
 		TLSConfig: &tls.Config{
 			// The certificate of system/sec/cert, from certFile, unless
 			// the client asks a name of one of listener.tls_secs.
