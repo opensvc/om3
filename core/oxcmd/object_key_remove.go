@@ -1,17 +1,9 @@
 package oxcmd
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"slices"
+	"time"
 
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -19,62 +11,19 @@ type (
 	CmdObjectKeyRemove struct {
 		OptsGlobal
 		Names []string
+		Wait  bool
+		Time  time.Duration
 	}
 )
 
 func (t *CmdObjectKeyRemove) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	ctx := context.Background()
-	c, err := client.New()
-	if err != nil {
-		return err
-	}
-	paths, err := objectselector.New(
-		mergedSelector,
-		objectselector.WithClient(c),
-	).Expand()
-	if err != nil {
-		return err
-	}
-	for _, path := range paths {
-		if !slices.Contains(naming.KindDataStore, path.Kind) {
-			continue
-		}
-		if err := t.RunForPath(ctx, c, path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *CmdObjectKeyRemove) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
 	data := make(api.PatchDataKeys, len(t.Names))
 	for i, name := range t.Names {
 		data[i] = api.PatchDataKey{
-			Action: "remove",
+			Action: api.Remove,
 			Name:   name,
 		}
 	}
-	r := bytes.NewBuffer(nil)
-	if err := json.NewEncoder(r).Encode(data); err != nil {
-		return err
-	}
-	response, err := c.PatchObjectDataWithBodyWithResponse(ctx, path.Namespace, path.Kind, path.Name, "application/json", r)
-	if err != nil {
-		return err
-	}
-	switch response.StatusCode() {
-	case http.StatusNoContent:
-		return nil
-	case http.StatusBadRequest:
-		return fmt.Errorf("%s: %s", path, *response.JSON400)
-	case http.StatusUnauthorized:
-		return fmt.Errorf("%s: %s", path, *response.JSON401)
-	case http.StatusForbidden:
-		return fmt.Errorf("%s: %s", path, *response.JSON403)
-	case http.StatusInternalServerError:
-		return fmt.Errorf("%s: %s", path, *response.JSON500)
-	default:
-		return fmt.Errorf("%s: unexpected response: %s", path, response.Status())
-	}
+	return commoncmd.RunObjectDataPatch(mergedSelector, data, t.Wait, t.Time)
 }

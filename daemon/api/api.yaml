@@ -5748,6 +5748,11 @@ paths:
     patch:
       description: |
         A single-transaction combination of add, change or delete operations on the key-value store keys.
+
+        With wait, the answer is held until the configuration the operations
+        committed has reached every live node of the object, as a
+        configuration update does: a 408 says which nodes it has not reached
+        before the wait expired, the operations being committed either way.
       operationId: PatchObjectData
       tags:
         - object / cfg
@@ -5766,6 +5771,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryWait'
       responses:
         204:
           $ref: '#/components/responses/204'
