@@ -536,7 +536,9 @@ func (t *T) createMountPointFile() error {
 		}
 	} else if os.IsNotExist(err) {
 		t.Log().Infof("create missing mountpoint file %s", t.MountPoint)
-		if f, err := os.Create(t.MountPoint); err != nil {
+		// Exclusive, so a symlink made at the mount point since the stat is
+		// not followed to a file created elsewhere.
+		if f, err := os.OpenFile(t.MountPoint, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644); err != nil {
 			return err
 		} else {
 			f.Close()
@@ -828,17 +830,28 @@ func (t *T) checkWriteXattr(s string) error {
 	return unix.Setxattr(s, "user.opensvc", data, 0)
 }
 
+// checkWriteFile writes a byte in the file s of the mounted filesystem.
+//
+// What the filesystem holds is its users', who can make s a symlink to a file
+// of the node, or a fifo: the probe, run as root by every status, follows no
+// symlink, waits on no reader, writes only in a regular file, and truncates
+// nothing.
 func (t *T) checkWriteFile(s string) error {
 	t.Log().Tracef("checkWriteFile %s", s)
-	if f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600); err != nil {
+	f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0600)
+	if err != nil {
 		return err
-	} else {
-		defer func() {
-			_ = f.Close()
-		}()
-		if _, err := f.Write([]byte(" ")); err != nil {
-			return err
-		}
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	if fi, err := f.Stat(); err != nil {
+		return err
+	} else if !fi.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", s)
+	}
+	if _, err := f.Write([]byte(" ")); err != nil {
+		return err
 	}
 	return nil
 }
