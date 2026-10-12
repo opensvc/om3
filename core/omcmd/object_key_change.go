@@ -3,11 +3,13 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/datastore"
 	"github.com/opensvc/om3/v3/util/uri"
 )
@@ -18,11 +20,28 @@ type (
 		Name  string
 		From  *string
 		Value *string
+
+		// Wait, a write through the daemon, held until the configuration
+		// reaches every live node of the object, for no longer than Time.
+		Wait bool
+		Time time.Duration
 	}
 )
 
 func (t *CmdObjectKeyChange) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	if t.Wait {
+		// Waiting for the configuration to reach the peers needs the
+		// daemon, which is what propagates it: the write goes through it.
+		if t.Value == nil && t.From == nil {
+			return fmt.Errorf("value or value source mut be specified for a change action")
+		}
+		data, err := commoncmd.MakeDataPatch(t.Name, t.Value, t.From, api.Change)
+		if err != nil {
+			return err
+		}
+		return commoncmd.RunObjectDataPatch(mergedSelector, data, t.Wait, t.Time)
+	}
 	return objectaction.New(
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
