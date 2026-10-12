@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 )
@@ -47,7 +48,10 @@ func (t CompSudoerss) checkSyntax(rule CompFile) ExitCode {
 		t.Errorf("%s\n", err)
 		return ExitNok
 	}
-	cmd := exec.Command("bash", "-c", `echo -n '`+string(content)+`' | visudo -s -c -`)
+	// The content is given to visudo on its stdin: written in a shell
+	// command line, a quote in it would end the quoting.
+	cmd := exec.Command("visudo", "-s", "-c", "-")
+	cmd.Stdin = bytes.NewReader(content)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output), err)
@@ -74,8 +78,10 @@ func (t CompSudoerss) Fix() ExitCode {
 	for _, i := range t.Rules() {
 		rule := i.(CompFile)
 		if t.checkSyntax(rule) == ExitNok {
+			// A file visudo refuses would break sudo: it is not installed.
 			t.Errorf("wrong syntax for sudoers file %s, can't fix it\n", rule.Path)
 			e = e.Merge(ExitNok)
+			continue
 		}
 		e = e.Merge(t.FixRule(rule))
 	}

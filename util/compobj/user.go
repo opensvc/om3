@@ -111,8 +111,13 @@ var (
 		return exec.Command("usermod", "-s", shell, username)
 	}
 
+	// execPasswordHashCommand sets the password hash of the user, written to
+	// chpasswd on its stdin rather than in a shell command line, where the
+	// '$' of a hash would be expanded.
 	execPasswordHashCommand = func(user string, password string) *exec.Cmd {
-		return exec.Command(`bash`, "-c", `"`, `echo "`+user+`:`+password+`" | chpasswd -e`, `"`)
+		cmd := exec.Command("chpasswd", "-e")
+		cmd.Stdin = strings.NewReader(user + ":" + password + "\n")
+		return cmd
 	}
 
 	execGecosCommand = func(gecos string, user string) *exec.Cmd {
@@ -234,6 +239,10 @@ func (t *CompUsers) Add(s string) error {
 
 		if name == "" {
 			err := fmt.Errorf("name should be in the dict: %s", s)
+			t.Errorf("%s\n", err)
+			return err
+		}
+		if err := checkAccountName(name, true); err != nil {
 			t.Errorf("%s\n", err)
 			return err
 		}
@@ -663,7 +672,9 @@ func (t CompUsers) fixHomeDir(rule CompUser) ExitCode {
 		return ExitNok
 	}
 	if file.Exists("/etc/skel") {
-		cmd := exec.Command("cp", "-R", "/etc/skel/*", rule.Home)
+		// The content of the skeleton, its dot files included: no shell
+		// expands a '*' here.
+		cmd := exec.Command("cp", "-R", "/etc/skel/.", rule.Home)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Errorf("%s: %s\n", err, output)
@@ -698,7 +709,7 @@ func (t CompUsers) fixPasswordHash(rule CompUser) ExitCode {
 		t.Errorf("%s\n", output)
 		return ExitNok
 	}
-	t.Infof("set the password hash of the user %s to %s\n", rule.User, rule.Password)
+	t.Infof("set the password hash of the user %s\n", rule.User)
 	return ExitOk
 }
 

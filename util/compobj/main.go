@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -338,17 +337,18 @@ func getFile(url string) ([]byte, error) {
 	return getNormalFile(url)
 }
 
+// getNormalFile returns the content of the file at url, the ref of a rule.
+//
+// The content becomes a file of the node, a sudoers file among them: an https
+// server is verified, and an error status is no content.
 func getNormalFile(url string) ([]byte, error) {
-	client := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	response, err := client.Get(url)
+	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get %s: %s", url, response.Status)
 	}
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
