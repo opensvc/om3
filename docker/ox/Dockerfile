@@ -15,5 +15,11 @@ FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6ee
 
 COPY --from=builder /opt/ox /usr/bin/ox
 
+# ox is a client of the cluster api, and needs no privilege of the host: it
+# runs as a user of its own, its contexts in /home/ox/.config/opensvc.
+RUN adduser -D -u 65532 -h /home/ox ox
+USER ox
+ENV HOME=/home/ox
+
 ENTRYPOINT ["/usr/bin/ox"]
 CMD ["mon"]

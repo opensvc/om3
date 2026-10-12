@@ -188,9 +188,11 @@ jobs:
           push: true
           tags: ${{ steps.meta-omx.outputs.tags }}
           labels: ${{ steps.meta-omx.outputs.labels }}
+          # The om and ox images this run built and signed, by digest: a tag
+          # another run moves meanwhile would bundle other binaries.
           build-args: |
-            OM_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om:latest
-            OX_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox:latest
+            OM_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om@${{ steps.build-om.outputs.digest }}
+            OX_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox@${{ steps.build-ox.outputs.digest }}
 
       - name: Sign omx image
         run: cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/omx@${{ steps.build-omx.outputs.digest }}"
