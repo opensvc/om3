@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kballard/go-shellquote"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 
@@ -290,7 +291,9 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename, base, snap string) 
 
 	discardFirst, dst := t.receiveDst()
 	rargs := t.receiveCmd(nil, discardFirst, dst)
-	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
+	// The peer runs the command line through its shell: the arguments are
+	// quoted for it.
+	rcmdStr := shellquote.Join(rargs...)
 	cmdStr := cmd.String()
 	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
 	if err := session.Start(rcmdStr); err != nil {
@@ -439,7 +442,9 @@ func (t *T) sendInitialTo(ctx context.Context, nodename, snap string) error {
 		}
 	}
 	rargs := t.receiveCmd(nil, discardFirst, dst)
-	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
+	// The peer runs the command line through its shell: the arguments are
+	// quoted for it.
+	rcmdStr := shellquote.Join(rargs...)
 	cmdStr := cmd.String()
 	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
 	if err := session.Start(rcmdStr); err != nil {

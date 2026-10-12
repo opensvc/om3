@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kballard/go-shellquote"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/util/plog"
@@ -107,7 +108,7 @@ func (t *Mover) Send(ctx context.Context) (string, error) {
 		send = []string{"/usr/sbin/zfs", "send", "-p", snap}
 		if parent := path.Dir(t.Name); parent != "." && strings.Contains(parent, "/") {
 			// A receive creates the dataset, not its parents.
-			if _, err := r.remote(ctx, "/usr/sbin/zfs create -p "+parent); err != nil {
+			if _, err := r.remote(ctx, shellquote.Join("/usr/sbin/zfs", "create", "-p", parent)); err != nil {
 				return "", err
 			}
 		}
@@ -118,7 +119,9 @@ func (t *Mover) Send(ctx context.Context) (string, error) {
 		receive = append(receive, "-F")
 	}
 	receive = append(receive, t.Name)
-	receiveCmdline := strings.Join(receive, " ")
+	// The peer runs the command lines through its shell: the arguments are
+	// quoted for it.
+	receiveCmdline := shellquote.Join(receive...)
 	t.infof("%s | ssh %s %s", strings.Join(send, " "), t.Node, receiveCmdline)
 	if err := r.pipe(ctx, send, receiveCmdline); err != nil {
 		return "", fmt.Errorf("send %s to %s: %w", snap, t.Node, err)
@@ -147,7 +150,7 @@ func (t *Mover) Prune(ctx context.Context, keep string) error {
 		t.infof("zfs destroy %s", s)
 	}
 	for _, s := range staleMoveSnapshots(remoteSnaps, keep) {
-		if _, err := r.remote(ctx, "/usr/sbin/zfs destroy "+s); err != nil {
+		if _, err := r.remote(ctx, shellquote.Join("/usr/sbin/zfs", "destroy", s)); err != nil {
 			errs = append(errs, err.Error())
 			continue
 		}
@@ -180,7 +183,7 @@ func (t *Mover) localSnapshots(ctx context.Context) ([]moveSnapshot, error) {
 // and whether it holds the dataset at all.
 func (t *Mover) remoteSnapshots(ctx context.Context) ([]moveSnapshot, bool, error) {
 	r := t.runner()
-	b, err := r.remote(ctx, "/usr/sbin/zfs list -H -o name "+t.Name)
+	b, err := r.remote(ctx, shellquote.Join("/usr/sbin/zfs", "list", "-H", "-o", "name", t.Name))
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			return nil, false, nil
@@ -190,7 +193,7 @@ func (t *Mover) remoteSnapshots(ctx context.Context) ([]moveSnapshot, bool, erro
 	if len(bytes.TrimSpace(b)) == 0 {
 		return nil, false, nil
 	}
-	b, err = r.remote(ctx, "/usr/sbin/zfs "+strings.Join(snapshotListArgs(t.Name), " "))
+	b, err = r.remote(ctx, shellquote.Join(append([]string{"/usr/sbin/zfs"}, snapshotListArgs(t.Name)...)...))
 	if err != nil {
 		return nil, true, err
 	}

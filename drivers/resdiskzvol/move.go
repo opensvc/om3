@@ -3,6 +3,8 @@ package resdiskzvol
 import (
 	"context"
 
+	"github.com/kballard/go-shellquote"
+
 	"github.com/opensvc/om3/v3/util/zfs"
 )
 
@@ -32,7 +34,7 @@ func (t *T) PreMove(ctx context.Context, to string) error {
 		return err
 	}
 	t.moveSnapshot = snap
-	return m.Remote(ctx, "udevadm settle && test -e "+t.devpath())
+	return m.Remote(ctx, "udevadm settle && test -e "+shellquote.Join(t.devpath()))
 }
 
 // PostMove implements resource.PostMover. The container runs on the

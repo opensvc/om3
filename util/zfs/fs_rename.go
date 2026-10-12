@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/kballard/go-shellquote"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/util/args"
@@ -82,7 +83,9 @@ func (t *Filesystem) Rename(dst string, fopts ...funcopt.O) error {
 	session.Stdout = &b
 	session.Stderr = &b
 
-	if err := session.Run(cmdStr); err != nil {
+	// The peer runs the command line through its shell: the arguments are
+	// quoted for it.
+	if err := session.Run(shellquote.Join(cmd.Args...)); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
 		if ec == 0 {
