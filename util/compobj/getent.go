@@ -47,14 +47,26 @@ func getentID(database, name string) (int, error) {
 // checkAccountName refuses a user or group name of a rule that the account
 // tools would read as an option rather than as a name: one starting with a
 // '-' past the leading '-' marking a name to delete, when the rule allows
-// that marker.
+// that marker. A name holding a ':' or a line break is refused too: it would
+// end the field, or the record, of the account files and of the lines fed to
+// chpasswd.
 func checkAccountName(name string, deletable bool) error {
 	s := name
 	if deletable {
 		s = strings.TrimPrefix(s, "-")
 	}
-	if s == "" || strings.HasPrefix(s, "-") {
+	if s == "" || strings.HasPrefix(s, "-") || strings.ContainsAny(s, ":\r\n") {
 		return fmt.Errorf("invalid user or group name %q", name)
+	}
+	return nil
+}
+
+// checkPasswordHash refuses a password hash holding a ':' or a line break,
+// which no hash holds: written to chpasswd, it would end the record, and the
+// next line would set the password of another account.
+func checkPasswordHash(s string) error {
+	if strings.ContainsAny(s, ":\r\n") {
+		return fmt.Errorf("invalid password hash: a hash holds no ':' nor line break")
 	}
 	return nil
 }

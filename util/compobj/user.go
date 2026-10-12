@@ -246,6 +246,10 @@ func (t *CompUsers) Add(s string) error {
 			t.Errorf("%s\n", err)
 			return err
 		}
+		if err := checkPasswordHash(rule.Password); err != nil {
+			t.Errorf("%s: %s\n", name, err)
+			return err
+		}
 
 		if !strings.HasPrefix(name, "-") {
 			if rule.UID == nil {

@@ -80,3 +80,17 @@ func TestGetNormalFileRefusesAnErrorAndAnUnverifiedServer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "content", string(b))
 }
+
+// A name or a password hash holding a ':' or a line break would end the
+// record fed to chpasswd, and set the password of another account.
+func TestAUserRuleCannotAddAChpasswdRecord(t *testing.T) {
+	assert.Error(t, checkPasswordHash("$6$salt$hash\nroot:$6$x$y"))
+	assert.Error(t, checkPasswordHash("a:b"))
+	assert.NoError(t, checkPasswordHash("$6$salt$hash/./"))
+	assert.NoError(t, checkPasswordHash("!!"))
+	assert.Error(t, checkAccountName("bob\nroot", true))
+	assert.Error(t, checkAccountName("bob:x", false))
+
+	obj := CompUsers{Obj: &Obj{rules: make([]interface{}, 0), verbose: true}}
+	assert.Error(t, obj.Add(`{"bob": {"uid": 1000, "gid": 1000, "password": "$6$a$b\nroot:$6$c$d"}}`))
+}
