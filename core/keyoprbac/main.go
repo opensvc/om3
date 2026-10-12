@@ -131,6 +131,28 @@ var containerTypes = []string{"oci", "docker", "podman"}
 // only inside a volume of the object.
 var taskTypes = append(slices.Clone(containerTypes), "acme")
 
+// containerNameRule is the rule of the name of a container.
+//
+// The container engine knows the containers by name, and the driver stops,
+// removes and starts the one of that name, whichever object it belongs to:
+// a name of the user's choosing could name a container of another object, or
+// of the node. The default name is the object's own.
+var containerNameRule = Rule{
+	Grant:  rbac.GrantRoot,
+	Reason: "a container name of the user's choosing requires the root grant: the default name is the object's own",
+}
+
+// containerImageRule is the rule of the image of a container.
+//
+// The image is the first operand of the run command of the engine, after its
+// options: one starting with a '-' would be read as an option, and set what
+// the other rules refuse, as a host path mount.
+var containerImageRule = Rule{
+	Grant:  rbac.GrantRoot,
+	Reason: "an image starting with a '-' requires the root grant",
+	Denies: valueOnly(func(s string) bool { return strings.HasPrefix(s, "-") }),
+}
+
 // rootRule is the group default of the driver groups whose keywords describe
 // what the object takes from the node.
 var rootRule = Rule{Grant: rbac.GrantRoot, Reason: reasonRoot}
@@ -201,6 +223,8 @@ var rules = map[string]Group{
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
 		},
+		"name":  containerNameRule,
+		"image": containerImageRule,
 		// om writes the resolver of the container from these, so they decide
 		// what the names in it resolve to.
 		"dns": {
@@ -228,6 +252,8 @@ var rules = map[string]Group{
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
 		},
+		"name":  containerNameRule,
+		"image": containerImageRule,
 		"dns": {
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,

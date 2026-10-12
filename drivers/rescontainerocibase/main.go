@@ -264,6 +264,11 @@ const (
 var _ resource.Encaper = (*BT)(nil)
 
 func (t *BT) Configure() error {
+	// The image is an operand of the engine command lines, after their
+	// options: one starting with a '-' would be read as an option.
+	if strings.HasPrefix(t.Image, "-") {
+		return fmt.Errorf("invalid image %q: an image does not start with a '-'", t.Image)
+	}
 	l := t.T.Log().Attr("container_name", t.ContainerName())
 	t.SetLoggerForTest(l)
 	if !t.Detach {
