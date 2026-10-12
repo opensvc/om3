@@ -44,6 +44,7 @@ const (
 	alertKindDeprecatedValue
 	alertKindMoved
 	alertKindCapabilities
+	alertKindInvalidSection
 )
 
 var (
@@ -67,6 +68,7 @@ var (
 	alertKindDeprecatedValueStr = "deprecated value"
 	alertKindMovedStr           = "moved keyword"
 	alertKindCapabilitiesStr    = "unusable driver on this node"
+	alertKindInvalidSectionStr  = "invalid section name"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -78,6 +80,7 @@ var (
 		alertKindDeprecatedValue: alertKindDeprecatedValueStr,
 		alertKindMoved:           alertKindMovedStr,
 		alertKindCapabilities:    alertKindCapabilitiesStr,
+		alertKindInvalidSection:  alertKindInvalidSectionStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -90,6 +93,7 @@ var (
 		alertKindDeprecatedValueStr: alertKindDeprecatedValue,
 		alertKindMovedStr:           alertKindMoved,
 		alertKindCapabilitiesStr:    alertKindCapabilities,
+		alertKindInvalidSectionStr:  alertKindInvalidSection,
 	}
 )
 
@@ -137,6 +141,19 @@ func (t T) NewAlertUnsupportedSection(section, sectionType string) Alert {
 // NewAlertUnknownSection says a section is neither a resource nor a section
 // an object reads, so nothing uses it: the status has no resource to show it
 // by, and the validation is the only place it is reported.
+// NewAlertInvalidSection says a section is named with a character no resource
+// id is made of. Its resource is not configured, and it is an error, so a write
+// naming it is refused rather than ignored.
+func (t T) NewAlertInvalidSection(section string, err error) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindInvalidSection,
+		Level:   alertLevelError,
+		Key:     key.T{Section: section},
+		Comment: err.Error(),
+	}
+}
+
 func (t T) NewAlertUnknownSection(section string) Alert {
 	return Alert{
 		Path:    t.Path,
@@ -370,6 +387,12 @@ func (t T) Validate() (Alerts, error) {
 		var did driver.ID
 		section := s.Name()
 		sectionType := t.GetString(key.New(section, "type"))
+		if !strings.HasPrefix(section, "subset#") {
+			if err := resourceid.CheckName(section); err != nil {
+				alerts = append(alerts, t.NewAlertInvalidSection(section, err))
+				continue
+			}
+		}
 		if rid, err := resourceid.Parse(section); err == nil {
 			if rid.DriverGroup() == driver.GroupUnknown && t.hasResourceSections() {
 				if rid.IsIndexed() {

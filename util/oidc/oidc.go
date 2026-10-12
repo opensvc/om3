@@ -21,6 +21,7 @@ import (
 	"html"
 	"net"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -118,7 +119,42 @@ func Discover(ctx context.Context, issuer string) (*Provider, error) {
 	if p.AuthorizationEndpoint == "" || p.TokenEndpoint == "" {
 		return nil, fmt.Errorf("discover %s: no authorization or token endpoint", issuer)
 	}
+	for _, endpoint := range []string{p.AuthorizationEndpoint, p.TokenEndpoint, p.DeviceAuthorizationEndpoint} {
+		if endpoint == "" {
+			continue
+		}
+		if err := CheckEndpoint(endpoint); err != nil {
+			return nil, fmt.Errorf("discover %s: %w", issuer, err)
+		}
+	}
 	return &p, nil
+}
+
+// CheckEndpoint refuses an endpoint url that is not a web address the user
+// can trust with credentials: an https one, or an http one of this machine.
+//
+// The authorization endpoint is opened in the browser of the user, by a
+// program that hands it whatever the url names, a local file or the handler
+// of another scheme included.
+func CheckEndpoint(s string) error {
+	u, err := url.Parse(s)
+	if err != nil {
+		return fmt.Errorf("endpoint %s: %w", s, err)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("endpoint %s: no host", s)
+	}
+	switch u.Scheme {
+	case "https":
+		return nil
+	case "http":
+		if ip := net.ParseIP(u.Hostname()); (ip != nil && ip.IsLoopback()) || u.Hostname() == "localhost" {
+			return nil
+		}
+		return fmt.Errorf("endpoint %s: an http endpoint is a loopback one only", s)
+	default:
+		return fmt.Errorf("endpoint %s: the scheme is not https", s)
+	}
 }
 
 // Scopes returns the scopes to ask: the wanted ones the provider supports,
@@ -261,6 +297,12 @@ func (p *Provider) LoginDevice(ctx context.Context, clientID string, prompt func
 func Refresh(ctx context.Context, tokenEndpoint, clientID, refreshToken string) (*Token, error) {
 	if refreshToken == "" {
 		return nil, ErrNoRefreshToken
+	}
+	// The endpoint is read back from where a login stored it, which a
+	// discovery checked, or not: it is sent the refresh token, so it is
+	// checked again.
+	if err := CheckEndpoint(tokenEndpoint); err != nil {
+		return nil, fmt.Errorf("refresh the token: %w", err)
 	}
 	cfg := &oauth2.Config{
 		ClientID: clientID,

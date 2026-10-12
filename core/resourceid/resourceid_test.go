@@ -34,6 +34,35 @@ func TestIsExact(t *testing.T) {
 	}
 }
 
+// A resource id names paths and is written in commands: one leading out of the
+// var directory of its object, or into a shell, is refused, while a pattern of
+// ids is not.
+func TestParseRefusesWhatIsNoResourceIdCharacter(t *testing.T) {
+	for _, s := range []string{
+		"fs#x/../../etc/cron.d",
+		"fs#/etc",
+		`fs#a\b`,
+		"fs#$(touch /x)",
+		"fs#`id`",
+		"fs#a;b",
+		"fs#a b",
+		"fs#a\nb",
+		"fs#a\x00",
+		"fs#'a'",
+		"fs#a|b",
+		"fs#a&b",
+		"fs#a>b",
+		"fs#{env.x}",
+	} {
+		_, err := Parse(s)
+		assert.Error(t, err, "%q", s)
+	}
+	for _, s := range []string{"fs#1", "container#web-1", "task#a_b", "app#a.b", "foo#bar", "node", "fs#d*", "ip#?", "fs#[12]", "fs#[!1]", "*"} {
+		_, err := Parse(s)
+		assert.NoError(t, err, "%q", s)
+	}
+}
+
 // A resource section is <group>#<index>: a bare name, or half of the pair,
 // is not one.
 func TestIsIndexed(t *testing.T) {

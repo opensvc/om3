@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -176,19 +176,11 @@ func (t CompFile) ParseUID() (int, error) {
 	case float64:
 		return int(v), nil
 	case string:
-		cmd := exec.Command("bash", "-c", "getent passwd "+t.UID.(string)+" | cut -d: -f3")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return -1, fmt.Errorf("%w: %s", err, output)
+		uid, err := getentID("passwd", v)
+		if errors.Is(err, errGetentNotFound) {
+			return -1, fmt.Errorf("the user %s does not exist", v)
 		}
-		if len(output) == 0 {
-			return -1, fmt.Errorf("the user %s does not exist", t.UID.(string))
-		}
-		uid, err := strconv.ParseInt(string(output)[:len(output)-1], 10, 64)
-		if err != nil {
-			return -1, err
-		}
-		return int(uid), nil
+		return uid, err
 	default:
 		return -1, nil
 	}
@@ -201,15 +193,10 @@ func (t CompFile) ParseGID() (int, error) {
 	case float64:
 		return int(v), nil
 	case string:
-		cmd := exec.Command("bash", "-c", "getent group "+t.GID.(string)+" | cut -d: -f3")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return -1, fmt.Errorf("%w: %s", err, output)
+		gid, err := getentID("group", v)
+		if errors.Is(err, errGetentNotFound) {
+			return -1, fmt.Errorf("the group %s does not exist", v)
 		}
-		if len(output) == 0 {
-			return -1, fmt.Errorf("the group %s does not exist", t.GID.(string))
-		}
-		gid, err := strconv.ParseInt(string(output)[:len(output)-1], 10, 64)
 		if err != nil {
 			return -1, err
 		}

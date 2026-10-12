@@ -196,7 +196,7 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
 	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
-	assert.Equal(t, "", Doc(naming.KindSvc, "ip", "network"))
+	assert.Equal(t, "A network named by a path requires the root grant.", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
 	assert.Equal(t, "A server-local source uri, or a setuid or setgid mode, requires the root grant.", Doc(naming.KindSvc, "volume", "install"))
 	assert.Equal(t, "Requires the prioritizer grant.", Doc(naming.KindSvc, "DEFAULT", "priority"))
@@ -205,8 +205,20 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 
 	// A keyword any user may set says nothing, rather than saying it needs
 	// nothing on every keyword of every driver.
-	assert.Equal(t, "", Doc(naming.KindSvc, "container", "image"))
+	assert.Equal(t, "", Doc(naming.KindSvc, "container", "command"))
+	assert.Equal(t, "An image starting with a '-' requires the root grant.", Doc(naming.KindSvc, "container", "image"))
 	assert.Equal(t, "", Doc(naming.KindSvc, "env", "anything"))
+}
+
+// A network is a name: a cni address reads the configuration named after it,
+// and runs the plugin it names, so a path to a configuration elsewhere is
+// root's to write.
+func TestANetworkIsNamedNotPathed(t *testing.T) {
+	for _, v := range []string{"../../tmp/evil", "/tmp/evil", "a/b", "..", "."} {
+		assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "network", v, section("type")), v)
+	}
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "network", "backend1", section("type")))
+	assert.NoError(t, Denied(rbac.Grants{rbac.GrantRoot}, naming.KindSvc, "ip#1", "network", "../x", section("type")))
 }
 
 func TestIPDrawnFromAClusterNetwork(t *testing.T) {
@@ -264,7 +276,7 @@ func TestDeniedWithoutASectionRefuses(t *testing.T) {
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "a:/a", nil))
 
 	// A rule that reads only the keyword still answers.
-	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "image", "nginx", nil))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "command", "nginx", nil))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "run_args", "x", nil))
 }
 
@@ -458,4 +470,17 @@ func TestAddrMayBeUnset(t *testing.T) {
 		"an address of the user's choosing requires the root grant: om writes the address it draws from the network")
 	assert.NoError(t, DeniedUnset(noGrant, naming.KindSvc, "ip#1", "addr", "fd01::5:52", none))
 	assert.Error(t, DeniedUnset(noGrant, naming.KindSvc, "ip#1", "name", "fd01::5:52", none), "a keyword a user may not set stays one they may not unset")
+}
+
+// A container is the object's own: the name the engine knows it by is root's
+// to choose, and an image is an operand, never an option of the engine.
+func TestAContainerNameAndImageAreTheObjects(t *testing.T) {
+	admin := rbac.Grants{rbac.NewGrant(rbac.RoleAdmin, "ns1")}
+	set := section("type")
+	for _, rid := range []string{"container#1", "task#1"} {
+		assert.Error(t, Denied(admin, naming.KindSvc, rid, "name", "other", set), rid)
+		assert.NoError(t, Denied(rbac.Grants{rbac.GrantRoot}, naming.KindSvc, rid, "name", "other", set), rid)
+		assert.Error(t, Denied(admin, naming.KindSvc, rid, "image", "--privileged", set), rid)
+		assert.NoError(t, Denied(admin, naming.KindSvc, rid, "image", "ghcr.io/opensvc/pause", set), rid)
+	}
 }

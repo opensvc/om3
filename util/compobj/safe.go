@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
+	"regexp"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/object"
@@ -29,12 +29,18 @@ type (
 	}
 )
 
+// regexpSafeID is the id of a file of the collector safe: its number, or its
+// uuid, with the extension of the file uploaded.
+var regexpSafeID = regexp.MustCompile(`^([0-9]+|safe\.uuid\.[0-9a-fA-F-]+(\.[A-Za-z0-9_-]+)*)$`)
+
+// collectorSafeURIToUUID returns the id of the safe file a safe uri names.
+//
+// The id is a component of the path of the collector api the file is
+// fetched from, with the credentials of the node: one holding a '/', a '..'
+// or a query is refused, so it names a safe file and nothing else.
 func collectorSafeURIToUUID(uri string) (string, error) {
 	uuid := strings.Replace(uri, "safe://", "", 1)
-	if strings.HasPrefix(uuid, "safe.uuid") {
-		return uuid, nil
-	}
-	if _, err := strconv.Atoi(uuid); err != nil {
+	if !regexpSafeID.MatchString(uuid) {
 		return "", fmt.Errorf("invalid safe uri. use safe://<int> or safe.uuid.<hex>.<ext>")
 	}
 	return uuid, nil
@@ -60,12 +66,29 @@ func collectorRestGet(uri string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The request carries the credentials of the node, as v2 refuses to
+	// send them in clear.
+	if url.Scheme != "https" {
+		return nil, fmt.Errorf("refuse to submit the node credentials through a non-encrypted transport: %s", url.Redacted())
+	}
 	url.Path += uri
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 	req.SetBasicAuth(user, password)
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
-	return resp, err
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		// An error page is no content of the file asked for.
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("collector %s: %s: %s", uri, resp.Status, strings.TrimSpace(string(b)))
+	}
+	return resp, nil
 }
 
 func collectorRestGetFile(uri string) ([]byte, error) {

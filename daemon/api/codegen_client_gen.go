@@ -610,9 +610,9 @@ type ClientInterface interface {
 	GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PatchObjectDataWithBody request with any body
-	PatchObjectDataWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PatchObjectDataWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PatchObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PatchObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteObjectDataKey request
 	DeleteObjectDataKey(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2812,8 +2812,8 @@ func (c *Client) GetObjectData(ctx context.Context, namespace InPathNamespace, k
 	return c.Client.Do(req)
 }
 
-func (c *Client) PatchObjectDataWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPatchObjectDataRequestWithBody(c.Server, namespace, kind, name, contentType, body)
+func (c *Client) PatchObjectDataWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectDataRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2824,8 +2824,8 @@ func (c *Client) PatchObjectDataWithBody(ctx context.Context, namespace InPathNa
 	return c.Client.Do(req)
 }
 
-func (c *Client) PatchObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPatchObjectDataRequest(c.Server, namespace, kind, name, body)
+func (c *Client) PatchObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectDataRequest(c.Server, namespace, kind, name, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14968,18 +14968,18 @@ func NewGetObjectDataRequest(server string, namespace InPathNamespace, kind InPa
 }
 
 // NewPatchObjectDataRequest calls the generic PatchObjectData builder with application/json body
-func NewPatchObjectDataRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody) (*http.Request, error) {
+func NewPatchObjectDataRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, body PatchObjectDataJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPatchObjectDataRequestWithBody(server, namespace, kind, name, "application/json", bodyReader)
+	return NewPatchObjectDataRequestWithBody(server, namespace, kind, name, params, "application/json", bodyReader)
 }
 
 // NewPatchObjectDataRequestWithBody generates requests for PatchObjectData with any type of body
-func NewPatchObjectDataRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+func NewPatchObjectDataRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15016,6 +15016,33 @@ func NewPatchObjectDataRequestWithBody(server string, namespace InPathNamespace,
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
@@ -16492,9 +16519,9 @@ type ClientWithResponsesInterface interface {
 	GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error)
 
 	// PatchObjectDataWithBodyWithResponse request with any body
-	PatchObjectDataWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error)
+	PatchObjectDataWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error)
 
-	PatchObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error)
+	PatchObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error)
 
 	// DeleteObjectDataKeyWithResponse request
 	DeleteObjectDataKeyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *DeleteObjectDataKeyParams, reqEditors ...RequestEditorFn) (*DeleteObjectDataKeyResponse, error)
@@ -24242,16 +24269,16 @@ func (c *ClientWithResponses) GetObjectDataWithResponse(ctx context.Context, nam
 }
 
 // PatchObjectDataWithBodyWithResponse request with arbitrary body returning *PatchObjectDataResponse
-func (c *ClientWithResponses) PatchObjectDataWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error) {
-	rsp, err := c.PatchObjectDataWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PatchObjectDataWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error) {
+	rsp, err := c.PatchObjectDataWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParsePatchObjectDataResponse(rsp)
 }
 
-func (c *ClientWithResponses) PatchObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error) {
-	rsp, err := c.PatchObjectData(ctx, namespace, kind, name, body, reqEditors...)
+func (c *ClientWithResponses) PatchObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectDataParams, body PatchObjectDataJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchObjectDataResponse, error) {
+	rsp, err := c.PatchObjectData(ctx, namespace, kind, name, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

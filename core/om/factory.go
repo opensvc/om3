@@ -218,6 +218,8 @@ func newCmdObjectKeyAdd(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagConfigWait(flags, &options.Wait)
+	commoncmd.FlagTime(flags, &options.Time)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagFrom(flags, &from)
 	commoncmd.FlagKeyName(flags, &options.Name)
@@ -247,6 +249,8 @@ func newCmdObjectKeyChange(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagConfigWait(flags, &options.Wait)
+	commoncmd.FlagTime(flags, &options.Time)
 	commoncmd.FlagFrom(flags, &from)
 	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
@@ -333,6 +337,8 @@ func newCmdObjectKeyRemove(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagConfigWait(flags, &options.Wait)
+	commoncmd.FlagTime(flags, &options.Time)
 	commoncmd.FlagKeyNames(flags, &options.Names)
 	flags.MarkHidden("name")
 	return cmd
@@ -348,6 +354,8 @@ func newCmdObjectKeyRename(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagConfigWait(flags, &options.Wait)
+	commoncmd.FlagTime(flags, &options.Time)
 	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyTo(flags, &options.To)
 	flags.MarkHidden("name")

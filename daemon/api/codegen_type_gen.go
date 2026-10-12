@@ -4362,6 +4362,20 @@ type GetObjectDataParams struct {
 	Names *Names `form:"name,omitempty" json:"name,omitempty"`
 }
 
+// PatchObjectDataParams defines parameters for PatchObjectData.
+type PatchObjectDataParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
 // DeleteObjectDataKeyParams defines parameters for DeleteObjectDataKey.
 type DeleteObjectDataKeyParams struct {
 	Name InQueryKeyName `form:"name" json:"name"`

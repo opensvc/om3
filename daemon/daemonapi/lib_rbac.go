@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/rootless"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -48,6 +49,9 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
+	}
+	if err := sectionNameRbac(cfg); err != nil {
+		return err
 	}
 	from := currentConfig(p)
 	if err := configRbacChanges(grants, p.Kind, from, cfg); err != nil {
@@ -288,6 +292,27 @@ func currentConfig(p naming.Path) *xconfig.T {
 	return configurer.Config()
 }
 
+// sectionNameRbac refuses a section named with a character no resource id is
+// made of.
+//
+// The policy judges a section by the driver group before its '#', and the
+// rest of the name is the id of the resource, which names its paths on the
+// node and is written in the commands the drivers run: a "fs#x/../.." is a
+// flag the policy allows, kept outside the var directory of the object.
+// Parsing refuses such an id, so the resource would be silently ignored: the
+// write is refused instead, so its author knows.
+func sectionNameRbac(cfg *xconfig.T) error {
+	for _, section := range cfg.SectionStrings() {
+		if strings.HasPrefix(section, "subset#") {
+			continue
+		}
+		if err := resourceid.CheckName(section); err != nil {
+			return fmt.Errorf("%w: section %s: %w", ErrDenied, section, err)
+		}
+	}
+	return nil
+}
+
 // configRbacChanges checks the keywords a write changes against the policy.
 func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T) error {
 	scopes := rbacScopes(from, to)
@@ -314,6 +339,9 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			if err := keyopRbacOn(grants, kind, kop, set, nodename); err != nil {
 				return err
 			}
+			if err := driverRbacOn(grants, kind, to, k, set, nodename); err != nil {
+				return err
+			}
 		}
 		if err := sectionDriverRbac(grants, kind, from, to, section, set, scopes); err != nil {
 			return err
@@ -334,6 +362,9 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				continue
 			}
 			if err := keyUnsetRbac(grants, kind, k, evaluatedOrWritten(from, k), set); err != nil {
+				return err
+			}
+			if err := driverRbacOn(grants, kind, from, k, set, ""); err != nil {
 				return err
 			}
 		}
@@ -586,6 +617,28 @@ func keyopRbacOn(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac
 		return fmt.Errorf("%w: %s: %w", ErrDenied, op, err)
 	default:
 		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, op, nodename, err)
+	}
+}
+
+// driverRbacOn refuses a change to a keyword of a section running, on
+// nodename, a driver the grants may not choose: the type written there, or
+// the one the group falls back to when it names none. cfg is the
+// configuration the section runs that driver in, the one written for a
+// keyword set, the one before the write for a keyword taken away.
+func driverRbacOn(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T, k key.T, set keyoprbac.Section, nodename string) error {
+	typ := cfg.GetStringAs(key.New(k.Section, "type"), nodename)
+	if typ == "" {
+		group, _, _ := strings.Cut(k.Section, "#")
+		typ = driver.DefaultDriver[driver.NewGroup(group)]
+	}
+	err := keyoprbac.DeniedByDriver(grants, kind, k.Section, k.Option, typ, set)
+	switch {
+	case err == nil:
+		return nil
+	case nodename == "" || nodename == hostname.Hostname():
+		return fmt.Errorf("%w: %s: %w", ErrDenied, k, err)
+	default:
+		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, k, nodename, err)
 	}
 }
 

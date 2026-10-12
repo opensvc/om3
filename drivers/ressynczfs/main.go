@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kballard/go-shellquote"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
-	"github.com/opensvc/om3/v3/core/nodesinfo"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -95,6 +95,14 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
+	if reason := t.EnvSkipReason(); reason != "" {
+		if isCron {
+			t.Log().Tracef("%s", reason)
+		} else {
+			t.Log().Infof("%s", reason)
+		}
+		return nil
+	}
 	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", reason)
 	}
@@ -154,7 +162,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		results  = make([]*peerState, len(nodenames))
 	)
 	for i, nodename := range nodenames {
-		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
+		if err := t.PeerEnvRefusal(nodename); err != nil {
 			if isCron {
 				t.Log().Tracef("%s", err)
 			} else {
@@ -291,7 +299,9 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename, base, snap string) 
 
 	discardFirst, dst := t.receiveDst()
 	rargs := t.receiveCmd(nil, discardFirst, dst)
-	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
+	// The peer runs the command line through its shell: the arguments are
+	// quoted for it.
+	rcmdStr := shellquote.Join(rargs...)
 	cmdStr := cmd.String()
 	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
 	if err := session.Start(rcmdStr); err != nil {
@@ -440,7 +450,9 @@ func (t *T) sendInitialTo(ctx context.Context, nodename, snap string) error {
 		}
 	}
 	rargs := t.receiveCmd(nil, discardFirst, dst)
-	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
+	// The peer runs the command line through its shell: the arguments are
+	// quoted for it.
+	rcmdStr := shellquote.Join(rargs...)
 	cmdStr := cmd.String()
 	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
 	if err := session.Start(rcmdStr); err != nil {
@@ -677,32 +689,6 @@ func (t *T) isFlexAndNotPrimary() bool {
 		return false
 	}
 	return true
-}
-
-func (t *T) isSendAllowedToPeerEnv(nodename string) error {
-	var localEnv, peerEnv string
-	nodesInfo, err := nodesinfo.Load()
-	if err != nil {
-		return fmt.Errorf("get nodes info: %w", err)
-	}
-	getEnv := func(n string, s *string) error {
-		if m, ok := nodesInfo[n]; !ok {
-			return fmt.Errorf("node %s not found in nodes_info.json", n)
-		} else {
-			*s = m.Env
-		}
-		return nil
-	}
-	if err := getEnv(hostname.Hostname(), &localEnv); err != nil {
-		return err
-	}
-	if err := getEnv(nodename, &peerEnv); err != nil {
-		return err
-	}
-	if localEnv != "PRD" && peerEnv == "PRD" {
-		return fmt.Errorf("refuse to sync from a non-PRD node to a PRD node")
-	}
-	return nil
 }
 
 func (t *T) getTargetNodenames(isSourceNode bool) []string {

@@ -88,17 +88,30 @@ func (t *T) Stop() error {
 func (t *T) serve(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 
-	s := &http2.Server{}
-	t.server = &http.Server{
-		Handler:  h2c.NewHandler(routehttp.New(ctx, false), s),
-		ErrorLog: golog.New(t.log.Logger(), "", 0),
-	}
+	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
 	t.log.Infof("started")
 	errC <- nil
 	if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 		t.log.Tracef("serve ends with unexpected error: %s", err)
 	}
 	t.log.Infof("stopped")
+}
+
+// newServer returns the server of the ux listener, serving handler over
+// http/1.1 and cleartext http/2.
+//
+// The socket is root's, but a client stalling its headers, or keeping an idle
+// connection, holds a goroutine of the daemon all the same: both are timed.
+// The http/2 connections are read by the http/2 server once the http/1.1
+// server read their preface, so it is timed too.
+func newServer(handler http.Handler, errorLog *golog.Logger) *http.Server {
+	s := &http2.Server{IdleTimeout: daemonenv.HTTPIdleTimeout}
+	return &http.Server{
+		Handler:           h2c.NewHandler(handler, s),
+		ErrorLog:          errorLog,
+		ReadHeaderTimeout: daemonenv.HTTPReadHeaderTimeout,
+		IdleTimeout:       daemonenv.HTTPIdleTimeout,
+	}
 }
 
 // janitor watches the events the ux listener acts on, which are the audit

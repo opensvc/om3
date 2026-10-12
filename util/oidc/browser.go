@@ -15,7 +15,14 @@ var ErrNoBrowser = errors.New("no browser to open")
 // On linux and the other unixes, a browser needs a graphical session: one
 // reached through ssh has none, and its user is asked to log in with a device
 // code instead.
+//
+// The url is handed to the opener of the system, which opens whatever it
+// names: a web address is checked to be one, so it names no local file nor
+// the handler of another scheme.
 func OpenBrowser(url string) error {
+	if err := CheckEndpoint(url); err != nil {
+		return err
+	}
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":

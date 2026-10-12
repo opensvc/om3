@@ -2,17 +2,24 @@ package daemonapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
-func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PatchObjectDataParams) error {
 	log := LogHandler(ctx, "PatchObjectData")
 
 	if v, err := assertAdmin(ctx, namespace); !v {
@@ -36,6 +43,12 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+
+	waitCtx, cancel, waiting, err := waitContext(ctx, params.Wait)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	defer cancel()
 
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
@@ -66,6 +79,12 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
+		}
+
+		var sub *pubsub.Subscription
+		if waiting {
+			sub = a.subscribeConfigPropagation(fmt.Sprintf("api.patch_object_data %s %s", p, ctx.Get("uuid")), p)
+			defer func() { _ = sub.Stop() }()
 		}
 
 		for _, patch := range patches {
@@ -100,7 +119,7 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 				}
 			case "rename":
 				if patch.To == nil {
-					JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: rename with no target name", patch.Name)
+					return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s: rename with no target name", patch.Name)
 				}
 				if err := ks.TransactionRenameKey(patch.Name, *patch.To); err != nil {
 					return JSONProblemf(ctx, http.StatusInternalServerError, "RenameKey", "%s: %s", patch.Name, err)
@@ -114,20 +133,49 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 		}
 		a.announceConfigFileWritten(p)
+		mtime := file.ModTime(p.ConfigFile())
+		if !mtime.IsZero() {
+			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
+		}
+		// Asked to wait, the answer is held until the configuration has
+		// reached every live node of the object, as a configuration update
+		// does: a wait that expires says where it has not landed yet, and is
+		// not a failure of the write.
+		if waiting && !mtime.IsZero() {
+			if lagging := a.waitConfigPropagated(waitCtx, sub, p, mtime); len(lagging) > 0 {
+				return JSONProblemf(ctx, http.StatusRequestTimeout, "Configuration still propagating",
+					"the keys of %s are committed as of %s, and have not reached %s before the wait expired",
+					p, mtime.Format(time.RFC3339Nano), strings.Join(lagging, ", "))
+			}
+		}
 		return ctx.NoContent(http.StatusNoContent)
 	}
 
+	// The operations are applied by the first node holding the object, which
+	// answers for them: the configuration it commits reaches the others.
 	for nodename := range instanceConfigData {
-		c, err := a.newProxyClient(ctx, nodename)
+		var proxyOpts []funcopt.O
+		if waiting {
+			// The peer holds the answer for as long as the wait, which is
+			// longer than a client allows an answer by default.
+			proxyOpts = append(proxyOpts, client.WithTimeout(0))
+		}
+		c, err := a.newProxyClient(ctx, nodename, proxyOpts...)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
 		}
-		if resp, err := c.PatchObjectDataWithResponse(ctx.Request().Context(), namespace, kind, name, patches); err != nil {
+		resp, err := c.PatchObjectDataWithResponse(ctx.Request().Context(), namespace, kind, name, &params, patches)
+		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-		} else if len(resp.Body) > 0 {
+		}
+		if v := resp.HTTPResponse.Header.Get(api.HeaderLastModified); v != "" {
+			ctx.Response().Header().Add(api.HeaderLastModified, v)
+		}
+		if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
 		}
+		return ctx.NoContent(resp.StatusCode())
 	}
 
-	return nil
+	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", p)
 }

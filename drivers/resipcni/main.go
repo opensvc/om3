@@ -78,7 +78,16 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
+// pluginFile returns the path of the plugin binary of that name, or "" when
+// none is installed.
+//
+// The name is the type of the cni configuration, and a binary it names is run
+// as root: one naming a path rather than a file of the plugin directories is
+// none.
 func (t *T) pluginFile(plugin string) string {
+	if !isFileName(plugin) {
+		return ""
+	}
 	candidates := []string{
 		t.CNIPlugins,
 		"/usr/lib/cni",
@@ -434,9 +443,30 @@ func (t *T) netConfFile() string {
 	return filepath.Join(t.CNIConfig, t.Network+".conf")
 }
 
+// checkNetwork refuses a network keyword naming a path rather than a network.
+//
+// The keyword is the namespace administrator's to set, and names the cni
+// configuration read, whose type names the plugin run as root: it has to stay
+// a file of the cni configuration directory.
+func (t *T) checkNetwork() error {
+	if !isFileName(t.Network) {
+		return fmt.Errorf("invalid network %q: a network is named, not a path", t.Network)
+	}
+	return nil
+}
+
 func (t *T) netConfBytes() ([]byte, error) {
+	if err := t.checkNetwork(); err != nil {
+		return nil, err
+	}
 	s := t.netConfFile()
 	return os.ReadFile(s)
+}
+
+// isFileName reports whether s is the name of a file in a directory, and not a
+// path leading elsewhere.
+func isFileName(s string) bool {
+	return s != "" && s != "." && s != ".." && !strings.ContainsAny(s, `/\`)
 }
 
 type (

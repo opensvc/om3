@@ -101,6 +101,16 @@ func (t CompGroupsMemberships) Add(s string) error {
 			t.Errorf("%s\n", err)
 			return err
 		}
+		if err := checkAccountName(groupName, false); err != nil {
+			t.Errorf("%s\n", err)
+			return err
+		}
+		for _, member := range rule.Members {
+			if err := checkAccountName(member, true); err != nil {
+				t.Errorf("%s\n", err)
+				return err
+			}
+		}
 		rule.Group = groupName
 		if i := t.locatePresenceInRules(rule.Group); i != -1 {
 			t.rules[i] = rule

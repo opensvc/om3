@@ -1,7 +1,9 @@
 A code like PRD, DEV, etc... the agent can use to enforce data protection policies:
 
-* A non-PRD object instance can not be started on a PRD node
+* A non-PRD object instance can not be started on a PRD node, unless the node `allow_envs` keyword allows its env
 * A PRD object instance can be started on a non-PRD node (typically in a DRP situation)
+* A PRD object instance running on a non-PRD node does not sync its data to its peers
+* A non-PRD node does not sync data to a PRD node
 
 The default value is read from the node `env` keyword.
 

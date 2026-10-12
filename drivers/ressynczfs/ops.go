@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kballard/go-shellquote"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -37,7 +38,9 @@ func (t *T) zfsRun(nodename string, args ...string) (out []byte, notFound bool, 
 		defer session.Close()
 		session.Stdout = &stdout
 		session.Stderr = &stderr
-		err = session.Run(cmd.String())
+		// The peer runs the command line through its shell: the
+		// arguments are quoted for it.
+		err = session.Run(shellquote.Join(cmd.Args...))
 	}
 	if err != nil {
 		if s := stderr.String(); strings.Contains(s, "does not exist") || strings.Contains(s, "could not find") {

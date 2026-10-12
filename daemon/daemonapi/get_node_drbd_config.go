@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
@@ -18,7 +19,7 @@ func (a *DaemonAPI) GetNodeDRBDConfig(ctx echo.Context, nodename string, params 
 	}
 	log := LogHandler(ctx, "GetNodeDRBDConfig")
 	log.Tracef("starting")
-	if params.Name == "" {
+	if !isDRBDResName(params.Name) {
 		log.Warnf("invalid file name: %s", params.Name)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid file name: %s", params.Name)
 	}
@@ -43,4 +44,10 @@ func (a *DaemonAPI) getLocalDRBDConfig(ctx echo.Context, params api.GetNodeDRBDC
 	}
 
 	return ctx.JSON(http.StatusOK, resp)
+}
+
+// isDRBDResName reports whether name names a resource file of /etc/drbd.d,
+// rather than a path leading out of it.
+func isDRBDResName(name string) bool {
+	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`)
 }

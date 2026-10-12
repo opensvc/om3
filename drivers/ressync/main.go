@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
@@ -36,6 +37,11 @@ type (
 		MaxDelay *time.Duration `json:"max_delay"`
 		Schedule string         `json:"schedule"`
 		Path     naming.Path    `json:"path"`
+
+		// ObjectEnv and NodeEnv are the env of the object and of this
+		// node, for the drivers whose manifest binds them.
+		ObjectEnv string `json:"object_env"`
+		NodeEnv   string `json:"node_env"`
 	}
 )
 
@@ -65,6 +71,46 @@ var (
 		&KWSchedule,
 	}
 )
+
+// EnvSkipReason returns why a sync from this node is skipped, or "" when it
+// is not.
+//
+// A PRD object running on a node that is not PRD, as on a DRP node after a
+// failover, does not sync: its copies on the PRD nodes are the data to fall
+// back to, which a sync from here would overwrite. The other envs sync
+// wherever they run, as in v2.
+func (t *T) EnvSkipReason() string {
+	if t.ObjectEnv == "PRD" && t.NodeEnv != "PRD" {
+		return fmt.Sprintf("won't sync a PRD object running on a %s node", t.NodeEnv)
+	}
+	return ""
+}
+
+// PeerEnvRefusal returns why the peer nodename is not sent the data of the
+// resource, or nil when it is.
+//
+// A node that is not PRD sends nothing to a PRD node, whatever the env of the
+// object: its data would overwrite the production one there. It completes the
+// rule of EnvSkipReason, which is about the object, with the one about the
+// nodes.
+func (t *T) PeerEnvRefusal(nodename string) error {
+	nodesInfo, err := nodesinfo.Load()
+	if err != nil {
+		return fmt.Errorf("get nodes info: %w", err)
+	}
+	peer, ok := nodesInfo[nodename]
+	if !ok {
+		return fmt.Errorf("node %s not found in nodes_info.json", nodename)
+	}
+	return peerEnvRefusal(t.NodeEnv, peer.Env)
+}
+
+func peerEnvRefusal(localEnv, peerEnv string) error {
+	if localEnv != "PRD" && peerEnv == "PRD" {
+		return fmt.Errorf("refuse to sync from a non-PRD node to a PRD node")
+	}
+	return nil
+}
 
 // GetMaxDelay is how long after lastSync the copy is stale: max_delay when
 // set, or else derived from the schedule, 0 meaning neither is.

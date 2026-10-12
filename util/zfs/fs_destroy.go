@@ -4,6 +4,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/kballard/go-shellquote"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/util/args"
@@ -113,7 +114,9 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 	}
 	defer session.Close()
 
-	if b, err := session.CombinedOutput(cmdStr); err != nil {
+	// The peer runs the command line through its shell: the arguments are
+	// quoted for it.
+	if b, err := session.CombinedOutput(shellquote.Join(cmd.Args...)); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
 		if ec == 0 {

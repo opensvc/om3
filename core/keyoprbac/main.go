@@ -131,6 +131,28 @@ var containerTypes = []string{"oci", "docker", "podman"}
 // only inside a volume of the object.
 var taskTypes = append(slices.Clone(containerTypes), "acme")
 
+// containerNameRule is the rule of the name of a container.
+//
+// The container engine knows the containers by name, and the driver stops,
+// removes and starts the one of that name, whichever object it belongs to:
+// a name of the user's choosing could name a container of another object, or
+// of the node. The default name is the object's own.
+var containerNameRule = Rule{
+	Grant:  rbac.GrantRoot,
+	Reason: "a container name of the user's choosing requires the root grant: the default name is the object's own",
+}
+
+// containerImageRule is the rule of the image of a container.
+//
+// The image is the first operand of the run command of the engine, after its
+// options: one starting with a '-' would be read as an option, and set what
+// the other rules refuse, as a host path mount.
+var containerImageRule = Rule{
+	Grant:  rbac.GrantRoot,
+	Reason: "an image starting with a '-' requires the root grant",
+	Denies: valueOnly(func(s string) bool { return strings.HasPrefix(s, "-") }),
+}
+
 // rootRule is the group default of the driver groups whose keywords describe
 // what the object takes from the node.
 var rootRule = Rule{Grant: rbac.GrantRoot, Reason: reasonRoot}
@@ -201,6 +223,8 @@ var rules = map[string]Group{
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
 		},
+		"name":  containerNameRule,
+		"image": containerImageRule,
 		// om writes the resolver of the container from these, so they decide
 		// what the names in it resolve to.
 		"dns": {
@@ -228,6 +252,8 @@ var rules = map[string]Group{
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
 		},
+		"name":  containerNameRule,
+		"image": containerImageRule,
 		"dns": {
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
@@ -354,8 +380,14 @@ var rules = map[string]Group{
 			},
 
 			// The networks are the cluster's, and om hands out the addresses
-			// of the one named here.
-			"network": {},
+			// of the one named here. A cni address reads the configuration
+			// named after it, whose type names the plugin run as root, so it
+			// is a name, and not a path to a configuration elsewhere.
+			"network": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a network named by a path requires the root grant",
+				Denies: valueOnly(isNoName),
+			},
 
 			// The address om drew from the network, which it writes itself.
 			// Writing it is choosing the address, which is the node
@@ -651,6 +683,12 @@ func isTrue(s string) bool {
 	return err != nil || v
 }
 
+// isNoName reports whether s is no name of a file in a directory, but a path
+// leading elsewhere.
+func isNoName(s string) bool {
+	return s == "." || s == ".." || strings.ContainsAny(s, `/\`)
+}
+
 // valueOnly adapts a check that only reads the value to the rule signature.
 func valueOnly(f func(value string) bool) func(string, Section) bool {
 	return func(value string, _ Section) bool {
@@ -799,6 +837,31 @@ func Denied(grants rbac.Grants, kind naming.Kind, section, option, value string,
 		return nil
 	}
 	return fmt.Errorf("%s", rule.Reason)
+}
+
+// DeniedByDriver returns the reason these grants are not enough to change a
+// keyword of a section running the driver typ, or nil when they are.
+//
+// The policy of a group names the keywords it guards, and the type is guarded
+// by value: the container group opens the types an engine confines, and says
+// nothing of the keywords only the other types read, as the rcmd of a kvm or
+// the command of a task running on the node. Root writing such a section
+// does not make those keywords the namespace administrator's: a section
+// running a driver the writer may not choose is root's whole, but for the
+// common keywords, which are about the lifecycle of the object and not what
+// the resource takes from the node.
+//
+// typ is the driver the section runs where the keyword changed, the one its
+// group falls back to when it names none, and "" when it runs none.
+func DeniedByDriver(grants rbac.Grants, kind naming.Kind, section, option, typ string, set Section) error {
+	option, _, _ = strings.Cut(option, "@")
+	if typ == "" || option == "type" || commonKeywords[option] {
+		return nil
+	}
+	if err := Denied(grants, kind, section, "type", typ, set); err != nil {
+		return fmt.Errorf("a keyword of a section running the %s driver: %w", typ, err)
+	}
+	return nil
 }
 
 // DeniedUnset returns the reason these grants are not enough to take this

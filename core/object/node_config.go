@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -102,12 +103,40 @@ func (t *Node) ID() uuid.UUID {
 	return t.id
 }
 
+// Env returns the env of the node, the node.env keyword of the node or of
+// the cluster configuration.
 func (t *Node) Env() string {
-	k := key.Parse("env")
-	if s := t.config.GetString(k); s != "" {
+	if s := t.mergedConfig.GetString(key.New("node", "env")); s != "" {
 		return s
 	}
 	return "TST"
+}
+
+// AllowEnvs returns the envs of the objects allowed to run on this node, nil
+// when the node env decides: the node.allow_envs keyword of the node or of
+// the cluster configuration.
+func (t *Node) AllowEnvs() []string {
+	return t.mergedConfig.GetStrings(key.New("node", "allow_envs"))
+}
+
+// AllowsEnv reports whether an object of the env may run on this node.
+func (t *Node) AllowsEnv(env string) bool {
+	return allowsEnv(env, t.Env(), t.AllowEnvs())
+}
+
+// allowsEnv reports whether an object of the env may run on a node of the
+// nodeEnv env, allowing the allowEnvs envs.
+//
+// A node allowing no env names allows every env but on a PRD node, which
+// allows the PRD objects only: a PRD object may run on any node, as in a DRP
+// situation, while the others may not touch the production. A node allowing
+// envs allows those alone, so a PRD cluster can host the objects of another
+// env, as PPRD, its operators trust it with.
+func allowsEnv(env, nodeEnv string, allowEnvs []string) bool {
+	if len(allowEnvs) > 0 {
+		return slices.Contains(allowEnvs, env)
+	}
+	return env == "PRD" || nodeEnv != "PRD"
 }
 
 func (t *Node) App() string {

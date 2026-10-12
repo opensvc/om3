@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/opensvc/om3/v3/core/check"
 	"github.com/opensvc/om3/v3/core/check/helpers/checkexec"
@@ -32,6 +33,10 @@ type (
 		pid      string
 		instance string
 		path     string
+
+		// uid and gid are the owner of the process, jstat runs as.
+		uid uint32
+		gid uint32
 	}
 )
 
@@ -61,12 +66,17 @@ func (t *checker) Check(ctx context.Context, objs []interface{}) (*check.ResultS
 			continue
 		}
 		jstat := filepath.Join(filepath.Dir(java), "jstat")
-		if _, err := os.Stat(jstat); err != nil {
+		if !isTrustedBinary(jstat, j.uid) {
 			continue
 		}
 		for _, stat := range stats {
 			ctx, cancel := context.WithTimeout(ctx, checkexec.Timeout)
-			b, err := exec.CommandContext(ctx, jstat, "-"+stat, j.pid).Output()
+			cmd := exec.CommandContext(ctx, jstat, "-"+stat, j.pid)
+			// jstat reads the statistics the JVM shares with its own
+			// user, and is a binary of the JVM installation, which that
+			// user may own: it runs as that user, not as root.
+			cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: j.uid, Gid: j.gid}}
+			b, err := cmd.Output()
 			cancel()
 			if err != nil {
 				continue
@@ -87,12 +97,31 @@ func (t *checker) Check(ctx context.Context, objs []interface{}) (*check.ResultS
 
 // jvms returns the java processes whose environment names the resource or
 // the check instance they are reported as.
+//
+// Any process can name itself java and set that environment. One of another
+// mount namespace, as a container, is skipped: the path of its executable is
+// a path of its own filesystem, which names another file here.
 func jvms() []jvm {
 	dirs, _ := filepath.Glob("/proc/[0-9]*")
+	selfNS, err := os.Readlink("/proc/self/ns/mnt")
+	if err != nil {
+		return nil
+	}
 	var l []jvm
 	for _, dir := range dirs {
 		comm, err := os.ReadFile(filepath.Join(dir, "comm"))
 		if err != nil || strings.TrimSpace(string(comm)) != "java" {
+			continue
+		}
+		if ns, err := os.Readlink(filepath.Join(dir, "ns", "mnt")); err != nil || ns != selfNS {
+			continue
+		}
+		fi, err := os.Stat(dir)
+		if err != nil {
+			continue
+		}
+		st, ok := fi.Sys().(*syscall.Stat_t)
+		if !ok {
 			continue
 		}
 		environ, err := os.ReadFile(filepath.Join(dir, "environ"))
@@ -100,10 +129,26 @@ func jvms() []jvm {
 			continue
 		}
 		if j, ok := fromEnviron(filepath.Base(dir), environ); ok {
+			j.uid, j.gid = st.Uid, st.Gid
 			l = append(l, j)
 		}
 	}
 	return l
+}
+
+// isTrustedBinary reports whether the binary at p may be run for a process
+// of uid: a regular file owned by root or by uid, that no one else may
+// write.
+func isTrustedBinary(p string, uid uint32) bool {
+	fi, err := os.Stat(p)
+	if err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm()&0o022 != 0 {
+		return false
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false
+	}
+	return st.Uid == 0 || st.Uid == uid
 }
 
 // fromEnviron returns the jvm a process environment describes: its instance

@@ -1,0 +1,8 @@
+The envs of the objects allowed to run on this node.
+
+When unset, the node `env` decides: a PRD node runs the PRD objects only, and
+a non-PRD node runs the objects of every env, the PRD ones included, as in a
+DRP situation.
+
+When set, the node runs the objects of these envs only, whatever its own env.
+For example, on a PRD cluster, `PRD PPRD` also allows the PPRD objects to run.

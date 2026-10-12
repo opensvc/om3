@@ -50,6 +50,13 @@ func (a *DaemonAPI) PostComputeClaim(ctx echo.Context) error {
 	if payload.Namespace == "" || payload.Path == "" {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "the namespace and the object a claim is about are both needed")
 	}
+	// The namespace names the configuration its limits are read from, and
+	// the grant asked for: it is the one of the object, validated by its path.
+	if p, err := naming.ParsePath(payload.Path); err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "path %s: %s", payload.Path, err)
+	} else if p.Namespace != payload.Namespace {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Body", "%s is not an object of the %s namespace", payload.Path, payload.Namespace)
+	}
 	if v, err := assertAdmin(ctx, payload.Namespace); !v {
 		return err
 	}

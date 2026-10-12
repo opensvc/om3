@@ -117,6 +117,11 @@ func (t *CompSysctls) Add(s string) error {
 		if rule.Key == "" {
 			return fmt.Errorf("key is mandatory in dict : %s", s)
 		}
+		// The key is an operand of sysctl, which sets a key=value operand
+		// and reads a -x one as an option: a check would change a setting.
+		if strings.ContainsAny(rule.Key, "= \t\n") || strings.HasPrefix(rule.Key, "-") {
+			return fmt.Errorf("invalid key %q in dict : %s", rule.Key, s)
+		}
 		if rule.Index == nil {
 			return fmt.Errorf("index is mandatory in dict : %s", s)
 		}

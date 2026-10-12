@@ -54,10 +54,15 @@ var (
 )
 
 func (t *actor) validateAction() error {
-	thisEnv := t.Env()
-	nodeEnv := t.node.Env()
-	if thisEnv != "PRD" && nodeEnv == "PRD" {
-		return fmt.Errorf("%w: not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, thisEnv, nodeEnv)
+	node, err := t.Node()
+	if err != nil {
+		return err
+	}
+	if thisEnv := t.Env(); !node.AllowsEnv(thisEnv) {
+		if allowEnvs := node.AllowEnvs(); len(allowEnvs) > 0 {
+			return fmt.Errorf("%w: not allowed to run on this node (svc env=%s node allow_envs=%s)", ErrInvalidNode, thisEnv, strings.Join(allowEnvs, " "))
+		}
+		return fmt.Errorf("%w: not allowed to run on this node (svc env=%s node env=%s)", ErrInvalidNode, thisEnv, node.Env())
 	}
 	if v, err := t.config.IsInNodes(hostname.Hostname()); err != nil {
 		return err

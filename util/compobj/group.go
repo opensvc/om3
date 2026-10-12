@@ -147,6 +147,10 @@ func (t *CompGroups) Add(s string) error {
 			t.Errorf("%s\n", err)
 			return err
 		}
+		if err := checkAccountName(groupName, true); err != nil {
+			t.Errorf("%s\n", err)
+			return err
+		}
 		if rule.Gid == nil && !strings.HasPrefix(groupName, "-") {
 			err := fmt.Errorf("gid should be in the dict: %s", s)
 			t.Errorf("%s\n", err)
