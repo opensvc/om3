@@ -2,8 +2,11 @@
 package istat
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -218,21 +222,41 @@ func (t *T) onRunFileUpdated(msg *msgbus.RunFileUpdated) {
 
 func LoadRunningInfo(rid, file string) (data resource.RunningInfo, errs error) {
 	data.RID = rid
-	if b, err := os.ReadFile(file); err != nil {
-		errors.Join(errs, err)
+	if b, err := readRunFile(file); err != nil {
+		errs = errors.Join(errs, err)
 	} else {
-		if sessionID, err := uuid.ParseBytes(b); err != nil {
-			errors.Join(errs, err)
+		if sessionID, err := uuid.ParseBytes(bytes.TrimSpace(b)); err != nil {
+			errs = errors.Join(errs, err)
 		} else {
 			data.SessionID = sessionID
 		}
 	}
 	if pid, err := strconv.Atoi(filepath.Base(file)); err != nil {
-		errors.Join(errs, err)
+		errs = errors.Join(errs, err)
 	} else {
 		data.PID = pid
 	}
 	return
+}
+
+// readRunFile returns the content of a run file, a session id.
+//
+// The run directory is named after the resource id, and lies in a directory
+// the object may share with what its users write: the file is read only when
+// it is a regular file, not through a symlink, nor from a fifo whose writer
+// never comes, and only as long as a session id is.
+func readRunFile(file string) ([]byte, error) {
+	f, err := os.OpenFile(file, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	if fi, err := f.Stat(); err != nil {
+		return nil, err
+	} else if !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", file)
+	}
+	return io.ReadAll(io.LimitReader(f, 64))
 }
 
 func (t *T) onRunFileDeleted(msg *msgbus.RunFileRemoved) {

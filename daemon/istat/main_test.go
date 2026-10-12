@@ -3,10 +3,15 @@ package istat
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/instance"
@@ -119,4 +124,33 @@ func TestOnInstanceStatusPostLogsNoUnchangedResourceStatus(tt *testing.T) {
 	t.onInstanceStatusPost(&msgbus.InstanceStatusPost{Path: p, Node: t.localhost, Value: value})
 
 	require.Empty(tt, logEntries(tt, &buf))
+}
+
+// A run file names the session of a running action and is named after its
+// pid. One that is no regular file, a symlink planted in the run directory or
+// a fifo, is not read, and what is wrong with a run file is said.
+func TestLoadRunningInfoReadsARegularRunFileOnly(t *testing.T) {
+	dir := t.TempDir()
+	sid := uuid.New()
+	good := filepath.Join(dir, "123")
+	require.NoError(t, os.WriteFile(good, []byte(sid.String()), 0600))
+	info, err := LoadRunningInfo("task#1", good)
+	require.NoError(t, err)
+	assert.Equal(t, sid, info.SessionID)
+	assert.Equal(t, 123, info.PID)
+
+	link := filepath.Join(dir, "124")
+	require.NoError(t, os.Symlink(good, link))
+	_, err = LoadRunningInfo("task#1", link)
+	assert.Error(t, err)
+
+	fifo := filepath.Join(dir, "125")
+	require.NoError(t, syscall.Mkfifo(fifo, 0600))
+	_, err = LoadRunningInfo("task#1", fifo)
+	assert.Error(t, err)
+
+	bad := filepath.Join(dir, "notapid")
+	require.NoError(t, os.WriteFile(bad, []byte("not a session"), 0600))
+	_, err = LoadRunningInfo("task#1", bad)
+	assert.Error(t, err)
 }
