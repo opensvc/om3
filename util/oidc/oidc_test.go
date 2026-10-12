@@ -265,3 +265,12 @@ func TestCheckEndpoint(t *testing.T) {
 	}
 	assert.Error(t, OpenBrowser("file:///etc/passwd"))
 }
+
+// A refresh sends the refresh token to the token endpoint, which is checked as
+// a discovered one is: an http endpoint of another machine is not sent it.
+func TestRefreshChecksTheTokenEndpoint(t *testing.T) {
+	_, err := Refresh(context.Background(), "http://idp.example.com/token", "client", "refresh")
+	assert.Error(t, err)
+	_, err = Refresh(context.Background(), "file:///etc/passwd", "client", "refresh")
+	assert.Error(t, err)
+}

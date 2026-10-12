@@ -298,6 +298,12 @@ func Refresh(ctx context.Context, tokenEndpoint, clientID, refreshToken string) 
 	if refreshToken == "" {
 		return nil, ErrNoRefreshToken
 	}
+	// The endpoint is read back from where a login stored it, which a
+	// discovery checked, or not: it is sent the refresh token, so it is
+	// checked again.
+	if err := CheckEndpoint(tokenEndpoint); err != nil {
+		return nil, fmt.Errorf("refresh the token: %w", err)
+	}
 	cfg := &oauth2.Config{
 		ClientID: clientID,
 		Endpoint: oauth2.Endpoint{TokenURL: tokenEndpoint, AuthStyle: oauth2.AuthStyleInParams},
