@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,8 +15,6 @@ import (
 func withHome(t *testing.T) string {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "opensvc"), 0o700))
 	return home
 }

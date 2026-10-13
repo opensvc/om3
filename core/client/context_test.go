@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/clientcontext"
@@ -70,8 +69,6 @@ func TestContextCertificateAuthority(t *testing.T) {
 	srv, caPEM := newPrivateCAServer(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "ca.pem"), caPEM, 0o600))
 
 	// use saves a context of the cluster, and selects it.

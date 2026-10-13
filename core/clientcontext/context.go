@@ -9,8 +9,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/util/duration"
-
-	"github.com/mitchellh/go-homedir"
+	"github.com/opensvc/om3/v3/util/homedir"
 )
 
 type (

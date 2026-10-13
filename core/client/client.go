@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/opensvc/om3/v3/core/client/api"
 	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
 	"github.com/opensvc/om3/v3/core/client/tokencache"
@@ -22,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/homedir"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
