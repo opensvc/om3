@@ -918,6 +918,7 @@ func newDaemonClient(n string) (*client.T, error) {
 	}
 	return client.New(
 		client.WithURL(daemonsubsystem.PeerURL(n)),
+		client.WithServerName(n),
 		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)

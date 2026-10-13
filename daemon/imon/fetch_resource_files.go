@@ -304,6 +304,7 @@ func (t *Manager) fetchResourceFile(rid string, peerFile resource.File, from str
 	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(from)),
+		client.WithServerName(from),
 		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)

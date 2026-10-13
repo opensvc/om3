@@ -18,7 +18,9 @@ import (
 	"github.com/opensvc/om3/v3/core/nodesinfo"
 	oapi "github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/homedir"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -35,6 +37,7 @@ type (
 		authorization      string
 		bearer             string
 		rootCA             string
+		serverName         string
 		timeout            time.Duration
 		tokens             tokencache.Entry
 	}
@@ -127,6 +130,17 @@ func WithRootCa(s string) funcopt.O {
 	})
 }
 
+// WithServerName sets the name the server certificate is verified for, when
+// it is not the host of the url, as when a peer node is dialed by the address
+// of its listener.
+func WithServerName(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.serverName = s
+		return nil
+	})
+}
+
 // WithKey sets the x509 client private key..
 func WithKey(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
@@ -183,8 +197,16 @@ func (t *T) configure() error {
 		if err := t.loadContext(); err != nil {
 			return err
 		}
-	} else if t.url == "" {
-		t.url = daemonenv.HTTPUnixURL()
+	} else {
+		if t.url == "" {
+			t.url = daemonenv.HTTPUnixURL()
+		}
+		// A client on a cluster node, the daemon among them, reaches
+		// the nodes of its cluster, whose certificates the cluster
+		// authorities sign.
+		if t.rootCA == "" && file.Exists(daemonenv.CAsCertFile()) {
+			t.rootCA = daemonenv.CAsCertFile()
+		}
 	}
 
 	err := t.newRequester()
@@ -224,11 +246,17 @@ func (t *T) newRequester() (err error) {
 			Password:           t.password,
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
+			ServerName:         t.serverName,
 			Timeout:            t.timeout,
 			Tokens:             t.tokens,
 		})
 	default:
 		if !strings.Contains(t.url, ":") {
+			// The url is a node name, and the node may be dialed by
+			// the address of its listener: its certificate names it.
+			if t.serverName == "" {
+				t.serverName = t.url
+			}
 			if nodesInfo, err := nodesinfo.Load(); err == nil {
 				addr := nodesInfo[t.url].Lsnr.Addr
 				if addr == "::" || addr == "" || addr == "0.0.0.0" {
@@ -255,6 +283,7 @@ func (t *T) newRequester() (err error) {
 			Password:           t.password,
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
+			ServerName:         t.serverName,
 			Timeout:            t.timeout,
 			Tokens:             t.tokens,
 		})
@@ -271,6 +300,14 @@ func (t *T) loadContext() error {
 		t.url = context.Cluster.Server
 		if context.Cluster.InsecureSkipVerify != nil {
 			t.insecureSkipVerify = *context.Cluster.InsecureSkipVerify
+		}
+		// The authority of a cluster whose certificate no system one
+		// signs, as one its own ca issued. An insecure context verifies
+		// nothing, and does not read it: a file gone is no failure.
+		if ca := context.Cluster.CertificateAuthority; ca != nil && *ca != "" && t.rootCA == "" && !t.insecureSkipVerify {
+			if t.rootCA, err = homedir.Expand(*ca); err != nil {
+				return fmt.Errorf("context certificate authority %s: %w", *ca, err)
+			}
 		}
 		if context.User.ClientCertificate != nil {
 			t.clientCertificate = *context.User.ClientCertificate

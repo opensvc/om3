@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,8 +23,6 @@ func TestRefreshTransportRefreshesOpenIDAtTheIssuer(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("OSVC_CONTEXT", "c1")
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "opensvc"), 0o700))
 
 	issuer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -80,8 +77,6 @@ func TestRefreshTransportAdoptsTheSharedOpenIDToken(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("SSH_AUTH_SOCK", "")
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "opensvc"), 0o700))
 
 	issuer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -129,8 +124,6 @@ func TestRefreshTransportKeepsAnExplicitCredential(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("SSH_AUTH_SOCK", "")
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "opensvc"), 0o700))
 
 	issuerCalled := false

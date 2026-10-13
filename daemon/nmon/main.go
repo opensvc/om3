@@ -74,6 +74,11 @@ type (
 		// appears and not on every config change until it is fixed.
 		prKeyPeers []string
 
+		// certIssueMsg is the certificate issue of this node, as last
+		// said, so that the warning is written when it appears and
+		// not on every config change until it is fixed.
+		certIssueMsg string
+
 		// nodeConfig is the published node.Config. It is refreshed when config is
 		// created or reloaded.
 		nodeConfig node.Config
@@ -371,6 +376,7 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.HeartbeatMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.HeartbeatRotateRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecHb.String()})
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecCert.String()}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
@@ -512,7 +518,11 @@ func (t *Manager) worker() {
 			case *msgbus.HeartbeatMessageTypeUpdated:
 				t.onHeartbeatMessageTypeUpdated(c)
 			case *msgbus.InstanceConfigUpdated:
-				t.onInstanceConfigUpdated(c)
+				if c.Path == naming.SecCert {
+					t.onCertChanged(c.Node)
+				} else {
+					t.onInstanceConfigUpdated(c)
+				}
 			case *msgbus.NodeConfigUpdated:
 				t.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
@@ -864,6 +874,7 @@ func (t *Manager) loadConfig() error {
 	}
 	t.config = n.MergedConfig()
 	t.nodeConfig = t.getNodeConfig()
+	t.checkCert()
 	t.nodeConfig.Issues = t.nodeIssues(t.nodeConfig)
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	localNodeInfo.Labels = t.nodeConfig.Labels

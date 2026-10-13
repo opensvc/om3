@@ -2,8 +2,10 @@
 package httpclientcache
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"os"
@@ -20,10 +22,16 @@ type (
 		InsecureSkipVerify bool
 
 		RootCA string
+
+		// ServerName is the name the server certificate is verified
+		// for, when it is not the host of the url, as when a node is
+		// dialed by its address.
+		ServerName string
 	}
 
 	getClient struct {
 		option   Options
+		key      string
 		response getClientResponse
 	}
 
@@ -39,7 +47,7 @@ var (
 )
 
 func (o Options) String() string {
-	s := o.CertFile + " " + o.KeyFile + o.Timeout.String() + " " + o.RootCA
+	s := o.CertFile + " " + o.KeyFile + o.Timeout.String() + " " + o.RootCA + " " + o.ServerName
 	if o.InsecureSkipVerify {
 		return s + " insecure"
 	}
@@ -47,13 +55,27 @@ func (o Options) String() string {
 }
 
 // Client returns client from client cache db
+//
+// The clients trusting a RootCA are cached by the content of the file, not
+// by its name: a temporary file name may be reused for another authority,
+// and the authorities of a fixed file change.
 func Client(o Options) (*http.Client, error) {
+	key := o.String()
+	if o.RootCA != "" {
+		b, err := os.ReadFile(o.RootCA)
+		if err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(b)
+		key += " " + hex.EncodeToString(sum[:])
+	}
 	response := getClientResponse{
 		client: make(chan *http.Client),
 		err:    make(chan error),
 	}
 	c := getClient{
 		option:   o,
+		key:      key,
 		response: response,
 	}
 	getClientChan <- c
@@ -81,17 +103,13 @@ func server() {
 				delete(dbClient, s)
 			}
 		case c := <-getClientChan:
-			s := c.option.String()
-			if client, ok := dbClient[s]; ok {
+			if client, ok := dbClient[c.key]; ok {
 				c.response.client <- client
 				c.response.err <- nil
 			} else {
 				client, err := newClient(c.option)
 				if err == nil {
-					// don't cache client when RootCA is defined (RootCA is temp file)
-					if c.option.RootCA == "" {
-						dbClient[s] = client
-					}
+					dbClient[c.key] = client
 				}
 				c.response.client <- client
 				c.response.err <- err
@@ -105,17 +123,22 @@ func server() {
 // It is what the http clients are made with, and what anything opened beside
 // them, as a console session, has to be opened with for the two to trust the
 // same servers.
+//
+// The server certificate is verified unless InsecureSkipVerify is set. It
+// used to be verified only when the client presented a certificate of its
+// own, so a client authenticating by token or password sent it to whatever
+// server answered.
 func TLSConfig(o Options) (*tls.Config, error) {
-	config := &tls.Config{}
+	config := &tls.Config{
+		InsecureSkipVerify: o.InsecureSkipVerify,
+		ServerName:         o.ServerName,
+	}
 	if o.CertFile != "" && o.KeyFile != "" {
 		cert, err := tls.LoadX509KeyPair(o.CertFile, o.KeyFile)
 		if err != nil {
 			return nil, err
 		}
 		config.Certificates = []tls.Certificate{cert}
-		config.InsecureSkipVerify = o.InsecureSkipVerify
-	} else {
-		config.InsecureSkipVerify = true
 	}
 	if o.RootCA != "" {
 		certPool, err := x509.SystemCertPool()
@@ -130,7 +153,6 @@ func TLSConfig(o Options) (*tls.Config, error) {
 			return nil, errors.New("can't append RootCAs from RootCA " + o.RootCA)
 		}
 		config.RootCAs = certPool
-		config.InsecureSkipVerify = false
 	}
 	return config, nil
 }

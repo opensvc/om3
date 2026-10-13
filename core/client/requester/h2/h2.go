@@ -37,6 +37,7 @@ type (
 		Timeout            time.Duration
 		InsecureSkipVerify bool
 		RootCA             string
+		ServerName         string
 		Tokens             tokencache.Entry
 	}
 
@@ -122,6 +123,7 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		Timeout:            config.Timeout,
 		InsecureSkipVerify: config.InsecureSkipVerify,
 		RootCA:             config.RootCA,
+		ServerName:         config.ServerName,
 	})
 	if err != nil {
 		return nil, err

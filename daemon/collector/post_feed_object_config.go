@@ -189,6 +189,7 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 		}
 		cli, err := client.New(
 			client.WithURL(daemonenv.HTTPNodeAndPortURL(addr, port)),
+			client.WithServerName(peer),
 			client.WithBearer(tk),
 			client.WithCertificate(daemonenv.CertChainFile()),
 		)

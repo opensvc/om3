@@ -466,6 +466,7 @@ func (t *T) dequeueAction(nodename string) error {
 	}
 	options := []funcopt.O{
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
+		client.WithServerName(nodename),
 		client.WithBearer(tk),
 		client.WithTimeout(tkDuration),
 	}

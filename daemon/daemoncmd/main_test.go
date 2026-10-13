@@ -37,7 +37,10 @@ func newClient(serverUrl string) (*client.T, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.New(client.WithURL(serverUrl), client.WithBearer(tk))
+	// The daemon renews its certificate for its node name while the test
+	// runs, and the client dials localhost: what is tested is not the
+	// certificate.
+	return client.New(client.WithURL(serverUrl), client.WithBearer(tk), client.WithInsecureSkipVerify(true))
 }
 
 func setup(t *testing.T, withConfig bool) testhelper.Env {

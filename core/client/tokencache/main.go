@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/util/duration"
+	"github.com/opensvc/om3/v3/util/homedir"
 	"github.com/opensvc/om3/v3/util/tokenstore"
 )
 

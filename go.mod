@@ -45,7 +45,6 @@ require (
 	github.com/labstack/gommon v0.5.0
 	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-runewidth v0.0.15
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/msoap/byline v1.1.1
 	github.com/ncw/directio v1.0.5
 	github.com/oapi-codegen/oapi-codegen/v2 v2.7.1
@@ -56,8 +55,8 @@ require (
 	github.com/opensvc/flock v1.1.1
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pbar1/pkill-go v1.0.0
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
 	github.com/prometheus/procfs v0.19.2
 	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695
@@ -115,6 +114,7 @@ require (
 	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -123,7 +123,6 @@ require (
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect

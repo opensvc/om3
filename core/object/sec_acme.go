@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	stdlog "log"
+	"net"
 	"slices"
 	"strings"
 	"time"
@@ -182,6 +183,29 @@ func certificateDue(certPEM []byte, domains []string, now time.Time, before time
 		return true, fmt.Sprintf("the certificate expires on %s, within %s", cert.NotAfter.Local().Format(time.RFC3339), before)
 	}
 	return false, fmt.Sprintf("the certificate is valid until %s", cert.NotAfter.Local().Format(time.RFC3339))
+}
+
+// certificateIPsDue says whether certPEM is due because its ip addresses are
+// not ips, which a generated certificate is issued for as alt_names lists
+// them, and returns reason as is when it is not.
+func certificateIPsDue(certPEM []byte, ips []net.IP, reason string) (bool, string) {
+	cert, err := certFromPEM(certPEM)
+	if err != nil {
+		return true, "the certificate is not readable: " + err.Error()
+	}
+	text := func(l []net.IP) []string {
+		s := make([]string, len(l))
+		for i, ip := range l {
+			s[i] = ip.String()
+		}
+		slices.Sort(s)
+		return slices.Compact(s)
+	}
+	have, want := text(cert.IPAddresses), text(ips)
+	if !slices.Equal(have, want) {
+		return true, fmt.Sprintf("the certificate ip addresses are %s, the sec asks %s", strings.Join(have, " "), strings.Join(want, " "))
+	}
+	return false, reason
 }
 
 // RenewCertificate issues the certificate of the sec from its ACME
@@ -400,6 +424,44 @@ func acmeDirectory(s string) string {
 	}
 }
 
+// ErrCertificateNotIssued is the refusal to renew a certificate the sec did
+// not issue, as one installed from elsewhere: generating one would replace it,
+// with the names of the sec rather than the ones it was installed for.
+var ErrCertificateNotIssued = errors.New("the certificate was not issued by the sec")
+
+// issuedCertificate says whether certPEM is a certificate the sec issued: one
+// its ca signed, or a self-signed one when it names no ca, of the serial
+// number the serial_number key says. GenCert records the serial number with
+// the certificate: a certificate installed in its place has another one.
+//
+// A sec has no serial_number key when its certificate was generated before
+// the serial numbers were recorded, or installed from elsewhere. Its
+// certificate is the one the sec issued when the ca of the sec signed it, as
+// the one of system/sec/cert, and is not when the sec names no ca: an
+// imported self-signed certificate passes the signature check too.
+func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
+	cert, err := certFromPEM(certPEM)
+	if err != nil {
+		return false, err
+	}
+	ca := t.CertInfo("ca")
+	if b, err := t.DecodeKey("serial_number"); err == nil {
+		if serial, ok := parseSerialText(string(b)); !ok || serial.Cmp(cert.SerialNumber) != 0 {
+			return false, nil
+		}
+	} else if ca == "" {
+		return false, nil
+	}
+	if ca == "" {
+		return cert.CheckSignatureFrom(cert) == nil, nil
+	}
+	caCert, _, err := t.getCACert()
+	if err != nil {
+		return false, err
+	}
+	return cert.CheckSignatureFrom(caCert) == nil, nil
+}
+
 // renewGeneratedCertificate generates the certificate of a sec issued by no
 // ACME directory, as certificate create does, when it is due: self-signed,
 // or signed by the ca the sec names. The private key is kept.
@@ -414,6 +476,9 @@ func (t *sec) renewGeneratedCertificate(force bool) (CertificateRenewal, error) 
 	}
 	current, _ := t.decode("certificate")
 	due, reason := certificateDue(current, t.DNSNamesFromAltNames(), time.Now(), before, false)
+	if !due {
+		due, reason = certificateIPsDue(current, t.IPAddressesFromAltNames(), reason)
+	}
 	switch {
 	case force:
 		result.Reason = "asked"
@@ -422,6 +487,16 @@ func (t *sec) renewGeneratedCertificate(force bool) (CertificateRenewal, error) 
 		return result, nil
 	default:
 		result.Reason = reason
+		// A certificate installed from elsewhere is due as soon as its
+		// names are not alt_names, which they never are: renewing it
+		// would replace it, so it is renewed when asked only.
+		if len(current) > 0 {
+			if issued, err := t.issuedCertificate(current); err != nil {
+				return result, err
+			} else if !issued {
+				return result, fmt.Errorf("%w, it is kept: %s, renew it with --force to replace it with one the sec issues", ErrCertificateNotIssued, reason)
+			}
+		}
 	}
 	if err := t.GenCert(); err != nil {
 		return result, err

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,8 +14,6 @@ import (
 func TestSaveMakesTheConfigDirectory(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 
 	cfg, err := Load()
 	require.NoError(t, err)
@@ -49,8 +46,6 @@ func TestSelectable(t *testing.T) {
 func TestNewWithoutUser(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	homedir.Reset()
-	t.Cleanup(homedir.Reset)
 	cfg, err := Load()
 	require.NoError(t, err)
 	require.NoError(t, cfg.AddCluster("c1", Cluster{Server: "https://n1:1215"}))
