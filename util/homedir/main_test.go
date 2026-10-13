@@ -1,6 +1,8 @@
 package homedir
 
 import (
+	"os/user"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,8 +47,12 @@ func TestExpandFollowsHome(t *testing.T) {
 	assert.Equal(t, "/home/bob/x", got)
 }
 
+// With no $HOME, the home of the user database is used.
 func TestExpandWithoutHome(t *testing.T) {
+	u, err := user.Current()
+	require.NoError(t, err)
 	t.Setenv("HOME", "")
-	_, err := Expand("~/x")
-	assert.Error(t, err)
+	got, err := Expand("~/x")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(u.HomeDir, "x"), got)
 }

@@ -4,11 +4,13 @@ package homedir
 import (
 	"errors"
 	"os"
+	"os/user"
 	"path/filepath"
 )
 
 // Expand returns path with a leading "~" replaced by the home directory of
-// the user, as os.UserHomeDir says it: $HOME on unix and macOS. A path not
+// the user, as os.UserHomeDir says it: $HOME on unix and macOS, else the
+// user database, as for a service or a sudo run with no $HOME. A path not
 // starting with "~" is returned as is, and a "~user" one is refused, as the
 // home of another user is not looked up.
 func Expand(path string) (string, error) {
@@ -20,7 +22,11 @@ func Expand(path string) (string, error) {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", err
+		u, uErr := user.Current()
+		if uErr != nil || u.HomeDir == "" {
+			return "", errors.Join(err, uErr)
+		}
+		home = u.HomeDir
 	}
 	return filepath.Join(home, path[1:]), nil
 }
