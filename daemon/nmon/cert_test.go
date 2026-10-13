@@ -1,6 +1,12 @@
 package nmon
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,4 +52,21 @@ func TestCheckCert(t *testing.T) {
 	m.checkCert()
 	assert.Empty(t, m.certIssueMsg, "names are not case sensitive")
 	assert.Empty(t, m.nodeIssues(m.nodeConfig))
+
+	// The listener does not load a certificate with the private key of
+	// another: it keeps presenting the one it had.
+	other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	der, err := x509.MarshalECPrivateKey(other)
+	require.NoError(t, err)
+	sec, err := object.NewSec(naming.SecCert)
+	require.NoError(t, err)
+	require.NoError(t, sec.ChangeKey("private_key", pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})))
+	m.checkCert()
+	assert.Contains(t, m.certIssueMsg, "are not a pair")
+
+	// A deleted sec has no certificate to tell.
+	require.NoError(t, os.Remove(naming.SecCert.ConfigFile()))
+	m.checkCert()
+	assert.Empty(t, m.certIssueMsg)
 }

@@ -1,6 +1,7 @@
 package nmon
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -9,14 +10,13 @@ import (
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
-// onCertConfigUpdated checks the certificate of system/sec/cert again when
-// the sec changes on this node, as when it is renewed, installed from
-// elsewhere, or received on join.
-func (t *Manager) onCertConfigUpdated(c *msgbus.InstanceConfigUpdated) {
-	if c.Node != t.localhost {
+// onCertChanged checks the certificate of system/sec/cert again when the sec
+// changes on this node, as when it is renewed, installed from elsewhere, or
+// received on join, and when it is deleted there.
+func (t *Manager) onCertChanged(node string) {
+	if node != t.localhost {
 		return
 	}
 	t.checkCert()
@@ -37,7 +37,7 @@ func (t *Manager) checkCert() {
 	case issue == t.certIssueMsg:
 		return
 	case issue == "":
-		t.log.Infof("%s names this node again: the peers verify its certificate", naming.SecCert)
+		t.log.Infof("%s: the certificate issue is cleared: %s", naming.SecCert, t.certIssueMsg)
 	default:
 		t.log.Warnf("%s", issue)
 	}
@@ -47,6 +47,10 @@ func (t *Manager) checkCert() {
 // certIssue returns why the peers refuse the certificate of system/sec/cert
 // when they request this node, and "" when they accept it, or when the sec
 // has no certificate to tell, as before its bootstrap.
+//
+// The certificate is checked with its private key, as the listener loads
+// them: a pair that does not match is not loaded, and the listener keeps
+// presenting the certificate it had, which this one does not tell.
 func (t *Manager) certIssue() string {
 	if !naming.SecCert.Exists() {
 		return ""
@@ -66,6 +70,11 @@ func (t *Manager) certIssue() string {
 	block, _ := pem.Decode(b)
 	if block == nil {
 		return fmt.Sprintf("%s certificate_chain holds no certificate", naming.SecCert)
+	}
+	if key, err := sec.DecodeKey("private_key"); err != nil {
+		return fmt.Sprintf("%s has a certificate_chain and no private_key: the listener does not present it", naming.SecCert)
+	} else if _, err := tls.X509KeyPair(b, key); err != nil {
+		return fmt.Sprintf("%s certificate_chain and private_key are not a pair, the listener does not present them: %s", naming.SecCert, err)
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {

@@ -377,6 +377,7 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.HeartbeatRotateRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecHb.String()})
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecCert.String()}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, pubsub.Label{"path", naming.SecCert.String()}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
@@ -517,9 +518,11 @@ func (t *Manager) worker() {
 				t.onHeartbeatRotateRequest(c)
 			case *msgbus.HeartbeatMessageTypeUpdated:
 				t.onHeartbeatMessageTypeUpdated(c)
+			case *msgbus.InstanceConfigDeleted:
+				t.onCertChanged(c.Node)
 			case *msgbus.InstanceConfigUpdated:
 				if c.Path == naming.SecCert {
-					t.onCertConfigUpdated(c)
+					t.onCertChanged(c.Node)
 				} else {
 					t.onInstanceConfigUpdated(c)
 				}
