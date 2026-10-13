@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,9 +63,4 @@ func TestCheckCert(t *testing.T) {
 	require.NoError(t, sec.ChangeKey("private_key", pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})))
 	m.checkCert()
 	assert.Contains(t, m.certIssueMsg, "are not a pair")
-
-	// A deleted sec has no certificate to tell.
-	require.NoError(t, os.Remove(naming.SecCert.ConfigFile()))
-	m.checkCert()
-	assert.Empty(t, m.certIssueMsg)
 }

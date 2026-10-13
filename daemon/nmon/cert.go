@@ -14,7 +14,12 @@ import (
 
 // onCertChanged checks the certificate of system/sec/cert again when the sec
 // changes on this node, as when it is renewed, installed from elsewhere, or
-// received on join, and when it is deleted there.
+// received on join.
+//
+// A deletion is not a change of what the peers are presented: the listener
+// keeps the files installed, until the daemon starts again and bootstraps the
+// sec, which the check of the config loaded then sees. The issue is kept as
+// it is meanwhile.
 func (t *Manager) onCertChanged(node string) {
 	if node != t.localhost {
 		return
