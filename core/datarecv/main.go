@@ -651,11 +651,20 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
 		md.Wrote = func(p string) { installed = appendNew(installed, p) }
+		held := make([]string, 0)
+		md.Holds = func(p string) { held = append(held, p) }
 		// A file whose content did not change gives what reads it nothing
 		// to reload: its signals are sent for a change only.
 		fileChanged, err := store.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
+		}
+		// The file of a key gone is removed, a change of the line too.
+		if err == nil {
+			if removed := t.pruneInstallLine(head, installLineID(md), held); len(removed) > 0 {
+				installed = appendNew(installed, removed...)
+				fileChanged = true
+			}
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
@@ -715,7 +724,12 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	// of a required item included: what reads them is to read them again.
 	defer func() { t.recordInstalled(installed) }()
 
+	// ids are the lines configured, whose files are kept: the files of a
+	// line no longer configured are removed once they are all done.
+	ids := make([]string, 0, len(files))
+
 	for _, md := range files {
+		ids = append(ids, installLineID(md))
 		var dataStore object.DataStore
 		var err error
 		// If datastore doesn't exist, try to create it if namespace matches
@@ -763,14 +777,28 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
 		md.Wrote = func(p string) { installed = appendNew(installed, p) }
+		held := make([]string, 0)
+		md.Holds = func(p string) { held = append(held, p) }
 		fileChanged, err := dataStore.InstallKeyTo(md)
 		if err != nil && md.Required {
 			return false, err
+		}
+		// The file of a key gone is removed, a change of the line too.
+		if err == nil {
+			if removed := t.pruneInstallLine(head, installLineID(md), held); len(removed) > 0 {
+				installed = appendNew(installed, removed...)
+				fileChanged = true
+			}
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
 			changed = true
 		}
+	}
+
+	if removed := t.pruneInstallLines(head, ids); len(removed) > 0 {
+		installed = appendNew(installed, removed...)
+		changed = true
 	}
 
 	t.SendSignals(ctx, signals)

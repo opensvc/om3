@@ -23,6 +23,8 @@ Where:
 
 * `key <key>`
   * `<key>` is the key name or a globbing pattern from `<obj_path|obj_relpath>`.
+  * the file a key installed is removed when the key is, at the next install, and so are the files of a line
+    taken away from `install`: a file the line did not install, as one written there by hand, stays.
   * if not specified, defaults to the `<path>` with the leading `/` stripped.
     e.g. `fs#1.install = /a/b from ./sec/sec1` will install `<fs#1 head>/a/b` from the `./sec/sec1` key named `a/b`.
 
@@ -31,7 +33,8 @@ Where:
   with mode `0600`, and a file from a cfg with mode `0644`.
 
 * `<sig>:<rid>` (e.g. `HUP:container#haproxy`)
-  * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified.
+  * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified,
+    or the file removed with its key.
 
 * `<uri>`
   * is the source URI or local file path to seed the datastore key with during provision if the key doesn't already exist.
@@ -68,6 +71,6 @@ Where:
   * a change of a key the `key` function read at the last render installs the file again, on each node, as a
     change of the template key does: a file rendered from a sec follows the sec.
 
-An install writing files, whatever runs it, a start, a provision, a task or a change of a key, publishes a
-`FileInstalled` event, and none when it finds them up to date. A task with `on = FileInstalled,rid=<rid>` has
+An install writing or removing files, whatever runs it, a start, a provision, a task or a change of a key,
+publishes a `FileInstalled` event, and none when it finds them up to date. A task with `on = FileInstalled,rid=<rid>` has
 what reads them read them again, e.g. a host task with `container` running `swanctl --load-all`.

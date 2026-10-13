@@ -5,11 +5,11 @@ changed, `NetworkPeersUpdated,name=backend1` when the ones of backend1 did.
 
 The kinds are:
 
-* `FileInstalled`: an install of a resource of the object wrote files, by a
-  start, a provision, a task or a change of a key. It is not published for
-  an install finding its files up to date. Its fields are `node`, `path` and
-  `rid`, the resource, and the events of the other objects are not the
-  task's.
+* `FileInstalled`: an install of a resource of the object wrote files, or
+  removed the files of keys gone, by a start, a provision, a task or a change
+  of a key. It is not published for an install finding its files up to date.
+  Its fields are `node`, `path` and `rid`, the resource, and the events of the
+  other objects are not the task's.
 
 * `NetworkPeersUpdated`: a node joined or left a network, the address of a
   node changed, or the tunnel to it. Its fields are `node` and `name`, the
