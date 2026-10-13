@@ -148,6 +148,29 @@ func ensureDataStoreExists(fromStore naming.Path, serviceNamespace string, log *
 	return newDs, true, nil
 }
 
+// certificateKeys are the keys of a sec holding its certificate, as a
+// certificate create writes them.
+var certificateKeys = []string{"fullpem", "certificate", "certificate_chain", "private_key"}
+
+// generateCertificate makes the certificate of a sec an install line created
+// for a key of its certificate: a self-signed one, as certificate create
+// makes, so what reads the file has one to start with, as a proxy whose tls
+// listener refuses to start without, until a renewal replaces it.
+func generateCertificate(ds object.DataStore, key string, log *plog.Logger) error {
+	if !slices.Contains(certificateKeys, key) {
+		return nil
+	}
+	ks, ok := ds.(object.KeyStore)
+	if !ok {
+		return nil
+	}
+	if err := ks.GenCert(); err != nil {
+		return err
+	}
+	log.Infof("%s: generated a self-signed certificate, for the key %s to install", ds.Path(), key)
+	return nil
+}
+
 type (
 	DataRecv struct {
 		// Install is the list of files or directories to install in the data receiver.
@@ -787,6 +810,9 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 			}
 			if created {
 				t.to.Log().Infof("created datastore %s for seeding", md.FromStore)
+				if err := generateCertificate(dataStore, md.FromPattern, t.to.Log()); err != nil {
+					t.to.Log().Warnf("%s: generate a self-signed certificate: %s", md.FromStore, err)
+				}
 			}
 		} else {
 			dataStore, err = object.NewDataStore(md.FromStore)
