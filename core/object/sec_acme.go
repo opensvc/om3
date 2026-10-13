@@ -25,6 +25,7 @@ import (
 	"github.com/go-acme/lego/v4/providers/http/webroot"
 	"github.com/go-acme/lego/v4/registration"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -64,6 +65,14 @@ type (
 		// of the domains serves it from, as a task writes it in a volume of
 		// its object, confined there.
 		HTTP01 challenge.Provider
+
+		// Accounts are the secs whose account at the directory the sec
+		// takes when it holds none there: the first of them holding one
+		// registered at the directory, with the email of the sec. The secs
+		// a task renews share one account so, as a directory limits the
+		// accounts an address registers, and each keeps it: the one that
+		// registered it going does not take it away.
+		Accounts []naming.Path
 	}
 
 	// acmeAccount is what the sec keeps of its account at the ACME
@@ -268,7 +277,7 @@ func (t *sec) RenewCertificate(ctx context.Context, opts CertificateRenewOptions
 		result.Reason = reason
 	}
 
-	user, err := t.acmeUser(directory, email)
+	user, err := t.acmeUser(directory, email, opts.Accounts)
 	if err != nil {
 		return result, err
 	}
@@ -325,7 +334,12 @@ func (t *sec) RenewCertificate(ctx context.Context, opts CertificateRenewOptions
 // acmeUser returns the account of the sec at the directory, its key made
 // when there is none. The registration is nil when the account is not
 // registered at this directory yet.
-func (t *sec) acmeUser(directory, email string) (*acmeUser, error) {
+func (t *sec) acmeUser(directory, email string, accounts []naming.Path) (*acmeUser, error) {
+	if !t.hasAcmeAccount(directory, email) {
+		if err := t.takeAcmeAccount(directory, email, accounts); err != nil {
+			return nil, err
+		}
+	}
 	user := &acmeUser{email: email}
 	if b, err := t.decode(keyAcmeAccountKey); err == nil && len(b) > 0 {
 		priv, err := certcrypto.ParsePEMPrivateKey(b)
@@ -343,11 +357,7 @@ func (t *sec) acmeUser(directory, email string) (*acmeUser, error) {
 		}
 		user.key = priv
 	}
-	if b, err := t.decode(keyAcmeAccount); err == nil && len(b) > 0 {
-		var account acmeAccount
-		if err := json.Unmarshal(b, &account); err != nil {
-			return nil, fmt.Errorf("%s: %w", keyAcmeAccount, err)
-		}
+	if account, ok := t.acmeAccount(); ok {
 		// An account registered at another directory, or for another
 		// email, is not the one asked: it is registered anew.
 		if account.Directory == directory && account.Email == email {
@@ -355,6 +365,61 @@ func (t *sec) acmeUser(directory, email string) (*acmeUser, error) {
 		}
 	}
 	return user, nil
+}
+
+// acmeAccount returns the account the sec keeps, if any.
+func (t *sec) acmeAccount() (acmeAccount, bool) {
+	var account acmeAccount
+	b, err := t.decode(keyAcmeAccount)
+	if err != nil || len(b) == 0 {
+		return account, false
+	}
+	if err := json.Unmarshal(b, &account); err != nil {
+		return account, false
+	}
+	return account, true
+}
+
+// hasAcmeAccount says whether the sec holds an account registered at the
+// directory with the email, and its key.
+func (t *sec) hasAcmeAccount(directory, email string) bool {
+	account, ok := t.acmeAccount()
+	if !ok || account.Directory != directory || account.Email != email || account.Registration == nil {
+		return false
+	}
+	b, err := t.decode(keyAcmeAccountKey)
+	return err == nil && len(b) > 0
+}
+
+// takeAcmeAccount stores in the sec the account of the first of the secs
+// holding one registered at the directory with the email, if any.
+func (t *sec) takeAcmeAccount(directory, email string, accounts []naming.Path) error {
+	for _, p := range accounts {
+		if p == t.path || p.Kind != naming.KindSec || !p.Exists() {
+			continue
+		}
+		other, err := NewSec(p, WithVolatile(true))
+		if err != nil || !other.hasAcmeAccount(directory, email) {
+			continue
+		}
+		accountKey, err := other.decode(keyAcmeAccountKey)
+		if err != nil {
+			continue
+		}
+		account, err := other.decode(keyAcmeAccount)
+		if err != nil {
+			continue
+		}
+		if err := t.addKey(keyAcmeAccountKey, accountKey); err != nil {
+			return err
+		}
+		if err := t.addKey(keyAcmeAccount, account); err != nil {
+			return err
+		}
+		t.log.Infof("take the account at %s of %s", directory, p)
+		return nil
+	}
+	return nil
 }
 
 func (t *sec) saveAcmeAccount(account acmeAccount) error {

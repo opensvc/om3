@@ -1,0 +1,12 @@
+The secs of the domains `domains_from` reads, named by a pattern holding one
+`*`, which the domain replaces: `./sec/{name}-*` names the sec of the domain
+`www.example.com` `<namespace>/sec/<name>-www.example.com`. A name longer than
+an object name may be keeps the beginning of the domain, and a hash of it.
+
+The secs are in the namespace of the service. The task creates and deletes the
+ones it created only, marked with an `acme_owner` key naming the task, and
+tells the domain of a sec by its `cn`: another sec the pattern matches is left
+as it is.
+
+An install line naming the same pattern installs the certificate of each, as
+`/haproxy/certs/*.pem from ./sec/{name}-* key fullpem`.

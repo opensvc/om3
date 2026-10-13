@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-acme/lego/v4/registration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -324,4 +325,52 @@ func TestRenewKeepsAnInstalledSelfSignedCertificate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, installed, current, "kept, generated before: %v", generated)
 	}
+}
+
+// A sec holding no account at the directory takes the one of the first sec
+// of the task holding one there, with its email, and keeps it: the secs a
+// task renews share one account. An account of another directory or email
+// is not taken, and a sec holding one keeps its own.
+func TestAcmeAccountIsShared(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	register := func(name, directory, email string) naming.Path {
+		p := naming.Path{Name: name, Kind: naming.KindSec, Namespace: "ns1"}
+		o, err := NewSec(p)
+		require.NoError(t, err)
+		_, err = o.acmeUser(directory, email, nil)
+		require.NoError(t, err)
+		require.NoError(t, o.saveAcmeAccount(acmeAccount{Directory: directory, Email: email, Registration: &registration.Resource{URI: "https://acme/acct/" + name}}))
+		require.NoError(t, o.config.Commit())
+		return p
+	}
+	staging := register("a-staging", AcmeLetsEncryptStaging, "")
+	prod := register("b-prod", AcmeLetsEncrypt, "")
+	accounts := []naming.Path{staging, prod}
+
+	p := naming.Path{Name: "c-new", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p)
+	require.NoError(t, err)
+	user, err := o.acmeUser(AcmeLetsEncrypt, "", accounts)
+	require.NoError(t, err)
+	require.NotNil(t, user.reg)
+	assert.Equal(t, "https://acme/acct/b-prod", user.reg.URI, "the account of the directory")
+	from, err := NewSec(prod, WithVolatile(true))
+	require.NoError(t, err)
+	want, _ := from.DecodeKey(keyAcmeAccountKey)
+	have, _ := o.DecodeKey(keyAcmeAccountKey)
+	assert.Equal(t, want, have, "the account key is kept by the sec")
+
+	user, err = o.acmeUser(AcmeLetsEncrypt, "admin@example.com", accounts)
+	require.NoError(t, err)
+	assert.Nil(t, user.reg, "no account with this email: registered anew")
+
+	user, err = o.acmeUser(AcmeLetsEncryptStaging, "", accounts)
+	require.NoError(t, err)
+	require.NotNil(t, user.reg)
+	assert.Equal(t, "https://acme/acct/a-staging", user.reg.URI)
 }

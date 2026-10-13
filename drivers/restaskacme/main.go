@@ -30,10 +30,14 @@ import (
 type (
 	T struct {
 		restask.BaseTask
-		Path    naming.Path    `json:"path"`
-		Secs    []string       `json:"secs"`
-		Webroot string         `json:"webroot"`
-		Timeout *time.Duration `json:"timeout"`
+		Path        naming.Path    `json:"path"`
+		Secs        []string       `json:"secs"`
+		Webroot     string         `json:"webroot"`
+		Directory   string         `json:"directory"`
+		Email       string         `json:"email"`
+		DomainsFrom string         `json:"domains_from"`
+		DomainsTo   string         `json:"domains_to"`
+		Timeout     *time.Duration `json:"timeout"`
 	}
 
 	// confinedWebroot writes the http-01 challenge tokens in a directory of
@@ -49,9 +53,14 @@ func New() resource.Driver {
 	return &T{}
 }
 
-// Label is the secs renewed: the status says the driver already.
+// Label is the secs renewed, and where the domains are read from: the status
+// says the driver already.
 func (t *T) Label(_ context.Context) string {
-	return strings.Join(t.Secs, " ")
+	l := slices.Clone(t.Secs)
+	if t.DomainsFrom != "" {
+		l = append(l, t.DomainsFrom)
+	}
+	return strings.Join(l, " ")
 }
 
 func (t *T) Run(ctx context.Context) error {
@@ -59,7 +68,9 @@ func (t *T) Run(ctx context.Context) error {
 }
 
 // lockedRun renews the certificate of each sec, those after a failed one
-// included, and says which failed.
+// included, and says which failed. The secs of the domains are created and
+// deleted first, and renewed with the secs named, all of them sharing one
+// account at the directory.
 func (t *T) lockedRun(ctx context.Context) error {
 	if err := t.RunInstall(ctx); err != nil {
 		return err
@@ -76,13 +87,27 @@ func (t *T) lockedRun(ctx context.Context) error {
 	}
 	defer closeProvider()
 	var errs error
+	if len(t.Secs) == 0 && t.DomainsFrom == "" {
+		_ = t.WriteLastRun(1)
+		return fmt.Errorf("no sec to renew: set secs, or domains_from and domains_to")
+	}
 	paths, err := t.secs()
 	if err != nil {
 		t.Log().Errorf("%s", err)
 		errs = err
 	}
+	accounts := slices.Clone(paths)
+	if t.DomainsFrom != "" {
+		renew, all, err := t.syncDomains(ctx)
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+		paths = append(paths, renew...)
+		accounts = append(accounts, all...)
+	}
+	slices.SortFunc(accounts, func(a, b naming.Path) int { return strings.Compare(a.String(), b.String()) })
 	for _, p := range paths {
-		if err := t.renew(ctx, p, provider); err != nil {
+		if err := t.renew(ctx, p, provider, accounts); err != nil {
 			t.Log().Errorf("%s: %s", p, err)
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 		}
@@ -153,7 +178,7 @@ func allows(p naming.Path, ns string) bool {
 	return err == nil && store.Allow(ns)
 }
 
-func (t *T) renew(ctx context.Context, p naming.Path, provider challenge.Provider) error {
+func (t *T) renew(ctx context.Context, p naming.Path, provider challenge.Provider, accounts naming.Paths) error {
 	store, err := object.NewDataStore(p)
 	if err != nil {
 		return err
@@ -162,7 +187,7 @@ func (t *T) renew(ctx context.Context, p naming.Path, provider challenge.Provide
 	if !ok {
 		return fmt.Errorf("%s holds no certificate", p)
 	}
-	renewal, err := keyStore.RenewCertificate(ctx, object.CertificateRenewOptions{HTTP01: provider})
+	renewal, err := keyStore.RenewCertificate(ctx, object.CertificateRenewOptions{HTTP01: provider, Accounts: accounts})
 	if err != nil {
 		return err
 	}

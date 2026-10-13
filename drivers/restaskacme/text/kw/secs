@@ -16,3 +16,6 @@ sec named that does not exist, or is not shared, fails the task.
 
 The volumes installing the renewed keys get the new ones, and the signals of
 their install lines are sent, on every node running them.
+
+The secs are optional when `domains_from` names the domains to obtain the
+certificates of.
