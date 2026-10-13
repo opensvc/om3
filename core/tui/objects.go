@@ -180,7 +180,7 @@ func (t *App) updateObjects() {
 
 	nodesPopulate := func(row int, selectable bool, valueFn func(string) string) {
 		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(valueFn(nodename))
+			s := translateANSI(valueFn(nodename))
 			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(selectable))
 		}
 	}
@@ -376,17 +376,17 @@ func (t *App) cellObjectOrchestrate(path string) *tview.TableCell {
 }
 
 func (t *App) cellObjectRunning(path string) *tview.TableCell {
-	s := tview.TranslateANSI(t.StrObjectRunning(path))
+	s := translateANSI(t.StrObjectRunning(path))
 	return tview.NewTableCell(s).SetSelectable(false)
 }
 
 func (t *App) cellObjectStatus(path string) *tview.TableCell {
-	s := tview.TranslateANSI(monitor.StrObjectStatus(t.Current.Cluster.Object[path]))
+	s := translateANSI(monitor.StrObjectStatus(t.Current.Cluster.Object[path]))
 	return tview.NewTableCell(s).SetSelectable(false)
 }
 
 func (t *App) cellInstanceStatus(path, node string) *tview.TableCell {
-	s := tview.TranslateANSI(t.StrObjectInstance(path, node, t.Current.Cluster.Object[path].Scope))
+	s := translateANSI(t.StrObjectInstance(path, node, t.Current.Cluster.Object[path].Scope))
 	cell := tview.NewTableCell(s)
 	if t.isInstanceSelected(path, node) {
 		cell.SetBackgroundColor(colorSelected)

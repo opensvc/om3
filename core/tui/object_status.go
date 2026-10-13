@@ -20,5 +20,5 @@ func (t *App) updateObjectStatusView() {
 	text := statusboard.Render(digest, width-1)
 	t.textView.SetDynamicColors(true)
 	t.textView.SetTitle(t.viewPath.String() + " status")
-	t.textView.SetText(tview.TranslateANSI(tview.Escape(text)))
+	t.textView.SetText(translateANSI(tview.Escape(text)))
 }

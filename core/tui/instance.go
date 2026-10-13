@@ -106,7 +106,7 @@ func formatObject(data object.Status) string {
 }
 
 func formatStatus(data status.T) string {
-	return tview.TranslateANSI(colorstatus.Sprint(data, rawconfig.Colorize))
+	return translateANSI(colorstatus.Sprint(data, rawconfig.Colorize))
 }
 
 func formatExpect(instanceMonitor instance.Monitor) string {
@@ -241,15 +241,15 @@ func (t *App) updateInstanceView() {
 		s := entry.String()
 		switch entry.Level {
 		case "error":
-			s = tview.TranslateANSI(rawconfig.Colorize.Error(s))
+			s = translateANSI(rawconfig.Colorize.Error(s))
 		case "warn":
-			s = tview.TranslateANSI(rawconfig.Colorize.Warning(s))
+			s = translateANSI(rawconfig.Colorize.Warning(s))
 		}
 		return tview.NewTableCell(s).SetSelectable(false)
 	}
 	cellFlags := func(rid string, resourceStatus resource.Status, instanceState instance.States) *tview.TableCell {
 		s := instance.ResourceFlagsString(rid, instanceState, resourceStatus)
-		s = tview.TranslateANSI(s)
+		s = translateANSI(s)
 		return tview.NewTableCell(s).SetSelectable(false)
 	}
 
@@ -271,7 +271,7 @@ func (t *App) updateInstanceView() {
 		table.SetCell(i, 0, cellResourceId(prefix+rid))
 		table.SetCell(i, 1, tview.NewTableCell(resourceStatus.Subset).SetSelectable(false))
 		table.SetCell(i, 2, cellFlags(rid, resourceStatus, instanceState))
-		table.SetCell(i, 3, tview.NewTableCell(tview.TranslateANSI(colorstatus.Sprint(resourceStatus.Status, rawconfig.Colorize))).SetSelectable(false))
+		table.SetCell(i, 3, tview.NewTableCell(translateANSI(colorstatus.Sprint(resourceStatus.Status, rawconfig.Colorize))).SetSelectable(false))
 		table.SetCell(i, 4, tview.NewTableCell(resourceStatus.Label).SetSelectable(false))
 		for _, entry := range resourceStatus.Log {
 			i += 1
