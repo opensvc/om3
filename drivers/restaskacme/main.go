@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -75,10 +76,15 @@ func (t *T) lockedRun(ctx context.Context) error {
 	}
 	defer closeProvider()
 	var errs error
-	for _, ref := range t.Secs {
-		if err := t.renew(ctx, ref, provider); err != nil {
-			t.Log().Errorf("%s: %s", ref, err)
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", ref, err))
+	paths, err := t.secs()
+	if err != nil {
+		t.Log().Errorf("%s", err)
+		errs = err
+	}
+	for _, p := range paths {
+		if err := t.renew(ctx, p, provider); err != nil {
+			t.Log().Errorf("%s: %s", p, err)
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 		}
 	}
 	exitCode := 0
@@ -91,20 +97,66 @@ func (t *T) lockedRun(ctx context.Context) error {
 	return errs
 }
 
-func (t *T) renew(ctx context.Context, ref string, provider challenge.Provider) error {
-	p, err := secPath(ref, t.Path.Namespace)
-	if err != nil {
-		return err
+// secs returns the secs the task renews, each once: the ones the secs keyword
+// names, and the ones its name patterns match on the node.
+//
+// A sec named is one asked: one that does not exist, or is not shared with
+// the namespace of the service, is an error. A pattern names the secs there
+// are, as the ones of the domains a gateway creates and deletes with its
+// routes: matching none, it names none, and it leaves out the secs of
+// another namespace not shared with this one.
+func (t *T) secs() (naming.Paths, error) {
+	ns := t.Path.Namespace
+	l := make(naming.Paths, 0)
+	add := func(p naming.Path) {
+		if !slices.Contains(l, p) {
+			l = append(l, p)
+		}
 	}
-	if !p.Exists() {
-		return fmt.Errorf("%s does not exist", p)
+	var errs error
+	for _, ref := range t.Secs {
+		if naming.IsPathPattern(ref) {
+			pattern, err := secPattern(ref, ns)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			for _, p := range pattern.InstalledPaths() {
+				if p.Namespace != ns && !allows(p, ns) {
+					continue
+				}
+				add(p)
+			}
+			continue
+		}
+		p, err := secPath(ref, ns)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		if !p.Exists() {
+			errs = errors.Join(errs, fmt.Errorf("%s does not exist", p))
+			continue
+		}
+		if p.Namespace != ns && !allows(p, ns) {
+			errs = errors.Join(errs, fmt.Errorf("%s is not shared with namespace %s: its share keyword does not name it", p, ns))
+			continue
+		}
+		add(p)
 	}
+	return l, errs
+}
+
+// allows says whether the sec at p shares its keys with the namespace ns.
+func allows(p naming.Path, ns string) bool {
+	store, err := object.NewDataStore(p, object.WithVolatile(true))
+	return err == nil && store.Allow(ns)
+}
+
+func (t *T) renew(ctx context.Context, p naming.Path, provider challenge.Provider) error {
 	store, err := object.NewDataStore(p)
 	if err != nil {
 		return err
-	}
-	if p.Namespace != t.Path.Namespace && !store.Allow(t.Path.Namespace) {
-		return fmt.Errorf("%s is not shared with namespace %s: its share keyword does not name it", p, t.Path.Namespace)
 	}
 	keyStore, ok := store.(object.KeyStore)
 	if !ok {
@@ -136,6 +188,39 @@ func secPath(ref, ns string) (naming.Path, error) {
 		return p, fmt.Errorf("sec reference %s names a %s, not a sec", ref, p.Kind)
 	}
 	return p, nil
+}
+
+// secPattern returns the secs a pattern of their name names, as
+// ./sec/haproxy-*, relative to the namespace ns as a sec reference is.
+func secPattern(ref, ns string) (naming.PathPattern, error) {
+	if !strings.Contains(ref, "/") {
+		ref = "./sec/" + ref
+	}
+	p, err := naming.ParsePathPatternRel(ref, ns)
+	if err != nil {
+		return p, fmt.Errorf("sec reference %s: %w", ref, err)
+	}
+	if p.Kind != naming.KindSec {
+		return p, fmt.Errorf("sec reference %s names %s objects, not secs", ref, p.Kind)
+	}
+	return p, nil
+}
+
+// validateSecs says whether each word of the secs keyword names a sec, or
+// secs by a pattern of their name. The namespace is any: a relative
+// reference is checked as the one of the service would be.
+func validateSecs(value string) error {
+	var errs error
+	for _, ref := range strings.Fields(value) {
+		var err error
+		if naming.IsPathPattern(ref) {
+			_, err = secPattern(ref, "ns")
+		} else {
+			_, err = secPath(ref, "ns")
+		}
+		errs = errors.Join(errs, err)
+	}
+	return errs
 }
 
 // http01 returns the writer of the http-01 challenge tokens the webroot

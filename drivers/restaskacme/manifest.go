@@ -21,11 +21,12 @@ var (
 		{
 			Attr:      "Secs",
 			Converter: converters.List,
-			Example:   "web ./sec/api ns2/sec/shared",
+			Example:   "web ./sec/api ns2/sec/shared ./sec/web-*",
 			Option:    "secs",
 			Required:  true,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/secs"),
+			Validate:  validateSecs,
 		},
 		{
 			Attr:     "Webroot",
