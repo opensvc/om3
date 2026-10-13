@@ -50,6 +50,7 @@ func (a *DaemonAPI) proxyOr(ctx echo.Context, nodename string, fn func(*client.T
 func (a *DaemonAPI) newProxyClient(ctx echo.Context, nodename string, opts ...funcopt.O) (*client.T, error) {
 	options := []funcopt.O{
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
+		client.WithServerName(nodename),
 	}
 	tkDuration := 5 * time.Second
 	authHeader := ctx.Request().Header.Get("authorization")

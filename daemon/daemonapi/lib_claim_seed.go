@@ -233,6 +233,7 @@ func newPeerClient(nodename string) (*client.T, error) {
 	}
 	return client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
+		client.WithServerName(nodename),
 		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)

@@ -161,6 +161,7 @@ func (t *T) getPeerResInfo(p naming.Path, nodename string) (resource.Infos, erro
 	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
+		client.WithServerName(nodename),
 		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)

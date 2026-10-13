@@ -37,8 +37,11 @@ type (
 		Hostname string
 
 		// Certificate is what the session authenticates the node to the
-		// client with.
-		Certificate tls.Certificate
+		// client with, unless GetCertificate returns one for the name
+		// the client asks, as the api listener presents the
+		// certificates of listener.tls_secs.
+		Certificate    tls.Certificate
+		GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 
 		// VerifyKey is the public key of the key the tickets are signed
 		// with.
@@ -53,7 +56,9 @@ type (
 		Command func(console.Target) ([]string, error)
 
 		// PeerURL returns the url of the console endpoint of a peer
-		// node, and PeerTLSConfig how to verify it.
+		// node, and PeerTLSConfig how to verify it. A PeerTLSConfig
+		// naming no server verifies the certificate of the peer for its
+		// node name, the url possibly being of its address.
 		PeerURL       func(node string) (string, error)
 		PeerTLSConfig *tls.Config
 
@@ -150,8 +155,11 @@ func (t *wsWriter) end(m console.Message) {
 func Serve(conn net.Conn, cfg Config) error {
 	_ = conn.SetDeadline(time.Now().Add(handshakeTimeout))
 	tlsConn := tls.Server(conn, &tls.Config{
-		Certificates: []tls.Certificate{cfg.Certificate},
-		MinVersion:   tls.VersionTLS12,
+		Certificates:   []tls.Certificate{cfg.Certificate},
+		GetCertificate: cfg.GetCertificate,
+		// The minimum of the api listener: the clients reaching one
+		// reach the other.
+		MinVersion: tls.VersionTLS13,
 		// A websocket is opened by a http/1.1 upgrade.
 		NextProtos: []string{"http/1.1"},
 	})
@@ -427,8 +435,12 @@ func (cfg Config) relay(ws *websocket.Conn, ticket *console.Ticket, signed strin
 	q := u.Query()
 	q.Set("ticket", signed)
 	u.RawQuery = q.Encode()
+	tlsConfig := cfg.PeerTLSConfig.Clone()
+	if tlsConfig != nil && tlsConfig.ServerName == "" {
+		tlsConfig.ServerName = ticket.Target.Node
+	}
 	dialer := websocket.Dialer{
-		TLSClientConfig:  cfg.PeerTLSConfig,
+		TLSClientConfig:  tlsConfig,
 		HandshakeTimeout: handshakeTimeout,
 	}
 	peer, resp, err := dialer.Dial(u.String(), nil)

@@ -25,6 +25,7 @@ func (t *T) TLSConfig() (*tls.Config, error) {
 		KeyFile:            t.clientKey,
 		InsecureSkipVerify: t.insecureSkipVerify,
 		RootCA:             t.rootCA,
+		ServerName:         t.serverName,
 	})
 }
 
@@ -45,14 +46,20 @@ func (t *T) Host() string {
 // cluster configures, or the console port of the node the api is reached
 // on. A client on the unix socket of a node reaches the console of the node
 // the session is for.
-func (t *T) consoleURL(nodename string, ticket *oapi.ConsoleTicket) (string, error) {
+//
+// The server name is the name the certificate of the console is verified
+// for: the one of the api, or the node the session is for, which may be
+// dialed by the address of its listener.
+func (t *T) consoleURL(nodename string, ticket *oapi.ConsoleTicket) (consoleURL string, serverName string, err error) {
 	var base string
 	if ticket.Url != nil && *ticket.Url != "" {
 		base = *ticket.Url
 	} else {
 		host := t.Host()
+		serverName = t.serverName
 		if host == "" {
 			host = nodename
+			serverName = nodename
 			if nodesInfo, err := nodesinfo.Load(); err == nil {
 				switch addr := nodesInfo[nodename].Lsnr.Addr; addr {
 				case "", "::", "0.0.0.0":
@@ -65,19 +72,19 @@ func (t *T) consoleURL(nodename string, ticket *oapi.ConsoleTicket) (string, err
 	}
 	u, err := url.Parse(base)
 	if err != nil {
-		return "", fmt.Errorf("console url %s: %w", base, err)
+		return "", "", fmt.Errorf("console url %s: %w", base, err)
 	}
 	switch u.Scheme {
 	case "https":
 		u.Scheme = "wss"
 	case "wss":
 	default:
-		return "", fmt.Errorf("console url %s: the scheme is not wss", base)
+		return "", "", fmt.Errorf("console url %s: the scheme is not wss", base)
 	}
 	q := u.Query()
 	q.Set("ticket", ticket.Ticket)
 	u.RawQuery = q.Encode()
-	return u.String(), nil
+	return u.String(), serverName, nil
 }
 
 // Console opens a console session on the resource of the instance, and
@@ -113,7 +120,7 @@ func (t *T) Console(ctx context.Context, nodename string, path naming.Path, rid 
 		}
 		return result, fmt.Errorf("%s: node %s: unexpected status code %d", path, nodename, resp.StatusCode())
 	}
-	consoleURL, err := t.consoleURL(nodename, resp.JSON201)
+	consoleURL, serverName, err := t.consoleURL(nodename, resp.JSON201)
 	if err != nil {
 		return result, err
 	}
@@ -121,6 +128,7 @@ func (t *T) Console(ctx context.Context, nodename string, path naming.Path, rid 
 	if err != nil {
 		return result, err
 	}
+	tlsConfig.ServerName = serverName
 	return console.Attach(ctx, console.AttachOptions{
 		URL:       consoleURL,
 		TLSConfig: tlsConfig,

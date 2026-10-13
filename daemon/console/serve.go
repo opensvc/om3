@@ -2,6 +2,7 @@ package console
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/listener/tlssecs"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -85,11 +87,17 @@ func serveInherited(log *plog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("console ticket verify key: %w", err)
 	}
+	peerCAs := x509.NewCertPool()
+	if !peerCAs.AppendCertsFromPEM(b) {
+		return fmt.Errorf("console peer authorities: no certificate in %s", daemonenv.CAsCertFile())
+	}
 	port := Port()
+	certs := tlssecs.New(log).WithDefault(daemonenv.CertChainFile(), daemonenv.KeyFile())
 
 	return Serve(conn, Config{
-		Hostname:    hostname.Hostname(),
-		Certificate: cert,
+		Hostname:       hostname.Hostname(),
+		Certificate:    cert,
+		GetCertificate: certs.GetCertificate,
 		VerifyKey:   verifyKey,
 		TicketDir:   filepath.Join(Dir(), "tickets"),
 		SessionDir:  SessionDir(),
@@ -98,9 +106,10 @@ func serveInherited(log *plog.Logger) error {
 			return peerURL(node, port)
 		},
 		// A peer is reached as the api reaches it: its certificate is
-		// not verified, the ticket relayed to it being of no use to
-		// anyone once the peer has marked it used.
-		PeerTLSConfig: &tls.Config{InsecureSkipVerify: true},
+		// verified by the cluster authorities, for its node name. The
+		// ticket relayed to it would otherwise be presented to whoever
+		// answered, before the peer marked it used.
+		PeerTLSConfig: &tls.Config{RootCAs: peerCAs, MinVersion: tls.VersionTLS13},
 		Authenticated: func() {
 			if authFile != nil {
 				_ = authFile.Close()

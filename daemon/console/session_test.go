@@ -383,3 +383,60 @@ func waitFor(t *testing.T, what string, ok func() bool) {
 	}
 	t.Fatalf("timeout waiting for %s", what)
 }
+
+// handshake opens a tls connection to a session served with the config, and
+// returns the certificate it is presented.
+func handshake(t *testing.T, cfg Config, clientConfig *tls.Config) (*x509.Certificate, error) {
+	t.Helper()
+	serverConn, clientConn := net.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = Serve(serverConn, cfg)
+	}()
+	defer func() {
+		_ = clientConn.Close()
+		<-done
+	}()
+	conn := tls.Client(clientConn, clientConfig)
+	if err := conn.Handshake(); err != nil {
+		return nil, err
+	}
+	return conn.ConnectionState().PeerCertificates[0], nil
+}
+
+// The console presents the certificate of the name the client asks, as the
+// api listener presents the ones of listener.tls_secs, and its own to the
+// others.
+func TestSessionCertificateByName(t *testing.T) {
+	cert, _, _ := testCertificate(t)
+	named, _, _ := testCertificate(t)
+	cfg := Config{
+		Certificate: cert,
+		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			if hello.ServerName == "console.acme.com" {
+				return &named, nil
+			}
+			return nil, nil
+		},
+		Log: plog.NewDefaultLogger().WithPrefix("test console: "),
+	}
+	for name, want := range map[string]tls.Certificate{"console.acme.com": named, "n1": cert} {
+		got, err := handshake(t, cfg, &tls.Config{InsecureSkipVerify: true, ServerName: name})
+		if err != nil {
+			t.Fatalf("%s: %s", name, err)
+		}
+		if !bytes.Equal(got.Raw, want.Certificate[0]) {
+			t.Errorf("%s: not presented the certificate of the name", name)
+		}
+	}
+}
+
+// The console requires tls 1.3, as the api listener does.
+func TestSessionRefusesTLS12(t *testing.T) {
+	cert, _, _ := testCertificate(t)
+	cfg := Config{Certificate: cert, Log: plog.NewDefaultLogger().WithPrefix("test console: ")}
+	if _, err := handshake(t, cfg, &tls.Config{InsecureSkipVerify: true, MaxVersion: tls.VersionTLS12}); err == nil {
+		t.Fatal("a tls 1.2 client is served")
+	}
+}

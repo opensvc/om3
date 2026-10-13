@@ -76,6 +76,9 @@ func GetClient(t *testing.T) (*client.T, error) {
 	require.Nil(t, err)
 	cli, err := client.New(
 		client.WithURL(daemonenv.HTTPLocalURL()),
+		// The certificate of the testdata, which the daemon renews for its
+		// node name while the test runs, is not what is tested.
+		client.WithInsecureSkipVerify(true),
 		client.WithTimeout(3*time.Second),
 		client.WithBearer(tk),
 	)

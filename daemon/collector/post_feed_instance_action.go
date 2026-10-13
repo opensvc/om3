@@ -725,6 +725,7 @@ func readPeerActionLog(ctx context.Context, nodename string, filters []string) (
 	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
+		client.WithServerName(nodename),
 		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 		client.WithTimeout(0),
