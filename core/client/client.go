@@ -302,8 +302,9 @@ func (t *T) loadContext() error {
 			t.insecureSkipVerify = *context.Cluster.InsecureSkipVerify
 		}
 		// The authority of a cluster whose certificate no system one
-		// signs, as one its own ca issued.
-		if ca := context.Cluster.CertificateAuthority; ca != nil && *ca != "" && t.rootCA == "" {
+		// signs, as one its own ca issued. An insecure context verifies
+		// nothing, and does not read it: a file gone is no failure.
+		if ca := context.Cluster.CertificateAuthority; ca != nil && *ca != "" && t.rootCA == "" && !t.insecureSkipVerify {
 			if t.rootCA, err = homedir.Expand(*ca); err != nil {
 				return fmt.Errorf("context certificate authority %s: %w", *ca, err)
 			}

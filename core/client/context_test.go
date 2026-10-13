@@ -96,4 +96,10 @@ func TestContextCertificateAuthority(t *testing.T) {
 	ca := "~/ca.pem"
 	use("with-ca", clientcontext.Cluster{Server: srv.URL, CertificateAuthority: &ca})
 	require.NoError(t, get())
+
+	// An insecure context verifies nothing: its authority file is not
+	// read, and one gone is no failure.
+	gone, insecure := "~/gone.pem", true
+	use("insecure", clientcontext.Cluster{Server: srv.URL, CertificateAuthority: &gone, InsecureSkipVerify: &insecure})
+	require.NoError(t, get())
 }
