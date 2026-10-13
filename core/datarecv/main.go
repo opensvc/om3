@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"os/user"
@@ -246,6 +247,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		/etc/ssl/front.pem from ./sec/d key fullpem mode 0640 user 1000 group 1001 required
 		/etc/ssl/front.chain from ./sec/d key certificate_chain required
 		/etc/profile.d/ from ./sec/d key etc/profile.d/*
+		/etc/ssl/certs/*.pem from ./sec/web-* key fullpem signal HUP:container#haproxy
 		/init/nfs from ./cfg/{name} key init/nfs mode 0755 source https://raw.githubusercontent.com/opensvc/opensvc_templates/refs/heads/main/nfs/script
 		/init/backup from ./cfg/{name} key init/backup mode 0755 source /tmp/scripts/backup.sh
 		/init/config.sh from ./cfg/{name} key init/config.sh mode 0755 source https://example.com/templates/config.sh template
@@ -253,6 +255,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 			Option:   "install",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/install"),
+			Validate: ValidateInstall,
 		},
 		{
 			Attr:      prefix + "Configs",
@@ -423,12 +426,22 @@ func (t *DataRecv) getMetadataByKind(head string, kinds ...naming.Kind) []object
 // <namespace>/<kind>/<name>[/<key>]
 func (t *DataRecv) HasMetadata(path naming.Path, k string) bool {
 	head := t.to.Head()
-	_, installMetadata := t.getInstallMetadata(head)
+	_, installMetadata, patterns := t.getInstallLines(head)
 	for _, md := range installMetadata {
 		if md.FromStore != path {
 			continue
 		}
 		if k == "" || md.FromPattern == k {
+			return true
+		}
+	}
+	// A datastore a pattern names, deleted, has no item, and its files
+	// are to be removed.
+	for _, l := range patterns {
+		if !l.pattern.MatchPath(path) {
+			continue
+		}
+		if k == "" || l.fromPattern == k {
 			return true
 		}
 	}
@@ -542,8 +555,13 @@ func (t *DataRecv) statusDirs(head string, dirs []dirDefinition) {
 func (t *DataRecv) Status() {
 	path := t.to.GetObject().(object.Core).Path()
 	head := t.to.Head()
-	dirs, _ := t.getInstallMetadata(head)
+	dirs, _, patterns := t.getInstallLines(head)
 	t.statusDirs(head, dirs)
+	for _, l := range patterns {
+		if l.required && l.matched == 0 {
+			t.to.StatusLog().Warn("no datastore matches %s: missing ...%s", l.pattern, l.dest)
+		}
+	}
 	for _, md := range t.getMetadata() {
 		if !md.FromStore.Exists() {
 			t.to.StatusLog().Warn("store %s does not exist: missing key %s", md.FromStore, md.FromPattern)
@@ -579,9 +597,9 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	changed := false
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
-	dirs, files := t.getInstallMetadata(head)
+	dirs, files, patterns := t.getInstallLines(head)
 
-	if len(dirs) == 0 && len(files) == 0 {
+	if len(dirs) == 0 && len(files) == 0 && len(patterns) == 0 {
 		return false, nil
 	}
 
@@ -602,8 +620,18 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	defer func() { t.recordInstalled(installed) }()
 	readKeys := readTemplateKeys(t.templateKeysFile())
 
+	// A datastore deleted installs nothing more: the items of a line
+	// naming it by a pattern are gone with it, and their files are removed
+	// with the lines no longer configured.
+	gone := !from.Path().Exists()
+	ids := make([]string, 0, len(files))
+
 	for _, md := range files {
+		ids = append(ids, installLineID(md))
 		store := from
+		if md.FromStore == from.Path() && gone {
+			continue
+		}
 		if md.FromStore != from.Path() {
 			// A template of another datastore reading a key of
 			// from renders again. The key changed is not known,
@@ -672,6 +700,10 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		}
 	}
 
+	if t.pruneStaleLines(head, ids, patterns, signals, &installed) {
+		changed = true
+	}
+
 	t.SendSignals(ctx, signals)
 
 	return changed, nil
@@ -685,7 +717,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	t.to.Log().Tracef("install: head: %s", head)
 
 	path := t.to.GetObject().(object.Core).Path()
-	dirs, files := t.getInstallMetadata(head)
+	dirs, files, patterns := t.getInstallLines(head)
 	t.to.Log().Tracef("install: dirs: %s", dirs)
 	t.to.Log().Tracef("install: files: %s", files)
 
@@ -723,6 +755,14 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	// The files written are recorded whatever ends the install, an error
 	// of a required item included: what reads them is to read them again.
 	defer func() { t.recordInstalled(installed) }()
+
+	// A line naming its datastores by a pattern has no item when none
+	// matches, and nothing tells its install failed but this.
+	for _, l := range patterns {
+		if l.required && l.matched == 0 {
+			return false, fmt.Errorf("install ...%s: no datastore matches %s", l.dest, l.pattern)
+		}
+	}
 
 	// ids are the lines configured, whose files are kept: the files of a
 	// line no longer configured are removed once they are all done.
@@ -796,14 +836,28 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 	}
 
-	if removed := t.pruneInstallLines(head, ids); len(removed) > 0 {
-		installed = appendNew(installed, removed...)
+	if t.pruneStaleLines(head, ids, patterns, signals, &installed) {
 		changed = true
 	}
 
 	t.SendSignals(ctx, signals)
 
 	return changed, nil
+}
+
+// pruneStaleLines removes the files of the install lines recorded and no
+// longer configured, adds them to installed, and the signals of the line of
+// a pattern the item of a datastore gone is of to signals. It says whether
+// it removed a file.
+func (t *DataRecv) pruneStaleLines(head string, ids []string, patterns patternLines, signals *volsignal.T, installed *[]string) bool {
+	removed := t.pruneInstallLines(head, ids)
+	for _, id := range slices.Sorted(maps.Keys(removed)) {
+		*installed = appendNew(*installed, removed[id]...)
+		if l, ok := patterns.line(id); ok {
+			signals.Merge(l.signals)
+		}
+	}
+	return len(removed) > 0
 }
 
 func isSep(text []string, word string, i int) bool {
@@ -852,13 +906,29 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 	return t.parseInstall(head, t.to.GetObject().(object.Core).Path())
 }
 
+// getInstallLines returns what getInstallMetadata does, and the lines
+// installing from the datastores of a pattern, whose items are among the
+// files.
+func (t *DataRecv) getInstallLines(head string) ([]dirDefinition, []object.KVInstall, patternLines) {
+	return t.parseInstallLines(head, t.to.GetObject().(object.Core).Path())
+}
+
 // parseInstall reads the install keyword of the object at path, whose
 // relative datastore paths are in its namespace.
 func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition, []object.KVInstall) {
+	dirs, files, _ := t.parseInstallLines(head, path)
+	return dirs, files
+}
+
+// parseInstallLines reads the install keyword as parseInstall does, a line
+// installing from the datastores of a pattern being an item per datastore
+// matching, and returns these lines too.
+func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefinition, []object.KVInstall, patternLines) {
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
+	patterns := make(patternLines, 0)
 	if head == "" {
-		return dirs, files
+		return dirs, files, patterns
 	}
 
 	parseFileMode := func(s string) (*os.FileMode, error) {
@@ -922,19 +992,28 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 			Signals: volsignal.New(),
 		}
 
-		var word string
+		var (
+			word       string
+			pattern    *naming.PathPattern
+			isTemplate bool
+		)
 
 		word, line = Pop(line)
+		dest := word
 
 		// Set a default value for the "key" field.
 		// e.g. the /a/b file default key is a/b
 		item.FromPattern = strings.TrimLeft(word, "/")
 
 		// Forge the fullpath of the file to install.
-		item.ToPath = filepath.Join(head, word)
-		if strings.HasSuffix(word, "/") {
-			item.ToPath += "/"
+		toPath := func(dest string) string {
+			s := filepath.Join(head, dest)
+			if strings.HasSuffix(dest, "/") {
+				s += "/"
+			}
+			return s
 		}
+		item.ToPath = toPath(dest)
 
 		word, line = Pop(line)
 		if word != "from" {
@@ -942,21 +1021,31 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 		}
 
 		word, line = Pop(line)
-		fromStore, err := naming.ParsePathRel(word, path.Namespace)
-		if err != nil {
-			return
+		var kind naming.Kind
+		if naming.IsPathPattern(word) {
+			p, err := parseStorePattern(word, path.Namespace)
+			if err != nil || strings.Count(dest, "*") != 1 {
+				return
+			}
+			pattern = &p
+			kind = p.Kind
+		} else {
+			fromStore, err := naming.ParsePathRel(word, path.Namespace)
+			if err != nil {
+				return
+			}
+			item.FromStore = fromStore
+			kind = fromStore.Kind
 		}
 
-		switch fromStore.Kind {
+		switch kind {
 		case naming.KindSec, naming.KindCfg:
 			// The perm keyword, as the configs and secrets keywords
 			// read it, else the default of the kind of datastore.
-			item.AccessControl.Perm = t.getPerm(fromStore.Kind)
+			item.AccessControl.Perm = t.getPerm(kind)
 		default:
 			return
 		}
-
-		item.FromStore = fromStore
 
 		for {
 			word, line = Pop(line)
@@ -988,11 +1077,45 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 				word, line = Pop(line)
 				item.Source = word
 			case "template":
-				item.Render = t.renderer(fromStore)
+				isTemplate = true
 			}
 		}
 
-		files = append(files, item)
+		if pattern == nil {
+			if isTemplate {
+				item.Render = t.renderer(item.FromStore)
+			}
+			files = append(files, item)
+			return
+		}
+
+		// An item per datastore of the pattern, its file named after the
+		// part of the datastore name the pattern matched.
+		pl := patternLine{
+			pattern:     *pattern,
+			fromPattern: item.FromPattern,
+			dest:        dest,
+			required:    item.Required,
+			signals:     item.Signals,
+		}
+		pl.id = pattern.String() + ":" + item.FromPattern + ":" + strings.TrimPrefix(item.ToPath, head)
+		item.Line = pl.id
+		for _, p := range storePaths(*pattern, path.Namespace) {
+			match, _ := pattern.Match(p.Name)
+			d, ok := expandDest(dest, match)
+			if !ok {
+				continue
+			}
+			it := item
+			it.FromStore = p
+			it.ToPath = toPath(d)
+			if isTemplate {
+				it.Render = t.renderer(p)
+			}
+			files = append(files, it)
+			pl.matched++
+		}
+		patterns = append(patterns, pl)
 	}
 
 	for _, line := range Split(t.Install) {
@@ -1002,7 +1125,7 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 			parseDir(line)
 		}
 	}
-	return dirs, files
+	return dirs, files, patterns
 }
 
 // RunInstall installs what the data receiver declares, as a start does, and

@@ -65,6 +65,11 @@ type (
 		// the file of a key the store no longer holds can be told.
 		Holds func(path string)
 
+		// Line, when set, names the install line the item is one of: a
+		// line installing from the datastores a pattern names is an item
+		// per datastore, each with its FromStore and its ToPath.
+		Line string
+
 		// fs is where the install writes: the tree of ToHead, which the
 		// install cannot leave, or the node for an install naming no head.
 		fs confined.FS

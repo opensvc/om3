@@ -101,3 +101,16 @@ func (t *dataStore) temporaryKeyFile(name string) (f *os.File, err error) {
 func (t *dataStore) postCommit() error {
 	return t.postInstall("")
 }
+
+// Delete deletes the datastore, and has the volumes installing from it by a
+// pattern of datastore names remove the files it installed: nothing else
+// would, the datastore gone, and every node deletes its instance.
+func (t *dataStore) Delete(ctx context.Context) error {
+	if err := t.core.Delete(ctx); err != nil {
+		return err
+	}
+	if err := t.postInstall(""); err != nil {
+		t.log.Warnf("remove the files installed from %s: %s", t.path, err)
+	}
+	return nil
+}

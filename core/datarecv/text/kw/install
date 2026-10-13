@@ -21,6 +21,17 @@ Where:
 * `<obj_relpath>` (e.g. `./sec/d`)
   * is the path of the datastore to install keys from, relative to the installing object namespace.
 
+* a `*` in the name of `<obj_path|obj_relpath>` (e.g. `./sec/haproxy-*`)
+  * installs the keys of each sec or cfg of the namespace whose name matches, the `*` matching one character or
+    more. A datastore of another namespace is installed from when it shares its keys with the installing object.
+  * the `<path>` holds a `*` too, replaced for each datastore by the part of its name the `*` matched: so the
+    files of the datastores are told apart.
+    e.g. `/certs/*.pem from ./sec/haproxy-* key fullpem` installs the `fullpem` key of `./sec/haproxy-www.example.com`
+    as `<head>/certs/www.example.com.pem`, and `/tenants/*/ from ./cfg/tenant-* key conf/*` installs the `conf/*` keys
+    of `./cfg/tenant-a` in `<head>/tenants/a/`.
+  * a datastore created is installed from at its first key added, and the files of a datastore deleted are removed.
+  * `required` fails the install when no datastore matches.
+
 * `key <key>`
   * `<key>` is the key name or a globbing pattern from `<obj_path|obj_relpath>`.
   * the file a key installed is removed when the key is, at the next install, and so are the files of a line

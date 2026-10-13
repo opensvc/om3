@@ -22,8 +22,14 @@ type (
 	installFiles map[string][]string
 )
 
-// installLineID names an install line: the keys it installs, and where.
+// installLineID names an install line: the keys it installs, and where. The
+// item of a datastore of a line naming them by a pattern is the line, and the
+// datastore: the line holds the files of each, and leaves the ones of the
+// others to their item.
 func installLineID(md object.KVInstall) string {
+	if md.Line != "" {
+		return md.Line + "@" + md.FromStore.String()
+	}
 	return md.FromStore.String() + ":" + md.FromPattern + ":" + strings.TrimPrefix(md.ToPath, md.ToHead)
 }
 
@@ -121,15 +127,16 @@ func (m installFiles) heldByOther(id, p string) bool {
 }
 
 // pruneInstallLines removes the files of the install lines recorded and no
-// longer configured, as a line taken away from the install keyword or one
-// installing elsewhere now, and returns the ones removed.
-func (t *DataRecv) pruneInstallLines(head string, ids []string) []string {
+// longer configured, as a line taken away from the install keyword, one
+// installing elsewhere now, or the item of a datastore gone of a line naming
+// them by a pattern, and returns the ones removed, by line.
+func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]string {
 	filename := t.installFilesFile()
 	if filename == "" {
 		return nil
 	}
 	m := readInstallFiles(filename)
-	removed := make([]string, 0)
+	removed := make(map[string][]string)
 	dropped := false
 	for id, files := range m {
 		if slices.Contains(ids, id) {
@@ -143,7 +150,9 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) []string {
 				stale = append(stale, p)
 			}
 		}
-		removed = append(removed, t.removeInstalled(head, stale)...)
+		if l := t.removeInstalled(head, stale); len(l) > 0 {
+			removed[id] = l
+		}
 	}
 	if dropped {
 		if err := writeInstallFiles(filename, m); err != nil {
