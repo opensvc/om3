@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/go-homedir"
+
 	"github.com/opensvc/om3/v3/core/client/api"
 	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
 	"github.com/opensvc/om3/v3/core/client/tokencache"
@@ -299,6 +301,13 @@ func (t *T) loadContext() error {
 		t.url = context.Cluster.Server
 		if context.Cluster.InsecureSkipVerify != nil {
 			t.insecureSkipVerify = *context.Cluster.InsecureSkipVerify
+		}
+		// The authority of a cluster whose certificate no system one
+		// signs, as one its own ca issued.
+		if ca := context.Cluster.CertificateAuthority; ca != nil && *ca != "" && t.rootCA == "" {
+			if t.rootCA, err = homedir.Expand(*ca); err != nil {
+				return fmt.Errorf("context certificate authority %s: %w", *ca, err)
+			}
 		}
 		if context.User.ClientCertificate != nil {
 			t.clientCertificate = *context.User.ClientCertificate
