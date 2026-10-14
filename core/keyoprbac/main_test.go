@@ -86,6 +86,9 @@ func TestDeniedByValue(t *testing.T) {
 		{"container#1", "volume_mounts", "/srv/data:/data:rw", true},
 		{"container#1", "volume_mounts", "a:/a ../../etc:/etc", true},
 		{"container#1", "volume_mounts", "a/../../etc:/etc", true},
+		{"container#1", "volume_mounts", "tmpfs:/var/lib/opensvc:size=16m", false},
+		{"task#1", "volume_mounts", "tmpfs:/tmp", false},
+		{"container#1", "volume_mounts", "tmpfs:/a/../../etc", true},
 
 		{"volume#1", "install", "/etc/nginx.conf from https://example.com/c source https://example.com/c", false},
 		{"volume#1", "install", "/etc/nginx.conf source /etc/shadow", true},

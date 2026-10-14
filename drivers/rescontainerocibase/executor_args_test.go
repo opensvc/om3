@@ -2,6 +2,7 @@ package rescontainerocibase
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -124,4 +125,37 @@ func TestResolvConfMount(t *testing.T) {
 		require.NotEmpty(t, mount)
 		require.Contains(t, (*written)[0], "nameserver 10.29.0.11\n")
 	})
+}
+
+// A tmpfs volume_mounts entry is a --tmpfs option of the engine, with its
+// options, and no bind mount: nothing of the node, nor of a volume, is
+// mounted, and no staging mount is made for it.
+func TestTmpfsVolumeMount(t *testing.T) {
+	for s, want := range map[string]string{
+		"tmpfs:/var/lib/opensvc:size=16m": "/var/lib/opensvc:size=16m",
+		"tmpfs:/tmp":                      "/tmp",
+		"tmpfs:/tmp:":                     "/tmp",
+	} {
+		got, err := tmpfsMountArg(s)
+		require.NoError(t, err, s)
+		require.Equal(t, want, got, s)
+	}
+	for _, s := range []string{"tmpfs:tmp", "tmpfs:/a:b:c"} {
+		_, err := tmpfsMountArg(s)
+		require.Error(t, err, s)
+	}
+
+	bt := &BT{
+		T:            resource.T{ResourceID: &resourceid.T{Name: "id1"}},
+		Path:         naming.Path{Name: "foo", Kind: naming.KindSvc},
+		VolumeMounts: []string{"tmpfs:/var/lib/opensvc:size=16m"},
+	}
+	require.NoError(t, bt.Configure())
+	mounts, err := bt.Mounts(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, mounts, "no bind mount")
+	ea := &ExecutorArg{BT: bt}
+	base, err := ea.RunArgsBase(context.Background())
+	require.NoError(t, err)
+	require.Contains(t, strings.Join(base.Get(), " "), "--tmpfs /var/lib/opensvc:size=16m")
 }

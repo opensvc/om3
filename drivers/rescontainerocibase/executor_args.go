@@ -206,6 +206,17 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 			a.Append("--volume", v)
 		}
 	}
+	for _, s := range bt.VolumeMounts {
+		if !isTmpfsMount(s) {
+			continue
+		}
+		v, err := tmpfsMountArg(s)
+		if err != nil {
+			return a, err
+		}
+		runArgs.DropOptionAndExactValue("--tmpfs", v)
+		a.Append("--tmpfs", v)
+	}
 	if mounts, err := ea.runArgsEnv(ctx); err != nil {
 		return a, err
 	} else {

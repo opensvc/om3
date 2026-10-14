@@ -432,6 +432,9 @@ func (t *BT) LinkNames() []string {
 func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 	mounts := make([]BindMount, 0)
 	for i, s := range t.VolumeMounts {
+		if isTmpfsMount(s) {
+			continue
+		}
 		source, target, opt, err := parseVolumeMount(s)
 		if err != nil {
 			return mounts, err
@@ -460,6 +463,9 @@ func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 func (t *BT) mountsStaged(inspect Inspecter) bool {
 	sources := inspect.BindSources()
 	for i, s := range t.VolumeMounts {
+		if isTmpfsMount(s) {
+			continue
+		}
 		source, _, _, err := parseVolumeMount(s)
 		if err != nil || strings.HasPrefix(source, "/") {
 			continue
@@ -497,6 +503,34 @@ func (t *BT) unstageAfterStop(ctx context.Context) {
 	}
 	if err := t.unstageVolumeMounts(); err != nil {
 		t.Log().Warnf("remove the staging mounts: %s", err)
+	}
+}
+
+// tmpfsSource is the source of a volume_mounts entry asking a memory
+// filesystem of the container's own, which the engine mounts: nothing of the
+// node, nor of a volume, is mounted.
+const tmpfsSource = "tmpfs"
+
+// isTmpfsMount says whether the volume_mounts entry asks a memory filesystem,
+// as tmpfs:/var/lib/opensvc:size=16m.
+func isTmpfsMount(s string) bool {
+	return strings.HasPrefix(s, tmpfsSource+":")
+}
+
+// tmpfsMountArg returns the value of the --tmpfs option of the engine a
+// tmpfs volume_mounts entry asks: the target, and the tmpfs options if any.
+func tmpfsMountArg(s string) (string, error) {
+	l := strings.Split(strings.TrimPrefix(s, tmpfsSource+":"), ":")
+	target := l[0]
+	switch {
+	case len(l) > 2:
+		return "", fmt.Errorf("invalid volume_mounts entry: %s: tmpfs:<target>[:<options>]", s)
+	case !strings.HasPrefix(target, "/"):
+		return "", fmt.Errorf("invalid volume_mounts entry: %s: the target of a tmpfs is an absolute path", s)
+	case len(l) == 2 && l[1] != "":
+		return target + ":" + l[1], nil
+	default:
+		return target, nil
 	}
 }
 

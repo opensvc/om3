@@ -7,6 +7,11 @@ The source is one of:
   the service, a volume or a filesystem, under its mount point.
 * `web-cfg/etc/nginx`, a directory or a file in the vol `web-cfg` of the
   namespace, under its mount point.
+* `tmpfs`, a memory filesystem of the container's own, which the engine
+  mounts at the start and discards at the stop: `tmpfs:/var/lib/app` or
+  `tmpfs:/var/lib/app:size=16m,mode=0750`. The `<mount options>` are the ones
+  of a tmpfs. The memory it holds counts in the one of the container, which
+  its memory limit bounds.
 
 When the source is a directory of the node, the default `<mount option>` is `rw`.
 
