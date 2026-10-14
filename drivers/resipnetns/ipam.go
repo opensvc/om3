@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
@@ -130,8 +132,13 @@ func (t *T) networkDev() string {
 // second copy to keep in step. An explicit value always wins.
 func (t *T) Configure() error {
 	nw, err := t.resolveNetwork()
+	t.configureMode(nw)
+	t.configureVLAN(nw)
 	if err != nil {
 		return err
+	}
+	if t.netErr != nil {
+		return nil
 	}
 	if t.Gateway != "" {
 		t.gatewayRank = gatewayOwn
@@ -169,6 +176,47 @@ func (t *T) Configure() error {
 		}
 	}
 	return nil
+}
+
+// configureMode sets the mode of a resource naming none, the first of the modes
+// of its network, else bridge, and refuses a mode the network does not list.
+//
+// The network, which root configures, says how its segment is joined, as a
+// macvlan where the interface of the node on it is no bridge: the resource of
+// a namespace, which can not name a mode, joins any segment so.
+func (t *T) configureMode(nw network.Networker) {
+	var modes []string
+	if m, ok := nw.(network.Moder); ok {
+		modes = m.Modes()
+	}
+	switch {
+	case t.Mode == "" && len(modes) > 0:
+		t.Mode = modes[0]
+	case t.Mode == "":
+		t.Mode = "bridge"
+	case len(modes) > 0 && !slices.Contains(modes, t.Mode):
+		t.netErr = fmt.Errorf("mode %s is not one of the modes of network %s: %s", t.Mode, nw.Name(), strings.Join(modes, " "))
+	}
+}
+
+// configureVLAN sets the VLAN tag and mode of a resource naming none to the
+// ones of its network, the mode to native-untagged when neither names one.
+// They apply to the port an ovs mode adds to the openvswitch bridge.
+func (t *T) configureVLAN(nw network.Networker) {
+	var tag, mode string
+	if v, ok := nw.(network.VLANer); ok {
+		tag, mode = v.VLAN()
+	}
+	if t.VLANTag == "" {
+		t.VLANTag = tag
+	}
+	switch {
+	case t.VLANMode != "":
+	case mode != "":
+		t.VLANMode = mode
+	default:
+		t.VLANMode = "native-untagged"
+	}
 }
 
 // isLinuxBridge says a link is a linux bridge, replaced by the tests.

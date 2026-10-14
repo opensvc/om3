@@ -21,12 +21,13 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "UUID",
-			Example:  "dev1",
-			Option:   "uuid",
-			Recorded: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/uuid"),
+			Attr:         "UUID",
+			Example:      "dev1",
+			Option:       "uuid",
+			Recorded:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/uuid"),
 		},
 		{
 			Attr:         "Devs",
@@ -38,12 +39,13 @@ var (
 			Text:         keywords.NewText(fs, "text/kw/devs"),
 		},
 		{
-			Attr:        "Name",
-			Example:     "prettyname",
-			Option:      "name",
-			Scopable:    true,
-			Text:        keywords.NewText(fs, "text/kw/name"),
-			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
+			Attr:         "Name",
+			Example:      "prettyname",
+			Option:       "name",
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
+			DefaultText:  keywords.NewText(fs, "text/kw/name.default"),
 		},
 		{
 			Attr:         "Level",

@@ -89,6 +89,7 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyName       = key.New("cluster", "name")
 		keyNodes      = key.New("cluster", "nodes")
 		keyDNS        = key.New("cluster", "dns")
+		keyDNSReverse = key.New("cluster", "dns_reverse")
 		keyCASecPaths = key.New("cluster", "ca")
 		keyQuorum     = key.New("cluster", "quorum")
 
@@ -117,6 +118,7 @@ func getClusterConfig() (*cluster.Config, error) {
 	c := t.Config()
 	cfg.ID = c.GetString(keyID)
 	cfg.DNS = c.GetStrings(keyDNS)
+	cfg.DNSReverse = c.GetBool(keyDNSReverse)
 	cfg.Nodes = c.GetStrings(keyNodes)
 	cfg.Name = c.GetString(keyName)
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)

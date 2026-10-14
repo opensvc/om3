@@ -1,1 +1,3 @@
-The VLAN tag the switch port will relay.
+The VLAN tag the switch port will relay, the `tag` of the port the `ovs` mode
+adds to the openvswitch bridge. Unset, the `vlan_tag` of the network the
+address is drawn from, if any.

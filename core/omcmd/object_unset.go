@@ -11,6 +11,7 @@ type (
 		Local    bool
 		Keywords []string
 		Sections []string
+		Force    bool
 	}
 )
 
@@ -19,6 +20,7 @@ func (t *CmdObjectUnset) Run(kind string) error {
 		OptsGlobal: t.OptsGlobal,
 		OptsLock:   t.OptsLock,
 		Local:      t.Local,
+		Force:      t.Force,
 		Unset:      t.Keywords,
 		Delete:     t.Sections,
 	}

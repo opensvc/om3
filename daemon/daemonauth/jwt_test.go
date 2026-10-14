@@ -4,6 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"math/big"
 	"net/http"
 	"testing"
 	"time"
@@ -190,4 +193,29 @@ func TestConsoleTicketIsNoAPICredential(t *testing.T) {
 
 	_, err = (&jwtStrategy{verifyKey: &key.PublicKey}).Authenticate(context.Background(), bearerRequest(t, tk))
 	assert.ErrorContains(t, err, "console ticket")
+}
+
+// A token signed with the key of a former ca the verify file still holds,
+// as after a rotation, is accepted, and one of a key it does not hold is not.
+func TestJWTStrategyAcceptsATokenOfAFormerCA(t *testing.T) {
+	authCache = newCache()
+	current, former, other := testKey(t), testKey(t), testKey(t)
+	certPEM := func(key *rsa.PrivateKey) []byte {
+		tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), NotAfter: time.Now().Add(time.Hour), IsCA: true, BasicConstraintsValid: true}
+		der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+		require.NoError(t, err)
+		return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	}
+	bundle := append(certPEM(current), certPEM(former)...)
+	s := &jwtStrategy{verifyKey: &current.PublicKey, otherKeys: otherRSAPublicKeys(bundle, &current.PublicKey)}
+	require.Len(t, s.otherKeys, 1)
+	claims := func() jwt.MapClaims {
+		return jwt.MapClaims{"sub": "alice", "exp": time.Now().Add(time.Hour).Unix()}
+	}
+	_, err := s.Authenticate(context.Background(), bearerRequest(t, signedToken(t, current, claims())))
+	assert.NoError(t, err)
+	_, err = s.Authenticate(context.Background(), bearerRequest(t, signedToken(t, former, claims())))
+	assert.NoError(t, err)
+	_, err = s.Authenticate(context.Background(), bearerRequest(t, signedToken(t, other, claims())))
+	assert.Error(t, err)
 }

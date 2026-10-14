@@ -21,6 +21,7 @@ type (
 		Name       string         `json:"name"`
 		Nodes      Nodes          `json:"nodes"`
 		DNS        []string       `json:"dns"`
+		DNSReverse bool           `json:"dns_reverse"`
 		CASecPaths []string       `json:"ca_sec_paths"`
 		Listener   ConfigListener `json:"listener"`
 		Quorum     bool           `json:"quorum"`

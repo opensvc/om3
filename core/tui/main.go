@@ -2037,7 +2037,7 @@ func (t *App) updateClusterConfigView() {
 	// Apply syntax highlighting to the config
 	colorizedConfig := commoncmd.ColorizeINI(resp.Body)
 	text := tview.Escape(string(colorizedConfig))
-	text = tview.TranslateANSI(text)
+	text = translateANSI(text)
 	t.textView.SetDynamicColors(true)
 	t.textView.Clear()
 	t.textView.SetTitle("cluster configuration")
@@ -2061,7 +2061,7 @@ func (t *App) updateNodeConfigView() {
 	// Apply syntax highlighting to the config
 	colorizedConfig := commoncmd.ColorizeINI(resp.Body)
 	text := tview.Escape(string(colorizedConfig))
-	text = tview.TranslateANSI(text)
+	text = translateANSI(text)
 	t.textView.SetDynamicColors(true)
 	t.textView.SetTitle(fmt.Sprintf("%s configuration", t.viewNode))
 	t.textView.Clear()
@@ -2084,7 +2084,7 @@ func (t *App) updateObjectConfigView() {
 	// Apply syntax highlighting to the config
 	colorizedConfig := commoncmd.ColorizeINI(resp.Body)
 	text := tview.Escape(string(colorizedConfig))
-	text = tview.TranslateANSI(text)
+	text = translateANSI(text)
 	t.textView.SetDynamicColors(true)
 	t.textView.SetTitle(fmt.Sprintf("%s configuration", t.viewPath.String()))
 	t.textView.Clear()

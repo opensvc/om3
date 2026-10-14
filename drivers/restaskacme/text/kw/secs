@@ -8,5 +8,14 @@ secs of the namespace of the service, `ns2/sec/web` a sec of another
 namespace, which must share it with this one, its `share` keyword naming this
 namespace or `*`.
 
+A name holding a `*` names the secs matching it, the `*` matching one
+character or more, as `./sec/web-*`: the secs there are when the task runs,
+as the ones a service creates and deletes. A pattern matching none names none,
+and leaves out the secs of another namespace not shared with this one, where a
+sec named that does not exist, or is not shared, fails the task.
+
 The volumes installing the renewed keys get the new ones, and the signals of
 their install lines are sent, on every node running them.
+
+The secs are optional when `domains_from` names the domains to obtain the
+certificates of.

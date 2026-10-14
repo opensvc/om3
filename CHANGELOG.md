@@ -83,6 +83,21 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
   OSVC_SSRF_ENABLE_REDIRECTS
   ```
 
+* **Cluster certificate authority lifecycle**:
+
+    The cluster ca, `system/sec/ca`, is created valid 10 years. The daemon
+    speaker renews its certificate with the same key a fifth of its validity
+    before it expires, a year at most, and issues `system/sec/cert` again
+    from it: the certificates it signed stay valid. Every node installs the
+    cluster authorities again when one of them changes, with no restart. A
+    node warns when the certificate of `system/sec/cert` expires within 14
+    days, or the one of `system/sec/ca` within 90.
+
+    `om cluster ca rotate` replaces the key of the cluster ca, waiting at
+    each step for every node, so no node refuses another meanwhile. The
+    former ca stays trusted, through the cluster `ca` keyword, until the
+    certificates it signed are renewed.
+
 ### Network & Storage
 
 * **Modern firewall management**: Configuration now uses nftables exclusively, with better support for large subnets including IPv6 via the new `mask_per_node` keyword.
@@ -311,6 +326,20 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     ```
       
     These driver group names were already deprecated in v2.1.
+
+* **A change a resource up would leak by is refused**
+
+    A change of a keyword saying what a resource holds on a node once
+    started, as the `mnt` or `dev` of a fs, the address, `dev`, `netns` or
+    `network` of an ip, the `name` of a volume group or a container, a change
+    of the type of a resource, or the removal of its section, is refused
+    while the resource is up on a node, by root too. v2 accepted it, and the
+    stop of the resource then acted on the new value, leaving the former
+    mount, address or device on the node.
+
+    Stop the resource first. Root writes the change all the same with
+    `--force`, as to recover from a resource that cannot be stopped. The
+    keywords concerned say `stop first` in `om <path> config doc`.
 
 ### Commands
 

@@ -752,6 +752,13 @@ var (
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.dns"),
 	}
+	kwNodeClusterDNSReverse = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "true",
+		Option:    "dns_reverse",
+		Section:   "cluster",
+		Text:      keywords.NewText(fs, "text/kw/node/cluster.dns_reverse"),
+	}
 	kwNodeClusterCA = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.ca.default"),
 		Converter:   converters.List,
@@ -1445,6 +1452,42 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/node/network.lan.dev"),
 		Types:    []string{"lan"},
 	}
+	kwNodeNetworkLANModes = keywords.Keyword{
+		Candidates: []string{"bridge", "macvlan", "ipvlan-l2", "dedicated", "ovs"},
+		Converter:  converters.List,
+		Example:    "macvlan ipvlan-l2",
+		Option:     "modes",
+		Scopable:   true,
+		Section:    "network",
+		Text:       keywords.NewText(fs, "text/kw/node/network.lan.modes"),
+		Types:      []string{"lan"},
+	}
+	kwNodeNetworkLANVLANTag = keywords.Keyword{
+		Example:  "44",
+		Option:   "vlan_tag",
+		Scopable: true,
+		Section:  "network",
+		Text:     keywords.NewText(fs, "text/kw/node/network.lan.vlan_tag"),
+		Types:    []string{"lan"},
+	}
+	kwNodeNetworkLANVLANMode = keywords.Keyword{
+		Candidates: []string{"access", "native-tagged", "native-untagged"},
+		Example:    "access",
+		Option:     "vlan_mode",
+		Scopable:   true,
+		Section:    "network",
+		Text:       keywords.NewText(fs, "text/kw/node/network.lan.vlan_mode"),
+		Types:      []string{"lan"},
+	}
+	kwNodeNetworkDNS = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "2001:db8::53 192.0.2.53",
+		Option:    "dns",
+		Scopable:  true,
+		Section:   "network",
+		Text:      keywords.NewText(fs, "text/kw/node/network.dns"),
+		Types:     []string{"lan", "bridge", "routed_bridge"},
+	}
 	kwNodeNetworkLANGateway = keywords.Keyword{
 		Example:  "192.168.10.254",
 		Option:   "gateway",
@@ -1977,6 +2020,7 @@ var (
 		&kwNodeSyslogHost,
 		&kwNodeSyslogPort,
 		&kwNodeClusterDNS,
+		&kwNodeClusterDNSReverse,
 		&kwNodeClusterCA,
 		&kwNodeClusterCert,
 		&kwNodeClusterID,
@@ -2074,6 +2118,10 @@ var (
 		&kwNodeNetworkLANRanges,
 		&kwNodeNetworkLANDev,
 		&kwNodeNetworkLANGateway,
+		&kwNodeNetworkLANModes,
+		&kwNodeNetworkLANVLANTag,
+		&kwNodeNetworkLANVLANMode,
+		&kwNodeNetworkDNS,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

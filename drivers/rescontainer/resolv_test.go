@@ -149,3 +149,26 @@ func TestNameserversPastWhatAResolverReads(t *testing.T) {
 	assert.Len(t, all, 4)
 	assert.NotContains(t, ResolvConf{Nameservers: all}.String(), "9.9.9.9")
 }
+
+type fakeAddresser struct {
+	rid, netns  string
+	nameservers []string
+}
+
+func (t fakeAddresser) RID() string                  { return t.rid }
+func (t fakeAddresser) NetNSResource() string        { return t.netns }
+func (t fakeAddresser) NetworkNameservers() []string { return t.nameservers }
+
+// A container is given the nameservers of the networks the addresses of its
+// network namespace are on, each once, in the order of the addresses, and
+// none of the addresses of another namespace.
+func TestNetworkNameservers(t *testing.T) {
+	addrs := []NetNSAddresser{
+		fakeAddresser{rid: "ip#1", netns: "container#0", nameservers: []string{"2001:db8::53", "192.0.2.53"}},
+		fakeAddresser{rid: "ip#2", netns: "container#0", nameservers: []string{"192.0.2.53", "198.51.100.53"}},
+		fakeAddresser{rid: "ip#3", netns: "container#9", nameservers: []string{"203.0.113.53"}},
+		fakeAddresser{rid: "ip#4", netns: "container#0"},
+	}
+	assert.Equal(t, []string{"2001:db8::53", "192.0.2.53", "198.51.100.53"}, NetworkNameservers("container#0", addrs))
+	assert.Empty(t, NetworkNameservers("container#5", addrs))
+}

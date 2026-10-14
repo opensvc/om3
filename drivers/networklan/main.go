@@ -79,6 +79,19 @@ func (t *T) Pools() ([]ipam.Pool, error) {
 	return pools, nil
 }
 
+// Modes returns the modes an ip.netns may join the segment with, the first
+// being the one of an ip.netns naming none, which the modes keyword lists.
+func (t *T) Modes() []string {
+	return t.GetStrings("modes")
+}
+
+// VLAN returns the tag and the mode of the port an ip.netns joining the
+// segment with openvswitch adds, which the vlan_tag and vlan_mode keywords
+// say.
+func (t *T) VLAN() (tag, mode string) {
+	return t.GetString("vlan_tag"), t.GetString("vlan_mode")
+}
+
 // IsClusterWide says the addresses of a lan network belong to the cluster.
 func (t *T) IsClusterWide() bool {
 	return true

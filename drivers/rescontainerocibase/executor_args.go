@@ -206,6 +206,17 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 			a.Append("--volume", v)
 		}
 	}
+	for _, s := range bt.VolumeMounts {
+		if !isTmpfsMount(s) {
+			continue
+		}
+		v, err := tmpfsMountArg(s)
+		if err != nil {
+			return a, err
+		}
+		runArgs.DropOptionAndExactValue("--tmpfs", v)
+		a.Append("--tmpfs", v)
+	}
 	if mounts, err := ea.runArgsEnv(ctx); err != nil {
 		return a, err
 	} else {
@@ -365,8 +376,12 @@ func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 // The file is written on every start, and a container reads it for as long as
 // it runs: a container adapts to a cluster layout change by being restarted.
 func (ea *ExecutorArg) resolvConfMount() (string, error) {
+	nameservers := ea.BT.DNS
+	if l := ea.BT.networkNameservers(); len(l) > 0 {
+		nameservers = l
+	}
 	resolvConf := rescontainer.ResolvConf{
-		Nameservers: rescontainer.Nameservers(ea.BT.DNS, ea.BT.DNSExtra),
+		Nameservers: rescontainer.Nameservers(nameservers, ea.BT.DNSExtra),
 		Searches:    rescontainer.SearchDomains(ea.BT.ObjectDomain, ea.BT.DNSSearch),
 		Options:     rescontainer.ResolvConfOptions,
 	}
@@ -374,7 +389,7 @@ func (ea *ExecutorArg) resolvConfMount() (string, error) {
 		return "", nil
 	}
 	if n := len(resolvConf.Nameservers); n > rescontainer.MaxNameservers {
-		ea.BT.Log().Warnf("%d nameservers are named, by cluster.dns and the dns keyword, and a resolver reads the first %d: %s is not written to the container resolv.conf",
+		ea.BT.Log().Warnf("%d nameservers are named, by the network or cluster.dns and by the dns keyword, and a resolver reads the first %d: %s is not written to the container resolv.conf",
 			n, rescontainer.MaxNameservers, strings.Join(resolvConf.Nameservers[rescontainer.MaxNameservers:], ", "))
 	}
 	var (

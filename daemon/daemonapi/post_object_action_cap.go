@@ -73,7 +73,7 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 	var pending *pendingConfigUpdate
 	if len(ops) > 0 {
 		log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionCap"), p)
-		u, err := prepareConfigUpdate(eCtx, log, p, nil, nil, ops)
+		u, err := prepareConfigUpdate(eCtx, log, p, nil, nil, ops, false)
 		switch {
 		case errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun):
 			return JSONProblemf(eCtx, http.StatusForbidden, "Forbidden", "%s", err)

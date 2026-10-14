@@ -74,10 +74,10 @@ type (
 		// appears and not on every config change until it is fixed.
 		prKeyPeers []string
 
-		// certIssueMsg is the certificate issue of this node, as last
-		// said, so that the warning is written when it appears and
-		// not on every config change until it is fixed.
-		certIssueMsg string
+		// certIssues are the certificate issues of this node, as last
+		// said, so that a warning is written when it appears and not
+		// on every config change until it is fixed.
+		certIssues []string
 
 		// nodeConfig is the published node.Config. It is refreshed when config is
 		// created or reloaded.
@@ -377,6 +377,7 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.HeartbeatRotateRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecHb.String()})
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecCert.String()}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecCa.String()}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
@@ -492,6 +493,10 @@ func (t *Manager) worker() {
 	lastShutdownFileTouchTicker := time.NewTicker(10 * time.Second)
 	defer lastShutdownFileTouchTicker.Stop()
 
+	// certTicker checks the expiry of the certificates again.
+	certTicker := time.NewTicker(certCheckInterval)
+	defer certTicker.Stop()
+
 	// TODO refreshSanPaths should be refreshed on events,  on ticker ?
 	for {
 		select {
@@ -518,7 +523,7 @@ func (t *Manager) worker() {
 			case *msgbus.HeartbeatMessageTypeUpdated:
 				t.onHeartbeatMessageTypeUpdated(c)
 			case *msgbus.InstanceConfigUpdated:
-				if c.Path == naming.SecCert {
+				if c.Path == naming.SecCert || c.Path == naming.SecCa {
 					t.onCertChanged(c.Node)
 				} else {
 					t.onInstanceConfigUpdated(c)
@@ -561,6 +566,9 @@ func (t *Manager) worker() {
 			t.onRejoinGracePeriodExpire()
 		case <-lastShutdownFileTouchTicker.C:
 			t.onLastShutdownFileTouchTicker()
+		case <-certTicker.C:
+			t.checkCert()
+			t.refreshNodeIssues()
 		}
 	}
 }

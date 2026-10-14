@@ -26,6 +26,7 @@ type (
 		Unset  []string
 		Wait   bool
 		Time   time.Duration
+		Force  bool
 	}
 )
 
@@ -58,6 +59,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 		params.Set = &t.Set
 		params.Unset = &t.Unset
 		params.Delete = &t.Delete
+		if t.Force {
+			params.Force = &t.Force
+		}
 		if t.Wait {
 			wait := t.Time.String()
 			params.Wait = &wait
@@ -94,7 +98,13 @@ func (t *CmdObjectConfigUpdate) doObjectAction(mergedSelector string) error {
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			return nil, o.Update(ctx, t.Delete, key.ParseStrings(t.Unset), keyop.ParseOps(t.Set))
+			unsets, sets := key.ParseStrings(t.Unset), keyop.ParseOps(t.Set)
+			if !t.Force {
+				if err := object.CheckLocalUpdateStopToChange(p, t.Delete, unsets, sets); err != nil {
+					return nil, err
+				}
+			}
+			return nil, o.Update(ctx, t.Delete, unsets, sets)
 		}),
 	).Do()
 }

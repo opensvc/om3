@@ -18,6 +18,7 @@ type (
 		OptsGlobal
 		Discard bool
 		Recover bool
+		Force   bool
 	}
 )
 
@@ -50,6 +51,9 @@ func (t *CmdObjectConfigEdit) do(selector string, c *client.T) error {
 
 func (t *CmdObjectConfigEdit) doLocal(obj object.Configurer, c *client.T) error {
 	var err error
+	if i, ok := obj.(interface{ SetEditForce(bool) }); ok {
+		i.SetEditForce(t.Force)
+	}
 	switch {
 	case t.Discard:
 		err = obj.DiscardAndEditConfig()
@@ -84,7 +88,7 @@ func (t *CmdObjectConfigEdit) doRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = putConfig(p, filename, c); err != nil {
+	if err = putConfig(p, filename, c, t.Force); err != nil {
 		return err
 	}
 	return nil

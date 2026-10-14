@@ -44,6 +44,9 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 	if err := configRbac(ctx, p, body); err != nil {
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
 	}
+	if err := stopToChange(ctx, p, body, params.Force != nil && *params.Force); err != nil {
+		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+	}
 
 	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, false)
 }

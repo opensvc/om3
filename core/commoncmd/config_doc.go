@@ -35,6 +35,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 			Minimal:       item.Minimal,
 			Option:        item.Option,
 			Provisioning:  item.Provisioning,
+			StopToChange:  item.StopToChange,
 			Required:      item.Required,
 			Scopable:      item.Scopable,
 			Section:       item.Section,

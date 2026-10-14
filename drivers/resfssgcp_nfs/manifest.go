@@ -20,18 +20,20 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "UUID",
-			Option:   "uuid",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/uuid"),
+			Attr:         "UUID",
+			Option:       "uuid",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/uuid"),
 		},
 		{
-			Attr:     "Host",
-			Option:   "host",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/host"),
+			Attr:         "Host",
+			Option:       "host",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/host"),
 		},
 		{
 			Attr:       "Permission",

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -49,6 +50,34 @@ func SearchDomains(objectDomain string, extra []string) []string {
 			break
 		}
 		domain = parent
+	}
+	return l
+}
+
+// NetNSAddresser is implemented by the ip resources configuring an address in
+// the network namespace of a container: the resource whose namespace it is,
+// and the nameservers reachable from the network the address is on, none when
+// the network names none.
+type NetNSAddresser interface {
+	RID() string
+	NetNSResource() string
+	NetworkNameservers() []string
+}
+
+// NetworkNameservers returns the nameservers of the networks the addresses of
+// a network namespace are on, the ones of each address in turn, once: the
+// nameservers of the cluster may not be reachable from them.
+func NetworkNameservers(netns string, addrs []NetNSAddresser) []string {
+	l := make([]string, 0)
+	for _, a := range addrs {
+		if a.NetNSResource() != netns {
+			continue
+		}
+		for _, ns := range a.NetworkNameservers() {
+			if !slices.Contains(l, ns) {
+				l = append(l, ns)
+			}
+		}
 	}
 	return l
 }

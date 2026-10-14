@@ -29,6 +29,53 @@ func newCmdArrayList() *cobra.Command {
 	return cmd
 }
 
+// newCmdClusterCA returns the parent of the cluster ca commands.
+func newCmdClusterCA() *cobra.Command {
+	return &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "ca",
+		Short:   "cluster certificate authority commands",
+		Long: `The cluster certificate authority, system/sec/ca, signs the certificate of
+system/sec/cert the nodes present to each other and to the clients, and the
+certificates of the users. The daemon renews its certificate with its key
+before it expires. The cluster ca keyword lists the other authorities trusted.`,
+	}
+}
+
+func newCmdClusterCARotate() *cobra.Command {
+	var options commands.CmdClusterCARotate
+	cmd := &cobra.Command{
+		Use:   "rotate",
+		Short: "replace the key of the cluster certificate authority",
+		Long: `Replace the key of system/sec/ca, as when it was disclosed, with no node
+refusing another meanwhile:
+
+1. A new ca is created as system/sec/ca-next, and the certificate of the
+   current one kept as system/sec/ca-former-<yyyymmdd-hhmm>, both added to
+   the cluster ca keyword, until every node has them.
+2. system/sec/ca takes the key and the certificate of the new ca, and
+   system/sec/cert is issued again by it, until every node has them.
+3. system/sec/ca-next is deleted, and the former ca too with --drop-former.
+
+Every cluster node is waited for at each step, a node down among them. A
+rotation interrupted is resumed by running it again.
+
+The former ca stays trusted unless --drop-former, for the certificates it
+signed, as the ones of the users, until they are renewed: the end of the
+rotation says, of each former ca trusted, the certificates it signed, and how
+to stop trusting one that signed none in use. The api tokens it signed stay
+valid until they expire.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	flags.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "maximum duration to wait for every node to have the configurations of a step")
+	flags.BoolVar(&options.DropFormer, "drop-former", false, "stop trusting the former ca, refused while it signed a certificate in use")
+	commoncmd.CmdWithPlainConsoleLog(cmd)
+	return cmd
+}
+
 func newCmdClusterJoin() *cobra.Command {
 	var options commands.CmdClusterJoin
 	cmd := &cobra.Command{
@@ -1930,6 +1977,7 @@ func newCmdObjectConfigEdit(kind string) *cobra.Command {
 	commoncmd.FlagDiscard(flags, &options.Discard)
 	commoncmd.FlagRecover(flags, &options.Recover)
 	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -1949,6 +1997,7 @@ func newCmdObjectEditConfig(kind string) *cobra.Command {
 	commoncmd.FlagDiscard(flags, &options.Discard)
 	commoncmd.FlagRecover(flags, &options.Recover)
 	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -4209,6 +4258,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagConfigWait(flags, &options.Wait)
 	commoncmd.FlagTime(flags, &options.Time)
 	hiddenFlagLocal(flags, &options.Local)
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -4412,6 +4462,7 @@ func newCmdObjectSet(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywordOps(flags, &options.KeywordOps)
 	flagLocal(flags, &options.Local)
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -4431,6 +4482,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagSections(flags, &options.Sections)
 	flagLocal(flags, &options.Local)
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 

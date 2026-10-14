@@ -45,11 +45,12 @@ var (
 		Default:   "/usr/bin/ssh -o StrictHostKeyChecking=accept-new -o ForwardX11=no",
 	}
 	KWName = keywords.Keyword{
-		Attr:     "Name",
-		Option:   "name",
-		Required: true,
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/name"),
+		Attr:         "Name",
+		Option:       "name",
+		Required:     true,
+		Scopable:     true,
+		StopToChange: true,
+		Text:         keywords.NewText(fs, "text/kw/name"),
 	}
 	KWHostname = keywords.Keyword{
 		Attr:     "Hostname",

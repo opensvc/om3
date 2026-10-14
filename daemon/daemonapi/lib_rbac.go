@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/network"
-	"github.com/opensvc/om3/v3/core/status"
 	"net/http"
 	"slices"
 	"sort"
@@ -63,9 +62,6 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if err := hostIPRbac(from, cfg); err != nil {
 		return err
 	}
-	if err := removedResourceRbac(p, from, cfg); err != nil {
-		return err
-	}
 	return rootlessRbac(p, from, cfg)
 }
 
@@ -75,41 +71,30 @@ var instanceStatusesOf = func(p naming.Path) map[string]*instance.Status {
 	return instance.StatusData.GetByPath(p)
 }
 
-// removedResourceRbac refuses a write taking away the section of a resource
-// still running on a node: an address still configured on an interface, a
-// filesystem still mounted.
+// stopToChange refuses a write a resource up on a node would leak by, for
+// every user: a change of a keyword saying what it holds there, of its type,
+// or the removal of its section, as object.CheckStopToChange says.
 //
-// Taking a section away does not stop its resource, which nothing knows of
-// any more once its section is gone: what it holds on the node stays there,
-// for root to find and undo, as an address the namespace still has drawn from
-// its claim. A user holding no root grant cannot undo it, so they stop the
-// resource first, and remove what the object no longer runs.
-func removedResourceRbac(p naming.Path, from, to *xconfig.T) error {
+// Root forces the write, as to undo a change that left a resource it
+// cannot stop: the resource stays up for root to find and undo.
+func stopToChange(ctx echo.Context, p naming.Path, body []byte, force bool) error {
+	if force {
+		if !grantsFromContext(ctx).HasGrant(rbac.GrantRoot) {
+			return fmt.Errorf("%w: force requires the root grant", ErrDenied)
+		}
+		return nil
+	}
+	from := currentConfig(p)
 	if from == nil {
 		return nil
 	}
-	statuses := instanceStatusesOf(p)
-	for _, section := range from.SectionStrings() {
-		if slices.Contains(to.SectionStrings(), section) {
-			continue
-		}
-		running := make([]string, 0)
-		for nodename, st := range statuses {
-			if st == nil {
-				continue
-			}
-			rstat, ok := st.Resources[section]
-			if !ok {
-				continue
-			}
-			if !rstat.Status.Is(status.Down, status.StandbyDown, status.NotApplicable) {
-				running = append(running, fmt.Sprintf("%s on %s", rstat.Status, nodename))
-			}
-		}
-		if len(running) > 0 {
-			slices.Sort(running)
-			return fmt.Errorf("%w: delete %s: the resource is not stopped (%s): stop it before removing its section", ErrDenied, section, strings.Join(running, ", "))
-		}
+	o, err := object.New(p, object.WithConfigData(body), object.WithVolatile(true))
+	if err != nil {
+		return fmt.Errorf("new object: %s", err)
+	}
+	to := o.(object.Configurer).Config()
+	if err := object.CheckStopToChange(p.Kind, from, to, instanceStatusesOf(p)); err != nil {
+		return fmt.Errorf("%w: %w", ErrDenied, err)
 	}
 	return nil
 }

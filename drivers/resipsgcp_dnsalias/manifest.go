@@ -17,18 +17,20 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "UUID",
-			Option:   "uuid",
-			Required: false,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/uuid"),
+			Attr:         "UUID",
+			Option:       "uuid",
+			Required:     false,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/uuid"),
 		},
 		{
-			Attr:     "Name",
-			Option:   "name",
-			Required: false,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
+			Attr:         "Name",
+			Option:       "name",
+			Required:     false,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
 		},
 		{
 			Attr:        "Target",
@@ -39,11 +41,12 @@ var (
 			Text:        keywords.NewText(fs, "text/kw/target"),
 		},
 		{
-			Attr:     "ZoneID",
-			Option:   "zone_id",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/zone_id"),
+			Attr:         "ZoneID",
+			Option:       "zone_id",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/zone_id"),
 		},
 		{
 			Attr:     "Secret",

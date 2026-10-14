@@ -59,6 +59,17 @@ type (
 		// key one by one, rather than the destination of the line.
 		Wrote func(path string)
 
+		// Holds, when set, is called with each file the install leaves at
+		// its destination, written or found up to date, relative to
+		// ToHead: what the line installs, as against what it changed, so
+		// the file of a key the store no longer holds can be told.
+		Holds func(path string)
+
+		// Line, when set, names the install line the item is one of: a
+		// line installing from the datastores a pattern names is an item
+		// per datastore, each with its FromStore and its ToPath.
+		Line string
+
 		// fs is where the install writes: the tree of ToHead, which the
 		// install cannot leave, or the node for an install naming no head.
 		fs confined.FS
@@ -260,6 +271,9 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err er
 	if changed && opt.Wrote != nil {
 		opt.Wrote(opt.RelativeToPath())
 	}
+	if err == nil && opt.Holds != nil {
+		opt.Holds(opt.RelativeToPath())
+	}
 	return changed, err
 }
 
@@ -424,8 +438,13 @@ func (t *dataStore) InstallKey(keyName string) error {
 func (t *dataStore) makedir(path string, opt KVInstallAccessControl, fs confined.FS, log *plog.Logger) error {
 	info, err := fs.Stat(path)
 	if err == nil {
-		if err := t.chmod(path, opt.DirPerm, info, fs, log); err != nil {
-			return err
+		// An install naming no mode for the directories it passes, as an
+		// install line does, leaves the mode of an existing one as it is:
+		// a directory line may have set it, and no directory wants 0000.
+		if opt.DirPerm != 0 {
+			if err := t.chmod(path, opt.DirPerm, info, fs, log); err != nil {
+				return err
+			}
 		}
 		if err := t.chown(path, opt.DirUser, opt.DirGroup, info, fs, log); err != nil {
 			return err

@@ -1,0 +1,11 @@
+The modes an ip.netns drawing its address from the network may join the
+segment with, the first being the one of an ip.netns naming none: the
+network says how the segment is joined, as `macvlan` where the interface of
+the node on it is no bridge, and an ip.netns naming another mode is refused.
+
+Unset, an ip.netns joins the segment with the mode it names, `bridge` by
+default, which needs the interface of the node on the segment to be a bridge.
+
+A namespace administrator can not name the mode of an ip.netns: the network
+choosing it is what lets the address of a namespace be on any segment. The
+keyword is scopable, for the nodes whose interface on the segment differs.

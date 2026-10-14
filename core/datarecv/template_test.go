@@ -9,10 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
+	_ "github.com/opensvc/om3/v3/drivers/networkbridge"
+	_ "github.com/opensvc/om3/v3/drivers/networklo"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -62,6 +65,8 @@ func TestRender(t *testing.T) {
 		{name: "unknown ref", tmpl: `{{ref "nope"}}`, wantErr: true},
 		{name: "missing key", tmpl: `{{key "./cfg/web" "nope"}}`, wantErr: true},
 		{name: "not a datastore", tmpl: `{{key "./svc/web" "psk"}}`, wantErr: true},
+		{name: "reverse zones", tmpl: `{{with network "default"}}{{range .ReverseZones}}{{.}} {{end}}{{end}}`, want: "22.10.in-addr.arpa "},
+		{name: "no reverse zone of lo", tmpl: `{{with network "lo"}}[{{range .ReverseZones}}{{.}}{{end}}]{{end}}`, want: "[]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			b, err := recv.render("k", []byte(tc.tmpl), &[]templateKey{})
@@ -73,6 +78,30 @@ func TestRender(t *testing.T) {
 			assert.Equal(t, tc.want, string(b))
 		})
 	}
+}
+
+// A cluster whose nameservers do not answer the reverse lookups of its
+// addresses has networks with no reverse zone: a resolver forwarding them to
+// the cluster nameservers would not be answered.
+func TestRenderNoReverseZones(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+	c, err := object.NewCluster()
+	require.NoError(t, err)
+	require.NoError(t, c.Config().Set(keyop.ParseOps([]string{"cluster.dns_reverse=false"})...))
+	require.NoError(t, c.Config().Commit())
+
+	p := naming.Path{Name: "web", Kind: naming.KindSvc, Namespace: naming.NsRoot}
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\nnodes = "+hostname.Hostname()+"\n"), 0600))
+	o, err := object.NewCore(p)
+	require.NoError(t, err)
+	recv := &DataRecv{to: templateReceiver{o: o}}
+	b, err := recv.render("k", []byte(`{{with network "default"}}[{{range .ReverseZones}}{{.}}{{end}}]{{end}}`), &[]templateKey{})
+	require.NoError(t, err)
+	assert.Equal(t, "[]", string(b))
 }
 
 // A template line renders, the others install the key as it is.

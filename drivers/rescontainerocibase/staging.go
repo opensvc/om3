@@ -58,6 +58,9 @@ func (t *BT) stageVolumeMounts() error {
 		return err
 	}
 	for i, s := range t.VolumeMounts {
+		if isTmpfsMount(s) {
+			continue
+		}
 		source, _, opt, err := parseVolumeMount(s)
 		if err != nil {
 			return err

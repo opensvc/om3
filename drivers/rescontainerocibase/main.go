@@ -27,6 +27,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -35,6 +36,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/vpath"
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/envprovider"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -432,6 +434,9 @@ func (t *BT) LinkNames() []string {
 func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 	mounts := make([]BindMount, 0)
 	for i, s := range t.VolumeMounts {
+		if isTmpfsMount(s) {
+			continue
+		}
 		source, target, opt, err := parseVolumeMount(s)
 		if err != nil {
 			return mounts, err
@@ -460,6 +465,9 @@ func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 func (t *BT) mountsStaged(inspect Inspecter) bool {
 	sources := inspect.BindSources()
 	for i, s := range t.VolumeMounts {
+		if isTmpfsMount(s) {
+			continue
+		}
 		source, _, _, err := parseVolumeMount(s)
 		if err != nil || strings.HasPrefix(source, "/") {
 			continue
@@ -497,6 +505,59 @@ func (t *BT) unstageAfterStop(ctx context.Context) {
 	}
 	if err := t.unstageVolumeMounts(); err != nil {
 		t.Log().Warnf("remove the staging mounts: %s", err)
+	}
+}
+
+// netnsResource returns the resource whose network namespace the container
+// joins: the container its netns keyword names, else the container itself.
+func (t *BT) netnsResource() string {
+	if id, err := resourceid.Parse(t.NetNS); err == nil && id.DriverGroup() == driver.GroupContainer {
+		return t.NetNS
+	}
+	return t.RID()
+}
+
+// networkNameservers returns the nameservers of the networks the addresses
+// of the network namespace of the container are on, none when they name none.
+func (t *BT) networkNameservers() []string {
+	o, ok := t.GetObject().(interface{ Resources() resource.Drivers })
+	if !ok {
+		return nil
+	}
+	addrs := make([]rescontainer.NetNSAddresser, 0)
+	for _, r := range o.Resources() {
+		if a, ok := r.(rescontainer.NetNSAddresser); ok {
+			addrs = append(addrs, a)
+		}
+	}
+	return rescontainer.NetworkNameservers(t.netnsResource(), addrs)
+}
+
+// tmpfsSource is the source of a volume_mounts entry asking a memory
+// filesystem of the container's own, which the engine mounts: nothing of the
+// node, nor of a volume, is mounted.
+const tmpfsSource = "tmpfs"
+
+// isTmpfsMount says whether the volume_mounts entry asks a memory filesystem,
+// as tmpfs:/var/lib/opensvc:size=16m.
+func isTmpfsMount(s string) bool {
+	return strings.HasPrefix(s, tmpfsSource+":")
+}
+
+// tmpfsMountArg returns the value of the --tmpfs option of the engine a
+// tmpfs volume_mounts entry asks: the target, and the tmpfs options if any.
+func tmpfsMountArg(s string) (string, error) {
+	l := strings.Split(strings.TrimPrefix(s, tmpfsSource+":"), ":")
+	target := l[0]
+	switch {
+	case len(l) > 2:
+		return "", fmt.Errorf("invalid volume_mounts entry: %s: tmpfs:<target>[:<options>]", s)
+	case !strings.HasPrefix(target, "/"):
+		return "", fmt.Errorf("invalid volume_mounts entry: %s: the target of a tmpfs is an absolute path", s)
+	case len(l) == 2 && l[1] != "":
+		return target + ":" + l[1], nil
+	default:
+		return target, nil
 	}
 }
 

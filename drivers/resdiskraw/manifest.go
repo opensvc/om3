@@ -19,13 +19,14 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:      "Devices",
-			Converter: converters.List,
-			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
-			Option:    "devs",
-			Required:  true,
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/devs"),
+			Attr:         "Devices",
+			Converter:    converters.List,
+			Example:      "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
+			Option:       "devs",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/devs"),
 		},
 		{
 			Attr:      "CreateCharDevices",

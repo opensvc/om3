@@ -18,12 +18,13 @@ var (
 	drvID = driver.NewID(driver.GroupDisk, "loop")
 
 	kwFile = keywords.Keyword{
-		Attr:     "File",
-		Example:  "/srv/{fqdn}-loop-{rindex}",
-		Option:   "file",
-		Required: true,
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/file"),
+		Attr:         "File",
+		Example:      "/srv/{fqdn}-loop-{rindex}",
+		Option:       "file",
+		Required:     true,
+		Scopable:     true,
+		StopToChange: true,
+		Text:         keywords.NewText(fs, "text/kw/file"),
 	}
 	kwSize = keywords.Keyword{
 		Attr:      "Size",

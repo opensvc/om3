@@ -1,0 +1,6 @@
+The ACME directory the secs of the domains obtain their certificate from,
+written as their `acme.directory`: `letsencrypt`, `letsencrypt-staging`, or
+the url of a directory. A change applies to every sec of the domains at the
+next run, which obtains their certificates again from the new directory.
+
+Without it, the certificates of the domains are generated, self-signed.

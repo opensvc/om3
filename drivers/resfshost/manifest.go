@@ -17,12 +17,13 @@ var (
 	fs embed.FS
 
 	KeywordDevice = keywords.Keyword{
-		Attr:     "Device",
-		Default:  "none",
-		Example:  "/dev/disk/by-id/nvme-eui.002538ba11b75ec8",
-		Option:   "dev",
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/dev"),
+		Attr:         "Device",
+		Default:      "none",
+		Example:      "/dev/disk/by-id/nvme-eui.002538ba11b75ec8",
+		Option:       "dev",
+		Scopable:     true,
+		StopToChange: true,
+		Text:         keywords.NewText(fs, "text/kw/dev"),
 	}
 	KeywordMKFSOptions = keywords.Keyword{
 		Attr:         "MKFSOptions",
@@ -42,12 +43,13 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/stat_timeout"),
 	}
 	KeywordMountPoint = keywords.Keyword{
-		Attr:     "MountPoint",
-		Example:  "/srv/{fqdn}",
-		Option:   "mnt",
-		Required: true,
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/mnt"),
+		Attr:         "MountPoint",
+		Example:      "/srv/{fqdn}",
+		Option:       "mnt",
+		Required:     true,
+		Scopable:     true,
+		StopToChange: true,
+		Text:         keywords.NewText(fs, "text/kw/mnt"),
 	}
 	KeywordMountOptions = keywords.Keyword{
 		Attr:     "MountOptions",

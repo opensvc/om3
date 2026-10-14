@@ -9,7 +9,9 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"slices"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -85,10 +87,16 @@ func (t *Manager) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
 	}
 }
 
+// getAllDomains returns the zones the backend serves: the cluster zone, and
+// the reverse zones of the addresses the cluster networks hand out.
 func (t *Manager) getAllDomains(b []byte) getAllDomainsResponse {
-	return getAllDomainsResponse{
+	l := getAllDomainsResponse{
 		domain{Zone: t.clusterConfig.Name},
 	}
+	for _, zone := range t.zones() {
+		l = append(l, domain{Zone: zone})
+	}
+	return l
 }
 
 func (t *Manager) getDomainMetadata(b []byte) getDomainMetadataResponse {
@@ -114,8 +122,11 @@ func (t *Manager) list(b []byte) Zone {
 	return t.getList(req.Parameters.Zonename)
 }
 
+// getList returns the records of a zone the backend serves, the ones of the
+// names in the zone, one PTR a reverse name, as a lookup answers.
 func (t *Manager) getList(zonename string) Zone {
-	if zonename != t.clusterConfig.Name+"." {
+	zone := strings.TrimSuffix(zonename, ".")
+	if zone != t.clusterConfig.Name && !slices.Contains(t.zones(), zone) {
 		return Zone{}
 	}
 	err := make(chan error, 1)
@@ -131,7 +142,29 @@ func (t *Manager) getList(zonename string) Zone {
 	if <-err != nil {
 		return Zone{}
 	}
-	return <-c.resp
+	return t.zoneRecords(<-c.resp, zone)
+}
+
+// zoneRecords returns the records of the zone, the ones of the names in it,
+// one PTR a reverse name, as a lookup answers.
+func (t *Manager) zoneRecords(records Zone, zone string) Zone {
+	byName := make(map[string]Zone)
+	names := make([]string, 0)
+	for _, record := range records {
+		name := strings.TrimSuffix(record.Name, ".")
+		if name != zone && !strings.HasSuffix(name, "."+zone) {
+			continue
+		}
+		if _, ok := byName[record.Name]; !ok {
+			names = append(names, record.Name)
+		}
+		byName[record.Name] = append(byName[record.Name], record)
+	}
+	l := make(Zone, 0)
+	for _, name := range names {
+		l = append(l, t.onePTR(byName[name])...)
+	}
+	return l
 }
 
 func (t *Manager) lookup(b []byte) Zone {

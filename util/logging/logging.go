@@ -30,6 +30,10 @@ type (
 		// Enable console logging coloring
 		WithColor bool
 
+		// ConsoleFormat is the format of the console records:
+		// ConsoleFormatFull, the default, or ConsoleFormatPlain.
+		ConsoleFormat string
+
 		WithJournald bool
 		WithSyslogd  bool
 
@@ -62,6 +66,16 @@ type (
 // Logger is the opensvc specific zerolog logger
 const (
 	TimeFormat = "15:04:05.000"
+
+	// ConsoleFormatFull shows a console record as its time, its level and
+	// its message.
+	ConsoleFormatFull = "full"
+
+	// ConsoleFormatPlain shows a console record as its message alone, as
+	// the lines a command prints, with its level before it from the
+	// warnings up, for a command whose output tells a story its records
+	// are lines of.
+	ConsoleFormatPlain = "plain"
 )
 
 var (
@@ -140,6 +154,18 @@ func FormatLevel(i interface{}) string {
 	return l
 }
 
+// FormatPlainLevel is the level of a record in the plain console format:
+// none below the warnings, which read as the lines a command prints.
+func FormatPlainLevel(i interface{}) string {
+	if s, ok := i.(string); ok {
+		switch s {
+		case "trace", "debug", "info":
+			return ""
+		}
+	}
+	return FormatLevel(i)
+}
+
 // Configure sets up the logging framework
 func Configure(config Config) error {
 	var writers []io.Writer
@@ -183,6 +209,10 @@ func Configure(config Config) error {
 					return ""
 				}
 			},
+		}
+		if config.ConsoleFormat == ConsoleFormatPlain {
+			consoleWriter.PartsOrder = []string{zerolog.LevelFieldName, zerolog.MessageFieldName}
+			consoleWriter.FormatLevel = FormatPlainLevel
 		}
 		writers = append(writers, consoleWriter)
 	}

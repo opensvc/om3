@@ -74,6 +74,14 @@ type (
 		// Provisioning is set to true for keywords only used for resource provisioning
 		Provisioning bool
 
+		// StopToChange means the value says what the resource holds on a
+		// node once started, as the mount point of a filesystem or the
+		// address of an ip: a change is refused while the resource is
+		// up on a node, as its stop would act on the new value and leave
+		// what the former one set up there. The resource is stopped
+		// first, or root forces the change.
+		StopToChange bool
+
 		// Types limits the scope of the keyword to sections with matching type value
 		Types []string
 
@@ -632,6 +640,11 @@ func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of stri
 		// one: what it names already exists, and a copy of this object does
 		// not get it.
 		fprintProp("recorded", "written when what it names is made, and reset when the object is cloned")
+	}
+	if t.StopToChange {
+		// Said as what it means for the writer of a change: when it is
+		// refused, and what to do.
+		fprintProp("stop first", "a change is refused while the resource is up")
 	}
 	if len(t.Candidates) > 0 {
 		fprintProp("candidates", strings.Join(t.Candidates, ", "))

@@ -1,0 +1,27 @@
+The files whose names are the domains to obtain a certificate for: a directory
+in a volume or a filesystem of the service, named as `webroot` is, and a file
+name pattern holding one `*`, the part of a name it matches being a domain.
+
+e.g. `volume#1:/haproxy/conf.d/*.cfg` reads the domain `www.example.com` from
+the file `conf.d/www.example.com.cfg`, as the configuration of a proxy routing
+the domain. A name whose part is no lowercase domain, as `README` or
+`tcp-smtp.cfg`, names none.
+
+At each run, for each domain:
+
+* a domain resolving to an address of an ip resource of the service gets a sec,
+  `domains_to` naming it, created with the `directory` and the `email` of the
+  task, and its certificate is obtained, and renewed when due.
+* a domain resolving elsewhere, or not yet, is pending: it gets no sec, its
+  certificate would not be obtained, and the sec it has is kept, so a dns
+  record going astray for a while does not take its certificate away. The run
+  fails, saying which domains are pending.
+* the sec of a domain no file names any longer is deleted, on every node.
+
+A run creates 10 secs at most: the certificates obtained are installed, and an
+install running the task, as `on = FileInstalled`, creates the next ones.
+Nothing is deleted when the directory can not be read.
+
+The secs renewed, the ones of the domains and the ones `secs` names, share one
+account at each directory: a directory limits the accounts an address
+registers. The first one to need it registers it, and the others take it.

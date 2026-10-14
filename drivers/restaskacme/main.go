@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,10 +30,14 @@ import (
 type (
 	T struct {
 		restask.BaseTask
-		Path    naming.Path    `json:"path"`
-		Secs    []string       `json:"secs"`
-		Webroot string         `json:"webroot"`
-		Timeout *time.Duration `json:"timeout"`
+		Path        naming.Path    `json:"path"`
+		Secs        []string       `json:"secs"`
+		Webroot     string         `json:"webroot"`
+		Directory   string         `json:"directory"`
+		Email       string         `json:"email"`
+		DomainsFrom string         `json:"domains_from"`
+		DomainsTo   string         `json:"domains_to"`
+		Timeout     *time.Duration `json:"timeout"`
 	}
 
 	// confinedWebroot writes the http-01 challenge tokens in a directory of
@@ -48,9 +53,27 @@ func New() resource.Driver {
 	return &T{}
 }
 
-// Label is the secs renewed: the status says the driver already.
+// Label is the secs renewed, and where the domains are read from: the status
+// says the driver already.
 func (t *T) Label(_ context.Context) string {
-	return strings.Join(t.Secs, " ")
+	l := slices.Clone(t.Secs)
+	if t.DomainsFrom != "" {
+		l = append(l, t.DomainsFrom)
+	}
+	return strings.Join(l, " ")
+}
+
+// checkDomains refuses domains_from without domains_to, and the other way
+// around: the domains are read from the one, and their secs named by the
+// other, so either alone obtains no certificate.
+func (t *T) checkDomains() error {
+	switch {
+	case t.DomainsFrom != "" && t.DomainsTo == "":
+		return fmt.Errorf("domains_from is set and domains_to is not: set domains_to, the secs of the certificates of the domains")
+	case t.DomainsFrom == "" && t.DomainsTo != "":
+		return fmt.Errorf("domains_to is set and domains_from is not: set domains_from, where the domains are read from")
+	}
+	return nil
 }
 
 func (t *T) Run(ctx context.Context) error {
@@ -58,8 +81,15 @@ func (t *T) Run(ctx context.Context) error {
 }
 
 // lockedRun renews the certificate of each sec, those after a failed one
-// included, and says which failed.
+// included, and says which failed. The secs of the domains are created and
+// deleted first, and renewed with the secs named, all of them sharing one
+// account at the directory.
 func (t *T) lockedRun(ctx context.Context) error {
+	// Checked first: an install a task refused runs no more than it.
+	if err := t.checkDomains(); err != nil {
+		_ = t.WriteLastRun(1)
+		return err
+	}
 	if err := t.RunInstall(ctx); err != nil {
 		return err
 	}
@@ -75,10 +105,29 @@ func (t *T) lockedRun(ctx context.Context) error {
 	}
 	defer closeProvider()
 	var errs error
-	for _, ref := range t.Secs {
-		if err := t.renew(ctx, ref, provider); err != nil {
-			t.Log().Errorf("%s: %s", ref, err)
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", ref, err))
+	if len(t.Secs) == 0 && t.DomainsFrom == "" {
+		_ = t.WriteLastRun(1)
+		return fmt.Errorf("no sec to renew: set secs, or domains_from and domains_to")
+	}
+	paths, err := t.secs()
+	if err != nil {
+		t.Log().Errorf("%s", err)
+		errs = err
+	}
+	accounts := slices.Clone(paths)
+	if t.DomainsFrom != "" {
+		renew, all, err := t.syncDomains(ctx)
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+		paths = append(paths, renew...)
+		accounts = append(accounts, all...)
+	}
+	slices.SortFunc(accounts, func(a, b naming.Path) int { return strings.Compare(a.String(), b.String()) })
+	for _, p := range paths {
+		if err := t.renew(ctx, p, provider, accounts); err != nil {
+			t.Log().Errorf("%s: %s", p, err)
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 		}
 	}
 	exitCode := 0
@@ -91,26 +140,72 @@ func (t *T) lockedRun(ctx context.Context) error {
 	return errs
 }
 
-func (t *T) renew(ctx context.Context, ref string, provider challenge.Provider) error {
-	p, err := secPath(ref, t.Path.Namespace)
-	if err != nil {
-		return err
+// secs returns the secs the task renews, each once: the ones the secs keyword
+// names, and the ones its name patterns match on the node.
+//
+// A sec named is one asked: one that does not exist, or is not shared with
+// the namespace of the service, is an error. A pattern names the secs there
+// are, as the ones of the domains a gateway creates and deletes with its
+// routes: matching none, it names none, and it leaves out the secs of
+// another namespace not shared with this one.
+func (t *T) secs() (naming.Paths, error) {
+	ns := t.Path.Namespace
+	l := make(naming.Paths, 0)
+	add := func(p naming.Path) {
+		if !slices.Contains(l, p) {
+			l = append(l, p)
+		}
 	}
-	if !p.Exists() {
-		return fmt.Errorf("%s does not exist", p)
+	var errs error
+	for _, ref := range t.Secs {
+		if naming.IsPathPattern(ref) {
+			pattern, err := secPattern(ref, ns)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			for _, p := range pattern.InstalledPaths() {
+				if p.Namespace != ns && !allows(p, ns) {
+					continue
+				}
+				add(p)
+			}
+			continue
+		}
+		p, err := secPath(ref, ns)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		if !p.Exists() {
+			errs = errors.Join(errs, fmt.Errorf("%s does not exist", p))
+			continue
+		}
+		if p.Namespace != ns && !allows(p, ns) {
+			errs = errors.Join(errs, fmt.Errorf("%s is not shared with namespace %s: its share keyword does not name it", p, ns))
+			continue
+		}
+		add(p)
 	}
+	return l, errs
+}
+
+// allows says whether the sec at p shares its keys with the namespace ns.
+func allows(p naming.Path, ns string) bool {
+	store, err := object.NewDataStore(p, object.WithVolatile(true))
+	return err == nil && store.Allow(ns)
+}
+
+func (t *T) renew(ctx context.Context, p naming.Path, provider challenge.Provider, accounts naming.Paths) error {
 	store, err := object.NewDataStore(p)
 	if err != nil {
 		return err
-	}
-	if p.Namespace != t.Path.Namespace && !store.Allow(t.Path.Namespace) {
-		return fmt.Errorf("%s is not shared with namespace %s: its share keyword does not name it", p, t.Path.Namespace)
 	}
 	keyStore, ok := store.(object.KeyStore)
 	if !ok {
 		return fmt.Errorf("%s holds no certificate", p)
 	}
-	renewal, err := keyStore.RenewCertificate(ctx, object.CertificateRenewOptions{HTTP01: provider})
+	renewal, err := keyStore.RenewCertificate(ctx, object.CertificateRenewOptions{HTTP01: provider, Accounts: accounts})
 	if err != nil {
 		return err
 	}
@@ -136,6 +231,39 @@ func secPath(ref, ns string) (naming.Path, error) {
 		return p, fmt.Errorf("sec reference %s names a %s, not a sec", ref, p.Kind)
 	}
 	return p, nil
+}
+
+// secPattern returns the secs a pattern of their name names, as
+// ./sec/haproxy-*, relative to the namespace ns as a sec reference is.
+func secPattern(ref, ns string) (naming.PathPattern, error) {
+	if !strings.Contains(ref, "/") {
+		ref = "./sec/" + ref
+	}
+	p, err := naming.ParsePathPatternRel(ref, ns)
+	if err != nil {
+		return p, fmt.Errorf("sec reference %s: %w", ref, err)
+	}
+	if p.Kind != naming.KindSec {
+		return p, fmt.Errorf("sec reference %s names %s objects, not secs", ref, p.Kind)
+	}
+	return p, nil
+}
+
+// validateSecs says whether each word of the secs keyword names a sec, or
+// secs by a pattern of their name. The namespace is any: a relative
+// reference is checked as the one of the service would be.
+func validateSecs(value string) error {
+	var errs error
+	for _, ref := range strings.Fields(value) {
+		var err error
+		if naming.IsPathPattern(ref) {
+			_, err = secPattern(ref, "ns")
+		} else {
+			_, err = secPath(ref, "ns")
+		}
+		errs = errors.Join(errs, err)
+	}
+	return errs
 }
 
 // http01 returns the writer of the http-01 challenge tokens the webroot

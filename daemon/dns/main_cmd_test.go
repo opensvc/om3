@@ -337,3 +337,145 @@ func TestAPeerNamingAnotherAddressRetractsTheSharedRecord(t *testing.T) {
 		"the addresses differ now, so neither is the object's own")
 	requireIndexInSync(t, m)
 }
+
+// The cluster zone and each reverse zone have one SOA, and an NS per
+// configured nameserver, whose address is an A or an AAAA record.
+func TestZoneApexes(t *testing.T) {
+	m := dnsManager(t)
+	m.clusterConfig.DNS = []string{"10.29.0.11", "fd00::53"}
+	zones := []string{"0.100.10.in-addr.arpa"}
+	m.reverseZones.Store(&zones)
+	count := func(name, recordType string) int {
+		n := 0
+		for _, record := range m.clusterRecordZone() {
+			if record.Name == name && record.Type == recordType {
+				n++
+			}
+		}
+		return n
+	}
+	for _, zone := range []string{"cluster1.", "0.100.10.in-addr.arpa."} {
+		require.Equal(t, 1, count(zone, "SOA"), zone)
+		require.Equal(t, 2, count(zone, "NS"), zone)
+	}
+	require.Equal(t, 1, count("ns1.cluster1.", "A"))
+	require.Equal(t, 1, count("ns2.cluster1.", "AAAA"))
+}
+
+// An address is answered one name: the object's when an instance serving it
+// stages it, else one node affine name, the same whatever the order.
+func TestOnePTR(t *testing.T) {
+	m := dnsManager(t)
+	ptr := func(content string) Record {
+		return Record{Name: "5.0.100.10.in-addr.arpa.", Type: "PTR", TTL: 60, Content: content}
+	}
+	object := ptr("0.svc1.root.svc.cluster1.")
+	node1 := ptr("0.svc1.root.svc.node1.node.cluster1.")
+	node2 := ptr("0.svc1.root.svc.node2.node.cluster1.")
+	require.Equal(t, Zone{object}, m.onePTR(Zone{node1, object, node2}))
+	require.Equal(t, Zone{object}, m.onePTR(Zone{node2, node1, object}))
+	require.Equal(t, Zone{node1}, m.onePTR(Zone{node2, node1}))
+	soa := Record{Name: "cluster1.", Type: "SOA"}
+	require.Equal(t, Zone{soa}, m.onePTR(Zone{soa}), "no PTR, nothing taken away")
+}
+
+// A zone transfer gives the records of the names in the zone only, one PTR a
+// reverse name.
+func TestZoneRecords(t *testing.T) {
+	m := dnsManager(t)
+	records := Zone{
+		{Name: "cluster1.", Type: "SOA"},
+		{Name: "svc1.root.svc.cluster1.", Type: "A", Content: "10.100.0.5"},
+		{Name: "0.100.10.in-addr.arpa.", Type: "SOA"},
+		{Name: "5.0.100.10.in-addr.arpa.", Type: "PTR", Content: "svc1.root.svc.node1.node.cluster1."},
+		{Name: "5.0.100.10.in-addr.arpa.", Type: "PTR", Content: "svc1.root.svc.cluster1."},
+		{Name: "5.1.100.10.in-addr.arpa.", Type: "PTR", Content: "svc2.root.svc.cluster1."},
+	}
+	require.Equal(t, Zone{records[2], records[4]}, m.zoneRecords(records, "0.100.10.in-addr.arpa"))
+	require.Equal(t, Zone{records[0], records[1]}, m.zoneRecords(records, "cluster1"))
+}
+
+// A hostname in the cluster domain is the name of the address as it is, with
+// nothing appended, which doubled it.
+func TestAHostnameInTheClusterDomainIsNotDoubled(t *testing.T) {
+	m := dnsManager(t)
+	c := &msgbus.InstanceStatusUpdated{
+		Path: naming.Path{Name: "um1", Namespace: "cstry", Kind: naming.KindSvc},
+		Node: "node1",
+		Value: instance.Status{
+			Avail: status.Up,
+			Resources: instance.ResourceStatuses{
+				"ip#1": resource.Status{
+					Status: status.Up,
+					Info:   map[string]any{ipAddrInfoKey: "10.100.0.7", hostnameInfoKey: "um1.cstry.svc.cluster1"},
+				},
+			},
+		},
+	}
+	update(m, c)
+	for name := range m.nameIndex {
+		require.NotContains(t, name, "um1.cstry.svc.cluster1.um1", name)
+	}
+	ptrs := make([]string, 0)
+	for _, record := range m.onePTR(m.nameIndex["7.0.100.10.in-addr.arpa."]) {
+		ptrs = append(ptrs, record.Content)
+	}
+	require.Equal(t, []string{"um1.cstry.svc.cluster1."}, ptrs)
+}
+
+// A hostname not naming the object, nor a name under it, is put under the
+// object name, as before: a hostname in the cluster domain, as the cluster
+// apex, a nameserver or the name of another object, would publish the
+// address under a name the object does not own.
+func TestAHostnameIsPublishedUnderTheObjectName(t *testing.T) {
+	for hostname, want := range map[string]string{
+		"db.um1.cstry.svc.cluster1": "db.um1.cstry.svc.cluster1.",
+		"cluster1":                  "cluster1.um1.cstry.svc.cluster1.",
+		"ns1.cluster1":              "ns1.cluster1.um1.cstry.svc.cluster1.",
+		"web.ns2.svc.cluster1":      "web.ns2.svc.cluster1.um1.cstry.svc.cluster1.",
+		"web":                       "web.um1.cstry.svc.cluster1.",
+	} {
+		m := dnsManager(t)
+		update(m, &msgbus.InstanceStatusUpdated{
+			Path: naming.Path{Name: "um1", Namespace: "cstry", Kind: naming.KindSvc},
+			Node: "node1",
+			Value: instance.Status{
+				Avail: status.Up,
+				Resources: instance.ResourceStatuses{
+					"ip#1": resource.Status{
+						Status: status.Up,
+						Info:   map[string]any{ipAddrInfoKey: "10.100.0.7", hostnameInfoKey: hostname},
+					},
+				},
+			},
+		})
+		require.Equal(t, []string{"10.100.0.7"}, aRecords(m, want), hostname)
+		for _, reserved := range []string{"cluster1.", "ns1.cluster1.", "web.ns2.svc.cluster1."} {
+			if reserved != want {
+				require.Empty(t, aRecords(m, reserved), "%s: %s", hostname, reserved)
+			}
+		}
+	}
+}
+
+// A reverse name outside the zones the nameservers answer for is answered by
+// no backend lookup, all of them when no zone is served.
+func TestAReverseNameOutsideTheZonesIsNotAnswered(t *testing.T) {
+	m := dnsManager(t)
+	ptr := Record{Name: "5.0.100.10.in-addr.arpa.", Type: "PTR", TTL: 60, Content: "svc1.root.svc.cluster1."}
+	m.addIndexRecord(ptr)
+	get := func(name string) Zone {
+		errC := make(chan error, 1)
+		c := cmdGet{errC: errC, resp: make(chan Zone, 1), Name: name, Type: "ANY"}
+		m.onCmdGet(c)
+		require.NoError(t, <-errC)
+		return <-c.resp
+	}
+	require.Empty(t, get(ptr.Name), "no zone served")
+	zones := []string{"0.100.10.in-addr.arpa"}
+	m.reverseZones.Store(&zones)
+	require.Equal(t, Zone{ptr}, get(ptr.Name))
+	zones = []string{"1.100.10.in-addr.arpa"}
+	m.reverseZones.Store(&zones)
+	require.Empty(t, get(ptr.Name), "another zone served")
+}

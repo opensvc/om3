@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/ipam"
@@ -25,6 +26,17 @@ var (
 	ErrInvalidType = errors.New("invalid network type")
 )
 
+// setupFirewall applies the firewall rules of the networks, replaced by the
+// tests.
+var setupFirewall = setupFW
+
+// Setup sets up the networks named, all of them when none is named, and the
+// firewall rules of every network.
+//
+// The firewall rules of the networks are one ruleset, rewritten whole: rendered
+// from the networks named only, as the daemon sets up the one whose
+// configuration changed, it dropped the rules of the others, and the
+// containers of their networks lost their way out.
 func Setup(n *object.Node, names ...string) error {
 	errs := make([]error, 0)
 	dir, err := mkCNIConfigDir(n)
@@ -35,11 +47,12 @@ func Setup(n *object.Node, names ...string) error {
 	if err != nil {
 		return err
 	}
-	nws := Networks(n, names...)
+	all := Networks(n)
+	nws := named(all, names)
 	needCommit := make([]string, 0)
 	kops := make(keyop.L, 0)
 	for _, nw := range nws {
-		if err := checkOverlap(nw, nws); err != nil {
+		if err := checkOverlap(nw, all); err != nil {
 			nw.Log().Errorf("network setup: %s", err)
 			errs = append(errs, err)
 			continue
@@ -60,13 +73,27 @@ func Setup(n *object.Node, names ...string) error {
 	if err := setupIPAM(nws); err != nil {
 		errs = append(errs, err)
 	}
-	if err := setupFW(n, nws); err != nil {
+	if err := setupFirewall(n, all); err != nil {
 		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("network setup: %s", errs)
 	}
 	return nil
+}
+
+// named returns the networks named, all of them when none is named.
+func named(nws []Networker, names []string) []Networker {
+	if len(names) == 0 {
+		return nws
+	}
+	l := make([]Networker, 0, len(names))
+	for _, nw := range nws {
+		if slices.Contains(names, nw.Name()) {
+			l = append(l, nw)
+		}
+	}
+	return l
 }
 
 func intersect(n1, n2 *net.IPNet) bool {

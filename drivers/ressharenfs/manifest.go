@@ -16,20 +16,22 @@ var (
 	drvID = driver.NewID(driver.GroupShare, "nfs")
 
 	kwSharePath = keywords.Keyword{
-		Attr:     "SharePath",
-		Example:  "volume#1:/",
-		Option:   "path",
-		Required: true,
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/path"),
+		Attr:         "SharePath",
+		Example:      "volume#1:/",
+		Option:       "path",
+		Required:     true,
+		Scopable:     true,
+		StopToChange: true,
+		Text:         keywords.NewText(fs, "text/kw/path"),
 	}
 	kwShareOpts = keywords.Keyword{
-		Attr:     "ShareOpts",
-		Example:  "*(ro)",
-		Option:   "opts",
-		Required: true,
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/opts"),
+		Attr:         "ShareOpts",
+		Example:      "*(ro)",
+		Option:       "opts",
+		Required:     true,
+		Scopable:     true,
+		StopToChange: true,
+		Text:         keywords.NewText(fs, "text/kw/opts"),
 	}
 )
 

@@ -17,6 +17,7 @@ type (
 		OptsGlobal
 		Discard bool
 		Recover bool
+		Force   bool
 	}
 )
 
@@ -57,7 +58,7 @@ func (t *CmdObjectConfigEdit) DoRemote(p naming.Path, c *client.T) error {
 		fmt.Println("unchanged")
 		return nil
 	}
-	if err = putObjectConfig(p, filename, c); err != nil {
+	if err = putObjectConfig(p, filename, c, t.Force); err != nil {
 		return err
 	}
 	return nil

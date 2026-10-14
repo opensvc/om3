@@ -18,21 +18,23 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "NetNS",
-			Example:  "container#0",
-			Option:   "netns",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/netns"),
+			Attr:         "NetNS",
+			Example:      "container#0",
+			Option:       "netns",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/netns"),
 		},
 		{
-			Attr:      "Spec",
-			Converter: converters.Shlex,
-			Example:   "from 192.168.100.0/24 table 100",
-			Option:    "spec",
-			Required:  true,
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/spec"),
+			Attr:         "Spec",
+			Converter:    converters.Shlex,
+			Example:      "from 192.168.100.0/24 table 100",
+			Option:       "spec",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/spec"),
 		},
 	}
 )

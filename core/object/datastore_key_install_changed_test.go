@@ -183,3 +183,42 @@ func TestAFailedWritePastARemovalIsAChange(t *testing.T) {
 		})
 	}
 }
+
+// An install line names no mode for the directories it passes: installing a
+// pattern of keys in an existing directory leaves its mode, and the one of the
+// directories above, as a directory line set it, not 0000.
+func TestAPatternInstalledInAnExistingDirectoryKeepsItsMode(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	head := t.TempDir()
+	dir := filepath.Join(head, "haproxy", "conf.d")
+	require.NoError(t, os.MkdirAll(dir, 0750))
+	require.NoError(t, os.Chmod(filepath.Join(head, "haproxy"), 0750))
+	require.NoError(t, os.Chmod(dir, 0750))
+
+	p := naming.Path{Name: "gw", Kind: naming.KindCfg, Namespace: naming.NsRoot}
+	o, err := NewDataStore(p)
+	require.NoError(t, err)
+	require.NoError(t, o.AddKey("conf.d/a.cfg", []byte("a")))
+	require.NoError(t, o.AddKey("conf.d/b.cfg", []byte("b")))
+	_, err = o.InstallKeyTo(KVInstall{
+		ToHead:        head,
+		ToPath:        dir + "/",
+		FromPattern:   "conf.d/*",
+		FromStore:     p,
+		AccessControl: KVInstallAccessControl{Perm: 0644, MakedirPerm: 0755},
+	})
+	require.NoError(t, err)
+
+	for _, d := range []string{dir, filepath.Join(head, "haproxy")} {
+		info, err := os.Stat(d)
+		require.NoError(t, err)
+		assert.Equal(t, iofs.FileMode(0750), info.Mode().Perm(), d)
+	}
+	_, err = os.Stat(filepath.Join(dir, "a.cfg"))
+	assert.NoError(t, err)
+}

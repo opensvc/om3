@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/confined"
 )
 
@@ -90,4 +92,44 @@ func TestWebrootSyntax(t *testing.T) {
 	p, _, err := task.http01(context.Background())
 	require.NoError(t, err)
 	assert.Nil(t, p, "no webroot, no writer: the secs are not acme ones, or name their own")
+}
+
+// A pattern names the secs there are, a sec named one asked: a pattern
+// matching none names none, and leaves out a sec of another namespace not
+// shared, where a sec named that does not exist fails.
+func TestSecsOfPatterns(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+	sec := func(ns, name, conf string) {
+		p := naming.Path{Namespace: ns, Kind: naming.KindSec, Name: name}
+		require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+		require.NoError(t, os.WriteFile(p.ConfigFile(), []byte(conf), 0o600))
+	}
+	sec("ns1", "web-a", "")
+	sec("ns1", "web-b", "")
+	sec("ns1", "other", "")
+	sec("ns2", "web-c", "[DEFAULT]\nshare = ns1\n")
+	sec("ns2", "web-d", "")
+
+	task := &T{Path: naming.Path{Namespace: "ns1", Kind: naming.KindSvc, Name: "gw"}}
+	task.Secs = []string{"./sec/web-*", "ns2/sec/web-*", "web-a", "none-*"}
+	l, err := task.secs()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ns1/sec/web-a", "ns1/sec/web-b", "ns2/sec/web-c"}, l.StrSlice())
+
+	task.Secs = []string{"web-*", "nope", "ns2/sec/web-d"}
+	l, err = task.secs()
+	assert.ErrorContains(t, err, "ns1/sec/nope does not exist")
+	assert.ErrorContains(t, err, "ns2/sec/web-d is not shared with namespace ns1")
+	assert.Equal(t, []string{"ns1/sec/web-a", "ns1/sec/web-b"}, l.StrSlice(), "the secs found are renewed all the same")
+}
+
+func TestValidateSecs(t *testing.T) {
+	assert.NoError(t, validateSecs("web ./sec/web-* ns2/sec/*.example.com api-*"))
+	for _, value := range []string{"./sec/*-*", "./cfg/web-*", "ns2/cfg/web", "./sec/Web-*"} {
+		assert.Error(t, validateSecs(value), value)
+	}
 }

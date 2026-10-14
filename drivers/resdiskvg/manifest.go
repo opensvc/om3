@@ -22,13 +22,14 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Aliases:  []string{"vgname"},
-			Attr:     "VGName",
-			Example:  "vg1",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
+			Aliases:      []string{"vgname"},
+			Attr:         "VGName",
+			Example:      "vg1",
+			Option:       "name",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
 		},
 		{
 			Attr:         "PVs",

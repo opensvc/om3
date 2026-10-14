@@ -170,6 +170,7 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			Recorded:      kw.Recorded,
 			Arithmetic:    kw.Arithmetic,
 			Provisioning:  kw.Provisioning,
+			StopToChange:  kw.StopToChange,
 			Scopable:      kw.Scopable,
 			Minimal:       kw.Minimal,
 			Required:      kw.Required,
