@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/keyop"
@@ -35,6 +36,20 @@ var (
 // evaluated when the certificate is issued, so the certificate the speaker
 // renews when the cluster nodes change names the new ones.
 const certAltNames = "{clusternodes}"
+
+// caValidity is the validity of the certificate of system/sec/ca, which the
+// speaker renews with the same key a fifth of it before its expiry, a year
+// at most. Every certificate it signed is refused once it expires, by the
+// peers of a node as by its clients: a node away when it was renewed has to
+// be back before the former one expires, which a long validity leaves time
+// for.
+const caValidity = "10y"
+
+// caRenewBefore returns how long before its expiry the certificate of
+// system/sec/ca is renewed, for a validity.
+func caRenewBefore(validity time.Duration) time.Duration {
+	return min(validity/5, 365*24*time.Hour)
+}
 
 func (t *T) startCertFS(ctx context.Context) error {
 	clusterName, err := getClusterName()
@@ -227,6 +242,10 @@ func (t *T) bootStrapCaPath() error {
 	t.log.Infof("bootstrapping ca %s", p)
 	caSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
+		return err
+	}
+	op := keyop.New(key.New("DEFAULT", "validity"), keyop.Set, caValidity, 0)
+	if err := caSec.Config().PrepareSet(*op); err != nil {
 		return err
 	}
 	t.log.Infof("bootstrap ca generating cert %s", p)

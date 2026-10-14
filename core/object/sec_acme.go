@@ -1,12 +1,14 @@
 package object
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -73,6 +75,13 @@ type (
 		// accounts an address registers, and each keeps it: the one that
 		// registered it going does not take it away.
 		Accounts []naming.Path
+
+		// RenewBefore is how long before its expiry a certificate is
+		// due when the sec sets no acme.renew_before, 30 days when
+		// zero. The daemon renews the cluster ca a longer time before,
+		// as a node away when it is renewed trusts the former one until
+		// it is back.
+		RenewBefore time.Duration
 	}
 
 	// acmeAccount is what the sec keeps of its account at the ACME
@@ -233,7 +242,7 @@ func certificateIPsDue(certPEM []byte, ips []net.IP, reason string) (bool, strin
 func (t *sec) RenewCertificate(ctx context.Context, opts CertificateRenewOptions) (CertificateRenewal, error) {
 	directory := acmeDirectory(t.config.GetString(key.Parse("acme.directory")))
 	if directory == "" {
-		return t.renewGeneratedCertificate(opts.Force)
+		return t.renewGeneratedCertificate(opts)
 	}
 	force, webrootPath := opts.Force, opts.Webroot
 	result := CertificateRenewal{Domains: t.acmeDomains(), Directory: directory}
@@ -494,16 +503,19 @@ func acmeDirectory(s string) string {
 // with the names of the sec rather than the ones it was installed for.
 var ErrCertificateNotIssued = errors.New("the certificate was not issued by the sec")
 
-// issuedCertificate says whether certPEM is a certificate the sec issued: one
-// its ca signed, or a self-signed one when it names no ca, of the serial
-// number the serial_number key says. GenCert records the serial number with
-// the certificate: a certificate installed in its place has another one.
+// issuedCertificate says whether certPEM is a certificate the sec issued: of
+// the serial number the serial_number key says. GenCert records the serial
+// number with the certificate: a certificate installed in its place has
+// another one.
 //
 // A sec has no serial_number key when its certificate was generated before
 // the serial numbers were recorded, or installed from elsewhere. Its
 // certificate is the one the sec issued when the ca of the sec signed it, as
-// the one of system/sec/cert, and is not when the sec names no ca: an
-// imported self-signed certificate passes the signature check too.
+// the one of system/sec/cert. When the sec names no ca, an imported
+// self-signed certificate passes the signature check too: the certificate is
+// the one the sec issued when its subject is the one the sec says, as the one
+// of a cluster ca bootstrapped before. A renewal issues the same subject with
+// the same key, which the certificates it signed are verified by still.
 func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
 	cert, err := certFromPEM(certPEM)
 	if err != nil {
@@ -511,11 +523,16 @@ func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
 	}
 	ca := t.CertInfo("ca")
 	if b, err := t.DecodeKey("serial_number"); err == nil {
-		if serial, ok := parseSerialText(string(b)); !ok || serial.Cmp(cert.SerialNumber) != 0 {
+		// The serial number recorded is the proof, the signature is
+		// not: a certificate the former ca signed, before a rotation of
+		// its key, is one the sec issued all the same.
+		serial, ok := parseSerialText(string(b))
+		return ok && serial.Cmp(cert.SerialNumber) == 0, nil
+	} else if ca == "" {
+		subject, err := asn1.Marshal(t.subject().ToRDNSequence())
+		if err != nil || !bytes.Equal(subject, cert.RawSubject) {
 			return false, nil
 		}
-	} else if ca == "" {
-		return false, nil
 	}
 	if ca == "" {
 		return cert.CheckSignatureFrom(cert) == nil, nil
@@ -527,22 +544,64 @@ func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
 	return cert.CheckSignatureFrom(caCert) == nil, nil
 }
 
+// certificateChainDue says whether the certificate chain of a sec signed by
+// a ca holds a certificate of the ca other than its current one, as after
+// the ca is renewed, and returns reason as is when it does not. The chain
+// presented with the certificate is the one the clients verify: a former
+// certificate of the ca expires, or is not the one of a ca rotated.
+func (t *sec) certificateChainDue(reason string) (bool, string) {
+	ca := t.CertInfo("ca")
+	if ca == "" {
+		return false, reason
+	}
+	chain, err := t.decode("certificate_chain")
+	if err != nil {
+		return false, reason
+	}
+	_, caPEM, err := t.getCACert()
+	if err != nil {
+		return false, reason
+	}
+	caBlock, _ := pem.Decode(caPEM)
+	if caBlock == nil {
+		return false, reason
+	}
+	// The first block is the certificate, the ca ones follow.
+	_, rest := pem.Decode(chain)
+	for {
+		var block *pem.Block
+		if block, rest = pem.Decode(rest); block == nil {
+			break
+		}
+		if bytes.Equal(block.Bytes, caBlock.Bytes) {
+			return false, reason
+		}
+	}
+	return true, fmt.Sprintf("the certificate chain does not hold the current certificate of %s", ca)
+}
+
 // renewGeneratedCertificate generates the certificate of a sec issued by no
 // ACME directory, as certificate create does, when it is due: self-signed,
 // or signed by the ca the sec names. The private key is kept.
-func (t *sec) renewGeneratedCertificate(force bool) (CertificateRenewal, error) {
+func (t *sec) renewGeneratedCertificate(opts CertificateRenewOptions) (CertificateRenewal, error) {
+	force := opts.Force
 	// The names the certificate is issued for, as the result says them:
 	// the subject first. The alternate names are what it is compared
 	// with, the common name not being one of them.
 	result := CertificateRenewal{Domains: t.acmeDomains()}
 	before := acmeDefaultRenewBefore
-	if d := t.config.GetDuration(key.Parse("acme.renew_before")); d != nil {
+	if k := key.Parse("acme.renew_before"); opts.RenewBefore > 0 && !t.config.HasKey(k) {
+		before = opts.RenewBefore
+	} else if d := t.config.GetDuration(k); d != nil {
 		before = *d
 	}
 	current, _ := t.decode("certificate")
 	due, reason := certificateDue(current, t.DNSNamesFromAltNames(), time.Now(), before, false)
 	if !due {
 		due, reason = certificateIPsDue(current, t.IPAddressesFromAltNames(), reason)
+	}
+	if !due {
+		due, reason = t.certificateChainDue(reason)
 	}
 	switch {
 	case force:

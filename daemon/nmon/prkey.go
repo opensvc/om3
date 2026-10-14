@@ -21,9 +21,7 @@ func (t *Manager) nodeIssues(cfg node.Config) []string {
 	if peers := t.duplicatePRKeyPeers(cfg.PRKey); len(peers) > 0 {
 		issues = append(issues, fmt.Sprintf("prkey %s is also the prkey of %s", cfg.PRKey, strings.Join(peers, ", ")))
 	}
-	if t.certIssueMsg != "" {
-		issues = append(issues, t.certIssueMsg)
-	}
+	issues = append(issues, t.certIssues...)
 	if len(issues) == 0 {
 		return nil
 	}

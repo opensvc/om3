@@ -374,3 +374,74 @@ func TestAcmeAccountIsShared(t *testing.T) {
 	require.NotNil(t, user.reg)
 	assert.Equal(t, "https://acme/acct/a-staging", user.reg.URI)
 }
+
+// A ca is renewed with its key, within the renewal window a caller sets: the
+// certificates it signed are verified by the renewed one. A certificate it
+// signed is due once its chain does not hold the renewed one, and a ca
+// generated before the serial numbers were recorded is the one the sec
+// issued, its subject being the one the sec says.
+func TestRenewCA(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	caPath := naming.Path{Name: "ca", Kind: naming.KindSec, Namespace: "ns1"}
+	ca, err := NewSec(caPath, WithConfigData([]byte("[DEFAULT]\nbits = 2048\nvalidity = 400d\n")))
+	require.NoError(t, err)
+	require.NoError(t, ca.GenCert())
+	require.NoError(t, ca.RemoveKey("serial_number"))
+
+	p := naming.Path{Name: "cert", Kind: naming.KindSec, Namespace: "ns1"}
+	o, err := NewSec(p, WithConfigData([]byte("[DEFAULT]\nca = ns1/sec/ca\nalt_names = node1\nbits = 2048\n")))
+	require.NoError(t, err)
+	require.NoError(t, o.GenCert())
+	r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.False(t, r.Renewed, r.Reason)
+
+	r, err = ca.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.False(t, r.Renewed, "valid 400 days, out of the default window")
+
+	caKey1, err := ca.DecodeKey("private_key")
+	require.NoError(t, err)
+	r, err = ca.RenewCertificate(context.Background(), CertificateRenewOptions{RenewBefore: 500 * 24 * time.Hour})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, r.Reason)
+	caKey2, err := ca.DecodeKey("private_key")
+	require.NoError(t, err)
+	assert.Equal(t, caKey1, caKey2, "the ca key is kept")
+
+	// The certificate signed by the former ca is verified by the new one.
+	b, err := o.DecodeKey("certificate")
+	require.NoError(t, err)
+	cert, err := certFromPEM(b)
+	require.NoError(t, err)
+	b, err = ca.DecodeKey("certificate")
+	require.NoError(t, err)
+	caCert, err := certFromPEM(b)
+	require.NoError(t, err)
+	assert.NoError(t, cert.CheckSignatureFrom(caCert))
+
+	o, err = NewSec(p, WithVolatile(false))
+	require.NoError(t, err)
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, "the chain holds the former ca certificate: due")
+	assert.Contains(t, r.Reason, "current certificate of ns1/sec/ca")
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.False(t, r.Renewed, r.Reason)
+
+	// A new key, as a rotation gives the ca: the certificate the former
+	// key signed is one the sec issued all the same, due for its chain.
+	require.NoError(t, ca.RemoveKey("private_key"))
+	require.NoError(t, ca.GenCert())
+	o, err = NewSec(p, WithVolatile(false))
+	require.NoError(t, err)
+	r, err = o.RenewCertificate(context.Background(), CertificateRenewOptions{})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, r.Reason)
+}

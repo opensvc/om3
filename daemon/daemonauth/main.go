@@ -102,7 +102,22 @@ var (
 
 	// authRefreshInterval defines the duration between periodic authentication strategy refresh operations.
 	authRefreshInterval = 30 * 24 * time.Hour
+
+	// refreshC asks the strategies routine to initialize them again.
+	refreshC = make(chan struct{}, 1)
 )
+
+// RefreshStrategies initializes the authentication strategies again, as when
+// the files of the cluster authorities they read changed: the x509 strategy
+// verifies the client certificates with the certificates of the cluster
+// authorities, which an expired one would refuse, and the jwt one signs and
+// verifies the tokens with the key of the cluster ca.
+func RefreshStrategies() {
+	select {
+	case refreshC <- struct{}{}:
+	default:
+	}
+}
 
 var (
 	// authCache is shared by the strategies that would otherwise redo an
@@ -172,6 +187,14 @@ func Start(ctx context.Context, authCfg any) error {
 					} else {
 						Strategies.setStrategy(s)
 					}
+				}
+			case <-refreshC:
+				log.Infof("cluster authorities changed, refresh authentication strategies")
+				s, err := initStategies(ctx, authCfg)
+				if err != nil {
+					log.Errorf("failed to refresh authentication strategies: %s", err)
+				} else {
+					Strategies.setStrategy(s)
 				}
 			case i := <-sub.C:
 				switch c := i.(type) {
