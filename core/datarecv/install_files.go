@@ -268,7 +268,7 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]str
 // install line held and holds no more, and returns the ones removed, and the
 // ones it failed to remove, which are to be tried again. A file that is not
 // the one installed anymore, as stamps say, is left where it is: it was
-// written in its place since.
+// written in its place since. So is a file stamps say nothing of.
 func (t *DataRecv) removeInstalled(head string, paths []string, stamps fileStamps) (removed, failed []string) {
 	if len(paths) == 0 || head == "" {
 		return nil, nil
@@ -292,7 +292,10 @@ func (t *DataRecv) removeInstalled(head string, paths []string, stamps fileStamp
 		case info.IsDir():
 			continue
 		}
-		if stamp, ok := stamps[p]; ok && !stamp.matches(info) {
+		if stamp, ok := stamps[p]; !ok {
+			t.to.Log().Warnf("leave %s: nothing recorded tells it is the file installed from a key now gone", abs)
+			continue
+		} else if !stamp.matches(info) {
 			t.to.Log().Warnf("leave %s: it changed since it was installed from a key now gone", abs)
 			continue
 		}
