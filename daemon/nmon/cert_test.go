@@ -12,9 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -100,4 +102,20 @@ func TestCheckCertExpiry(t *testing.T) {
 	require.Len(t, l, 2)
 	assert.Contains(t, l[1], "system/sec/ca certificate expires on")
 	assert.Contains(t, l[1], "certificate renew --force")
+
+	// A former ca the cluster ca keyword keeps for the certificates it
+	// signed: they are refused once it expires.
+	former := naming.Path{Namespace: naming.NsSys, Kind: naming.KindSec, Name: "ca-former-x"}
+	sec, err := object.NewSec(former, object.WithConfigData([]byte("[DEFAULT]\nvalidity = 30d\n")))
+	require.NoError(t, err)
+	require.NoError(t, sec.GenCert())
+	ccfg, err := object.NewCluster(object.WithVolatile(false))
+	require.NoError(t, err)
+	require.NoError(t, ccfg.Config().Set(*keyop.New(key.New("cluster", "ca"), keyop.Set, former.String(), 0)))
+	_, err = object.SetClusterConfig()
+	require.NoError(t, err)
+	l = m.certIssuesNow(now.Add(20 * 24 * time.Hour))
+	require.Len(t, l, 1)
+	assert.Contains(t, l[0], "system/sec/ca-former-x certificate expires on")
+	assert.Contains(t, l[0], "stop trusting it")
 }

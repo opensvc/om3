@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 )
@@ -81,6 +82,7 @@ func (t *Manager) certIssuesNow(now time.Time) []string {
 	if issue := caIssue(now); issue != "" {
 		issues = append(issues, issue)
 	}
+	issues = append(issues, trustedCAIssues(now)...)
 	return issues
 }
 
@@ -133,28 +135,66 @@ func (t *Manager) certIssue(now time.Time) string {
 // and "" when it is not soon to expire, or when the sec has no certificate to
 // tell.
 func caIssue(now time.Time) string {
-	if !naming.SecCa.Exists() {
-		return ""
-	}
-	sec, err := object.NewSec(naming.SecCa, object.WithVolatile(true))
-	if err != nil {
-		return ""
-	}
-	b, err := sec.DecodeKey("certificate")
-	if err != nil {
-		return ""
-	}
-	block, _ := pem.Decode(b)
-	if block == nil {
-		return ""
-	}
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
+	cert := secCertificate(naming.SecCa)
+	if cert == nil {
 		return ""
 	}
 	return expiryIssue(naming.SecCa, cert, now, caExpiryWarning,
 		"the certificates it signed are refused from then, the ones of the nodes among them",
 		"the speaker renews it with its key: renew it with om system/sec/ca certificate renew --force")
+}
+
+// trustedCAIssues returns when the certificates of the other authorities the
+// cluster ca keyword lists expire, or expired, as a former ca a rotation kept
+// for the certificates it signed: they are refused once it expires.
+func trustedCAIssues(now time.Time) []string {
+	cfg := cluster.ConfigData.Get()
+	if cfg == nil {
+		return nil
+	}
+	var issues []string
+	for _, s := range cfg.CASecPaths {
+		p, err := naming.ParsePath(s)
+		if err != nil || p == naming.SecCa {
+			continue
+		}
+		cert := secCertificate(p)
+		if cert == nil {
+			continue
+		}
+		issue := expiryIssue(p, cert, now, caExpiryWarning,
+			"the certificates it signed are refused from then",
+			"renew them from system/sec/ca, and stop trusting it")
+		if issue != "" {
+			issues = append(issues, issue)
+		}
+	}
+	return issues
+}
+
+// secCertificate returns the certificate of the sec at p, nil when it has
+// none to tell.
+func secCertificate(p naming.Path) *x509.Certificate {
+	if !p.Exists() {
+		return nil
+	}
+	sec, err := object.NewSec(p, object.WithVolatile(true))
+	if err != nil {
+		return nil
+	}
+	b, err := sec.DecodeKey("certificate")
+	if err != nil {
+		return nil
+	}
+	block, _ := pem.Decode(b)
+	if block == nil {
+		return nil
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil
+	}
+	return cert
 }
 
 // expiryIssue returns the issue of a certificate of the sec at p expiring
