@@ -112,7 +112,7 @@ func (t *CmdClusterCARotate) Run() error {
 	if t.DropFormer {
 		// Checked first: the users of a certificate the former ca signed
 		// would be refused once it is not trusted anymore.
-		if l := signedBy(formerCert); len(l) > 0 {
+		if l := signedBy(formerCert, naming.SecCert); len(l) > 0 {
 			return fmt.Errorf("the former ca signed the certificate of %s, refused once it is dropped: renew them with 'om <path> certificate create' after the rotation, or rotate without --drop-former", strings.Join(l, ", "))
 		}
 	}
@@ -141,8 +141,16 @@ func (t *CmdClusterCARotate) Run() error {
 		fmt.Printf("%s: holds the key of the new ca\n", naming.SecCa)
 	}
 	paths := []naming.Path{naming.SecCa}
+	dropFormer := t.DropFormer
 	if err := t.reissueCert(ctx); err != nil {
 		fmt.Printf("%s: %s\n", naming.SecCert, err)
+		if dropFormer {
+			// The nodes may present a certificate the former ca
+			// signed still: dropping it would have their peers
+			// refuse it.
+			fmt.Printf("%s: the former ca is kept, as %s may be signed by it still\n", keyClusterCA, naming.SecCert)
+			dropFormer = false
+		}
 	} else {
 		paths = append(paths, naming.SecCert)
 	}
@@ -153,7 +161,7 @@ func (t *CmdClusterCARotate) Run() error {
 	// 3. Stop listing the ca the new one was created as, and the former one
 	// with --drop-former.
 	untrust := []string{caNextPath.String()}
-	if t.DropFormer {
+	if dropFormer {
 		untrust = append(untrust, formerPath.String())
 	}
 	if err := t.untrust(untrust...); err != nil {
@@ -165,7 +173,7 @@ func (t *CmdClusterCARotate) Run() error {
 	if err := t.deleteSec(ctx, c, caNextPath); err != nil {
 		return err
 	}
-	if t.DropFormer {
+	if dropFormer {
 		if err := t.deleteSec(ctx, c, formerPath); err != nil {
 			return err
 		}
@@ -518,16 +526,17 @@ func listedFormer() (naming.Path, *x509.Certificate, error) {
 	return p, cert, nil
 }
 
-// signedBy returns the secs and users whose certificate ca signed, but
-// system/sec/cert, which a rotation issues again, and the cas.
-func signedBy(ca *x509.Certificate) []string {
+// signedBy returns the secs and users whose certificate ca signed, but the
+// cas and the ones skipped, as system/sec/cert before a rotation issues it
+// again.
+func signedBy(ca *x509.Certificate, skip ...naming.Path) []string {
 	l := make([]string, 0)
 	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return l
 	}
 	for _, p := range paths {
-		if p == naming.SecCert || (p.Kind != naming.KindSec && p.Kind != naming.KindUsr) {
+		if slices.Contains(skip, p) || (p.Kind != naming.KindSec && p.Kind != naming.KindUsr) {
 			continue
 		}
 		store, err := object.NewDataStore(p, object.WithVolatile(true))
