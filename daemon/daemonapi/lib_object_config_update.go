@@ -25,8 +25,8 @@ func (invalidConfigError) Is(target error) bool {
 	return target == ErrInvalidConfig
 }
 
-func configUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T) (bool, error) {
-	u, err := prepareConfigUpdate(ctx, log, p, deletes, unsets, sets)
+func configUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T, force bool) (bool, error) {
+	u, err := prepareConfigUpdate(ctx, log, p, deletes, unsets, sets, force)
 	if err != nil {
 		return false, err
 	}
@@ -47,7 +47,8 @@ type pendingConfigUpdate struct {
 // prepareConfigUpdate makes the update and runs the checks a write passes,
 // the rbac policy, the validation and the claims, without writing it, so a
 // caller can do what the write depends on between the checks and the write.
-func prepareConfigUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T) (*pendingConfigUpdate, error) {
+// With force, root writes a change a resource up would leak by.
+func prepareConfigUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T, force bool) (*pendingConfigUpdate, error) {
 	base, err := readConfigBase(p)
 	if err != nil {
 		return nil, fmt.Errorf("read the configuration of %s: %w", p, err)
@@ -64,6 +65,8 @@ func prepareConfigUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, dele
 		log.Tracef("configuration dump for object %s: %s", p, err)
 		return nil, fmt.Errorf("configuration dump for object %s: %w", p, err)
 	} else if err := configRbac(ctx, p, b); err != nil {
+		return nil, err
+	} else if err := stopToChange(ctx, p, b, force); err != nil {
 		return nil, err
 	}
 	if alerts, err := oc.Config().Validate(); err != nil {

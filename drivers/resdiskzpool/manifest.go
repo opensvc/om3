@@ -19,13 +19,14 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Aliases:  []string{"poolname"},
-			Attr:     "Name",
-			Example:  "tank",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
+			Aliases:      []string{"poolname"},
+			Attr:         "Name",
+			Example:      "tank",
+			Option:       "name",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
 		},
 		{
 			Attr:      "Multihost",

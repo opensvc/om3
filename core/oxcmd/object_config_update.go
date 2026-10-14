@@ -21,6 +21,7 @@ type (
 		Unset  []string
 		Wait   bool
 		Time   time.Duration
+		Force  bool
 	}
 )
 
@@ -61,6 +62,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			params.Set = &t.Set
 			params.Unset = &t.Unset
 			params.Delete = &t.Delete
+			if t.Force {
+				params.Force = &t.Force
+			}
 			if t.Wait {
 				wait := t.Time.String()
 				params.Wait = &wait

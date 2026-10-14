@@ -19,12 +19,13 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Aliases:  []string{"container_data_dir"},
-			Attr:     "DataDir",
-			Example:  "/srv/svc1/data/containers",
-			Option:   "data_dir",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/data_dir"),
+			Aliases:      []string{"container_data_dir"},
+			Attr:         "DataDir",
+			Example:      "/srv/svc1/data/containers",
+			Option:       "data_dir",
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/data_dir"),
 		},
 		{
 			Attr:         "RootDir",

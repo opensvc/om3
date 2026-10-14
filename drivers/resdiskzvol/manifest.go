@@ -19,12 +19,13 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "Name",
-			Example:  "tank/zvol1",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
+			Attr:         "Name",
+			Example:      "tank/zvol1",
+			Option:       "name",
+			Required:     true,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
 		},
 		{
 			Attr:         "CreateOptions",

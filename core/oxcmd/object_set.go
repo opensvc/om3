@@ -9,6 +9,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsLock
 		KeywordOps []string
+		Force      bool
 	}
 )
 
@@ -17,6 +18,7 @@ func (t *CmdObjectSet) Run(kind string) error {
 		OptsGlobal: t.OptsGlobal,
 		OptsLock:   t.OptsLock,
 		Set:        t.KeywordOps,
+		Force:      t.Force,
 	}
 	return cmd.Run(kind)
 }

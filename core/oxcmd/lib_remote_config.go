@@ -67,13 +67,17 @@ func fetchObjectConfig(p naming.Path, c *client.T, redactSecrets bool) ([]byte, 
 	return resp.Body, nil
 }
 
-func putObjectConfig(p naming.Path, fName string, c *client.T) (err error) {
+func putObjectConfig(p naming.Path, fName string, c *client.T, force bool) (err error) {
 	file, err := os.Open(fName)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	resp, err := c.PutObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, nil, "application/octet-stream", file)
+	params := &api.PutObjectConfigFileParams{}
+	if force {
+		params.Force = &force
+	}
+	resp, err := c.PutObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, params, "application/octet-stream", file)
 	if err != nil {
 		return err
 	}

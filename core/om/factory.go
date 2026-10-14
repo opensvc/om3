@@ -1974,6 +1974,7 @@ func newCmdObjectConfigEdit(kind string) *cobra.Command {
 	commoncmd.FlagDiscard(flags, &options.Discard)
 	commoncmd.FlagRecover(flags, &options.Recover)
 	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -1993,6 +1994,7 @@ func newCmdObjectEditConfig(kind string) *cobra.Command {
 	commoncmd.FlagDiscard(flags, &options.Discard)
 	commoncmd.FlagRecover(flags, &options.Recover)
 	cmd.MarkFlagsMutuallyExclusive("discard", "recover")
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -4253,6 +4255,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagConfigWait(flags, &options.Wait)
 	commoncmd.FlagTime(flags, &options.Time)
 	hiddenFlagLocal(flags, &options.Local)
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -4456,6 +4459,7 @@ func newCmdObjectSet(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywordOps(flags, &options.KeywordOps)
 	flagLocal(flags, &options.Local)
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 
@@ -4475,6 +4479,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagSections(flags, &options.Sections)
 	flagLocal(flags, &options.Local)
+	commoncmd.FlagConfigForce(flags, &options.Force)
 	return cmd
 }
 

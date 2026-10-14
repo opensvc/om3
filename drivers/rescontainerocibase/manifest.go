@@ -17,12 +17,13 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Option:      "name",
-			Attr:        "Name",
-			Scopable:    true,
-			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
-			Text:        keywords.NewText(fs, "text/kw/name"),
-			Example:     "osvcprd..rundeck.container.db",
+			Option:       "name",
+			Attr:         "Name",
+			Scopable:     true,
+			DefaultText:  keywords.NewText(fs, "text/kw/name.default"),
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
+			Example:      "osvcprd..rundeck.container.db",
 		},
 		{
 			Option:   "hostname",

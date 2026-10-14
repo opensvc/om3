@@ -1646,9 +1646,12 @@ type KeywordDefinitionItem struct {
 	Section    string `json:"section"`
 
 	// Since The release the keyword appeared in, empty when it predates the field. What a release has is what its own documentation lists; this answers "since when" for the keywords added from here on.
-	Since string   `json:"since"`
-	Text  string   `json:"text"`
-	Types []string `json:"types"`
+	Since string `json:"since"`
+
+	// StopToChange True when the value says what the resource holds on a node once started, as a mount point or an address: a change is refused while the resource is up on a node, as its stop would act on the new value and leave what the former one set up.
+	StopToChange bool     `json:"stopToChange"`
+	Text         string   `json:"text"`
+	Types        []string `json:"types"`
 }
 
 // KeywordDefinitionItems defines model for KeywordDefinitionItems.
@@ -4299,7 +4302,8 @@ type PatchObjectConfigParams struct {
 	//
 	// A request held until the wait expires is answered 408, which says the
 	// thing is still running, and is not an error of the request.
-	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+	Wait  *Wait         `form:"wait,omitempty" json:"wait,omitempty"`
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
@@ -4342,7 +4346,8 @@ type PutObjectConfigFileParams struct {
 	//
 	// A request held until the wait expires is answered 408, which says the
 	// thing is still running, and is not an error of the request.
-	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+	Wait  *Wait         `form:"wait,omitempty" json:"wait,omitempty"`
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.

@@ -259,6 +259,12 @@ func FlagForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "allow dangerous operations")
 }
 
+// FlagConfigForce is the force of a configuration write a resource up on a
+// node would leak by.
+func FlagConfigForce(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "force", false, "write a change a resource up would leak by: of a keyword saying what it holds on a node, as a mount point or an address, or the removal of its section (requires the root grant)")
+}
+
 func FlagIgnoreNotFound(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "ignore-not-found", false, "allow empty object selections")
 }

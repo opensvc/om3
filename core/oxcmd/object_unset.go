@@ -10,6 +10,7 @@ type (
 		commoncmd.OptsLock
 		Keywords []string
 		Sections []string
+		Force    bool
 	}
 )
 
@@ -19,6 +20,7 @@ func (t *CmdObjectUnset) Run(kind string) error {
 		OptsLock:   t.OptsLock,
 		Unset:      t.Keywords,
 		Delete:     t.Sections,
+		Force:      t.Force,
 	}
 	return cmd.Run(kind)
 }

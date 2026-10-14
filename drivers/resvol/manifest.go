@@ -20,11 +20,12 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "Name",
-			Default:  "{name}-vol-{rindex}",
-			Option:   "name",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
+			Attr:         "Name",
+			Default:      "{name}-vol-{rindex}",
+			Option:       "name",
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/name"),
 		},
 		{
 			Attr:         "PoolType",

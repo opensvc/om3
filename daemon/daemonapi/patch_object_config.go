@@ -84,7 +84,7 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 			sub = a.subscribeConfigPropagation(fmt.Sprintf("api.patch_object_config %s %s", p, ctx.Get("uuid")), p)
 			defer func() { _ = sub.Stop() }()
 		}
-		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets)
+		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets, params.Force != nil && *params.Force)
 		if errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
 			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 		} else if errors.Is(err, ErrInvalidConfig) {

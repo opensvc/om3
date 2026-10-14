@@ -21,10 +21,11 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:    "Res",
-			Example: "r1",
-			Option:  "res",
-			Text:    keywords.NewText(fs, "text/kw/res"),
+			Attr:         "Res",
+			Example:      "r1",
+			Option:       "res",
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/res"),
 		},
 		{
 			Attr:         "Disk",

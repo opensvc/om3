@@ -5503,6 +5503,14 @@ paths:
         request arrives, and written only over it: a configuration another
         write changed meanwhile is answered 409, and nothing is written.
         Ask again, to be checked against the configuration as it now is.
+
+        A change of a keyword saying what a resource holds on a node, as
+        the mount point of a filesystem or the address of an ip, or the
+        removal of its section, is answered 403 while the resource is up on
+        a node: its stop would act on the new value, and leave what the
+        former one set up. Stop the resource first. With force, root writes
+        it all the same, as to undo a change that left a resource that
+        cannot be stopped.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5511,6 +5519,7 @@ paths:
         - $ref: '#/components/parameters/inQueryUnsets'
         - $ref: '#/components/parameters/inQuerySets'
         - $ref: '#/components/parameters/inQueryWait'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK
@@ -5642,6 +5651,7 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryWait'
+        - $ref: '#/components/parameters/inQueryForce'
       requestBody:
         description: OK
         content:
@@ -7731,6 +7741,7 @@ components:
         - redactSecret
         - recorded
         - arithmetic
+        - stopToChange
         - required
         - minimal
       properties:
@@ -7804,6 +7815,13 @@ components:
             True when an expression written $(...) in the keyword value is
             computed. Implied by a converter that makes a number, and declared
             where the keyword holds a number but converts to none.
+        stopToChange:
+          type: boolean
+          description: >
+            True when the value says what the resource holds on a node once
+            started, as a mount point or an address: a change is refused
+            while the resource is up on a node, as its stop would act on the
+            new value and leave what the former one set up.
         required:
           type: boolean
         minimal:

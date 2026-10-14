@@ -42,6 +42,10 @@ type (
 		// configured, so no action touches them, and the status reports
 		// them.
 		unsupported map[string]string
+
+		// editForce has an edit of the configuration written even when
+		// a resource up on this node would leak by it.
+		editForce bool
 	}
 
 	// freezer is implemented by object kinds supporting freeze and unfreeze.
