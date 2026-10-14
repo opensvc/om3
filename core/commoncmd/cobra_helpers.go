@@ -4,10 +4,28 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/util/logging"
 )
 
 // ArgAnnotationKey is the key used for the args annotation on cobra commands
 const ArgAnnotationKey = "args"
+
+// ConsoleLogAnnotationKey is the key of the annotation of a cobra command
+// naming the format it shows its logs on the console in, as
+// logging.ConsoleFormatPlain.
+const ConsoleLogAnnotationKey = "console_log"
+
+// CmdWithPlainConsoleLog has the command show its logs on the console as the
+// lines it prints, with no time, and no level below the warnings: for a
+// command whose output tells a story its logs are lines of. --debug and
+// --trace show them with their time and level all the same.
+func CmdWithPlainConsoleLog(cmd *cobra.Command) {
+	if cmd.Annotations == nil {
+		cmd.Annotations = make(map[string]string)
+	}
+	cmd.Annotations[ConsoleLogAnnotationKey] = logging.ConsoleFormatPlain
+}
 
 // CmdWithArg appends argument documentation to the command's args annotation.
 // It handles line feeds, padding and indentation to format the text properly.

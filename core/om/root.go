@@ -96,7 +96,7 @@ func listNodes() []string {
 	return nil
 }
 
-func configureLogger() error {
+func configureLogger(cmd *cobra.Command) error {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	level := "info"
 	if debugFlag {
@@ -109,6 +109,7 @@ func configureLogger() error {
 	err := logging.Configure(logging.Config{
 		WithConsoleLog: !quietFlag || debugFlag || traceFlag || foregroundFlag,
 		WithColor:      colorFlag != "no",
+		ConsoleFormat:  consoleFormat(cmd),
 		WithCaller:     callerFlag,
 		WithJournald:   !noLogFile,
 		WithSyslogd:    !noLogFile,
@@ -127,6 +128,19 @@ func configureLogger() error {
 		log.Logger = log.Logger.With().Str("request_id", requestID).Logger()
 	}
 	return nil
+}
+
+// consoleFormat returns the format the command shows its logs on the
+// console in: the one it prefers, but with --debug or --trace, which ask for
+// the time and the level of each.
+func consoleFormat(cmd *cobra.Command) string {
+	if debugFlag || traceFlag {
+		return logging.ConsoleFormatFull
+	}
+	if s := cmd.Annotations[commoncmd.ConsoleLogAnnotationKey]; s != "" {
+		return s
+	}
+	return logging.ConsoleFormatFull
 }
 
 func persistentPreRunE(cmd *cobra.Command, _ []string) error {
@@ -150,7 +164,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	if err := hostname.Error(); err != nil {
 		return err
 	}
-	if err := configureLogger(); err != nil {
+	if err := configureLogger(cmd); err != nil {
 		return err
 	}
 
