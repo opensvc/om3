@@ -101,7 +101,12 @@ func (t *DataRecv) pruneInstallLine(head, id string, held []string) []string {
 			stale = append(stale, p)
 		}
 	}
-	removed := t.removeInstalled(head, stale)
+	removed, failed := t.removeInstalled(head, stale)
+	// A file whose removal failed, as on a volume read-only for a while,
+	// stays recorded, so a later run removes it.
+	held = append(held, failed...)
+	slices.Sort(held)
+	held = slices.Compact(held)
 	if !slices.Equal(m[id], held) {
 		if len(held) == 0 {
 			delete(m, id)
@@ -150,8 +155,13 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]str
 				stale = append(stale, p)
 			}
 		}
-		if l := t.removeInstalled(head, stale); len(l) > 0 {
+		l, failed := t.removeInstalled(head, stale)
+		if len(l) > 0 {
 			removed[id] = l
+		}
+		if len(failed) > 0 {
+			// Recorded still, for a later run to remove them.
+			m[id] = failed
 		}
 	}
 	if dropped {
@@ -163,22 +173,18 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]str
 }
 
 // removeInstalled removes the files at the paths, relative to head, an
-// install line held and holds no more, and returns the ones removed.
-//
-// The head is written by what mounts it too: a removal stays in it, removes
-// a file or a link, never what a link leads to, and leaves a directory found
-// there, which the line did not install.
-func (t *DataRecv) removeInstalled(head string, paths []string) []string {
+// install line held and holds no more, and returns the ones removed, and the
+// ones it failed to remove, which are to be tried again.
+func (t *DataRecv) removeInstalled(head string, paths []string) (removed, failed []string) {
 	if len(paths) == 0 || head == "" {
-		return nil
+		return nil, nil
 	}
 	tree, err := confined.Open(head)
 	if err != nil {
 		t.to.Log().Warnf("remove the files of the keys gone: %s", err)
-		return nil
+		return nil, slices.Clone(paths)
 	}
 	defer func() { _ = tree.Close() }()
-	removed := make([]string, 0)
 	for _, p := range paths {
 		abs := filepath.Join(head, filepath.Clean("/"+p))
 		info, err := tree.Lstat(abs)
@@ -187,16 +193,18 @@ func (t *DataRecv) removeInstalled(head string, paths []string) []string {
 			continue
 		case err != nil:
 			t.to.Log().Warnf("remove %s: %s", abs, err)
+			failed = append(failed, p)
 			continue
 		case info.IsDir():
 			continue
 		}
 		if err := tree.Remove(abs); err != nil {
 			t.to.Log().Warnf("remove %s: %s", abs, err)
+			failed = append(failed, p)
 			continue
 		}
 		t.to.Log().Infof("remove %s: the key it was installed from is gone", abs)
 		removed = append(removed, p)
 	}
-	return removed
+	return removed, failed
 }
