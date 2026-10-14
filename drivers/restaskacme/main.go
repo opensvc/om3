@@ -85,11 +85,12 @@ func (t *T) Run(ctx context.Context) error {
 // deleted first, and renewed with the secs named, all of them sharing one
 // account at the directory.
 func (t *T) lockedRun(ctx context.Context) error {
-	if err := t.RunInstall(ctx); err != nil {
-		return err
-	}
+	// Checked first: an install a task refused runs no more than it.
 	if err := t.checkDomains(); err != nil {
 		_ = t.WriteLastRun(1)
+		return err
+	}
+	if err := t.RunInstall(ctx); err != nil {
 		return err
 	}
 	if t.Timeout != nil && *t.Timeout > 0 {
