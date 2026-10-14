@@ -810,8 +810,13 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 			}
 			if created {
 				t.to.Log().Infof("created datastore %s for seeding", md.FromStore)
-				if err := generateCertificate(dataStore, md.FromPattern, t.to.Log()); err != nil {
-					t.to.Log().Warnf("%s: generate a self-signed certificate: %s", md.FromStore, err)
+				// A line naming a source seeds the key from it: a
+				// certificate generated first would hold the key,
+				// and the source would never be read.
+				if md.Source == "" {
+					if err := generateCertificate(dataStore, md.FromPattern, t.to.Log()); err != nil {
+						t.to.Log().Warnf("%s: generate a self-signed certificate: %s", md.FromStore, err)
+					}
 				}
 			}
 		} else {
