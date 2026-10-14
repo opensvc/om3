@@ -3,9 +3,12 @@ package daemonauth
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -77,8 +80,28 @@ func bearerToken(r *http.Request) (string, error) {
 
 // jwtStrategy authenticates the tokens this cluster issues itself, the
 // ones signed with the cluster CA private key.
+//
+// The tokens are signed with the key of system/sec/ca, the first authority
+// of the verify file, and verified with the keys of the others too: a token
+// signed before a rotation of the key of the cluster ca stays valid until it
+// expires, while the cluster ca keyword lists the former one.
 type jwtStrategy struct {
 	verifyKey *rsa.PublicKey
+
+	// otherKeys are the keys of the other authorities of the verify file.
+	otherKeys []*rsa.PublicKey
+}
+
+// keyFunc returns the keys a token is verified with.
+func (t *jwtStrategy) keyFunc(*jwt.Token) (interface{}, error) {
+	if len(t.otherKeys) == 0 {
+		return t.verifyKey, nil
+	}
+	set := jwt.VerificationKeySet{Keys: []jwt.VerificationKey{t.verifyKey}}
+	for _, k := range t.otherKeys {
+		set.Keys = append(set.Keys, k)
+	}
+	return set, nil
 }
 
 func (t *jwtStrategy) Authenticate(_ context.Context, r *http.Request) (*Info, error) {
@@ -97,7 +120,7 @@ func (t *jwtStrategy) Authenticate(_ context.Context, r *http.Request) (*Info, e
 	// WithExpirationRequired refuses the token that has no exp claim,
 	// which is the one that never stops being valid.
 	if _, err := jwt.ParseWithClaims(tkString, claims,
-		func(*jwt.Token) (interface{}, error) { return t.verifyKey, nil },
+		t.keyFunc,
 		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
 		jwt.WithExpirationRequired(),
 	); err != nil {
@@ -128,7 +151,37 @@ func initJWT(_ context.Context, i interface{}) (string, Strategy, error) {
 		return name, nil, err
 	}
 	jwtSignKey.Store(signKey)
-	return name, &jwtStrategy{verifyKey: verifyKey}, nil
+	s := &jwtStrategy{verifyKey: verifyKey}
+	if f, ok := i.(JWTFiler); ok {
+		if b, err := os.ReadFile(f.VerifyKeyFile()); err == nil {
+			s.otherKeys = otherRSAPublicKeys(b, verifyKey)
+		}
+	}
+	return name, s, nil
+}
+
+// otherRSAPublicKeys returns the rsa public keys of the certificates of b,
+// but first.
+func otherRSAPublicKeys(b []byte, first *rsa.PublicKey) []*rsa.PublicKey {
+	l := make([]*rsa.PublicKey, 0)
+	for {
+		var block *pem.Block
+		if block, b = pem.Decode(b); block == nil {
+			return l
+		}
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			continue
+		}
+		key, ok := cert.PublicKey.(*rsa.PublicKey)
+		if !ok || key.Equal(first) || slices.ContainsFunc(l, func(k *rsa.PublicKey) bool { return k.Equal(key) }) {
+			continue
+		}
+		l = append(l, key)
+	}
 }
 
 // initAuthJWT initialize auth JWT and returns verify key and sign key
