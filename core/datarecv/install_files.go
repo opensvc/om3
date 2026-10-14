@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/confined"
@@ -20,7 +21,79 @@ type (
 	// it installed until then: the record tells the line it held it, and
 	// the file is removed, as what the line installs.
 	installFiles map[string][]string
+
+	// fileStamps are what each file an install line held was at its last
+	// run, by path relative to the head: a file of a key gone is removed
+	// only while it is the one installed, not one written in its place
+	// since, as by hand once its removal failed.
+	fileStamps map[string]fileStamp
+
+	fileStamp struct {
+		Size    int64     `json:"size"`
+		ModTime time.Time `json:"mtime"`
+	}
 )
+
+func newFileStamp(info os.FileInfo) fileStamp {
+	return fileStamp{Size: info.Size(), ModTime: info.ModTime().UTC()}
+}
+
+// matches says whether the file is the one the stamp was taken of.
+func (t fileStamp) matches(info os.FileInfo) bool {
+	return t.Size == info.Size() && t.ModTime.Equal(info.ModTime())
+}
+
+func stampsFile(installFilesFile string) string {
+	return installFilesFile + ".stamps"
+}
+
+func readFileStamps(filename string) fileStamps {
+	m := make(fileStamps)
+	if b, err := os.ReadFile(filename); err == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	return m
+}
+
+func writeFileStamps(filename string, m fileStamps) error {
+	if len(m) == 0 {
+		if err := os.Remove(filename); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+		return err
+	}
+	tmp := filename + ".tmp"
+	if err := os.WriteFile(tmp, b, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, filename)
+}
+
+// stampHeld records what the files the line holds are, as installed.
+func (t *DataRecv) stampHeld(head string, held []string, stamps fileStamps) {
+	if len(held) == 0 || head == "" {
+		return
+	}
+	tree, err := confined.Open(head)
+	if err != nil {
+		return
+	}
+	defer func() { _ = tree.Close() }()
+	for _, p := range held {
+		info, err := tree.Lstat(filepath.Join(head, filepath.Clean("/"+p)))
+		if err != nil || info.IsDir() {
+			continue
+		}
+		stamps[p] = newFileStamp(info)
+	}
+}
 
 // installLineID names an install line: the keys it installs, and where. The
 // item of a datastore of a line naming them by a pattern is the line, and the
@@ -93,6 +166,7 @@ func (t *DataRecv) pruneInstallLine(head, id string, held []string) []string {
 		return nil
 	}
 	m := readInstallFiles(filename)
+	stamps := readFileStamps(stampsFile(filename))
 	held = slices.Clone(held)
 	slices.Sort(held)
 	stale := make([]string, 0)
@@ -101,7 +175,16 @@ func (t *DataRecv) pruneInstallLine(head, id string, held []string) []string {
 			stale = append(stale, p)
 		}
 	}
-	removed, failed := t.removeInstalled(head, stale)
+	removed, failed := t.removeInstalled(head, stale, stamps)
+	t.stampHeld(head, held, stamps)
+	for _, p := range stale {
+		if !slices.Contains(failed, p) {
+			delete(stamps, p)
+		}
+	}
+	if err := writeFileStamps(stampsFile(filename), stamps); err != nil {
+		t.to.Log().Warnf("record the files install %s holds: %s", id, err)
+	}
 	// A file whose removal failed, as on a volume read-only for a while,
 	// stays recorded, so a later run removes it.
 	held = append(held, failed...)
@@ -141,6 +224,7 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]str
 		return nil
 	}
 	m := readInstallFiles(filename)
+	stamps := readFileStamps(stampsFile(filename))
 	removed := make(map[string][]string)
 	dropped := false
 	for id, files := range m {
@@ -155,9 +239,14 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]str
 				stale = append(stale, p)
 			}
 		}
-		l, failed := t.removeInstalled(head, stale)
+		l, failed := t.removeInstalled(head, stale, stamps)
 		if len(l) > 0 {
 			removed[id] = l
+		}
+		for _, p := range stale {
+			if !slices.Contains(failed, p) {
+				delete(stamps, p)
+			}
 		}
 		if len(failed) > 0 {
 			// Recorded still, for a later run to remove them.
@@ -168,14 +257,19 @@ func (t *DataRecv) pruneInstallLines(head string, ids []string) map[string][]str
 		if err := writeInstallFiles(filename, m); err != nil {
 			t.to.Log().Warnf("record the files the install lines hold: %s", err)
 		}
+		if err := writeFileStamps(stampsFile(filename), stamps); err != nil {
+			t.to.Log().Warnf("record the files the install lines hold: %s", err)
+		}
 	}
 	return removed
 }
 
 // removeInstalled removes the files at the paths, relative to head, an
 // install line held and holds no more, and returns the ones removed, and the
-// ones it failed to remove, which are to be tried again.
-func (t *DataRecv) removeInstalled(head string, paths []string) (removed, failed []string) {
+// ones it failed to remove, which are to be tried again. A file that is not
+// the one installed anymore, as stamps say, is left where it is: it was
+// written in its place since.
+func (t *DataRecv) removeInstalled(head string, paths []string, stamps fileStamps) (removed, failed []string) {
 	if len(paths) == 0 || head == "" {
 		return nil, nil
 	}
@@ -196,6 +290,10 @@ func (t *DataRecv) removeInstalled(head string, paths []string) (removed, failed
 			failed = append(failed, p)
 			continue
 		case info.IsDir():
+			continue
+		}
+		if stamp, ok := stamps[p]; ok && !stamp.matches(info) {
+			t.to.Log().Warnf("leave %s: it changed since it was installed from a key now gone", abs)
 			continue
 		}
 		if err := tree.Remove(abs); err != nil {

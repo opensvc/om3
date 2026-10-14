@@ -135,3 +135,38 @@ func TestAFileNotRemovedIsRemovedLater(t *testing.T) {
 	install()
 	assert.NoFileExists(t, filepath.Join(head, "conf.d/b.cfg"), "removed by a later run")
 }
+
+// A file written in place of the one a key installed is left when the key
+// goes: it is not the file the line installed anymore.
+func TestAFileWrittenInPlaceIsLeft(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "gw", Kind: naming.KindSvc, Namespace: naming.NsRoot}
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\nnodes = "+hostname.Hostname()+"\n"), 0600))
+	o, err := object.NewCore(p)
+	require.NoError(t, err)
+	cfg := naming.Path{Name: "gw", Kind: naming.KindCfg, Namespace: naming.NsRoot}
+	ds, err := object.NewDataStore(cfg)
+	require.NoError(t, err)
+	require.NoError(t, ds.AddKey("conf.d/a.cfg", []byte("a")))
+	require.NoError(t, ds.AddKey("conf.d/b.cfg", []byte("b")))
+
+	head := t.TempDir()
+	recv := &DataRecv{to: headReceiver{o: o, head: head}, Install: []string{"/conf.d/", "from", "./cfg/gw", "key", "conf.d/*"}}
+	_, err = recv.install(context.Background())
+	require.NoError(t, err)
+
+	b := filepath.Join(head, "conf.d/b.cfg")
+	require.NoError(t, os.WriteFile(b, []byte("written by hand"), 0644))
+	ds, err = object.NewDataStore(cfg)
+	require.NoError(t, err)
+	require.NoError(t, ds.RemoveKey("conf.d/b.cfg"))
+	_, err = recv.install(context.Background())
+	require.NoError(t, err)
+	assert.FileExists(t, b, "not the file installed")
+	assert.FileExists(t, filepath.Join(head, "conf.d/a.cfg"))
+}
