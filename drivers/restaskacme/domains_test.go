@@ -123,3 +123,12 @@ func TestCreatedSecsAreOwned(t *testing.T) {
 func keyOf(s string) key.T {
 	return key.Parse(s)
 }
+
+// domains_from and domains_to go together: either alone obtains no
+// certificate, and is refused rather than ignored.
+func TestCheckDomains(t *testing.T) {
+	assert.NoError(t, (&T{}).checkDomains())
+	assert.NoError(t, (&T{DomainsFrom: "volume#1:/conf.d/*.cfg", DomainsTo: "./sec/web-*"}).checkDomains())
+	assert.ErrorContains(t, (&T{DomainsFrom: "volume#1:/conf.d/*.cfg"}).checkDomains(), "domains_to is not")
+	assert.ErrorContains(t, (&T{DomainsTo: "./sec/web-*"}).checkDomains(), "domains_from is not")
+}

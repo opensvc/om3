@@ -63,6 +63,19 @@ func (t *T) Label(_ context.Context) string {
 	return strings.Join(l, " ")
 }
 
+// checkDomains refuses domains_from without domains_to, and the other way
+// around: the domains are read from the one, and their secs named by the
+// other, so either alone obtains no certificate.
+func (t *T) checkDomains() error {
+	switch {
+	case t.DomainsFrom != "" && t.DomainsTo == "":
+		return fmt.Errorf("domains_from is set and domains_to is not: set domains_to, the secs of the certificates of the domains")
+	case t.DomainsFrom == "" && t.DomainsTo != "":
+		return fmt.Errorf("domains_to is set and domains_from is not: set domains_from, where the domains are read from")
+	}
+	return nil
+}
+
 func (t *T) Run(ctx context.Context) error {
 	return t.RunIf(ctx, t.lockedRun)
 }
@@ -73,6 +86,10 @@ func (t *T) Run(ctx context.Context) error {
 // account at the directory.
 func (t *T) lockedRun(ctx context.Context) error {
 	if err := t.RunInstall(ctx); err != nil {
+		return err
+	}
+	if err := t.checkDomains(); err != nil {
+		_ = t.WriteLastRun(1)
 		return err
 	}
 	if t.Timeout != nil && *t.Timeout > 0 {
