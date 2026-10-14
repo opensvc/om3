@@ -559,15 +559,19 @@ func Networks(noder Noder, names ...string) []Networker {
 		}
 		l = append(l, p)
 	}
+	// The implicit networks are of a driver a binary may not hold, as a test
+	// one: a network of no driver is none.
 	if !hasLO {
-		p := NewTyped("lo", "lo", "127.0.0.1/32", noder)
-		p.SetImplicit(true)
-		l = append(l, p)
+		if p := NewTyped("lo", "lo", "127.0.0.1/32", noder); p != nil {
+			p.SetImplicit(true)
+			l = append(l, p)
+		}
 	}
 	if !hasDefault {
-		p := NewTyped("default", "bridge", "10.22.0.0/16", noder)
-		p.SetImplicit(true)
-		l = append(l, p)
+		if p := NewTyped("default", "bridge", "10.22.0.0/16", noder); p != nil {
+			p.SetImplicit(true)
+			l = append(l, p)
+		}
 	}
 	return l
 }
