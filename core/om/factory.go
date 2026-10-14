@@ -98,6 +98,7 @@ func newCmdClusterJoin() *cobra.Command {
 		" format (default: the --node value). Set it when this node can not resolve the --node name")
 	commoncmd.FlagToken(flags, &options.TokenFile)
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -116,6 +117,7 @@ func newCmdClusterLeave() *cobra.Command {
 	flags := cmd.Flags()
 	flags.DurationVar(&options.Timeout, "timeout", 0, "maximum duration to wait for local node removed from cluster")
 	commoncmd.FlagCredential(flags, &options.CredentialFile)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -153,6 +155,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -217,6 +220,7 @@ func newCmdDaemonStart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -229,6 +233,7 @@ func newCmdDaemonStop() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -1701,6 +1706,7 @@ func newCmdObjectCertificateCreate(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -1763,6 +1769,7 @@ this command.`,
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	flags.BoolVar(&options.Force, "force", false, "obtain a certificate even when the current one is not due")
 	flags.StringVar(&options.Webroot, "webroot", "", "the directory the http-01 challenge token is written in, acme.webroot by default")
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
