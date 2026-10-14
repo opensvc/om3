@@ -752,6 +752,13 @@ var (
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.dns"),
 	}
+	kwNodeClusterDNSReverse = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "true",
+		Option:    "dns_reverse",
+		Section:   "cluster",
+		Text:      keywords.NewText(fs, "text/kw/node/cluster.dns_reverse"),
+	}
 	kwNodeClusterCA = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.ca.default"),
 		Converter:   converters.List,
@@ -2013,6 +2020,7 @@ var (
 		&kwNodeSyslogHost,
 		&kwNodeSyslogPort,
 		&kwNodeClusterDNS,
+		&kwNodeClusterDNSReverse,
 		&kwNodeClusterCA,
 		&kwNodeClusterCert,
 		&kwNodeClusterID,

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -55,6 +56,10 @@ type (
 		// clusterRecords is the cluster level records (zone SOA, nameservers
 		// NS and A) currently indexed in nameIndex.
 		clusterRecords Zone
+
+		// reverseZones are the reverse zones the nameservers answer for,
+		// read by the backend socket handlers, which run apart.
+		reverseZones atomic.Pointer[[]string]
 
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]int

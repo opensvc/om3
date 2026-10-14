@@ -3,14 +3,20 @@ package dns
 import (
 	"fmt"
 	"net"
+	"slices"
+	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
@@ -333,6 +339,12 @@ func (t *Manager) stageInstance(path naming.Path, node string, value instance.St
 		getResNames := func() (string, string) {
 			if i, ok := rstat.Info[hostnameInfoKey]; ok {
 				hostname, _ := i.(string)
+				if t.isClusterName(hostname) {
+					// A hostname in the cluster domain already, as the
+					// object name, is a name of its own: appending the
+					// object name doubled it.
+					return strings.TrimSuffix(hostname, ".") + ".", ""
+				}
 				if hostname != "" {
 					resName := hostname + "." + name
 					resNameOnNode := hostname + "." + nameOnNode
@@ -439,6 +451,49 @@ func (t *Manager) stageInstance(path naming.Path, node string, value instance.St
 	t.setStateRecords(key, newRecordsMap)
 }
 
+// isClusterName says whether the name is in the cluster domain.
+func (t *Manager) isClusterName(name string) bool {
+	name = strings.TrimSuffix(name, ".")
+	return name == t.clusterConfig.Name || strings.HasSuffix(name, "."+t.clusterConfig.Name)
+}
+
+// isNodeAffine says whether the name is a node affine one, naming the
+// instance of an object on a node.
+func (t *Manager) isNodeAffine(name string) bool {
+	return strings.HasSuffix(name, ".node."+t.clusterConfig.Name+".")
+}
+
+// onePTR keeps one PTR record of the address a reverse name is of: the name
+// of the object when an instance serving it stages it, else the first node
+// affine one. Each instance stages the PTR of its addresses, and a client
+// asking an address is given one name, not one per node.
+func (t *Manager) onePTR(zone Zone) Zone {
+	var kept *Record
+	for i, record := range zone {
+		if record.Type != "PTR" {
+			continue
+		}
+		switch {
+		case kept == nil:
+		case t.isNodeAffine(kept.Content) && !t.isNodeAffine(record.Content):
+		case t.isNodeAffine(kept.Content) == t.isNodeAffine(record.Content) && record.Content < kept.Content:
+		default:
+			continue
+		}
+		kept = &zone[i]
+	}
+	if kept == nil {
+		return zone
+	}
+	l := make(Zone, 0, len(zone))
+	for _, record := range zone {
+		if record.Type != "PTR" || record == *kept {
+			l = append(l, record)
+		}
+	}
+	return l
+}
+
 func (t *Manager) onCmdGet(c cmdGet) {
 	// Use nameIndex for O(1) lookup
 	records, ok := t.nameIndex[c.Name]
@@ -461,7 +516,7 @@ func (t *Manager) onCmdGet(c cmdGet) {
 		}
 	}
 	c.errC <- nil
-	c.resp <- zone
+	c.resp <- t.onePTR(zone)
 }
 
 func (t *Manager) onCmdGetZone(c cmdGetZone) {
@@ -484,44 +539,105 @@ func (t *Manager) zone() Zone {
 	return zone
 }
 
-// clusterRecordZone returns the cluster level records: the zone SOA, and
-// the NS and A records of each configured nameserver.
+// clusterRecordZone returns the cluster level records: the SOA and the NS of
+// the cluster zone and of the reverse zones, and the address of each
+// configured nameserver.
 func (t *Manager) clusterRecordZone() Zone {
-	zone := make(Zone, 0)
 	zoneName := t.clusterConfig.Name + "."
+	zone := t.zoneApex(zoneName)
 	for i, dns := range t.clusterConfig.DNS {
-		nsName := fmt.Sprintf("ns%d.%s", i+1, zoneName)
-		soaContent := fmt.Sprintf("dns.%s %s %d %d %d %d %d", zoneName, contact, serial, refresh, retry, expire, minimum)
-		zone = append(zone,
-			Record{
-				Name:     zoneName,
-				DomainID: -1,
-				Type:     "SOA",
-				TTL:      60,
-				Content:  soaContent,
-			},
-			Record{
-				Name:     nsName,
-				DomainID: -1,
-				Type:     "A",
-				TTL:      60,
-				Content:  dns,
-			},
-			Record{
-				Name:     zoneName,
-				DomainID: -1,
-				Type:     "NS",
-				TTL:      3600,
-				Content:  nsName,
-			},
-		)
+		recordType := "A"
+		if ip := net.ParseIP(dns); ip != nil && ip.To4() == nil {
+			recordType = "AAAA"
+		}
+		zone = append(zone, Record{
+			Name:     t.nsName(i),
+			DomainID: -1,
+			Type:     recordType,
+			TTL:      60,
+			Content:  dns,
+		})
+	}
+	for _, name := range t.zones() {
+		zone = append(zone, t.zoneApex(name+".")...)
 	}
 	return zone
+}
+
+// nsName returns the name of the configured nameserver at index i.
+func (t *Manager) nsName(i int) string {
+	return fmt.Sprintf("ns%d.%s.", i+1, t.clusterConfig.Name)
+}
+
+// zoneApex returns the SOA of a zone, once, and its NS, one per configured
+// nameserver, none when no nameserver is configured.
+func (t *Manager) zoneApex(zoneName string) Zone {
+	zone := make(Zone, 0, len(t.clusterConfig.DNS)+1)
+	if len(t.clusterConfig.DNS) == 0 {
+		return zone
+	}
+	soaContent := fmt.Sprintf("dns.%s. %s %d %d %d %d %d", t.clusterConfig.Name, contact, serial, refresh, retry, expire, minimum)
+	zone = append(zone, Record{
+		Name:     zoneName,
+		DomainID: -1,
+		Type:     "SOA",
+		TTL:      60,
+		Content:  soaContent,
+	})
+	for i := range t.clusterConfig.DNS {
+		zone = append(zone, Record{
+			Name:     zoneName,
+			DomainID: -1,
+			Type:     "NS",
+			TTL:      3600,
+			Content:  t.nsName(i),
+		})
+	}
+	return zone
+}
+
+// zones returns the reverse zones the nameservers answer for.
+func (t *Manager) zones() []string {
+	if p := t.reverseZones.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+// reverseZonesOf returns the reverse zones of the addresses the cluster
+// networks hand out, which the nameservers answer the reverse lookups of,
+// none when cluster.dns_reverse is false. Replaced by the tests.
+var reverseZonesOf = func(cfg cluster.Config, log *plog.Logger) []string {
+	if !cfg.DNSReverse {
+		return nil
+	}
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		log.Warnf("reverse zones: %s", err)
+		return nil
+	}
+	l := make([]string, 0)
+	for _, nw := range network.Networks(node) {
+		zones, err := network.ReverseZones(nw)
+		if err != nil {
+			log.Warnf("reverse zones of network %s: %s", nw.Name(), err)
+			continue
+		}
+		for _, zone := range zones {
+			if !slices.Contains(l, zone) {
+				l = append(l, zone)
+			}
+		}
+	}
+	slices.Sort(l)
+	return l
 }
 
 // setClusterRecords replaces the cluster level records in the name index
 // with the ones the current cluster config yields.
 func (t *Manager) setClusterRecords() {
+	zones := reverseZonesOf(t.clusterConfig, t.log)
+	t.reverseZones.Store(&zones)
 	for _, record := range t.clusterRecords {
 		t.delIndexRecord(record)
 	}

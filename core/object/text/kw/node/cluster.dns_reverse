@@ -1,0 +1,10 @@
+The cluster nameservers answer the reverse lookups of the addresses of the
+cluster networks, with the name of the object holding each, from the reverse
+zones of the addresses om hands out: the ones of the ranges of a lan
+network, the ones of the whole network for the others.
+
+A client allowed to query the cluster nameservers, as a container of any
+namespace, can then list the names of the objects holding the addresses of a
+range, those of the other namespaces included, by looking each address up.
+Set to `false` on a cluster where these names are not to be listed: the
+reverse lookups of its addresses are then not answered.
