@@ -1472,6 +1472,15 @@ var (
 		Text:       keywords.NewText(fs, "text/kw/node/network.lan.vlan_mode"),
 		Types:      []string{"lan"},
 	}
+	kwNodeNetworkDNS = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "2001:db8::53 192.0.2.53",
+		Option:    "dns",
+		Scopable:  true,
+		Section:   "network",
+		Text:      keywords.NewText(fs, "text/kw/node/network.dns"),
+		Types:     []string{"lan", "bridge", "routed_bridge"},
+	}
 	kwNodeNetworkLANGateway = keywords.Keyword{
 		Example:  "192.168.10.254",
 		Option:   "gateway",
@@ -2104,6 +2113,7 @@ var (
 		&kwNodeNetworkLANModes,
 		&kwNodeNetworkLANVLANTag,
 		&kwNodeNetworkLANVLANMode,
+		&kwNodeNetworkDNS,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

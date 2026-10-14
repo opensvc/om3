@@ -155,6 +155,18 @@ func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 	}
 }
 
+// NetNSResource returns the resource the address is configured in the
+// network namespace of, as a container.
+func (t *T) NetNSResource() string {
+	return t.NetNS
+}
+
+// NetworkNameservers returns the nameservers reachable from the network the
+// address is on: the containers of the namespace are given them.
+func (t *T) NetworkNameservers() []string {
+	return resip.NetworkNameservers(t.Network)
+}
+
 // ProvisionStart starts the address at the end of its provision on the
 // placement leader only: see resip.ProvisionStarts.
 func (t *T) ProvisionStart(ctx context.Context) error {

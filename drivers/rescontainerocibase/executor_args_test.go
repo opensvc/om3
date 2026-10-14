@@ -159,3 +159,19 @@ func TestTmpfsVolumeMount(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, strings.Join(base.Get(), " "), "--tmpfs /var/lib/opensvc:size=16m")
 }
+
+// A container joins the network namespace of the container its netns keyword
+// names, else its own: the addresses configured there say its nameservers.
+func TestNetNSResource(t *testing.T) {
+	bt := &BT{T: resource.T{ResourceID: &resourceid.T{Name: "container#1"}}}
+	for netns, want := range map[string]string{
+		"container#0": "container#0",
+		"":            "container#1",
+		"host":        "container#1",
+		"none":        "container#1",
+		"ip#1":        "container#1",
+	} {
+		bt.NetNS = netns
+		require.Equal(t, want, bt.netnsResource(), netns)
+	}
+}

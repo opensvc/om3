@@ -164,6 +164,12 @@ type (
 		Modes() []string
 	}
 
+	// Nameserverer is implemented by the networks saying the nameservers
+	// reachable from them, none when they say none.
+	Nameserverer interface {
+		Nameservers() []string
+	}
+
 	// VLANer is implemented by the network drivers saying the VLAN of their
 	// segment, the tag and the mode of the port an ip.netns joining it with
 	// openvswitch adds, empty when they say none.
@@ -346,6 +352,12 @@ func (t *T) Set(option, value string) error {
 func (t *T) GetStrings(s string) []string {
 	k := t.key(s)
 	return t.Config().GetStrings(k)
+}
+
+// Nameservers returns the nameservers reachable from the network, which the
+// dns keyword lists.
+func (t *T) Nameservers() []string {
+	return t.GetStrings("dns")
 }
 
 func (t *T) Tables() []string {
