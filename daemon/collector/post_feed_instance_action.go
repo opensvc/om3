@@ -719,14 +719,10 @@ func readLocalActionLog(ctx context.Context, filters []string) ([]map[string]any
 }
 
 func readPeerActionLog(ctx context.Context, nodename string, filters []string) ([]map[string]any, error) {
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return nil, err
-	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
 		client.WithServerName(nodename),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithCertificate(daemonenv.CertChainFile()),
 		client.WithTimeout(0),
 	)

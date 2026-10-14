@@ -460,14 +460,10 @@ func (t *T) dequeueAction(nodename string) error {
 		return fmt.Errorf("node %s not found in cluster", nodename)
 	}
 	tkDuration := 5 * time.Second
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return err
-	}
 	options := []funcopt.O{
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
 		client.WithServerName(nodename),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithTimeout(tkDuration),
 	}
 	cli, err := client.New(options...)

@@ -912,14 +912,10 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 }
 
 func newDaemonClient(n string) (*client.T, error) {
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return nil, err
-	}
 	return client.New(
 		client.WithURL(daemonsubsystem.PeerURL(n)),
 		client.WithServerName(n),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

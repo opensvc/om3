@@ -36,6 +36,7 @@ type (
 		password           string
 		authorization      string
 		bearer             string
+		bearerFunc         func() (string, error)
 		rootCA             string
 		serverName         string
 		timeout            time.Duration
@@ -168,6 +169,17 @@ func WithBearer(s string) funcopt.O {
 	})
 }
 
+// WithBearerFunc sets the function returning the bearer token of each
+// request, called as the request is sent: a token valid a few seconds, as
+// the node token, is not expired by a request waiting to be sent.
+func WithBearerFunc(fn func() (string, error)) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.bearerFunc = fn
+		return nil
+	})
+}
+
 // WithUsername sets the username to use for login.
 func WithUsername(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
@@ -245,6 +257,7 @@ func (t *T) newRequester() (err error) {
 			Authorization:      t.authorization,
 			Password:           t.password,
 			Bearer:             t.bearer,
+			BearerFunc:         t.bearerFunc,
 			RootCA:             t.rootCA,
 			ServerName:         t.serverName,
 			Timeout:            t.timeout,
@@ -282,6 +295,7 @@ func (t *T) newRequester() (err error) {
 			Username:           t.username,
 			Password:           t.password,
 			Bearer:             t.bearer,
+			BearerFunc:         t.bearerFunc,
 			RootCA:             t.rootCA,
 			ServerName:         t.serverName,
 			Timeout:            t.timeout,

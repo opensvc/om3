@@ -183,14 +183,10 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 			}
 		}
 		t.log.Tracef("use client url from %s and %s: %s", addr, port, daemonenv.HTTPNodeAndPortURL(addr, port))
-		tk, err := daemonauth.CreateNodeToken()
-		if err != nil {
-			return "", nil, err
-		}
 		cli, err := client.New(
 			client.WithURL(daemonenv.HTTPNodeAndPortURL(addr, port)),
 			client.WithServerName(peer),
-			client.WithBearer(tk),
+			client.WithBearerFunc(daemonauth.CreateNodeToken),
 			client.WithCertificate(daemonenv.CertChainFile()),
 		)
 		if err != nil {

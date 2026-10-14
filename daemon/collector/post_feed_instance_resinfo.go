@@ -155,14 +155,10 @@ func (t *T) getLocalResInfo(p naming.Path) (resource.Infos, error) {
 
 func (t *T) getPeerResInfo(p naming.Path, nodename string) (resource.Infos, error) {
 	infos := resource.NewInfos(p)
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return infos, err
-	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
 		client.WithServerName(nodename),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 	if err != nil {
