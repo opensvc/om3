@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (
@@ -23,6 +24,12 @@ type (
 		// Peers are the other nodes of a network reaching them itself, as
 		// this node reaches them, and none for the other networks.
 		Peers []network.Peer
+
+		// ReverseZones are the reverse zones of the addresses the network
+		// hands out, which the cluster nameservers answer for, none when
+		// cluster.dns_reverse is false: a resolver forwards them to the
+		// cluster nameservers.
+		ReverseZones []string
 	}
 
 	ridder interface {
@@ -184,13 +191,31 @@ func uniqueTunnels(nws []templateNetwork) []network.Peer {
 	return l
 }
 
+// dnsReverse says whether the cluster nameservers answer the reverse lookups
+// of the addresses of the cluster networks, as cluster.dns_reverse says.
+func dnsReverse() bool {
+	c, err := object.NewCluster(object.WithVolatile(true))
+	if err != nil {
+		return false
+	}
+	return c.Config().GetBool(key.New("cluster", "dns_reverse"))
+}
+
 func newTemplateNetwork(nw network.Networker) (templateNetwork, error) {
 	name := nw.Name()
 	data := templateNetwork{
-		Name:    name,
-		Type:    nw.Type(),
-		Network: nw.Network(),
-		Peers:   []network.Peer{},
+		Name:         name,
+		Type:         nw.Type(),
+		Network:      nw.Network(),
+		Peers:        []network.Peer{},
+		ReverseZones: []string{},
+	}
+	if dnsReverse() {
+		zones, err := network.ReverseZones(nw)
+		if err != nil {
+			return templateNetwork{}, fmt.Errorf("network %s reverse zones: %w", name, err)
+		}
+		data.ReverseZones = append(data.ReverseZones, zones...)
 	}
 	if p, ok := nw.(network.Peerer); ok {
 		var err error
