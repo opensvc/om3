@@ -422,3 +422,60 @@ func TestAHostnameInTheClusterDomainIsNotDoubled(t *testing.T) {
 	}
 	require.Equal(t, []string{"um1.cstry.svc.cluster1."}, ptrs)
 }
+
+// A hostname not naming the object, nor a name under it, is put under the
+// object name, as before: a hostname in the cluster domain, as the cluster
+// apex, a nameserver or the name of another object, would publish the
+// address under a name the object does not own.
+func TestAHostnameIsPublishedUnderTheObjectName(t *testing.T) {
+	for hostname, want := range map[string]string{
+		"db.um1.cstry.svc.cluster1": "db.um1.cstry.svc.cluster1.",
+		"cluster1":                  "cluster1.um1.cstry.svc.cluster1.",
+		"ns1.cluster1":              "ns1.cluster1.um1.cstry.svc.cluster1.",
+		"web.ns2.svc.cluster1":      "web.ns2.svc.cluster1.um1.cstry.svc.cluster1.",
+		"web":                       "web.um1.cstry.svc.cluster1.",
+	} {
+		m := dnsManager(t)
+		update(m, &msgbus.InstanceStatusUpdated{
+			Path: naming.Path{Name: "um1", Namespace: "cstry", Kind: naming.KindSvc},
+			Node: "node1",
+			Value: instance.Status{
+				Avail: status.Up,
+				Resources: instance.ResourceStatuses{
+					"ip#1": resource.Status{
+						Status: status.Up,
+						Info:   map[string]any{ipAddrInfoKey: "10.100.0.7", hostnameInfoKey: hostname},
+					},
+				},
+			},
+		})
+		require.Equal(t, []string{"10.100.0.7"}, aRecords(m, want), hostname)
+		for _, reserved := range []string{"cluster1.", "ns1.cluster1.", "web.ns2.svc.cluster1."} {
+			if reserved != want {
+				require.Empty(t, aRecords(m, reserved), "%s: %s", hostname, reserved)
+			}
+		}
+	}
+}
+
+// A reverse name outside the zones the nameservers answer for is answered by
+// no backend lookup, all of them when no zone is served.
+func TestAReverseNameOutsideTheZonesIsNotAnswered(t *testing.T) {
+	m := dnsManager(t)
+	ptr := Record{Name: "5.0.100.10.in-addr.arpa.", Type: "PTR", TTL: 60, Content: "svc1.root.svc.cluster1."}
+	m.addIndexRecord(ptr)
+	get := func(name string) Zone {
+		errC := make(chan error, 1)
+		c := cmdGet{errC: errC, resp: make(chan Zone, 1), Name: name, Type: "ANY"}
+		m.onCmdGet(c)
+		require.NoError(t, <-errC)
+		return <-c.resp
+	}
+	require.Empty(t, get(ptr.Name), "no zone served")
+	zones := []string{"0.100.10.in-addr.arpa"}
+	m.reverseZones.Store(&zones)
+	require.Equal(t, Zone{ptr}, get(ptr.Name))
+	zones = []string{"1.100.10.in-addr.arpa"}
+	m.reverseZones.Store(&zones)
+	require.Empty(t, get(ptr.Name), "another zone served")
+}

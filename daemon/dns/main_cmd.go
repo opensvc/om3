@@ -339,10 +339,15 @@ func (t *Manager) stageInstance(path naming.Path, node string, value instance.St
 		getResNames := func() (string, string) {
 			if i, ok := rstat.Info[hostnameInfoKey]; ok {
 				hostname, _ := i.(string)
-				if t.isClusterName(hostname) {
-					// A hostname in the cluster domain already, as the
-					// object name, is a name of its own: appending the
-					// object name doubled it.
+				if isNameUnder(hostname, name) {
+					// A hostname naming the object already, or a name
+					// under it, is the name of the address: appending the
+					// object name doubled it. Any other hostname is put
+					// under the object name, as the object's to name: one
+					// in the cluster domain, as the cluster apex, a
+					// nameserver or the name of another object, would
+					// publish the address under a name the object does
+					// not own.
 					return strings.TrimSuffix(hostname, ".") + ".", ""
 				}
 				if hostname != "" {
@@ -451,10 +456,18 @@ func (t *Manager) stageInstance(path naming.Path, node string, value instance.St
 	t.setStateRecords(key, newRecordsMap)
 }
 
-// isClusterName says whether the name is in the cluster domain.
-func (t *Manager) isClusterName(name string) bool {
+// isNameUnder says whether the name is the parent name, or a name under it,
+// the trailing dots aside.
+func isNameUnder(name, parent string) bool {
 	name = strings.TrimSuffix(name, ".")
-	return name == t.clusterConfig.Name || strings.HasSuffix(name, "."+t.clusterConfig.Name)
+	parent = strings.TrimSuffix(parent, ".")
+	return name == parent || strings.HasSuffix(name, "."+parent)
+}
+
+// isReverseName says whether the name is a reverse one, a PTR record names.
+func isReverseName(name string) bool {
+	name = strings.TrimSuffix(name, ".")
+	return strings.HasSuffix(name, ".in-addr.arpa") || strings.HasSuffix(name, ".ip6.arpa")
 }
 
 // isNodeAffine says whether the name is a node affine one, naming the
@@ -495,6 +508,14 @@ func (t *Manager) onePTR(zone Zone) Zone {
 }
 
 func (t *Manager) onCmdGet(c cmdGet) {
+	// A reverse name outside the zones the nameservers answer for is not
+	// answered, whoever asks the backend: none is when cluster.dns_reverse is
+	// false. pdns asks none of them, as it serves those zones only.
+	if isReverseName(c.Name) && !network.InReverseZones(c.Name, t.zones()) {
+		c.errC <- nil
+		c.resp <- Zone{}
+		return
+	}
 	// Use nameIndex for O(1) lookup
 	records, ok := t.nameIndex[c.Name]
 	if !ok {
