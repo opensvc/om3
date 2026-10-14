@@ -227,14 +227,10 @@ func (a *DaemonAPI) seedNetworkGrants(ctx echo.Context, c *client.T, local map[s
 // newPeerClient is a client to a peer, as this node rather than as whoever
 // asked it something.
 func newPeerClient(nodename string) (*client.T, error) {
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return nil, err
-	}
 	return client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
 		client.WithServerName(nodename),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

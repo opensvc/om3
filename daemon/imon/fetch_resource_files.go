@@ -298,14 +298,10 @@ func (t *Manager) skipResourceFile(rid, name, dir string) {
 
 func (t *Manager) fetchResourceFile(rid string, peerFile resource.File, from string) error {
 	t.log.Infof("%s: file %s fetch from %s", rid, peerFile.Name, from)
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return err
-	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(from)),
 		client.WithServerName(from),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 	if err != nil {

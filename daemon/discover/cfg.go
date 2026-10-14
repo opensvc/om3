@@ -125,6 +125,10 @@ func (t *Manager) cfg(started chan<- bool) {
 			switch c := i.(type) {
 			case *msgbus.RemoteFileConfig:
 				t.onRemoteConfigFetched(c)
+			case *fetchFailed:
+				t.onFetchFailed(c)
+			case *fetchRetry:
+				t.onFetchRetry(c)
 			default:
 				t.log.Errorf("cfg: unsupported command bus message type: %#v", i)
 			}
@@ -489,7 +493,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 		needStoppedFlag = true
 	}
 	log.Infof("cfg: fetch config from %s@%s", pathS, node)
-	t.fetchConfigFromRemote(p, node, remoteInstanceConfig.UpdatedAt, needStoppedFlag, remoteInstanceConfig.Scope)
+	t.fetchConfigFromRemote(fetchArgs{path: p, peer: node, updatedAt: remoteInstanceConfig.UpdatedAt, needStoppedFlag: needStoppedFlag, scope: remoteInstanceConfig.Scope})
 }
 
 // removeConfigFileAndDisableRecover is called to remove config file on localhost
@@ -697,7 +701,7 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 		needStoppedFlag = true
 	}
 	log.Infof("cfg: fetch config %s from foreign config file on %s", c.Path, c.Node)
-	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, needStoppedFlag, c.Scope)
+	t.fetchConfigFromRemote(fetchArgs{path: c.Path, peer: c.Node, updatedAt: c.UpdatedAt, needStoppedFlag: needStoppedFlag, scope: c.Scope})
 }
 
 func (t *Manager) abortRetainForeignConfig(p naming.Path) {
@@ -802,7 +806,8 @@ func (t *Manager) endFetcher(s string, ctx context.Context) {
 	t.cancelFetcher(s)
 }
 
-func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, needStoppedFlag bool, scope []string) {
+func (t *Manager) fetchConfigFromRemote(a fetchArgs) {
+	p, peer, updatedAt := a.path, a.peer, a.updatedAt
 	if peer == "" {
 		t.objectLogger(p).Errorf("cfg: fetch config %s from node ''", p)
 		return
@@ -836,10 +841,11 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt ti
 		t.cancelFetcher(s)
 		return
 	}
-	go fetch(ctx, cli, p, peer, t.cfgCmdC, needStoppedFlag, scope)
+	go fetch(ctx, cli, a, t.cfgCmdC)
 }
 
-func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, needStoppedFlag bool, scope []string) {
+func fetch(ctx context.Context, cli *client.T, a fetchArgs, cmdC chan<- any) {
+	p, peer := a.path, a.peer
 	id := p.String() + "@" + peer
 	log := naming.LogWithPath(plog.NewDefaultLogger(), p).
 		Attr("pkg", "daemon/discover").
@@ -848,21 +854,33 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 		log.Errorf("fetch called without peer for %s", p)
 		panic("daemon/discover.cfg call fetch without peer")
 	}
+	// failed tells the manager the fetch ended with no configuration to
+	// install, and whether to fetch again. A fetch cancelled is not said:
+	// whoever cancelled it ended it.
+	failed := func(err error, retry bool) {
+		select {
+		case cmdC <- &fetchFailed{fetchArgs: a, ctx: ctx, err: err, retry: retry}:
+		case <-ctx.Done():
+		}
+	}
 	tmpFilename, updated, err := remoteconfig.FetchObjectConfigFile(cli, p)
 	if err != nil {
 		log.Warnf("unable to retrieve %s from %s: %s", id, cli.URL(), err)
 		time.Sleep(250 * time.Millisecond)
 		url := daemonsubsystem.PeerURL(peer)
 		if url == cli.URL() {
+			failed(err, true)
 			return
 		} else {
 			log.Infof("detected updated %s url: recreate client to fetch %s", peer, id)
 			if cli, err = newDaemonClient(peer); err != nil {
 				log.Errorf("unable to recreate client: %s", err)
+				failed(err, true)
 				return
 			}
 			if tmpFilename, updated, err = remoteconfig.FetchObjectConfigFile(cli, p); err != nil {
 				log.Infof("unable to retrieve %s from outdated url %s: %s", id, cli.URL(), err)
+				failed(err, true)
 				return
 			}
 		}
@@ -874,11 +892,13 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 	configure, err := object.NewConfigurer(p, object.WithConfigFile(tmpFilename), object.WithVolatile(true))
 	if err != nil {
 		log.Errorf("can't configure %s: %s", p, err)
+		failed(err, true)
 		return
 	}
 	nodes, err := configure.Config().Referrer.Nodes()
 	if err != nil {
 		log.Errorf("can't eval nodes for %s: %s", p, err)
+		failed(err, true)
 		return
 	}
 	validScope := false
@@ -889,7 +909,9 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 		}
 	}
 	if !validScope {
+		// Not for this node anymore: nothing to fetch again.
 		log.Infof("invalid scope %s", nodes)
+		failed(fmt.Errorf("invalid scope %s", nodes), false)
 		return
 	}
 	select {
@@ -902,7 +924,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 			Path:        p,
 			Node:        peer,
 			File:        tmpFilename,
-			MarkStopped: needStoppedFlag,
+			MarkStopped: a.needStoppedFlag,
 			UpdatedAt:   updated,
 			Ctx:         ctx,
 			Err:         err,
@@ -912,14 +934,10 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 }
 
 func newDaemonClient(n string) (*client.T, error) {
-	tk, err := daemonauth.CreateNodeToken()
-	if err != nil {
-		return nil, err
-	}
 	return client.New(
 		client.WithURL(daemonsubsystem.PeerURL(n)),
 		client.WithServerName(n),
-		client.WithBearer(tk),
+		client.WithBearerFunc(daemonauth.CreateNodeToken),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

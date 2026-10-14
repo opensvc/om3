@@ -98,10 +98,10 @@ func serveInherited(log *plog.Logger) error {
 		Hostname:       hostname.Hostname(),
 		Certificate:    cert,
 		GetCertificate: certs.GetCertificate,
-		VerifyKey:   verifyKey,
-		TicketDir:   filepath.Join(Dir(), "tickets"),
-		SessionDir:  SessionDir(),
-		Command:     enterCommand,
+		VerifyKey:      verifyKey,
+		TicketDir:      filepath.Join(Dir(), "tickets"),
+		SessionDir:     SessionDir(),
+		Command:        enterCommand,
 		PeerURL: func(node string) (string, error) {
 			return peerURL(node, port)
 		},

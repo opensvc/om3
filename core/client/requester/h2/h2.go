@@ -30,10 +30,11 @@ type (
 		Certificate        string
 		Key                string
 		Username           string
-		Password           string `json:"-"`
-		URL                string `json:"url"`
-		Authorization      string `json:"-"`
-		Bearer             string `json:"-"`
+		Password           string                 `json:"-"`
+		URL                string                 `json:"url"`
+		Authorization      string                 `json:"-"`
+		Bearer             string                 `json:"-"`
+		BearerFunc         func() (string, error) `json:"-"`
 		Timeout            time.Duration
 		InsecureSkipVerify bool
 		RootCA             string
@@ -148,7 +149,7 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		// The bearer of the cached tokens is the context's own, which
 		// the transport refreshes. Another one, or an authorization
 		// header, is the caller's.
-		explicitAuth: config.Authorization != "" || (config.Bearer != "" && config.Bearer != config.Tokens.AccessToken),
+		explicitAuth: config.Authorization != "" || config.BearerFunc != nil || (config.Bearer != "" && config.Bearer != config.Tokens.AccessToken),
 	}
 
 	options := []api.ClientOption{api.WithHTTPClient(&httpClient)}
@@ -168,6 +169,10 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		options = append(options, api.WithRequestEditorFn(provider.Intercept))
 	}
 
+	if config.BearerFunc != nil {
+		options = append(options, api.WithRequestEditorFn(requestBearerFuncEditorFn(config.BearerFunc)))
+	}
+
 	if config.Authorization != "" {
 		fn := requestAuthorizationEditorFn(config.Authorization)
 		options = append(options, api.WithRequestEditorFn(fn))
@@ -185,6 +190,20 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 func requestAuthorizationEditorFn(s string) func(context.Context, *http.Request) error {
 	return func(_ context.Context, req *http.Request) error {
 		req.Header.Set("Authorization", s)
+		return nil
+	}
+}
+
+// requestBearerFuncEditorFn returns request editor function that sets the
+// request authorization header to the bearer token fn returns as the request
+// is sent.
+func requestBearerFuncEditorFn(fn func() (string, error)) func(context.Context, *http.Request) error {
+	return func(_ context.Context, req *http.Request) error {
+		tk, err := fn()
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", "Bearer "+tk)
 		return nil
 	}
 }
