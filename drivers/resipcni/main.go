@@ -280,6 +280,16 @@ func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 	}
 }
 
+// ProvisionStart starts the address at the end of its provision on the
+// placement leader only: see resip.ProvisionStarts.
+func (t *T) ProvisionStart(ctx context.Context) error {
+	if !resip.ProvisionStarts(ctx, t.IsStandby()) {
+		t.Log().Tracef("skip the start of the provision off the placement leader")
+		return nil
+	}
+	return t.Start(ctx)
+}
+
 func (t *T) Start(ctx context.Context) error {
 	if t.Status(ctx) == status.Up {
 		t.Log().Infof("already up")

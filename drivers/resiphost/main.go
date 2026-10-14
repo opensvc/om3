@@ -207,6 +207,16 @@ func (t *T) getDevAndLabel() (string, string, error) {
 	return dev, label, nil
 }
 
+// ProvisionStart starts the address at the end of its provision on the
+// placement leader only: see resip.ProvisionStarts.
+func (t *T) ProvisionStart(ctx context.Context) error {
+	if !resip.ProvisionStarts(ctx, t.IsStandby()) {
+		t.Log().Tracef("skip the start of the provision off the placement leader")
+		return nil
+	}
+	return t.Start(ctx)
+}
+
 func (t *T) Start(ctx context.Context) error {
 	if err := t.checkDev(); err != nil {
 		return err
