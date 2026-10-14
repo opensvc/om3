@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/clientcontext"
 )
 
 // The bearer of each request is the one the function returns as it is sent,
@@ -46,6 +50,34 @@ func TestWithBearerFunc(t *testing.T) {
 		_ = resp.Body.Close()
 	}
 	assert.Equal(t, []string{"Bearer tk1", "Bearer tk2"}, got)
+}
+
+// A bearer signed as the requests go out is the credential of a context too:
+// the tokens of the context are not loaded, and a token cache that can not be
+// read fails nothing.
+func TestWithBearerFuncInAContextWithBadTokens(t *testing.T) {
+	var got string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("Authorization")
+	}))
+	t.Cleanup(srv.Close)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	cfg, err := clientcontext.Load()
+	require.NoError(t, err)
+	insecure := true
+	require.NoError(t, cfg.AddCluster("c1", clientcontext.Cluster{Server: srv.URL, InsecureSkipVerify: &insecure}))
+	require.NoError(t, cfg.AddContext("x", clientcontext.Relation{ClusterRefName: "c1"}))
+	require.NoError(t, cfg.Save())
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".config", "opensvc", "token-x.json"), []byte("not json"), 0o600))
+	t.Setenv("OSVC_CONTEXT", "x")
+
+	c, err := New(WithBearerFunc(func() (string, error) { return "tk", nil }))
+	require.NoError(t, err)
+	resp, err := c.GetNodePing(context.Background(), "node1")
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, "Bearer tk", got)
 }
 
 // A token that can not be signed fails the request, which is not sent.

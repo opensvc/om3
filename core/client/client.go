@@ -333,7 +333,9 @@ func (t *T) loadContext() error {
 			t.username = *context.User.Name
 		}
 
-		if t.bearer == "" {
+		// A bearer the caller gives, or signs as the requests go out, is
+		// the credential: the tokens of the context are not loaded.
+		if t.bearer == "" && t.bearerFunc == nil {
 			tok, err := tokencache.Load(env.Context())
 			if err != nil && (t.username == "" || t.password == "") {
 				return tokencache.ReconnectError(err, env.Context())
