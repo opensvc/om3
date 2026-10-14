@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -154,6 +155,15 @@ func TestFetchRetryNotNeeded(t *testing.T) {
 		m.onFetchRetry(&fetchRetry{fetchArgs{path: p, peer: "n1", updatedAt: updatedAt, scope: []string{"n2"}}})
 		assert.Empty(t, m.fetcherFrom)
 		require.NoError(t, os.Remove(cfgFile))
+	})
+	t.Run("a node announced a more recent configuration", func(t *testing.T) {
+		// As the one removing this node from the scope: a peer not
+		// having it yet would serve the older one, for this node.
+		m := newRetryTestManager(t)
+		instance.ConfigData.Set(p, "n3", &instance.Config{Path: p, UpdatedAt: updatedAt.Add(time.Second), Scope: []string{"n3"}})
+		t.Cleanup(func() { instance.ConfigData.Unset(p, "n3") })
+		m.onFetchRetry(&fetchRetry{fetchArgs{path: p, peer: "n1", updatedAt: updatedAt, scope: []string{"n2"}}})
+		assert.Empty(t, m.fetcherFrom)
 	})
 	t.Run("an icfg runs a configuration as recent", func(t *testing.T) {
 		m := newRetryTestManager(t)

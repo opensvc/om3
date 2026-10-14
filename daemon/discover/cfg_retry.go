@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/file"
 )
@@ -83,12 +84,22 @@ func (t *Manager) onFetchFailed(c *fetchFailed) {
 }
 
 // onFetchRetry fetches again, unless the configuration is not to fetch
-// anymore: another fetch runs, the node left the scope, or a configuration
-// as recent is installed.
+// anymore: another fetch runs, the node left the scope, a configuration as
+// recent is installed, or a node announced a more recent one.
+//
+// A more recent configuration was handled as it was announced: fetched, or
+// removed when it is not for this node. The retry, for the scope of the
+// older one, would fetch from a peer not having the more recent one yet the
+// configuration that removed this node, and install it again.
 func (t *Manager) onFetchRetry(c *fetchRetry) {
 	s := c.path.String()
 	if _, ok := t.fetcherFrom[s]; ok {
 		return
+	}
+	for _, cfg := range instance.ConfigData.GetByPath(c.path) {
+		if cfg.UpdatedAt.After(c.updatedAt) {
+			return
+		}
 	}
 	if !inList(t.localhost, c.scope) {
 		return
