@@ -51,8 +51,8 @@ func newCmdClusterCARotate() *cobra.Command {
 refusing another meanwhile:
 
 1. A new ca is created as system/sec/ca-next, and the certificate of the
-   current one kept as system/sec/ca-former-<date>, both added to the cluster
-   ca keyword, until every node has them.
+   current one kept as system/sec/ca-former-<yyyymmdd-hhmm>, both added to
+   the cluster ca keyword, until every node has them.
 2. system/sec/ca takes the key and the certificate of the new ca, and
    system/sec/cert is issued again by it, until every node has them.
 3. system/sec/ca-next is deleted, and the former ca too with --drop-former.
@@ -60,16 +60,19 @@ refusing another meanwhile:
 Every cluster node is waited for at each step, a node down among them. A
 rotation interrupted is resumed by running it again.
 
-The former ca stays trusted unless --drop-former, for the certificates of the
-users it signed, until they are renewed. The api tokens it signed stay valid
-until they expire.`,
+The former ca stays trusted unless --drop-former, for the certificates it
+signed, as the ones of the users, until they are renewed: the end of the
+rotation says, of each former ca trusted, the certificates it signed, and how
+to stop trusting one that signed none in use. The api tokens it signed stay
+valid until they expire.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "maximum duration to wait for every node to have the configurations of a step")
-	flags.BoolVar(&options.DropFormer, "drop-former", false, "stop trusting the former ca, refused while it signed the certificate of a user")
+	flags.BoolVar(&options.DropFormer, "drop-former", false, "stop trusting the former ca, refused while it signed a certificate in use")
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 

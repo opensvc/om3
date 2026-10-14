@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -45,15 +46,22 @@ var (
 	keyClusterCA = key.New("cluster", "ca")
 )
 
-// caRotateValidity is the validity of the new ca, as the one the daemon
-// bootstraps.
-const caRotateValidity = "10y"
+const (
+	// caRotateValidity is the validity of the new ca, as the one the
+	// daemon bootstraps.
+	caRotateValidity = "10y"
+
+	// caStampFormat is the time of a rotation, in the cn of the new ca and
+	// the name of the former one: the cas of two rotations a day are told
+	// apart by their name, as a verifier looks a ca up by it.
+	caStampFormat = "20060102-1504"
+)
 
 // Run rotates the key of the cluster ca:
 //
 //  1. a new ca is created as system/sec/ca-next, and the certificate of the
-//     current one is kept as system/sec/ca-former-<date>, both trusted by the
-//     cluster ca keyword, until every node has them;
+//     current one is kept as system/sec/ca-former-<yyyymmdd-hhmm>, both
+//     trusted by the cluster ca keyword, until every node has them;
 //  2. system/sec/ca takes the key and the certificate of the new ca, and
 //     system/sec/cert is issued again by it, until every node has them;
 //  3. system/sec/ca-next, now system/sec/ca, is no longer listed, and the
@@ -104,8 +112,8 @@ func (t *CmdClusterCARotate) Run() error {
 	if t.DropFormer {
 		// Checked first: the users of a certificate the former ca signed
 		// would be refused once it is not trusted anymore.
-		if l := usrsSignedBy(formerCert); len(l) > 0 {
-			return fmt.Errorf("the former ca signed the certificate of %s, which the api refuses once it is dropped: renew them with 'om <path> certificate create' after the rotation, or rotate without --drop-former", strings.Join(l, ", "))
+		if l := signedBy(formerCert); len(l) > 0 {
+			return fmt.Errorf("the former ca signed the certificate of %s, refused once it is dropped: renew them with 'om <path> certificate create' after the rotation, or rotate without --drop-former", strings.Join(l, ", "))
 		}
 	}
 
@@ -154,20 +162,44 @@ func (t *CmdClusterCARotate) Run() error {
 	if err := t.waitPropagated(ctx, c, naming.Cluster); err != nil {
 		return err
 	}
-	if err := t.deleteSec(caNextPath); err != nil {
+	if err := t.deleteSec(ctx, c, caNextPath); err != nil {
 		return err
 	}
 	if t.DropFormer {
-		if err := t.deleteSec(formerPath); err != nil {
+		if err := t.deleteSec(ctx, c, formerPath); err != nil {
 			return err
 		}
 		fmt.Printf("%s: the former ca is not trusted anymore\n", keyClusterCA)
-	} else {
-		fmt.Printf("%s: trusts the former ca as %s still, for the certificates it signed: once they are renewed, stop trusting it with:\n", keyClusterCA, formerPath)
-		fmt.Printf("  om cluster config update --set %s-=%s\n", keyClusterCA, formerPath)
-		fmt.Printf("  om %s delete\n", formerPath)
 	}
+	reportFormers()
 	return nil
+}
+
+// reportFormers says, of each former ca the cluster ca keyword lists, the
+// certificates it signed, which are refused once it is not trusted anymore,
+// and how to stop trusting it once there is none.
+func reportFormers() {
+	for _, p := range listedFormers() {
+		sec, err := object.NewSec(p, object.WithVolatile(true))
+		if err != nil {
+			continue
+		}
+		b, err := sec.DecodeKey("certificate")
+		if err != nil {
+			continue
+		}
+		cert, err := parseCertificatePEM(b)
+		if err != nil {
+			continue
+		}
+		if l := signedBy(cert); len(l) > 0 {
+			fmt.Printf("%s: trusted still, as it signed the certificate of %s: renew them with 'om <path> certificate create', then stop trusting it\n", p, strings.Join(l, ", "))
+			continue
+		}
+		fmt.Printf("%s: signed no certificate in use, stop trusting it with:\n", p)
+		fmt.Printf("  om cluster config update --set %s-=%s\n", keyClusterCA, p)
+		fmt.Printf("  om %s delete\n", p)
+	}
 }
 
 // newCA creates the sec of a new ca at p, or takes the one a rotation
@@ -191,7 +223,7 @@ func (t *CmdClusterCARotate) newCA(p naming.Path) (object.Sec, error) {
 		// A cn tells the ca apart from the certificates it signs, which
 		// a verifier takes for self-signed when their subjects are the
 		// same, and from the former one.
-		*keyop.New(key.New("DEFAULT", "cn"), keyop.Set, fmt.Sprintf("%s ca %s", clusterName, time.Now().Format("20060102")), 0),
+		*keyop.New(key.New("DEFAULT", "cn"), keyop.Set, fmt.Sprintf("%s ca %s", clusterName, time.Now().Format(caStampFormat)), 0),
 	}
 	if err := sec.Config().PrepareSet(ops...); err != nil {
 		return nil, err
@@ -204,10 +236,10 @@ func (t *CmdClusterCARotate) newCA(p naming.Path) (object.Sec, error) {
 }
 
 // keepFormer keeps the certificate of the former ca, without its key, as a
-// sec system/sec/ca-former-<date>, the cluster ca keyword trusting it while
-// the certificates it signed are presented.
+// sec system/sec/ca-former-<yyyymmdd-hhmm>, the cluster ca keyword trusting
+// it while the certificates it signed are presented.
 func (t *CmdClusterCARotate) keepFormer(ca object.Sec, cert *x509.Certificate) (naming.Path, error) {
-	base := "ca-former-" + time.Now().Format("20060102")
+	base := "ca-former-" + time.Now().Format(caStampFormat)
 	var p naming.Path
 	for i := 1; ; i++ {
 		name := base
@@ -397,63 +429,117 @@ func configLaggards(c *client.T, want map[naming.Path]time.Time) ([]string, erro
 }
 
 // deleteSec deletes the sec at p on every node, as om <path> delete does,
-// waiting for it to be deleted.
-func (t *CmdClusterCARotate) deleteSec(p naming.Path) error {
+// and waits until no node has it.
+func (t *CmdClusterCARotate) deleteSec(ctx context.Context, c *client.T, p naming.Path) error {
 	if !p.Exists() {
 		return nil
 	}
-	var cmd CmdObjectDelete
-	cmd.ObjectSelector = p.String()
-	cmd.Wait = true
-	cmd.Time = t.Timeout
-	return cmd.Run(naming.KindSec.String())
+	resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+	if err != nil {
+		return fmt.Errorf("delete %s: %w", p, err)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("delete %s: %s", p, resp.Status())
+	}
+	ctx, cancel := context.WithTimeout(ctx, t.Timeout)
+	defer cancel()
+	for {
+		holders, err := configHolders(c, p)
+		if err == nil && len(holders) == 0 {
+			fmt.Printf("%s: deleted\n", p)
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for %s to be deleted: timeout, %s holds it still", p, strings.Join(holders, ", "))
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+// configHolders returns the nodes having the configuration of p.
+func configHolders(c *client.T, p naming.Path) ([]string, error) {
+	b, err := c.NewGetClusterStatus().Get()
+	if err != nil {
+		return nil, err
+	}
+	var data clusterdump.Data
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	l := make([]string, 0)
+	for nodename, nodeData := range data.Cluster.Node {
+		if inst, ok := nodeData.Instance[p.String()]; ok && inst.Config != nil {
+			l = append(l, nodename)
+		}
+	}
+	slices.Sort(l)
+	return l, nil
+}
+
+// listedFormers returns the former cas the cluster ca keyword lists, the
+// ones rotations kept, in the order it lists them.
+func listedFormers() naming.Paths {
+	l := make(naming.Paths, 0)
+	ccfg, err := object.NewCluster(object.WithVolatile(true))
+	if err != nil {
+		return l
+	}
+	for _, s := range ccfg.Config().GetStrings(keyClusterCA) {
+		p, err := naming.ParsePath(s)
+		if err != nil || p.Namespace != naming.NsSys || p.Kind != naming.KindSec || !strings.HasPrefix(p.Name, "ca-former-") {
+			continue
+		}
+		l = append(l, p)
+	}
+	return l
 }
 
 // listedFormer returns the last former ca the cluster ca keyword lists, the
 // one a rotation interrupted kept.
 func listedFormer() (naming.Path, *x509.Certificate, error) {
-	ccfg, err := object.NewCluster(object.WithVolatile(true))
+	l := listedFormers()
+	if len(l) == 0 {
+		return naming.Path{}, nil, fmt.Errorf("%s lists no system/sec/ca-former-<yyyymmdd-hhmm>, the former ca of the rotation interrupted: add it back, or delete %s to rotate anew", keyClusterCA, caNextPath)
+	}
+	p := l[len(l)-1]
+	sec, err := object.NewSec(p, object.WithVolatile(true))
 	if err != nil {
-		return naming.Path{}, nil, err
+		return p, nil, err
 	}
-	l := ccfg.Config().GetStrings(keyClusterCA)
-	for i := len(l) - 1; i >= 0; i-- {
-		p, err := naming.ParsePath(l[i])
-		if err != nil || p.Namespace != naming.NsSys || p.Kind != naming.KindSec || !strings.HasPrefix(p.Name, "ca-former-") {
-			continue
-		}
-		sec, err := object.NewSec(p, object.WithVolatile(true))
-		if err != nil {
-			return p, nil, err
-		}
-		b, err := sec.DecodeKey("certificate")
-		if err != nil {
-			return p, nil, fmt.Errorf("%s: %w", p, err)
-		}
-		cert, err := parseCertificatePEM(b)
-		if err != nil {
-			return p, nil, fmt.Errorf("%s: %w", p, err)
-		}
-		return p, cert, nil
+	b, err := sec.DecodeKey("certificate")
+	if err != nil {
+		return p, nil, fmt.Errorf("%s: %w", p, err)
 	}
-	return naming.Path{}, nil, fmt.Errorf("%s lists no system/sec/ca-former-<date>, the former ca of the rotation interrupted: add it back, or delete %s to rotate anew", keyClusterCA, caNextPath)
+	cert, err := parseCertificatePEM(b)
+	if err != nil {
+		return p, nil, fmt.Errorf("%s: %w", p, err)
+	}
+	return p, cert, nil
 }
 
-// usrsSignedBy returns the users whose certificate ca signed.
-func usrsSignedBy(ca *x509.Certificate) []string {
-	pattern := naming.PathPattern{Namespace: naming.NsSys, Kind: naming.KindUsr, Name: "*"}
+// signedBy returns the secs and users whose certificate ca signed, but
+// system/sec/cert, which a rotation issues again, and the cas.
+func signedBy(ca *x509.Certificate) []string {
 	l := make([]string, 0)
-	for _, p := range pattern.InstalledPaths() {
-		usr, err := object.NewUsr(p, object.WithVolatile(true))
+	paths, err := naming.InstalledPaths()
+	if err != nil {
+		return l
+	}
+	for _, p := range paths {
+		if p == naming.SecCert || (p.Kind != naming.KindSec && p.Kind != naming.KindUsr) {
+			continue
+		}
+		store, err := object.NewDataStore(p, object.WithVolatile(true))
 		if err != nil {
 			continue
 		}
-		b, err := usr.DecodeKey("certificate")
+		b, err := store.DecodeKey("certificate")
 		if err != nil {
 			continue
 		}
 		cert, err := parseCertificatePEM(b)
-		if err != nil {
+		if err != nil || cert.IsCA {
 			continue
 		}
 		if cert.CheckSignatureFrom(ca) == nil {
