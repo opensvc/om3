@@ -1,6 +1,8 @@
 package object
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 // A change a resource up on a node would leak by is refused: a keyword
@@ -71,4 +74,29 @@ func TestCheckStopToChange(t *testing.T) {
 	}
 	assert.Error(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Undef})), "a status not known to be stopped is not stopped")
 	assert.ErrorContains(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Down, "node2": status.StandbyUp})), "stdby up on node2")
+}
+
+// With no status cache, the status of the instance is evaluated, so a local
+// change is judged on a status known.
+func TestLocalInstanceStatusesWithNoCache(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p, err := naming.ParsePath("test/svc/foo")
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0700))
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\nnodes = "+hostname.Hostname()+"\n[fs#1]\ntype = flag\n"), 0600))
+	m, err := localInstanceStatuses(p)
+	require.NoError(t, err)
+	require.Len(t, m, 1)
+	for _, st := range m {
+		assert.Contains(t, st.Resources, "fs#1")
+	}
+
+	m, err = localInstanceStatuses(naming.Path{Namespace: "test", Kind: naming.KindCfg, Name: "foo"})
+	require.NoError(t, err)
+	assert.Empty(t, m, "an object holding no resource")
 }

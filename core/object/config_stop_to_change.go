@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -138,19 +139,31 @@ func evaluatedAs(cfg *xconfig.T, k key.T, nodename string) string {
 }
 
 // localInstanceStatuses returns the instance status of the object on this
-// node, as its cache says, which the daemon keeps current: none when the
-// cache is not there, as before a first status.
-func localInstanceStatuses(p naming.Path) map[string]*instance.Status {
+// node, as its cache says, which the daemon keeps current, or as evaluated
+// when the cache is not there or not readable: a change is judged on a
+// status known, never on none. An object holding no resource has none.
+func localInstanceStatuses(p naming.Path) (map[string]*instance.Status, error) {
 	m := make(map[string]*instance.Status)
-	b, err := os.ReadFile(filepath.Join(p.VarDir(), "status.json"))
-	if err != nil {
-		return m
+	switch p.Kind {
+	case naming.KindSvc, naming.KindVol:
+	default:
+		return m, nil
 	}
 	var st instance.Status
-	if err := json.Unmarshal(b, &st); err == nil {
+	if b, err := os.ReadFile(filepath.Join(p.VarDir(), "status.json")); err == nil && json.Unmarshal(b, &st) == nil {
 		m[hostname.Hostname()] = &st
+		return m, nil
 	}
-	return m
+	o, err := NewActor(p, WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	st, err = o.FreshStatus(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("evaluate the status of %s, to tell the resources up: %w", p, err)
+	}
+	m[hostname.Hostname()] = &st
+	return m, nil
 }
 
 // CheckLocalUpdateStopToChange refuses the update of the configuration of
@@ -169,7 +182,11 @@ func CheckLocalUpdateStopToChange(p naming.Path, deletes []string, unsets []key.
 	if err := to.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
 		return err
 	}
-	return CheckStopToChange(p.Kind, from.Config(), to.Config(), localInstanceStatuses(p))
+	statuses, err := localInstanceStatuses(p)
+	if err != nil {
+		return err
+	}
+	return CheckStopToChange(p.Kind, from.Config(), to.Config(), statuses)
 }
 
 // CheckLocalFileStopToChange refuses the configuration file at dst replacing
@@ -184,5 +201,9 @@ func CheckLocalFileStopToChange(p naming.Path, dst string) error {
 	if err != nil {
 		return err
 	}
-	return CheckStopToChange(p.Kind, from.Config(), to.Config(), localInstanceStatuses(p))
+	statuses, err := localInstanceStatuses(p)
+	if err != nil {
+		return err
+	}
+	return CheckStopToChange(p.Kind, from.Config(), to.Config(), statuses)
 }
