@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -465,7 +467,8 @@ func (t *CmdClusterCARotate) deleteSec(ctx context.Context, c *client.T, p namin
 	}
 }
 
-// configHolders returns the nodes having the configuration of p.
+// configHolders returns the cluster nodes having the configuration of p,
+// or not known not to.
 func configHolders(c *client.T, p naming.Path) ([]string, error) {
 	b, err := c.NewGetClusterStatus().Get()
 	if err != nil {
@@ -475,8 +478,15 @@ func configHolders(c *client.T, p naming.Path) ([]string, error) {
 	if err := json.Unmarshal(b, &data); err != nil {
 		return nil, err
 	}
+	// A cluster node the status holds nothing of, as one gone stale, may
+	// have the sec still: it is waited for, as every node is at each step.
 	l := make([]string, 0)
-	for nodename, nodeData := range data.Cluster.Node {
+	for _, nodename := range data.Cluster.Config.Nodes {
+		nodeData, ok := data.Cluster.Node[nodename]
+		if !ok {
+			l = append(l, nodename)
+			continue
+		}
 		if inst, ok := nodeData.Instance[p.String()]; ok && inst.Config != nil {
 			l = append(l, nodename)
 		}
@@ -531,12 +541,8 @@ func listedFormer() (naming.Path, *x509.Certificate, error) {
 // again.
 func signedBy(ca *x509.Certificate, skip ...naming.Path) []string {
 	l := make([]string, 0)
-	paths, err := naming.InstalledPaths()
-	if err != nil {
-		return l
-	}
-	for _, p := range paths {
-		if slices.Contains(skip, p) || (p.Kind != naming.KindSec && p.Kind != naming.KindUsr) {
+	for _, p := range installedCertHolders() {
+		if slices.Contains(skip, p) {
 			continue
 		}
 		store, err := object.NewDataStore(p, object.WithVolatile(true))
@@ -553,6 +559,32 @@ func signedBy(ca *x509.Certificate, skip ...naming.Path) []string {
 		}
 		if cert.CheckSignatureFrom(ca) == nil {
 			l = append(l, p.String())
+		}
+	}
+	return l
+}
+
+// installedCertHolders returns the secs and users installed on this node,
+// of every namespace: naming.InstalledPaths keeps the ones of the namespace
+// and the kind of the environment only, which a check of the whole cluster
+// must not.
+func installedCertHolders() naming.Paths {
+	l := make(naming.Paths, 0)
+	for _, kind := range []naming.Kind{naming.KindSec, naming.KindUsr} {
+		patterns := []string{
+			filepath.Join(rawconfig.Paths.Etc, kind.String(), "*.conf"),
+			filepath.Join(rawconfig.Paths.EtcNs, "*", kind.String(), "*.conf"),
+		}
+		for _, pattern := range patterns {
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				continue
+			}
+			for _, m := range matches {
+				if p, err := naming.ConfigFilePath(m); err == nil && p.Kind == kind {
+					l = append(l, p)
+				}
+			}
 		}
 	}
 	return l
