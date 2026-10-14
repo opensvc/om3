@@ -146,7 +146,9 @@ func caIssue(now time.Time) string {
 
 // trustedCAIssues returns when the certificates of the other authorities the
 // cluster ca keyword lists expire, or expired, as a former ca a rotation kept
-// for the certificates it signed: they are refused once it expires.
+// for the certificates it signed: they are refused once it expires. Every
+// certificate of their certificate_chain is one, as the listener trusts them
+// all.
 func trustedCAIssues(now time.Time) []string {
 	cfg := cluster.ConfigData.Get()
 	if cfg == nil {
@@ -158,18 +160,48 @@ func trustedCAIssues(now time.Time) []string {
 		if err != nil || p == naming.SecCa {
 			continue
 		}
-		cert := secCertificate(p)
-		if cert == nil {
-			continue
-		}
-		issue := expiryIssue(p, cert, now, caExpiryWarning,
-			"the certificates it signed are refused from then",
-			"renew them from system/sec/ca, and stop trusting it")
-		if issue != "" {
-			issues = append(issues, issue)
+		for _, cert := range secTrustedCertificates(p) {
+			issue := expiryIssue(p, cert, now, caExpiryWarning,
+				"the certificates it signed are refused from then",
+				"renew them from system/sec/ca, and stop trusting it")
+			if issue != "" && !slices.Contains(issues, issue) {
+				issues = append(issues, issue)
+			}
 		}
 	}
 	return issues
+}
+
+// secTrustedCertificates returns the certificates of the certificate_chain
+// of the sec at p, as the listener trusts them, or of its certificate when it
+// has no chain.
+func secTrustedCertificates(p naming.Path) []*x509.Certificate {
+	if !p.Exists() {
+		return nil
+	}
+	sec, err := object.NewSec(p, object.WithVolatile(true))
+	if err != nil {
+		return nil
+	}
+	b, err := sec.DecodeKey("certificate_chain")
+	if err != nil {
+		if b, err = sec.DecodeKey("certificate"); err != nil {
+			return nil
+		}
+	}
+	var l []*x509.Certificate
+	for {
+		var block *pem.Block
+		if block, b = pem.Decode(b); block == nil {
+			return l
+		}
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+		if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
+			l = append(l, cert)
+		}
+	}
 }
 
 // secCertificate returns the certificate of the sec at p, nil when it has

@@ -109,6 +109,8 @@ func TestCheckCertExpiry(t *testing.T) {
 	sec, err := object.NewSec(former, object.WithConfigData([]byte("[DEFAULT]\nvalidity = 30d\n")))
 	require.NoError(t, err)
 	require.NoError(t, sec.GenCert())
+	// Its certificate_chain is what the listener trusts.
+	require.NoError(t, sec.RemoveKey("certificate"))
 	ccfg, err := object.NewCluster(object.WithVolatile(false))
 	require.NoError(t, err)
 	require.NoError(t, ccfg.Config().Set(*keyop.New(key.New("cluster", "ca"), keyop.Set, former.String(), 0)))
