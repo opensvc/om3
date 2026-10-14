@@ -133,6 +133,7 @@ func (t *T) networkDev() string {
 func (t *T) Configure() error {
 	nw, err := t.resolveNetwork()
 	t.configureMode(nw)
+	t.configureVLAN(nw)
 	if err != nil {
 		return err
 	}
@@ -195,6 +196,26 @@ func (t *T) configureMode(nw network.Networker) {
 		t.Mode = "bridge"
 	case len(modes) > 0 && !slices.Contains(modes, t.Mode):
 		t.netErr = fmt.Errorf("mode %s is not one of the modes of network %s: %s", t.Mode, nw.Name(), strings.Join(modes, " "))
+	}
+}
+
+// configureVLAN sets the VLAN tag and mode of a resource naming none to the
+// ones of its network, the mode to native-untagged when neither names one.
+// They apply to the port an ovs mode adds to the openvswitch bridge.
+func (t *T) configureVLAN(nw network.Networker) {
+	var tag, mode string
+	if v, ok := nw.(network.VLANer); ok {
+		tag, mode = v.VLAN()
+	}
+	if t.VLANTag == "" {
+		t.VLANTag = tag
+	}
+	switch {
+	case t.VLANMode != "":
+	case mode != "":
+		t.VLANMode = mode
+	default:
+		t.VLANMode = "native-untagged"
 	}
 }
 

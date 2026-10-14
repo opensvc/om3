@@ -13,12 +13,22 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 )
 
-func (t *T) startOVSPort(ctx context.Context, dev string) error {
+// ovsAddPortArgs returns the ovs-vsctl arguments adding the port dev to the
+// openvswitch bridge, in the VLAN of the resource, its tag if any.
+func (t *T) ovsAddPortArgs(dev string) []string {
 	args := []string{
 		"--may-exist",
 		"add-port", t.Dev, dev,
 		fmt.Sprintf("vlan_mode=%s", t.VLANMode),
 	}
+	if t.VLANTag != "" {
+		args = append(args, fmt.Sprintf("tag=%s", t.VLANTag))
+	}
+	return args
+}
+
+func (t *T) startOVSPort(ctx context.Context, dev string) error {
+	args := t.ovsAddPortArgs(dev)
 	cmd := command.New(
 		command.WithName("ovs-vsctl"),
 		command.WithArgs(args),

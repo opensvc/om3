@@ -55,9 +55,9 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/vlan_tag"),
 		},
 		{
-			Attr:       "VLANMode",
-			Candidates: []string{"access", "native-tagged", "native-untagged"},
-			Default:    "native-untagged",
+			Attr:        "VLANMode",
+			Candidates:  []string{"access", "native-tagged", "native-untagged"},
+			DefaultText: keywords.NewText(fs, "text/kw/vlan_mode.default"),
 			Depends: []keyop.T{
 				{
 					Key:   key.T{Option: "mode"},

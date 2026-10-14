@@ -85,6 +85,13 @@ func (t *T) Modes() []string {
 	return t.GetStrings("modes")
 }
 
+// VLAN returns the tag and the mode of the port an ip.netns joining the
+// segment with openvswitch adds, which the vlan_tag and vlan_mode keywords
+// say.
+func (t *T) VLAN() (tag, mode string) {
+	return t.GetString("vlan_tag"), t.GetString("vlan_mode")
+}
+
 // IsClusterWide says the addresses of a lan network belong to the cluster.
 func (t *T) IsClusterWide() bool {
 	return true

@@ -137,3 +137,39 @@ func TestConfigureMode(t *testing.T) {
 		})
 	}
 }
+
+// fakeLanVLAN is a lan network saying the VLAN of its segment.
+type fakeLanVLAN struct {
+	fakeLan
+	tag, mode string
+}
+
+func (t fakeLanVLAN) VLAN() (string, string) { return t.tag, t.mode }
+
+// A resource naming no VLAN takes the one of its network, and the port the
+// ovs mode adds carries its tag.
+func TestConfigureVLAN(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		tag, mode        string
+		nw               network.Networker
+		wantTag, wantMod string
+	}{
+		{name: "the VLAN of the network", nw: fakeLanVLAN{tag: "44", mode: "access"}, wantTag: "44", wantMod: "access"},
+		{name: "the VLAN of the resource wins", tag: "12", mode: "native-tagged", nw: fakeLanVLAN{tag: "44", mode: "access"}, wantTag: "12", wantMod: "native-tagged"},
+		{name: "the tag of the network, the default mode", nw: fakeLanVLAN{tag: "44"}, wantTag: "44", wantMod: "native-untagged"},
+		{name: "a network saying no VLAN", nw: fakeLan{}, wantMod: "native-untagged"},
+		{name: "no network", wantMod: "native-untagged"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &T{VLANTag: tc.tag, VLANMode: tc.mode}
+			r.configureVLAN(tc.nw)
+			assert.Equal(t, tc.wantTag, r.VLANTag)
+			assert.Equal(t, tc.wantMod, r.VLANMode)
+		})
+	}
+	r := &T{Dev: "ovsbr0", VLANTag: "44", VLANMode: "access"}
+	assert.Equal(t, []string{"--may-exist", "add-port", "ovsbr0", "veth1", "vlan_mode=access", "tag=44"}, r.ovsAddPortArgs("veth1"))
+	r.VLANTag = ""
+	assert.Equal(t, []string{"--may-exist", "add-port", "ovsbr0", "veth1", "vlan_mode=access"}, r.ovsAddPortArgs("veth1"))
+}

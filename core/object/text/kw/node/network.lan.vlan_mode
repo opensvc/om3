@@ -1,0 +1,3 @@
+The VLAN mode of the port an ip.netns joining the segment in `ovs` mode adds
+to the openvswitch bridge, when the ip.netns names none: `access`,
+`native-tagged` or `native-untagged`.

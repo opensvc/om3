@@ -1,0 +1,1 @@
+The `vlan_mode` of the network the address is drawn from, else `native-untagged`.

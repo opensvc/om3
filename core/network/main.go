@@ -164,6 +164,13 @@ type (
 		Modes() []string
 	}
 
+	// VLANer is implemented by the network drivers saying the VLAN of their
+	// segment, the tag and the mode of the port an ip.netns joining it with
+	// openvswitch adds, empty when they say none.
+	VLANer interface {
+		VLAN() (tag, mode string)
+	}
+
 	// HostDever is implemented by the network drivers whose addresses are
 	// configured on an interface of the node, rather than on a bridge the
 	// network sets up. It returns the interface of this node.

@@ -1455,6 +1455,23 @@ var (
 		Text:       keywords.NewText(fs, "text/kw/node/network.lan.modes"),
 		Types:      []string{"lan"},
 	}
+	kwNodeNetworkLANVLANTag = keywords.Keyword{
+		Example:  "44",
+		Option:   "vlan_tag",
+		Scopable: true,
+		Section:  "network",
+		Text:     keywords.NewText(fs, "text/kw/node/network.lan.vlan_tag"),
+		Types:    []string{"lan"},
+	}
+	kwNodeNetworkLANVLANMode = keywords.Keyword{
+		Candidates: []string{"access", "native-tagged", "native-untagged"},
+		Example:    "access",
+		Option:     "vlan_mode",
+		Scopable:   true,
+		Section:    "network",
+		Text:       keywords.NewText(fs, "text/kw/node/network.lan.vlan_mode"),
+		Types:      []string{"lan"},
+	}
 	kwNodeNetworkLANGateway = keywords.Keyword{
 		Example:  "192.168.10.254",
 		Option:   "gateway",
@@ -2085,6 +2102,8 @@ var (
 		&kwNodeNetworkLANDev,
 		&kwNodeNetworkLANGateway,
 		&kwNodeNetworkLANModes,
+		&kwNodeNetworkLANVLANTag,
+		&kwNodeNetworkLANVLANMode,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

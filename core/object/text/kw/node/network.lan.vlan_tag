@@ -1,0 +1,4 @@
+The VLAN of the segment an ip.netns joining it in `ovs` mode puts its port
+in, the `tag` of the port on the openvswitch bridge, when the ip.netns names
+none. The segment is the network's: a namespace administrator, who can not
+name the tag of an ip.netns, joins it so.
