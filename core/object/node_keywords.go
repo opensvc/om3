@@ -1445,6 +1445,16 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/node/network.lan.dev"),
 		Types:    []string{"lan"},
 	}
+	kwNodeNetworkLANModes = keywords.Keyword{
+		Candidates: []string{"bridge", "macvlan", "ipvlan-l2", "dedicated", "ovs"},
+		Converter:  converters.List,
+		Example:    "macvlan ipvlan-l2",
+		Option:     "modes",
+		Scopable:   true,
+		Section:    "network",
+		Text:       keywords.NewText(fs, "text/kw/node/network.lan.modes"),
+		Types:      []string{"lan"},
+	}
 	kwNodeNetworkLANGateway = keywords.Keyword{
 		Example:  "192.168.10.254",
 		Option:   "gateway",
@@ -2074,6 +2084,7 @@ var (
 		&kwNodeNetworkLANRanges,
 		&kwNodeNetworkLANDev,
 		&kwNodeNetworkLANGateway,
+		&kwNodeNetworkLANModes,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

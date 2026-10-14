@@ -157,6 +157,13 @@ type (
 		Gateway() (net.IP, error)
 	}
 
+	// Moder is implemented by the network drivers saying the modes an
+	// ip.netns may join their segment with, the first being the one of an
+	// ip.netns naming none. None when the network says nothing of them.
+	Moder interface {
+		Modes() []string
+	}
+
 	// HostDever is implemented by the network drivers whose addresses are
 	// configured on an interface of the node, rather than on a bridge the
 	// network sets up. It returns the interface of this node.

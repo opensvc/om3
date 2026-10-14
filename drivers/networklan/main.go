@@ -79,6 +79,12 @@ func (t *T) Pools() ([]ipam.Pool, error) {
 	return pools, nil
 }
 
+// Modes returns the modes an ip.netns may join the segment with, the first
+// being the one of an ip.netns naming none, which the modes keyword lists.
+func (t *T) Modes() []string {
+	return t.GetStrings("modes")
+}
+
 // IsClusterWide says the addresses of a lan network belong to the cluster.
 func (t *T) IsClusterWide() bool {
 	return true

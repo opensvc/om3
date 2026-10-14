@@ -96,3 +96,44 @@ func TestConfigureLanGateway(t *testing.T) {
 	assert.Equal(t, "fd01::fe", r.Gateway)
 	assert.Equal(t, gatewayOwn, r.gatewayRank)
 }
+
+// fakeLanModes is a lan network listing the modes the segment is joined with.
+type fakeLanModes struct {
+	fakeLan
+	modes []string
+}
+
+func (t fakeLanModes) Modes() []string { return t.modes }
+
+// A resource naming no mode joins the segment with the first of the modes of
+// its network, else as a bridge, and one naming a mode the network does not
+// list is refused: the network chooses, as a macvlan where the interface of
+// the node is no bridge, for the resources of a namespace naming none.
+func TestConfigureMode(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		mode     string
+		nw       network.Networker
+		wantMode string
+		wantErr  bool
+	}{
+		{name: "the first mode of the network", nw: fakeLanModes{modes: []string{"macvlan", "ipvlan-l2"}}, wantMode: "macvlan"},
+		{name: "a mode the network lists", mode: "ipvlan-l2", nw: fakeLanModes{modes: []string{"macvlan", "ipvlan-l2"}}, wantMode: "ipvlan-l2"},
+		{name: "a mode the network does not list", mode: "bridge", nw: fakeLanModes{modes: []string{"macvlan"}}, wantErr: true},
+		{name: "a network listing none", nw: fakeLanModes{}, wantMode: "bridge"},
+		{name: "a network saying nothing of modes", nw: fakeLan{}, wantMode: "bridge"},
+		{name: "no network", wantMode: "bridge"},
+		{name: "no network, a mode named", mode: "macvlan", wantMode: "macvlan"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &T{Mode: tc.mode}
+			r.configureMode(tc.nw)
+			if tc.wantErr {
+				assert.ErrorContains(t, r.netErr, "is not one of the modes of network san")
+				return
+			}
+			require.NoError(t, r.netErr)
+			assert.Equal(t, tc.wantMode, r.Mode)
+		})
+	}
+}
