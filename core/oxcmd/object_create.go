@@ -1,22 +1,15 @@
 package oxcmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
-	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/uri"
 )
@@ -164,63 +157,12 @@ func (t *CmdObjectCreate) do() error {
 	}
 }
 
+// fromData creates the object at p from the configuration b, through the
+// api, which checks it as any configuration it writes, and leaves behind
+// what a copied configuration recorded of itself, unless --restore, the
+// keyword operations applying after.
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	if !t.Force && p.Exists() {
-		return fmt.Errorf("%s already exists", p)
-	}
-	tempFile, err := os.CreateTemp("", "")
-	if err != nil {
-		return err
-	}
-	tempName := tempFile.Name()
-	tempFile.Close()
-	oc, err := object.NewConfigurer(p, object.WithConfigFile(tempName), object.WithConfigData(b))
-	if err != nil {
-		return err
-	}
-
-	// Write the new configuration with a "[DEFAULT]" header, as OpenSVC v2
-	// did, so the keywords of that section are grouped under it whatever
-	// their rank in the keyword list.
-	oc.Config().MaterializeDefaultSection()
-
-	ops := keyop.ParseOps(t.Keywords)
-	if !t.Restore {
-		op := keyop.Parse("id=" + uuid.New().String())
-		if op == nil {
-			return fmt.Errorf("invalid id reset op")
-		}
-		ops = append(ops, *op)
-	}
-
-	if err := oc.Config().Set(ops...); err != nil {
-		return err
-	}
-	b, err = commoncmd.DataFromConfigFile(tempName)
-	if err != nil {
-		return err
-	}
-	// The answer is held until the daemon knows the object, so the command
-	// run next, as a provision, finds it.
-	waitLocal := true
-	params := api.PostObjectConfigFileParams{WaitLocal: &waitLocal}
-	resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewBuffer(b))
-	if err != nil {
-		return err
-	}
-	switch resp.StatusCode() {
-	case 204:
-		fmt.Printf("%s: created\n", p)
-	case 400:
-		fmt.Printf("%s: %s\n", p, *resp.JSON400)
-	case 408:
-		// Created, and not known to the daemon yet: the command run next
-		// may not find it.
-		return fmt.Errorf("%s", resp.JSON408.Detail)
-	default:
-		return fmt.Errorf("%s: %s", p, resp.Status())
-	}
-	return nil
+	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force)
 }
 
 func (t *CmdObjectCreate) fromPath(p naming.Path) error {
