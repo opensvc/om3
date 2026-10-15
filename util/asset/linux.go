@@ -62,7 +62,7 @@ func (t T) Get(s string) (interface{}, error) {
 		sysname, _, _, err := uname()
 		return sysname, err
 	case "serial":
-		return si.Product.Serial, nil
+		return serial(), nil
 	case "sp_version":
 		return "", ErrNotImpl
 	case "enclosure":
