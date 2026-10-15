@@ -153,6 +153,11 @@ type (
 		// an orchestration process that was prematurely aborted.
 		orchestrationAborted *msgbus.ObjectOrchestrationEnd
 
+		// endWithDeletion holds the end of the orchestration back until the
+		// instance monitor is deleted, as a purge that deleted the instance
+		// asks, see purgedFromDeleted.
+		endWithDeletion bool
+
 		drainDuration time.Duration
 
 		updateLimiter *rate.Limiter

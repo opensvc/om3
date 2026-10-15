@@ -53,8 +53,11 @@ func (t *Manager) purgedFromIdle() {
 
 // purgedFromDeleted ends the purge orchestration the way every other
 // orchestration ends it: by marking it done and letting endOrchestration()
-// clear the global expect and the orchestration id together, and announce
-// the end.
+// clear the global expect and the orchestration id together. The end is
+// announced when the instance monitor is deleted, as the end of a delete is:
+// the instance is gone then, from this daemon too, and a client told the
+// purge is over finds no trace of the object, as a create of the same name
+// that the daemon refused while it still knew the instance.
 //
 // Resetting the global expect here instead left the instance monitor with no
 // global expect but still holding the orchestration id, a pair that means
@@ -62,6 +65,7 @@ func (t *Manager) purgedFromIdle() {
 // refused as "already in progress", and the orchestration table never saw an
 // end for an orchestration it went on listing as running.
 func (t *Manager) purgedFromDeleted() {
+	t.endWithDeletion = true
 	t.doneAndIdle()
 }
 

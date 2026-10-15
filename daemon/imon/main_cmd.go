@@ -684,6 +684,12 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 	case c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID != c.Value.CandidateOrchestrationID:
 		t.logSetOrchestrationID(c.Value.CandidateOrchestrationID)
 		t.state.OrchestrationID = c.Value.CandidateOrchestrationID
+		if t.endWithDeletion {
+			// The instance monitor lives on: the end held back for its
+			// deletion is announced now, as it is not an abort.
+			t.endWithDeletion = false
+			t.publishOrchestrationEnded()
+		}
 		t.savePendingOrchestration()
 		t.publishOrchestrationAccepted()
 		t.setNextPendingOrchestration()

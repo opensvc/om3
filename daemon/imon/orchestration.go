@@ -183,7 +183,10 @@ func (t *Manager) endOrchestration() {
 	t.change = true
 
 	t.setOrchestrationVerdict()
-	defer t.publishOrchestrationEnded()
+	if !t.endWithDeletion {
+		// Else the end goes with the InstanceMonitorDeleted event.
+		defer t.publishOrchestrationEnded()
+	}
 
 	t.clearStateSpokenToPeers()
 	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
