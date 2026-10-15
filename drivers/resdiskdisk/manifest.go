@@ -19,9 +19,13 @@ var (
 
 	kws = []*keywords.Keyword{
 		{
-			Attr:     "DiskID",
-			Example:  "6589cfc00000097484f0728d8b2118a6",
-			Option:   "disk_id",
+			Attr:    "DiskID",
+			Example: "6589cfc00000097484f0728d8b2118a6",
+			Option:  "disk_id",
+			// Written by the provision, for the disk it created: a
+			// clone keeping it would take the disk of its source,
+			// as its provision creates none once it is set.
+			Recorded: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/disk_id"),
 		},

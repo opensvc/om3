@@ -7,8 +7,11 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigFileParams) error {
@@ -27,10 +30,6 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
 	}
-	if len(instance.MonitorData.GetByPath(p)) > 0 {
-		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
-	}
-
 	// Read before anything is checked against it: the write lands only
 	// over this file.
 	base, err := readConfigBase(p)
@@ -38,10 +37,33 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read config", "%s", err)
 	}
 
+	// Forced, the configuration of an object that exists is replaced as a
+	// creation writes it, with the checks of an update. An object exists
+	// from the moment its configuration file is written, before the daemon
+	// knows it: two creates racing, the second is not one.
+	force := params.Force != nil && *params.Force
+	exists := len(instance.MonitorData.GetByPath(p)) > 0 || base.exists()
+	if exists && !force {
+		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
+	}
+
 	// Read and parse the config body to validate RBAC rules
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read body", "%s", err)
+	}
+
+	// The configuration written is the one the checks judge: without what
+	// the configuration it was copied from recorded of itself, unless
+	// restored.
+	restore := params.Restore != nil && *params.Restore
+	var sets []keyop.T
+	if params.Set != nil {
+		sets = keyop.ParseOps(*params.Set)
+	}
+	oc, body, err := object.CreatedConfig(p, body, restore, sets...)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Bad config", "%s", err)
 	}
 
 	// Validate RBAC rules for config keys
@@ -52,6 +74,19 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	log.Tracef("%s: rbac passed", p)
 
+	if exists {
+		if err := stopToChange(ctx, p, body, false); err != nil {
+			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+		}
+	}
+
+	// Flag the instance stopped on purpose if the daemon would start it on
+	// its own, so it does not do so before the operator asked for anything.
+	var flagStopped bool
+	switch oc.Config().GetString(key.Parse("orchestrate")) {
+	case "ha", "start":
+		flagStopped = true
+	}
 	waitLocal := params.WaitLocal != nil && *params.WaitLocal
-	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal)
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal, flagStopped)
 }

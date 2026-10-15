@@ -109,15 +109,18 @@ func NewPoolLine(item api.Pool, physical bool) PoolLine {
 }
 
 // PoolVolumeLine is a pool volume as a listing shows it: the volume the api
-// sent, and what it takes of other pools in the form a reader reads.
+// sent, and its size and what it takes of other pools in the form a reader
+// reads.
 type PoolVolumeLine struct {
 	api.PoolVolume
+	BinSize string `json:"bin_size"`
 	Charges string `json:"charges_text"`
 }
 
 // NewPoolVolumeLine returns the volume as a listing shows it.
 func NewPoolVolumeLine(item api.PoolVolume) PoolVolumeLine {
 	line := PoolVolumeLine{PoolVolume: item}
+	line.BinSize = sizeconv.BSizeCompact(float64(item.Size))
 	if item.Charges == nil {
 		return line
 	}

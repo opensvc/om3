@@ -14,3 +14,9 @@ var exclusiveMu sync.Mutex
 func tryExclusive(_ *os.File) (bool, error) {
 	return exclusiveMu.TryLock(), nil
 }
+
+// releaseExclusive releases the mutex tryExclusive took, which closing the
+// file does not.
+func releaseExclusive(_ *os.File) {
+	exclusiveMu.Unlock()
+}

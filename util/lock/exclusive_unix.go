@@ -22,3 +22,7 @@ func tryExclusive(f *os.File) (bool, error) {
 		return false, err
 	}
 }
+
+// releaseExclusive has nothing to do: the flock(2) lock is released with the
+// file, closed after.
+func releaseExclusive(_ *os.File) {}

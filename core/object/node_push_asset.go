@@ -69,6 +69,17 @@ func (t Node) assetValueFromConfigEval(kw string, title string) (data asset.Prop
 	return
 }
 
+// assetValueFromConfigEvalOrDefault returns asset.property from the config
+// keyword eval, which is the keyword default when it is not set, as the port
+// the listener binds when no port is configured. The source says which.
+func (t Node) assetValueFromConfigEvalOrDefault(kw string, title string) (data asset.Property) {
+	data = t.assetValueFromConfigEval(kw, title)
+	if !t.MergedConfig().HasKey(key.Parse(kw)) {
+		data.Source = asset.SrcDefault
+	}
+	return
+}
+
 // assetValueFromDefinedConfigOrProbe return asset.property with the following evaluation order:
 //
 //	1- config keyword eval if the keyword is present in current config, or present
@@ -232,7 +243,7 @@ func (t Node) getAsset() (asset.Data, error) {
 	// from existing config key
 	data.Properties.SecZone = t.assetValueFromDefinedConfig("node.sec_zone", "security zone", nil)
 	data.Properties.AssetEnv = t.assetValueFromDefinedConfig("node.asset_env", "asset environment", nil)
-	data.Properties.ListenerPort = t.assetValueFromDefinedConfig("listener.port", "listener port", nil)
+	data.Properties.ListenerPort = t.assetValueFromConfigEvalOrDefault("listener.port", "listener port")
 	data.Properties.LocCountry = t.assetValueFromDefinedConfig("node.loc_country", "loc, country", nil)
 	data.Properties.LocCity = t.assetValueFromDefinedConfig("node.loc_city", "loc, city", nil)
 	data.Properties.LocBuilding = t.assetValueFromDefinedConfig("node.loc_building", "loc, building", nil)

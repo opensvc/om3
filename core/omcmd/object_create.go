@@ -8,9 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
@@ -266,7 +265,37 @@ func (t *CmdObjectCreate) dataFromConfig() ([]byte, error) {
 	}
 }
 
+// fromData creates the object at p from the configuration b, through the
+// api, which checks it as any configuration it writes: the configuration
+// RBAC, the claims, the validation. With --local, the configuration is
+// written on this node alone, and so it is when the daemon is not running,
+// as on a node being installed: the daemon checks nothing then.
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
+	if t.Local {
+		return t.localFromData(p, b)
+	}
+	oc, err := commoncmd.CreatedConfigData(p, b, t.Keywords, t.Restore)
+	if err != nil {
+		return err
+	}
+	t.reportConfigWarnings(p, oc)
+	err = commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force)
+	if daemonUnreachable(err) {
+		fmt.Fprintf(os.Stderr, "%s: the daemon is not running: the configuration is written on this node only, with none of the checks of the daemon\n", p)
+		return t.localFromData(p, b)
+	}
+	return err
+}
+
+// daemonUnreachable says whether err is the failure to reach the local
+// daemon, whose socket is not there or not listened to.
+func daemonUnreachable(err error) bool {
+	return errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ECONNREFUSED)
+}
+
+// localFromData writes the configuration b of the object at p on this node,
+// with the treatment the api gives a configuration it creates an object from.
+func (t *CmdObjectCreate) localFromData(p naming.Path, b []byte) error {
 	if !t.Force && !t.Restore {
 		if exists, err := objectExists(p); err != nil {
 			return err
@@ -274,34 +303,15 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 			return fmt.Errorf("%s already exists", p)
 		}
 	}
+	_, b, err := object.CreatedConfig(p, b, t.Restore, keyop.ParseOps(t.Keywords)...)
+	if err != nil {
+		return err
+	}
 	oc, err := object.NewConfigurer(p, object.WithConfigData(b))
 	if err != nil {
 		return err
 	}
-
-	// Write the new configuration with a "[DEFAULT]" header, as OpenSVC v2
-	// did, so the keywords of that section are grouped under it whatever
-	// their rank in the keyword list.
-	oc.Config().MaterializeDefaultSection()
-
-	ops := keyop.ParseOps(t.Keywords)
-	if !t.Restore {
-		// A clone is another thing, so what the source recorded of itself
-		// does not come with it: the id it was created with, the uuid of an
-		// md array it holds. They are written again, for the clone, when the
-		// clone makes what they name.
-		oc.Config().UnsetRecorded()
-
-		// The id is given again rather than left to be, because an object
-		// has one from the moment it is created.
-		op := keyop.Parse("id=" + uuid.New().String())
-		if op == nil {
-			return fmt.Errorf("invalid id reset op")
-		}
-		ops = append(ops, *op)
-	}
-
-	if err := oc.Config().Set(ops...); err != nil {
+	if err := oc.Config().Commit(); err != nil {
 		return err
 	}
 

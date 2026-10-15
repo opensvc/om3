@@ -5595,12 +5595,32 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Create an object from a configuration.
+
+        The configuration is taken for one copied from another object, as a
+        clone, a template or a configuration saved elsewhere: what it recorded
+        of the thing it was made for, the id it was created with, the disk its
+        provision created, the address it drew, is left behind, and the object
+        is given an id of its own. With restore, the object is the one the
+        configuration was saved from, and keeps them. The set operations apply
+        after, so a keyword they name is kept, recorded or not.
+
+        An object the daemon would start on its own, orchestrate ha or start,
+        is flagged stopped on this node, so it does not start before anything
+        is asked of it.
+
+        An object that exists is refused, unless force, which replaces its
+        configuration as a creation does, with the checks of an update.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryWait'
         - $ref: '#/components/parameters/inQueryWaitLocal'
+        - $ref: '#/components/parameters/inQueryRestore'
+        - $ref: '#/components/parameters/inQuerySets'
+        - $ref: '#/components/parameters/inQueryForce'
       requestBody:
         description: OK
         content:
@@ -10652,6 +10672,17 @@ components:
       schema:
         type: string
         example: 5m
+
+    inQueryRestore:
+      in: query
+      name: restore
+      description: |
+        Keep what the configuration recorded of the thing it was made for:
+        the id the object was created with, and the identifiers of the things
+        it holds, as when the object is restored from a configuration saved
+        from it.
+      schema:
+        type: boolean
 
     inQueryWaitLocal:
       in: query

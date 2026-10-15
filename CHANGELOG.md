@@ -327,6 +327,16 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
       
     These driver group names were already deprecated in v2.1.
 
+* **Create and deploy go through the api**
+
+    `om <path> create` and `om <path> deploy` send the configuration to the
+    daemon, which checks it as any configuration it writes, rather than
+    writing the file themselves, unless the daemon is not running. The api
+    resets the recorded keywords of a configuration it creates an object
+    from, an id, a `disk_id`, a drawn address, an md uuid, whoever sends it,
+    unless `restore=true`. `disk_id` is now recorded, so a clone of an object
+    holding a pool disk gets a disk of its own.
+
 * **A change a resource up would leak by is refused**
 
     A change of a keyword saying what a resource holds on a node once

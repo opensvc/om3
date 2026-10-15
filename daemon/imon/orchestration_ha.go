@@ -1,7 +1,11 @@
 package imon
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
 )
@@ -58,6 +62,24 @@ func (t *Manager) orchestrateBootStart() {
 			t.log.Tracef("boot start: %s", reason)
 			return
 		}
+		// A peer instance doing something, as the start of a standby
+		// resource every node makes at its boot, or readying a start, is
+		// passed over by the start rules: the decision waits for it to end
+		// rather than be taken on it, which it would not be a second
+		// later.
+		if peer, state := t.bootStartBusyPeer(); peer != "" {
+			if t.bootStartWaitSince.IsZero() {
+				t.bootStartWaitSince = time.Now()
+				t.log.Infof("boot start: wait for the %s instance, %s", peer, state)
+			} else if time.Since(t.bootStartWaitSince) > bootStartWaitMax {
+				t.closeBootStart("the %s instance is %s for longer than %s", peer, state, bootStartWaitMax)
+			}
+			return
+		}
+		if !t.bootStartWaitSince.IsZero() && time.Since(t.bootStartWaitSince) > bootStartWaitMax {
+			t.closeBootStart("the peer instances were busy for longer than %s", bootStartWaitMax)
+			return
+		}
 		t.orchestrateHAStart()
 		switch {
 		case t.state.State != instance.MonitorStateIdle:
@@ -65,7 +87,7 @@ func (t *Manager) orchestrateBootStart() {
 		case t.isStarted():
 			t.closeBootStart("the object is started")
 		default:
-			t.closeBootStart("nothing for this node to start")
+			t.closeBootStart("%s", t.bootStartNoopReason())
 		}
 	case instance.MonitorStateReady, instance.MonitorStateStartProgress,
 		instance.MonitorStateStartSuccess, instance.MonitorStateStopSuccess:
@@ -79,8 +101,50 @@ func (t *Manager) orchestrateBootStart() {
 	}
 }
 
+// bootStartWaitMax bounds the wait of the boot start decision for the peer
+// instances to end what they do: a start decided long after the node came up
+// is not what orchestrate=start says.
+var bootStartWaitMax = 5 * time.Minute
+
+// bootStartBusyPeer returns a peer instance doing something, or readying a
+// start, and its state, and "" when none is.
+func (t *Manager) bootStartBusyPeer() (string, instance.MonitorState) {
+	for peer, instMon := range t.instMonitor {
+		if peer == t.localhost {
+			continue
+		}
+		if instMon.State.IsDoing() || instMon.State == instance.MonitorStateReady {
+			return peer, instMon.State
+		}
+	}
+	return "", instance.MonitorStateIdle
+}
+
+// bootStartNoopReason says why the start orchestration started nothing on
+// this node, for the boot start decision to say it.
+func (t *Manager) bootStartNoopReason() string {
+	local := t.instStatus[t.localhost]
+	switch {
+	case local.IsFrozen():
+		return "the instance is frozen"
+	case t.isStopped():
+		return "the instance is flagged stopped"
+	case !t.state.IsLeader:
+		return "this node is not the placement leader"
+	case local.Provisioned.IsOneOf(provisioned.False, provisioned.Undef):
+		return fmt.Sprintf("the instance provisioned state is %s", local.Provisioned)
+	case local.Avail.Is(status.Warn):
+		return "the instance is warn"
+	}
+	if v, reason := t.isHAOrchestrateable(); !v {
+		return reason
+	}
+	return "nothing for this node to start"
+}
+
 func (t *Manager) closeBootStart(format string, a ...any) {
 	t.isBootStartPending = false
+	t.bootStartWaitSince = time.Time{}
 	t.log.Infof("boot start decided: "+format, a...)
 }
 

@@ -415,11 +415,16 @@ func (t *DataRecv) getMetadata() []object.KVInstall {
 	return l
 }
 
+// DatastoreList returns the datastores the resource installs from, each once,
+// in the order the install lines and references name them first: several
+// lines installing from the same datastore name it once.
 func (t *DataRecv) DatastoreList(_ context.Context) naming.Paths {
 	files := t.getMetadata()
-	l := make(naming.Paths, len(files))
-	for i, f := range files {
-		l[i] = f.FromStore
+	l := make(naming.Paths, 0, len(files))
+	for _, f := range files {
+		if !slices.Contains(l, f.FromStore) {
+			l = append(l, f.FromStore)
+		}
 	}
 	return l
 }

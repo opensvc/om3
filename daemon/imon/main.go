@@ -153,6 +153,11 @@ type (
 		// an orchestration process that was prematurely aborted.
 		orchestrationAborted *msgbus.ObjectOrchestrationEnd
 
+		// endWithDeletion holds the end of the orchestration back until the
+		// instance monitor is deleted, as a purge that deleted the instance
+		// asks, see purgedFromDeleted.
+		endWithDeletion bool
+
 		drainDuration time.Duration
 
 		updateLimiter *rate.Limiter
@@ -217,6 +222,11 @@ type (
 		// it already runs elsewhere, and the window closes with it, so a peer
 		// instance going down hours later is not a reason to start here.
 		isBootStartPending bool
+
+		// bootStartWaitSince is when the boot start decision began
+		// waiting for a peer instance to end what it was doing, zero when
+		// it is not waiting.
+		bootStartWaitSince time.Time
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -463,6 +473,8 @@ func (t *Manager) worker(initialNodes []string) {
 
 		// a last chance to publish any pending aborted orchestration
 		t.publishOrchestrationAborted()
+
+		t.abortPendingNotEndedByDeletion()
 
 		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost, OrchestrationEnd: t.orchestrationPending}, t.pubLabels...)
 

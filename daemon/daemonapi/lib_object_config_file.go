@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -36,7 +37,13 @@ import (
 // the daemon learns of an object a moment after its configuration is
 // written, and a provision asked in that moment was told the object did not
 // exist.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown bool) error {
+//
+// With flagStopped, as a creation asks of an object the daemon would start
+// on its own, the instance is flagged stopped on this node before the
+// configuration lands, which the daemon acts on, by the write that lands
+// alone, under the lock of the file: a write refused, by a check or by
+// another write landing first, leaves the flag as it found it.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown, flagStopped bool) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -70,6 +77,25 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		// write and the wait.
 		sub = a.subscribeConfigPropagation(fmt.Sprintf("api.write_object_config_file %s %s", p, ctx.Get("uuid")), p)
 		defer func() { _ = sub.Stop() }()
+	}
+	if flagStopped {
+		base = base.landing(func() (func(bool), error) {
+			raised, err := flagfile.Raise(p.StoppedFile())
+			if raised == nil {
+				return nil, err
+			}
+			done := func(landed bool) {
+				if landed {
+					_ = raised.Keep()
+				} else if err := raised.Lower(); err != nil {
+					LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: the configuration was not written, and the stopped flag set for it is kept: %s", p, err)
+				}
+			}
+			if err != nil {
+				return done, fmt.Errorf("flag the instance stopped: %w", err)
+			}
+			return done, nil
+		})
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := base.commit(configurer.Config(), configurer.Config().RecommitInvalid); errors.Is(err, ErrConfigChanged) {

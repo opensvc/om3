@@ -27,6 +27,9 @@ type (
 	Base struct {
 		data   []byte
 		exists bool
+
+		// landing is run as the write lands, see Landing.
+		landing func() (done func(landed bool), err error)
 	}
 )
 
@@ -52,6 +55,22 @@ func ReadBase(p string) (Base, error) {
 		return Base{}, err
 	}
 	return Base{data: data, exists: true}, nil
+}
+
+// Exists says whether the configuration file existed when the base was read.
+func (t Base) Exists() bool {
+	return t.exists
+}
+
+// Landing returns the base with fn run as the write lands: under the lock of
+// the file, once the file is found to be the base, before it is replaced.
+// What fn does is then done by the write that lands alone, never by one
+// refused, as one losing a race with another. An error of fn refuses the
+// write. done, if any, is run once the write is over, saying whether the
+// file was replaced, on an error of fn too, for what fn did before failing.
+func (t Base) Landing(fn func() (done func(landed bool), err error)) Base {
+	t.landing = fn
+	return t
 }
 
 // SetBase makes the next write of the configuration land only over base,
@@ -97,6 +116,23 @@ func install(src, dst string, base *Base) error {
 		}
 		if current.exists != base.exists || !bytes.Equal(current.data, base.data) {
 			return fmt.Errorf("%w: %s", ErrConfigChanged, dst)
+		}
+		if base.landing != nil {
+			done, err := base.landing()
+			if err != nil {
+				if done != nil {
+					done(false)
+				}
+				return err
+			}
+			err = os.Rename(src, dst)
+			if done != nil {
+				done(err == nil)
+			}
+			if err != nil {
+				return err
+			}
+			return file.Sync(dst)
 		}
 	}
 	if err := os.Rename(src, dst); err != nil {

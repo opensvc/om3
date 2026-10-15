@@ -3005,6 +3005,9 @@ type InQueryResourceFileName = string
 // InQueryResourceFileRid defines model for inQueryResourceFileRid.
 type InQueryResourceFileRid = string
 
+// InQueryRestore defines model for inQueryRestore.
+type InQueryRestore = bool
+
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
 
@@ -4333,6 +4336,14 @@ type PostObjectConfigFileParams struct {
 	// The hold is bounded: past it, the request is answered 408, the object
 	// created all the same, as a wait that expires.
 	WaitLocal *WaitLocal `form:"wait_local,omitempty" json:"wait_local,omitempty"`
+
+	// Restore Keep what the configuration recorded of the thing it was made for:
+	// the id the object was created with, and the identifiers of the things
+	// it holds, as when the object is restored from a configuration saved
+	// from it.
+	Restore *InQueryRestore `form:"restore,omitempty" json:"restore,omitempty"`
+	Set     *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+	Force   *InQueryForce   `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PutObjectConfigFileParams defines parameters for PutObjectConfigFile.

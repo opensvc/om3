@@ -43,9 +43,11 @@ func (t T) Get(s string) (interface{}, error) {
 	case "cpu_threads":
 		return si.CPU.Threads, nil
 	case "cpu_cores":
-		return si.CPU.Cores, nil
+		topo, err := readCPUTopology()
+		return topo.cores, err
 	case "cpu_dies":
-		return si.CPU.Cpus, nil
+		topo, err := readCPUTopology()
+		return topo.dies, err
 	case "os_vendor":
 		return newOSProbe("/").Vendor(), nil
 	case "os_release":
@@ -60,7 +62,7 @@ func (t T) Get(s string) (interface{}, error) {
 		sysname, _, _, err := uname()
 		return sysname, err
 	case "serial":
-		return si.Product.Serial, nil
+		return serial(), nil
 	case "sp_version":
 		return "", ErrNotImpl
 	case "enclosure":

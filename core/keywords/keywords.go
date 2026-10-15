@@ -641,6 +641,12 @@ func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of stri
 		// not get it.
 		fprintProp("recorded", "written when what it names is made, and reset when the object is cloned")
 	}
+	if t.Provisioning {
+		// Said as what it means for the writer of a configuration: the
+		// value is read by the provision alone, and setting it on a
+		// container has the provision create what the resource names.
+		fprintProp("provision", "used only by the provision of the resource")
+	}
 	if t.StopToChange {
 		// Said as what it means for the writer of a change: when it is
 		// refused, and what to do.
