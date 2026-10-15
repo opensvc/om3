@@ -62,6 +62,20 @@ func WithVolatile(s bool) funcopt.O {
 	})
 }
 
+// WithStaticReferences has the object evaluate its configuration from the
+// configuration alone: a reference evaluating only at run time, as what
+// another resource exposes or the head of a volume, is an error
+// ErrRuntimeReference rather than something run.
+func WithStaticReferences() funcopt.O {
+	return funcopt.F(func(t any) error {
+		if o, ok := t.(*core); ok {
+			o.staticReferences = true
+			return nil
+		}
+		return fmt.Errorf("WithStaticReferences() is not supported on %v", t)
+	})
+}
+
 // WithLogger let the factory user decide what kind of logging he wants
 func WithLogger(s *plog.Logger) funcopt.O {
 	return funcopt.F(func(t any) error {

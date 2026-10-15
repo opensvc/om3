@@ -68,6 +68,8 @@ func prepareConfigUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, dele
 		return nil, err
 	} else if err := stopToChange(ctx, p, b, force); err != nil {
 		return nil, err
+	} else if err := refuseHoldConflicts(ctx, p, b, configScope(p, oc), force); err != nil {
+		return nil, err
 	}
 	if alerts, err := oc.Config().Validate(); err != nil {
 		log.Tracef("configuration validation for object %s: %s", p, err)

@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -416,7 +417,30 @@ func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 	return strings.Join(ls, " "), nil
 }
 
+// ErrRuntimeReference is a reference evaluating only at run time, refused by
+// an object evaluating its configuration from the configuration alone.
+var ErrRuntimeReference = errors.New("the reference evaluates only at run time")
+
+// isRuntimeReference says whether ref evaluates only at run time: what a
+// resource exposes, the head of a volume, a pool's space, a dns lookup.
+func isRuntimeReference(ref string) bool {
+	switch {
+	case ref == "dnsnodes":
+		return true
+	case strings.Contains(ref, ".exposed_devs"):
+		return true
+	case strings.HasSuffix(ref, ".capacity"), strings.HasSuffix(ref, ".free"):
+		return true
+	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
+		return true
+	}
+	return false
+}
+
 func (t *core) Dereference(ref string) (string, error) {
+	if t.staticReferences && isRuntimeReference(ref) {
+		return ref, fmt.Errorf("%w: %s", ErrRuntimeReference, ref)
+	}
 	switch ref {
 	case "id":
 		return t.ID().String(), nil

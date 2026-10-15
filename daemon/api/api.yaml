@@ -5692,6 +5692,10 @@ paths:
         former one set up. Stop the resource first. With force, root writes
         it all the same, as to undo a change that left a resource that
         cannot be stopped.
+
+        A change giving a resource a value another object's resources hold
+        on the same node is answered 409, naming them. With force, root
+        writes it all the same.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5791,6 +5795,11 @@ paths:
         An object the daemon would start on its own, orchestrate ha or start,
         is flagged stopped on this node, so it does not start before anything
         is asked of it.
+
+        A configuration whose resources would hold a value another object's
+        resources hold on the same node, a mount point, a block device, a
+        volume group name, an address, is answered 409, naming them. With
+        force, root writes it all the same.
 
         An object that exists is refused, unless force, which replaces its
         configuration as a creation does, with the checks of an update.

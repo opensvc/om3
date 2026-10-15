@@ -75,7 +75,7 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	log.Tracef("%s: rbac passed", p)
 
 	if exists {
-		if err := stopToChange(ctx, p, body, false); err != nil {
+		if err := stopToChange(ctx, p, body, force); err != nil {
 			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 		}
 	}
@@ -88,5 +88,5 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 		flagStopped = true
 	}
 	waitLocal := params.WaitLocal != nil && *params.WaitLocal
-	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal, flagStopped)
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal, force, flagStopped)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/util/deepcopy"
@@ -55,6 +56,13 @@ type (
 		// claim reads what a namespace holds, and a claim is weighed when a
 		// configuration is written, before anything runs.
 		Claims map[string]int64 `json:"claims,omitempty"`
+
+		// Holds are the values the resources of the object hold on the
+		// node publishing the configuration, or on every cluster node for
+		// a shared resource: mount points, block devices, volume group
+		// names, addresses. A configuration written is refused when it
+		// holds one of them on the same node.
+		Holds []resource.ObjectHold `json:"holds,omitempty"`
 
 		// IsDisabled is true when DEFAULT.disable is true
 		IsDisabled bool `json:"is_disabled"`
@@ -169,6 +177,7 @@ func (cfg *ActorConfig) DeepCopy() *ActorConfig {
 	newCfg.HardAntiAffinity = deepcopy.Slice(cfg.HardAntiAffinity)
 	newCfg.SoftAffinity = deepcopy.Slice(cfg.SoftAffinity)
 	newCfg.SoftAntiAffinity = deepcopy.Slice(cfg.SoftAntiAffinity)
+	newCfg.Holds = deepcopy.Any(cfg.Holds)
 	if cfg.Flex != nil {
 		flex := *cfg.Flex
 		newCfg.Flex = &flex

@@ -314,15 +314,24 @@ func (t *BT) ContainerName() string {
 	if t.Name != "" {
 		return t.Name
 	}
+	return containerName("", t.Path, t.ResourceID.String())
+}
+
+// containerName returns name, or the name of the container of the resource
+// rid of the object at p when name is empty: <namespace>..<name>.<rid>, the
+// rid's # turned into a dot.
+func containerName(name string, p naming.Path, rid string) string {
+	if name != "" {
+		return name
+	}
 	var s string
-	switch t.Path.Namespace {
+	switch p.Namespace {
 	case naming.NsRoot, "":
 		s = ""
 	default:
-		s = t.Path.Namespace + ".."
+		s = p.Namespace + ".."
 	}
-	s = s + t.Path.Name + "." + strings.ReplaceAll(t.ResourceID.String(), "#", ".")
-	return s
+	return s + p.Name + "." + strings.ReplaceAll(rid, "#", ".")
 }
 
 func (t *BT) ContainerInspect(ctx context.Context) (Inspecter, error) {

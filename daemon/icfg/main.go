@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceset"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -448,6 +449,7 @@ func (t *Manager) configFileCheck() error {
 				cfg.ActorConfig.Claims = claims
 			}
 		}
+		cfg.ActorConfig.Holds = t.getHolds()
 		for _, e := range actor.Schedules() {
 			cfg.ActorConfig.Schedules = append(cfg.ActorConfig.Schedules, e.Config)
 		}
@@ -539,6 +541,18 @@ func (t *Manager) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
 		}
 	}
 	return m
+}
+
+// getHolds returns the values the resources of the object hold on this node,
+// evaluated from the configuration alone: what references a resource's run
+// time state, as its exposed devices, is held by that resource.
+func (t *Manager) getHolds() []resource.ObjectHold {
+	oc, err := object.NewConfigurer(t.path, object.WithVolatile(true), object.WithStaticReferences())
+	if err != nil {
+		t.log.Warnf("holds: %s", err)
+		return nil
+	}
+	return object.Holds(t.path, oc, []string{t.localhost})
 }
 
 func (t *Manager) getResources(cf *xconfig.T) instance.ResourceConfigs {
