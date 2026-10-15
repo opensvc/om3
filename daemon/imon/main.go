@@ -217,6 +217,11 @@ type (
 		// it already runs elsewhere, and the window closes with it, so a peer
 		// instance going down hours later is not a reason to start here.
 		isBootStartPending bool
+
+		// bootStartWaitSince is when the boot start decision began
+		// waiting for a peer instance to end what it was doing, zero when
+		// it is not waiting.
+		bootStartWaitSince time.Time
 	}
 
 	// cmdOrchestrate can be used from post action go routines
