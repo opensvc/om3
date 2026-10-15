@@ -341,6 +341,11 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     Root writes it all the same with `--force`. The api answers 409, titled
     "Held by another object".
 
+    A disabled object holds nothing: stopping and disabling an object frees
+    its holds for an object restored under another name, or in place of a
+    receiver of its replicated data. Enabling it is refused while another
+    holds them.
+
 * **A provision checks every node first**
 
     Before any node provisions an object, every node checks that nothing on
@@ -370,8 +375,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     A change of a keyword saying what a resource holds on a node once
     started, as the `mnt` or `dev` of a fs, the address, `dev`, `netns` or
     `network` of an ip, the `name` of a volume group or a container, a change
-    of the type of a resource, or the removal of its section, is refused
-    while the resource is up on a node, by root too. v2 accepted it, and the
+    of the type of a resource, its disable, or the removal of its section, is
+    refused while the resource is up on a node, by root too. v2 accepted it, and the
     stop of the resource then acted on the new value, leaving the former
     mount, address or device on the node.
 
