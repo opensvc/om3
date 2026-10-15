@@ -327,6 +327,34 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
       
     These driver group names were already deprecated in v2.1.
 
+* **A configuration holding what another object holds is refused**
+
+    A configuration written, by a create, a deploy, a clone, an edit or an
+    update, is refused when one of its resources would hold what a resource
+    of another object holds on the same node: a mount point, a block device,
+    a volume group or logical volume, a zpool, an md array, a container name,
+    an ip address. A resource `shared = true` holds its values on every node
+    of the cluster, a resource `shared = false` on the nodes they evaluate to
+    them on. The resources up also say the devices they were found holding.
+    v2 accepted it, and the provision of the clone took what the source held.
+
+    Root writes it all the same with `--force`. The api answers 409, titled
+    "Held by another object".
+
+* **A provision checks every node first**
+
+    Before any node provisions an object, every node checks that nothing on
+    it holds what the provision would take: a filesystem mounted on a mount
+    point, a device in use or holding a signature, a volume group, a zpool or
+    an md array of the name, an address that answers. A conflict ends the
+    orchestration as a provision failure, with nothing provisioned. v2
+    adopted what it found, and formatted a device not recognized.
+
+    `--adopt` takes over what the provision finds, and `--restore` on a
+    create or a deploy implies it. What a provision made is recorded, and not
+    checked again: an object provisioned before this version may be refused
+    a new provision for what it holds itself, and `--adopt` once records it.
+
 * **Create and deploy go through the api**
 
     `om <path> create` and `om <path> deploy` send the configuration to the
