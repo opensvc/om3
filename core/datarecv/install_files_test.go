@@ -170,3 +170,28 @@ func TestAFileWrittenInPlaceIsLeft(t *testing.T) {
 	assert.FileExists(t, b, "not the file installed")
 	assert.FileExists(t, filepath.Join(head, "conf.d/a.cfg"))
 }
+
+// The datastores a resource installs from are said once each, whatever the
+// number of lines installing from them.
+func TestDatastoreListNamesEachOnce(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+
+	p := naming.Path{Name: "gw", Kind: naming.KindSvc, Namespace: naming.NsRoot}
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\nnodes = "+hostname.Hostname()+"\n"), 0600))
+	o, err := object.NewCore(p)
+	require.NoError(t, err)
+	recv := &DataRecv{to: headReceiver{o: o, head: t.TempDir()}, Install: []string{
+		"/a.conf", "from", "./cfg/gw", "key", "a.conf",
+		"/b.conf", "from", "./cfg/gw", "key", "b.conf",
+		"/c.pem", "from", "./sec/gw", "key", "c.pem",
+	}}
+	l := recv.DatastoreList(context.Background())
+	assert.Equal(t, naming.Paths{
+		{Name: "gw", Kind: naming.KindCfg, Namespace: naming.NsRoot},
+		{Name: "gw", Kind: naming.KindSec, Namespace: naming.NsRoot},
+	}, l)
+}
