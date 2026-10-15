@@ -45,7 +45,10 @@ func Exclusive(ctx context.Context, path string) (func(), error) {
 			return nil, fmt.Errorf("lock %s: %w", path, err)
 		}
 		if acquired {
-			return func() { _ = f.Close() }, nil
+			return func() {
+				releaseExclusive(f)
+				_ = f.Close()
+			}, nil
 		}
 		select {
 		case <-ctx.Done():
