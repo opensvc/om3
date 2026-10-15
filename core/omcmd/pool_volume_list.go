@@ -38,7 +38,7 @@ func (t *CmdPoolVolumeList) Run() error {
 			lines[i] = commoncmd.NewPoolVolumeLine(item)
 		}
 		return output.Renderer{
-			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHARGES:charges_text,CHILDREN:children[*],IS_ORPHAN:is_orphan",
+			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:bin_size,CHARGES:charges_text,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,
 			Sort:          t.Sort,
 			Color:         t.Color,
