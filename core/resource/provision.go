@@ -14,6 +14,24 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
+type provisionCreatesKey struct{}
+
+// WithProvisionCreates says, to the preflight of a resource, whether its
+// configuration sets a keyword used only to provision it, as a template or a
+// virt-install command: its provision creates what it names, and what exists
+// of that name is not its own. A resource setting none takes over what exists,
+// as a virtual machine defined by a sysadmin it is configured on.
+func WithProvisionCreates(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, provisionCreatesKey{}, v)
+}
+
+// ProvisionCreates says whether the provision of the resource creates what it
+// names, as WithProvisionCreates set it.
+func ProvisionCreates(ctx context.Context) bool {
+	v, _ := ctx.Value(provisionCreatesKey{}).(bool)
+	return v
+}
+
 // ProvisionPreflighter is implemented by the drivers that can tell, before
 // their resource is provisioned, that something on the node holds what the
 // provision would take: a filesystem mounted on the mount point, a volume

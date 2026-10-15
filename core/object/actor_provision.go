@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -189,7 +190,8 @@ func (t *actor) lockedProvisionPreflight(ctx context.Context) error {
 		if resource.ProvisionRecorded(r) {
 			continue
 		}
-		for _, msg := range p.ProvisionConflicts(ctx) {
+		rctx := resource.WithProvisionCreates(ctx, setsProvisioningKeyword(t.config, r))
+		for _, msg := range p.ProvisionConflicts(rctx) {
 			conflicts = append(conflicts, fmt.Sprintf("%s: %s", r.RID(), msg))
 		}
 	}
@@ -201,4 +203,23 @@ func (t *actor) lockedProvisionPreflight(ctx context.Context) error {
 		t.log.Errorf("provision preflight: %s", msg)
 	}
 	return fmt.Errorf("%w: %s: provision with --adopt to take them over", ErrProvisionConflict, strings.Join(conflicts, "; "))
+}
+
+// setsProvisioningKeyword says whether the configuration sets, for the
+// resource, a keyword its driver uses only to provision it, as a template or a
+// virt-install command: its provision then creates what the resource names.
+func setsProvisioningKeyword(cfg *xconfig.T, r resource.Driver) bool {
+	options := make(map[string]bool)
+	for _, kw := range r.Manifest().Keywords() {
+		if kw.Provisioning {
+			options[kw.Option] = true
+		}
+	}
+	for _, name := range cfg.Keys(r.RID()) {
+		option, _, _ := strings.Cut(name, "@")
+		if options[option] {
+			return true
+		}
+	}
+	return false
 }
