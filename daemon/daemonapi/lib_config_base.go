@@ -41,6 +41,13 @@ func readConfigBase(p naming.Path) (configBase, error) {
 	return configBase{p: p, base: base}, nil
 }
 
+// landing returns the base with fn run as the write lands, under the lock
+// of the file, as xconfig.Base.Landing says.
+func (t configBase) landing(fn func() (undo func(), err error)) configBase {
+	t.base = t.base.Landing(fn)
+	return t
+}
+
 // commit runs the write of cfg, landing only over the base.
 func (t configBase) commit(cfg *xconfig.T, write func() error) error {
 	cfg.SetBase(t.base)

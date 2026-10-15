@@ -40,9 +40,9 @@ import (
 //
 // With flagStopped, as a creation asks of an object the daemon would start
 // on its own, the instance is flagged stopped on this node before the
-// configuration lands, which the daemon acts on, and after every check that
-// can refuse it, so a refused write leaves no flag behind. A flag raised
-// before the request is left as it was.
+// configuration lands, which the daemon acts on, by the write that lands
+// alone, under the lock of the file: a write refused, by a check or by
+// another write landing first, leaves the flag as it found it.
 func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown, flagStopped bool) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
@@ -78,23 +78,26 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		sub = a.subscribeConfigPropagation(fmt.Sprintf("api.write_object_config_file %s %s", p, ctx.Get("uuid")), p)
 		defer func() { _ = sub.Stop() }()
 	}
-	unflag := func() {}
-	if stoppedFile := p.StoppedFile(); flagStopped && !file.Exists(stoppedFile) {
-		if err := flagfile.Set(stoppedFile); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Flag the instance stopped", "%s", err)
-		}
-		unflag = func() {
-			if err := flagfile.Unset(stoppedFile); err != nil {
-				LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: the configuration was not written, and the stopped flag set for it is kept: %s", p, err)
+	if flagStopped {
+		base = base.landing(func() (func(), error) {
+			stoppedFile := p.StoppedFile()
+			if file.Exists(stoppedFile) {
+				return nil, nil
 			}
-		}
+			if err := flagfile.Set(stoppedFile); err != nil {
+				return nil, fmt.Errorf("flag the instance stopped: %w", err)
+			}
+			return func() {
+				if err := flagfile.Unset(stoppedFile); err != nil {
+					LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: the configuration was not written, and the stopped flag set for it is kept: %s", p, err)
+				}
+			}, nil
+		})
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := base.commit(configurer.Config(), configurer.Config().RecommitInvalid); errors.Is(err, ErrConfigChanged) {
-		unflag()
 		return JSONProblemf(ctx, http.StatusConflict, "Commit", "%s", err)
 	} else if err != nil {
-		unflag()
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 	a.announceConfigFileWritten(p)

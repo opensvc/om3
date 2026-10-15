@@ -68,6 +68,47 @@ func TestInstallOverBase(t *testing.T) {
 
 // The lock of a configuration file is kept out of the directory the daemon
 // watches.
+// What a write does as it lands is done by the write that lands alone: two
+// writes racing over the same base, the one refused does nothing, and the
+// one whose file is not replaced after all undoes it.
+func TestInstallLanding(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "foo.conf")
+	newSrc := func() string {
+		src := filepath.Join(dir, ".foo.conf.tmp")
+		require.NoError(t, os.WriteFile(src, []byte("[DEFAULT]\n"), 0600))
+		return src
+	}
+	var landed, undone int
+	landing := func() (func(), error) {
+		landed++
+		return func() { undone++ }, nil
+	}
+
+	first, err := ReadBase(dst)
+	require.NoError(t, err)
+	second, err := ReadBase(dst)
+	require.NoError(t, err)
+	firstLanding, secondLanding := first.Landing(landing), second.Landing(landing)
+	require.NoError(t, install(newSrc(), dst, &firstLanding))
+	assert.Equal(t, 1, landed, "the write landing runs it")
+	assert.ErrorIs(t, install(newSrc(), dst, &secondLanding), ErrConfigChanged)
+	assert.Equal(t, 1, landed, "the write refused does not run it")
+	assert.Equal(t, 0, undone)
+
+	base, err := ReadBase(dst)
+	require.NoError(t, err)
+	base = base.Landing(landing)
+	assert.Error(t, install(filepath.Join(dir, "missing"), dst, &base))
+	assert.Equal(t, 2, landed)
+	assert.Equal(t, 1, undone, "the write whose file is not replaced undoes it")
+
+	base, err = ReadBase(dst)
+	require.NoError(t, err)
+	base = base.Landing(func() (func(), error) { return nil, os.ErrPermission })
+	assert.ErrorIs(t, install(newSrc(), dst, &base), os.ErrPermission, "an error of the landing refuses the write")
+}
+
 func TestInstallLockPath(t *testing.T) {
 	saved := rawconfig.Paths
 	t.Cleanup(func() { rawconfig.Paths = saved })
