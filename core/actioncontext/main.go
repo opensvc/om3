@@ -22,6 +22,8 @@ const (
 	forceAffinityKey
 	interruptSyncsKey
 	leaderKey
+	preflightKey
+	adoptKey
 	lockTimeoutKey
 	lockTimeoutSetKey
 	lockDisabledKey
@@ -445,4 +447,31 @@ func WithoutResourceSelector(ctx context.Context) context.Context {
 	ctx = WithTag(ctx, "")
 	ctx = WithSubset(ctx, "")
 	return WithTo(ctx, "")
+}
+
+// WithPreflight has a provision check only that nothing on the node holds
+// what it would take, provisioning nothing.
+func WithPreflight(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, preflightKey, v)
+}
+
+func IsPreflight(ctx context.Context) bool {
+	if i := ctx.Value(preflightKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+// WithAdopt has a provision take over the system resources it finds holding
+// what it would take, as replicated storage a restored object finds, rather
+// than refuse them.
+func WithAdopt(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, adoptKey, v)
+}
+
+func IsAdopt(ctx context.Context) bool {
+	if i := ctx.Value(adoptKey); i != nil {
+		return i.(bool)
+	}
+	return false
 }

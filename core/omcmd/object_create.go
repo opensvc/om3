@@ -38,6 +38,7 @@ type (
 		Provision bool
 		WaitLocal bool
 		Restore   bool
+		Adopt     bool
 		Force     bool
 		Namespace string
 
@@ -146,6 +147,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 			OptsGlobal: t.OptsGlobal,
 			OptsAsync:  t.OptsAsync,
 			OptsLock:   t.OptsLock,
+			// A restored object finds what it holds, as replicated storage,
+			// and takes it over.
+			Adopt: t.Adopt || t.Restore,
 		}
 		if err := provisionOptions.Run(kind); err != nil {
 			return err

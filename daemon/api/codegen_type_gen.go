@@ -3040,6 +3040,9 @@ type InPathNodeName = string
 // InPathOrchestrationID An orchestration id.
 type InPathOrchestrationID = string
 
+// InQueryAdopt defines model for inQueryAdopt.
+type InQueryAdopt = bool
+
 // InQueryAllSlaves Act on all encap instances, and don't act on the host instance if not asked for explicitely.
 type InQueryAllSlaves = bool
 
@@ -3135,6 +3138,9 @@ type Origins = []string
 
 // InQueryPoolName defines model for inQueryPoolName.
 type InQueryPoolName = string
+
+// InQueryPreflight defines model for inQueryPreflight.
+type InQueryPreflight = bool
 
 // RID defines model for inQueryRIDOptional.
 type RID = string
@@ -3896,6 +3902,15 @@ type PostInstanceActionProvisionParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+
+	// Adopt Take over the system resources found holding what the provision would
+	// take, as replicated storage a restored object finds, rather than
+	// refusing them.
+	Adopt *InQueryAdopt `form:"adopt,omitempty" json:"adopt,omitempty"`
+
+	// Preflight Check only that nothing on the node holds what the provision would
+	// take, provisioning nothing.
+	Preflight *InQueryPreflight `form:"preflight,omitempty" json:"preflight,omitempty"`
 }
 
 // PostInstanceActionPRStartParams defines parameters for PostInstanceActionPRStart.
@@ -4482,6 +4497,14 @@ type PostObjectActionCapParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
+// PostObjectActionProvisionParams defines parameters for PostObjectActionProvision.
+type PostObjectActionProvisionParams struct {
+	// Adopt Take over the system resources found holding what the provision would
+	// take, as replicated storage a restored object finds, rather than
+	// refusing them.
+	Adopt *InQueryAdopt `form:"adopt,omitempty" json:"adopt,omitempty"`
 }
 
 // PostObjectActionResizeParams defines parameters for PostObjectActionResize.

@@ -1533,7 +1533,7 @@ func (t *App) actionProvision(paths map[string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		_, _ = t.client.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 

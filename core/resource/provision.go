@@ -14,6 +14,17 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
+// ProvisionPreflighter is implemented by the drivers that can tell, before
+// their resource is provisioned, that something on the node holds what the
+// provision would take: a filesystem mounted on the mount point, a volume
+// group of the name, a device in use. The provision would otherwise adopt
+// it, or format it.
+type ProvisionPreflighter interface {
+	// ProvisionConflicts returns what holds what the resource would
+	// take, empty when nothing does.
+	ProvisionConflicts(ctx context.Context) []string
+}
+
 type (
 	LeaderUnprovisioner interface {
 		UnprovisionAsLeader(context.Context) error
@@ -77,7 +88,10 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 	Setenv(r)
 	if r.IsActionDisabled() {
 		r.Log().Infof("skip provision (noaction tag), just set the provisioned state")
-		return setProvisionedValue(true, r)
+		if err := setProvisionedValue(true, r); err != nil {
+			return err
+		}
+		return setProvisionRecorded(true, r)
 	}
 	if r.IsProvisionDisabled() {
 		if prov, err := Provisioned(ctx, r); err != nil {
@@ -119,7 +133,10 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 	Setenv(r)
 	if r.IsActionDisabled() {
 		r.Log().Infof("skip unprovision (noaction tag), just set the unprovisioned state")
-		return setProvisionedValue(false, r)
+		if err := setProvisionedValue(false, r); err != nil {
+			return err
+		}
+		return setProvisionRecorded(false, r)
 	}
 	if r.IsUnprovisionDisabled() {
 		if prov, err := Provisioned(ctx, r); err != nil {
@@ -161,6 +178,9 @@ func provision(ctx context.Context, t Driver, leader bool) error {
 		return err
 	}
 	if err := setProvisionedValue(true, t); err != nil {
+		return err
+	}
+	if err := setProvisionRecorded(true, t); err != nil {
 		return err
 	}
 	if err := startLeader(ctx, t, leader); err != nil {
@@ -228,6 +248,9 @@ func unprovision(ctx context.Context, t Driver, leader bool) error {
 		return err
 	}
 	if err := setProvisionedValue(false, t); err != nil {
+		return err
+	}
+	if err := setProvisionRecorded(false, t); err != nil {
 		return err
 	}
 	return nil
@@ -328,6 +351,39 @@ func getProvisionedValue(r Driver) (bool, error) {
 	return v, nil
 }
 
+// provisionRecordedFile is the file telling a provision made, or declared,
+// the resource on this node.
+//
+// The provisioned state cache does not: the first status of a resource reads
+// whether what it names exists, and a volume group of its name, made by
+// something else, is found provisioned. Only what a provision made is the
+// resource's own.
+func provisionRecordedFile(t Driver) string {
+	return filepath.Join(t.VarDir(), "provision_recorded")
+}
+
+// ProvisionRecorded says whether a provision made the resource on this node,
+// or a sysadmin declared it with a provision --state-only: what it holds is
+// its own, and not something else's a provision would adopt.
+func ProvisionRecorded(r Driver) bool {
+	_, err := os.Stat(provisionRecordedFile(r))
+	return err == nil
+}
+
+func setProvisionRecorded(v bool, r Driver) error {
+	p := provisionRecordedFile(r)
+	if !v {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(p), os.ModePerm); err != nil {
+		return err
+	}
+	return os.WriteFile(p, []byte(time.Now().Format(time.RFC3339Nano)+"\n"), 0644)
+}
+
 func setProvisionedValue(v bool, r Driver) error {
 	p := provisionedFile(r)
 	d := filepath.Dir(p)
@@ -353,13 +409,31 @@ func SetProvisioned(ctx context.Context, r Driver) error {
 	if err := setProvisionedValue(true, r); err != nil {
 		return err
 	}
+	if err := setProvisionRecorded(true, r); err != nil {
+		return err
+	}
 	r.Log().Infof("set provisioned")
+	return nil
+}
+
+// SetProvisionedFound records the resource provisioned because its status
+// found it up, which does not tell a provision made it: a filesystem mounted
+// on its mount point by something else is found up. The provision of the
+// resource is not recorded, so a provision checks what it holds.
+func SetProvisionedFound(ctx context.Context, r Driver) error {
+	if err := setProvisionedValue(true, r); err != nil {
+		return err
+	}
+	r.Log().Infof("set provisioned: found up")
 	return nil
 }
 
 // SetUnprovisioned removes the flag file in the resource var dir to forget that the provision is done.
 func SetUnprovisioned(ctx context.Context, r Driver) error {
 	if err := setProvisionedValue(false, r); err != nil {
+		return err
+	}
+	if err := setProvisionRecorded(false, r); err != nil {
 		return err
 	}
 	r.Log().Infof("set unprovisioned")

@@ -271,6 +271,17 @@ func FlagConfigForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "write a change a resource up would leak by, as a new mount point or the removal of its section, or a value another object's resources hold (requires the root grant)")
 }
 
+// FlagAdopt is the adoption by a provision of the system resources it finds
+// holding what it would take.
+func FlagAdopt(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "adopt", false, "take over the system resources found holding what the provision would take, as replicated storage a restored object finds, rather than refusing them")
+}
+
+// FlagPreflight is the check alone of what a provision would take.
+func FlagPreflight(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "preflight", false, "check only that nothing on the node holds what the provision would take, provisioning nothing")
+}
+
 func FlagIgnoreNotFound(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "ignore-not-found", false, "allow empty object selections")
 }

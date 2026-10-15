@@ -3042,6 +3042,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagProvision(flags, &options.Provision)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
@@ -3090,6 +3091,7 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	commoncmd.FlagCreateNamespace(flags, &options.Namespace)
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
@@ -3388,6 +3390,8 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagStateOnly(flags, &options.StateOnly)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
+	commoncmd.FlagPreflight(flags, &options.Preflight)
 	return cmd
 }
 
@@ -3709,6 +3713,7 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 

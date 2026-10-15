@@ -25,6 +25,7 @@ type (
 		Interactive bool
 		Provision   bool
 		Restore     bool
+		Adopt       bool
 		Force       bool
 		Namespace   string
 
@@ -89,6 +90,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		provisionOptions := CmdObjectProvision{
 			OptsGlobal: t.OptsGlobal,
 			OptsAsync:  t.OptsAsync,
+			// A restored object finds what it holds, as replicated storage,
+			// and takes it over.
+			Adopt: t.Adopt || t.Restore,
 		}
 		if err := provisionOptions.Run(kind); err != nil {
 			return err

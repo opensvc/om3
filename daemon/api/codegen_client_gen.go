@@ -562,7 +562,7 @@ type ClientInterface interface {
 	PostObjectActionGiveback(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionProvision request
-	PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionPurge request
 	PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2620,8 +2620,8 @@ func (c *Client) PostObjectActionGiveback(ctx context.Context, namespace InPathN
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectActionProvisionRequest(c.Server, namespace, kind, name)
+func (c *Client) PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionProvisionRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -9161,6 +9161,30 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 
 		}
 
+		if params.Adopt != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "adopt", *params.Adopt, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Preflight != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "preflight", *params.Preflight, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -14210,7 +14234,7 @@ func NewPostObjectActionGivebackRequest(server string, namespace InPathNamespace
 }
 
 // NewPostObjectActionProvisionRequest generates requests for PostObjectActionProvision
-func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14247,6 +14271,33 @@ func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespac
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Adopt != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "adopt", *params.Adopt, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
@@ -17046,7 +17097,7 @@ type ClientWithResponsesInterface interface {
 	PostObjectActionGivebackWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionGivebackResponse, error)
 
 	// PostObjectActionProvisionWithResponse request
-	PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error)
+	PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error)
 
 	// PostObjectActionPurgeWithResponse request
 	PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error)
@@ -24846,8 +24897,8 @@ func (c *ClientWithResponses) PostObjectActionGivebackWithResponse(ctx context.C
 }
 
 // PostObjectActionProvisionWithResponse request returning *PostObjectActionProvisionResponse
-func (c *ClientWithResponses) PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error) {
-	rsp, err := c.PostObjectActionProvision(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error) {
+	rsp, err := c.PostObjectActionProvision(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

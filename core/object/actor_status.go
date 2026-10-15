@@ -308,7 +308,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		if resourceStatus.IsProvisioned.State == provisioned.False {
 			switch resourceStatus.Status {
 			case status.Up, status.StandbyUp:
-				resource.SetProvisioned(ctx, r)
+				resource.SetProvisionedFound(ctx, r)
 				resourceStatus.IsProvisioned.State = provisioned.True
 			}
 		}

@@ -33,6 +33,8 @@ func (t *Manager) orchestrateProvisioned() {
 		t.provisionedFromProvisioned()
 	case instance.MonitorStateProvisionSuccess:
 		t.provisionedFromProvisioned()
+	case instance.MonitorStatePreflightSuccess:
+		t.provisionedFromPreflighted()
 	case instance.MonitorStateWaitLeader:
 		t.provisionedFromWaitLeader()
 	case instance.MonitorStateProvisionFailure:
@@ -62,12 +64,71 @@ func (t *Manager) provisionedFromProvisionFailed() {
 }
 
 func (t *Manager) provisionedFromIdle() {
-	if t.provisionedClearIfReached() {
-		return
-	}
 	if t.setWaitParents() {
 		return
 	}
+	// Every node checks, before any provisions or starts, that nothing on
+	// it holds what the object would take: the leader would otherwise make
+	// what the others would refuse, as a disk, or start what it adopted.
+	//
+	// The check comes before the orchestration tells it is reached: an
+	// instance is found provisioned, and up, when what its resources name
+	// exists, as a filesystem mounted on its mount point by something
+	// else. What a provision made is not checked again, so an instance
+	// its provision made passes, and the orchestration is reached then.
+	if !t.provisionedOptions().Adopt {
+		t.queueAction(t.crmProvisionPreflight, instance.MonitorStatePreflightProgress, instance.MonitorStatePreflightSuccess, instance.MonitorStateProvisionFailure)
+		return
+	}
+	if t.provisionedClearIfReached() {
+		return
+	}
+	t.provisionedFromChecked()
+}
+
+// provisionedFromPreflighted has the leader provision once every node
+// checked, and the others wait for the leader. A node whose check failed ends
+// the orchestration on every node: nothing is provisioned.
+func (t *Manager) provisionedFromPreflighted() {
+	if t.provisionedClearIfReached() {
+		return
+	}
+	for node, instMon := range t.instMonitor {
+		if node != t.localhost && instMon.State == instance.MonitorStateProvisionFailure {
+			t.log.Infof("provision preflight failed on %s: provision nothing", node)
+			t.transitionTo(instance.MonitorStateProvisionFailure)
+			return
+		}
+	}
+	if t.isProvisioningLeader() && !t.arePeersPreflighted() {
+		return
+	}
+	t.provisionedFromChecked()
+}
+
+// arePeersPreflighted says whether every peer instance monitor has checked
+// what the object would take on its node.
+func (t *Manager) arePeersPreflighted() bool {
+	for node, instMon := range t.instMonitor {
+		if node == t.localhost {
+			continue
+		}
+		if !instMon.State.IsOneOf(instance.MonitorStatePreflightSuccess, instance.MonitorStateWaitLeader) {
+			return false
+		}
+	}
+	return true
+}
+
+// provisionedOptions returns the options of the provisioned orchestration.
+func (t *Manager) provisionedOptions() (options instance.MonitorGlobalExpectOptionsProvisioned) {
+	options, _ = t.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsProvisioned)
+	return
+}
+
+// provisionedFromChecked has the leader provision, or start what needs no
+// provision, and the others wait for it.
+func (t *Manager) provisionedFromChecked() {
 	if t.isProvisioningLeader() {
 		if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.NotApplicable, provisioned.True) {
 			t.queueAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)

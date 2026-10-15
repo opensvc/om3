@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
@@ -27,6 +28,7 @@ type (
 		Force           bool
 		Leader          bool
 		NodeSelector    string
+		Adopt           bool
 	}
 )
 
@@ -46,6 +48,7 @@ func (t *CmdObjectProvision) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("provisioned"),
+		objectaction.WithAsyncTargetOptions(instance.MonitorGlobalExpectOptionsProvisioned{Adopt: t.Adopt}),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
@@ -57,6 +60,9 @@ func (t *CmdObjectProvision) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionProvisionParams{}
+			if t.Adopt {
+				params.Adopt = &t.Adopt
+			}
 			if t.Force {
 				v := true
 				params.Force = &v
@@ -125,6 +131,7 @@ func (t *CmdObjectProvision) Run(kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
+			ctx = actioncontext.WithAdopt(ctx, t.Adopt)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
 			return nil, o.Provision(ctx)
 		}),

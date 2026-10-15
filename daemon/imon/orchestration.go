@@ -253,10 +253,12 @@ func (t *Manager) setOrchestrationVerdict() {
 // its state, because a peer only grows a replicated link once every node has
 // grown what is under it. Every node is done by the time this runs, so there
 // is nobody left to tell, and an instance holding the size it was asked for
-// is not something to keep reporting: the size is in the status. A failure
-// stays, as the state of every failed action does.
+// is not something to keep reporting: the size is in the status. So is a node
+// that checked what a provision would take, and saw a peer's check fail. A
+// failure stays, as the state of every failed action does.
 func (t *Manager) clearStateSpokenToPeers() {
-	if t.state.State == instance.MonitorStateResizeSuccess {
+	switch t.state.State {
+	case instance.MonitorStateResizeSuccess, instance.MonitorStatePreflightSuccess:
 		t.state.State = instance.MonitorStateIdle
 	}
 }

@@ -2270,6 +2270,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	commoncmd.FlagProvision(flags, &options.Provision)
 	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
 	flags.BoolVar(&options.WaitLocal, "wait-local", false, "wait for the local daemon to know the object, listed and watched by an instance monitor, for the command run next to find it")
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
@@ -2321,6 +2322,7 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
@@ -3304,6 +3306,8 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.HiddenFlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagStateOnly(flags, &options.StateOnly)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
+	commoncmd.FlagPreflight(flags, &options.Preflight)
 	return cmd
 }
 
@@ -3737,6 +3741,7 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	commoncmd.HiddenFlagLeader(flags, &options.Leader)
 	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 

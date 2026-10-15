@@ -56,6 +56,7 @@ var monitorStatesRunningAction = []instance.MonitorState{
 	instance.MonitorStateBootProgress,
 	instance.MonitorStateCapProgress,
 	instance.MonitorStateDeleteProgress,
+	instance.MonitorStatePreflightProgress,
 	instance.MonitorStateProvisionProgress,
 	instance.MonitorStateResizeProgress,
 	instance.MonitorStateShutdownProgress,

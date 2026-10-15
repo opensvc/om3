@@ -3085,6 +3085,8 @@ paths:
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryAdopt'
+        - $ref: '#/components/parameters/inQueryPreflight'
       responses:
         200:
           content:
@@ -5212,10 +5214,21 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Provision the object on its nodes.
+
+        An object provisioned on none of its nodes is checked first on every
+        node, before any provisions: a system resource holding what a
+        resource of the object would take, a filesystem mounted on its mount
+        point, a volume group of its name, a device in use, ends the
+        orchestration as a provision failure, and nothing is provisioned.
+        With adopt, the provision takes over what it finds, as replicated
+        storage a restored object finds.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAdopt'
       responses:
         200:
           description: OK
@@ -10757,6 +10770,25 @@ components:
       description: |
         Start even where the hard affinities of the object are not satisfied,
         a check force lifts too among the others.
+      schema:
+        type: boolean
+
+    inQueryAdopt:
+      in: query
+      name: adopt
+      description: |
+        Take over the system resources found holding what the provision would
+        take, as replicated storage a restored object finds, rather than
+        refusing them.
+      schema:
+        type: boolean
+
+    inQueryPreflight:
+      in: query
+      name: preflight
+      description: |
+        Check only that nothing on the node holds what the provision would
+        take, provisioning nothing.
       schema:
         type: boolean
 
