@@ -1533,6 +1533,23 @@ func (t *Manager) publishOrchestrationEnded() {
 	}
 }
 
+// abortPendingNotEndedByDeletion marks aborted the pending orchestration the
+// deletion of the instance monitor does not end, before the deletion carries
+// it: only a delete or a purge ends with the instance gone. An orchestration accepted in the moment between the end of
+// a purge and the deletion of its instance monitor did not run, and its
+// requester is told so rather than told it ended.
+func (t *Manager) abortPendingNotEndedByDeletion() {
+	if t.orchestrationPending == nil || t.endWithDeletion {
+		return
+	}
+	switch t.orchestrationPending.GlobalExpect {
+	case instance.MonitorGlobalExpectDeleted, instance.MonitorGlobalExpectPurged:
+		// The monitor can go before it saw the deletion it asked for.
+		return
+	}
+	t.orchestrationPending.Aborted = true
+}
+
 // savePendingOrchestration is called to save any pending accepted orchestration
 // before orchestrationPending resets.
 // Value is saved to orchestrationAborted with Aborted value set to true.

@@ -474,6 +474,8 @@ func (t *Manager) worker(initialNodes []string) {
 		// a last chance to publish any pending aborted orchestration
 		t.publishOrchestrationAborted()
 
+		t.abortPendingNotEndedByDeletion()
+
 		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost, OrchestrationEnd: t.orchestrationPending}, t.pubLabels...)
 
 		go func() {
