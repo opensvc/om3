@@ -75,7 +75,7 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 		if !force {
 			return fmt.Errorf("%s already exists", p)
 		}
-		return replaceObjectConfig(ctx, c, p, b, keywords, restore)
+		return replaceObjectConfig(ctx, c, p, b, params)
 	case http.StatusBadRequest:
 		return fmt.Errorf("%s: %s", p, *resp.JSON400)
 	case http.StatusUnauthorized:
@@ -94,14 +94,12 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 }
 
 // replaceObjectConfig replaces the configuration of the object at p by b,
-// as a create with force does: what b recorded of the thing it was made for
-// is left behind unless restore, as on a creation.
-func replaceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore bool) error {
-	_, b, err := object.CreatedConfig(p, b, restore, keyop.ParseOps(keywords)...)
-	if err != nil {
-		return err
-	}
-	resp, err := c.PutObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil, "application/octet-stream", bytes.NewReader(b))
+// as a create with force does: the daemon gives it the treatment of a
+// creation, and the checks of an update.
+func replaceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams) error {
+	force := true
+	params.Force = &force
+	resp, err := c.PostObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -115,10 +113,10 @@ func replaceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []by
 		return fmt.Errorf("%s: %s", p, *resp.JSON401)
 	case http.StatusForbidden:
 		return fmt.Errorf("%s: %s", p, *resp.JSON403)
-	case http.StatusNotFound:
-		return fmt.Errorf("%s: %s", p, *resp.JSON404)
 	case http.StatusConflict:
 		return fmt.Errorf("%s: %s", p, *resp.JSON409)
+	case http.StatusRequestTimeout:
+		return fmt.Errorf("%s: %s", p, resp.JSON408.Detail)
 	case http.StatusInternalServerError:
 		return fmt.Errorf("%s: %s", p, *resp.JSON500)
 	default:

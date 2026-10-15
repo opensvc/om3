@@ -5609,6 +5609,9 @@ paths:
         An object the daemon would start on its own, orchestrate ha or start,
         is flagged stopped on this node, so it does not start before anything
         is asked of it.
+
+        An object that exists is refused, unless force, which replaces its
+        configuration as a creation does, with the checks of an update.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5617,6 +5620,7 @@ paths:
         - $ref: '#/components/parameters/inQueryWaitLocal'
         - $ref: '#/components/parameters/inQueryRestore'
         - $ref: '#/components/parameters/inQuerySets'
+        - $ref: '#/components/parameters/inQueryForce'
       requestBody:
         description: OK
         content:

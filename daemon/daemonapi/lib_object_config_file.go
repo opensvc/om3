@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -36,7 +37,13 @@ import (
 // the daemon learns of an object a moment after its configuration is
 // written, and a provision asked in that moment was told the object did not
 // exist.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown bool) error {
+//
+// With flagStopped, as a creation asks of an object the daemon would start
+// on its own, the instance is flagged stopped on this node before the
+// configuration lands, which the daemon acts on, and after every check that
+// can refuse it, so a refused write leaves no flag behind. A flag raised
+// before the request is left as it was.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown, flagStopped bool) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -71,10 +78,23 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		sub = a.subscribeConfigPropagation(fmt.Sprintf("api.write_object_config_file %s %s", p, ctx.Get("uuid")), p)
 		defer func() { _ = sub.Stop() }()
 	}
+	unflag := func() {}
+	if stoppedFile := p.StoppedFile(); flagStopped && !file.Exists(stoppedFile) {
+		if err := flagfile.Set(stoppedFile); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Flag the instance stopped", "%s", err)
+		}
+		unflag = func() {
+			if err := flagfile.Unset(stoppedFile); err != nil {
+				LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: the configuration was not written, and the stopped flag set for it is kept: %s", p, err)
+			}
+		}
+	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := base.commit(configurer.Config(), configurer.Config().RecommitInvalid); errors.Is(err, ErrConfigChanged) {
+		unflag()
 		return JSONProblemf(ctx, http.StatusConflict, "Commit", "%s", err)
 	} else if err != nil {
+		unflag()
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 	a.announceConfigFileWritten(p)

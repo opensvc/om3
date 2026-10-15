@@ -6,7 +6,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -31,7 +30,11 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
 	}
-	if len(instance.MonitorData.GetByPath(p)) > 0 {
+	// Forced, the configuration of an object that exists is replaced as a
+	// creation writes it, with the checks of an update.
+	force := params.Force != nil && *params.Force
+	exists := len(instance.MonitorData.GetByPath(p)) > 0
+	if exists && !force {
 		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
 	}
 
@@ -69,24 +72,19 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	log.Tracef("%s: rbac passed", p)
 
+	if exists {
+		if err := stopToChange(ctx, p, body, false); err != nil {
+			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+		}
+	}
+
 	// Flag the instance stopped on purpose if the daemon would start it on
 	// its own, so it does not do so before the operator asked for anything.
-	// The flag is set before the configuration lands, which the daemon acts
-	// on, and taken away if it did not land.
-	stopped := false
+	var flagStopped bool
 	switch oc.Config().GetString(key.Parse("orchestrate")) {
 	case "ha", "start":
-		if err := flagfile.Set(p.StoppedFile()); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Flag the instance stopped", "%s", err)
-		}
-		stopped = true
+		flagStopped = true
 	}
 	waitLocal := params.WaitLocal != nil && *params.WaitLocal
-	err = a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal)
-	if stopped && !p.Exists() {
-		if err := flagfile.Unset(p.StoppedFile()); err != nil {
-			log.Warnf("%s: the configuration was not written, and the stopped flag set for it is kept: %s", p, err)
-		}
-	}
-	return err
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal, flagStopped)
 }

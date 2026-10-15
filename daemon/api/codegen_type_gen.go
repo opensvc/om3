@@ -4343,6 +4343,7 @@ type PostObjectConfigFileParams struct {
 	// from it.
 	Restore *InQueryRestore `form:"restore,omitempty" json:"restore,omitempty"`
 	Set     *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+	Force   *InQueryForce   `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PutObjectConfigFileParams defines parameters for PutObjectConfigFile.

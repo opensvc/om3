@@ -48,5 +48,5 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 	}
 
-	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, false)
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, false, false)
 }
