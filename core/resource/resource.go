@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -298,6 +299,13 @@ type (
 
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
+
+		// Holds are the values the resource holds on the node while up,
+		// as found running rather than as configured: the block devices
+		// it exposes and the ones it is made on, as a filesystem on the
+		// device another resource exposes. A configuration holding one
+		// of them on this node is refused.
+		Holds []Hold `json:"holds,omitempty"`
 
 		// Files exposes the list of files the driver wants the daemon to replicate
 		// from the primary instance to secondary instances.
@@ -1483,6 +1491,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Files:      getFiles(ctx, r),
 		Datastores: getDatastores(ctx, r),
 		Volumes:    getVolumes(ctx, r),
+		Holds:      getRuntimeHolds(ctx, r, resStatus),
 
 		RPOBreachedAt: r.StatusLog().RPOBreachAt(),
 
@@ -1632,6 +1641,7 @@ func (t *Status) DeepCopy() *Status {
 	n.Files = deepcopy.Slice(t.Files)
 	n.Datastores = deepcopy.Slice(t.Datastores)
 	n.Volumes = deepcopy.Slice(t.Volumes)
+	n.Holds = deepcopy.Slice(t.Holds)
 	n.Info = deepcopy.Any(t.Info)
 	if t.StartBlocker != nil {
 		startBlocker := *t.StartBlocker
@@ -1809,4 +1819,40 @@ func (t Files) Lookup(name string) (File, bool) {
 		}
 	}
 	return File{}, false
+}
+
+// getRuntimeHolds returns the block devices the resource exposes and the ones
+// it is made on, while it is up, by the paths they are named by and the
+// devices these resolve to: a configuration names a device by any of them.
+func getRuntimeHolds(ctx context.Context, r Driver, st status.T) []Hold {
+	if !st.Is(status.Up, status.StandbyUp) {
+		return nil
+	}
+	devs := make(device.L, 0)
+	if o, ok := r.(interface {
+		ExposedDevices(context.Context) device.L
+	}); ok {
+		devs = append(devs, o.ExposedDevices(ctx)...)
+	}
+	if o, ok := r.(SubDeviceser); ok {
+		devs = append(devs, o.SubDevices(ctx)...)
+	}
+	l := make([]Hold, 0)
+	add := func(p string) {
+		h := Hold{Class: HoldBlockDevice, Value: p}
+		if strings.HasPrefix(p, "/dev/") && !slices.Contains(l, h) {
+			l = append(l, h)
+		}
+	}
+	for _, dev := range devs {
+		p := dev.Path()
+		add(filepath.Clean(p))
+		if real, err := filepath.EvalSymlinks(p); err == nil {
+			add(real)
+		}
+	}
+	if len(l) == 0 {
+		return nil
+	}
+	return l
 }

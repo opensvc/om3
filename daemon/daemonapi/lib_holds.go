@@ -39,7 +39,9 @@ type publishedHold struct {
 }
 
 // publishedHolds returns the holds the nodes published for the objects
-// other than p, replaced by the tests.
+// other than p, replaced by the tests: the ones their configurations say, and
+// the ones their resources up were found holding, as a filesystem on the
+// device another resource exposes, which no configuration says.
 var publishedHolds = func(p naming.Path) []publishedHold {
 	l := make([]publishedHold, 0)
 	for _, e := range instance.ConfigData.GetAll() {
@@ -48,6 +50,16 @@ var publishedHolds = func(p naming.Path) []publishedHold {
 		}
 		for _, h := range e.Value.Holds {
 			l = append(l, publishedHold{Path: e.Path, ObjectHold: h})
+		}
+	}
+	for _, e := range instance.StatusData.GetAll() {
+		if e.Path == p || e.Value == nil {
+			continue
+		}
+		for rid, rstat := range e.Value.Resources {
+			for _, h := range rstat.Holds {
+				l = append(l, publishedHold{Path: e.Path, ObjectHold: resource.ObjectHold{RID: rid, Hold: h, Nodes: []string{e.Node}}})
+			}
 		}
 	}
 	return l
