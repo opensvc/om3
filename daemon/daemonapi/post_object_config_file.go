@@ -30,19 +30,21 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
 	}
-	// Forced, the configuration of an object that exists is replaced as a
-	// creation writes it, with the checks of an update.
-	force := params.Force != nil && *params.Force
-	exists := len(instance.MonitorData.GetByPath(p)) > 0
-	if exists && !force {
-		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
-	}
-
 	// Read before anything is checked against it: the write lands only
 	// over this file.
 	base, err := readConfigBase(p)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read config", "%s", err)
+	}
+
+	// Forced, the configuration of an object that exists is replaced as a
+	// creation writes it, with the checks of an update. An object exists
+	// from the moment its configuration file is written, before the daemon
+	// knows it: two creates racing, the second is not one.
+	force := params.Force != nil && *params.Force
+	exists := len(instance.MonitorData.GetByPath(p)) > 0 || base.exists()
+	if exists && !force {
+		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
 	}
 
 	// Read and parse the config body to validate RBAC rules

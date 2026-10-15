@@ -41,6 +41,12 @@ func readConfigBase(p naming.Path) (configBase, error) {
 	return configBase{p: p, base: base}, nil
 }
 
+// exists says whether the configuration file existed when the base was
+// read.
+func (t configBase) exists() bool {
+	return t.base.Exists()
+}
+
 // landing returns the base with fn run as the write lands, under the lock
 // of the file, as xconfig.Base.Landing says.
 func (t configBase) landing(fn func() (undo func(), err error)) configBase {

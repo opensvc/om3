@@ -57,6 +57,11 @@ func ReadBase(p string) (Base, error) {
 	return Base{data: data, exists: true}, nil
 }
 
+// Exists says whether the configuration file existed when the base was read.
+func (t Base) Exists() bool {
+	return t.exists
+}
+
 // Landing returns the base with fn run as the write lands: under the lock of
 // the file, once the file is found to be the base, before it is replaced.
 // What fn does is then done by the write that lands alone, never by one
