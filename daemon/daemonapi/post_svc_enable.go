@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -41,6 +42,15 @@ func (a *DaemonAPI) PostSvcEnable(ctx echo.Context, namespace string, name strin
 		oc, err := object.NewSvc(p)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewSvc", "%s", err)
+		}
+		// An enabled resource holds its values again, as another object
+		// made in the meantime may hold them, as one restored in its place.
+		if b, err := oc.EnabledConfig(c); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Enable", "%s", err)
+		} else if err := refuseHoldConflicts(ctx, p, b, configScope(p, oc), false); errors.Is(err, ErrHoldConflict) {
+			return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)
+		} else if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Enable", "%s", err)
 		}
 		if err := oc.Enable(c); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Enable", "%s", err)

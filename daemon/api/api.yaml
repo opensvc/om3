@@ -4957,7 +4957,10 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Enable the whole svc or some of its resources.
+      description: |
+        Enable the whole svc or some of its resources. A resource enabled
+        holds its values again: one holding what another object's resources
+        hold on the same node is answered 409, naming them.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathName'
@@ -4973,6 +4976,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
 

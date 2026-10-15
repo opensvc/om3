@@ -22017,6 +22017,7 @@ type PostSvcEnableResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON409      *N409
 	JSON500      *N500
 }
 
@@ -32940,6 +32941,13 @@ func ParsePostSvcEnableResponse(rsp *http.Response) (*PostSvcEnableResponse, err
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

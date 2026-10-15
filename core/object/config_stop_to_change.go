@@ -37,6 +37,9 @@ var ErrStopToChange = errors.New("the resource is up")
 //     required keyword left empty, which leaves the resource not configured
 //     and its status not known;
 //   - a change of its type, which is a change of the driver stopping it;
+//   - its disable, which leaves it running with nothing to stop it, and its
+//     values held with no hold said: the configuration of a disabled object
+//     holds nothing, so another can be made holding them;
 //   - the removal of its section, which nothing stops once it is gone.
 //
 // The stop of the resource acts on the configuration it reads then: what
@@ -66,7 +69,7 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 		}
 		for _, option := range KeywordOptions(kind, section) {
 			k := key.New(section, option)
-			if option != "type" {
+			if option != "type" && option != "disable" {
 				if from.Referrer == nil {
 					continue
 				}
@@ -80,7 +83,11 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 				if was == is || was == "" {
 					continue
 				}
-				refusals = append(refusals, fmt.Sprintf("change %s from %q to %q: %s", k, was, is, u.text()))
+				if option == "disable" {
+					refusals = append(refusals, fmt.Sprintf("disable %s: %s", section, u.text()))
+				} else {
+					refusals = append(refusals, fmt.Sprintf("change %s from %q to %q: %s", k, was, is, u.text()))
+				}
 				break
 			}
 		}

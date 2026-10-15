@@ -58,6 +58,8 @@ func TestCheckStopToChange(t *testing.T) {
 		{"a reference of the mount point", "[DEFAULT]\nnodes = node1\n[env]\nd = b\n[fs#1]\ntype = ext4\ndev = /dev/sdb\nmnt = /srv/{env.d}\n", `change fs#1.mnt from "/srv/a" to "/srv/b"`},
 		{"the type", "[DEFAULT]\nnodes = node1\n[env]\nd = a\n[fs#1]\ntype = xfs\ndev = /dev/sdb\nmnt = /srv/{env.d}\n", `change fs#1.type from "ext4" to "xfs"`},
 		{"the section", "[DEFAULT]\nnodes = node1\n[env]\nd = a\n", "delete fs#1: up on node1"},
+		{"the resource disabled", "[DEFAULT]\nnodes = node1\n[env]\nd = a\n[fs#1]\ntype = ext4\ndev = /dev/sdb\nmnt = /srv/{env.d}\ndisable = true\n", "disable fs#1: up on node1"},
+		{"the object disabled", "[DEFAULT]\nnodes = node1\ndisable = true\n[env]\nd = a\n[fs#1]\ntype = ext4\ndev = /dev/sdb\nmnt = /srv/{env.d}\n", "disable fs#1: up on node1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := CheckStopToChange(p.Kind, from, cfgOf(tc.to), up)
