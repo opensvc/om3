@@ -51,6 +51,13 @@ func TestParseCPUTopology(t *testing.T) {
 			dies: 2, cores: 2,
 		},
 		{
+			name: "s390",
+			info: "vendor_id       : IBM/S390\n# processors    : 4\nbogomips per cpu: 3241.00\n" +
+				"processor 0: version = FF,  identification = 0133E8,  machine = 2964\n" +
+				"processor 1: version = FF,  identification = 0133E8,  machine = 2964\n",
+			dies: 4, cores: 4,
+		},
+		{
 			name: "physical id without core id",
 			info: cpuinfo(cpuBlock("0", "0", ""), cpuBlock("1", "0", "")),
 			dies: 1, cores: 1,

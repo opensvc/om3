@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -32,12 +33,13 @@ func readCPUTopology() (cpuTopology, error) {
 
 // parseCPUTopology counts the distinct physical ids as the dies, and the
 // distinct core ids of each as the cores. A cpuinfo without physical id, as
-// a vmware guest or an arm one shows, counts each processor as a die, and a
-// cpuinfo without core id counts each die as a core.
+// a vmware guest, an arm or a s390 one shows, counts each processor as a
+// die, and a cpuinfo without core id counts each die as a core.
 func parseCPUTopology(r io.Reader) (cpuTopology, error) {
 	var (
-		physicalID string
-		processors int
+		physicalID      string
+		processors      int
+		processorsCount int
 	)
 	dies := make(map[string]bool)
 	cores := make(map[string]bool)
@@ -48,14 +50,20 @@ func parseCPUTopology(r io.Reader) (cpuTopology, error) {
 			continue
 		}
 		v = strings.TrimSpace(v)
-		switch strings.TrimSpace(k) {
-		case "processor":
+		switch k = strings.TrimSpace(k); {
+		case k == "# processors":
+			// s390 says the count, and names its processors
+			// "processor 0", "processor 1", ...
+			if n, err := strconv.Atoi(v); err == nil {
+				processorsCount = n
+			}
+		case k == "processor":
 			processors++
 			physicalID = ""
-		case "physical id":
+		case k == "physical id":
 			physicalID = v
 			dies[v] = true
-		case "core id":
+		case k == "core id":
 			cores[physicalID+"/"+v] = true
 		}
 	}
@@ -63,6 +71,9 @@ func parseCPUTopology(r io.Reader) (cpuTopology, error) {
 		return cpuTopology{}, err
 	}
 	t := cpuTopology{dies: len(dies), cores: len(cores)}
+	if processors == 0 {
+		processors = processorsCount
+	}
 	if t.dies == 0 {
 		t.dies = processors
 	}
