@@ -49,7 +49,7 @@ func (t configBase) exists() bool {
 
 // landing returns the base with fn run as the write lands, under the lock
 // of the file, as xconfig.Base.Landing says.
-func (t configBase) landing(fn func() (undo func(), err error)) configBase {
+func (t configBase) landing(fn func() (done func(landed bool), err error)) configBase {
 	t.base = t.base.Landing(fn)
 	return t
 }

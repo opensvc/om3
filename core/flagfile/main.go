@@ -8,6 +8,8 @@
 package flagfile
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -46,6 +48,62 @@ func SetWith(p string, b []byte) error {
 		}
 	}
 	return f.Sync()
+}
+
+// Raised is a flag a call of Raise raised, until it is kept or lowered.
+//
+// It holds the file it created open, so the file is told apart from one
+// created at the same path after it was removed, which may take its inode
+// when it is free.
+type Raised struct {
+	p string
+	f *os.File
+}
+
+// Raise raises the flag as Set does, for a caller that may have to take it
+// away again, as a write that raised it for itself and did not land. It
+// returns nil when the flag was raised already, as it is not the caller's
+// to take away. The flag returned, raised even with an error, as a file
+// created and not synced, is to be kept or lowered.
+func Raise(p string) (*Raised, error) {
+	d := filepath.Dir(p)
+	if !file.Exists(d) {
+		if err := os.MkdirAll(d, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if errors.Is(err, fs.ErrExist) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return &Raised{p: p, f: f}, f.Sync()
+}
+
+// Keep leaves the flag raised.
+func (t *Raised) Keep() error {
+	return t.f.Close()
+}
+
+// Lower takes the flag away while it is the file Raise created: a flag
+// another raised after it was removed is left alone.
+func (t *Raised) Lower() error {
+	defer t.f.Close()
+	created, err := t.f.Stat()
+	if err != nil {
+		return err
+	}
+	current, err := os.Stat(t.p)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if !os.SameFile(created, current) {
+		return nil
+	}
+	return Unset(t.p)
 }
 
 // Content returns the content the flag was raised with, empty when it was

@@ -79,21 +79,22 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		defer func() { _ = sub.Stop() }()
 	}
 	if flagStopped {
-		base = base.landing(func() (func(), error) {
-			stoppedFile := p.StoppedFile()
-			if file.Exists(stoppedFile) {
-				return nil, nil
+		base = base.landing(func() (func(bool), error) {
+			raised, err := flagfile.Raise(p.StoppedFile())
+			if raised == nil {
+				return nil, err
 			}
-			unflag := func() {
-				if err := flagfile.Unset(stoppedFile); err != nil {
+			done := func(landed bool) {
+				if landed {
+					_ = raised.Keep()
+				} else if err := raised.Lower(); err != nil {
 					LogHandler(ctx, "writeObjectConfigFile").Warnf("%s: the configuration was not written, and the stopped flag set for it is kept: %s", p, err)
 				}
 			}
-			if err := flagfile.Set(stoppedFile); err != nil {
-				// The file may be there, unsynced.
-				return unflag, fmt.Errorf("flag the instance stopped: %w", err)
+			if err != nil {
+				return done, fmt.Errorf("flag the instance stopped: %w", err)
 			}
-			return unflag, nil
+			return done, nil
 		})
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error

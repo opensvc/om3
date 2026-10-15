@@ -29,7 +29,7 @@ type (
 		exists bool
 
 		// landing is run as the write lands, see Landing.
-		landing func() (undo func(), err error)
+		landing func() (done func(landed bool), err error)
 	}
 )
 
@@ -66,9 +66,9 @@ func (t Base) Exists() bool {
 // the file, once the file is found to be the base, before it is replaced.
 // What fn does is then done by the write that lands alone, never by one
 // refused, as one losing a race with another. An error of fn refuses the
-// write, and undo, if any, is run whenever the file is not replaced, as on
-// that error, for what fn did before failing.
-func (t Base) Landing(fn func() (undo func(), err error)) Base {
+// write. done, if any, is run once the write is over, saying whether the
+// file was replaced, on an error of fn too, for what fn did before failing.
+func (t Base) Landing(fn func() (done func(landed bool), err error)) Base {
 	t.landing = fn
 	return t
 }
@@ -118,17 +118,18 @@ func install(src, dst string, base *Base) error {
 			return fmt.Errorf("%w: %s", ErrConfigChanged, dst)
 		}
 		if base.landing != nil {
-			undo, err := base.landing()
+			done, err := base.landing()
 			if err != nil {
-				if undo != nil {
-					undo()
+				if done != nil {
+					done(false)
 				}
 				return err
 			}
-			if err := os.Rename(src, dst); err != nil {
-				if undo != nil {
-					undo()
-				}
+			err = os.Rename(src, dst)
+			if done != nil {
+				done(err == nil)
+			}
+			if err != nil {
 				return err
 			}
 			return file.Sync(dst)

@@ -79,10 +79,17 @@ func TestInstallLanding(t *testing.T) {
 		require.NoError(t, os.WriteFile(src, []byte("[DEFAULT]\n"), 0600))
 		return src
 	}
-	var landed, undone int
-	landing := func() (func(), error) {
+	var landed, undone, kept int
+	done := func(ok bool) {
+		if ok {
+			kept++
+		} else {
+			undone++
+		}
+	}
+	landing := func() (func(bool), error) {
 		landed++
-		return func() { undone++ }, nil
+		return done, nil
 	}
 
 	first, err := ReadBase(dst)
@@ -92,6 +99,7 @@ func TestInstallLanding(t *testing.T) {
 	firstLanding, secondLanding := first.Landing(landing), second.Landing(landing)
 	require.NoError(t, install(newSrc(), dst, &firstLanding))
 	assert.Equal(t, 1, landed, "the write landing runs it")
+	assert.Equal(t, 1, kept, "and says it landed")
 	assert.ErrorIs(t, install(newSrc(), dst, &secondLanding), ErrConfigChanged)
 	assert.Equal(t, 1, landed, "the write refused does not run it")
 	assert.Equal(t, 0, undone)
@@ -105,7 +113,7 @@ func TestInstallLanding(t *testing.T) {
 
 	base, err = ReadBase(dst)
 	require.NoError(t, err)
-	base = base.Landing(func() (func(), error) { landed++; return func() { undone++ }, os.ErrPermission })
+	base = base.Landing(func() (func(bool), error) { landed++; return done, os.ErrPermission })
 	assert.ErrorIs(t, install(newSrc(), dst, &base), os.ErrPermission, "an error of the landing refuses the write")
 	assert.Equal(t, 2, undone, "and undoes what the landing did before failing")
 }
