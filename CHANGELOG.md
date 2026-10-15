@@ -351,7 +351,9 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     Before any node provisions an object, every node checks that nothing on
     it holds what the provision would take: a filesystem mounted on a mount
     point, a device in use or holding a signature, a volume group, a zpool or
-    an md array of the name, an address that answers. A conflict ends the
+    an md array of the name, a container of the name, a kvm domain or an lxc
+    container of the name when the provision would create one, an address
+    that answers. A conflict ends the
     orchestration as a provision failure, with nothing provisioned. v2
     adopted what it found, and formatted a device not recognized.
 
