@@ -105,8 +105,9 @@ func TestInstallLanding(t *testing.T) {
 
 	base, err = ReadBase(dst)
 	require.NoError(t, err)
-	base = base.Landing(func() (func(), error) { return nil, os.ErrPermission })
+	base = base.Landing(func() (func(), error) { landed++; return func() { undone++ }, os.ErrPermission })
 	assert.ErrorIs(t, install(newSrc(), dst, &base), os.ErrPermission, "an error of the landing refuses the write")
+	assert.Equal(t, 2, undone, "and undoes what the landing did before failing")
 }
 
 func TestInstallLockPath(t *testing.T) {

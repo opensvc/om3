@@ -66,7 +66,8 @@ func (t Base) Exists() bool {
 // the file, once the file is found to be the base, before it is replaced.
 // What fn does is then done by the write that lands alone, never by one
 // refused, as one losing a race with another. An error of fn refuses the
-// write, and undo, if any, is run if the file is not replaced after all.
+// write, and undo, if any, is run whenever the file is not replaced, as on
+// that error, for what fn did before failing.
 func (t Base) Landing(fn func() (undo func(), err error)) Base {
 	t.landing = fn
 	return t
@@ -119,6 +120,9 @@ func install(src, dst string, base *Base) error {
 		if base.landing != nil {
 			undo, err := base.landing()
 			if err != nil {
+				if undo != nil {
+					undo()
+				}
 				return err
 			}
 			if err := os.Rename(src, dst); err != nil {
