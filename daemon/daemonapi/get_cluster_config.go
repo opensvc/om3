@@ -9,8 +9,9 @@ import (
 
 func (a *DaemonAPI) GetClusterConfig(ctx echo.Context, params api.GetClusterConfigParams) error {
 	return a.GetObjectConfig(ctx, naming.Cluster.Namespace, naming.Cluster.Kind, naming.Cluster.Name, api.GetObjectConfigParams{
-		Evaluate:    params.Evaluate,
-		Impersonate: params.Impersonate,
-		Kw:          params.Kw,
+		Evaluate:      params.Evaluate,
+		Impersonate:   params.Impersonate,
+		Kw:            params.Kw,
+		RedactSecrets: params.RedactSecrets,
 	})
 }

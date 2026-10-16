@@ -3144,6 +3144,9 @@ type GetClusterConfigParams struct {
 
 	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
 	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
+
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
 // PatchClusterConfigParams defines parameters for PatchClusterConfig.
@@ -3155,7 +3158,7 @@ type PatchClusterConfigParams struct {
 
 // GetClusterConfigFileParams defines parameters for GetClusterConfigFile.
 type GetClusterConfigFileParams struct {
-	// RedactSecrets if true, redact secrets in the configuration file
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
 	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
@@ -3298,6 +3301,9 @@ type GetNodeConfigParams struct {
 	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
 // PatchNodeConfigParams defines parameters for PatchNodeConfig.
@@ -3309,7 +3315,7 @@ type PatchNodeConfigParams struct {
 
 // GetNodeConfigFileParams defines parameters for GetNodeConfigFile.
 type GetNodeConfigFileParams struct {
-	// RedactSecrets if true, redact secrets in the configuration file
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
 	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
@@ -4135,6 +4141,12 @@ type PostInstanceActionUpdateParams struct {
 	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
 }
 
+// GetInstanceConfigFileParams defines parameters for GetInstanceConfigFile.
+type GetInstanceConfigFileParams struct {
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+}
+
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
 type PostInstanceResourceConsoleParams struct {
 	// Rid a resource selector expression
@@ -4288,6 +4300,9 @@ type GetObjectConfigParams struct {
 
 	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
 	Kw *InQueryKeywords `form:"kw,omitempty" json:"kw,omitempty"`
+
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
 // PatchObjectConfigParams defines parameters for PatchObjectConfig.
@@ -4311,7 +4326,7 @@ type PatchObjectConfigParams struct {
 
 // GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
 type GetObjectConfigFileParams struct {
-	// RedactSecrets if true, redact secrets in the configuration file
+	// RedactSecrets if true, redact the secret values of the configuration, even for a caller allowed to read them
 	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 

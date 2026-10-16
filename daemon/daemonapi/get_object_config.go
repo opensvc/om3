@@ -28,6 +28,9 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	if !ok {
 		return err
 	}
+	if params.RedactSecrets != nil && *params.RedactSecrets {
+		redact = true
+	}
 	log = naming.LogWithPath(log, p)
 
 	instanceConfigData := instance.ConfigData.GetByPath(p)

@@ -286,6 +286,22 @@ func Node(nodename string, o Options) (api.KeywordItems, error) {
 		if s, err := merged.GetStrict(k); err == nil {
 			item.Value = s
 		}
+
+		// A secret is not shown, raw or evaluated, as for an object: the
+		// keyword is listed all the same, so the reader knows it is set.
+		if o.Redact && object.IsSecretKey(naming.KindInvalid, k, merged.GetString(key.New(k.Section, "type"))) {
+			item.Value = object.RedactedValue
+			if o.Evaluate {
+				var v any = object.RedactedValue
+				text := object.RedactedValue
+				item.Evaluated = &v
+				item.EvaluatedText = &text
+				item.EvaluatedAs = evaluatedAs
+			}
+			items = append(items, item)
+			continue
+		}
+
 		if o.Evaluate {
 			v, err := merged.EvalAs(k, evaluatedAs)
 			switch {
