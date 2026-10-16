@@ -442,7 +442,7 @@ type ClientInterface interface {
 	PostInstanceCollectorAction(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceCollectorActionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstanceConfigFile request
-	GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceResourceConsole request
 	PostInstanceResourceConsole(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2128,8 +2128,8 @@ func (c *Client) PostInstanceCollectorAction(ctx context.Context, nodename InPat
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetInstanceConfigFileRequest(c.Server, nodename, namespace, kind, name)
+func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceConfigFileRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3476,6 +3476,18 @@ func NewGetClusterConfigRequest(server string, params *GetClusterConfigParams) (
 		if params.Kw != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kw", *params.Kw, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -5514,6 +5526,18 @@ func NewGetNodeConfigRequest(server string, nodename InPathNodeName, params *Get
 		if params.Impersonate != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "impersonate", *params.Impersonate, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -11755,7 +11779,7 @@ func NewPostInstanceCollectorActionRequestWithBody(server string, nodename InPat
 }
 
 // NewGetInstanceConfigFileRequest generates requests for GetInstanceConfigFile
-func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceConfigFileParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11799,6 +11823,33 @@ func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, nam
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -14427,6 +14478,18 @@ func NewGetObjectConfigRequest(server string, namespace InPathNamespace, kind In
 
 		}
 
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -16411,7 +16474,7 @@ type ClientWithResponsesInterface interface {
 	PostInstanceCollectorActionWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, body PostInstanceCollectorActionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInstanceCollectorActionResponse, error)
 
 	// GetInstanceConfigFileWithResponse request
-	GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error)
+	GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceConfigFileParams, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error)
 
 	// PostInstanceResourceConsoleWithResponse request
 	PostInstanceResourceConsoleWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*PostInstanceResourceConsoleResponse, error)
@@ -23819,8 +23882,8 @@ func (c *ClientWithResponses) PostInstanceCollectorActionWithResponse(ctx contex
 }
 
 // GetInstanceConfigFileWithResponse request returning *GetInstanceConfigFileResponse
-func (c *ClientWithResponses) GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error) {
-	rsp, err := c.GetInstanceConfigFile(ctx, nodename, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceConfigFileParams, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error) {
+	rsp, err := c.GetInstanceConfigFile(ctx, nodename, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

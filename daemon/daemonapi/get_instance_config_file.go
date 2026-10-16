@@ -12,7 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
-func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.GetInstanceConfigFileParams) error {
 	objPath, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
@@ -20,6 +20,9 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 	redact, ok, err := configReadAccess(ctx, objPath)
 	if !ok {
 		return err
+	}
+	if params.RedactSecrets != nil && *params.RedactSecrets {
+		redact = true
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
@@ -38,6 +41,6 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Config file not found for %s@%s", objPath, a.localhost)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.GetInstanceConfigFile(ctx.Request().Context(), nodename, namespace, kind, name)
+		return c.GetInstanceConfigFile(ctx.Request().Context(), nodename, namespace, kind, name, &params)
 	})
 }

@@ -597,6 +597,17 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     declared secret and of the keys of a sec or usr object, raw and evaluated.
     The `redact-secrets` parameter still redacts for any reader.
 
+* **Every configuration read can redact the secrets:**
+    `GET /api/object/path/{namespace}/{kind}/{name}/config`,
+    `GET /api/cluster/config`, `GET /api/node/name/{nodename}/config` and
+    `GET /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/config/file`
+    accept the `redact-secrets` parameter, as the configuration file endpoints
+    of the objects, the node and the cluster do. Set, it shows `********` in
+    place of the values of the keywords declared secret and of the keys of a
+    sec or usr object, raw and evaluated, even to root: a client handing what
+    it reads to another, such as an AI assistant, asks it so as to never
+    receive a secret.
+
 * **A user is given only the grants its writer holds:**
     Writing the `grant` keyword of a usr object refuses the grants the writer
     does not hold, as v2 did, and changing the `cn` a user authenticates by

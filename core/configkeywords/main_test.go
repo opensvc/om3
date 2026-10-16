@@ -157,6 +157,57 @@ func TestNode(t *testing.T) {
 	require.True(t, errors.Is(err, xconfig.ErrNoKeyword), "%v", err)
 }
 
+// The secrets of the node, its own and the cluster's it inherits, are not
+// shown when asked so, raw or evaluated, and are listed all the same; the
+// other keywords are left as they are. Without Redact they are shown.
+func TestNodeRedact(t *testing.T) {
+	testhelper.Setup(t)
+	writeConfig(t, rawconfig.NodeConfigFile(), "[node]\nuuid = 11111111-2222-3333-4444-555555555555\nmax_parallel = 7\n")
+	writeConfig(t, rawconfig.ClusterConfigFile(), "[cluster]\nname = c1\nsecret = 0123456789abcdef0123456789abcdef\n")
+
+	keywords := []string{"node.uuid", "cluster.secret", "node.max_parallel"}
+	items, err := Node("n1", Options{Keywords: keywords, Evaluate: true, Redact: true})
+	require.NoError(t, err)
+	m := byKeyword(items)
+	require.Len(t, m, 3)
+	for _, kw := range []string{"node.uuid", "cluster.secret"} {
+		assert.Equal(t, object.RedactedValue, m[kw].Value, kw)
+		assert.Equal(t, object.RedactedValue, text(m[kw]), kw)
+	}
+	assert.Equal(t, "7", m["node.max_parallel"].Value)
+	assert.Equal(t, "7", text(m["node.max_parallel"]))
+
+	items, err = Node("n1", Options{Redact: true})
+	require.NoError(t, err)
+	m = byKeyword(items)
+	assert.Equal(t, object.RedactedValue, m["node.uuid"].Value, "the whole configuration is redacted too")
+	assert.Nil(t, m["node.uuid"].Evaluated)
+
+	items, err = Node("n1", Options{Keywords: keywords})
+	require.NoError(t, err)
+	m = byKeyword(items)
+	assert.Equal(t, "11111111-2222-3333-4444-555555555555", m["node.uuid"].Value)
+	assert.Equal(t, "0123456789abcdef0123456789abcdef", m["cluster.secret"].Value)
+}
+
+// The cluster configuration, read as an object, hides its secret when asked
+// so: the cluster config endpoint reads it this way.
+func TestClusterRedact(t *testing.T) {
+	testhelper.Setup(t)
+	writeConfig(t, rawconfig.ClusterConfigFile(), "[cluster]\nname = c1\nsecret = 0123456789abcdef0123456789abcdef\n")
+
+	items, err := Object(naming.Cluster, Options{Keywords: []string{"cluster.secret", "cluster.name"}, Evaluate: true, Redact: true})
+	require.NoError(t, err)
+	m := byKeyword(items)
+	assert.Equal(t, object.RedactedValue, m["cluster.secret"].Value)
+	assert.Equal(t, object.RedactedValue, text(m["cluster.secret"]))
+	assert.Equal(t, "c1", m["cluster.name"].Value)
+
+	items, err = Object(naming.Cluster, Options{Keywords: []string{"cluster.secret"}})
+	require.NoError(t, err)
+	assert.Equal(t, "0123456789abcdef0123456789abcdef", items[0].Value)
+}
+
 // The section of a keyword is a resource selector element when it is a driver
 // group or a pattern, and the option is a pattern when it holds one. A
 // keyword naming one key is not a pattern.

@@ -41,6 +41,7 @@ func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.
 		o := configkeywords.Options{
 			Evaluate:    isEvaluated,
 			Impersonate: impersonate,
+			Redact:      params.RedactSecrets != nil && *params.RedactSecrets,
 		}
 		if params.Kw != nil {
 			o.Keywords = *params.Kw

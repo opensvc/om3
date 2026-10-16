@@ -300,6 +300,7 @@ paths:
         - $ref: '#/components/parameters/inQueryEvaluate'
         - $ref: '#/components/parameters/inQueryImpersonate'
         - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/RedactSecrets'
       responses:
         200:
           description: OK
@@ -1591,6 +1592,7 @@ paths:
         - $ref: '#/components/parameters/inQueryKeywords'
         - $ref: '#/components/parameters/inQueryEvaluate'
         - $ref: '#/components/parameters/inQueryImpersonate'
+        - $ref: '#/components/parameters/RedactSecrets'
       responses:
         200:
           description: OK
@@ -3993,6 +3995,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/RedactSecrets'
       responses:
         200:
           description: OK
@@ -5457,6 +5460,7 @@ paths:
         - $ref: '#/components/parameters/inQueryEvaluate'
         - $ref: '#/components/parameters/inQueryImpersonate'
         - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/RedactSecrets'
       responses:
         200:
           description: OK
@@ -10062,7 +10066,7 @@ components:
     RedactSecrets:
       in: query
       name: redact-secrets
-      description: if true, redact secrets in the configuration file
+      description: if true, redact the secret values of the configuration, even for a caller allowed to read them
       required: false
       schema:
         type: boolean
