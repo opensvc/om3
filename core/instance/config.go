@@ -62,6 +62,20 @@ type (
 		// WaitSyncsTimeout is how long a stop or a switch waits for the
 		// syncs running on the instance to end: DEFAULT.wait_syncs_timeout.
 		WaitSyncsTimeout time.Duration `json:"wait_syncs_timeout,omitempty"`
+
+		// HardAffinity and HardAntiAffinity are the objects whose instance
+		// must be up, or must not be, on a node for the object to start
+		// there. SoftAffinity and SoftAntiAffinity rank the nodes the
+		// same way, without excluding any.
+		HardAffinity     naming.Paths `json:"hard_affinity,omitempty"`
+		HardAntiAffinity naming.Paths `json:"hard_anti_affinity,omitempty"`
+		SoftAffinity     naming.Paths `json:"soft_affinity,omitempty"`
+		SoftAntiAffinity naming.Paths `json:"soft_anti_affinity,omitempty"`
+
+		// StartTimeout is how long a start may take, DEFAULT.start_timeout
+		// or else DEFAULT.timeout: a switch waits that long for the
+		// destination to be ready to start before it stops the source.
+		StartTimeout time.Duration `json:"start_timeout,omitempty"`
 	}
 
 	FlexConfig struct {
@@ -151,6 +165,10 @@ func (cfg *ActorConfig) DeepCopy() *ActorConfig {
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
 	newCfg.Claims = deepcopy.Any(cfg.Claims)
+	newCfg.HardAffinity = deepcopy.Slice(cfg.HardAffinity)
+	newCfg.HardAntiAffinity = deepcopy.Slice(cfg.HardAntiAffinity)
+	newCfg.SoftAffinity = deepcopy.Slice(cfg.SoftAffinity)
+	newCfg.SoftAntiAffinity = deepcopy.Slice(cfg.SoftAntiAffinity)
 	if cfg.Flex != nil {
 		flex := *cfg.Flex
 		newCfg.Flex = &flex
@@ -208,6 +226,10 @@ func (t Config) Unstructured() map[string]any {
 		m["subsets"] = t.Subsets.Unstructured()
 		m["topology"] = t.Topology
 		m["stonith"] = t.Stonith
+		m["hard_affinity"] = t.HardAffinity
+		m["hard_anti_affinity"] = t.HardAntiAffinity
+		m["soft_affinity"] = t.SoftAffinity
+		m["soft_anti_affinity"] = t.SoftAntiAffinity
 		if t.ActorConfig.Flex != nil {
 			m["max"] = t.ActorConfig.Flex.Max
 			m["min"] = t.ActorConfig.Flex.Min

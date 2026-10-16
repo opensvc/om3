@@ -3466,6 +3466,7 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagForceAffinity(flags, &options.ForceAffinity)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
@@ -3493,7 +3494,11 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	commoncmd.FlagMoveTo(flags, &options.MoveTo)
+	commoncmd.FlagSyncTo(flags, &options.SyncTo)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	for _, name := range []string{"rid", "subset", "tag", "to", "master", "slave", "slaves"} {
+		cmd.MarkFlagsMutuallyExclusive("sync-to", name)
+	}
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
 	return cmd

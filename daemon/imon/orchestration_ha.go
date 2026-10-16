@@ -2,6 +2,7 @@ package imon
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/instance"
@@ -76,6 +77,20 @@ func (t *Manager) orchestrateBootStart() {
 			}
 			return
 		}
+		// The objects the hard affinities name may be starting at this
+		// boot too: the decision waits for them, a change of their
+		// instances orchestrating again.
+		if t.objStatus.Orchestrate == "start" && t.state.IsLeader {
+			if l := t.hardAffinityViolations(t.localhost); len(l) > 0 {
+				if t.bootStartWaitSince.IsZero() {
+					t.bootStartWaitSince = time.Now()
+					t.log.Infof("boot start: wait for the hard affinities: %s", strings.Join(l, ", "))
+				} else if time.Since(t.bootStartWaitSince) > bootStartWaitMax {
+					t.closeBootStart("%s for longer than %s", strings.Join(l, ", "), bootStartWaitMax)
+				}
+				return
+			}
+		}
 		if !t.bootStartWaitSince.IsZero() && time.Since(t.bootStartWaitSince) > bootStartWaitMax {
 			t.closeBootStart("the peer instances were busy for longer than %s", bootStartWaitMax)
 			return
@@ -131,6 +146,8 @@ func (t *Manager) bootStartNoopReason() string {
 		return "the instance is flagged stopped"
 	case !t.state.IsLeader:
 		return "this node is not the placement leader"
+	case !t.isHardAffinitySatisfied(t.localhost):
+		return strings.Join(t.hardAffinityViolations(t.localhost), ", ")
 	case local.Provisioned.IsOneOf(provisioned.False, provisioned.Undef):
 		return fmt.Sprintf("the instance provisioned state is %s", local.Provisioned)
 	case local.Avail.Is(status.Warn):

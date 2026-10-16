@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,6 +61,16 @@ const (
 	modeFull modeT = iota
 	modeIncr
 )
+
+// SyncsTo implements resource.PeerSyncer.
+func (t *T) SyncsTo(nodename string) bool {
+	return slices.Contains(t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes), nodename)
+}
+
+// SyncSource implements resource.PeerSyncer.
+func (t *T) SyncSource() string {
+	return t.Src
+}
 
 func New() resource.Driver {
 	return &T{}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -62,6 +63,12 @@ const (
 
 func New() resource.Driver {
 	return &T{}
+}
+
+// FinalSyncsTo implements resource.FinalSyncer: a zfs dataset is sent from a
+// snapshot, mounted or not.
+func (t *T) FinalSyncsTo(nodename string) bool {
+	return slices.Contains(t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes), nodename)
 }
 
 func (t *T) Full(ctx context.Context) error {
@@ -152,6 +159,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	// base of a peer not synced this run is kept too.
 	peers := t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
 	t.seedLegacyStates(local, peers, states)
+	t.seedReceivedBase(local, peers, states)
 
 	// The peers are synced at once, each on its own: one failing, or slow,
 	// does not hold the others back, and all the failures are reported.

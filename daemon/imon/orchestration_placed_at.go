@@ -2,6 +2,7 @@ package imon
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/status"
@@ -17,6 +18,9 @@ func (t *Manager) orchestrateFailoverPlacedStart() {
 		t.orchestrateFailoverPlacedStartFromStopped()
 	case instance.MonitorStateStartFailure:
 		t.orchestratePlacedFromStartFailed()
+	case instance.MonitorStatePrepareFailure:
+		t.done()
+	case instance.MonitorStatePrepareProgress:
 	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateStopProgress:
@@ -80,6 +84,9 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 		if !t.setWaitSyncs() {
 			t.placedStop()
 		}
+	case instance.MonitorStateWaitDestination:
+		t.placedStop()
+	case instance.MonitorStateWaitDestinationFailure:
 	default:
 		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
@@ -107,6 +114,9 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 		if !t.setWaitSyncs() {
 			t.placedStop()
 		}
+	case instance.MonitorStateWaitDestination:
+		t.placedStop()
+	case instance.MonitorStateWaitDestinationFailure:
 	default:
 		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
@@ -178,6 +188,9 @@ func (t *Manager) placedStop() {
 }
 
 func (t *Manager) doPlacedStop() {
+	if t.setWaitDestination() {
+		return
+	}
 	if t.setWaitSyncs() {
 		return
 	}
@@ -192,6 +205,11 @@ func (t *Manager) doPlacedStop() {
 			t.log.Errorf("FIXME: live migration is not possible with multiple destinations (%s)", dst)
 			t.transitionTo(instance.MonitorStateStopFailure)
 		}
+	} else if ok && len(dst) > 0 {
+		// The destination starts on its copy of the data: the source sends
+		// what its syncs hold once stopped, so the writes since the last
+		// sync are not lost.
+		t.queueAction(t.crmStopSyncToFunc(dst), instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
 	} else {
 		t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
 	}
@@ -211,6 +229,23 @@ func (t *Manager) skipPlacedStart() {
 	t.clearPending()
 }
 
+// orchestratePlacedStopFromStopFailure ends the stop half of a placement
+// whose stop failed.
+//
+// An instance down is stopped all the same. An instance up, all of it, is the
+// one the orchestration found: the stop failed before it stopped anything, or
+// rolled back what it did, as a live move refused by the destination, and the
+// instance goes back to idle with its monitoring and its resource restarts on.
+// Left in stop failed with them off, it ran outside of the daemon's care: a
+// crash of the guest was not restarted, nor the instance started anew.
+//
+// It keeps its stop failed state until the orchestration ends, which is what
+// tells every node the orchestration failed, the end of an orchestration
+// being read from the state the instances drop its id with, and goes back to
+// idle right after (see endOrchestration).
+//
+// An instance partly up is a stop failed half way, left to the operator, the
+// monitoring off.
 func (t *Manager) orchestratePlacedStopFromStopFailure() {
 	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
@@ -218,6 +253,13 @@ func (t *Manager) orchestratePlacedStopFromStopFailure() {
 		t.loggerWithState().Infof("instance is down, clear stop failed")
 		t.change = true
 		t.state.State = instance.MonitorStateStopSuccess
+		t.clearPending()
+	case status.Up:
+		t.loggerWithState().Warnf("orchestration %s stop fails, the instance is still up: back to idle when the orchestration ends",
+			t.state.GlobalExpect)
+		t.stopRefusedForSyncs = false
+		t.idleAfterOrchestration = true
+		t.done()
 		t.clearPending()
 	default:
 		t.loggerWithState().Warnf("orchestration %s stop fails, set done: state is %s with avail %s",
@@ -249,11 +291,25 @@ func (t *Manager) orchestrateFailoverPlacedStartFromIdle() {
 	case status.Up:
 		t.transitionTo(instance.MonitorStateStartSuccess)
 	default:
+		// A replicated disk left behind is reconnected now, for the resync
+		// to run while the source does: the source waits for it before it
+		// stops (see setWaitDestination).
+		if paths := t.resyncBlockerPaths(); len(paths) > 0 {
+			t.log.Infof("prepare the start: standby start %s to resync: %s", strings.Join(paths, ","), strings.Join(t.blockerReasons([]string{t.localhost}), "; "))
+			t.queueAction(t.crmPrepareFunc(paths), instance.MonitorStatePrepareProgress, instance.MonitorStateStopSuccess, instance.MonitorStatePrepareFailure)
+			return
+		}
 		t.transitionTo(instance.MonitorStateStopSuccess)
 	}
 }
 
 func (t *Manager) orchestrateFailoverPlacedStartFromStopped() {
+	if len(t.resyncBlockerPaths()) > 0 {
+		// The source waits for these blockers to go: the status read again
+		// says when, as the resync of a volume refreshes the status of the
+		// volume, not the one of this object.
+		t.scheduleEventRefresh("start blockers")
+	}
 	switch t.objStatus.Avail {
 	case status.NotApplicable, status.Undef:
 		t.startedClearIfReached()

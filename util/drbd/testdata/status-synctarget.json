@@ -1,0 +1,24 @@
+[
+{
+  "name": "c33kvm1.root.vol.cluster33",
+  "node-id": 1,
+  "role": "Secondary",
+  "suspended": false,
+  "devices": [
+    { "volume": 0, "minor": 0, "disk-state": "Inconsistent", "client": false, "quorum": true, "size": 1048576 }
+  ],
+  "connections": [
+    {
+      "peer-node-id": 0,
+      "name": "labu24c33n1",
+      "connection-state": "Connected",
+      "congested": false,
+      "peer-role": "Primary",
+      "peer_devices": [
+        { "volume": 0, "replication-state": "SyncTarget", "peer-disk-state": "UpToDate", "peer-client": false,
+          "resync-suspended": "no", "out-of-sync": 2048, "percent-in-sync": 99.8 }
+      ]
+    }
+  ]
+}
+]

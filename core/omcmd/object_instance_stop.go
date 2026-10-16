@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
@@ -26,6 +27,7 @@ type (
 		InterruptSyncs bool
 		MoveTo         string
 		NodeSelector   string
+		SyncTo         []string
 	}
 )
 
@@ -59,6 +61,10 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			}
 			if t.MoveTo != "" {
 				params.MoveTo = &t.MoveTo
+			}
+			if len(t.SyncTo) > 0 {
+				syncTo := strings.Join(t.SyncTo, ",")
+				params.SyncTo = &syncTo
 			}
 			if t.Force {
 				v := true
@@ -118,6 +124,7 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithInterruptSyncs(ctx, t.InterruptSyncs)
 			ctx = actioncontext.WithMoveTo(ctx, t.MoveTo)
+			ctx = actioncontext.WithSyncTo(ctx, t.SyncTo)
 			return nil, o.Stop(ctx)
 		}),
 	).Do()

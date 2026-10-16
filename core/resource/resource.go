@@ -194,6 +194,32 @@ type (
 		StatusDependsOnPeers() bool
 	}
 
+	// StartBlockerer is a resource able to say what would refuse a start of
+	// the instance on this node now, as a replicated disk left behind while
+	// its peer ran, which a promotion refuses until a resync brings it up to
+	// date.
+	StartBlockerer interface {
+		StartBlocker(context.Context) *StartBlocker
+	}
+
+	// StartBlocker says why the instance of a node can not start now, and
+	// whether a resync lifts it. A switch waits, before it stops the source,
+	// for the blockers of the destination a resync lifts, and is refused a
+	// destination whose blockers no resync lifts.
+	StartBlocker struct {
+		// Reason says what blocks the start, as "drbd r0 disk Outdated".
+		Reason string `json:"reason"`
+
+		// Resync says a resync from a peer holding the data up to date
+		// lifts it, which a standby start of the object starts.
+		Resync bool `json:"resync,omitempty"`
+
+		// Path is the object whose standby start starts the resync, as the
+		// volume of a volume resource, and empty for the object of the
+		// resource itself.
+		Path string `json:"path,omitempty"`
+	}
+
 	devReservabler interface {
 		// ReservableDevices must be implement by every driver that wants SCSI PR.
 		ReservableDevices(context.Context) device.L
@@ -261,6 +287,10 @@ type (
 		// peer instances change, so the daemon evaluates it again when a
 		// peer instance status changes.
 		DependsOnPeers bool `json:"depends_on_peers,omitempty"`
+
+		// StartBlocker says what would refuse a start of the resource on
+		// this node now, nil when nothing would.
+		StartBlocker *StartBlocker `json:"start_blocker,omitempty"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
@@ -1401,6 +1431,18 @@ func StatusDependsOnPeers(r Driver) bool {
 	return false
 }
 
+// getStartBlocker returns what would refuse a start of the resource on this
+// node now, or nil.
+func getStartBlocker(ctx context.Context, r Driver) *StartBlocker {
+	if r.IsDisabled() {
+		return nil
+	}
+	if i, ok := r.(StartBlockerer); ok {
+		return i.StartBlocker(ctx)
+	}
+	return nil
+}
+
 // GetStatus returns the resource Status for embedding into the instance.Status.
 func GetStatus(ctx context.Context, r Driver) Status {
 	// EvalStatus must be called before formatResourceLabel (it uses context,
@@ -1421,6 +1463,8 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		RPOBreachedAt: r.StatusLog().RPOBreachAt(),
 
 		DependsOnPeers: StatusDependsOnPeers(r),
+
+		StartBlocker: getStartBlocker(ctx, r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1564,6 +1608,10 @@ func (t *Status) DeepCopy() *Status {
 	n.Files = deepcopy.Slice(t.Files)
 	n.Datastores = deepcopy.Slice(t.Datastores)
 	n.Info = deepcopy.Any(t.Info)
+	if t.StartBlocker != nil {
+		startBlocker := *t.StartBlocker
+		n.StartBlocker = &startBlocker
+	}
 	return &n
 }
 
@@ -1591,6 +1639,9 @@ func (t *Status) Unstructured() map[string]any {
 	}
 	if len(t.Info) > 0 {
 		m["info"] = t.Info
+	}
+	if t.StartBlocker != nil {
+		m["start_blocker"] = t.StartBlocker
 	}
 	return m
 }

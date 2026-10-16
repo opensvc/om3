@@ -192,6 +192,8 @@ func (t *Manager) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDelete
 		// Can't relate to self.
 		return
 	}
+	t.onAffinityInstanceStatus(c.Path, c.Node, status.Undef)
+	t.onVolumeInstanceStatusDeleted(c)
 	changes := false
 	do := func(relation string, name string, cache map[string]status.T) {
 		if _, ok := cache[relation]; ok {
@@ -242,6 +244,8 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
 		return
 	}
+	t.onAffinityInstanceStatus(c.Path, c.Node, c.Value.Avail)
+	t.onVolumeInstanceStatusUpdated(c)
 	changes := false
 	relation := c.Path.String() + "@" + c.Node
 	do := func(relation string, name string, cache map[string]status.T) {
@@ -285,6 +289,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	t.instStatus[srcCmd.Node] = srcCmd.Value
 	if ok && srcCmd.Node != t.localhost {
 		t.refreshOnPeerChange(srcCmd.Node, instStatus, srcCmd.Value)
+	}
+	if srcCmd.Node == t.localhost {
+		t.janitorVolumes()
 	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()
@@ -401,6 +408,7 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		janitorRelations(srcCmd.Value.ActorConfig.Children, "Child", t.state.Children)
 		janitorRelations(srcCmd.Value.ActorConfig.Parents, "Parent", t.state.Parents)
 	}
+	t.janitorAffinities()
 	// config has changed refresh resource monitor states
 	t.requestStatusRefresh(t.instConfig.Priority)
 }
@@ -552,7 +560,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				// Select some nodes automatically.
 				dst := t.nextPlacedAtCandidate()
 				if dst == "" {
-					err := fmt.Errorf("no destination node candidate: a switch moves the object to an instance not up and provisioned")
+					err := fmt.Errorf("no destination node candidate: a switch moves the object to an instance not up and provisioned, its hard affinities let start")
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err
@@ -573,7 +581,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 					return err2
 				}
 				if can == "" {
-					err := fmt.Errorf("no destination node could be selected from %s: a switch moves the object to a provisioned instance", want)
+					err := fmt.Errorf("no destination node could be selected from %s: a switch moves the object to a provisioned instance its hard affinities let start", want)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err
@@ -583,10 +591,31 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				options.Destination = []string{can}
 				globalExpectOptions = options
 			}
+			// A destination whose start something no resync lifts would
+			// refuse is refused now, nothing stopped: the source waits for
+			// the others before it stops (see setWaitDestination).
+			if o, ok := globalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); ok {
+				if l := t.unliftableBlockers(o.Destination); len(l) > 0 {
+					err := fmt.Errorf("the destination can not start: %s", strings.Join(l, "; "))
+					t.log.Infof("set instance monitor: %s", err)
+					globalExpectRefused()
+					return err
+				}
+			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isRequestedStartable(); !v {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: refuse to start %s: %s", t.path, err)
+				globalExpectRefused()
+				return err
+			}
+		case instance.MonitorGlobalExpectPlaced:
+			// A giveback moves the object to the instance the ha rules
+			// start: one the hard affinities let start is to exist, or
+			// it stops the object everywhere.
+			if reason, _ := t.hardAffinityRefusal(t.provisionedInstances(nil)); reason != "" {
+				err := fmt.Errorf("no node to give the object back to: %s", reason)
+				t.log.Infof("set instance monitor: %s", err)
 				globalExpectRefused()
 				return err
 			}
@@ -856,6 +885,13 @@ func (t *Manager) isRequestedStartable() (bool, string) {
 	if t.isStarted() {
 		return false, "already started"
 	}
+	reason, follows := t.hardAffinityRefusal(t.provisionedInstances(nil))
+	if reason != "" {
+		return false, reason
+	}
+	if len(follows) > 0 {
+		t.log.Infof("the start waits for %s, starting first in its hard affinity cycle", follows)
+	}
 	return true, "object is startable"
 }
 
@@ -1059,6 +1095,9 @@ func (t *Manager) nextPlacedAtCandidates(want []string) (string, error) {
 			// instance cannot be.
 			continue
 		}
+		if !t.isHardAffinitySatisfied(node) {
+			continue
+		}
 		wantNodes = append(wantNodes, node)
 	}
 	return strings.Join(wantNodes, ","), nil
@@ -1070,14 +1109,15 @@ func (t *Manager) nextPlacedAtCandidate() string {
 	}
 	var candidates []string
 	candidates = append(candidates, t.scopeNodes...)
-	candidates = t.sortCandidates(candidates)
+	candidates = t.sortBySoftAffinity(t.sortCandidates(candidates))
 
-	// A switch starts the destination: an instance not up, and provisioned.
+	// A switch starts the destination: an instance not up, and provisioned,
+	// on a node the hard affinities let it start on.
 	provisionedNodes := t.provisionedInstances(func(instStatus instance.Status) bool {
 		return instStatus.Avail.Is(status.Down, status.StandbyDown, status.StandbyUp)
 	})
 	for _, candidate := range candidates {
-		if slices.Contains(provisionedNodes, candidate) {
+		if slices.Contains(provisionedNodes, candidate) && t.isHardAffinitySatisfied(candidate) {
 			return candidate
 		}
 	}
@@ -1131,7 +1171,8 @@ func (t *Manager) newIsHALeader() bool {
 // whether the daemon is allowed to act. Every other rule, being not
 // applicable, unprovisioned, unrankable or start failed, says the instance
 // cannot start whoever is asking, and holds for a start a user requested just
-// as much.
+// as much, as do the hard affinities, which the start command enforces too.
+// The soft affinities rank the candidates ahead of the placement policy.
 func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 	var candidates []string
 
@@ -1162,9 +1203,12 @@ func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 		if v, ok := t.IsNodeMonitorStatusRankable(node); !ok || !v {
 			continue
 		}
+		if !t.isHardAffinitySatisfied(node) {
+			continue
+		}
 		candidates = append(candidates, node)
 	}
-	candidates = t.sortCandidates(candidates)
+	candidates = t.sortBySoftAffinity(t.sortCandidates(candidates))
 
 	var maxLeaders int = 1
 	if t.objStatus.Topology == topology.Flex {

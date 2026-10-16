@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -256,11 +257,11 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	if env.HasDaemonMonitorOrigin() {
 		return nil
 	}
-	if actioncontext.IsForce(ctx) {
+	if actioncontext.IsForceAffinity(ctx) {
 		return nil
 	}
 	for _, pStr := range t.HardAffinity() {
-		p, err := naming.ParsePath(pStr)
+		p, err := naming.ParsePathOf(pStr, t.path.Namespace)
 		if err != nil {
 			return fmt.Errorf("hard affinity object %s parse path: %w", p, err)
 		}
@@ -273,14 +274,14 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 			return fmt.Errorf("hard affinity object %s status: %w", p, err)
 		}
 		switch instanceStatus.Avail {
-		case status.Up:
+		case status.Up, status.StandbyUpWithUp:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force-affinity to start anyway", p, instanceStatus.Avail)
 		}
 	}
 	for _, pStr := range t.HardAntiAffinity() {
-		p, err := naming.ParsePath(pStr)
+		p, err := naming.ParsePathOf(pStr, t.path.Namespace)
 		if err != nil {
 			return fmt.Errorf("hard anti affinity object %s parse path: %w", p, err)
 		}
@@ -298,7 +299,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		case status.StandbyDown:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force-affinity to start anyway", p, instanceStatus.Avail)
 		}
 	}
 	return nil
@@ -807,6 +808,10 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
+	if err := abortSyncTo(ctx); err != nil {
+		t.announceIdle(ctxWithTimeout)
+		return err
+	}
 	if action.PG {
 		if pgErr := t.registerNamespacePG(ctxWithTimeout); pgErr != nil {
 			t.log.Warnf("register namespace pg: %s", pgErr)
@@ -838,6 +843,19 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 	// the action is done without error ... start a new timeout for status eval
 	ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
 	defer cancelCtxWithTimeout()
+
+	if err := t.finalSync(ctx); err != nil {
+		// The instance was stopped for a destination to start on its copy of
+		// the data, older than the instance's: started back here, the object
+		// keeps the newest data rather than move without it.
+		t.log.Errorf("%s: start the instance back", err)
+		t.startBack(ctx)
+		ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
+		defer cancelCtxWithTimeout()
+		_, _ = t.statusEval(ctxWithTimeout)
+		t.announceFailure(ctxWithTimeout)
+		return err
+	}
 
 	if action.Order.IsDesc() {
 		t.PGClean(ctxWithTimeout)
@@ -893,4 +911,132 @@ func (t *actor) daemonMayStartOnItsOwn() bool {
 	default:
 		return false
 	}
+}
+
+// finalSync sends, once the instance is stopped, the sync resources
+// replicating to the nodes the stop names, as a switch asks of its source:
+// the destination starts on its copy of the data, which holds the writes
+// since the last sync only if they are sent now. The replication of a zfs
+// dataset is sent, a snapshot freezing it mounted or not. A sync reading files
+// through a mount point is sent when the resource mounting its source is
+// standby, mounted still once the instance is stopped, and said not sent
+// otherwise, with the standby that would let it be.
+//
+// It runs before the status of the stopped instance is read and published,
+// the destination starting as soon as the object is down.
+// abortSyncTo refuses a stop sending the syncs of the instance to a node
+// while it stops only some of its resources, selected by a resource or an
+// encapsulation selector: the syncs would send the data of resources still
+// running.
+func abortSyncTo(ctx context.Context) error {
+	if len(actioncontext.SyncTo(ctx)) == 0 || actioncontext.Props(ctx).Name != "stop" {
+		return nil
+	}
+	if actioncontext.HasResourceSelector(ctx) || actioncontext.Master(ctx) || actioncontext.AllSlaves(ctx) || len(actioncontext.Slaves(ctx)) > 0 {
+		return fmt.Errorf("--sync-to sends the syncs of a stopped instance: it can not be combined with a resource or encapsulation selector")
+	}
+	return nil
+}
+
+func (t *actor) finalSync(ctx context.Context) error {
+	nodes := actioncontext.SyncTo(ctx)
+	if len(nodes) == 0 || actioncontext.Props(ctx).Name != "stop" {
+		return nil
+	}
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		var targets []string
+		switch i := r.(type) {
+		case resource.FinalSyncer:
+			targets = selectNodes(nodes, i.FinalSyncsTo)
+		case resource.PeerSyncer:
+			targets = selectNodes(nodes, i.SyncsTo)
+			if len(targets) == 0 {
+				continue
+			}
+			if holder := mountHolding(t.Resources(), i.SyncSource()); holder == nil || !holder.IsStandby() {
+				t.log.Warnf("%s", finalSyncHint(r.RID(), i.SyncSource(), targets, holder))
+				continue
+			}
+		}
+		if len(targets) == 0 {
+			continue
+		}
+		t.log.Infof("%s: final sync to %s", r.RID(), strings.Join(targets, ", "))
+		syncCtx := actioncontext.WithTarget(ctx, targets)
+		syncCtx = actioncontext.WithFinalSync(syncCtx, true)
+		if err := resource.Update(syncCtx, r); err != nil {
+			return fmt.Errorf("%s: final sync to %s: %w", r.RID(), strings.Join(targets, ", "), err)
+		}
+	}
+	return nil
+}
+
+// startBack starts again the resources a stop stopped, after the final sync
+// it was stopped for failed: in the order of a start, and on a best effort,
+// what does not start saying so in the status.
+func (t *actor) startBack(ctx context.Context) {
+	startCtx := actioncontext.WithProps(ctx, actioncontext.Start)
+	selector := resourceselector.FromContext(startCtx, t)
+	if err := t.ResourceSets().Do(startCtx, selector, "", "start back", func(ctx context.Context, r resource.Driver) error {
+		if err := resource.Start(ctx, r); err != nil && !errors.Is(err, resource.ErrActionNotSupported) {
+			return err
+		}
+		return nil
+	}); err != nil {
+		t.log.Errorf("start back: %s", err)
+	}
+}
+
+// selectNodes returns the nodes a function says yes to.
+func selectNodes(nodes []string, fn func(string) bool) []string {
+	l := make([]string, 0, len(nodes))
+	for _, nodename := range nodes {
+		if fn(nodename) {
+			l = append(l, nodename)
+		}
+	}
+	return l
+}
+
+// mountHolding returns the resource whose mount point holds the path, the
+// deepest one, or nil when none does.
+func mountHolding(resources resource.Drivers, p string) resource.Driver {
+	type header interface {
+		Head() string
+	}
+	var (
+		found resource.Driver
+		depth int
+	)
+	for _, r := range resources {
+		i, ok := r.(header)
+		if !ok || r.IsDisabled() {
+			continue
+		}
+		head := filepath.Clean(i.Head())
+		if head == "" || head == "." {
+			continue
+		}
+		if cp := filepath.Clean(p); cp != head && !strings.HasPrefix(cp, head+"/") {
+			continue
+		}
+		if len(head) > depth {
+			found, depth = r, len(head)
+		}
+	}
+	return found
+}
+
+// finalSyncHint says why a sync is not sent to the destination of a switch,
+// and how it could be: it reads the files through a mount point the stop
+// unmounts, which a standby resource keeps mounted.
+func finalSyncHint(rid, src string, targets []string, holder resource.Driver) string {
+	s := fmt.Sprintf("%s: not sent to %s before the switch, the writes since its last run left behind: it reads %s, unmounted by the stop", rid, strings.Join(targets, ", "), src)
+	if holder != nil {
+		return s + fmt.Sprintf(". A standby %s, mounted still once the instance is stopped, would let the switch send it", holder.RID())
+	}
+	return s + ". A standby resource mounting it, mounted still once the instance is stopped, would let the switch send it"
 }

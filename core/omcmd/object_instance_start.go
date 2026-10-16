@@ -23,6 +23,7 @@ type (
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		Force           bool
+		ForceAffinity   bool
 		DisableRollback bool
 		NodeSelector    string
 	}
@@ -56,6 +57,10 @@ func (t *CmdObjectInstanceStart) Run(kind string) error {
 			if t.Force {
 				v := true
 				params.Force = &v
+			}
+			if t.ForceAffinity {
+				v := true
+				params.ForceAffinity = &v
 			}
 			if t.DisableRollback {
 				v := true
@@ -112,6 +117,7 @@ func (t *CmdObjectInstanceStart) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithForceAffinity(ctx, t.ForceAffinity)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
 			return nil, o.Start(ctx)
 		}),

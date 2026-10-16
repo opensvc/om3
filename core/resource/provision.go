@@ -259,10 +259,20 @@ func unprovisionAsLeader(ctx context.Context, t Driver) error {
 	return nil
 }
 
+// unprovisionAsFollower unprovisions a resource on a node that is not the
+// leader of the unprovision, as provisionAsFollower provisions it: a resource
+// not shared exists on every node, each having provisioned its own, and is
+// unprovisioned on every node with the leader method. A shared resource exists
+// once, and the leader alone unprovisions it.
+//
+// A resource not shared used to be unprovisioned on the followers only when
+// standby, and the others were left in place, the dataset of a volume of a
+// zpool pool on every node but the leader, with their provisioned flag set to
+// false all the same.
 func unprovisionAsFollower(ctx context.Context, t Driver) error {
 	if i, ok := t.(FollowerUnprovisioner); ok {
 		return i.UnprovisionAsFollower(ctx)
-	} else if t.IsStandby() && !t.IsShared() {
+	} else if !t.IsShared() {
 		return unprovisionAsLeader(ctx, t)
 	}
 	return nil

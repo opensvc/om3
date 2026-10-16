@@ -255,6 +255,12 @@ func FlagInterruptSyncs(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "interrupt-syncs", false, "end the syncs running on the instance before stopping it, instead of waiting for them to end")
 }
 
+// FlagForceAffinity lifts the hard affinity checks of a start, and only
+// those, where --force lifts every check a start makes.
+func FlagForceAffinity(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "force-affinity", false, "start even where the hard affinities of the object are not satisfied")
+}
+
 func FlagForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "allow dangerous operations")
 }
@@ -652,6 +658,10 @@ func FlagSections(flags *pflag.FlagSet, p *[]string) {
 
 func FlagMoveTo(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "move-to", "", "live-migrate capable resources destination")
+}
+
+func FlagSyncTo(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "sync-to", nil, "once the instance is stopped, send the sync resources replicating to these nodes; the instance is started back if a send fails")
 }
 
 func FlagSubset(flags *pflag.FlagSet, p *string) {

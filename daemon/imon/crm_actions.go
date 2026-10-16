@@ -235,6 +235,15 @@ func (t *Manager) crmStop() error {
 	return t.crmAction("stop", t.stopArgs()...)
 }
 
+// crmStopSyncToFunc stops the instance of a switch source, its sync
+// resources sent to the destination once it is stopped, before the
+// destination starts on its copy of the data.
+func (t *Manager) crmStopSyncToFunc(dst []string) func() error {
+	return func() error {
+		return t.crmAction("stop", t.stopArgs("--sync-to", strings.Join(dst, ","))...)
+	}
+}
+
 // stopArgs is the arguments of the instance stop command, the syncs running
 // interrupted when the orchestration asks it.
 func (t *Manager) stopArgs(extra ...string) []string {

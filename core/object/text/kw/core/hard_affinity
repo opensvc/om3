@@ -1,4 +1,14 @@
-A whitespace separated list of object paths.
+A whitespace separated list of object paths, a name alone being a svc of the
+object namespace.
 
-These objects must be started on the local node to allow the local monitor
-to start an instance of the service.
+An instance of the object starts only on a node where an instance of each of
+these objects is up: the daemon starts it, switches it or gives it back to
+no other node, and the start command refuses to start it elsewhere, unless
+`--force-affinity`. An instance running is not moved when one of these
+objects leaves its node.
+
+Objects whose hard affinities name each other, none of them up anywhere,
+would each wait for the others: the daemon starts the one of the smallest
+`priority`, then of the first path in alphanumeric order, as if it had no
+hard affinity with the others, and the others follow it. A start asked for
+one of the others waits for it.

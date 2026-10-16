@@ -97,10 +97,17 @@ var (
 	keyPlacement        = key.New("DEFAULT", "placement")
 	keyPreMonitorAction = key.New("DEFAULT", "pre_monitor_action")
 	keyWaitSyncsTimeout = key.New("DEFAULT", "wait_syncs_timeout")
+	keyStartTimeout     = key.New("DEFAULT", "start_timeout")
+	keyTimeout          = key.New("DEFAULT", "timeout")
 	keyPriority         = key.New("DEFAULT", "priority")
 	keySize             = key.New("DEFAULT", "size")
 	keyTopology         = key.New("DEFAULT", "topology")
 	keyStonith          = key.New("DEFAULT", "stonith")
+
+	keyHardAffinity     = key.New("DEFAULT", "hard_affinity")
+	keyHardAntiAffinity = key.New("DEFAULT", "hard_anti_affinity")
+	keySoftAffinity     = key.New("DEFAULT", "soft_affinity")
+	keySoftAntiAffinity = key.New("DEFAULT", "soft_anti_affinity")
 )
 
 // Start launch goroutine instConfig worker for a local instance config
@@ -393,9 +400,18 @@ func (t *Manager) configFileCheck() error {
 			Subsets:          t.getSubsets(cf),
 			Topology:         t.getTopology(cf),
 			Stonith:          cf.GetBool(keyStonith),
+			HardAffinity:     t.getPaths(cf, keyHardAffinity),
+			HardAntiAffinity: t.getPaths(cf, keyHardAntiAffinity),
+			SoftAffinity:     t.getPaths(cf, keySoftAffinity),
+			SoftAntiAffinity: t.getPaths(cf, keySoftAntiAffinity),
 		}
 		if d := cf.GetDuration(keyWaitSyncsTimeout); d != nil {
 			cfg.ActorConfig.WaitSyncsTimeout = *d
+		}
+		if d := cf.GetDuration(keyStartTimeout); d != nil {
+			cfg.ActorConfig.StartTimeout = *d
+		} else if d := cf.GetDuration(keyTimeout); d != nil {
+			cfg.ActorConfig.StartTimeout = *d
 		}
 		if cfg.Topology == topology.Flex {
 			instanceCount := len(scope)
@@ -457,6 +473,21 @@ func (t *Manager) getMonitorAction(cf *xconfig.T) []instance.MonitorAction {
 func (t *Manager) getChildren(cf *xconfig.T) naming.Relations {
 	l := cf.GetStrings(keyChildren)
 	return naming.ParseRelations(l, t.path.Namespace)
+}
+
+// getPaths returns the object paths the keyword k lists, a name alone being
+// a svc of the object namespace.
+func (t *Manager) getPaths(cf *xconfig.T, k key.T) naming.Paths {
+	var l naming.Paths
+	for _, s := range cf.GetStrings(k) {
+		p, err := naming.ParsePathOf(s, t.path.Namespace)
+		if err != nil {
+			t.log.Warnf("%s: %s: %s", k, s, err)
+			continue
+		}
+		l = append(l, p)
+	}
+	return l
 }
 
 func (t *Manager) getParents(cf *xconfig.T) naming.Relations {

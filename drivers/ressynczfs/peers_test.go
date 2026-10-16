@@ -146,6 +146,7 @@ func (c *fakeCluster) run(mode modeT, now time.Time, states peerStates, peers, t
 	local := c.t.ownSnapshots(c.snaps[""])
 	snap := local[len(local)-1]
 	c.t.seedLegacyStates(local, peers, states)
+	c.t.seedReceivedBase(local, peers, states)
 	var errs error
 	for _, nodename := range targets {
 		st := states[nodename]
@@ -205,6 +206,24 @@ func TestSyncPeers(t *testing.T) {
 		require.Equal(t, []string{snapAt(2)}, c.names("n2"))
 		require.Equal(t, []string{snapAt(2)}, c.names("n3"))
 		require.True(t, states["n3"].FailedAt.IsZero())
+	})
+
+	t.Run("a new source keeps the base of the former source through a failed run", func(t *testing.T) {
+		d := newTestT(t)
+		c := newFakeCluster(d)
+		// This node received snapAt(0) from n2, the source then: a switch
+		// made it the source, knowing nothing of its peers.
+		require.NoError(t, c.takeSnapshot(d.newSnapName(t0)))
+		c.snaps["n2"] = []snapshot{c.received(c.find(d.newSnapName(t0)))}
+		states := peerStates{}
+
+		c.down["n2"] = true
+		require.Error(t, c.run(modeIncr, t0.Add(time.Hour), states, []string{"n2"}, []string{"n2"}))
+		require.Equal(t, []string{snapAt(0), snapAt(1)}, c.names(""), "the base n2 holds is kept")
+
+		c.down["n2"] = false
+		require.NoError(t, c.run(modeIncr, t0.Add(2*time.Hour), states, []string{"n2"}, []string{"n2"}))
+		require.Equal(t, []string{"incr " + snapAt(0) + " " + snapAt(2)}, c.sent["n2"], "n2 sent the delta from its base, not stranded")
 	})
 
 	t.Run("a long outage strands the peer until a full", func(t *testing.T) {

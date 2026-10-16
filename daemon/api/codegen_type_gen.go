@@ -2945,6 +2945,9 @@ type States = []string
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
 
+// InQueryForceAffinity defines model for inQueryForceAffinity.
+type InQueryForceAffinity = bool
+
 // InQueryHBA defines model for inQueryHBA.
 type InQueryHBA = string
 
@@ -3037,6 +3040,9 @@ type InQuerySubset = string
 
 // SyncTarget defines model for inQuerySyncTarget.
 type SyncTarget = []string
+
+// InQuerySyncTo defines model for inQuerySyncTo.
+type InQuerySyncTo = string
 
 // InQueryTag defines model for inQueryTag.
 type InQueryTag = string
@@ -3946,8 +3952,12 @@ type PostInstanceActionStartParams struct {
 	Slaves          *InQueryAllSlaves       `form:"slaves,omitempty" json:"slaves,omitempty"`
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
-	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionID       *SessionID              `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// ForceAffinity Start even where the hard affinities of the object are not satisfied,
+	// a check force lifts too among the others.
+	ForceAffinity *InQueryForceAffinity `form:"force_affinity,omitempty" json:"force_affinity,omitempty"`
+	Master        *InQueryMaster        `form:"master,omitempty" json:"master,omitempty"`
+	SessionID     *SessionID            `form:"session_id,omitempty" json:"session_id,omitempty"`
 
 	// Rid a resource selector expression
 	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
@@ -4036,6 +4046,11 @@ type PostInstanceActionStopParams struct {
 	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
 	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
 	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+
+	// SyncTo Once the instance is stopped, send the sync resources replicating to
+	// these nodes, comma separated, as a switch asks of its source before the
+	// destination starts. The instance is started back if a send fails.
+	SyncTo *InQuerySyncTo `form:"sync-to,omitempty" json:"sync-to,omitempty"`
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
 

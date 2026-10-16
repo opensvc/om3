@@ -19,6 +19,7 @@ const (
 	cronKey
 	envKey
 	forceKey
+	forceAffinityKey
 	interruptSyncsKey
 	leaderKey
 	lockTimeoutKey
@@ -26,6 +27,8 @@ const (
 	lockDisabledKey
 	masterKey
 	moveToKey
+	syncToKey
+	finalSyncKey
 	propsKey
 	quietKey
 	ridKey
@@ -130,6 +133,21 @@ func IsForce(ctx context.Context) bool {
 	return false
 }
 
+// WithForceAffinity has a start ignore the hard affinities of the object,
+// as --force does among the other checks.
+func WithForceAffinity(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, forceAffinityKey, v)
+}
+
+// IsForceAffinity says a start ignores the hard affinities of the object,
+// asked by --force-affinity or --force.
+func IsForceAffinity(ctx context.Context) bool {
+	if i := ctx.Value(forceAffinityKey); i != nil && i.(bool) {
+		return true
+	}
+	return IsForce(ctx)
+}
+
 // WithInterruptSyncs has a stop end the syncs running on the instance before
 // stopping it, instead of waiting for the object lock they hold.
 func WithInterruptSyncs(ctx context.Context, v bool) context.Context {
@@ -151,6 +169,36 @@ func MoveTo(ctx context.Context) string {
 		return i.(string)
 	}
 	return ""
+}
+
+// WithSyncTo has a stop send, once the instance is stopped, the sync
+// resources replicating to these nodes, as a switch asks of its source before
+// the destination starts.
+func WithSyncTo(ctx context.Context, nodes []string) context.Context {
+	return context.WithValue(ctx, syncToKey, nodes)
+}
+
+// SyncTo returns the nodes a stop sends the sync resources to once the
+// instance is stopped.
+func SyncTo(ctx context.Context) []string {
+	if i := ctx.Value(syncToKey); i != nil {
+		return i.([]string)
+	}
+	return nil
+}
+
+// WithFinalSync says the sync is the last one of a stopped source, its
+// destination not started: the sync of a source not started is allowed then,
+// the data it would overwrite being older than its own.
+func WithFinalSync(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, finalSyncKey, v)
+}
+
+func IsFinalSync(ctx context.Context) bool {
+	if i := ctx.Value(finalSyncKey); i != nil {
+		return i.(bool)
+	}
+	return false
 }
 
 func WithTo(ctx context.Context, s string) context.Context {

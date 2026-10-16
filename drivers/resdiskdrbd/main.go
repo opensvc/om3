@@ -76,6 +76,7 @@ type (
 		WaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error)
 		StartConnections(context.Context, ...string) error
 		Show(ctx context.Context) (drbd.DrbdShow, error)
+		Status(ctx context.Context) (drbd.Status, error)
 	}
 	DRBDDriverResizer interface {
 		Resize(context.Context) error
@@ -124,6 +125,9 @@ var (
 	// waitConnectedTimeout defines the maximum duration to wait for a connection
 	// state change to connected before timing out.
 	waitConnectedTimeout = time.Second * 20
+
+	waitUpToDateInterval    = time.Second
+	waitUpToDateLogInterval = 5 * time.Second
 
 	waitDiskStatesDelay   = time.Second * 1
 	waitDiskStatesTimeout = time.Second * 20
@@ -270,6 +274,40 @@ func (t *T) StartStandby(ctx context.Context) error {
 	return dev.Secondary(ctx)
 }
 
+// StartBlocker implements resource.StartBlockerer: a disk not up to date
+// refuses a promotion. A resync from a peer up to date lifts it, but on a
+// disk the node does not have.
+func (t *T) StartBlocker(ctx context.Context) *resource.StartBlocker {
+	if !t.isConfigured() {
+		return nil
+	}
+	dev := t.drbd(ctx)
+	if ok, err := dev.IsDefined(ctx); err != nil || !ok {
+		return nil
+	}
+	st, err := dev.Status(ctx)
+	if err != nil {
+		// A disk whose state is unknown is not known to start: no resync
+		// is known to lift it either.
+		return &resource.StartBlocker{
+			Reason: fmt.Sprintf("drbd %s state unknown: %s", t.Res, err),
+		}
+	}
+	if st.IsUpToDate() || st.Role == "Primary" {
+		return nil
+	}
+	diskless := false
+	for _, d := range st.Devices {
+		if d.DiskState == "Diskless" {
+			diskless = true
+		}
+	}
+	return &resource.StartBlocker{
+		Reason: fmt.Sprintf("drbd %s disk %s (peers: %s)", t.Res, st.DiskStates(), st.Peers()),
+		Resync: !diskless,
+	}
+}
+
 func (t *T) Start(ctx context.Context) error {
 	if !t.isConfigured() {
 		t.Log().Infof("skip: resource not configured")
@@ -289,6 +327,9 @@ func (t *T) Start(ctx context.Context) error {
 	if role == "Primary" {
 		return nil
 	}
+	if err := t.waitUpToDate(ctx, dev); err != nil {
+		return err
+	}
 	if err := dev.Primary(ctx); err != nil {
 		return err
 	}
@@ -296,6 +337,63 @@ func (t *T) Start(ctx context.Context) error {
 		return dev.Secondary(ctx)
 	})
 	return nil
+}
+
+// waitUpToDate waits for the local disk to hold the latest data before it is
+// promoted, a promotion refusing a disk Outdated or Inconsistent. A disk left
+// behind while its peer ran, as the one of a node a switch moves the object
+// to, is brought up to date by a resync from a peer, which the connection
+// started by the start begins: the promotion waits for it to end, rather than
+// fail the moment the connection is made.
+//
+// The peers have waitConnectedTimeout to connect and to be found holding the
+// latest data, the resync then the time the start has left, its progress
+// logged. A disk no peer can bring up to date fails the start saying why.
+func (t *T) waitUpToDate(ctx context.Context, dev DRBDDriver) error {
+	st, err := dev.Status(ctx)
+	if err != nil {
+		return err
+	}
+	if st.IsUpToDate() {
+		return nil
+	}
+	t.Log().Infof("drbd %s local disk %s: wait for the resync from a peer before promoting", t.Res, st.DiskStates())
+	// One waitConnectedTimeout for the peers to connect and for one of them
+	// to be found up to date, not one for each.
+	begin := time.Now()
+	noSourceSince := begin
+	if err := t.waitPeersConnected(ctx); err != nil {
+		t.Log().Warnf("drbd %s wait for peers connected: %s", t.Res, err)
+	}
+	var lastLog time.Time
+	for {
+		st, err := dev.Status(ctx)
+		if err != nil {
+			return err
+		}
+		if st.IsUpToDate() {
+			t.Log().Infof("drbd %s local disk %s after %s", t.Res, st.DiskStates(), time.Since(begin).Round(time.Second))
+			return nil
+		}
+		if st.HasUpToDatePeer() {
+			noSourceSince = time.Time{}
+		} else if noSourceSince.IsZero() {
+			noSourceSince = time.Now()
+		} else if time.Since(noSourceSince) >= waitConnectedTimeout {
+			return fmt.Errorf("drbd %s local disk %s, no connected peer holds up to date data to resync from (peers: %s)",
+				t.Res, st.DiskStates(), st.Peers())
+		}
+		if time.Since(lastLog) >= waitUpToDateLogInterval {
+			t.Log().Infof("drbd %s local disk %s, %d KiB out of sync (peers: %s)", t.Res, st.DiskStates(), st.OutOfSync(), st.Peers())
+			lastLog = time.Now()
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("drbd %s local disk %s, resync not done after %s, %d KiB out of sync (peers: %s)",
+				t.Res, st.DiskStates(), time.Since(begin).Round(time.Second), st.OutOfSync(), st.Peers())
+		case <-time.After(waitUpToDateInterval):
+		}
+	}
 }
 
 func (t *T) Stop(ctx context.Context) error {

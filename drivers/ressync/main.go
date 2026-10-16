@@ -406,6 +406,11 @@ func (t *T) GetTargetNodenames(target, nodes, drpNodes []string) []string {
 // A node where its reference resources are not up is a passive one, which
 // must not send: its copy would replace the one of the active node.
 func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (bool, string) {
+	if actioncontext.IsFinalSync(ctx) {
+		// The last sync of a switch source, stopped, its destination not
+		// started: the data it sends is the newest.
+		return true, ""
+	}
 	sb := statusbus.FromContext(ctx)
 	o := t.GetObjectDriver()
 	l := o.ResourcesByDrivergroups([]driver.Group{

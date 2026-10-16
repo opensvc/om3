@@ -1,3 +1,6 @@
-A whitespace separated list of services that must be started on the node to allow the monitor to start this service.
+A whitespace separated list of object paths, a name alone being a svc of the
+object namespace.
 
-If the local node is the only candidate ignore this constraint and allow start.
+The daemon prefers the nodes where instances of these objects are up when it
+starts or switches the object, the more the better, the placement policy
+ordering the nodes it prefers the same. No node is excluded.

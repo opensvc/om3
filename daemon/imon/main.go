@@ -73,6 +73,17 @@ type (
 		// ObjectStatusUpdated for path events where srcEvent is InstanceConfigUpdated.
 		instConfig instance.Config
 
+		// volumeSeen holds the vol objects the volume resources of the
+		// local instance use, whose local instance status updates are
+		// subscribed to, with what was last seen of them.
+		volumeSeen map[naming.Path]string
+
+		// affinitySubscribed holds the objects the affinities name, whose
+		// instance status updates are subscribed to, and affinityAvail the
+		// last avail status of their instances, by path@node.
+		affinitySubscribed map[naming.Path]struct{}
+		affinityAvail      map[string]status.T
+
 		// instStatus is the instance status value for path, it is updated on
 		// ObjectStatusUpdated for path events where srcEvent is InstanceStatusDeleted
 		// or InstanceStatusUpdated.
@@ -119,6 +130,12 @@ type (
 		// refused, the syncs running past the wait: nothing stopped.
 		stopRefusedForSyncs bool
 
+		// waitDestinationTimer fires when a switch source has waited long
+		// enough for the destination to be ready to start, waiting since
+		// waitDestinationSince.
+		waitDestinationTimer *time.Timer
+		waitDestinationSince time.Time
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -152,6 +169,11 @@ type (
 		// orchestrationAborted represents the ObjectOrchestrationEnd event for
 		// an orchestration process that was prematurely aborted.
 		orchestrationAborted *msgbus.ObjectOrchestrationEnd
+
+		// idleAfterOrchestration has the instance go back to idle, its
+		// monitoring on, when the orchestration ends: a failed state kept
+		// until then says the orchestration failed.
+		idleAfterOrchestration bool
 
 		// endWithDeletion holds the end of the orchestration back until the
 		// instance monitor is deleted, as a purge that deleted the instance
@@ -452,9 +474,15 @@ func (t *Manager) worker(initialNodes []string) {
 	t.eventRefreshTimer.Stop()
 	t.waitSyncsTimer = time.NewTimer(time.Hour)
 	t.waitSyncsTimer.Stop()
+	t.waitDestinationTimer = time.NewTimer(time.Hour)
+	t.waitDestinationTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
+	t.affinitySubscribed = make(map[naming.Path]struct{})
+	t.affinityAvail = make(map[string]status.T)
+	t.janitorAffinities()
+	t.janitorVolumes()
 	t.initResourceMonitor()
 	t.initLocalResourceFiles()
 	t.updateIsLeader()
@@ -570,6 +598,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onEventRefreshTimer()
 		case <-t.waitSyncsTimer.C:
 			t.onWaitSyncsTimer()
+		case <-t.waitDestinationTimer.C:
+			t.onWaitDestinationTimer()
 		}
 	}
 }

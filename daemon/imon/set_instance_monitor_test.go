@@ -28,15 +28,24 @@ func (t *pubSpy) Pub(m pubsub.Messager, _ ...pubsub.Label) {
 	t.msgs = append(t.msgs, m)
 }
 
+func stoppedTimer() *time.Timer {
+	tm := time.NewTimer(time.Hour)
+	tm.Stop()
+	return tm
+}
+
 func newTestManager(pub pubsub.Publisher) *Manager {
 	return &Manager{
-		log:         plog.NewDefaultLogger(),
-		publisher:   pub,
-		path:        naming.Path{Kind: naming.KindSvc, Name: "obj"},
-		localhost:   "node1",
-		delayTimer:  time.NewTimer(time.Hour),
-		instMonitor: make(map[string]instance.Monitor),
-		instStatus:  make(map[string]instance.Status),
+		log:        plog.NewDefaultLogger(),
+		publisher:  pub,
+		path:       naming.Path{Kind: naming.KindSvc, Name: "obj"},
+		localhost:  "node1",
+		delayTimer: time.NewTimer(time.Hour),
+		// The timers of the waits, stopped, as a monitor starts them.
+		waitSyncsTimer:       stoppedTimer(),
+		waitDestinationTimer: stoppedTimer(),
+		instMonitor:          make(map[string]instance.Monitor),
+		instStatus:           make(map[string]instance.Status),
 		state: instance.Monitor{
 			State:        instance.MonitorStateIdle,
 			GlobalExpect: instance.MonitorGlobalExpectNone,

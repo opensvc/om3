@@ -56,6 +56,11 @@ const (
 	MonitorStateCapFailure
 	MonitorStateCapSuccess
 
+	// the destination of a switch preparing to start, as reconnecting a
+	// replicated disk left behind for it to resync before the source stops
+	MonitorStatePrepareProgress
+	MonitorStatePrepareFailure
+
 	// wait states
 	MonitorStateWaitChildren
 	MonitorStateWaitParents
@@ -63,6 +68,8 @@ const (
 	MonitorStateWaitLeader
 	MonitorStateWaitNonLeader
 	MonitorStateWaitSyncs
+	MonitorStateWaitDestination
+	MonitorStateWaitDestinationFailure
 
 	// Miscellaneous
 	MonitorStateRunning
@@ -85,6 +92,8 @@ var (
 	MonitorStatesFailure = []MonitorState{
 		MonitorStateCapFailure,
 		MonitorStateDeleteFailure,
+		MonitorStatePrepareFailure,
+		MonitorStateWaitDestinationFailure,
 		MonitorStateFreezeFailure,
 		MonitorStateProvisionFailure,
 		MonitorStatePurgeFailed,
@@ -155,6 +164,9 @@ func init() {
 		{MonitorStateCapFailure, "cap failed"},
 		{MonitorStateCapSuccess, "capped"},
 
+		{MonitorStatePrepareProgress, "preparing"},
+		{MonitorStatePrepareFailure, "prepare failed"},
+
 		// wait states
 		{MonitorStateWaitChildren, "wait children"},
 		{MonitorStateWaitParents, "wait parents"},
@@ -162,6 +174,8 @@ func init() {
 		{MonitorStateWaitNonLeader, "wait non-leader"},
 		{MonitorStateWaitPriors, "wait priors"},
 		{MonitorStateWaitSyncs, "wait syncs"},
+		{MonitorStateWaitDestination, "wait destination"},
+		{MonitorStateWaitDestinationFailure, "wait destination failed"},
 
 		// Miscellaneous
 		{MonitorStateRunning, "running"},

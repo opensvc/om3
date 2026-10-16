@@ -59,6 +59,9 @@ func (a *DaemonAPI) postLocalInstanceActionStop(ctx echo.Context, namespace stri
 	if params.MoveTo != nil && *params.MoveTo != "" {
 		args = append(args, "--move-to", *params.MoveTo)
 	}
+	if params.SyncTo != nil && *params.SyncTo != "" {
+		args = append(args, "--sync-to", *params.SyncTo)
+	}
 	if params.To != nil && *params.To != "" {
 		args = append(args, "--to", *params.To)
 	}

@@ -47,6 +47,9 @@ func (a *DaemonAPI) postLocalInstanceActionStart(ctx echo.Context, namespace str
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}
+	if params.ForceAffinity != nil && *params.ForceAffinity {
+		args = append(args, "--force-affinity")
+	}
 	if params.To != nil && *params.To != "" {
 		args = append(args, "--to", *params.To)
 	}

@@ -536,10 +536,31 @@ func (t *T) waitForDown(ctx context.Context, timeout, interval time.Duration) bo
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isDown(ctx)
 		if err != nil {
-			return true
+			// The state is not known: not down, or a failing virsh would
+			// make a stop report a guest down that is not.
+			t.Log().Warnf("wait for %s shutdown: %s", t.Name, err)
+			return false
 		}
 		return v
 	})
+}
+
+// actOrDown runs an action stopping the domain, and says it done if it failed
+// with the domain down all the same: the domain can power off on its own in
+// the moment between the read of its state and the action, as a guest
+// finishing its shutdown when the stop timeout expires, and the action then
+// fails on a domain that is not running. Being down is what the stop asked
+// for, so the state decides, not the error, whose text virsh translates.
+func (t *T) actOrDown(ctx context.Context, name string, fn func(context.Context) error) error {
+	err := fn(ctx)
+	if err == nil {
+		return nil
+	}
+	if down, stateErr := t.isDown(ctx); stateErr == nil && down {
+		t.Log().Infof("%s %s failed, and the domain is down: %s", name, t.Name, err)
+		return nil
+	}
+	return err
 }
 
 func (t *T) waitForUp(ctx context.Context, timeout, interval time.Duration) bool {
@@ -595,17 +616,21 @@ func (t *T) containerStop(ctx context.Context) error {
 	}
 	switch state {
 	case DomStateRunning:
-		if err := t.stop(ctx); err != nil {
+		if err := t.actOrDown(ctx, "shutdown", t.stop); err != nil {
 			return err
 		}
 		if !t.waitForDown(ctx, *t.StopTimeout, 2*time.Second) {
+			// The domain may have gone down since the last look of the wait.
+			if down, err := t.isDown(ctx); err == nil && down {
+				return nil
+			}
 			t.Log().Warnf("waited too long for shutdown")
-			if err := t.destroy(ctx); err != nil {
+			if err := t.actOrDown(ctx, "destroy", t.destroy); err != nil {
 				return err
 			}
 		}
 	case DomStateBlocked, DomStatePaused, DomStateCrashed:
-		if err := t.destroy(ctx); err != nil {
+		if err := t.actOrDown(ctx, "destroy", t.destroy); err != nil {
 			return err
 		}
 	default:

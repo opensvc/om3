@@ -3,6 +3,7 @@ package oxcmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
@@ -24,6 +25,7 @@ type (
 		InterruptSyncs bool
 		MoveTo         string
 		NodeSelector   string
+		SyncTo         []string
 	}
 )
 
@@ -58,6 +60,10 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			}
 			if t.MoveTo != "" {
 				params.MoveTo = &t.MoveTo
+			}
+			if len(t.SyncTo) > 0 {
+				syncTo := strings.Join(t.SyncTo, ",")
+				params.SyncTo = &syncTo
 			}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
