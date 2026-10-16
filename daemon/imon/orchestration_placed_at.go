@@ -192,6 +192,11 @@ func (t *Manager) doPlacedStop() {
 			t.log.Errorf("FIXME: live migration is not possible with multiple destinations (%s)", dst)
 			t.transitionTo(instance.MonitorStateStopFailure)
 		}
+	} else if ok && len(dst) > 0 {
+		// The destination starts on its copy of the data: the source sends
+		// what its syncs hold once stopped, so the writes since the last
+		// sync are not lost.
+		t.queueAction(t.crmStopSyncToFunc(dst), instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
 	} else {
 		t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
 	}

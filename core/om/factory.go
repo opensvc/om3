@@ -3574,6 +3574,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	commoncmd.FlagMoveTo(flags, &options.MoveTo)
+	commoncmd.FlagSyncTo(flags, &options.SyncTo)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")

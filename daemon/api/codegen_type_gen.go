@@ -3038,6 +3038,9 @@ type InQuerySubset = string
 // SyncTarget defines model for inQuerySyncTarget.
 type SyncTarget = []string
 
+// InQuerySyncTo defines model for inQuerySyncTo.
+type InQuerySyncTo = string
+
 // InQueryTag defines model for inQueryTag.
 type InQueryTag = string
 
@@ -4036,6 +4039,11 @@ type PostInstanceActionStopParams struct {
 	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
 	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
 	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+
+	// SyncTo Once the instance is stopped, send the sync resources replicating to
+	// these nodes, comma separated, as a switch asks of its source before the
+	// destination starts. The instance is started back if a send fails.
+	SyncTo *InQuerySyncTo `form:"sync-to,omitempty" json:"sync-to,omitempty"`
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
 

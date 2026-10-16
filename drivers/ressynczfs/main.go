@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -62,6 +63,12 @@ const (
 
 func New() resource.Driver {
 	return &T{}
+}
+
+// FinalSyncsTo implements resource.FinalSyncer: a zfs dataset is sent from a
+// snapshot, mounted or not.
+func (t *T) FinalSyncsTo(nodename string) bool {
+	return slices.Contains(t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes), nodename)
 }
 
 func (t *T) Full(ctx context.Context) error {

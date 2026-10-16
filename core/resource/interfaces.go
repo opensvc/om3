@@ -74,6 +74,16 @@ type (
 		MoveCopiesStorage() bool
 	}
 
+	// FinalSyncer is a sync resource able to send its data from an instance
+	// stopped, as a switch asks of its source before the destination starts:
+	// the replication of a dataset, which a snapshot freezes whether it is
+	// mounted or not. A sync reading files through a mount point is not one,
+	// the stop having unmounted it.
+	FinalSyncer interface {
+		// FinalSyncsTo says whether the resource replicates to the node.
+		FinalSyncsTo(nodename string) bool
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes

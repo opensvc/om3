@@ -26,6 +26,8 @@ const (
 	lockDisabledKey
 	masterKey
 	moveToKey
+	syncToKey
+	finalSyncKey
 	propsKey
 	quietKey
 	ridKey
@@ -151,6 +153,36 @@ func MoveTo(ctx context.Context) string {
 		return i.(string)
 	}
 	return ""
+}
+
+// WithSyncTo has a stop send, once the instance is stopped, the sync
+// resources replicating to these nodes, as a switch asks of its source before
+// the destination starts.
+func WithSyncTo(ctx context.Context, nodes []string) context.Context {
+	return context.WithValue(ctx, syncToKey, nodes)
+}
+
+// SyncTo returns the nodes a stop sends the sync resources to once the
+// instance is stopped.
+func SyncTo(ctx context.Context) []string {
+	if i := ctx.Value(syncToKey); i != nil {
+		return i.([]string)
+	}
+	return nil
+}
+
+// WithFinalSync says the sync is the last one of a stopped source, its
+// destination not started: the sync of a source not started is allowed then,
+// the data it would overwrite being older than its own.
+func WithFinalSync(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, finalSyncKey, v)
+}
+
+func IsFinalSync(ctx context.Context) bool {
+	if i := ctx.Value(finalSyncKey); i != nil {
+		return i.(bool)
+	}
+	return false
 }
 
 func WithTo(ctx context.Context, s string) context.Context {

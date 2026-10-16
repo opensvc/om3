@@ -3509,6 +3509,7 @@ paths:
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQuerySyncTo'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
@@ -10512,6 +10513,16 @@ components:
     inQueryMoveTo:
       in: query
       name: move-to
+      schema:
+        type: string
+
+    inQuerySyncTo:
+      in: query
+      name: sync-to
+      description: |
+        Once the instance is stopped, send the sync resources replicating to
+        these nodes, comma separated, as a switch asks of its source before the
+        destination starts. The instance is started back if a send fails.
       schema:
         type: string
 

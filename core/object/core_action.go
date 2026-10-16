@@ -839,6 +839,19 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 	ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
 	defer cancelCtxWithTimeout()
 
+	if err := t.finalSync(ctx); err != nil {
+		// The instance was stopped for a destination to start on its copy of
+		// the data, older than the instance's: started back here, the object
+		// keeps the newest data rather than move without it.
+		t.log.Errorf("%s: start the instance back", err)
+		t.startBack(ctx)
+		ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
+		defer cancelCtxWithTimeout()
+		_, _ = t.statusEval(ctxWithTimeout)
+		t.announceFailure(ctxWithTimeout)
+		return err
+	}
+
 	if action.Order.IsDesc() {
 		t.PGClean(ctxWithTimeout)
 	}
@@ -892,5 +905,62 @@ func (t *actor) daemonMayStartOnItsOwn() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// finalSync sends, once the instance is stopped, the sync resources
+// replicating to the nodes the stop names, as a switch asks of its source:
+// the destination starts on its copy of the data, which holds the writes
+// since the last sync only if they are sent now. The sync resources able to
+// send from a stopped instance do, the replication of a zfs dataset; the
+// others, reading files through a mount point the stop unmounted, can not.
+//
+// It runs before the status of the stopped instance is read and published,
+// the destination starting as soon as the object is down.
+func (t *actor) finalSync(ctx context.Context) error {
+	nodes := actioncontext.SyncTo(ctx)
+	if len(nodes) == 0 || actioncontext.Props(ctx).Name != "stop" {
+		return nil
+	}
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		i, ok := r.(resource.FinalSyncer)
+		if !ok {
+			continue
+		}
+		targets := make([]string, 0, len(nodes))
+		for _, nodename := range nodes {
+			if i.FinalSyncsTo(nodename) {
+				targets = append(targets, nodename)
+			}
+		}
+		if len(targets) == 0 {
+			continue
+		}
+		t.log.Infof("%s: final sync to %s", r.RID(), strings.Join(targets, ", "))
+		syncCtx := actioncontext.WithTarget(ctx, targets)
+		syncCtx = actioncontext.WithFinalSync(syncCtx, true)
+		if err := resource.Update(syncCtx, r); err != nil {
+			return fmt.Errorf("%s: final sync to %s: %w", r.RID(), strings.Join(targets, ", "), err)
+		}
+	}
+	return nil
+}
+
+// startBack starts again the resources a stop stopped, after the final sync
+// it was stopped for failed: in the order of a start, and on a best effort,
+// what does not start saying so in the status.
+func (t *actor) startBack(ctx context.Context) {
+	startCtx := actioncontext.WithProps(ctx, actioncontext.Start)
+	selector := resourceselector.FromContext(startCtx, t)
+	if err := t.ResourceSets().Do(startCtx, selector, "", "start back", func(ctx context.Context, r resource.Driver) error {
+		if err := resource.Start(ctx, r); err != nil && !errors.Is(err, resource.ErrActionNotSupported) {
+			return err
+		}
+		return nil
+	}); err != nil {
+		t.log.Errorf("start back: %s", err)
 	}
 }

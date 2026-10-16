@@ -654,6 +654,10 @@ func FlagMoveTo(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "move-to", "", "live-migrate capable resources destination")
 }
 
+func FlagSyncTo(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "sync-to", nil, "once the instance is stopped, send the sync resources replicating to these nodes; the instance is started back if a send fails")
+}
+
 func FlagSubset(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "subset", "", "a subset selector expression (ex: g1,g2)")
 }
