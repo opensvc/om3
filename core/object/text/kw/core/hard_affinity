@@ -6,3 +6,9 @@ these objects is up: the daemon starts it, switches it or gives it back to
 no other node, and the start command refuses to start it elsewhere, unless
 `--force-affinity`. An instance running is not moved when one of these
 objects leaves its node.
+
+Objects whose hard affinities name each other, none of them up anywhere,
+would each wait for the others: the daemon starts the one of the smallest
+`priority`, then of the first path in alphanumeric order, as if it had no
+hard affinity with the others, and the others follow it. A start asked for
+one of the others waits for it.

@@ -613,7 +613,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			// A giveback moves the object to the instance the ha rules
 			// start: one the hard affinities let start is to exist, or
 			// it stops the object everywhere.
-			if reason := t.hardAffinityRefusal(t.provisionedInstances(nil)); reason != "" {
+			if reason, _ := t.hardAffinityRefusal(t.provisionedInstances(nil)); reason != "" {
 				err := fmt.Errorf("no node to give the object back to: %s", reason)
 				t.log.Infof("set instance monitor: %s", err)
 				globalExpectRefused()
@@ -885,8 +885,12 @@ func (t *Manager) isRequestedStartable() (bool, string) {
 	if t.isStarted() {
 		return false, "already started"
 	}
-	if reason := t.hardAffinityRefusal(t.provisionedInstances(nil)); reason != "" {
+	reason, follows := t.hardAffinityRefusal(t.provisionedInstances(nil))
+	if reason != "" {
 		return false, reason
+	}
+	if len(follows) > 0 {
+		t.log.Infof("the start waits for %s, starting first in its hard affinity cycle", follows)
 	}
 	return true, "object is startable"
 }

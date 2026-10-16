@@ -86,20 +86,39 @@ func affineAvail(p naming.Path, node string) status.T {
 	return status.Undef
 }
 
-// hardAffinityViolations says why the object may not start on node, as the
-// start command does: an object its hard affinity names is not up there, or
-// one its hard anti affinity names is.
-func (t *Manager) hardAffinityViolations(node string) []string {
+// affinityViolation is a hard affinity refusing a start on a node, and the
+// object of a hard affinity cycle the object waits for to start first, if
+// that is what refuses it.
+type affinityViolation struct {
+	text    string
+	follows naming.Path
+}
+
+// affinityViolations says why the object may not start on node, as the start
+// command does: an object its hard affinity names is not up there, or one its
+// hard anti affinity names is.
+func (t *Manager) affinityViolations(node string) []affinityViolation {
 	cfg := t.instConfig.ActorConfig
 	if cfg == nil {
 		return nil
 	}
-	var l []string
+	var l []affinityViolation
 	for _, p := range cfg.HardAffinity {
 		switch avail := affineAvail(p, node); avail {
 		case status.Up, status.NotApplicable:
 		default:
-			l = append(l, fmt.Sprintf("hard affinity with %s not satisfied on %s (%s)", p, node, avail))
+			cycle := t.hardAffinityCycle(p)
+			switch {
+			case len(cycle) == 0:
+				l = append(l, affinityViolation{text: fmt.Sprintf("hard affinity with %s not satisfied on %s (%s)", p, node, avail)})
+			case cycle[0] == t.path:
+				// This object starts first, the others follow it.
+			default:
+				l = append(l, affinityViolation{
+					text:    fmt.Sprintf("hard affinity with %s not satisfied on %s (%s), %s starting first among %s", p, node, avail, cycle[0], cycle),
+					follows: cycle[0],
+				})
+			}
 		}
 	}
 	for _, p := range cfg.HardAntiAffinity {
@@ -109,9 +128,95 @@ func (t *Manager) hardAffinityViolations(node string) []string {
 		switch avail := affineAvail(p, node); avail {
 		case status.Down, status.StandbyUp, status.StandbyDown, status.NotApplicable:
 		default:
-			l = append(l, fmt.Sprintf("hard anti affinity with %s not satisfied on %s (%s)", p, node, avail))
+			l = append(l, affinityViolation{text: fmt.Sprintf("hard anti affinity with %s not satisfied on %s (%s)", p, node, avail)})
 		}
 	}
+	return l
+}
+
+// hardAffinityViolations says why the object may not start on node.
+func (t *Manager) hardAffinityViolations(node string) []string {
+	var l []string
+	for _, v := range t.affinityViolations(node) {
+		l = append(l, v.text)
+	}
+	return l
+}
+
+// affinityConfig returns the actor configuration of the object p, as a node
+// publishes it, the local one first.
+func (t *Manager) affinityConfig(p naming.Path) (*instance.Config, bool) {
+	if p == t.path {
+		return &t.instConfig, t.instConfig.ActorConfig != nil
+	}
+	if cfg := instance.ConfigData.GetByPathAndNode(p, t.localhost); cfg != nil && cfg.ActorConfig != nil {
+		return cfg, true
+	}
+	for _, cfg := range instance.ConfigData.GetByPath(p) {
+		if cfg != nil && cfg.ActorConfig != nil {
+			return cfg, true
+		}
+	}
+	return nil, false
+}
+
+// hardAffinityReach returns the objects the hard affinities lead to from p,
+// p included.
+func (t *Manager) hardAffinityReach(p naming.Path) map[naming.Path]bool {
+	seen := map[naming.Path]bool{p: true}
+	todo := []naming.Path{p}
+	for len(todo) > 0 {
+		cur := todo[0]
+		todo = todo[1:]
+		cfg, ok := t.affinityConfig(cur)
+		if !ok {
+			continue
+		}
+		for _, next := range cfg.ActorConfig.HardAffinity {
+			if !seen[next] {
+				seen[next] = true
+				todo = append(todo, next)
+			}
+		}
+	}
+	return seen
+}
+
+// hardAffinityCycle returns the objects whose hard affinities lead to each
+// other, through p, the object and p among them, when none of them is up on
+// any node: none can start where another is up, so one of them starts first
+// and the others follow it. The first of the list is the one starting first:
+// the smallest priority, then the first path in alphanumeric order. It
+// returns nil when p leads back to no cycle with the object, or a member of
+// the cycle is up somewhere, which the others follow.
+func (t *Manager) hardAffinityCycle(p naming.Path) naming.Paths {
+	if !t.hardAffinityReach(p)[t.path] {
+		return nil
+	}
+	var l naming.Paths
+	for member := range t.hardAffinityReach(t.path) {
+		if member != t.path && !t.hardAffinityReach(member)[t.path] {
+			continue
+		}
+		for _, st := range instance.StatusData.GetByPath(member) {
+			if st != nil && st.Avail.Is(status.Up, status.Warn) {
+				return nil
+			}
+		}
+		l = append(l, member)
+	}
+	priority := func(p naming.Path) int {
+		if cfg, ok := t.affinityConfig(p); ok {
+			return int(cfg.Priority)
+		}
+		return 0
+	}
+	slices.SortFunc(l, func(a, b naming.Path) int {
+		if d := priority(a) - priority(b); d != 0 {
+			return d
+		}
+		return strings.Compare(a.String(), b.String())
+	})
 	return l
 }
 
@@ -123,16 +228,34 @@ func (t *Manager) isHardAffinitySatisfied(node string) bool {
 
 // hardAffinityRefusal says why no node of nodes can start the object, the
 // hard affinities excluding every one, and returns "" when one can.
-func (t *Manager) hardAffinityRefusal(nodes []string) string {
-	var l []string
+//
+// A node refused only for waiting on the object of a hard affinity cycle
+// starting first can: a start asked for it follows that object, started
+// with it or later, and the objects it waits for are returned.
+func (t *Manager) hardAffinityRefusal(nodes []string) (string, naming.Paths) {
+	var (
+		l       []string
+		follows naming.Paths
+	)
 	for _, node := range nodes {
-		violations := t.hardAffinityViolations(node)
+		violations := t.affinityViolations(node)
 		if len(violations) == 0 {
-			return ""
+			return "", nil
 		}
-		l = append(l, violations...)
+		waits := true
+		for _, v := range violations {
+			l = append(l, v.text)
+			if v.follows.IsZero() {
+				waits = false
+			} else if !slices.Contains(follows, v.follows) {
+				follows = append(follows, v.follows)
+			}
+		}
+		if waits {
+			return "", follows
+		}
 	}
-	return strings.Join(l, ", ")
+	return strings.Join(l, ", "), nil
 }
 
 // softAffinityScore counts the objects the soft affinity names up on node,

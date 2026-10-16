@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 )
@@ -106,4 +108,72 @@ func TestSoftAffinityRanksStartCandidates(t *testing.T) {
 	setAffine(t, affine, map[string]status.T{})
 	setAffine(t, anti, map[string]status.T{})
 	assert.True(t, m.isStartCandidateLeader(true), "with no preference, the placement policy decides")
+}
+
+// setAffineConfig publishes the configuration of p on the nodes, with its
+// hard affinities and priority.
+func setAffineConfig(t *testing.T, p naming.Path, prio priority.T, hardAffinity ...naming.Path) {
+	for _, n := range []string{"node1", "node2", "node3"} {
+		instance.ConfigData.Set(p, n, &instance.Config{
+			Path:        p,
+			Priority:    prio,
+			ActorConfig: &instance.ActorConfig{HardAffinity: hardAffinity},
+		})
+	}
+	t.Cleanup(func() {
+		for _, n := range []string{"node1", "node2", "node3"} {
+			instance.ConfigData.Unset(p, n)
+		}
+	})
+}
+
+// Objects whose hard affinities name each other, none up anywhere, would
+// wait for each other forever: the one of the smallest priority, then of
+// the first path, starts on its own, and the others follow it.
+func TestHardAffinityCycleStartsOneFirst(t *testing.T) {
+	a := naming.Path{Kind: naming.KindSvc, Name: "cycle-a"}
+	b := naming.Path{Kind: naming.KindSvc, Name: "cycle-b"}
+	newCycleManager := func(p, other naming.Path, prio priority.T) *Manager {
+		m := newAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{other}})
+		m.path = p
+		m.instConfig.Path = p
+		m.instConfig.Priority = prio
+		return m
+	}
+	setAffine(t, a, map[string]status.T{"node1": status.Down, "node2": status.Down, "node3": status.Down})
+	setAffine(t, b, map[string]status.T{"node1": status.Down, "node2": status.Down, "node3": status.Down})
+
+	setAffineConfig(t, a, priority.Default, b)
+	setAffineConfig(t, b, priority.Default, a)
+	ma := newCycleManager(a, b, priority.Default)
+	mb := newCycleManager(b, a, priority.Default)
+	assert.Equal(t, naming.Paths{a, b}, ma.hardAffinityCycle(b), "same priority: the first path starts first")
+	assert.True(t, ma.isStartCandidateLeader(true), "cycle-a starts on its placement leader")
+	assert.False(t, mb.isStartCandidateLeader(true), "cycle-b follows cycle-a")
+	assert.Contains(t, strings.Join(mb.hardAffinityViolations("node1"), ","), "cycle-a starting first")
+	ok, reason := mb.isRequestedStartable()
+	assert.True(t, ok, "a start of cycle-b follows cycle-a, started with it or later: %s", reason)
+
+	setAffineConfig(t, b, 10, a)
+	mb = newCycleManager(b, a, 10)
+	assert.True(t, mb.isStartCandidateLeader(true), "the smallest priority starts first")
+	assert.False(t, ma.isStartCandidateLeader(true))
+
+	setAffine(t, b, map[string]status.T{"node1": status.Down, "node2": status.Up, "node3": status.Down})
+	assert.Nil(t, ma.hardAffinityCycle(b), "a member up is followed")
+	assert.False(t, ma.isStartCandidateLeader(true), "cycle-a follows cycle-b to node2")
+	assert.Equal(t, "node2", ma.nextPlacedAtCandidate())
+}
+
+// An object naming another in its hard affinity, which names it in none, is
+// no cycle: it waits for the other.
+func TestHardAffinityWithoutCycleWaits(t *testing.T) {
+	a := naming.Path{Kind: naming.KindSvc, Name: "nocycle-a"}
+	b := naming.Path{Kind: naming.KindSvc, Name: "nocycle-b"}
+	setAffine(t, b, map[string]status.T{"node1": status.Down})
+	setAffineConfig(t, b, priority.Default)
+	m := newAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{b}})
+	m.path = a
+	assert.Nil(t, m.hardAffinityCycle(b))
+	assert.False(t, m.isStartCandidateLeader(true))
 }
