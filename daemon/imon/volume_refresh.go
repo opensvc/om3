@@ -46,8 +46,9 @@ func (t *Manager) janitorVolumes() {
 		if _, ok := t.volumeSeen[p]; ok {
 			continue
 		}
-		t.log.Infof("subscribe to %s@%s instance status updates, used by a volume resource", p, t.localhost)
-		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", p.String()}, pubsub.Label{"node", t.localhost})
+		t.log.Infof("subscribe to %s@%s instance status updates and deletes, used by a volume resource", p, t.localhost)
+		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, volumeLabels(p, t.localhost)...)
+		t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, volumeLabels(p, t.localhost)...)
 		t.volumeSeen[p] = ""
 		if st := instance.StatusData.GetByPathAndNode(p, t.localhost); st != nil {
 			t.volumeSeen[p] = volumeSignature(*st)
@@ -57,10 +58,32 @@ func (t *Manager) janitorVolumes() {
 		if slices.Contains(paths, p) {
 			continue
 		}
-		t.log.Infof("unsubscribe from %s@%s instance status updates, no longer used by a volume resource", p, t.localhost)
-		t.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", p.String()}, pubsub.Label{"node", t.localhost})
+		t.log.Infof("unsubscribe from %s@%s instance status updates and deletes, no longer used by a volume resource", p, t.localhost)
+		t.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, volumeLabels(p, t.localhost)...)
+		t.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, volumeLabels(p, t.localhost)...)
 		delete(t.volumeSeen, p)
 	}
+}
+
+// volumeLabels are the labels of the filters watching the instance of a vol
+// on a node. The namespace label makes them filters of their own: a relation
+// watching the same instance subscribes with the path and node labels only,
+// and the removal of a filter removes every filter of the same labels.
+func volumeLabels(p naming.Path, node string) []pubsub.Label {
+	return []pubsub.Label{{"namespace", p.Namespace}, {"path", p.String()}, {"node", node}}
+}
+
+// onVolumeInstanceStatusDeleted refreshes the local instance status when
+// the local instance of a vol object it uses is gone.
+func (t *Manager) onVolumeInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
+	if c.Node != t.localhost {
+		return
+	}
+	if _, ok := t.volumeSeen[c.Path]; !ok {
+		return
+	}
+	t.volumeSeen[c.Path] = ""
+	t.scheduleEventRefresh("volume " + c.Path.String() + " deleted")
 }
 
 // onVolumeInstanceStatusUpdated refreshes the local instance status when

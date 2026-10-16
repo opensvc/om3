@@ -32,6 +32,8 @@ func (t *Manager) affinityPaths() naming.Paths {
 // janitorAffinities subscribes to the instance status updates of the objects
 // the affinities name, and unsubscribes from those they no longer name: a
 // change of their instances may change the nodes the object can start on.
+// The namespace label makes the filters ones of their own, a relation
+// watching the same object subscribing with the path label only.
 func (t *Manager) janitorAffinities() {
 	paths := t.affinityPaths()
 	for _, p := range paths {
@@ -39,8 +41,8 @@ func (t *Manager) janitorAffinities() {
 			continue
 		}
 		t.log.Infof("subscribe to %s instance status updates and deletes, named by an affinity", p)
-		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", p.String()})
-		t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", p.String()})
+		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		t.affinitySubscribed[p] = struct{}{}
 	}
 	for p := range t.affinitySubscribed {
@@ -48,8 +50,8 @@ func (t *Manager) janitorAffinities() {
 			continue
 		}
 		t.log.Infof("unsubscribe from %s instance status updates and deletes, no longer named by an affinity", p)
-		t.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", p.String()})
-		t.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", p.String()})
+		t.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		t.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		delete(t.affinitySubscribed, p)
 		for k := range t.affinityAvail {
 			if strings.HasPrefix(k, p.String()+"@") {

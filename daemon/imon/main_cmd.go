@@ -193,6 +193,7 @@ func (t *Manager) onRelationInstanceStatusDeleted(c *msgbus.InstanceStatusDelete
 		return
 	}
 	t.onAffinityInstanceStatus(c.Path, c.Node, status.Undef)
+	t.onVolumeInstanceStatusDeleted(c)
 	changes := false
 	do := func(relation string, name string, cache map[string]status.T) {
 		if _, ok := cache[relation]; ok {
