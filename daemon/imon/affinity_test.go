@@ -59,9 +59,7 @@ func TestHardAffinityExcludesStartCandidates(t *testing.T) {
 	setAffine(t, affine, map[string]status.T{"node1": status.Down, "node2": status.Up, "node3": status.Down})
 	assert.False(t, m.isStartCandidateLeader(true), "node1 is no candidate, the affine object being down there")
 	assert.Equal(t, "node2", m.nextPlacedAtCandidate())
-	dst, err := m.nextPlacedAtCandidates([]string{"node3"})
-	assert.NoError(t, err)
-	assert.Equal(t, "", dst, "node3 is no switch destination, the affine object being down there")
+	assert.False(t, m.isHardAffinitySatisfied("node3"), "node3 is no switch destination, the affine object being down there")
 	ok, reason := m.isRequestedStartable()
 	assert.True(t, ok, reason)
 
