@@ -1032,6 +1032,7 @@ func newCmdNodeDequeue() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	commoncmd.AddFlagsNodeGlobal(flags, &options.OptsNodeGlobal)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
