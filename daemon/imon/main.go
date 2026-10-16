@@ -482,6 +482,7 @@ func (t *Manager) worker(initialNodes []string) {
 	t.affinitySubscribed = make(map[naming.Path]struct{})
 	t.affinityAvail = make(map[string]status.T)
 	t.janitorAffinities()
+	t.janitorVolumes()
 	t.initResourceMonitor()
 	t.initLocalResourceFiles()
 	t.updateIsLeader()
