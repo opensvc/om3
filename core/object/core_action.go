@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -911,9 +912,11 @@ func (t *actor) daemonMayStartOnItsOwn() bool {
 // finalSync sends, once the instance is stopped, the sync resources
 // replicating to the nodes the stop names, as a switch asks of its source:
 // the destination starts on its copy of the data, which holds the writes
-// since the last sync only if they are sent now. The sync resources able to
-// send from a stopped instance do, the replication of a zfs dataset; the
-// others, reading files through a mount point the stop unmounted, can not.
+// since the last sync only if they are sent now. The replication of a zfs
+// dataset is sent, a snapshot freezing it mounted or not. A sync reading files
+// through a mount point is sent when the resource mounting its source is
+// standby, mounted still once the instance is stopped, and said not sent
+// otherwise, with the standby that would let it be.
 //
 // It runs before the status of the stopped instance is read and published,
 // the destination starting as soon as the object is down.
@@ -926,14 +929,18 @@ func (t *actor) finalSync(ctx context.Context) error {
 		if r.IsDisabled() {
 			continue
 		}
-		i, ok := r.(resource.FinalSyncer)
-		if !ok {
-			continue
-		}
-		targets := make([]string, 0, len(nodes))
-		for _, nodename := range nodes {
-			if i.FinalSyncsTo(nodename) {
-				targets = append(targets, nodename)
+		var targets []string
+		switch i := r.(type) {
+		case resource.FinalSyncer:
+			targets = selectNodes(nodes, i.FinalSyncsTo)
+		case resource.PeerSyncer:
+			targets = selectNodes(nodes, i.SyncsTo)
+			if len(targets) == 0 {
+				continue
+			}
+			if holder := mountHolding(t.Resources(), i.SyncSource()); holder == nil || !holder.IsStandby() {
+				t.log.Warnf("%s", finalSyncHint(r.RID(), i.SyncSource(), targets, holder))
+				continue
 			}
 		}
 		if len(targets) == 0 {
@@ -963,4 +970,55 @@ func (t *actor) startBack(ctx context.Context) {
 	}); err != nil {
 		t.log.Errorf("start back: %s", err)
 	}
+}
+
+// selectNodes returns the nodes a function says yes to.
+func selectNodes(nodes []string, fn func(string) bool) []string {
+	l := make([]string, 0, len(nodes))
+	for _, nodename := range nodes {
+		if fn(nodename) {
+			l = append(l, nodename)
+		}
+	}
+	return l
+}
+
+// mountHolding returns the resource whose mount point holds the path, the
+// deepest one, or nil when none does.
+func mountHolding(resources resource.Drivers, p string) resource.Driver {
+	type header interface {
+		Head() string
+	}
+	var (
+		found resource.Driver
+		depth int
+	)
+	for _, r := range resources {
+		i, ok := r.(header)
+		if !ok || r.IsDisabled() {
+			continue
+		}
+		head := filepath.Clean(i.Head())
+		if head == "" || head == "." {
+			continue
+		}
+		if cp := filepath.Clean(p); cp != head && !strings.HasPrefix(cp, head+"/") {
+			continue
+		}
+		if len(head) > depth {
+			found, depth = r, len(head)
+		}
+	}
+	return found
+}
+
+// finalSyncHint says why a sync is not sent to the destination of a switch,
+// and how it could be: it reads the files through a mount point the stop
+// unmounts, which a standby resource keeps mounted.
+func finalSyncHint(rid, src string, targets []string, holder resource.Driver) string {
+	s := fmt.Sprintf("%s: not sent to %s before the switch, the writes since its last run left behind: it reads %s, unmounted by the stop", rid, strings.Join(targets, ", "), src)
+	if holder != nil {
+		return s + fmt.Sprintf(". A standby %s, mounted still once the instance is stopped, would let the switch send it", holder.RID())
+	}
+	return s + ". A standby resource mounting it, mounted still once the instance is stopped, would let the switch send it"
 }

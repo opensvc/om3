@@ -84,6 +84,16 @@ type (
 		FinalSyncsTo(nodename string) bool
 	}
 
+	// PeerSyncer is a sync resource replicating files to peer nodes, read
+	// through a mount point: it sends from an instance stopped only when the
+	// resource mounting its source is standby, mounted still.
+	PeerSyncer interface {
+		// SyncsTo says whether the resource replicates to the node.
+		SyncsTo(nodename string) bool
+		// SyncSource returns the path the resource reads.
+		SyncSource() string
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes
