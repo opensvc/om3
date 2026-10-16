@@ -486,6 +486,9 @@ type ClientInterface interface {
 	// GetNodeMetrics request
 	GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeMetricsPG request
+	GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeNetworkReservations request
 	GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2310,6 +2313,18 @@ func (c *Client) GetNodeLogs(ctx context.Context, nodename InPathNodeName, param
 
 func (c *Client) GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeMetricsRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeMetricsPGRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -13105,6 +13120,40 @@ func NewGetNodeMetricsRequest(server string, nodename InPathNodeName) (*http.Req
 	return req, nil
 }
 
+// NewGetNodeMetricsPGRequest generates requests for GetNodeMetricsPG
+func NewGetNodeMetricsPGRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/metrics/pg", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeNetworkReservationsRequest generates requests for GetNodeNetworkReservations
 func NewGetNodeNetworkReservationsRequest(server string, nodename InPathNodeName, params *GetNodeNetworkReservationsParams) (*http.Request, error) {
 	var err error
@@ -17044,6 +17093,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeMetricsWithResponse request
 	GetNodeMetricsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsResponse, error)
+
+	// GetNodeMetricsPGWithResponse request
+	GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error)
 
 	// GetNodeNetworkReservationsWithResponse request
 	GetNodeNetworkReservationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*GetNodeNetworkReservationsResponse, error)
@@ -21431,6 +21483,39 @@ func (r GetNodeMetricsResponse) ContentType() string {
 	return ""
 }
 
+type GetNodeMetricsPGResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeMetricsPGResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeMetricsPGResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNodeMetricsPGResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetNodeNetworkReservationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24694,6 +24779,15 @@ func (c *ClientWithResponses) GetNodeMetricsWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParseGetNodeMetricsResponse(rsp)
+}
+
+// GetNodeMetricsPGWithResponse request returning *GetNodeMetricsPGResponse
+func (c *ClientWithResponses) GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error) {
+	rsp, err := c.GetNodeMetricsPG(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeMetricsPGResponse(rsp)
 }
 
 // GetNodeNetworkReservationsWithResponse request returning *GetNodeNetworkReservationsResponse
@@ -31977,6 +32071,53 @@ func ParseGetNodeMetricsResponse(rsp *http.Response) (*GetNodeMetricsResponse, e
 	}
 
 	response := &GetNodeMetricsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeMetricsPGResponse parses an HTTP response from a GetNodeMetricsPGWithResponse call
+func ParseGetNodeMetricsPGResponse(rsp *http.Response) (*GetNodeMetricsPGResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeMetricsPGResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
