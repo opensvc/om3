@@ -62,6 +62,11 @@ type (
 		// WaitSyncsTimeout is how long a stop or a switch waits for the
 		// syncs running on the instance to end: DEFAULT.wait_syncs_timeout.
 		WaitSyncsTimeout time.Duration `json:"wait_syncs_timeout,omitempty"`
+
+		// StartTimeout is how long a start may take, DEFAULT.start_timeout
+		// or else DEFAULT.timeout: a switch waits that long for the
+		// destination to be ready to start before it stops the source.
+		StartTimeout time.Duration `json:"start_timeout,omitempty"`
 	}
 
 	FlexConfig struct {

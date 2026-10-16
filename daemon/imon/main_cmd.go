@@ -583,6 +583,17 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				options.Destination = []string{can}
 				globalExpectOptions = options
 			}
+			// A destination whose start something no resync lifts would
+			// refuse is refused now, nothing stopped: the source waits for
+			// the others before it stops (see setWaitDestination).
+			if o, ok := globalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); ok {
+				if l := t.unliftableBlockers(o.Destination); len(l) > 0 {
+					err := fmt.Errorf("the destination can not start: %s", strings.Join(l, "; "))
+					t.log.Infof("set instance monitor: %s", err)
+					globalExpectRefused()
+					return err
+				}
+			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isRequestedStartable(); !v {
 				err := fmt.Errorf("%s", reason)

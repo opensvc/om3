@@ -2,6 +2,7 @@ package imon
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/status"
@@ -17,6 +18,9 @@ func (t *Manager) orchestrateFailoverPlacedStart() {
 		t.orchestrateFailoverPlacedStartFromStopped()
 	case instance.MonitorStateStartFailure:
 		t.orchestratePlacedFromStartFailed()
+	case instance.MonitorStatePrepareFailure:
+		t.done()
+	case instance.MonitorStatePrepareProgress:
 	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateFreezeProgress:
 	case instance.MonitorStateStopProgress:
@@ -80,6 +84,9 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 		if !t.setWaitSyncs() {
 			t.placedStop()
 		}
+	case instance.MonitorStateWaitDestination:
+		t.placedStop()
+	case instance.MonitorStateWaitDestinationFailure:
 	default:
 		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
@@ -107,6 +114,9 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 		if !t.setWaitSyncs() {
 			t.placedStop()
 		}
+	case instance.MonitorStateWaitDestination:
+		t.placedStop()
+	case instance.MonitorStateWaitDestinationFailure:
 	default:
 		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
@@ -178,6 +188,9 @@ func (t *Manager) placedStop() {
 }
 
 func (t *Manager) doPlacedStop() {
+	if t.setWaitDestination() {
+		return
+	}
 	if t.setWaitSyncs() {
 		return
 	}
@@ -278,11 +291,25 @@ func (t *Manager) orchestrateFailoverPlacedStartFromIdle() {
 	case status.Up:
 		t.transitionTo(instance.MonitorStateStartSuccess)
 	default:
+		// A replicated disk left behind is reconnected now, for the resync
+		// to run while the source does: the source waits for it before it
+		// stops (see setWaitDestination).
+		if paths := t.resyncBlockerPaths(); len(paths) > 0 {
+			t.log.Infof("prepare the start: standby start %s to resync: %s", strings.Join(paths, ","), strings.Join(t.blockerReasons([]string{t.localhost}), "; "))
+			t.queueAction(t.crmPrepareFunc(paths), instance.MonitorStatePrepareProgress, instance.MonitorStateStopSuccess, instance.MonitorStatePrepareFailure)
+			return
+		}
 		t.transitionTo(instance.MonitorStateStopSuccess)
 	}
 }
 
 func (t *Manager) orchestrateFailoverPlacedStartFromStopped() {
+	if len(t.resyncBlockerPaths()) > 0 {
+		// The source waits for these blockers to go: the status read again
+		// says when, as the resync of a volume refreshes the status of the
+		// volume, not the one of this object.
+		t.scheduleEventRefresh("start blockers")
+	}
 	switch t.objStatus.Avail {
 	case status.NotApplicable, status.Undef:
 		t.startedClearIfReached()

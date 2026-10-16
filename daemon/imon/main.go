@@ -119,6 +119,12 @@ type (
 		// refused, the syncs running past the wait: nothing stopped.
 		stopRefusedForSyncs bool
 
+		// waitDestinationTimer fires when a switch source has waited long
+		// enough for the destination to be ready to start, waiting since
+		// waitDestinationSince.
+		waitDestinationTimer *time.Timer
+		waitDestinationSince time.Time
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -457,6 +463,8 @@ func (t *Manager) worker(initialNodes []string) {
 	t.eventRefreshTimer.Stop()
 	t.waitSyncsTimer = time.NewTimer(time.Hour)
 	t.waitSyncsTimer.Stop()
+	t.waitDestinationTimer = time.NewTimer(time.Hour)
+	t.waitDestinationTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
@@ -575,6 +583,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onEventRefreshTimer()
 		case <-t.waitSyncsTimer.C:
 			t.onWaitSyncsTimer()
+		case <-t.waitDestinationTimer.C:
+			t.onWaitDestinationTimer()
 		}
 	}
 }
