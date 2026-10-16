@@ -274,7 +274,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 			return fmt.Errorf("hard affinity object %s status: %w", p, err)
 		}
 		switch instanceStatus.Avail {
-		case status.Up:
+		case status.Up, status.StandbyUpWithUp:
 		case status.NotApplicable:
 		default:
 			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force-affinity to start anyway", p, instanceStatus.Avail)

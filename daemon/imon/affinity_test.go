@@ -177,3 +177,31 @@ func TestHardAffinityWithoutCycleWaits(t *testing.T) {
 	assert.Nil(t, m.hardAffinityCycle(b))
 	assert.False(t, m.isStartCandidateLeader(true))
 }
+
+// An object up with its standby resources up too is up: it satisfies a hard
+// affinity, and a cycle it is in has a member running, followed by the others.
+func TestHardAffinityWithAnObjectUpWithStandby(t *testing.T) {
+	a := naming.Path{Kind: naming.KindSvc, Name: "stdby-a"}
+	b := naming.Path{Kind: naming.KindSvc, Name: "stdby-b"}
+	setAffineConfig(t, a, priority.Default, b)
+	setAffineConfig(t, b, priority.Default, a)
+	setAffine(t, b, map[string]status.T{"node1": status.StandbyDown, "node2": status.StandbyUpWithUp, "node3": status.StandbyDown})
+	m := newAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{b}})
+	m.path = a
+	assert.Nil(t, m.hardAffinityCycle(b), "stdby-b runs on node2")
+	assert.True(t, m.isHardAffinitySatisfied("node2"))
+	assert.False(t, m.isHardAffinitySatisfied("node1"))
+}
+
+// The objects of a hard affinity cycle are watched, not only those the
+// object names: a member coming up ends the start first exception.
+func TestAffinityPathsReachTheCycle(t *testing.T) {
+	a := naming.Path{Kind: naming.KindSvc, Name: "reach-a"}
+	b := naming.Path{Kind: naming.KindSvc, Name: "reach-b"}
+	c := naming.Path{Kind: naming.KindSvc, Name: "reach-c"}
+	setAffineConfig(t, b, priority.Default, c)
+	setAffineConfig(t, c, priority.Default, a)
+	m := newAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{b}})
+	m.path = a
+	assert.ElementsMatch(t, naming.Paths{b, c}, m.affinityPaths())
+}

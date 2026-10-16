@@ -12,7 +12,9 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
-// affinityPaths returns the objects the affinities of the object name.
+// affinityPaths returns the objects the affinities of the object name, and
+// those the hard affinities lead to from them: a hard affinity cycle is told
+// by the status of all its members.
 func (t *Manager) affinityPaths() naming.Paths {
 	cfg := t.instConfig.ActorConfig
 	if cfg == nil {
@@ -24,6 +26,11 @@ func (t *Manager) affinityPaths() naming.Paths {
 			if p != t.path && !slices.Contains(l, p) {
 				l = append(l, p)
 			}
+		}
+	}
+	for p := range t.hardAffinityReach(t.path) {
+		if p != t.path && !slices.Contains(l, p) {
+			l = append(l, p)
 		}
 	}
 	return l
@@ -74,7 +81,16 @@ func (t *Manager) onAffinityInstanceStatus(p naming.Path, node string, avail sta
 	}
 	t.log.Infof("affinity %s avail status change %s -> %s", k, t.affinityAvail[k], avail)
 	t.affinityAvail[k] = avail
+	// The objects the hard affinities lead to may have changed with the
+	// configuration of the others.
+	t.janitorAffinities()
 	t.onChange()
+}
+
+// isRunning says an instance of an avail status runs, if partly: up, warn,
+// or up with its standby resources.
+func isRunning(avail status.T) bool {
+	return avail.Is(status.Up, status.Warn, status.StandbyUpWithUp)
 }
 
 // affineAvail returns the avail status of the instance of p on node,
@@ -105,7 +121,7 @@ func (t *Manager) affinityViolations(node string) []affinityViolation {
 	var l []affinityViolation
 	for _, p := range cfg.HardAffinity {
 		switch avail := affineAvail(p, node); avail {
-		case status.Up, status.NotApplicable:
+		case status.Up, status.StandbyUpWithUp, status.NotApplicable:
 		default:
 			cycle := t.hardAffinityCycle(p)
 			switch {
@@ -199,7 +215,7 @@ func (t *Manager) hardAffinityCycle(p naming.Path) naming.Paths {
 			continue
 		}
 		for _, st := range instance.StatusData.GetByPath(member) {
-			if st != nil && st.Avail.Is(status.Up, status.Warn) {
+			if st != nil && isRunning(st.Avail) {
 				return nil
 			}
 		}
@@ -267,12 +283,12 @@ func (t *Manager) softAffinityScore(node string) int {
 	}
 	score := 0
 	for _, p := range cfg.SoftAffinity {
-		if affineAvail(p, node) == status.Up {
+		if isRunning(affineAvail(p, node)) {
 			score++
 		}
 	}
 	for _, p := range cfg.SoftAntiAffinity {
-		if affineAvail(p, node) == status.Up {
+		if isRunning(affineAvail(p, node)) {
 			score--
 		}
 	}
