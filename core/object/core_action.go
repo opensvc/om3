@@ -257,7 +257,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 	if env.HasDaemonMonitorOrigin() {
 		return nil
 	}
-	if actioncontext.IsForce(ctx) {
+	if actioncontext.IsForceAffinity(ctx) {
 		return nil
 	}
 	for _, pStr := range t.HardAffinity() {
@@ -277,7 +277,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		case status.Up:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("hard affinity with %s is not satisfied (currently %s). use --force-affinity to start anyway", p, instanceStatus.Avail)
 		}
 	}
 	for _, pStr := range t.HardAntiAffinity() {
@@ -299,7 +299,7 @@ func (t *actor) abortStartAffinity(ctx context.Context) (err error) {
 		case status.StandbyDown:
 		case status.NotApplicable:
 		default:
-			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force if you really want to start", p, instanceStatus.Avail)
+			return fmt.Errorf("hard anti affinity with %s is not satisfied (currently %s). use --force-affinity to start anyway", p, instanceStatus.Avail)
 		}
 	}
 	return nil

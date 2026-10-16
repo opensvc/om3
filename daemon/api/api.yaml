@@ -3380,6 +3380,7 @@ paths:
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryForceAffinity'
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQuerySessionID'
         - $ref: '#/components/parameters/inQueryRid'
@@ -10444,6 +10445,15 @@ components:
     inQueryForce:
       in: query
       name: force
+      schema:
+        type: boolean
+
+    inQueryForceAffinity:
+      in: query
+      name: force_affinity
+      description: |
+        Start even where the hard affinities of the object are not satisfied,
+        a check force lifts too among the others.
       schema:
         type: boolean
 

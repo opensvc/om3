@@ -65,3 +65,14 @@ func TestWithoutResourceSelector(t *testing.T) {
 	assert.True(t, IsLeader(ctx), "leader kept")
 	assert.True(t, IsForce(ctx), "force kept")
 }
+
+// --force-affinity lifts the hard affinity checks only, and --force lifts
+// them with every other check.
+func TestIsForceAffinity(t *testing.T) {
+	ctx := context.Background()
+	assert.False(t, IsForceAffinity(ctx))
+	assert.True(t, IsForceAffinity(WithForceAffinity(ctx, true)))
+	assert.False(t, IsForce(WithForceAffinity(ctx, true)), "force affinity is not force")
+	assert.True(t, IsForceAffinity(WithForce(ctx, true)), "force implies force affinity")
+	assert.True(t, IsForceAffinity(WithForceAffinity(WithForce(ctx, true), false)))
+}

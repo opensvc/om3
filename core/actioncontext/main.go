@@ -19,6 +19,7 @@ const (
 	cronKey
 	envKey
 	forceKey
+	forceAffinityKey
 	interruptSyncsKey
 	leaderKey
 	lockTimeoutKey
@@ -130,6 +131,21 @@ func IsForce(ctx context.Context) bool {
 		return i.(bool)
 	}
 	return false
+}
+
+// WithForceAffinity has a start ignore the hard affinities of the object,
+// as --force does among the other checks.
+func WithForceAffinity(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, forceAffinityKey, v)
+}
+
+// IsForceAffinity says a start ignores the hard affinities of the object,
+// asked by --force-affinity or --force.
+func IsForceAffinity(ctx context.Context) bool {
+	if i := ctx.Value(forceAffinityKey); i != nil && i.(bool) {
+		return true
+	}
+	return IsForce(ctx)
 }
 
 // WithInterruptSyncs has a stop end the syncs running on the instance before

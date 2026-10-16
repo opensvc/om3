@@ -4,5 +4,5 @@ object namespace.
 An instance of the object starts only on a node where no instance of these
 objects is up, standby resources aside: the daemon starts it, switches it or
 gives it back to no other node, and the start command refuses to start it
-elsewhere, unless `--force`. An instance running is not moved when one of
-these objects comes to its node.
+elsewhere, unless `--force-affinity`. An instance running is not moved when
+one of these objects comes to its node.

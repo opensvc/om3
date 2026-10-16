@@ -2,7 +2,7 @@ A whitespace separated list of object paths, a name alone being a svc of the
 object namespace.
 
 An instance of the object starts only on a node where an instance of each of
-these objects is up: the daemon starts it, switches it or gives it back to no
-other node, and the start command refuses to start it elsewhere, unless
-`--force`. An instance running is not moved when one of these objects leaves
-its node.
+these objects is up: the daemon starts it, switches it or gives it back to
+no other node, and the start command refuses to start it elsewhere, unless
+`--force-affinity`. An instance running is not moved when one of these
+objects leaves its node.

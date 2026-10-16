@@ -3548,6 +3548,7 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagForceAffinity(flags, &options.ForceAffinity)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
