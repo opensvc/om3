@@ -118,6 +118,12 @@ func (t *Manager) setWaitDestination() bool {
 			t.failWaitDestination(fmt.Sprintf("%s failed to prepare the start", nodename))
 			return true
 		}
+		if _, ok := t.instStatus[nodename]; !ok {
+			// A destination publishing no status, as a node lost, is
+			// not known ready: the source is left as it is.
+			t.failWaitDestination(fmt.Sprintf("%s publishes no instance status", nodename))
+			return true
+		}
 	}
 	reasons := t.blockerReasons(dst)
 	if len(reasons) == 0 {

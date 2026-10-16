@@ -286,7 +286,14 @@ func (t *T) StartBlocker(ctx context.Context) *resource.StartBlocker {
 		return nil
 	}
 	st, err := dev.Status(ctx)
-	if err != nil || st.IsUpToDate() || st.Role == "Primary" {
+	if err != nil {
+		// A disk whose state is unknown is not known to start: no resync
+		// is known to lift it either.
+		return &resource.StartBlocker{
+			Reason: fmt.Sprintf("drbd %s state unknown: %s", t.Res, err),
+		}
+	}
+	if st.IsUpToDate() || st.Role == "Primary" {
 		return nil
 	}
 	diskless := false
