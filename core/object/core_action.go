@@ -808,6 +808,10 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
+	if err := abortSyncTo(ctx); err != nil {
+		t.announceIdle(ctxWithTimeout)
+		return err
+	}
 	if action.PG {
 		if pgErr := t.registerNamespacePG(ctxWithTimeout); pgErr != nil {
 			t.log.Warnf("register namespace pg: %s", pgErr)
@@ -920,6 +924,19 @@ func (t *actor) daemonMayStartOnItsOwn() bool {
 //
 // It runs before the status of the stopped instance is read and published,
 // the destination starting as soon as the object is down.
+// abortSyncTo refuses a stop sending the syncs of the instance to a node
+// while it stops only some of its resources: the syncs would send the data
+// of resources still running.
+func abortSyncTo(ctx context.Context) error {
+	if len(actioncontext.SyncTo(ctx)) == 0 || actioncontext.Props(ctx).Name != "stop" {
+		return nil
+	}
+	if actioncontext.HasResourceSelector(ctx) {
+		return fmt.Errorf("--sync-to sends the syncs of a stopped instance: it can not be combined with a resource selector")
+	}
+	return nil
+}
+
 func (t *actor) finalSync(ctx context.Context) error {
 	nodes := actioncontext.SyncTo(ctx)
 	if len(nodes) == 0 || actioncontext.Props(ctx).Name != "stop" {
