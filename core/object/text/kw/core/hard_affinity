@@ -1,4 +1,8 @@
-A whitespace separated list of object paths.
+A whitespace separated list of object paths, a name alone being a svc of the
+object namespace.
 
-These objects must be started on the local node to allow the local monitor
-to start an instance of the service.
+An instance of the object starts only on a node where an instance of each of
+these objects is up: the daemon starts it, switches it or gives it back to no
+other node, and the start command refuses to start it elsewhere, unless
+`--force`. An instance running is not moved when one of these objects leaves
+its node.

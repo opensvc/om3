@@ -73,6 +73,12 @@ type (
 		// ObjectStatusUpdated for path events where srcEvent is InstanceConfigUpdated.
 		instConfig instance.Config
 
+		// affinitySubscribed holds the objects the affinities name, whose
+		// instance status updates are subscribed to, and affinityAvail the
+		// last avail status of their instances, by path@node.
+		affinitySubscribed map[naming.Path]struct{}
+		affinityAvail      map[string]status.T
+
 		// instStatus is the instance status value for path, it is updated on
 		// ObjectStatusUpdated for path events where srcEvent is InstanceStatusDeleted
 		// or InstanceStatusUpdated.
@@ -468,6 +474,9 @@ func (t *Manager) worker(initialNodes []string) {
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
+	t.affinitySubscribed = make(map[naming.Path]struct{})
+	t.affinityAvail = make(map[string]status.T)
+	t.janitorAffinities()
 	t.initResourceMonitor()
 	t.initLocalResourceFiles()
 	t.updateIsLeader()

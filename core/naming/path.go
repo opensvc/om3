@@ -231,6 +231,15 @@ func ParsePathRel(s, ns string) (Path, error) {
 	return NewPathFromStrings(namespace, kind, name)
 }
 
+// ParsePathOf returns the path s names for an object of the namespace ns:
+// a name alone is a svc of ns, as is a path of the "." namespace.
+func ParsePathOf(s, ns string) (Path, error) {
+	if !strings.Contains(s, Separator) {
+		s = "." + Separator + "svc" + Separator + s
+	}
+	return ParsePathRel(s, ns)
+}
+
 func splitPath(s string) (namespace, kind, name string) {
 	l := strings.Split(s, Separator)
 	switch len(l) {
