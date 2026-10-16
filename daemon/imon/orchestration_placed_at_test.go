@@ -68,3 +68,31 @@ func TestNoEventRefreshWhileAnActionRuns(t *testing.T) {
 	m.state.State = instance.MonitorStateStartProgress
 	require.False(t, m.canRefreshOnEvent(), "the local instance starting")
 }
+
+// A placement whose stop failed with the instance up, all of it, as a live
+// move refused and rolled back, leaves the instance as it found it: idle, its
+// monitoring and its restarts on.
+func TestAPlacementStopFailedWithTheInstanceUpGoesBackToIdle(t *testing.T) {
+	m := newPlacedAtTestManager(status.Up, status.Up, status.Down)
+	m.state.State = instance.MonitorStateStopFailure
+	m.state.LocalExpect = instance.MonitorLocalExpectNone
+	m.orchestratePlacedStopFromStopFailure()
+	require.Equal(t, instance.MonitorStateStopFailure, m.state.State, "failed until the orchestration ends, for it to say so")
+	require.True(t, m.state.OrchestrationIsDone)
+
+	m.endOrchestration()
+	require.Equal(t, instance.MonitorStateIdle, m.state.State)
+	require.Equal(t, instance.MonitorLocalExpectStarted, m.state.LocalExpect, "the monitoring back on")
+}
+
+// A stop failed half way, the instance partly up, is left to the operator,
+// the monitoring off.
+func TestAPlacementStopFailedHalfWayKeepsTheMonitoringOff(t *testing.T) {
+	m := newPlacedAtTestManager(status.Warn, status.Warn, status.Down)
+	m.state.State = instance.MonitorStateStopFailure
+	m.state.LocalExpect = instance.MonitorLocalExpectNone
+	m.orchestratePlacedStopFromStopFailure()
+	require.Equal(t, instance.MonitorStateStopFailure, m.state.State)
+	require.Equal(t, instance.MonitorLocalExpectNone, m.state.LocalExpect)
+	require.True(t, m.state.OrchestrationIsDone)
+}

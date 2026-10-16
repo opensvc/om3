@@ -211,6 +211,23 @@ func (t *Manager) skipPlacedStart() {
 	t.clearPending()
 }
 
+// orchestratePlacedStopFromStopFailure ends the stop half of a placement
+// whose stop failed.
+//
+// An instance down is stopped all the same. An instance up, all of it, is the
+// one the orchestration found: the stop failed before it stopped anything, or
+// rolled back what it did, as a live move refused by the destination, and the
+// instance goes back to idle with its monitoring and its resource restarts on.
+// Left in stop failed with them off, it ran outside of the daemon's care: a
+// crash of the guest was not restarted, nor the instance started anew.
+//
+// It keeps its stop failed state until the orchestration ends, which is what
+// tells every node the orchestration failed, the end of an orchestration
+// being read from the state the instances drop its id with, and goes back to
+// idle right after (see endOrchestration).
+//
+// An instance partly up is a stop failed half way, left to the operator, the
+// monitoring off.
 func (t *Manager) orchestratePlacedStopFromStopFailure() {
 	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
@@ -218,6 +235,13 @@ func (t *Manager) orchestratePlacedStopFromStopFailure() {
 		t.loggerWithState().Infof("instance is down, clear stop failed")
 		t.change = true
 		t.state.State = instance.MonitorStateStopSuccess
+		t.clearPending()
+	case status.Up:
+		t.loggerWithState().Warnf("orchestration %s stop fails, the instance is still up: back to idle when the orchestration ends",
+			t.state.GlobalExpect)
+		t.stopRefusedForSyncs = false
+		t.idleAfterOrchestration = true
+		t.done()
 		t.clearPending()
 	default:
 		t.loggerWithState().Warnf("orchestration %s stop fails, set done: state is %s with avail %s",

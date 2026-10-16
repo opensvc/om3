@@ -153,6 +153,11 @@ type (
 		// an orchestration process that was prematurely aborted.
 		orchestrationAborted *msgbus.ObjectOrchestrationEnd
 
+		// idleAfterOrchestration has the instance go back to idle, its
+		// monitoring on, when the orchestration ends: a failed state kept
+		// until then says the orchestration failed.
+		idleAfterOrchestration bool
+
 		// endWithDeletion holds the end of the orchestration back until the
 		// instance monitor is deleted, as a purge that deleted the instance
 		// asks, see purgedFromDeleted.

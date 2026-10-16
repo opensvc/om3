@@ -196,6 +196,25 @@ func (t *Manager) endOrchestration() {
 	t.clearPending()
 	t.updateIfChange()
 	t.logSetOrchestrationID(uuid.Nil)
+	t.resumeIdleAfterOrchestration()
+}
+
+// resumeIdleAfterOrchestration puts back to idle, its monitoring on, an
+// instance an orchestration left up in a failed state for the end of the
+// orchestration to say it failed, as a placement whose stop failed with the
+// instance still up (see orchestratePlacedStopFromStopFailure).
+func (t *Manager) resumeIdleAfterOrchestration() {
+	if !t.idleAfterOrchestration {
+		return
+	}
+	t.idleAfterOrchestration = false
+	if t.instStatus[t.localhost].Avail != status.Up {
+		return
+	}
+	t.change = true
+	t.state.State = instance.MonitorStateIdle
+	t.enableMonitor("orchestration failed with the instance still up")
+	t.updateIfChange()
 }
 
 // setOrchestrationVerdict says on the end of the orchestration whether it did
