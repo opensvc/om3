@@ -44,7 +44,7 @@ func (a *DaemonAPI) GetNodeMetrics(ctx echo.Context, nodename api.InPathNodeName
 
 	// For local node, shortcut to the raw /metrics endpoint with filtering
 	if a.localhost == nodename {
-		return a.serveLocalMetrics(ctx, userGrants)
+		return a.serveLocalMetrics(ctx, userGrants, "/metrics")
 	}
 
 	// For remote nodes, proxy to the remote node's GetNodeMetrics endpoint
@@ -54,15 +54,44 @@ func (a *DaemonAPI) GetNodeMetrics(ctx echo.Context, nodename api.InPathNodeName
 	})
 }
 
-// serveLocalMetrics serves metrics for the local node with RBAC filtering
-func (a *DaemonAPI) serveLocalMetrics(ctx echo.Context, userGrants rbac.Grants) error {
+// GetNodeMetricsPG proxies to the node's /metrics/pg endpoint, the cgroup usage
+// of the objects on that node, and filters the metrics based on the requester's
+// RBAC grants.
+//
+// Access rules:
+//   - Guest role on the namespace or all namespaces or better is sufficient to access
+//     the metrics of the objects of the namespace.
+func (a *DaemonAPI) GetNodeMetricsPG(ctx echo.Context, nodename api.InPathNodeName) error {
+	nodename = a.parseNodename(nodename)
+	userGrants := grantsFromContext(ctx)
+
+	hasObjectAccess := userGrants.HasRoleOn("", rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin) ||
+		len(userGrants.Namespaces(rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)) > 0
+
+	if !hasObjectAccess && !userGrants.HasRole(rbac.RoleRoot) {
+		return JSONForbiddenMissingRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot)
+	}
+
+	if a.localhost == nodename {
+		return a.serveLocalMetrics(ctx, userGrants, "/metrics/pg")
+	}
+
+	// For remote nodes, proxy to the remote node's GetNodeMetricsPG endpoint
+	// which will do the filtering on the remote side
+	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return c.GetNodeMetricsPG(ctx.Request().Context(), nodename)
+	})
+}
+
+// serveLocalMetrics serves the metrics page at path of the local node with RBAC filtering
+func (a *DaemonAPI) serveLocalMetrics(ctx echo.Context, userGrants rbac.Grants, path string) error {
 	// For local node, use newProxyClient to get a client with UDS configured
 	c := reqh2.NewUDSClient(reqh2.Config{
 		Timeout: 1 * time.Second,
 	})
 
-	// Create request to /metrics endpoint
-	req, err := http.NewRequestWithContext(ctx.Request().Context(), http.MethodGet, "http://localhost/metrics", nil)
+	// Create request to the metrics page
+	req, err := http.NewRequestWithContext(ctx.Request().Context(), http.MethodGet, "http://localhost"+path, nil)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Create request", "%s", err)
 	}
