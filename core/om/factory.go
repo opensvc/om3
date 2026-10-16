@@ -3578,7 +3578,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	commoncmd.FlagMoveTo(flags, &options.MoveTo)
 	commoncmd.FlagSyncTo(flags, &options.SyncTo)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	for _, name := range []string{"rid", "subset", "tag", "to"} {
+	for _, name := range []string{"rid", "subset", "tag", "to", "master", "slave", "slaves"} {
 		cmd.MarkFlagsMutuallyExclusive("sync-to", name)
 	}
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
