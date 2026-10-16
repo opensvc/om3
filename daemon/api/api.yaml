@@ -9657,6 +9657,25 @@ components:
             change, like a scsi reservation or the roles of a replicated
             device: the daemon evaluates it again when a peer instance
             status changes
+        start_blocker:
+          type: object
+          description: |
+            what would refuse a start of the resource on this node now, as
+            a replicated disk not up to date: a switch waits for the
+            blockers of its destination a resync lifts before it stops the
+            source, and is refused a destination whose blockers no resync
+            lifts
+          required:
+            - reason
+          properties:
+            reason:
+              type: string
+            resync:
+              type: boolean
+              description: a resync from a peer holding the data up to date lifts it
+            path:
+              type: string
+              description: the object whose standby start starts the resync, empty for the object of the resource
         disable:
           type: boolean
           description: hints the resource ignores all state transition actions

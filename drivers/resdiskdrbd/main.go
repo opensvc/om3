@@ -274,6 +274,33 @@ func (t *T) StartStandby(ctx context.Context) error {
 	return dev.Secondary(ctx)
 }
 
+// StartBlocker implements resource.StartBlockerer: a disk not up to date
+// refuses a promotion. A resync from a peer up to date lifts it, but on a
+// disk the node does not have.
+func (t *T) StartBlocker(ctx context.Context) *resource.StartBlocker {
+	if !t.isConfigured() {
+		return nil
+	}
+	dev := t.drbd(ctx)
+	if ok, err := dev.IsDefined(ctx); err != nil || !ok {
+		return nil
+	}
+	st, err := dev.Status(ctx)
+	if err != nil || st.IsUpToDate() || st.Role == "Primary" {
+		return nil
+	}
+	diskless := false
+	for _, d := range st.Devices {
+		if d.DiskState == "Diskless" {
+			diskless = true
+		}
+	}
+	return &resource.StartBlocker{
+		Reason: fmt.Sprintf("drbd %s disk %s (peers: %s)", t.Res, st.DiskStates(), st.Peers()),
+		Resync: !diskless,
+	}
+}
+
 func (t *T) Start(ctx context.Context) error {
 	if !t.isConfigured() {
 		t.Log().Infof("skip: resource not configured")

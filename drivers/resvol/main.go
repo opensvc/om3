@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/opensvc/fcntllock"
@@ -55,14 +56,18 @@ type (
 		resource.T
 		resource.Restart
 		datarecv.DataRecv
-		Name     string `json:"name"`
-		Access   string `json:"access"`
-		Pool     string `json:"pool"`
-		PoolType string `json:"type"`
-		Size     *int64 `json:"size"`
-		Format   bool   `json:"format"`
-		Volatile bool   `json:"volatile"`
-		VolNodes []string
+
+		// startBlocker is what the resources of the volume would refuse a
+		// start for, as read by the last status evaluation.
+		startBlocker *resource.StartBlocker
+		Name         string `json:"name"`
+		Access       string `json:"access"`
+		Pool         string `json:"pool"`
+		PoolType     string `json:"type"`
+		Size         *int64 `json:"size"`
+		Format       bool   `json:"format"`
+		Volatile     bool   `json:"volatile"`
+		VolNodes     []string
 
 		// Context
 		Path          naming.Path
@@ -211,6 +216,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
+	t.startBlocker = volumeStartBlocker(volume.Path(), data)
 	if data.Overall == status.Warn {
 		t.StatusLog().Warn("Volume %s has warnings", volume.Path())
 	}
@@ -224,6 +230,36 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	t.DataRecv.Status()
 	return data.Avail
+}
+
+// StartBlocker implements resource.StartBlockerer, saying what the resources
+// of the volume say, as read by the last status evaluation.
+func (t *T) StartBlocker(ctx context.Context) *resource.StartBlocker {
+	return t.startBlocker
+}
+
+// volumeStartBlocker returns the blocker of the volume, the first of its
+// resources, its reason prefixed with the volume and its standby start the
+// one of the volume.
+func volumeStartBlocker(p naming.Path, data instance.Status) *resource.StartBlocker {
+	rids := make([]string, 0, len(data.Resources))
+	for rid := range data.Resources {
+		rids = append(rids, rid)
+	}
+	sort.Strings(rids)
+	for _, rid := range rids {
+		b := data.Resources[rid].StartBlocker
+		if b == nil {
+			continue
+		}
+		blocker := *b
+		blocker.Reason = fmt.Sprintf("%s %s: %s", p, rid, b.Reason)
+		if blocker.Path == "" {
+			blocker.Path = p.String()
+		}
+		return &blocker
+	}
+	return nil
 }
 
 func (t *T) flagFile() string {
