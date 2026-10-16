@@ -1608,6 +1608,10 @@ func (t *Status) DeepCopy() *Status {
 	n.Files = deepcopy.Slice(t.Files)
 	n.Datastores = deepcopy.Slice(t.Datastores)
 	n.Info = deepcopy.Any(t.Info)
+	if t.StartBlocker != nil {
+		startBlocker := *t.StartBlocker
+		n.StartBlocker = &startBlocker
+	}
 	return &n
 }
 
@@ -1635,6 +1639,9 @@ func (t *Status) Unstructured() map[string]any {
 	}
 	if len(t.Info) > 0 {
 		m["info"] = t.Info
+	}
+	if t.StartBlocker != nil {
+		m["start_blocker"] = t.StartBlocker
 	}
 	return m
 }

@@ -165,6 +165,10 @@ func (cfg *ActorConfig) DeepCopy() *ActorConfig {
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
 	newCfg.Claims = deepcopy.Any(cfg.Claims)
+	newCfg.HardAffinity = deepcopy.Slice(cfg.HardAffinity)
+	newCfg.HardAntiAffinity = deepcopy.Slice(cfg.HardAntiAffinity)
+	newCfg.SoftAffinity = deepcopy.Slice(cfg.SoftAffinity)
+	newCfg.SoftAntiAffinity = deepcopy.Slice(cfg.SoftAntiAffinity)
 	if cfg.Flex != nil {
 		flex := *cfg.Flex
 		newCfg.Flex = &flex
