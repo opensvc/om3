@@ -73,6 +73,11 @@ type (
 		// ObjectStatusUpdated for path events where srcEvent is InstanceConfigUpdated.
 		instConfig instance.Config
 
+		// volumeSeen holds the vol objects the volume resources of the
+		// local instance use, whose local instance status updates are
+		// subscribed to, with what was last seen of them.
+		volumeSeen map[naming.Path]string
+
 		// affinitySubscribed holds the objects the affinities name, whose
 		// instance status updates are subscribed to, and affinityAvail the
 		// last avail status of their instances, by path@node.

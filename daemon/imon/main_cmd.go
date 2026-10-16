@@ -244,6 +244,7 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 		return
 	}
 	t.onAffinityInstanceStatus(c.Path, c.Node, c.Value.Avail)
+	t.onVolumeInstanceStatusUpdated(c)
 	changes := false
 	relation := c.Path.String() + "@" + c.Node
 	do := func(relation string, name string, cache map[string]status.T) {
@@ -287,6 +288,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	t.instStatus[srcCmd.Node] = srcCmd.Value
 	if ok && srcCmd.Node != t.localhost {
 		t.refreshOnPeerChange(srcCmd.Node, instStatus, srcCmd.Value)
+	}
+	if srcCmd.Node == t.localhost {
+		t.janitorVolumes()
 	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()

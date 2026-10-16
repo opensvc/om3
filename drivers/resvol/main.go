@@ -396,6 +396,19 @@ func (t *T) volumeLogger() *plog.Logger {
 	return plog.NewDefaultLogger().Attr("from_obj_path", t.Path.String()).Attr("from_rid", t.ResourceID.String())
 }
 
+// StatusInfo names the vol object of the resource, whose local instance the
+// resource status relays: the daemon refreshes the status of the consumer
+// when it changes.
+func (t *T) StatusInfo(context.Context) map[string]any {
+	p, err := naming.NewPath(t.Path.Namespace, naming.KindVol, t.name())
+	if err != nil {
+		return nil
+	}
+	return map[string]any{
+		"path": p.String(),
+	}
+}
+
 func (t *T) Volume() (object.Vol, error) {
 	p, err := naming.NewPath(t.Path.Namespace, naming.KindVol, t.name())
 	if err != nil {
