@@ -159,6 +159,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	// base of a peer not synced this run is kept too.
 	peers := t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
 	t.seedLegacyStates(local, peers, states)
+	t.seedReceivedBase(local, peers, states)
 
 	// The peers are synced at once, each on its own: one failing, or slow,
 	// does not hold the others back, and all the failures are reported.

@@ -424,6 +424,26 @@ func (t *T) seedLegacyStates(local []snapshot, peers []string, states peerStates
 	}
 }
 
+// seedReceivedBase gives the peers with no state yet the snapshot this node
+// held before the run, the one it received when another node was the source:
+// that node, the former source, holds it, a switch having moved the object.
+// local is the snapshots of this node, the one of this run the newest.
+//
+// Without it, a sync failing on the first run of a new source pruned the base
+// of the former source, its snapshots in common with it all gone, and the
+// former source was stranded, a full copy needed to sync it again.
+func (t *T) seedReceivedBase(local []snapshot, peers []string, states peerStates) {
+	if len(local) < 2 {
+		return
+	}
+	previous := local[len(local)-2]
+	for _, nodename := range peers {
+		if _, ok := states[nodename]; !ok {
+			states[nodename] = peerState{BaseGUID: previous.GUID}
+		}
+	}
+}
+
 // syncPeerFull sends snap to nodename whole, replacing its dataset.
 //
 // A recursive send carries the older snapshots of the source too, which the
