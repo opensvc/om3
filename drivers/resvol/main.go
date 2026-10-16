@@ -603,21 +603,44 @@ func (t *T) Configure() error {
 }
 
 // moveResource returns the resource of the volume a move of the container
-// using it is about: the one exposing the device the container uses. The
-// others are under it, as the logical volume or the zvol a drbd replicates,
-// and are moved by moving it: asked to move themselves, the zvol under a drbd
-// would send itself to a destination holding a replica of its own.
+// using it is about: the one the volume exposes to its consumers, as the
+// filesystem mounted on its head a disk file of the container lives in, when
+// that resource knows how to move, or else the one exposing the device the
+// container uses. The others are under it, as the logical volume or the zvol
+// a drbd replicates, and are moved by moving it: asked to move themselves, the
+// zvol under a drbd would send itself to a destination holding a replica of
+// its own.
+//
+// A volume of a zpool pool is a zfs filesystem the disk file of the container
+// lives in, and exposes no device: looking for the device alone, its move
+// copied nothing and sent nothing, and libvirt refused a migration without
+// shared storage.
 func (t *T) moveResource(ctx context.Context) (resource.Driver, error) {
 	volume, err := t.Volume()
 	if err != nil {
 		t.Log().Errorf("%s", err)
 		return nil, fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
 	}
+	if rid, err := volume.HeadRID(ctx); err == nil {
+		if r := volume.ResourceByID(rid); r != nil && !r.IsDisabled() && handlesMove(r) {
+			return r, nil
+		}
+	}
 	r := volume.ExposedDeviceResource(ctx)
 	if r == nil || r.IsDisabled() {
 		return nil, nil
 	}
 	return r, nil
+}
+
+// handlesMove says whether a resource takes part in a move, copying its
+// storage or preparing the destination.
+func handlesMove(r resource.Driver) bool {
+	if i, ok := r.(resource.MoveStorageCopier); ok && i.MoveCopiesStorage() {
+		return true
+	}
+	_, ok := r.(resource.PreMover)
+	return ok
 }
 
 // MoveCopiesStorage implements resource.MoveStorageCopier, saying what the
