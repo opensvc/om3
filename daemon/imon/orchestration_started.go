@@ -78,13 +78,13 @@ func (t *Manager) startedFromIdle() {
 // natural placement leader instead. The ha rule hands the object to a peer
 // when this node cannot take it, which is a failover, and the promise of
 // orchestrate=start is that the object is started where it belongs and moved
-// nowhere.
+// nowhere. Its hard affinities still say whether it may start there.
 func (t *Manager) isStartLeader() bool {
 	switch {
 	case t.state.GlobalExpect == instance.MonitorGlobalExpectStarted:
 		return t.isStartCandidateLeader(false)
 	case t.objStatus.Orchestrate == "start":
-		return t.state.IsLeader
+		return t.state.IsLeader && t.isHardAffinitySatisfied(t.localhost)
 	default:
 		return t.state.IsHALeader
 	}
