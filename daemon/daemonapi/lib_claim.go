@@ -80,6 +80,11 @@ func refuseComputeClaimOverrun(ctx context.Context, p naming.Path, o any) error 
 	if !ok || p.Namespace == naming.NsRoot {
 		return nil
 	}
+	if _, ok := o.(object.Actor); !ok {
+		// A namespace, cfg, sec or usr object runs no process: it
+		// claims nothing, whatever the namespace holds.
+		return nil
+	}
 	to, err := claimer.ComputeClaims()
 	if err != nil {
 		return err
@@ -89,6 +94,9 @@ func refuseComputeClaimOverrun(ctx context.Context, p naming.Path, o any) error 
 	for claimType, v := range to {
 		was, ok := from[claimType]
 		switch {
+		case !ok && v == 0:
+			// Nothing claimed before, and nothing claimed now.
+			continue
 		case !ok:
 		case was == claim.Unbounded:
 			continue
