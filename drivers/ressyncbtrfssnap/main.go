@@ -418,9 +418,14 @@ func (t *T) statusDir(dir string) status.T {
 	}
 	newest := l[0].CreatedAt
 	if maxDelay := t.GetMaxDelay(newest); maxDelay > 0 {
-		// The snapshot goes stale then, with no event to tell.
-		t.StatusLog().ChangesAt(newest.Add(maxDelay))
-		if time.Since(newest) > maxDelay {
+		// A snapshot misses the writes made since it was taken, which
+		// end when the instance writing them stops.
+		age, frozen := t.Age(newest)
+		if !frozen {
+			// The snapshot goes stale then, with no event to tell.
+			t.StatusLog().ChangesAt(newest.Add(maxDelay))
+		}
+		if age > maxDelay {
 			t.StatusLog().Warn("%s last snap is too old, created at %s, more than %s ago (%s)", dir, newest, maxDelay, t.MaxDelayOrigin())
 			result = status.Warn
 		}
