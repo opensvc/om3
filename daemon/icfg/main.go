@@ -177,6 +177,14 @@ func (t *Manager) startSubscriptions() {
 		// so we must also watch for cluster config updates to configFileCheckRefresh non cluster instance config scope
 		t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPathCluster, labelLocalhost)
 		t.sub.AddFilter(&msgbus.NodeLabelsCommited{})
+
+		// what an object claims of the cpu and memory depends on the
+		// default caps of its namespace claims, so we must also watch for
+		// its namespace config updates.
+		if t.path.Namespace != naming.NsRoot && t.path.Kind != naming.KindNscfg {
+			nscfgPath := naming.Path{Namespace: t.path.Namespace, Kind: naming.KindNscfg, Name: "namespace"}
+			t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", nscfgPath.String()}, labelLocalhost)
+		}
 	} else {
 		// Special note for cluster instance config: we don't subscribe for ConfigFileUpdated, instead we subscribe for
 		// ClusterConfigUpdated.
@@ -221,7 +229,11 @@ func (t *Manager) worker() {
 			case *msgbus.ConfigFileUpdated:
 				t.onConfigFileUpdated()
 			case *msgbus.InstanceConfigUpdated:
-				t.onLocalClusterInstanceConfigUpdated()
+				if c.Path.Kind == naming.KindNscfg {
+					t.onLocalNamespaceInstanceConfigUpdated()
+				} else {
+					t.onLocalClusterInstanceConfigUpdated()
+				}
 			case *msgbus.NodeLabelsCommited:
 				t.onNodeLabelsCommited()
 			}
@@ -265,6 +277,11 @@ func (t *Manager) onConfigFileUpdated() {
 
 func (t *Manager) onLocalClusterInstanceConfigUpdated() {
 	t.log.Tracef("cluster instance config changed => refresh")
+	_ = t.configFileCheckRefresh(true)
+}
+
+func (t *Manager) onLocalNamespaceInstanceConfigUpdated() {
+	t.log.Tracef("namespace instance config changed => refresh")
 	_ = t.configFileCheckRefresh(true)
 }
 
