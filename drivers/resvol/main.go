@@ -217,6 +217,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 	t.startBlocker = volumeStartBlocker(volume.Path(), data)
+	t.warnVolumeAccess(volume)
 	if data.Overall == status.Warn {
 		t.StatusLog().Warn("Volume %s has warnings", volume.Path())
 	}
@@ -376,18 +377,47 @@ func (t *T) claim(volume object.Vol) error {
 	return volume.Config().Set(keyop.T{Key: key.Parse("children"), Op: keyop.Merge, Value: child})
 }
 
-func (t *T) access() volaccess.T {
+// access is the access the volume of the resource is created with: the one
+// configured, opened to several nodes for a flex object, whose instances each
+// start the volume on their node.
+func (t *T) access() (volaccess.T, error) {
 	a, err := volaccess.Parse(t.Access)
 	if err != nil {
-		t.StatusLog().Warn("%s", err)
-		a, _ = volaccess.Parse("rwo")
+		return a, err
 	}
 	if t.Topology == topology.Flex {
 		// translations: roo => rox, rwo => rwx
 		a.SetOnce(false)
 	}
-	return a
+	return a, nil
+}
 
+// warnVolumeAccess says when the volume is a failover object, or one to
+// open by one node only, while the object is flex: each of its instances
+// starts the volume on its node, which the volume does not expect, and which
+// a volume on a shared device does not survive. The volume was created so
+// before its object turned flex, or before the access of a flex object was
+// opened to several nodes.
+func (t *T) warnVolumeAccess(volume object.Vol) {
+	if t.Topology != topology.Flex {
+		return
+	}
+	topo := topology.Failover
+	if i, ok := volume.(interface{ Topology() topology.T }); ok {
+		topo = i.Topology()
+	}
+	a, err := volume.Access()
+	if err != nil {
+		return
+	}
+	if topo == topology.Flex && !a.IsOnce() {
+		return
+	}
+	want, err := t.access()
+	if err != nil {
+		return
+	}
+	t.StatusLog().Warn("volume %s is %s with access %s, and the flex %s starts it on each of its nodes: where its pool allows it, set topology=flex, flex_min=0 and access=%s on it", volume.Path(), topo, a, t.Path, want)
 }
 
 // volumeLogger returns a logger that hints about this resource and object
@@ -466,7 +496,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	l.Format = t.Format
 	l.Shared = t.Shared
 	l.Volatile = t.Volatile
-	l.Access, err = volaccess.Parse(t.Access)
+	l.Access, err = t.access()
 	if err != nil {
 		return nil, err
 	}
