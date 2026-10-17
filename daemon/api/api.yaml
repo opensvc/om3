@@ -6639,6 +6639,13 @@ components:
       properties:
         is_changed:
           type: boolean
+        warnings:
+          type: array
+          description: |
+            What the write leaves to look at, the write being done: a
+            namespace holding more than it claims of a compute type.
+          items:
+            type: string
 
     DNSRecord:
       type: object

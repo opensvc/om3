@@ -1178,6 +1178,10 @@ type ClusterStatus = map[string]interface{}
 // Committed defines model for Committed.
 type Committed struct {
 	IsChanged bool `json:"is_changed"`
+
+	// Warnings What the write leaves to look at, the write being done: a
+	// namespace holding more than it claims of a compute type.
+	Warnings *[]string `json:"warnings,omitempty"`
 }
 
 // ComputeClaim defines model for ComputeClaim.
