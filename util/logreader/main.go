@@ -293,6 +293,11 @@ func (lr *LogReader) extractTimestamp(event streamlog.Event) time.Time {
 	return time.Time{}
 }
 
+// maxMarkedStreams is the most streams a console line marks in braille the
+// node it comes from among: past it, the marker is too wide to read at a
+// glance, and the node name alone says it.
+const maxMarkedStreams = 8
+
 // renderEvent renders a streamlog.Event to the provided writer in the specified format
 func renderEvent(e streamlog.Event, node string, streamIndex int, numStreams int, format string, output io.Writer) error {
 	switch format {
@@ -314,7 +319,7 @@ func renderEvent(e streamlog.Event, node string, streamIndex int, numStreams int
 
 		// Determine prefix based on stream index
 		var prefix string
-		if node != "" && numStreams > 1 {
+		if node != "" && numStreams > 1 && numStreams <= maxMarkedStreams {
 			// Format a prefix helping the reader grap wich node emited the entry:
 			//
 			//   ⣇⡀ node1: foo
@@ -356,8 +361,11 @@ func renderEvent(e streamlog.Event, node string, streamIndex int, numStreams int
 
 		w.FormatMessage = func(i any) string {
 			nodePrefix := ""
+			if prefix != "" {
+				nodePrefix = rawconfig.Colorize.Bold(prefix) + " "
+			}
 			if node != "" {
-				nodePrefix = rawconfig.Colorize.Bold(prefix) + " " + rawconfig.Colorize.Bold(node+": ")
+				nodePrefix += rawconfig.Colorize.Bold(node + ": ")
 			}
 			return nodePrefix + rawconfig.Colorize.Bold(i)
 		}
