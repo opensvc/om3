@@ -21,3 +21,7 @@ func (t *T) isUp() (bool, error) {
 func (t *T) isPathExported() (bool, error) {
 	return false, nil
 }
+
+func (t *T) checkServer() error {
+	return nil
+}

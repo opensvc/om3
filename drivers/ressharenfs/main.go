@@ -2,6 +2,7 @@ package ressharenfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -34,6 +35,10 @@ type T struct {
 
 var (
 	errExportfsNotInstalled = fmt.Errorf("exportfs is not installed (rescan capabilities after install)")
+
+	// errNFSNotOperational is a node whose nfs server does not answer, as
+	// one not running: a path in the export table is not served.
+	errNFSNotOperational = errors.New("nfs server not operational on this node")
 )
 
 func New() resource.Driver {
@@ -76,12 +81,20 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	}
 	exported, err := t.isPathExported()
-	if err != nil && len(t.issues) == 0 {
+	switch {
+	case errors.Is(err, errNFSNotOperational):
+		return err
+	case err != nil && len(t.issues) == 0:
 		return err
 	}
 	if exported && len(t.issues) == 0 {
 		t.Log().Infof("already up")
 		return nil
+	}
+	// Exporting a path no server serves would leave it in the export
+	// table, and the share down.
+	if err := t.checkServer(); err != nil {
+		return err
 	}
 	return t.start(ctx)
 }
@@ -109,7 +122,12 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 	v, err := t.isPathExported()
-	if err != nil {
+	if errors.Is(err, errNFSNotOperational) {
+		// In the export table, and served by nothing: the share is
+		// down, as v2 said, not unknown.
+		t.StatusLog().Warn("%s", err)
+		return status.Down
+	} else if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
