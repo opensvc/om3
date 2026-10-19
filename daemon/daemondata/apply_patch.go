@@ -229,6 +229,9 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.ObjectStatusDeleted:
 		d.publisher.Pub(c, labelFromPeer)
 	// pool...
+	case *msgbus.NodePoolStatusDeleted:
+		pool.StatusData.Unset(c.Name, c.Node)
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodePoolStatusUpdated:
 		pool.StatusData.Set(c.Name, c.Node, c.Value.DeepCopy())
 		d.publisher.Pub(c, labelFromPeer)

@@ -105,6 +105,17 @@ func (c *Data[T]) GetByNode(nodename string) map[naming.Path]*T {
 	return result
 }
 
+// GetPathsByNode returns the paths of the instance data held for nodename
+func (c *Data[T]) GetPathsByNode(nodename string) []naming.Path {
+	c.RLock()
+	defer c.RUnlock()
+	result := make([]naming.Path, 0, len(c.nodeToPath[nodename]))
+	for p := range c.nodeToPath[nodename] {
+		result = append(result, p)
+	}
+	return result
+}
+
 // GetByPath returns a map (indexed by nodename) of instance data for path p
 func (c *Data[T]) GetByPath(p naming.Path) map[string]*T {
 	c.RLock()
