@@ -997,6 +997,7 @@ func (t *Manager) loadPools() {
 		renewedMu.Unlock()
 		if !ok {
 			pool.StatusData.Unset(e.Name, t.localhost)
+			t.publisher.Pub(&msgbus.NodePoolStatusDeleted{Node: t.localhost, Name: e.Name}, t.labelLocalhost)
 		}
 	}
 }

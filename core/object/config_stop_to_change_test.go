@@ -9,12 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/hostname"
+
+	_ "github.com/opensvc/om3/v3/drivers/resdiskloop"
 )
 
 // A change a resource up on a node would leak by is refused: a keyword
@@ -66,6 +69,8 @@ func TestCheckStopToChange(t *testing.T) {
 	edited := cfgOf("[DEFAULT]\nnodes = node1\n[env]\nd = a\n[fs#1]\ntype = ext4\ndev = /dev/sdb\nmnt = /srv/{env.d}\nmnt_opt = noatime\ncomment = data\n")
 	assert.NoError(t, CheckStopToChange(p.Kind, from, edited, up), "a keyword saying nothing of what it holds")
 	assert.NoError(t, CheckStopToChange(p.Kind, from, from, up), "no change")
+	unset := cfgOf("[DEFAULT]\nnodes = node1\n[env]\nd = a\n[fs#1]\ntype = ext4\ndev = /dev/sdb\n")
+	assert.NoError(t, CheckStopToChange(p.Kind, unset, from, up), "a value set where none was")
 	assert.NoError(t, CheckStopToChange(p.Kind, nil, edited, up), "an object created changes nothing")
 
 	removed := cfgOf("[DEFAULT]\nnodes = node1\n[env]\nd = a\n")
@@ -99,4 +104,30 @@ func TestLocalInstanceStatusesWithNoCache(t *testing.T) {
 	m, err = localInstanceStatuses(naming.Path{Namespace: "test", Kind: naming.KindCfg, Name: "foo"})
 	require.NoError(t, err)
 	assert.Empty(t, m, "an object holding no resource")
+}
+
+// A required keyword left empty leaves the resource not configured, its
+// status not known, which is not stopped, and the change setting it is not
+// refused: the empty value designates nothing the resource could have set up.
+func TestChangeFromEmptyIsNotRefused(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p, err := naming.ParsePath("test/svc/foo")
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0700))
+	broken := "[DEFAULT]\nnodes = " + hostname.Hostname() + "\n[disk#1]\ntype = loop\n"
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte(broken), 0600))
+	m, err := localInstanceStatuses(p)
+	require.NoError(t, err)
+	st := m[hostname.Hostname()]
+	require.NotNil(t, st)
+	require.Contains(t, st.Resources, "disk#1")
+	assert.Equal(t, status.Undef, st.Resources["disk#1"].Status)
+
+	assert.NoError(t, CheckLocalUpdateStopToChange(p, nil, nil, []keyop.T{*keyop.Parse("disk#1.file=/srv/foo.img")}))
+	assert.ErrorIs(t, CheckLocalUpdateStopToChange(p, []string{"disk#1"}, nil, nil), ErrStopToChange, "the removal of a resource not known to be stopped")
 }

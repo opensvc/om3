@@ -6,6 +6,13 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
+// onPoolStatusDeleted deletes .cluster.node.<node>.pool.<name>
+func (data *ClusterData) onPoolStatusDeleted(c *NodePoolStatusDeleted) {
+	if cnode, ok := data.Cluster.Node[c.Node]; ok && cnode.Pool != nil {
+		delete(cnode.Pool, c.Name)
+	}
+}
+
 // onPoolStatusUpdated updates .cluster.node.<node>.pool.<name>.status
 func (data *ClusterData) onPoolStatusUpdated(c *NodePoolStatusUpdated) {
 	value := c.Value.DeepCopy()

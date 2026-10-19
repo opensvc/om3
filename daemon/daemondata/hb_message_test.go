@@ -6,8 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -158,4 +163,62 @@ func TestAcceptPeerRun(t *testing.T) {
 		assert.Empty(t, d.peerRuns)
 		assert.Equal(t, uint64(5), d.hbGens["n1"]["n2"])
 	})
+}
+
+// TestPubMsgFromNodePoolDiffForNode pins that a pool a peer no longer reports
+// is removed, though the previous read of its data is forgotten, as on a new
+// peer run.
+func TestPubMsgFromNodePoolDiffForNode(t *testing.T) {
+	pool.InitData()
+	pool.StatusData.Set("gone", "n2", &pool.Status{})
+	pool.StatusData.Set("kept", "n2", &pool.Status{})
+	pool.StatusData.Set("gone", "n3", &pool.Status{})
+	d := &data{
+		localNode:          "n1",
+		previousRemoteInfo: map[string]remoteInfo{},
+		clusterData: &msgbus.ClusterData{Data: &clusterdump.Data{Cluster: clusterdump.Cluster{
+			Node: map[string]node.Node{"n2": {Pool: map[string]pool.Status{"kept": {}, "new": {}}}},
+		}}},
+		log:       plog.NewDefaultLogger(),
+		publisher: nopPublisher{},
+	}
+	d.pubMsgFromNodePoolDiffForNode("n2", &remoteInfo{})
+	assert.Nil(t, pool.StatusData.Get("gone", "n2"), "pool no longer reported")
+	assert.NotNil(t, pool.StatusData.Get("kept", "n2"), "pool still reported")
+	assert.NotNil(t, pool.StatusData.Get("new", "n2"), "pool newly reported")
+	assert.NotNil(t, pool.StatusData.Get("gone", "n3"), "pool of another peer")
+}
+
+// TestPubMsgFromNodeInstanceDiffForNode pins that an instance a peer no
+// longer reports is removed, though the previous read of its data is
+// forgotten, as on a new peer run.
+func TestPubMsgFromNodeInstanceDiffForNode(t *testing.T) {
+	instance.InitData()
+	gone := naming.Path{Name: "gone", Namespace: "root", Kind: naming.KindSvc}
+	kept := naming.Path{Name: "kept", Namespace: "root", Kind: naming.KindSvc}
+	for _, p := range []naming.Path{gone, kept} {
+		instance.ConfigData.Set(p, "n2", &instance.Config{})
+		instance.StatusData.Set(p, "n2", &instance.Status{})
+		instance.MonitorData.Set(p, "n2", &instance.Monitor{})
+	}
+	instance.StatusData.Set(gone, "n3", &instance.Status{})
+	d := &data{
+		localNode:          "n1",
+		previousRemoteInfo: map[string]remoteInfo{},
+		clusterData: &msgbus.ClusterData{Data: &clusterdump.Data{Cluster: clusterdump.Cluster{
+			Node: map[string]node.Node{"n2": {Instance: map[string]instance.Instance{
+				kept.String(): {Config: &instance.Config{}, Status: &instance.Status{}, Monitor: &instance.Monitor{}},
+			}}},
+		}}},
+		log:       plog.NewDefaultLogger(),
+		publisher: nopPublisher{},
+	}
+	d.pubMsgFromNodeInstanceDiffForNode("n2", d.refreshPreviousUpdated("n2"))
+	assert.Nil(t, instance.ConfigData.GetByPathAndNode(gone, "n2"), "config no longer reported")
+	assert.Nil(t, instance.StatusData.GetByPathAndNode(gone, "n2"), "status no longer reported")
+	assert.Nil(t, instance.MonitorData.GetByPathAndNode(gone, "n2"), "monitor no longer reported")
+	assert.NotNil(t, instance.ConfigData.GetByPathAndNode(kept, "n2"), "config still reported")
+	assert.NotNil(t, instance.StatusData.GetByPathAndNode(kept, "n2"), "status still reported")
+	assert.NotNil(t, instance.MonitorData.GetByPathAndNode(kept, "n2"), "monitor still reported")
+	assert.NotNil(t, instance.StatusData.GetByPathAndNode(gone, "n3"), "instance of another peer")
 }

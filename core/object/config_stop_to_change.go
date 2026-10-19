@@ -32,7 +32,10 @@ var ErrStopToChange = errors.New("the resource is up")
 //
 //   - a change of the value of a keyword marked StopToChange, as the mount
 //     point of a filesystem or the address of an ip, evaluated on the node,
-//     so a change of what it references is one too;
+//     so a change of what it references is one too, unless the value was
+//     empty, which designates nothing the resource could have set up, as a
+//     required keyword left empty, which leaves the resource not configured
+//     and its status not known;
 //   - a change of its type, which is a change of the driver stopping it;
 //   - the removal of its section, which nothing stops once it is gone.
 //
@@ -74,7 +77,7 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 			}
 			for _, u := range up {
 				was, is := evaluatedAs(from, k, u.node), evaluatedAs(to, k, u.node)
-				if was == is {
+				if was == is || was == "" {
 					continue
 				}
 				refusals = append(refusals, fmt.Sprintf("change %s from %q to %q: %s", k, was, is, u.text()))

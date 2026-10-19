@@ -25,6 +25,8 @@ func Test_Mapper(t *testing.T) {
 	require.Len(t, mapper.GetByPath(p), 2)
 	require.Len(t, mapper.GetByNode("node1"), 1)
 	require.Len(t, mapper.GetByNode("node2"), 2)
+	require.ElementsMatch(t, []naming.Path{p, p2}, mapper.GetPathsByNode("node2"))
+	require.Empty(t, mapper.GetPathsByNode("node3"))
 
 	mapper.Unset(p, "node3")
 	mapper.Unset(p, "node2")

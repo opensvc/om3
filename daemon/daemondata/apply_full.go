@@ -333,7 +333,15 @@ func (d *data) pubMsgFromNodeMonitorDiffForNode(peer string, current *remoteInfo
 	}
 }
 
-func getUpdatedRemoved(toPath map[string]naming.Path, previous, current map[string]time.Time) (updates, removes []string) {
+// getUpdatedRemoved returns the instances a peer reports that are new or
+// changed since the previous read of its data, and the instances held for
+// the peer that it no longer reports.
+//
+// The removed ones are found among the instances held, not among the ones of
+// the previous read, which is forgotten on a patch, a ping or a new peer run:
+// an instance gone from a peer whose deletion was not seen would otherwise be
+// held for good.
+func getUpdatedRemoved(toPath map[string]naming.Path, previous, current map[string]time.Time, held []naming.Path) (updates, removes []string) {
 	for s, updated := range current {
 		if _, ok := toPath[s]; !ok {
 			p, err := naming.ParsePath(s)
@@ -350,15 +358,10 @@ func getUpdatedRemoved(toPath map[string]naming.Path, previous, current map[stri
 			updates = append(updates, s)
 		}
 	}
-	for s := range previous {
-		if _, ok := toPath[s]; !ok {
-			p, err := naming.ParsePath(s)
-			if err != nil {
-				continue
-			}
-			toPath[s] = p
-		}
+	for _, p := range held {
+		s := p.String()
 		if _, ok := current[s]; !ok {
+			toPath[s] = p
 			removes = append(removes, s)
 		}
 	}
@@ -376,7 +379,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 			instStatusUpdated: make(map[string]time.Time),
 		}
 	}
-	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated)
+	updates, removes = getUpdatedRemoved(toPath, previous.instConfigUpdated, current.instConfigUpdated, instance.ConfigData.GetPathsByNode(peer))
 	for _, s := range updates {
 		if _, ok := previous.instConfigUpdated[s]; !ok {
 			// ObjectCreated is published by icfg, before initial
@@ -406,7 +409,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 		)
 	}
 
-	updates, removes = getUpdatedRemoved(toPath, previous.instStatusUpdated, current.instStatusUpdated)
+	updates, removes = getUpdatedRemoved(toPath, previous.instStatusUpdated, current.instStatusUpdated, instance.StatusData.GetPathsByNode(peer))
 	for _, s := range updates {
 		instance.StatusData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Status.DeepCopy())
 		d.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Status.DeepCopy()},
@@ -426,7 +429,7 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 		)
 	}
 
-	updates, removes = getUpdatedRemoved(toPath, previous.imonUpdated, current.imonUpdated)
+	updates, removes = getUpdatedRemoved(toPath, previous.imonUpdated, current.imonUpdated, instance.MonitorData.GetPathsByNode(peer))
 	for _, s := range updates {
 		instance.MonitorData.Set(toPath[s], peer, d.clusterData.Cluster.Node[peer].Instance[s].Monitor.DeepCopy())
 		d.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: toPath[s], Node: peer, Value: *d.clusterData.Cluster.Node[peer].Instance[s].Monitor.DeepCopy()},
@@ -457,8 +460,10 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 // the node was one this one knew no pool of, which reads as a node with no
 // room rather than as a node nobody has heard from yet.
 //
-// The pools it reported before are walked too, for the ones it no longer
-// reports.
+// The pools held for the peer are walked too, for the ones it no longer
+// reports. They are the ones held, not the ones of the previous read, which
+// is forgotten on a patch, a ping or a new peer run: a pool removed from a
+// peer whose deletion was not seen would otherwise stay listed for good.
 func (d *data) pubMsgFromNodePoolDiffForNode(peer string, current *remoteInfo) {
 	if current == nil {
 		return
@@ -480,12 +485,12 @@ func (d *data) pubMsgFromNodePoolDiffForNode(peer string, current *remoteInfo) {
 			labelFromPeer,
 		)
 	}
-	for poolName := range previous.poolStatusUpdated {
-		if _, ok := pools[poolName]; ok {
+	for _, e := range pool.StatusData.GetByNode(peer) {
+		if _, ok := pools[e.Name]; ok {
 			continue
 		}
-		pool.StatusData.Unset(poolName, peer)
-		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Name: poolName, Node: peer},
+		pool.StatusData.Unset(e.Name, peer)
+		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Name: e.Name, Node: peer},
 			pubsub.Label{"node", peer},
 			labelFromPeer,
 		)
