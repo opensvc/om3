@@ -116,7 +116,16 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 					p, mtime.Format(time.RFC3339Nano), strings.Join(lagging, ", "))
 			}
 		}
-		return ctx.JSON(http.StatusOK, api.Committed{IsChanged: changed})
+		answer := api.Committed{IsChanged: changed}
+		if changed && kind == naming.KindNscfg {
+			if l := namespaceClaimWarnings(namespace); len(l) > 0 {
+				for _, w := range l {
+					log.Warnf("%s", w)
+				}
+				answer.Warnings = &l
+			}
+		}
+		return ctx.JSON(http.StatusOK, answer)
 	}
 
 	for nodename := range instanceConfigData {

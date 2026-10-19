@@ -165,7 +165,7 @@ func (t *T) isPathExported() (bool, error) {
 	}
 	mount, err := t.getShowmount()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("%w: %w", errNFSNotOperational, err)
 	}
 	for _, opt := range opts {
 		client := exports.Client(opt.Client)
@@ -250,6 +250,14 @@ func (t *T) delExport(e OptsEntry) error {
 	return cmd.Run()
 }
 
+// checkServer says whether the nfs server of the node answers.
+func (t *T) checkServer() error {
+	if _, err := t.getShowmounts(); err != nil {
+		return fmt.Errorf("%w: %w", errNFSNotOperational, err)
+	}
+	return nil
+}
+
 func (t *T) getShowmount() (Mount, error) {
 	if mounts, err := t.getShowmounts(); err != nil {
 		return Mount{}, err
@@ -265,6 +273,7 @@ func (t *T) getShowmounts() (Mounts, error) {
 		command.WithName(capabilities.GetPath("showmount")),
 		command.WithVarArgs("-e", "--no-headers", "127.0.0.1"),
 		command.WithBufferedStdout(),
+		command.WithTimeout(10*time.Second),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),

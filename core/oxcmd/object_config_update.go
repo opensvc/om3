@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
@@ -69,7 +70,7 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 				wait := t.Time.String()
 				params.Wait = &wait
 			}
-			changed, err := commoncmd.PatchObjectConfig(ctx, c, p, params)
+			changed, warnings, err := commoncmd.PatchObjectConfig(ctx, c, p, params)
 			if err != nil {
 				errC <- err
 				return
@@ -81,6 +82,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 				fmt.Printf("%scommitted\n", prefix)
 			} else {
 				fmt.Printf("%sunchanged\n", prefix)
+			}
+			for _, w := range warnings {
+				fmt.Fprintf(os.Stderr, "%swarning: %s\n", prefix, w)
 			}
 		}(path)
 	}

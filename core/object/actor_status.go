@@ -142,6 +142,7 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 	if err != nil {
 		return data, fmt.Errorf("merge running resource: %w", err)
 	}
+	t.recordWrites(ctx, data)
 	return data, t.statusDump(data)
 }
 
@@ -163,6 +164,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
 	if err != nil {
 		return data, fmt.Errorf("merge running resource: %w", err)
 	}
+	t.recordWrites(ctx, data)
 	err = t.statusDump(data)
 	return data, err
 }

@@ -2,6 +2,7 @@ package resappsimple
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"syscall"
@@ -15,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resapp"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/proc"
@@ -85,12 +87,20 @@ func (t *T) Start(ctx context.Context) (err error) {
 	return nil
 }
 
+// Stop runs the stop command, if any, then terminates the processes the
+// start command left running, as v2 did: a stop command telling the
+// application to stop, or cleaning after it, does not always end the
+// processes it was started as, and the resource would stay up. A stop
+// command set to false does nothing.
 func (t *T) Stop(ctx context.Context) error {
 	var err error
-	if t.StopCmd != "" {
-		err = t.CommonStop(ctx, t)
-	} else {
-		err = t.stop(ctx)
+	switch {
+	case t.StopCmd == "":
+		err = t.stop(ctx, false)
+	case isFalse(t.StopCmd):
+		return nil
+	default:
+		err = errors.Join(t.CommonStop(ctx, t), t.stop(ctx, true))
 	}
 	if err != nil {
 		if !actioncontext.HasResourceSelector(ctx) {
@@ -104,7 +114,15 @@ func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) stop(ctx context.Context) error {
+// isFalse says a command keyword is set to false, which means no command.
+func isFalse(s string) bool {
+	v, err := converters.Bool.Convert(s)
+	return err == nil && !v.(bool)
+}
+
+// stop terminates the processes of the start command. After a stop command,
+// those found are the ones it left running.
+func (t *T) stop(ctx context.Context, afterStopCmd bool) error {
 	cmdArgs, err := t.BaseCmdArgs(ctx, t.StartCmd, "stop")
 	if err != nil {
 		return err
@@ -114,8 +132,13 @@ func (t *T) stop(ctx context.Context) error {
 		return err
 	}
 	if procs.Len() == 0 {
-		t.Log().Infof("already stopped")
+		if !afterStopCmd {
+			t.Log().Infof("already stopped")
+		}
 		return nil
+	}
+	if afterStopCmd {
+		t.Log().Infof("the stop command left %d processes running", procs.Len())
 	}
 	for _, p := range procs.Procs() {
 		t.loggerWithProc(p).Infof("send termination signal to process %d", p.PID())

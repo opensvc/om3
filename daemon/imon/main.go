@@ -404,6 +404,8 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.DrbdResourceUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
+	// A peer lost: its instance writes the data of the object no more.
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelPath)
 	sub.Start()
 	t.sub = sub
 }
@@ -483,6 +485,13 @@ func (t *Manager) worker(initialNodes []string) {
 	t.affinityAvail = make(map[string]status.T)
 	t.janitorAffinities()
 	t.janitorVolumes()
+	// The write records of the peers follow their statuses from the start,
+	// a peer back writing while this monitor was down included.
+	for node, instStatus := range t.instStatus {
+		if node != t.localhost {
+			t.onPeerWrites(node, instStatus)
+		}
+	}
 	t.initResourceMonitor()
 	t.initLocalResourceFiles()
 	t.updateIsLeader()

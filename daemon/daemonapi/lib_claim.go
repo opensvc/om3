@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/claim"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -80,6 +83,11 @@ func refuseComputeClaimOverrun(ctx context.Context, p naming.Path, o any) error 
 	if !ok || p.Namespace == naming.NsRoot {
 		return nil
 	}
+	if _, ok := o.(object.Actor); !ok {
+		// A namespace, cfg, sec or usr object runs no process: it
+		// claims nothing, whatever the namespace holds.
+		return nil
+	}
 	to, err := claimer.ComputeClaims()
 	if err != nil {
 		return err
@@ -89,6 +97,9 @@ func refuseComputeClaimOverrun(ctx context.Context, p naming.Path, o any) error 
 	for claimType, v := range to {
 		was, ok := from[claimType]
 		switch {
+		case !ok && v == 0:
+			// Nothing claimed before, and nothing claimed now.
+			continue
 		case !ok:
 		case was == claim.Unbounded:
 			continue
@@ -108,4 +119,88 @@ func refuseComputeClaimOverrun(ctx context.Context, p naming.Path, o any) error 
 		return fmt.Errorf("%w: %s claims %s, and %s", ErrClaimOverrun, p, object.DescribeComputeClaims(to), why)
 	}
 	return nil
+}
+
+// isNewestConfig says the configuration file of p on this node is as recent
+// as the newest configuration of p a node publishes.
+func isNewestConfig(p naming.Path) bool {
+	mtime := file.ModTime(p.ConfigFile())
+	for _, cfg := range instance.ConfigData.GetByPath(p) {
+		if cfg != nil && cfg.UpdatedAt.After(mtime) {
+			return false
+		}
+	}
+	return true
+}
+
+// namespaceClaimWarnings says, after a write to the configuration of a
+// namespace, the compute claims of the namespace its objects hold more of
+// than it now claims. The write is not refused for it: a claim is a quota,
+// which an administrator may set below what the namespace holds, the objects
+// keeping what they hold, and a write growing what one claims being refused
+// until the namespace is back under.
+//
+// The objects this node has the configuration of are weighed with the
+// configuration just written, as a default cap it changes is part of what
+// they claim. The others are weighed by what their nodes publish, which
+// follows the namespace configuration a moment later.
+func namespaceClaimWarnings(namespace string) []string {
+	fresh := make(map[string]map[string]int64)
+	for _, e := range instance.ConfigData.GetAll() {
+		if e.Path.Namespace != namespace || e.Value.ActorConfig == nil {
+			continue
+		}
+		p := e.Path.String()
+		if _, ok := fresh[p]; ok || !file.Exists(e.Path.ConfigFile()) {
+			continue
+		}
+		if !isNewestConfig(e.Path) {
+			// A configuration older than one a node publishes, during
+			// its propagation, would weigh a claim no longer made.
+			continue
+		}
+		o, err := object.New(e.Path, object.WithVolatile(true))
+		if err != nil {
+			continue
+		}
+		claimer, ok := o.(object.ComputeClaimer)
+		if !ok {
+			continue
+		}
+		if claims, err := claimer.ComputeClaims(); err == nil {
+			fresh[p] = claims
+		}
+	}
+	var l []string
+	for _, claimType := range claim.ComputeTypes {
+		limit, capped, err := claim.ComputeLimit(namespace, claimType)
+		if err != nil || !capped {
+			continue
+		}
+		held, unbounded := computeClaimHeldByPath(namespace, claimType)
+		for p, claims := range fresh {
+			v, ok := claims[claimType]
+			switch {
+			case !ok:
+			case v == claim.Unbounded:
+				delete(held, p)
+				unbounded[p] = true
+			default:
+				delete(unbounded, p)
+				held[p] = v
+			}
+		}
+		if len(unbounded) > 0 {
+			l = append(l, fmt.Sprintf("the %s namespace claims the %s, and runs processes capped by nothing on it in %s: the writes growing what its objects claim are refused until they are capped", namespace, claimType, strings.Join(sortedKeys(unbounded), ", ")))
+			continue
+		}
+		var total int64
+		for _, v := range held {
+			total += v
+		}
+		if total > limit {
+			l = append(l, fmt.Sprintf("the %s namespace holds %s, over its claim of %s: the writes growing what its objects claim are refused until it is back under", namespace, claim.Format(claimType, total), claim.Format(claimType, limit)))
+		}
+	}
+	return l
 }

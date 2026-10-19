@@ -6639,6 +6639,13 @@ components:
       properties:
         is_changed:
           type: boolean
+        warnings:
+          type: array
+          description: |
+            What the write leaves to look at, the write being done: a
+            namespace holding more than it claims of a compute type.
+          items:
+            type: string
 
     DNSRecord:
       type: object
@@ -9658,6 +9665,13 @@ components:
             change, like a scsi reservation or the roles of a replicated
             device: the daemon evaluates it again when a peer instance
             status changes
+        volumes:
+          type: array
+          description: |
+            the vol objects the resource uses, as the one a volume resource
+            is
+          items:
+            type: string
         start_blocker:
           type: object
           description: |

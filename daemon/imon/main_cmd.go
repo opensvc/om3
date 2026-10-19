@@ -290,6 +290,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	if ok && srcCmd.Node != t.localhost {
 		t.refreshOnPeerChange(srcCmd.Node, instStatus, srcCmd.Value)
 	}
+	if srcCmd.Node != t.localhost {
+		t.onPeerWrites(srcCmd.Node, srcCmd.Value)
+	}
 	if srcCmd.Node == t.localhost {
 		t.janitorVolumes()
 	}
@@ -334,6 +337,23 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 			if _, ok := cfgNodes[node]; !ok {
 				t.log.Tracef("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
 				delete(t.instStatus, node)
+				// A node out of scope writes nothing of the object.
+				if err := object.ForgetWrites(t.path.VarDir(), node); err != nil {
+					t.log.Warnf("forget the writes of %s: %s", node, err)
+				}
+			}
+		}
+
+		// A peer entering the scope may have published its status before:
+		// its writes are recorded from the status cached.
+		for _, node := range scope {
+			if slices.Contains(t.scopeNodes, node) {
+				// In the scope before: its statuses were recorded
+				// as they came.
+				continue
+			}
+			if instStatus, ok := t.instStatus[node]; ok && node != t.localhost && !instStatus.UpdatedAt.IsZero() {
+				t.recordPeerWrites(node, instStatus)
 			}
 		}
 	}
@@ -421,9 +441,61 @@ func (t *Manager) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	}
 }
 
+// onPeerLostWrites records that the instance of a peer the cluster lost no
+// longer writes the data of the object, since it was lost, and refreshes the
+// status of the local instance, whose copies of the data stop aging then.
+func (t *Manager) onPeerLostWrites(peer string, at time.Time) {
+	changed, err := object.PeerWritesStopped(t.path.VarDir(), peer, at)
+	if err != nil {
+		t.log.Warnf("record the writes of the lost node %s stopped: %s", peer, err)
+		return
+	}
+	if changed {
+		t.log.Infof("the writes of the lost node %s stopped at %s", peer, at.Format(time.RFC3339))
+		t.scheduleEventRefresh("the writes of the lost node " + peer + " stopped")
+	}
+}
+
+// onPeerWrites records whether the instance of a peer writes the data of the
+// object, as the status it publishes says, when its record here says
+// otherwise, and refreshes the status of the local instance, whose copies of
+// the data age or stop aging with it.
+func (t *Manager) onPeerWrites(peer string, value instance.Status) {
+	if value.UpdatedAt.IsZero() {
+		// A placeholder for a peer whose status is not known says
+		// nothing of its writes.
+		return
+	}
+	if !slices.Contains(t.scopeNodes, peer) {
+		// A status of a node out of scope, cached still, is no
+		// instance of the object.
+		return
+	}
+	t.recordPeerWrites(peer, value)
+}
+
+// recordPeerWrites records whether the instance of a peer in the scope of the
+// object writes its data, as its status says, when its record says otherwise.
+func (t *Manager) recordPeerWrites(peer string, value instance.Status) {
+	changed, err := object.PeerWrites(t.path.VarDir(), peer, value)
+	if err != nil {
+		t.log.Warnf("record the writes of %s: %s", peer, err)
+		return
+	}
+	if changed {
+		t.log.Infof("the writes of %s are %s, as its status says", peer, map[bool]string{true: "running", false: "stopped"}[object.IsWriting(value)])
+		t.scheduleEventRefresh("the writes of " + peer + " changed")
+	}
+}
+
 func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if t.path != c.Path {
 		t.onRelationInstanceStatusDeleted(c)
+	} else if c.Node != t.localhost && !c.PeerDropAt.IsZero() {
+		// The object monitor forwards it only when the object status
+		// changes, which a peer lost may not change: its configuration,
+		// dropped first, already took its instance out.
+		t.onPeerLostWrites(c.Node, c.PeerDropAt)
 	}
 }
 

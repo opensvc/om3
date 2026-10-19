@@ -187,6 +187,9 @@ type (
 	datastoreLister interface {
 		DatastoreList(context.Context) naming.Paths
 	}
+	volumeLister interface {
+		VolumeList(context.Context) naming.Paths
+	}
 	toSyncer interface {
 		ToSync(context.Context) []string
 	}

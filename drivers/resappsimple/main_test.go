@@ -191,6 +191,33 @@ func TestStop(t *testing.T) {
 		assert.True(t, file.Exists(filename))
 	})
 
+	t.Run("terminates the processes a stop command leaves running", func(t *testing.T) {
+		td, cleanup := prepareConfig(t)
+		defer cleanup()
+		filename := filepath.Join(td, "trace")
+		app := WithLoggerAndPgApp(T{T: resapp.T{StartCmd: "sleep 30", StopCmd: "touch " + filename}})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		assert.Nil(t, app.Start(ctx), "Start(...) returned value")
+		assert.Equal(t, status.Up, app.Status(ctx), "status after start")
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+		assert.True(t, file.Exists(filename), "stop cmd not called")
+		assert.Equal(t, status.Down, app.Status(ctx), "status after stop")
+	})
+
+	t.Run("a stop command set to false does nothing", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{T: resapp.T{StartCmd: "sleep 30", StopCmd: "false"}})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		assert.Nil(t, app.Start(ctx), "Start(...) returned value")
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+		assert.Equal(t, status.Up, app.Status(ctx), "status after stop")
+		app.StopCmd = ""
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+	})
+
 	t.Run("does not execute stop command if status is already down", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()

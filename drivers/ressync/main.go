@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
@@ -150,6 +151,16 @@ func scheduleMaxDelay(s string, lastSync time.Time) time.Duration {
 	return due.Sub(lastSync) + after.Sub(due)/2
 }
 
+// writesMissed is how long of writes a copy last synced at lastSync misses:
+// the time since, or until the writes stopped when they did, none when they
+// stopped before the sync.
+func writesMissed(lastSync, stoppedAt, now time.Time) time.Duration {
+	if stoppedAt.IsZero() {
+		return now.Sub(lastSync)
+	}
+	return max(stoppedAt.Sub(lastSync), 0)
+}
+
 // neverSyncedRPOBreach is the RPO breach time of a copy never received: no
 // time the node took over from would lose less than everything.
 var neverSyncedRPOBreach = time.Unix(0, 0)
@@ -179,13 +190,21 @@ func (t *T) StatusLastSync(nodenames []string, receiving bool) status.T {
 				t.StatusLog().Info("no schedule and no max delay")
 				continue
 			}
-			// The copy goes stale then, with no event to tell.
-			t.StatusLog().ChangesAt(tm.Add(maxDelay))
-			if receiving {
+			// The copy misses the writes made since its last sync, which
+			// end when the instance writing them stops: the copy of a
+			// stopped instance does not age.
+			age, frozen := t.Age(tm)
+			if !frozen {
+				// The copy goes stale then, with no event to tell.
+				t.StatusLog().ChangesAt(tm.Add(maxDelay))
+			}
+			if receiving && (!frozen || age > maxDelay) {
 				t.StatusLog().RPOBreachesAt(tm.Add(maxDelay))
 			}
-			age := time.Since(tm)
-			if age > maxDelay {
+			if age > maxDelay && frozen {
+				t.StatusLog().Warn("%s last sync is too old, at %s, %s of writes missed before they stopped, more than %s (%s)", nodename, tm, age.Round(time.Second), maxDelay, t.MaxDelayOrigin())
+				state.Add(status.Warn)
+			} else if age > maxDelay {
 				t.StatusLog().Warn("%s last sync is too old, at %s, more than %s ago (%s)", nodename, tm, maxDelay, t.MaxDelayOrigin())
 				state.Add(status.Warn)
 			} else {
@@ -228,32 +247,8 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 	if err != nil {
 		return err
 	}
-
 	send := func(filename string) error {
-		file, err := os.Open(filename)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		info, err := file.Stat()
-		if err != nil {
-			return err
-		}
-		response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
-			// A record says when by its modification time, which the
-			// peer keeps rather than the time it received it.
-			req.Header.Add(api.HeaderLastModified, info.ModTime().Format(time.RFC3339Nano))
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		defer drainClose(response.Body)
-		if response.StatusCode != http.StatusNoContent {
-			return fmt.Errorf("unexpected response: %s", response.Status)
-		}
-		return nil
+		return t.sendStateFile(ctx, c, peer, filename)
 	}
 
 	others, err := filepath.Glob(t.lastSyncFile("*"))
@@ -275,6 +270,44 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 		t.Log().Debugf("state file %s sent to node %s", filename, peer)
 	}
 	return errs
+}
+
+// sendStateFile sends peer a record of the resource, with its modification
+// time, which says when.
+func (t *T) sendStateFile(ctx context.Context, c *client.T, peer, filename string) error {
+	head := t.GetObjectDriver().VarDir()
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
+		req.Header.Add(api.HeaderRelativePath, filename[len(head):])
+		// A record says when by its modification time, which the
+		// peer keeps rather than the time it received it.
+		req.Header.Add(api.HeaderLastModified, info.ModTime().Format(time.RFC3339Nano))
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	defer drainClose(response.Body)
+	if response.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected response: %s", response.Status)
+	}
+	return nil
+}
+
+// Age is how long of writes a copy last synced, or a snapshot taken, at since
+// misses: the time since, or until the writes of the instance stopped when
+// they did, frozen then, as the records of the object say.
+func (t *T) Age(since time.Time) (time.Duration, bool) {
+	stoppedAt := object.WritesStoppedAt(t.GetObjectDriver().VarDir())
+	return writesMissed(since, stoppedAt, time.Now()), !stoppedAt.IsZero()
 }
 
 // drainClose reads what is left of a response body before closing it, so the
