@@ -230,7 +230,35 @@ jobs:
         run: cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/omx@${{ steps.build-omx.outputs.digest }}"
 
       - name: Generate SBOM
-        run: syft scan . -o cyclonedx-json=sbom.json
+        run: |
+          syft scan . \
+            --source-name github.com/opensvc/om3/v3 \
+            --source-version "${{ github.ref_name }}" \
+            -o cyclonedx-json=sbom.syft.json
+          # The SBOM describes om3, released under the Apache-2.0 license.
+          # syft reads that license from the LICENSE of the source tree for
+          # the go.mod entry only, not for the main module of the om and ox
+          # binaries it catalogs, nor for the subject of the SBOM, which it
+          # types as the directory scanned: declare it on all of them, and
+          # the version on the go.mod entry, which syft says UNKNOWN.
+          jq --arg version "${{ github.ref_name }}" '
+            def om3: (.purl // "") | startswith("pkg:golang/github.com/opensvc/om3/v3");
+            def license: [{"license": {"id": "Apache-2.0"}}];
+            def purl: "pkg:golang/github.com/opensvc/om3/v3@" + $version;
+            .metadata.component |= (
+              .type = "application"
+              | .name = "github.com/opensvc/om3/v3"
+              | .version = $version
+              | .purl = purl
+              | .licenses //= license
+            )
+            | .components |= map(
+              if om3 then
+                .licenses //= license
+                | if .version == "UNKNOWN" then .version = $version | .purl = purl else . end
+              else . end
+            )
+          ' sbom.syft.json > sbom.json
 
       - name: Validate SBOM
         run: cyclonedx validate --input-file sbom.json
