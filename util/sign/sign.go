@@ -62,8 +62,9 @@ func VerifyHeader(block []byte) error {
 		return fmt.Errorf("%s: %d", ErrBlockTooSmall, len(block))
 	}
 	if string(block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)]) == HBDiskSignature {
-		checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
 		expectedChecksum := binary.LittleEndian.Uint32(block[HBCrcOffset:])
+		binary.LittleEndian.PutUint32(block[HBCrcOffset:], 0)
+		checksum := crc32.Checksum(block[:HBHeaderSize], CRC32CTable)
 		if checksum != expectedChecksum {
 			return ErrChecksumMismatch
 		}
@@ -91,7 +92,8 @@ func CreateAndFillDisk(path string) error {
 	u := uuid.New()
 	copy(block[HBUUIDOffset:], u[:])
 
-	checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
+	binary.LittleEndian.PutUint32(block[HBCrcOffset:], 0)
+	checksum := crc32.Checksum(block[:HBHeaderSize], CRC32CTable)
 	binary.LittleEndian.PutUint32(block[HBCrcOffset:], checksum)
 
 	if err := writeHeaderBlock(path, block); err != nil {
