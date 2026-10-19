@@ -9665,6 +9665,13 @@ components:
             change, like a scsi reservation or the roles of a replicated
             device: the daemon evaluates it again when a peer instance
             status changes
+        volumes:
+          type: array
+          description: |
+            the vol objects the resource uses, as the one a volume resource
+            is
+          items:
+            type: string
         start_blocker:
           type: object
           description: |

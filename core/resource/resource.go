@@ -307,6 +307,10 @@ type (
 		// The daemon must watch for these datastore changes
 		// (e.g. reinstall files in fs and volumes)
 		Datastores naming.Paths `json:"datastores,omitempty"`
+
+		// Volumes is the list of the vol objects the resource uses: the
+		// one a volume resource is, as named or by default.
+		Volumes naming.Paths `json:"volumes,omitempty"`
 	}
 
 	Files []File
@@ -1459,6 +1463,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Info:       getStatusInfo(ctx, r),
 		Files:      getFiles(ctx, r),
 		Datastores: getDatastores(ctx, r),
+		Volumes:    getVolumes(ctx, r),
 
 		RPOBreachedAt: r.StatusLog().RPOBreachAt(),
 
@@ -1607,6 +1612,7 @@ func (t *Status) DeepCopy() *Status {
 	n.Tags = deepcopy.Slice(t.Tags)
 	n.Files = deepcopy.Slice(t.Files)
 	n.Datastores = deepcopy.Slice(t.Datastores)
+	n.Volumes = deepcopy.Slice(t.Volumes)
 	n.Info = deepcopy.Any(t.Info)
 	if t.StartBlocker != nil {
 		startBlocker := *t.StartBlocker
@@ -1642,6 +1648,9 @@ func (t *Status) Unstructured() map[string]any {
 	}
 	if t.StartBlocker != nil {
 		m["start_blocker"] = t.StartBlocker
+	}
+	if len(t.Volumes) > 0 {
+		m["volumes"] = t.Volumes
 	}
 	return m
 }
@@ -1742,6 +1751,14 @@ func getDatastores(ctx context.Context, t Driver) naming.Paths {
 		return nil
 	}
 	return i.DatastoreList(ctx)
+}
+
+func getVolumes(ctx context.Context, t Driver) naming.Paths {
+	i, ok := t.(volumeLister)
+	if !ok {
+		return nil
+	}
+	return i.VolumeList(ctx)
 }
 
 func getFiles(ctx context.Context, t Driver) Files {

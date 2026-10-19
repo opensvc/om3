@@ -528,6 +528,16 @@ func (t *T) configureVolume(ctx context.Context, v object.Vol, withUsage bool) e
 	return l.ConfigureVolume(ctx, v, obj)
 }
 
+// VolumeList implements the volumeLister interface: the vol object of the
+// resource, its name as set or by default, the one Volume opens.
+func (t *T) VolumeList(_ context.Context) naming.Paths {
+	p, err := naming.NewPath(t.Path.Namespace, naming.KindVol, t.name())
+	if err != nil {
+		return nil
+	}
+	return naming.Paths{p}
+}
+
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
