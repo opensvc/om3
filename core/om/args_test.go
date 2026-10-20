@@ -169,7 +169,7 @@ func daemonAPIExecArgs(t *testing.T) [][]string {
 }
 
 // The node configuration generates schedule entries of its own, one per array,
-// switch and backup section. Their actions are in no list this file can
+// switch and store section. Their actions are in no list this file can
 // iterate, which is how "push"+type entries went unrunnable unnoticed: the
 // scheduler had no case for them, so every due run failed with "unknown
 // scheduler action".
@@ -197,8 +197,9 @@ schedule = @1440
 type = brocade
 schedule = @1440
 
-[backup#bck1]
-type = nsr
+[store#bck1]
+type = tar
+url = /srv/backups
 schedule = @1440
 `), 0644))
 

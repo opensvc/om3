@@ -25,7 +25,7 @@ const (
 	GroupArray
 	GroupSwitch
 	GroupStonith
-	GroupBackup
+	GroupStore
 	GroupClaim
 )
 
@@ -48,7 +48,7 @@ var (
 		"array":     GroupArray,
 		"switch":    GroupSwitch,
 		"stonith":   GroupStonith,
-		"backup":    GroupBackup,
+		"store":     GroupStore,
 		"claim":     GroupClaim,
 	}
 	toGroupString = map[Group]string{
@@ -67,7 +67,7 @@ var (
 		GroupArray:     "array",
 		GroupSwitch:    "switch",
 		GroupStonith:   "stonith",
-		GroupBackup:    "backup",
+		GroupStore:     "store",
 		GroupClaim:     "claim",
 	}
 )
