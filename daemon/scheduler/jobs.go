@@ -47,6 +47,7 @@ var (
 		"pushbackup",
 	}
 	ObjectActions = []string{
+		"compliance_auto",
 		"info",
 		"resource_monitor",
 		"run",
@@ -68,7 +69,9 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 		return nil, fmt.Errorf("scheduler action %s has no om command yet", e.Action)
 	}
 
-	if slices.Contains(NodeActions, e.Action) {
+	// An action of both scopes, as compliance_auto, is the one of the
+	// object its entry was read from, the node's when none.
+	if slices.Contains(NodeActions, e.Action) && (e.Path.IsZero() || !slices.Contains(ObjectActions, e.Action)) {
 		head = []string{"node"}
 	} else {
 		head = []string{e.Path.String()}

@@ -69,6 +69,20 @@ func TestSchedulerCmdArgsResolve(t *testing.T) {
 	}
 }
 
+// A compliance entry read from an object runs the compliance of the object,
+// and the one of the node configuration the compliance of the node: the
+// action is the same.
+func TestSchedulerComplianceScope(t *testing.T) {
+	objectPath, err := naming.ParsePath("test/svc/s1")
+	require.NoError(t, err)
+	args, err := scheduler.CmdArgs(schedule.Entry{Path: objectPath, Config: schedule.Config{Action: "compliance_auto"}})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"test/svc/s1", "compliance", "auto"}, args)
+	args, err = scheduler.CmdArgs(schedule.Entry{Config: schedule.Config{Action: "compliance_auto"}})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"node", "compliance", "auto"}, args)
+}
+
 // An action scheduler.CmdArgs does not know must be an error, not an argv the
 // scheduler happily execs.
 func TestSchedulerCmdArgsRejectsUnknownAction(t *testing.T) {
