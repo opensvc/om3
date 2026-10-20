@@ -1,0 +1,6 @@
+The store the runs of the object are written into, by the name of its
+`store#<name>` section in the cluster configuration.
+
+The section's `type` picks the tool keeping the backups. Every node the
+object runs on reaches the store, so a run written on one node is
+restored on another.

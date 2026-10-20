@@ -31,6 +31,7 @@ const (
 	finalSyncKey
 	propsKey
 	quietKey
+	restoreKey
 	ridKey
 	rollbackDisabledKey
 	selectedRIDsKey
@@ -307,6 +308,34 @@ func Subset(ctx context.Context) string {
 		return i.(string)
 	}
 	return ""
+}
+
+// RestoreOptions are the options of a sync restore.
+type RestoreOptions struct {
+	// Snapshot is the run to restore, by id or a prefix of it: the
+	// latest run when empty.
+	Snapshot string
+
+	// Into is a directory to restore aside into, a directory per member,
+	// instead of into the heads.
+	Into string
+
+	// Config asks the configuration of the object restored too.
+	Config bool
+
+	// Heads are the heads to restore, every head of the run when empty.
+	Heads []string
+}
+
+func WithRestoreOptions(ctx context.Context, o RestoreOptions) context.Context {
+	return context.WithValue(ctx, restoreKey, o)
+}
+
+func Restore(ctx context.Context) RestoreOptions {
+	if i := ctx.Value(restoreKey); i != nil {
+		return i.(RestoreOptions)
+	}
+	return RestoreOptions{}
 }
 
 func WithTarget(ctx context.Context, s []string) context.Context {

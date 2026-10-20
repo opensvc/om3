@@ -2877,9 +2877,57 @@ func newCmdObjectSync(kind string) *cobra.Command {
 		newCmdObjectGroupList(kind, "sync"),
 		newCmdObjectGroupInfo(kind, "sync"),
 		newCmdObjectGroupResync(kind, "sync"),
+		newCmdObjectSyncRestore(kind),
+		newCmdObjectSyncSnapshot(kind),
 		newCmdObjectGroupSplit(kind, "sync"),
 		newCmdObjectGroupUpdate(kind, "sync"),
 	)
+	return cmd
+}
+
+func newCmdObjectSyncRestore(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRestore
+	cmd := commoncmd.NewCmdObjectSyncRestore(kind)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagsRestore(flags, &options.OptsRestore)
+	hiddenFlagLocal(flags, &options.Local)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	// The daemon executing a restore the api asked passes the resource
+	// selector as options: the patterns are the command line's.
+	commoncmd.FlagRID(flags, &options.RID)
+	commoncmd.FlagSubset(flags, &options.Subset)
+	commoncmd.FlagTag(flags, &options.Tag)
+	for _, name := range []string{"rid", "subset", "tag"} {
+		_ = flags.MarkHidden(name)
+	}
+	return cmd
+}
+
+func newCmdObjectSyncSnapshot(kind string) *cobra.Command {
+	cmd := commoncmd.NewCmdObjectSyncSnapshot()
+	cmd.AddCommand(newCmdObjectSyncSnapshotList(kind))
+	return cmd
+}
+
+func newCmdObjectSyncSnapshotList(kind string) *cobra.Command {
+	var options commands.CmdObjectSyncSnapshots
+	cmd := commoncmd.NewCmdObjectSyncSnapshotList()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

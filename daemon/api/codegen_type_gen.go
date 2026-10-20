@@ -918,6 +918,36 @@ func (e Status) Valid() bool {
 	}
 }
 
+// Defines values for SyncSnapshotItemKind.
+const (
+	SyncSnapshotItemKindSyncSnapshotItem SyncSnapshotItemKind = "SyncSnapshotItem"
+)
+
+// Valid indicates whether the value is a known member of the SyncSnapshotItemKind enum.
+func (e SyncSnapshotItemKind) Valid() bool {
+	switch e {
+	case SyncSnapshotItemKindSyncSnapshotItem:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncSnapshotListKind.
+const (
+	SyncSnapshotListKindSyncSnapshotList SyncSnapshotListKind = "SyncSnapshotList"
+)
+
+// Valid indicates whether the value is a known member of the SyncSnapshotListKind enum.
+func (e SyncSnapshotListKind) Valid() bool {
+	switch e {
+	case SyncSnapshotListKindSyncSnapshotList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Topology.
 const (
 	Failover Topology = "failover"
@@ -2754,6 +2784,48 @@ type SubsetConfig = instance.SubsetConfig
 // SubsetsConfig defines model for SubsetsConfig.
 type SubsetsConfig = []SubsetConfig
 
+// SyncSnapshot defines model for SyncSnapshot.
+type SyncSnapshot struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id The snapshot id, the session id of the sync update that took it.
+	Id string `json:"id"`
+
+	// Location Where the snapshot is, as the store holding it.
+	Location string `json:"location"`
+
+	// Members What the snapshot holds, the heads by resource id and the configuration.
+	Members []string `json:"members"`
+
+	// Node The node that took the snapshot.
+	Node string `json:"node"`
+
+	// Rid The sync resource holding the snapshot.
+	Rid string `json:"rid"`
+}
+
+// SyncSnapshotItem defines model for SyncSnapshotItem.
+type SyncSnapshotItem struct {
+	Data SyncSnapshot         `json:"data"`
+	Kind SyncSnapshotItemKind `json:"kind"`
+	Meta InstanceMeta         `json:"meta"`
+}
+
+// SyncSnapshotItemKind defines model for SyncSnapshotItem.Kind.
+type SyncSnapshotItemKind string
+
+// SyncSnapshotItems defines model for SyncSnapshotItems.
+type SyncSnapshotItems = []SyncSnapshotItem
+
+// SyncSnapshotList defines model for SyncSnapshotList.
+type SyncSnapshotList struct {
+	Items SyncSnapshotItems    `json:"items"`
+	Kind  SyncSnapshotListKind `json:"kind"`
+}
+
+// SyncSnapshotListKind defines model for SyncSnapshotList.Kind.
+type SyncSnapshotListKind string
+
 // Topology object topology
 type Topology string
 
@@ -3017,6 +3089,18 @@ type InQueryResourceFileRid = string
 
 // InQueryRestore defines model for inQueryRestore.
 type InQueryRestore = bool
+
+// InQueryRestoreConfig defines model for inQueryRestoreConfig.
+type InQueryRestoreConfig = bool
+
+// InQueryRestoreHead defines model for inQueryRestoreHead.
+type InQueryRestoreHead = []string
+
+// InQueryRestoreInto defines model for inQueryRestoreInto.
+type InQueryRestoreInto = string
+
+// InQueryRestoreSnapshot defines model for inQueryRestoreSnapshot.
+type InQueryRestoreSnapshot = string
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
@@ -3843,6 +3927,43 @@ type PostInstanceActionRestartParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostInstanceActionRestoreParams defines parameters for PostInstanceActionRestore.
+type PostInstanceActionRestoreParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
+
+	// Config Restore the configuration of the object too.
+	Config *InQueryRestoreConfig `form:"config,omitempty" json:"config,omitempty"`
+
+	// Head The heads to restore, by resource id, every head of the snapshot when not set.
+	Head *InQueryRestoreHead `form:"head,omitempty" json:"head,omitempty"`
+
+	// Into A directory to restore aside into, a directory per head, instead of into the heads.
+	Into *InQueryRestoreInto `form:"into,omitempty" json:"into,omitempty"`
+
+	// Snapshot The snapshot to restore, by id or a prefix of it, the latest when not set.
+	Snapshot *InQueryRestoreSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
+}
+
 // PostInstanceActionResyncParams defines parameters for PostInstanceActionResync.
 type PostInstanceActionResyncParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
@@ -4208,6 +4329,12 @@ type PostInstanceStateFileParams struct {
 	// nanoseconds, which the written file keeps: a state file says when by
 	// its modification time.
 	LastModified *string `json:"OM-Last-Modified,omitempty"`
+}
+
+// GetInstanceSyncSnapshotsParams defines parameters for GetInstanceSyncSnapshots.
+type GetInstanceSyncSnapshotsParams struct {
+	// Rid a resource selector expression
+	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 }
 
 // DeleteNodeLockParams defines parameters for DeleteNodeLock.

@@ -1,0 +1,591 @@
+// Package ressyncstore is the sync.store driver: the resource backing an
+// object up into a store, as a run of its heads and its configuration, and
+// restoring it from one.
+//
+// The driver decides what a run saves, when, and what is kept. The store
+// driver behind the store keyword only writes, lists, restores and deletes
+// what it is told to.
+package ressyncstore
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/backup"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/xsession"
+)
+
+type (
+	// T is the sync.store driver.
+	T struct {
+		ressync.T
+		Store    string
+		RIDs     []string
+		Exclude  []string
+		Keep     string
+		ObjectID uuid.UUID
+	}
+
+	// head is a directory a run saves, as a member named after its
+	// resource.
+	head struct {
+		rid      string
+		dir      string
+		excludes []string
+	}
+
+	header interface {
+		Head() string
+	}
+
+	// volumer is a volume resource, whose head is the one of a vol
+	// object.
+	volumer interface {
+		Volume() (object.Vol, error)
+		IsVolatile() bool
+	}
+)
+
+// lastSyncName names the record of the last run written whole, in the
+// records of the last syncs of the resource.
+const lastSyncName = "store"
+
+var (
+	// headGroups are the driver groups whose resources hold heads.
+	headGroups = []driver.Group{driver.GroupFS, driver.GroupVolume}
+
+	// consumerGroups are the driver groups whose resources use the data
+	// of the heads, which a restore in place refuses to write under.
+	consumerGroups = []driver.Group{driver.GroupApp, driver.GroupContainer, driver.GroupShare}
+
+	// errPassive is returned by update on a node not holding the active
+	// instance, which writes no run.
+	errPassive = errors.New("not the active instance")
+)
+
+func New() resource.Driver {
+	return &T{}
+}
+
+// Label returns the store the runs go to.
+func (t *T) Label(_ context.Context) string {
+	return "to " + t.Store
+}
+
+func (t *T) ScheduleOptions() resource.ScheduleOptions {
+	return resource.ScheduleOptions{
+		Action:                   "update",
+		Option:                   "schedule",
+		Base:                     "",
+		RequireReplicationSource: true,
+		Require:                  t.UpdateRequires,
+		Log:                      t.LogRuns,
+	}
+}
+
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
+}
+
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{Key: "store", Value: t.Store},
+		{Key: "rids", Value: strings.Join(t.RIDs, " ")},
+		{Key: "exclude", Value: strings.Join(t.Exclude, " ")},
+		{Key: "keep", Value: t.Keep},
+		{Key: "schedule", Value: t.Schedule},
+	}
+	if t.MaxDelay != nil {
+		m = append(m, resource.InfoKey{Key: "max_delay", Value: t.MaxDelay.String()})
+	}
+	return m, nil
+}
+
+// store returns the driver of the store the store keyword names.
+func (t *T) store() (backup.Driver, error) {
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	return n.Store(t.Store)
+}
+
+// retention returns the retention of the runs: the keep of the resource, or
+// the one of the store. A store deleting no run refuses one.
+func (t *T) retention(s backup.Store) (backup.Retention, error) {
+	keep := t.Keep
+	origin := "keep"
+	if keep == "" {
+		keep = backup.Keep(s)
+		origin = "keep of store " + s.Ref()
+	}
+	r, err := backup.ParseRetention(keep)
+	if err != nil {
+		return r, fmt.Errorf("%s: %w", origin, err)
+	}
+	if _, ok := s.(backup.Pruner); !r.IsZero() && !ok {
+		return r, fmt.Errorf("%s: store %s deletes no run, its backup server keeps them as it decides", origin, s.Ref())
+	}
+	return r, nil
+}
+
+// isUp tells whether the resource rid is up, as the status of the action
+// says.
+func isUp(sb *statusbus.ObjT, rid string) bool {
+	return sb.Get(rid).Is(status.Up, status.StandbyUp)
+}
+
+// headAvailable tells whether the head dir of the resource rid holds its
+// data: the resource up, or n/a, as a directory, which is neither up nor
+// down, with its directory there.
+func headAvailable(sb *statusbus.ObjT, rid, dir string) bool {
+	switch st := sb.Get(rid); {
+	case st.Is(status.Up, status.StandbyUp):
+		return true
+	case st.Is(status.NotApplicable):
+		info, err := os.Stat(dir)
+		return err == nil && info.IsDir()
+	default:
+		return false
+	}
+}
+
+// sharedWith returns the other objects claiming the vol of the volume
+// resource, none when the object is its only child.
+func (t *T) sharedWith(v volumer) ([]string, error) {
+	vol, err := v.Volume()
+	if err != nil {
+		return nil, err
+	}
+	children, err := vol.Children()
+	if err != nil {
+		return nil, err
+	}
+	others := make([]string, 0)
+	for _, rel := range children {
+		p, _, err := rel.Split()
+		if err != nil {
+			return nil, err
+		}
+		if p != t.Path && !slices.Contains(others, p.String()) {
+			others = append(others, p.String())
+		}
+	}
+	return others, nil
+}
+
+// heads returns the heads a run saves: the rids keyword lists them, or else
+// every head up, but the volatile volumes and the volumes other objects
+// claim.
+func (t *T) heads(ctx context.Context) ([]head, error) {
+	o := t.GetObjectDriver()
+	sb := statusbus.FromContext(ctx)
+	l := make([]head, 0)
+	add := func(r resource.Driver, explicit bool) error {
+		rid := r.RID()
+		h, ok := r.(header)
+		if !ok {
+			return fmt.Errorf("%s: its driver %s holds no head", rid, r.Manifest().DriverID)
+		}
+		if v, ok := r.(volumer); ok {
+			if v.IsVolatile() {
+				if explicit {
+					return fmt.Errorf("%s: a volatile volume, whose data is discarded at stop, is never backed up", rid)
+				}
+				t.Log().Debugf("%s: skip, a volatile volume", rid)
+				return nil
+			}
+			others, err := t.sharedWith(v)
+			if err != nil {
+				return fmt.Errorf("%s: %w", rid, err)
+			}
+			if len(others) > 0 {
+				msg := fmt.Sprintf("%s: its vol is claimed by %s too, so it backs itself up, with a sync.store resource of its own", rid, strings.Join(others, " "))
+				if explicit {
+					return errors.New(msg)
+				}
+				t.Log().Infof("skip %s", msg)
+				return nil
+			}
+		}
+		dir := h.Head()
+		if dir == "" {
+			return fmt.Errorf("%s: no head directory", rid)
+		}
+		if !headAvailable(sb, rid, dir) {
+			if explicit {
+				return fmt.Errorf("%s: down, its head is not mounted to back it up", rid)
+			}
+			t.Log().Infof("skip %s: down", rid)
+			return nil
+		}
+		l = append(l, head{rid: rid, dir: dir, excludes: backup.HeadExcludes(rid, t.Exclude)})
+		return nil
+	}
+	if len(t.RIDs) > 0 {
+		for _, rid := range t.RIDs {
+			r := o.ResourceByID(rid)
+			if r == nil {
+				return nil, fmt.Errorf("rids: %s: no such resource", rid)
+			}
+			if err := add(r, true); err != nil {
+				return nil, err
+			}
+		}
+		return l, nil
+	}
+	for _, r := range o.ResourcesByDrivergroups(headGroups) {
+		if r.IsDisabled() {
+			continue
+		}
+		if _, ok := r.(header); !ok {
+			continue
+		}
+		if err := add(r, false); err != nil {
+			return nil, err
+		}
+	}
+	return l, nil
+}
+
+// Update writes a run: every head, and the configuration of the object.
+func (t *T) Update(ctx context.Context) error {
+	_, err := t.update(ctx)
+	if errors.Is(err, errPassive) {
+		return nil
+	}
+	return err
+}
+
+// Full writes a run, then checks it.
+func (t *T) Full(ctx context.Context) error {
+	run, err := t.update(ctx)
+	switch {
+	case errors.Is(err, errPassive):
+		return nil
+	case err != nil:
+		return err
+	}
+	s, err := t.store()
+	if err != nil {
+		return err
+	}
+	t.Log().Infof("check run %s in store %s", run.ID, s.Ref())
+	return s.Check(ctx, backup.RunFilter{Path: run.Path, ID: run.ID})
+}
+
+func (t *T) update(ctx context.Context) (backup.Run, error) {
+	run := backup.Run{
+		ID:        xsession.SessionID().String(),
+		Path:      t.Path.String(),
+		ObjectID:  t.ObjectID.String(),
+		Node:      hostname.Hostname(),
+		CreatedAt: time.Now(),
+	}
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		t.Log().Infof("the instance is not sufficiently started (%s): no run from this node", reason)
+		return run, errPassive
+	}
+	done, err := t.StartRun()
+	if err != nil {
+		return run, err
+	}
+	defer done()
+	s, err := t.store()
+	if err != nil {
+		return run, err
+	}
+	retention, err := t.retention(s)
+	if err != nil {
+		return run, err
+	}
+	heads, err := t.heads(ctx)
+	if err != nil {
+		return run, err
+	}
+	var errs error
+	for _, h := range heads {
+		t.Log().Infof("save %s (%s) into store %s, run %s", h.rid, h.dir, s.Ref(), run.ID)
+		if err := s.Backup(ctx, run, h.rid, h.dir, h.excludes); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("save %s: %w", h.rid, err))
+		}
+	}
+	if err := t.saveConfig(ctx, s, run); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("save the configuration: %w", err))
+	}
+	if errs != nil {
+		// A run missing a member does not meet the recovery point
+		// objective: the last sync stays the last run written whole.
+		return run, errs
+	}
+	if err := t.WriteLastSync(lastSyncName); err != nil {
+		return run, err
+	}
+	return run, t.prune(ctx, s, run, retention)
+}
+
+// saveConfig saves the configuration of the object as the config member of
+// the run: streamed when the store takes streams, from a private temporary
+// directory otherwise.
+func (t *T) saveConfig(ctx context.Context, s backup.Store, run backup.Run) error {
+	b, err := os.ReadFile(t.Path.ConfigFile())
+	if err != nil {
+		return err
+	}
+	if streamer, ok := s.(backup.Streamer); ok {
+		return streamer.BackupStream(ctx, run, backup.MemberConfig, bytes.NewReader(b))
+	}
+	dir, err := os.MkdirTemp("", "om-config-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	if err := os.WriteFile(filepath.Join(dir, backup.MemberConfig), b, 0600); err != nil {
+		return err
+	}
+	return s.Backup(ctx, run, backup.MemberConfig, dir, nil)
+}
+
+// prune deletes the runs of the object the retention drops, never the run
+// just written.
+func (t *T) prune(ctx context.Context, s backup.Store, current backup.Run, retention backup.Retention) error {
+	if retention.IsZero() {
+		return nil
+	}
+	runs, err := s.Runs(ctx, backup.RunFilter{Path: current.Path})
+	if err != nil {
+		return err
+	}
+	drop := slices.DeleteFunc(retention.Drop(runs), func(run backup.Run) bool { return run.ID == current.ID })
+	if len(drop) == 0 {
+		return nil
+	}
+	ids := make([]string, len(drop))
+	for i, run := range drop {
+		ids[i] = run.ShortID()
+	}
+	t.Log().Infof("delete the runs keep %s drops from store %s: %s", retention, s.Ref(), strings.Join(ids, " "))
+	return s.(backup.Pruner).Delete(ctx, drop)
+}
+
+// Status judges the freshness of the last run written whole from this node,
+// on the node holding the active instance.
+func (t *T) Status(ctx context.Context) status.T {
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		t.StatusLog().Info("no run from this node: %s", reason)
+		return status.NotApplicable
+	}
+	s, err := t.store()
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Warn
+	}
+	if _, err := t.retention(s); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Warn
+	}
+	return t.StatusLastSync([]string{lastSyncName}, false)
+}
+
+// Snapshots implements resource.SnapshotLister: the runs of the object the
+// store holds.
+func (t *T) Snapshots(ctx context.Context) ([]resource.Snapshot, error) {
+	s, err := t.store()
+	if err != nil {
+		return nil, err
+	}
+	runs, err := s.Runs(ctx, backup.RunFilter{Path: t.Path.String()})
+	if err != nil {
+		return nil, err
+	}
+	l := make([]resource.Snapshot, len(runs))
+	for i, run := range runs {
+		l[i] = resource.Snapshot{
+			ID:        run.ID,
+			CreatedAt: run.CreatedAt,
+			Node:      run.Node,
+			Members:   run.MemberNames(),
+			Location:  s.Ref(),
+		}
+	}
+	return l, nil
+}
+
+// Restore writes back the members of a run: aside, into a directory per
+// member, or in place, into the heads, every head emptied first but its
+// excluded paths, so it holds what the run saved and nothing more.
+func (t *T) Restore(ctx context.Context) error {
+	opts := actioncontext.Restore(ctx)
+	s, err := t.store()
+	if err != nil {
+		return err
+	}
+	run, err := backup.FindRun(ctx, s, t.Path.String(), opts.Snapshot)
+	if err != nil {
+		return err
+	}
+	members := make([]string, 0, len(run.Members))
+	for _, m := range run.Members {
+		if m.Name == backup.MemberConfig {
+			continue
+		}
+		if len(opts.Heads) > 0 && !slices.Contains(opts.Heads, m.Name) {
+			continue
+		}
+		members = append(members, m.Name)
+	}
+	for _, rid := range opts.Heads {
+		if !run.Has(rid) {
+			return fmt.Errorf("run %s holds no %s, it holds %s", run.ShortID(), rid, strings.Join(run.MemberNames(), " "))
+		}
+	}
+	if opts.Into != "" {
+		return t.restoreInto(ctx, s, run, members, opts)
+	}
+	if opts.Config {
+		return fmt.Errorf("--config: restoring the configuration in place is not supported yet, restore it aside with --into")
+	}
+	return t.restoreInPlace(ctx, s, run, members)
+}
+
+func (t *T) restoreInto(ctx context.Context, s backup.Store, run backup.Run, members []string, opts actioncontext.RestoreOptions) error {
+	if opts.Config {
+		members = append(members, backup.MemberConfig)
+	}
+	for _, m := range members {
+		dst := filepath.Join(opts.Into, m)
+		if m == backup.MemberConfig {
+			dst = opts.Into
+		}
+		t.Log().Infof("restore %s of run %s from store %s into %s", m, run.ShortID(), s.Ref(), dst)
+		if err := s.Restore(ctx, run, m, dst); err != nil {
+			return fmt.Errorf("restore %s: %w", m, err)
+		}
+	}
+	return nil
+}
+
+func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, members []string) error {
+	o := t.GetObjectDriver()
+	sb := statusbus.FromContext(ctx)
+	if !actioncontext.IsForce(ctx) {
+		up := make([]string, 0)
+		for _, r := range o.ResourcesByDrivergroups(consumerGroups) {
+			if !r.IsDisabled() && isUp(sb, r.RID()) {
+				up = append(up, r.RID())
+			}
+		}
+		if len(up) > 0 {
+			// The resources are named rather than a barrier given: a
+			// stop --to a group the object has none of stops it all,
+			// heads included.
+			return fmt.Errorf("%s up, using the data a restore in place would write under: stop them with 'om %s instance stop --rid %s', or restore aside with --into", strings.Join(up, " "), t.Path, strings.Join(up, ","))
+		}
+	}
+	heads := make([]head, 0, len(members))
+	for _, m := range members {
+		r := o.ResourceByID(m)
+		if r == nil {
+			return fmt.Errorf("run %s holds %s, a resource the object no longer has: restore it aside with --into", run.ShortID(), m)
+		}
+		h, ok := r.(header)
+		if !ok {
+			return fmt.Errorf("%s: its driver holds no head", m)
+		}
+		dir := h.Head()
+		if dir == "" {
+			return fmt.Errorf("%s: no head directory", m)
+		}
+		if !headAvailable(sb, m, dir) {
+			return fmt.Errorf("%s: down, its head is not mounted to restore into: start it with 'om %s instance start --to %s'", m, t.Path, m)
+		}
+		heads = append(heads, head{rid: m, dir: dir, excludes: backup.HeadExcludes(m, t.Exclude)})
+	}
+	for _, h := range heads {
+		t.Log().Infof("restore %s of run %s from store %s into %s", h.rid, run.ShortID(), s.Ref(), h.dir)
+		if err := emptyDir(h.dir, h.excludes); err != nil {
+			return fmt.Errorf("restore %s: empty %s: %w", h.rid, h.dir, err)
+		}
+		if err := s.Restore(ctx, run, h.rid, h.dir); err != nil {
+			return fmt.Errorf("restore %s: %w", h.rid, err)
+		}
+	}
+	return nil
+}
+
+// emptyDir removes what dir holds, but the paths excludes matches, which a
+// run never saved and a restore leaves as they are.
+func emptyDir(dir string, excludes []string) error {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	var walk func(rel string) error
+	walk = func(rel string) error {
+		f, err := root.Open(rel)
+		if err != nil {
+			return err
+		}
+		entries, err := f.ReadDir(-1)
+		_ = f.Close()
+		if err != nil {
+			return err
+		}
+		for _, e := range entries {
+			p := e.Name()
+			if rel != "." {
+				p = rel + "/" + e.Name()
+			}
+			if backup.Excluded(p, excludes) {
+				continue
+			}
+			if e.IsDir() && hasExcludedUnder(p, excludes) {
+				if err := walk(p); err != nil {
+					return err
+				}
+				continue
+			}
+			if err := root.RemoveAll(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return walk(".")
+}
+
+// hasExcludedUnder tells whether a pattern of excludes may match a path
+// under the directory rel, which is then emptied entry by entry rather than
+// removed whole.
+func hasExcludedUnder(rel string, excludes []string) bool {
+	for _, pattern := range excludes {
+		pattern = strings.Trim(pattern, "/")
+		if !strings.Contains(pattern, "/") {
+			// A name pattern matches at any depth.
+			return true
+		}
+		if strings.HasPrefix(pattern, rel+"/") {
+			return true
+		}
+	}
+	return false
+}

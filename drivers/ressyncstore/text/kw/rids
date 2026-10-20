@@ -1,0 +1,7 @@
+The heads a run saves, by resource id.
+
+By default, every fs and volume resource up on the node, except the
+volatile volumes, whose data is discarded at stop, and the volumes other
+objects claim too, which back themselves up with a `sync.store` resource
+of their own. Listing one of these, or a resource that is down, fails the
+run.

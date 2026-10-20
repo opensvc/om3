@@ -680,6 +680,14 @@ func FlagTag(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "tag", "", "a tag selector expression (ex: t1,t2)")
 }
 
+// FlagsRestore adds the options of a sync restore.
+func FlagsRestore(flags *pflag.FlagSet, p *OptsRestore) {
+	flags.StringVar(&p.Snapshot, "snapshot", "", "the snapshot to restore, by id or a prefix of it, the latest when not set")
+	flags.StringVar(&p.Into, "into", "", "restore aside, into a directory per head of this directory, instead of into the heads")
+	flags.BoolVar(&p.Config, "config", false, "also restore the configuration of the object")
+	flags.StringSliceVar(&p.Heads, "head", []string{}, "the heads to restore, by resource id, every head of the snapshot when not set")
+}
+
 func FlagTarget(flags *pflag.FlagSet, p *[]string) {
 	flags.StringSliceVar(p, "target", []string{}, "the peers to sync to: nodes, drpnodes, local or a node selector expression (ex: nodes or n2,n3)")
 }

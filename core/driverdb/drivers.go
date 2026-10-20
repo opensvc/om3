@@ -68,6 +68,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/ressyncbtrfs"
 	_ "github.com/opensvc/om3/v3/drivers/ressyncbtrfssnap"
 	_ "github.com/opensvc/om3/v3/drivers/ressyncrsync"
+	_ "github.com/opensvc/om3/v3/drivers/ressyncstore"
 	_ "github.com/opensvc/om3/v3/drivers/ressyncsymsnapvx"
 	_ "github.com/opensvc/om3/v3/drivers/ressyncsymsrdfs"
 	_ "github.com/opensvc/om3/v3/drivers/ressynczfs"

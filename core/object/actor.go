@@ -93,6 +93,8 @@ type (
 		SetUnprovisioned(context.Context) error
 		SyncFull(context.Context) error
 		SyncResync(context.Context) error
+		SyncRestore(context.Context) error
+		SyncSnapshots(context.Context) ([]SyncSnapshot, error)
 		SyncSplit(context.Context) error
 		SyncUpdate(context.Context) error
 		SyncIngest(context.Context) error

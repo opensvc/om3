@@ -372,3 +372,53 @@ func NewCmdObjectGroupList(kind, group string) *cobra.Command {
 	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	return cmd
 }
+
+// NewCmdObjectSyncRestore returns the sync restore command, its run left to
+// om and ox.
+func NewCmdObjectSyncRestore(kind string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "restore [PATTERN]...",
+		Short:   "write back the data of the heads from a snapshot",
+		GroupID: GroupIDReplication,
+		Long: `Write back the data the sync resources backed up, from a snapshot: the
+latest, or the one --snapshot names.
+
+In place, each head is emptied, but its excluded paths, and filled with
+what the snapshot saved. The heads must be up, and the app, container and
+share resources using their data down: stop them with "instance stop
+--rid", or restore aside with --into, which leaves the instance untouched.`,
+		Example: fmt.Sprintf(`  # restore every head of %[1]s/svc1 from its latest snapshot
+  om svc1 sync restore
+
+  # restore fs#2 from a snapshot, aside
+  om svc1 sync restore --snapshot 7c0e41d2 --head fs#2 --into /tmp/svc1`, kind),
+	}
+	CmdWithArg(cmd, "PATTERN  A fnmatch sync resource index filter.")
+	return cmd
+}
+
+// NewCmdObjectSyncSnapshot returns the sync snapshot command group.
+func NewCmdObjectSyncSnapshot() *cobra.Command {
+	return &cobra.Command{
+		Use:     "snapshot",
+		Short:   "list the snapshots of the sync resources",
+		GroupID: GroupIDQuery,
+	}
+}
+
+// NewCmdObjectSyncSnapshotList returns the sync snapshot list command, its
+// run left to om and ox.
+func NewCmdObjectSyncSnapshotList() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "list [PATTERN]...",
+		Aliases: []string{"ls"},
+		Short:   "list the snapshots the sync resources can restore",
+		Long: `List the snapshots the sync resources can restore, by the id restore
+--snapshot takes, oldest first.
+
+The snapshots in a store are the same from every node: one node is asked,
+the local one unless --node says otherwise.`,
+	}
+	CmdWithArg(cmd, "PATTERN  A fnmatch sync resource index filter.")
+	return cmd
+}

@@ -1,0 +1,14 @@
+The retention of the runs of the object in the store, the `keep` of the
+store section when not set. A list of rules, a run kept by any of them
+being kept:
+
+`<n>`
+  The `<n>` latest runs.
+
+`<n>h`, `<n>d`, `<n>w`, `<n>m`, `<n>y`
+  The latest run of each of the `<n>` latest hours, days, weeks (Monday to
+  Sunday), months or years holding a run.
+
+The periods are in UTC, of the time a run started. The runs are deleted
+whole, every member of a run together, after each run written whole.
+Without `keep`, no run is ever deleted.

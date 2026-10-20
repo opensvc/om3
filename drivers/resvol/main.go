@@ -653,6 +653,12 @@ func (t *T) ResizeTarget(ctx context.Context) (naming.Path, error) {
 	return volume.Path(), nil
 }
 
+// IsVolatile tells whether the volume is volatile: its data is discarded at
+// stop, so nothing in it is meant to outlive the instance, nor be backed up.
+func (t *T) IsVolatile() bool {
+	return t.Volatile
+}
+
 func (t *T) Head() string {
 	volume, err := t.Volume()
 	if err != nil {

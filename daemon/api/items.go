@@ -21,6 +21,10 @@ func (t ScheduleList) GetItems() any {
 	return t.Items
 }
 
+func (t SyncSnapshotList) GetItems() any {
+	return t.Items
+}
+
 func (t NodeList) GetItems() any {
 	return t.Items
 }

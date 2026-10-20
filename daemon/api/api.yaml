@@ -3706,6 +3706,51 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/restore:
+    post:
+      description: |
+        Write back the data the sync resources of the object instance backed up,
+        from a snapshot: into the heads, or aside into a directory.
+      operationId: PostInstanceActionRestore
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRestoreConfig'
+        - $ref: '#/components/parameters/inQueryRestoreHead'
+        - $ref: '#/components/parameters/inQueryRestoreInto'
+        - $ref: '#/components/parameters/inQueryRestoreSnapshot'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/resync:
     post:
       description: Restore optimal synchronization of the object instance.
@@ -4280,6 +4325,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/sync/snapshots:
+    get:
+      operationId: GetInstanceSyncSnapshots
+      description: |
+        Return the snapshots the sync resources of the object instance can
+        restore.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSnapshotList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -10010,6 +10091,71 @@ components:
         items:
           $ref: '#/components/schemas/ScheduleItems'
 
+    SyncSnapshot:
+      type: object
+      required:
+        - rid
+        - id
+        - created_at
+        - node
+        - members
+        - location
+      properties:
+        rid:
+          type: string
+          description: The sync resource holding the snapshot.
+        id:
+          type: string
+          description: The snapshot id, the session id of the sync update that took it.
+        created_at:
+          type: string
+          format: date-time
+        node:
+          type: string
+          description: The node that took the snapshot.
+        members:
+          type: array
+          description: What the snapshot holds, the heads by resource id and the configuration.
+          items:
+            type: string
+        location:
+          type: string
+          description: Where the snapshot is, as the store holding it.
+
+    SyncSnapshotItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - SyncSnapshotItem
+        meta:
+          $ref: '#/components/schemas/InstanceMeta'
+        data:
+          $ref: '#/components/schemas/SyncSnapshot'
+
+    SyncSnapshotItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SyncSnapshotItem'
+
+    SyncSnapshotList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - SyncSnapshotList
+        items:
+          $ref: '#/components/schemas/SyncSnapshotItems'
+
     Scope:
       type: array
       items:
@@ -10825,6 +10971,36 @@ components:
       name: rid
       description: The rid that is expected to expose the requested file path.
       required: true
+      schema:
+        type: string
+
+    inQueryRestoreConfig:
+      in: query
+      name: config
+      description: Restore the configuration of the object too.
+      schema:
+        type: boolean
+
+    inQueryRestoreHead:
+      in: query
+      name: head
+      description: The heads to restore, by resource id, every head of the snapshot when not set.
+      schema:
+        type: array
+        items:
+          type: string
+
+    inQueryRestoreInto:
+      in: query
+      name: into
+      description: A directory to restore aside into, a directory per head, instead of into the heads.
+      schema:
+        type: string
+
+    inQueryRestoreSnapshot:
+      in: query
+      name: snapshot
+      description: The snapshot to restore, by id or a prefix of it, the latest when not set.
       schema:
         type: string
 
