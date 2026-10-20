@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/daemon/proc"
@@ -147,11 +148,21 @@ func (o *T) action(e schedule.Entry) error {
 		cmdEnv = append(cmdEnv, env.NoLogFileSetenvArg())
 	}
 
+	// A failed om says why on the last "Error: " line of its stderr, which
+	// no terminal shows here: it is logged with the failure, as its
+	// reason, an early failure, as a compliance run with no collector,
+	// logging nothing else.
+	var reason string
 	cmd := command.New(
 		command.WithName(os.Args[0]),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(logger),
 		command.WithEnv(cmdEnv),
+		command.WithOnStderrLine(func(s string) {
+			if after, ok := strings.CutPrefix(s, "Error: "); ok {
+				reason = after
+			}
+		}),
 	)
 	logger.Debugf("-> exec %s", cmd)
 	startTime := time.Now()
@@ -197,7 +208,11 @@ func (o *T) action(e schedule.Entry) error {
 			ExecID:    execID,
 			SessionID: sessionID,
 		}, labels...)
-		logger.Errorf("%s: %s", cmd, err)
+		if reason != "" {
+			logger.Errorf("%s: %s: %s", cmd, err, reason)
+		} else {
+			logger.Errorf("%s: %s", cmd, err)
+		}
 		return err
 	}
 	duration := time.Now().Sub(startTime)
