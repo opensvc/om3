@@ -81,6 +81,43 @@ func TestCheckStopToChange(t *testing.T) {
 	assert.ErrorContains(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Down, "node2": status.StandbyUp})), "stdby up on node2")
 }
 
+// A task holds something on a node while it runs, which its stop ends: its
+// status says how its last run went, and a task whose last run succeeded is
+// up without holding anything. Its section is removed then, not while it
+// runs.
+func TestCheckStopToChangeTask(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p, err := naming.ParsePath("test/svc/foo")
+	require.NoError(t, err)
+	cfgOf := func(s string) *xconfig.T {
+		t.Helper()
+		o, err := NewSvc(p, WithConfigData([]byte(s)), WithVolatile(true))
+		require.NoError(t, err)
+		return o.Config()
+	}
+	from := cfgOf("[DEFAULT]\nnodes = node1\n[task#1]\ntype = host\ncommand = echo TASK1\ncheck = last_run\n")
+	removed := cfgOf("[DEFAULT]\nnodes = node1\n")
+	lastRunUp := map[string]*instance.Status{
+		"node1": {Resources: instance.ResourceStatuses{"task#1": resource.Status{Status: status.Up}}},
+	}
+	assert.NoError(t, CheckStopToChange(p.Kind, from, removed, lastRunUp), "a task up from its last run, not running")
+
+	running := map[string]*instance.Status{
+		"node1": {
+			Resources: instance.ResourceStatuses{"task#1": resource.Status{Status: status.Up}},
+			Running:   resource.RunningInfoList{{RID: "task#1"}},
+		},
+	}
+	err = CheckStopToChange(p.Kind, from, removed, running)
+	assert.ErrorIs(t, err, ErrStopToChange)
+	assert.ErrorContains(t, err, "delete task#1: running on node1")
+}
+
 // With no status cache, the status of the instance is evaluated, so a local
 // change is judged on a status known.
 func TestLocalInstanceStatusesWithNoCache(t *testing.T) {

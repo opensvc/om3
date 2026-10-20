@@ -56,7 +56,7 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 		if err != nil || rid.DriverGroup() == driver.GroupUnknown {
 			continue
 		}
-		up := resourceUpOn(section, statuses)
+		up := resourceUpOn(section, rid.DriverGroup(), statuses)
 		if len(up) == 0 {
 			continue
 		}
@@ -93,13 +93,17 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 
 type (
 	resourceUp struct {
-		node   string
-		status status.T
+		node    string
+		status  status.T
+		running bool
 	}
 	resourceUps []resourceUp
 )
 
 func (t resourceUp) text() string {
+	if t.running {
+		return fmt.Sprintf("running on %s", t.node)
+	}
 	return fmt.Sprintf("%s on %s", t.status, t.node)
 }
 
@@ -112,10 +116,20 @@ func (t resourceUps) texts() []string {
 }
 
 // resourceUpOn returns the nodes the resource of section is up on, sorted.
-func resourceUpOn(section string, statuses map[string]*instance.Status) resourceUps {
+//
+// A task is up on a node while it runs there, which is what its stop ends.
+// Its status says how its last run went, as a last_run check does: a task
+// whose last run succeeded holds nothing on the node.
+func resourceUpOn(section string, group driver.Group, statuses map[string]*instance.Status) resourceUps {
 	l := make(resourceUps, 0)
 	for nodename, st := range statuses {
 		if st == nil {
+			continue
+		}
+		if group == driver.GroupTask {
+			if st.Running.Has(section) {
+				l = append(l, resourceUp{node: nodename, running: true})
+			}
 			continue
 		}
 		rstat, ok := st.Resources[section]
