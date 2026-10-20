@@ -10,6 +10,7 @@ package ressyncstore
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -23,13 +24,16 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/drivers/ressync"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -37,11 +41,12 @@ type (
 	// T is the sync.store driver.
 	T struct {
 		ressync.T
-		Store    string
-		RIDs     []string
-		Exclude  []string
-		Keep     string
-		ObjectID uuid.UUID
+		Store       string
+		RIDs        []string
+		Exclude     []string
+		Keep        string
+		IncludeRefs bool
+		ObjectID    uuid.UUID
 	}
 
 	// head is a directory a run saves, as a member named after its
@@ -75,6 +80,12 @@ var (
 	// consumerGroups are the driver groups whose resources use the data
 	// of the heads, which a restore in place refuses to write under.
 	consumerGroups = []driver.Group{driver.GroupApp, driver.GroupContainer, driver.GroupShare}
+
+	// allGroups are the driver groups of the resources an object holds.
+	allGroups = []driver.Group{
+		driver.GroupIP, driver.GroupVolume, driver.GroupDisk, driver.GroupFS, driver.GroupShare,
+		driver.GroupContainer, driver.GroupApp, driver.GroupSync, driver.GroupTask,
+	}
 
 	// errPassive is returned by update on a node not holding the active
 	// instance, which writes no run.
@@ -328,6 +339,11 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 			errs = errors.Join(errs, fmt.Errorf("save %s: %w", h.rid, err))
 		}
 	}
+	if t.IncludeRefs {
+		if err := t.saveRefs(ctx, s, run); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("save the referenced keys: %w", err))
+		}
+	}
 	if err := t.saveConfig(ctx, s, run); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("save the configuration: %w", err))
 	}
@@ -340,6 +356,106 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 		return run, err
 	}
 	return run, t.prune(ctx, s, run, retention)
+}
+
+// referencedDatastores returns the sec and cfg the object references: the
+// ones its resources install from, and the ones the secrets_environment and
+// configs_environment keywords of its resources name, each once.
+func (t *T) referencedDatastores() (naming.Paths, error) {
+	o := t.GetObjectDriver()
+	l := make(naming.Paths, 0)
+	add := func(p naming.Path) {
+		if !slices.Contains(l, p) {
+			l = append(l, p)
+		}
+	}
+	for _, r := range o.ResourcesByDrivergroups(allGroups) {
+		if i, ok := r.(interface {
+			DatastoreList(context.Context) naming.Paths
+		}); ok {
+			for _, p := range i.DatastoreList(context.Background()) {
+				add(p)
+			}
+		}
+	}
+	c, ok := o.(interface{ Config() *xconfig.T })
+	if !ok {
+		return l, nil
+	}
+	cfg := c.Config()
+	for _, section := range cfg.SectionStrings() {
+		for option, kind := range map[string]naming.Kind{"secrets_environment": naming.KindSec, "configs_environment": naming.KindCfg} {
+			k := key.New(section, option)
+			if cfg.Get(k) == "" {
+				continue
+			}
+			v, err := cfg.EvalAs(k, hostname.Hostname())
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", k, err)
+			}
+			items, _ := v.([]string)
+			for _, item := range items {
+				name := item
+				if _, after, found := strings.Cut(item, "="); found {
+					name = after
+				}
+				name, _, _ = strings.Cut(name, "/")
+				if name == "" {
+					continue
+				}
+				p, err := naming.NewPath(t.Path.Namespace, kind, name)
+				if err != nil {
+					return nil, fmt.Errorf("%s: %s: %w", k, item, err)
+				}
+				add(p)
+			}
+		}
+	}
+	return l, nil
+}
+
+// saveRefs saves the keys of the sec and cfg the object references as the
+// refs.json member of the run, streamed: the document holds them decoded,
+// and is never written to a disk on the way.
+func (t *T) saveRefs(ctx context.Context, s backup.Store, run backup.Run) error {
+	streamer, ok := s.(backup.Streamer)
+	if !ok {
+		return fmt.Errorf("include_refs: store %s takes no streams, which the keys would be written to a temporary file to save", s.Ref())
+	}
+	paths, err := t.referencedDatastores()
+	if err != nil {
+		return err
+	}
+	doc, err := object.RefsDocumentOf(t.Path.Namespace, paths)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(doc)
+	if err != nil {
+		return err
+	}
+	t.Log().Infof("save the keys of %d referenced datastores into store %s, run %s", len(doc), s.Ref(), run.ID)
+	return streamer.BackupStream(ctx, run, backup.MemberRefs, bytes.NewReader(b))
+}
+
+// restoreRefs applies the referenced keys the run saved, as mode says.
+func (t *T) restoreRefs(ctx context.Context, s backup.Store, run backup.Run, mode object.RefsMode) error {
+	if mode == object.RefsSkip || !run.Has(backup.MemberRefs) {
+		return nil
+	}
+	b, err := backup.ReadMember(ctx, s, run, backup.MemberRefs)
+	if err != nil {
+		return err
+	}
+	var doc object.RefsDocument
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return fmt.Errorf("%s: %w", backup.MemberRefs, err)
+	}
+	notes, err := object.ApplyRefs(t.Path.Namespace, doc, mode)
+	for _, note := range notes {
+		t.Log().Infof("refs: %s", note)
+	}
+	return err
 }
 
 // saveConfig saves the configuration of the object as the config member of
@@ -444,7 +560,7 @@ func (t *T) Restore(ctx context.Context) error {
 	}
 	members := make([]string, 0, len(run.Members))
 	for _, m := range run.Members {
-		if m.Name == backup.MemberConfig {
+		if m.Name == backup.MemberConfig || m.Name == backup.MemberRefs {
 			continue
 		}
 		if len(opts.Heads) > 0 && !slices.Contains(opts.Heads, m.Name) {
@@ -457,13 +573,23 @@ func (t *T) Restore(ctx context.Context) error {
 			return fmt.Errorf("run %s holds no %s, it holds %s", run.ShortID(), rid, strings.Join(run.MemberNames(), " "))
 		}
 	}
+	refsMode, err := object.ParseRefsMode(opts.Refs)
+	if err != nil {
+		return err
+	}
 	if opts.Into != "" {
+		if run.Has(backup.MemberRefs) {
+			t.Log().Infof("the referenced keys are not restored aside, where they would be written in clear")
+		}
 		return t.restoreInto(ctx, s, run, members, opts)
 	}
 	if opts.Config {
 		return fmt.Errorf("--config: restoring the configuration in place is not supported yet, restore it aside with --into")
 	}
-	return t.restoreInPlace(ctx, s, run, members)
+	if err := t.restoreInPlace(ctx, s, run, members); err != nil {
+		return err
+	}
+	return t.restoreRefs(ctx, s, run, refsMode)
 }
 
 func (t *T) restoreInto(ctx context.Context, s backup.Store, run backup.Run, members []string, opts actioncontext.RestoreOptions) error {

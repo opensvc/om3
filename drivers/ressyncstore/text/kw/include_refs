@@ -1,0 +1,13 @@
+Save the keys of the sec and cfg the object references with each run, as
+the refs.json member: the ones its volumes install from, and the ones its
+secrets_environment and configs_environment keywords name. Every key of
+each of these datastores is saved, decoded, and kept by the store as it
+keeps the data, encrypted by the stores encrypting.
+
+The store must take streams: the document is never written to a disk on the
+way.
+
+A restore in place applies them as --refs says, missing by default: the
+absent datastores and keys are created, the keys there are left as they
+are, their differing values reported. A deploy from a snapshot applies them
+the same way. A restore aside leaves them.

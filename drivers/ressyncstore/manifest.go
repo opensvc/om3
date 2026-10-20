@@ -40,6 +40,13 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/exclude"),
 		},
 		{
+			Attr:      "IncludeRefs",
+			Converter: converters.Bool,
+			Default:   "false",
+			Option:    "include_refs",
+			Text:      keywords.NewText(fs, "text/kw/include_refs"),
+		},
+		{
 			Attr:    "Keep",
 			Example: "24h 7d 4w 6m",
 			Option:  "keep",

@@ -70,6 +70,10 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			if len(t.Heads) > 0 {
 				params.Head = &t.Heads
 			}
+			if t.Refs != "" {
+				refs := api.PostInstanceActionRestoreParamsRefs(t.Refs)
+				params.Refs = &refs
+			}
 			{
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID

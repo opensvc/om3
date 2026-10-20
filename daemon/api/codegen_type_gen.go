@@ -996,6 +996,27 @@ func (e UserListKind) Valid() bool {
 	}
 }
 
+// Defines values for InQueryRestoreRefs.
+const (
+	InQueryRestoreRefsMissing   InQueryRestoreRefs = "missing"
+	InQueryRestoreRefsOverwrite InQueryRestoreRefs = "overwrite"
+	InQueryRestoreRefsSkip      InQueryRestoreRefs = "skip"
+)
+
+// Valid indicates whether the value is a known member of the InQueryRestoreRefs enum.
+func (e InQueryRestoreRefs) Valid() bool {
+	switch e {
+	case InQueryRestoreRefsMissing:
+		return true
+	case InQueryRestoreRefsOverwrite:
+		return true
+	case InQueryRestoreRefsSkip:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PostDaemonAuditParamsLevel.
 const (
 	Debug PostDaemonAuditParamsLevel = "debug"
@@ -1017,6 +1038,27 @@ func (e PostDaemonAuditParamsLevel) Valid() bool {
 	case Trace:
 		return true
 	case Warn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PostInstanceActionRestoreParamsRefs.
+const (
+	PostInstanceActionRestoreParamsRefsMissing   PostInstanceActionRestoreParamsRefs = "missing"
+	PostInstanceActionRestoreParamsRefsOverwrite PostInstanceActionRestoreParamsRefs = "overwrite"
+	PostInstanceActionRestoreParamsRefsSkip      PostInstanceActionRestoreParamsRefs = "skip"
+)
+
+// Valid indicates whether the value is a known member of the PostInstanceActionRestoreParamsRefs enum.
+func (e PostInstanceActionRestoreParamsRefs) Valid() bool {
+	switch e {
+	case PostInstanceActionRestoreParamsRefsMissing:
+		return true
+	case PostInstanceActionRestoreParamsRefsOverwrite:
+		return true
+	case PostInstanceActionRestoreParamsRefsSkip:
 		return true
 	default:
 		return false
@@ -3099,6 +3141,9 @@ type InQueryRestoreHead = []string
 // InQueryRestoreInto defines model for inQueryRestoreInto.
 type InQueryRestoreInto = string
 
+// InQueryRestoreRefs defines model for inQueryRestoreRefs.
+type InQueryRestoreRefs string
+
 // InQueryRestoreSnapshot defines model for inQueryRestoreSnapshot.
 type InQueryRestoreSnapshot = string
 
@@ -3960,9 +4005,15 @@ type PostInstanceActionRestoreParams struct {
 	// Into A directory to restore aside into, a directory per head, instead of into the heads.
 	Into *InQueryRestoreInto `form:"into,omitempty" json:"into,omitempty"`
 
+	// Refs How to restore the keys of the sec and cfg the object references, in place.
+	Refs *PostInstanceActionRestoreParamsRefs `form:"refs,omitempty" json:"refs,omitempty"`
+
 	// Snapshot The snapshot to restore, by id or a prefix of it, the latest when not set.
 	Snapshot *InQueryRestoreSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
 }
+
+// PostInstanceActionRestoreParamsRefs defines parameters for PostInstanceActionRestore.
+type PostInstanceActionRestoreParamsRefs string
 
 // PostInstanceActionResyncParams defines parameters for PostInstanceActionResync.
 type PostInstanceActionResyncParams struct {

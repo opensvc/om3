@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -264,8 +265,32 @@ func (t *CmdObjectCreate) fromStore() error {
 		return fmt.Errorf("read the configuration of snapshot %s: %w", run.ShortID(), err)
 	}
 	fmt.Fprintf(os.Stderr, "%s: the configuration of %s from snapshot %s in store %s, its heads restored at provision\n", t.path, run.Path, run.ShortID(), s.Ref())
+	if run.Has(backup.MemberRefs) {
+		if err := t.applySnapshotRefs(ctx, s, run); err != nil {
+			return err
+		}
+	}
 	t.Keywords = append(t.Keywords, fmt.Sprintf("restore_from=%s %s %s", s.Ref(), run.Path, run.ID))
 	return t.fromData(t.path, b)
+}
+
+// applySnapshotRefs creates the sec and cfg keys the snapshot holds that the
+// namespace of the object lacks, leaving the others, before the object
+// referencing them is.
+func (t *CmdObjectCreate) applySnapshotRefs(ctx context.Context, s backup.Store, run backup.Run) error {
+	b, err := backup.ReadMember(ctx, s, run, backup.MemberRefs)
+	if err != nil {
+		return fmt.Errorf("read the referenced keys of snapshot %s: %w", run.ShortID(), err)
+	}
+	var doc object.RefsDocument
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return fmt.Errorf("%s: %w", backup.MemberRefs, err)
+	}
+	notes, err := object.ApplyRefs(t.path.Namespace, doc, object.RefsMissing)
+	for _, note := range notes {
+		fmt.Fprintf(os.Stderr, "%s: refs: %s\n", t.path, note)
+	}
+	return err
 }
 
 func (t *CmdObjectCreate) fromTemplate(template string) error {

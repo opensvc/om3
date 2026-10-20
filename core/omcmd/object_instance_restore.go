@@ -74,6 +74,10 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			if len(t.Heads) > 0 {
 				params.Head = &t.Heads
 			}
+			if t.Refs != "" {
+				refs := api.PostInstanceActionRestoreParamsRefs(t.Refs)
+				params.Refs = &refs
+			}
 			{
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
@@ -110,6 +114,7 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 				Into:     t.Into,
 				Config:   t.Config,
 				Heads:    t.Heads,
+				Refs:     t.Refs,
 			})
 			return nil, o.SyncRestore(ctx)
 		}),

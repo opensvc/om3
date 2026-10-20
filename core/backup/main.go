@@ -128,6 +128,10 @@ const (
 	// MemberConfig is the member holding the configuration of the object.
 	MemberConfig = "config"
 
+	// MemberRefs is the member holding the keys of the sec and cfg the
+	// object references, as an object.RefsDocument.
+	MemberRefs = "refs.json"
+
 	// SectionPrefix is the prefix of the sections declaring stores.
 	SectionPrefix = "store#"
 )

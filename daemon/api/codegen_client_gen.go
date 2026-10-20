@@ -9915,6 +9915,18 @@ func NewPostInstanceActionRestoreRequest(server string, nodename InPathNodeName,
 
 		}
 
+		if params.Refs != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refs", *params.Refs, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Snapshot != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "snapshot", *params.Snapshot, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {

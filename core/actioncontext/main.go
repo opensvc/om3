@@ -325,6 +325,10 @@ type RestoreOptions struct {
 
 	// Heads are the heads to restore, every head of the run when empty.
 	Heads []string
+
+	// Refs is how the keys of the sec and cfg the object references are
+	// restored: missing, skip or overwrite, missing when empty.
+	Refs string
 }
 
 func WithRestoreOptions(ctx context.Context, o RestoreOptions) context.Context {

@@ -67,6 +67,10 @@ type (
 		// Heads are the heads to restore, every head of the snapshot
 		// when empty.
 		Heads []string
+
+		// Refs is how the referenced keys are restored: missing, skip
+		// or overwrite.
+		Refs string
 	}
 
 	// OptTo sets a barrier when iterating over a resource lister

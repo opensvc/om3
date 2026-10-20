@@ -57,6 +57,9 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 	if params.Config != nil && *params.Config {
 		args = append(args, "--config")
 	}
+	if params.Refs != nil && *params.Refs != "" {
+		args = append(args, "--refs", string(*params.Refs))
+	}
 	if params.Head != nil {
 		for _, rid := range *params.Head {
 			args = append(args, "--head", rid)

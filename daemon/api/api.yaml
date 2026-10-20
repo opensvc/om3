@@ -3726,6 +3726,7 @@ paths:
         - $ref: '#/components/parameters/inQueryRestoreConfig'
         - $ref: '#/components/parameters/inQueryRestoreHead'
         - $ref: '#/components/parameters/inQueryRestoreInto'
+        - $ref: '#/components/parameters/inQueryRestoreRefs'
         - $ref: '#/components/parameters/inQueryRestoreSnapshot'
       responses:
         200:
@@ -10996,6 +10997,17 @@ components:
       description: A directory to restore aside into, a directory per head, instead of into the heads.
       schema:
         type: string
+
+    inQueryRestoreRefs:
+      in: query
+      name: refs
+      description: How to restore the keys of the sec and cfg the object references, in place.
+      schema:
+        type: string
+        enum:
+          - missing
+          - skip
+          - overwrite
 
     inQueryRestoreSnapshot:
       in: query

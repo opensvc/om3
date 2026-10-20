@@ -692,6 +692,7 @@ func FlagsRestore(flags *pflag.FlagSet, p *OptsRestore) {
 	flags.StringVar(&p.Into, "into", "", "restore aside, into a directory per head of this directory, instead of into the heads")
 	flags.BoolVar(&p.Config, "config", false, "also restore the configuration of the object")
 	flags.StringSliceVar(&p.Heads, "head", []string{}, "the heads to restore, by resource id, every head of the snapshot when not set")
+	flags.StringVar(&p.Refs, "refs", "missing", "how to restore the keys of the sec and cfg the object references, in place: missing creates the absent ones and leaves the others, skip restores none, overwrite rewrites them all")
 }
 
 func FlagTarget(flags *pflag.FlagSet, p *[]string) {
