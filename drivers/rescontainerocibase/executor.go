@@ -13,6 +13,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -261,7 +262,7 @@ func (e *Executor) Run(ctx context.Context) error {
 		} else {
 			a.Append(imageArgs.Get()...)
 			a.Append(commandArgs.Get()...)
-			return e.doExecRun(ctx, environ, a.Get()...)
+			return e.doExecRunLog(ctx, !e.quietRun(), environ, a.Get()...)
 		}
 	}
 }
@@ -271,7 +272,7 @@ func (e *Executor) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return e.doExecRun(ctx, nil, a.Get()...)
+	return e.doExecRunLog(ctx, !e.quietRun(), nil, a.Get()...)
 }
 
 func (e *Executor) Stop(ctx context.Context) error {
@@ -313,34 +314,62 @@ func (e *Executor) ExecutorArgser() ExecutorArgser {
 }
 
 // doExecRun exec e.bin a where a may be prefixed by baseArgs when e.args
-// implements ExecutorBaseArgser.
+// implements ExecutorBaseArgser, its output logged.
 // Depending on ctx value, exec.Command or exec.CommandContext is used.
 func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a ...string) error {
-	return e.doExecRunLog(ctx, false, environ, a...)
+	return e.doExecRunLog(ctx, true, environ, a...)
 }
 
 // doExecRunLog exec e.bin a where a may be prefixed by baseArgs when e.args
 // implements ExecutorBaseArgser.
 // Depending on ctx value, exec.Command or exec.CommandContext is used.
-// When logOutput is true it adds command options: WithLogger,
-// WithStdoutLogLevel and WithStderrLogLevel
+// When logOutput is true the stdout lines are logged at info level and the
+// stderr ones at warn level. When false, the output is read elsewhere, as
+// the one of a task container is from its logs after the run, and the last
+// stderr line, what the engine says of a failure, is kept for the error:
+// that line only, a container writing on stderr for as long as it runs.
 func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map[string]string, a ...string) error {
 	cmdArgs := e.getArgs(a...)
-	opts := []funcopt.O{
-		command.WithName(e.bin),
-		command.WithArgs(cmdArgs),
+	opts, err := e.commandOpts(ctx, environ, cmdArgs)
+	if err != nil {
+		return err
 	}
-	if true {
+	var last string
+	if logOutput {
 		opts = append(opts,
 			command.WithLogger(e.log()),
 			command.WithStdoutLogLevel(zerolog.InfoLevel),
 			command.WithStderrLogLevel(zerolog.WarnLevel),
 		)
+	} else {
+		opts = append(opts, command.WithOnStderrLine(func(s string) {
+			if s = strings.TrimSpace(s); s != "" {
+				last = s
+			}
+		}))
+	}
+
+	cmd := command.New(opts...)
+
+	e.log().Infof("%s %s", e.bin, strings.Join(cmdArgs, " "))
+	err = cmd.Run()
+	if err != nil && last != "" {
+		return fmt.Errorf("%w: %s", err, last)
+	}
+	return err
+}
+
+// commandOpts returns the options of a command executing e.bin with
+// cmdArgs: the environ, the credential of a rootless engine, and ctx.
+func (e *Executor) commandOpts(ctx context.Context, environ map[string]string, cmdArgs []string) ([]funcopt.O, error) {
+	opts := []funcopt.O{
+		command.WithName(e.bin),
+		command.WithArgs(cmdArgs),
 	}
 
 	cred, err := e.credential()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(environ) > 0 || cred != nil {
 		envL := os.Environ()
@@ -366,16 +395,39 @@ func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		default:
 			opts = append(opts, command.WithContext(ctx))
 		}
 	}
+	return opts, nil
+}
 
-	cmd := command.New(opts...)
+// quietRun tells whether the output of the commands running the container,
+// run and start, is read elsewhere than as it comes, as the one of a task
+// container is.
+func (e *Executor) quietRun() bool {
+	i, ok := e.args.(interface{ QuietRunOutput() bool })
+	return ok && i.QuietRunOutput()
+}
 
-	e.log().Infof("%s %s", e.bin, strings.Join(cmdArgs, " "))
-	return cmd.Run()
+// LogsSince calls onStdout and onStderr with the lines the container wrote
+// on its stdout and on its stderr since since.
+func (e *Executor) LogsSince(ctx context.Context, since time.Time, onStdout, onStderr func(string)) error {
+	i, ok := e.args.(interface{ LogsSinceArgs(time.Time) *args.T })
+	if !ok {
+		return fmt.Errorf("executor does not support logs")
+	}
+	cmdArgs := e.getArgs(i.LogsSinceArgs(since).Get()...)
+	opts, err := e.commandOpts(ctx, nil, cmdArgs)
+	if err != nil {
+		return err
+	}
+	opts = append(opts,
+		command.WithOnStdoutLine(onStdout),
+		command.WithOnStderrLine(onStderr),
+	)
+	return command.New(opts...).Run()
 }
 
 func (e *Executor) log() *plog.Logger {

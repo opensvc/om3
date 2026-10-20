@@ -94,6 +94,11 @@ type (
 		Sysctl          []string       `json:"sysctl"`
 		LogOutputs      bool           `json:"log_outputs"`
 
+		// QuietRunOutput leaves the output of the commands running the
+		// container unlogged as it comes: a task reads it after the run,
+		// from the logs of the container, when its log keyword asks.
+		QuietRunOutput bool `json:"-"`
+
 		executer   Executer
 		xContainer map[string]containerNamer
 	}
@@ -1239,6 +1244,18 @@ func (t *BT) EncapCmd(ctx context.Context, args []string, env []string, stdin io
 
 func (t *BT) EncapCp(ctx context.Context, src, dst string) error {
 	return t.executer.EncapCp(ctx, src, dst)
+}
+
+// LogsSince calls onStdout and onStderr with the lines the container wrote
+// on its stdout and on its stderr since since.
+func (t *BT) LogsSince(ctx context.Context, since time.Time, onStdout, onStderr func(string)) error {
+	i, ok := t.executer.(interface {
+		LogsSince(context.Context, time.Time, func(string), func(string)) error
+	})
+	if !ok {
+		return fmt.Errorf("the executer of %s reads no logs", t.RID())
+	}
+	return i.LogsSince(ctx, since, onStdout, onStderr)
 }
 
 func (t *BT) ContainerLogs(ctx context.Context, follow bool, lines int) (<-chan []byte, error) {

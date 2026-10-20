@@ -1094,6 +1094,12 @@ which share the same executor.
     In v2, the outputs of a task run were logged by default. They are logged
     with `log = true` only, which logs the scheduled runs of the task too.
 
+* **A container task logs its run output as a host task does:**
+    With `log = true`, the stdout lines of the container are logged at info
+    level and its stderr lines at warn level, at every run, read from the
+    logs of the container after it exits. They were logged on the runs
+    creating the container only, whatever `log` said.
+
 ### Object: sec
 
 * **Removed actions:**
