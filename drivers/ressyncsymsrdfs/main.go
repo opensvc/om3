@@ -577,10 +577,8 @@ func (t *T) sends(filename string) error {
 		}
 		defer file.Close()
 		ctx := context.Background()
-		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
-			return nil
-		})
+		params := api.PostInstanceStateFileParams{RelativePath: filename[len(head):]}
+		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params, "application/octet-stream", file)
 		if err != nil {
 			return err
 		}

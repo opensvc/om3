@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -20,30 +19,21 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
-func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceStateFileParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
-		return a.postLocalObjectStateFile(ctx, namespace, kind, name)
+		return a.postLocalObjectStateFile(ctx, namespace, kind, name, params)
 	}
-	relativePath := ctx.Request().Header.Get(api.HeaderRelativePath)
-	lastModified := ctx.Request().Header.Get(api.HeaderLastModified)
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		addHeader := func(ctx context.Context, req *http.Request) error {
-			req.Header.Add(api.HeaderRelativePath, relativePath)
-			if lastModified != "" {
-				req.Header.Add(api.HeaderLastModified, lastModified)
-			}
-			return nil
-		}
-		return c.PostInstanceStateFileWithBody(ctx.Request().Context(), nodename, namespace, kind, name, "application/octet-stream", ctx.Request().Body, addHeader)
+		return c.PostInstanceStateFileWithBody(ctx.Request().Context(), nodename, namespace, kind, name, &params, "application/octet-stream", ctx.Request().Body)
 	})
 
 }
 
-func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceStateFileParams) error {
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
@@ -51,7 +41,7 @@ func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string,
 	if !p.Exists() {
 		return JSONProblemf(ctx, http.StatusNotFound, "Object not found", "")
 	}
-	relPath := ctx.Request().Header.Get(api.HeaderRelativePath)
+	relPath := params.RelativePath
 	if relPath == "" {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "Header '%s' is required", api.HeaderRelativePath)
 	}
@@ -82,8 +72,8 @@ func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string,
 	// A state file can say when something happened by its modification
 	// time, as the last sync of a peer does, which writing it here would
 	// make the time it was received.
-	if s := ctx.Request().Header.Get(api.HeaderLastModified); s != "" {
-		mtime, err := time.Parse(time.RFC3339Nano, s)
+	if params.LastModified != nil && *params.LastModified != "" {
+		mtime, err := time.Parse(time.RFC3339Nano, *params.LastModified)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "Header '%s': %s", api.HeaderLastModified, err)
 		}

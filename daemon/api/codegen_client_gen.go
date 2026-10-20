@@ -466,7 +466,7 @@ type ClientInterface interface {
 	GetInstanceSchedule(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceStateFileWithBody request with any body
-	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceStateFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteNodeLock request
 	DeleteNodeLock(ctx context.Context, nodename InPathNodeName, params *DeleteNodeLockParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2224,8 +2224,8 @@ func (c *Client) GetInstanceSchedule(ctx context.Context, nodename InPathNodeNam
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostInstanceStateFileRequestWithBody(c.Server, nodename, namespace, kind, name, contentType, body)
+func (c *Client) PostInstanceStateFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceStateFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceStateFileRequestWithBody(c.Server, nodename, namespace, kind, name, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -12391,7 +12391,7 @@ func NewGetInstanceScheduleRequest(server string, nodename InPathNodeName, names
 }
 
 // NewPostInstanceStateFileRequestWithBody generates requests for PostInstanceStateFile with any type of body
-func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceStateFileParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12443,6 +12443,30 @@ func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeN
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "OM-relative-path", params.RelativePath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("OM-relative-path", headerParam0)
+
+		if params.LastModified != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "OM-Last-Modified", *params.LastModified, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("OM-Last-Modified", headerParam1)
+		}
+
+	}
 
 	return req, nil
 }
@@ -16459,7 +16483,7 @@ type ClientWithResponsesInterface interface {
 	GetInstanceScheduleWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceScheduleResponse, error)
 
 	// PostInstanceStateFileWithBodyWithResponse request with any body
-	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
+	PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceStateFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error)
 
 	// DeleteNodeLockWithResponse request
 	DeleteNodeLockWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteNodeLockParams, reqEditors ...RequestEditorFn) (*DeleteNodeLockResponse, error)
@@ -23915,8 +23939,8 @@ func (c *ClientWithResponses) GetInstanceScheduleWithResponse(ctx context.Contex
 }
 
 // PostInstanceStateFileWithBodyWithResponse request with arbitrary body returning *PostInstanceStateFileResponse
-func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error) {
-	rsp, err := c.PostInstanceStateFileWithBody(ctx, nodename, namespace, kind, name, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostInstanceStateFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceStateFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInstanceStateFileResponse, error) {
+	rsp, err := c.PostInstanceStateFileWithBody(ctx, nodename, namespace, kind, name, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

@@ -2441,11 +2441,14 @@ type Problem struct {
 
 // Property defines model for Property.
 type Property struct {
-	Error  string      `json:"error"`
-	Name   string      `json:"name"`
-	Source string      `json:"source"`
-	Title  string      `json:"title"`
-	Value  interface{} `json:"value"`
+	Error  string `json:"error"`
+	Name   string `json:"name"`
+	Source string `json:"source"`
+	Title  string `json:"title"`
+
+	// Value The value of the property: a string, or a number for a count or a
+	// size, as mem_bytes. A property with no value has an empty string.
+	Value interface{} `json:"value"`
 }
 
 // PropertyItem defines model for PropertyItem.
@@ -4194,6 +4197,17 @@ type GetInstanceResourceFileParams struct {
 
 	// Rid The rid that is expected to expose the requested file path.
 	Rid InQueryResourceFileRid `form:"rid" json:"rid"`
+}
+
+// PostInstanceStateFileParams defines parameters for PostInstanceStateFile.
+type PostInstanceStateFileParams struct {
+	// RelativePath The path of the state file, relative to the var directory of the object.
+	RelativePath string `json:"OM-relative-path"`
+
+	// LastModified The modification time of the state file on the sender, RFC3339 with
+	// nanoseconds, which the written file keeps: a state file says when by
+	// its modification time.
+	LastModified *string `json:"OM-Last-Modified,omitempty"`
 }
 
 // DeleteNodeLockParams defines parameters for DeleteNodeLock.
