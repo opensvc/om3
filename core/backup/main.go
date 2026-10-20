@@ -18,6 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -285,4 +287,60 @@ func FindRun(ctx context.Context, s Store, path, id string) (Run, error) {
 	default:
 		return runs[0], nil
 	}
+}
+
+// FindSnapshot returns the run ref names among the runs of every object of
+// the store: its id, or a prefix of it, or else an object path, meaning the
+// latest run of that object. An id never holds a "/", but the path of an
+// object of the root namespace has none either, so an id is tried first.
+func FindSnapshot(ctx context.Context, s Store, ref string) (Run, error) {
+	runs, err := s.Runs(ctx, RunFilter{ID: ref})
+	if err != nil {
+		return Run{}, err
+	}
+	for _, run := range runs {
+		if run.ID == ref {
+			return run, nil
+		}
+	}
+	switch len(runs) {
+	case 1:
+		return runs[0], nil
+	case 0:
+	default:
+		return Run{}, fmt.Errorf("%w: %s matches %d runs in store %s", ErrAmbiguous, ref, len(runs), s.Ref())
+	}
+	run, err := FindRun(ctx, s, ref, "")
+	if errors.Is(err, ErrNotFound) {
+		return Run{}, fmt.Errorf("%w: store %s holds no run %s, nor a run of an object %s", ErrNotFound, s.Ref(), ref, ref)
+	}
+	return run, err
+}
+
+// ReadMember returns the content of a member saved as a file: streamed from
+// a store taking streams, or restored into a private temporary directory
+// otherwise, where a member saved from a directory holds a file named after
+// it, as the configuration of an object does.
+func ReadMember(ctx context.Context, s Store, run Run, member string) ([]byte, error) {
+	m, ok := run.Member(member)
+	if !ok {
+		return nil, fmt.Errorf("run %s of %s has no member %s", run.ShortID(), run.Path, member)
+	}
+	if streamer, ok := s.(Streamer); ok && m.Kind == MemberStream {
+		rc, err := streamer.Cat(ctx, run, member)
+		if err != nil {
+			return nil, err
+		}
+		defer rc.Close()
+		return io.ReadAll(rc)
+	}
+	dir, err := os.MkdirTemp("", "om-member-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	if err := s.Restore(ctx, run, member, dir); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(filepath.Join(dir, member))
 }

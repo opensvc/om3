@@ -680,6 +680,12 @@ func FlagTag(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "tag", "", "a tag selector expression (ex: t1,t2)")
 }
 
+// FlagsCreateFromStore adds the options of a create from a snapshot.
+func FlagsCreateFromStore(flags *pflag.FlagSet, store, snapshot *string) {
+	flags.StringVar(store, "store", "", "the store holding the snapshot to create the object from")
+	flags.StringVar(snapshot, "snapshot", "", "the snapshot to create the object from, by id or a prefix of it, or the path of an object for its latest snapshot: its configuration, and its heads restored at provision")
+}
+
 // FlagsRestore adds the options of a sync restore.
 func FlagsRestore(flags *pflag.FlagSet, p *OptsRestore) {
 	flags.StringVar(&p.Snapshot, "snapshot", "", "the snapshot to restore, by id or a prefix of it, the latest when not set")

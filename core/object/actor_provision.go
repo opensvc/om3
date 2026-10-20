@@ -116,11 +116,33 @@ func (t *actor) lockedProvisionStop(ctx context.Context, before instance.Status)
 	})
 }
 
+// lockedProvision provisions the resources, and restores the heads it moves
+// from unprovisioned to provisioned from the snapshot restore_from names, as
+// each is provisioned and started: the heads before the resources using
+// their data start.
 func (t *actor) lockedProvision(ctx context.Context) error {
+	src, err := t.provisionRestoreSource(ctx)
+	if err != nil {
+		return err
+	}
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		rid := r.RID()
 		t.log.Attr("rid", rid).Tracef("%s: provision resource", rid)
 		leader := actioncontext.IsLeader(ctx)
-		return resource.Provision(ctx, r, leader)
+		wasProvisioned := true
+		if src != nil && src.run.Has(rid) {
+			// A state not known is taken for provisioned: data is
+			// only written into a head known to be new.
+			if st, err := resource.Provisioned(ctx, r); err == nil {
+				wasProvisioned = st == provisioned.True
+			}
+		}
+		if err := resource.Provision(ctx, r, leader); err != nil {
+			return err
+		}
+		if src != nil && !wasProvisioned {
+			return t.restoreProvisionedHead(ctx, src, r)
+		}
+		return nil
 	})
 }

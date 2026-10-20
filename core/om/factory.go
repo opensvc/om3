@@ -2268,6 +2268,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagProvision(flags, &options.Provision)
+	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
 	flags.BoolVar(&options.WaitLocal, "wait-local", false, "wait for the local daemon to know the object, listed and watched by an instance monitor, for the command run next to find it")
 	return cmd
 }
@@ -2319,6 +2320,7 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	commoncmd.FlagCreateNamespace(flags, &options.Namespace)
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
 	return cmd
 }
 

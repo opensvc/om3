@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/flagfile"
@@ -38,6 +39,11 @@ type (
 		Restore   bool
 		Force     bool
 		Namespace string
+
+		// Store and Snapshot name a snapshot to create the object from:
+		// its configuration, and its heads restored at provision.
+		Store    string
+		Snapshot string
 
 		client *client.T
 		path   naming.Path
@@ -190,6 +196,9 @@ func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 }
 
 func (t *CmdObjectCreate) do() error {
+	if t.Store != "" || t.Snapshot != "" {
+		return t.fromStore()
+	}
 	template := t.getTemplate()
 	paths := t.getSourcePaths()
 	pathsCount := len(paths)
@@ -223,6 +232,40 @@ func (t *CmdObjectCreate) fromPath(p naming.Path) error {
 		p.Namespace = t.Namespace
 	}
 	return t.fromData(p, b)
+}
+
+// fromStore creates the object from a snapshot: the configuration of the
+// object the snapshot is of, with restore_from naming the snapshot, so the
+// provision restores the heads it creates from it.
+func (t *CmdObjectCreate) fromStore() error {
+	switch {
+	case t.Store == "":
+		return fmt.Errorf("--snapshot needs --store, the store holding it")
+	case t.Snapshot == "":
+		return fmt.Errorf("--store needs --snapshot, an id or the path of an object whose latest snapshot to take")
+	case t.Config != "":
+		return fmt.Errorf("--store and --config are mutually exclusive: the configuration is the one of the snapshot")
+	}
+	ctx := context.Background()
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return err
+	}
+	s, err := n.Store(t.Store)
+	if err != nil {
+		return err
+	}
+	run, err := backup.FindSnapshot(ctx, s, t.Snapshot)
+	if err != nil {
+		return err
+	}
+	b, err := backup.ReadMember(ctx, s, run, backup.MemberConfig)
+	if err != nil {
+		return fmt.Errorf("read the configuration of snapshot %s: %w", run.ShortID(), err)
+	}
+	fmt.Fprintf(os.Stderr, "%s: the configuration of %s from snapshot %s in store %s, its heads restored at provision\n", t.path, run.Path, run.ShortID(), s.Ref())
+	t.Keywords = append(t.Keywords, fmt.Sprintf("restore_from=%s %s %s", s.Ref(), run.Path, run.ID))
+	return t.fromData(t.path, b)
 }
 
 func (t *CmdObjectCreate) fromTemplate(template string) error {
