@@ -930,6 +930,10 @@ which share the same executor.
     started included, before stopping the resources. No scheduled sync starts
     on a node being drained.
 
+* **New `log` keyword:**
+    `log = true` logs the scheduled updates of the resource, as a run asked
+    by a user is. It defaults to false.
+
 ### Driver: sync.rsync
 
 * **`snap = true` copies a snapshot of the filesystem holding `src`:**
@@ -1084,6 +1088,18 @@ which share the same executor.
 * **Status**
     The instance container resources are no longer considered when evaluating if the instance is sufficiently started to execute the app checker. Services that have only a container resource as witness can add a `fs.flag`.
 
+### Driver: task
+
+* **`log` defaults to false:**
+    In v2, the outputs of a task run were logged by default. They are logged
+    with `log = true` only, which logs the scheduled runs of the task too.
+
+* **A container task logs its run output as a host task does:**
+    With `log = true`, the stdout lines of the container are logged at info
+    level and its stderr lines at warn level, at every run, read from the
+    logs of the container after it exits. They were logged on the runs
+    creating the container only, whatever `log` said.
+
 ### Object: sec
 
 * **Removed actions:**
@@ -1102,6 +1118,13 @@ which share the same executor.
 
 * **Action logs reported to the collector:**
     The actions started by the daemon scheduler, as the scheduled task runs and sync updates, are no longer reported to the collector, and the `node.dblogcron` keyword is not supported.
+
+* **Scheduled runs are logged on demand:**
+    The jobs the daemon scheduler starts are not logged in the journal, unless
+    the daemon runs with `--debug` or `--trace`, or the job asks it: the
+    compliance runs, of the objects and of the node, always do, and the task
+    runs and the sync updates do when their `log` keyword is true. A job not
+    logged leaves its status, its exit code and the exec events.
 
 ### Heartbeat: relay
 

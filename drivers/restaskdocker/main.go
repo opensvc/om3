@@ -85,6 +85,7 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			PullTimeout:               t.PullTimeout,
 			StartTimeout:              startTimeout,
 			LogOutputs:                t.LogOutputs,
+			QuietRunOutput:            true,
 		},
 	}
 	if err := ct.Configure(); err != nil {

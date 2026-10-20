@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
@@ -340,6 +341,19 @@ func (ea *ExecutorArg) runArgsMounts(ctx context.Context) ([]string, error) {
 		a = append(a, fmt.Sprintf("%s:%s:%s", m.Source, m.Target, m.Option))
 	}
 	return a, nil
+}
+
+// LogsSinceArgs returns the arguments of the engine command printing what
+// the container wrote since a time, on stdout and on stderr as it did.
+func (ea *ExecutorArg) LogsSinceArgs(since time.Time) *args.T {
+	return args.New("container", "logs", "--since", since.UTC().Format(time.RFC3339Nano), ea.BT.ContainerName())
+}
+
+// QuietRunOutput tells whether the output of the commands running the
+// container is read elsewhere than as it comes, as the one of a task
+// container is, from its logs after the run.
+func (ea *ExecutorArg) QuietRunOutput() bool {
+	return ea.BT.QuietRunOutput
 }
 
 // LogsArgs returns the arguments of the engine command printing the logs of

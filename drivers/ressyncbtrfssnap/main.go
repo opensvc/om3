@@ -449,6 +449,7 @@ func (t *T) ScheduleOptions() resource.ScheduleOptions {
 		Base:                     "",
 		RequireReplicationSource: true,
 		Require:                  t.UpdateRequires,
+		Log:                      t.LogRuns,
 	}
 }
 

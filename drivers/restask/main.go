@@ -65,6 +65,7 @@ func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 		RunDir:              filepath.Join(t.VarDir(), "run"),
 		On:                  t.On,
 		Pace:                t.Pace,
+		Log:                 t.LogOutputs,
 	}
 }
 

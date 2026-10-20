@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/daemon/proc"
@@ -47,6 +48,7 @@ var (
 		"pushbackup",
 	}
 	ObjectActions = []string{
+		"compliance_auto",
 		"info",
 		"resource_monitor",
 		"run",
@@ -68,7 +70,9 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 		return nil, fmt.Errorf("scheduler action %s has no om command yet", e.Action)
 	}
 
-	if slices.Contains(NodeActions, e.Action) {
+	// An action of both scopes, as compliance_auto, is the one of the
+	// object its entry was read from, the node's when none.
+	if slices.Contains(NodeActions, e.Action) && (e.Path.IsZero() || !slices.Contains(ObjectActions, e.Action)) {
 		head = []string{"node"}
 	} else {
 		head = []string{e.Path.String()}
@@ -136,17 +140,29 @@ func (o *T) action(e schedule.Entry) error {
 
 	// Unless the daemon runs with --debug or --trace, we don't want to
 	// log the execution in journald nor syslogd to avoid uncontrolled
-	// growth or rotation of the logging backend files.
-	if lvl := zerolog.GlobalLevel(); lvl > zerolog.DebugLevel {
+	// growth or rotation of the logging backend files. A job asking its
+	// runs logged, as a task run or a compliance run, is logged: its
+	// output is what its user reads.
+	if lvl := zerolog.GlobalLevel(); lvl > zerolog.DebugLevel && !e.Log {
 		// OSVC_NO_LOG_FILE=1
 		cmdEnv = append(cmdEnv, env.NoLogFileSetenvArg())
 	}
 
+	// A failed om says why on the last "Error: " line of its stderr, which
+	// no terminal shows here: it is logged with the failure, as its
+	// reason, an early failure, as a compliance run with no collector,
+	// logging nothing else.
+	var reason string
 	cmd := command.New(
 		command.WithName(os.Args[0]),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(logger),
 		command.WithEnv(cmdEnv),
+		command.WithOnStderrLine(func(s string) {
+			if after, ok := strings.CutPrefix(s, "Error: "); ok {
+				reason = after
+			}
+		}),
 	)
 	logger.Debugf("-> exec %s", cmd)
 	startTime := time.Now()
@@ -192,7 +208,11 @@ func (o *T) action(e schedule.Entry) error {
 			ExecID:    execID,
 			SessionID: sessionID,
 		}, labels...)
-		logger.Errorf("%s: %s", cmd, err)
+		if reason != "" {
+			logger.Errorf("%s: %s: %s", cmd, err, reason)
+		} else {
+			logger.Errorf("%s: %s", cmd, err)
+		}
 		return err
 	}
 	duration := time.Now().Sub(startTime)

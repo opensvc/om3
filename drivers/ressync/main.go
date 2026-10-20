@@ -39,6 +39,10 @@ type (
 		Schedule string         `json:"schedule"`
 		Path     naming.Path    `json:"path"`
 
+		// LogRuns asks the scheduled runs logged, as a run asked by a
+		// user is.
+		LogRuns bool `json:"log"`
+
 		// ObjectEnv and NodeEnv are the env of the object and of this
 		// node, for the drivers whose manifest binds them.
 		ObjectEnv string `json:"object_env"`
@@ -67,7 +71,17 @@ var (
 		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
 
+	KWLog = keywords.Keyword{
+		Attr:      "LogRuns",
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "log",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/log"),
+	}
+
 	BaseKeywords = []*keywords.Keyword{
+		&KWLog,
 		&KWMaxDelay,
 		&KWSchedule,
 	}
@@ -285,13 +299,14 @@ func (t *T) sendStateFile(ctx context.Context, c *client.T, peer, filename strin
 	if err != nil {
 		return err
 	}
-	response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
-		req.Header.Add(api.HeaderRelativePath, filename[len(head):])
-		// A record says when by its modification time, which the
-		// peer keeps rather than the time it received it.
-		req.Header.Add(api.HeaderLastModified, info.ModTime().Format(time.RFC3339Nano))
-		return nil
-	})
+	// A record says when by its modification time, which the peer keeps
+	// rather than the time it received it.
+	lastModified := info.ModTime().Format(time.RFC3339Nano)
+	params := api.PostInstanceStateFileParams{
+		RelativePath: filename[len(head):],
+		LastModified: &lastModified,
+	}
+	response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params, "application/octet-stream", file)
 	if err != nil {
 		return err
 	}

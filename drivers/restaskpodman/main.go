@@ -100,6 +100,7 @@ func (t *T) container() *rescontainerpodman.T {
 			PullTimeout:               t.PullTimeout,
 			StartTimeout:              startTimeout,
 			LogOutputs:                t.LogOutputs,
+			QuietRunOutput:            true,
 		},
 		RootlessUser:  t.RootlessUser,
 		RootlessGroup: t.RootlessGroup,

@@ -360,9 +360,10 @@ paths:
           description: OK
           headers:
             OM-Last-Modified:
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
           content:
             application/octet-stream:
               schema:
@@ -399,9 +400,10 @@ paths:
                 The timestamp the written configuration now carries. Pass it as
                 the config_updated_at parameter of an action to make that action
                 refuse to run on the configuration this one replaces.
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -649,7 +651,8 @@ paths:
           headers:
             OM-Served-By:
               description: The cluster nodename that processed the request
-              type: string
+              schema:
+                type: string
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1118,6 +1121,7 @@ paths:
         - $ref: '#/components/parameters/NodeOptional'
       responses:
         200:
+          description: OK
           content:
             application/json:
               schema:
@@ -1653,9 +1657,10 @@ paths:
           description: OK
           headers:
             OM-Last-Modified:
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
           content:
             application/octet-stream:
               schema:
@@ -2030,8 +2035,9 @@ paths:
           description: OK
           headers:
             OM-Served-By:
-              type: string
               description: The node name of the daemon that served this response.
+              schema:
+                type: string
           content:
             text/event-stream:
               schema:
@@ -4000,9 +4006,10 @@ paths:
           description: OK
           headers:
             OM-Last-Modified:
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
           content:
             application/octet-stream:
               schema:
@@ -4158,15 +4165,19 @@ paths:
           description: OK
           headers:
             OM-Group:
-              type: string
+              schema:
+                type: string
             OM-Last-Modified:
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
             OM-Perm:
-              type: string
+              schema:
+                type: string
             OM-User:
-              type: string
+              schema:
+                type: string
           content:
             application/octet-stream:
               schema:
@@ -4295,14 +4306,27 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      headers:
-        OM-relative-path:
-          type: string
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - in: header
+          name: OM-relative-path
+          x-go-name: RelativePath
+          required: true
+          description: The path of the state file, relative to the var directory of the object.
+          schema:
+            type: string
+        - in: header
+          name: OM-Last-Modified
+          x-go-name: LastModified
+          description: |
+            The modification time of the state file on the sender, RFC3339 with
+            nanoseconds, which the written file keeps: a state file says when by
+            its modification time.
+          schema:
+            type: string
       requestBody:
         description: OK
         content:
@@ -5569,9 +5593,10 @@ paths:
           description: OK
           headers:
             OM-Last-Modified:
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
           content:
             application/octet-stream:
               schema:
@@ -5639,9 +5664,10 @@ paths:
                 The timestamp the written configuration now carries. Pass it as
                 the config_updated_at parameter of an action to make that action
                 refuse to run on the configuration this one replaces.
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -5690,9 +5716,10 @@ paths:
                 The timestamp the written configuration now carries. Pass it as
                 the config_updated_at parameter of an action to make that action
                 refuse to run on the configuration this one replaces.
-              type: string
-              format: date-time
-              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+              schema:
+                type: string
+                format: date-time
+                pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -5765,6 +5792,7 @@ paths:
         - $ref: '#/components/parameters/inQueryKeyNames'
       responses:
         200:
+          description: OK
           content:
             application/json:
               schema:
@@ -5841,6 +5869,7 @@ paths:
         - $ref: '#/components/parameters/inQueryKeyName'
       responses:
         200:
+          description: OK
           content:
             application/octet-stream:
               schema:
@@ -5978,6 +6007,7 @@ paths:
         - $ref: '#/components/parameters/inQueryKeyFilter'
       responses:
         200:
+          description: OK
           content:
             application/json:
               schema:
@@ -9290,10 +9320,15 @@ components:
           type: string
         title:
           type: string
-        value: !!set
-          type1: string
-          type2: number
-          type3: boolean
+        value:
+          description: |
+            The value of the property: a string, or a number for a count or a
+            size, as mem_bytes. A property with no value has an empty string.
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+          x-go-type: interface{}
 
     PropertyItem:
       type: object
@@ -10759,7 +10794,7 @@ components:
       description: Specify a hba to scan for new block devices.
       schema:
         type: string
-        example: 5001438002432430
+        example: "5001438002432430"
 
     inQueryTarget:
       in: query
@@ -10767,7 +10802,7 @@ components:
       description: Specify a target to scan for new block devices.
       schema:
         type: string
-        example: 5000097358185088
+        example: "5000097358185088"
 
     inQueryLUN:
       in: query

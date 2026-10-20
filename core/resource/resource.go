@@ -360,6 +360,9 @@ type (
 		// data of the object is replicated from only, the one
 		// instance.Status.ReplicationSource says is.
 		RequireReplicationSource bool
+
+		// Log asks the scheduled runs logged, as schedule.Config.Log.
+		Log bool
 	}
 )
 

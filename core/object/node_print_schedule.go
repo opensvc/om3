@@ -55,10 +55,14 @@ var sectionScheduleActions = map[driver.Group]string{
 }
 
 func (t *Node) Schedules() schedule.Table {
+	compliance := t.newScheduleEntry("compliance_auto", "compliance", "", "comp_check")
+	// What a compliance run checks or fixes is read in its logs, as v2 kept
+	// them.
+	compliance.Log = true
 	table := schedule.NewTable(
 		t.newScheduleEntry("pushasset", "asset", "", "asset_push"),
 		t.newScheduleEntry("checks", "checks", "", "checks_push"),
-		t.newScheduleEntry("compliance_auto", "compliance", "", "comp_check"),
+		compliance,
 		t.newScheduleEntry("pushdisks", "disks", "", "disks_push"),
 		t.newScheduleEntry("pushpkg", "packages", "", "packages_push"),
 		t.newScheduleEntry("pushstats", "stats", "", "stats_push"),

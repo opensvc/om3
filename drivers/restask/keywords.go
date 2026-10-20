@@ -40,7 +40,7 @@ var (
 		{
 			Attr:      "LogOutputs",
 			Converter: converters.Bool,
-			Default:   "true",
+			Default:   "false",
 			Option:    "log",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/log"),

@@ -135,6 +135,7 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		}
 	}
 
+	startedAt := time.Now()
 	startErr := container.Start(ctx)
 
 	// TODO: handle detach = true ?
@@ -155,6 +156,9 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		return err
 	}
 	exitCode := inspect.ExitCode()
+	if t.LogOutputs {
+		t.logRunOutput(ctx, container, startedAt)
+	}
 	if err := t.WriteLastRun(exitCode); err != nil {
 		t.Log().Errorf("write last run: %s", err)
 		return err
@@ -170,6 +174,31 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		}
 	}
 	return nil
+}
+
+// logRunOutput logs what the container wrote during the run started at
+// startedAt, read from its logs, as a host task logs its command output: the
+// stdout lines at info level, the stderr ones at warn level. The run output
+// is read from the logs rather than as it comes, so a run of a kept
+// container, started rather than run, is logged as the run creating it is.
+func (t *T) logRunOutput(ctx context.Context, container ContainerTasker, startedAt time.Time) {
+	i, ok := container.(interface {
+		LogsSince(context.Context, time.Time, func(string), func(string)) error
+	})
+	if !ok {
+		return
+	}
+	err := i.LogsSince(ctx, startedAt,
+		func(s string) {
+			t.Log().Attr("out", s).Infof("stdout: %s", s)
+		},
+		func(s string) {
+			t.Log().Attr("err", s).Warnf("stderr: %s", s)
+		},
+	)
+	if err != nil {
+		t.Log().Warnf("read the run output from the container logs: %s", err)
+	}
 }
 
 func (t *T) Kill(ctx context.Context) error {
