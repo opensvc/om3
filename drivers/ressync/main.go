@@ -39,6 +39,10 @@ type (
 		Schedule string         `json:"schedule"`
 		Path     naming.Path    `json:"path"`
 
+		// LogRuns asks the scheduled runs logged, as a run asked by a
+		// user is.
+		LogRuns bool `json:"log"`
+
 		// ObjectEnv and NodeEnv are the env of the object and of this
 		// node, for the drivers whose manifest binds them.
 		ObjectEnv string `json:"object_env"`
@@ -67,7 +71,17 @@ var (
 		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
 
+	KWLog = keywords.Keyword{
+		Attr:      "LogRuns",
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "log",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/log"),
+	}
+
 	BaseKeywords = []*keywords.Keyword{
+		&KWLog,
 		&KWMaxDelay,
 		&KWSchedule,
 	}

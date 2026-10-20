@@ -49,6 +49,9 @@ func (t *actor) Schedules() schedule.Table {
 	)
 	if t.path.Kind == naming.KindSvc {
 		e := t.newScheduleEntry("compliance_auto", kwoption.ScheduleCompliance, "", "comp_check", true, true)
+		// What a compliance run checks or fixes is read in its logs,
+		// as v2 kept them.
+		e.Log = true
 		table = table.Add(e)
 	}
 	needResMon := false
@@ -78,6 +81,7 @@ func (t *actor) Schedules() schedule.Table {
 		e.RequireReplicationSource = opts.RequireReplicationSource
 		e.On = opts.On
 		e.Pace = opts.Pace
+		e.Log = opts.Log
 		table = table.Add(e)
 	}
 	if needResMon {

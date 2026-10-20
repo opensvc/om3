@@ -136,8 +136,10 @@ func (o *T) action(e schedule.Entry) error {
 
 	// Unless the daemon runs with --debug or --trace, we don't want to
 	// log the execution in journald nor syslogd to avoid uncontrolled
-	// growth or rotation of the logging backend files.
-	if lvl := zerolog.GlobalLevel(); lvl > zerolog.DebugLevel {
+	// growth or rotation of the logging backend files. A job asking its
+	// runs logged, as a task run or a compliance run, is logged: its
+	// output is what its user reads.
+	if lvl := zerolog.GlobalLevel(); lvl > zerolog.DebugLevel && !e.Log {
 		// OSVC_NO_LOG_FILE=1
 		cmdEnv = append(cmdEnv, env.NoLogFileSetenvArg())
 	}

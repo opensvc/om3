@@ -42,6 +42,13 @@ type (
 		// most once each 30s, "@30s backoff @1m" stretches the interval
 		// up to 1m while the events keep coming.
 		Pace string `json:"pace,omitempty"`
+
+		// Log asks a scheduled run logged as a run asked by a user is,
+		// in the journal and the object logs: a task run whose log
+		// keyword says so, a compliance run. The other jobs run often
+		// and say nothing anyone reads, so their runs are not logged
+		// unless the daemon runs with --debug or --trace.
+		Log bool `json:"log,omitempty"`
 	}
 
 	Entry struct {
@@ -66,7 +73,8 @@ func (c Config) Equal(other Config) bool {
 		c.RequireReplicationSource == other.RequireReplicationSource &&
 		c.StatefileKey == other.StatefileKey &&
 		slices.Equal(c.On, other.On) &&
-		c.Pace == other.Pace
+		c.Pace == other.Pace &&
+		c.Log == other.Log
 }
 
 func NewTable(entries ...Entry) Table {

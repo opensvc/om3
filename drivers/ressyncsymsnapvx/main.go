@@ -294,6 +294,7 @@ func (t *T) ScheduleOptions() resource.ScheduleOptions {
 		Action: "update",
 		Option: "schedule",
 		Base:   "",
+		Log:    t.LogRuns,
 	}
 }
 
