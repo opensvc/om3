@@ -31,8 +31,12 @@ func (t *CmdObjectSyncSnapshots) extract(selector string, c *client.T) (api.Sync
 	if t.Local {
 		return t.extractLocal(selector)
 	}
+	// Read locally only when the daemon is down: a request the daemon
+	// refused stays refused.
 	if data, err := t.extractFromDaemons(selector, c); err == nil {
 		return data, nil
+	} else if !client.IsDaemonDown(err) {
+		return api.SyncSnapshotList{}, err
 	}
 	return t.extractLocal(selector)
 }
