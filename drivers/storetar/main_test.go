@@ -61,7 +61,13 @@ func TestBackupRestore(t *testing.T) {
 
 	runs, err := s.Runs(ctx, backup.RunFilter{})
 	require.NoError(t, err)
+	assert.Empty(t, runs, "a run not completed is not listed")
+	require.NoError(t, s.Complete(ctx, run))
+
+	runs, err = s.Runs(ctx, backup.RunFilter{})
+	require.NoError(t, err)
 	require.Len(t, runs, 1)
+	assert.False(t, runs[0].CompletedAt.IsZero())
 	assert.Equal(t, "run1", runs[0].ID)
 	assert.Equal(t, "ns1/svc/svc1", runs[0].Path)
 	assert.Equal(t, "n1", runs[0].Node)
@@ -161,11 +167,14 @@ func TestRunsFilterAndDelete(t *testing.T) {
 	writeFile(t, filepath.Join(src, "a"), "a", 0600)
 	t0 := time.Date(2026, 10, 20, 2, 0, 0, 0, time.UTC)
 	for i, id := range []string{"7c0e41d2-1", "7c0e9999-2", "b93f0a17-3"} {
-		require.NoError(t, s.Backup(ctx, newRun(id, t0.Add(time.Duration(i)*time.Hour)), "fs#1", src, nil))
+		run := newRun(id, t0.Add(time.Duration(i)*time.Hour))
+		require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+		require.NoError(t, s.Complete(ctx, run))
 	}
 	other := newRun("aaaa-4", t0)
 	other.Path = "ns2/svc/web"
 	require.NoError(t, s.Backup(ctx, other, "fs#1", src, nil))
+	require.NoError(t, s.Complete(ctx, other))
 
 	runs, err := s.Runs(ctx, backup.RunFilter{Path: "ns1/svc/svc1"})
 	require.NoError(t, err)
@@ -206,6 +215,9 @@ func TestInterruptedMemberIsNotListed(t *testing.T) {
 	assert.Error(t, s.Backup(ctx, run, "fs#2", src, nil))
 	runs, err := s.Runs(context.Background(), backup.RunFilter{})
 	require.NoError(t, err)
+	assert.Empty(t, runs, "an interrupted run is not listed")
+	runs, err = s.Runs(context.Background(), backup.RunFilter{Incomplete: true})
+	require.NoError(t, err)
 	require.Len(t, runs, 1)
 	assert.Equal(t, []string{"fs#1"}, runs[0].MemberNames())
 	dir, err := s.runDir(run)
@@ -220,6 +232,7 @@ func TestCheckFindsCorruption(t *testing.T) {
 	writeFile(t, filepath.Join(src, "a"), strings.Repeat("a", 4096), 0600)
 	run := newRun("run1", time.Now())
 	require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+	require.NoError(t, s.Complete(ctx, run))
 	dir, err := s.runDir(run)
 	require.NoError(t, err)
 	p := filepath.Join(dir, "fs#1.tar.gz")

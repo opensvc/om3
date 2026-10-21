@@ -108,7 +108,7 @@ func TestRetentionDropWeeks(t *testing.T) {
 }
 
 func TestFilterAndRun(t *testing.T) {
-	run := Run{ID: "7c0e41d2-aaaa", Path: "ns1/svc/svc1", Members: []Member{{Name: "fs#1", Kind: MemberDir}, {Name: MemberConfig, Kind: MemberStream}}}
+	run := Run{ID: "7c0e41d2-aaaa", Path: "ns1/svc/svc1", CompletedAt: time.Now(), Members: []Member{{Name: "fs#1", Kind: MemberDir}, {Name: MemberConfig, Kind: MemberStream}}}
 	assert.True(t, RunFilter{}.Match(run))
 	assert.True(t, RunFilter{Path: "ns1/svc/svc1", ID: "7c0e"}.Match(run))
 	assert.False(t, RunFilter{ID: "7c0f"}.Match(run))

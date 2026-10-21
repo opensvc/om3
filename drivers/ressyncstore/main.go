@@ -349,8 +349,17 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 	}
 	if errs != nil {
 		// A run missing a member does not meet the recovery point
-		// objective: the last sync stays the last run written whole.
+		// objective: the last sync stays the last run written whole,
+		// and the run is not one to restore.
+		if pruner, ok := s.(backup.Pruner); ok {
+			if err := pruner.Delete(ctx, []backup.Run{run}); err != nil {
+				t.Log().Warnf("delete the failed run %s from store %s: %s", run.ShortID(), s.Ref(), err)
+			}
+		}
 		return run, errs
+	}
+	if err := s.Complete(ctx, run); err != nil {
+		return run, err
 	}
 	if err := t.WriteLastSync(lastSyncName); err != nil {
 		return run, err
@@ -481,25 +490,45 @@ func (t *T) saveConfig(ctx context.Context, s backup.Store, run backup.Run) erro
 }
 
 // prune deletes the runs of the object the retention drops, never the run
-// just written.
+// just written, and the runs this node left incomplete before it, which an
+// interruption kept from being completed or deleted. A run another node left
+// incomplete may still be writing.
 func (t *T) prune(ctx context.Context, s backup.Store, current backup.Run, retention backup.Retention) error {
-	if retention.IsZero() {
+	pruner, ok := s.(backup.Pruner)
+	if !ok {
 		return nil
 	}
-	runs, err := s.Runs(ctx, backup.RunFilter{Path: current.Path})
+	runs, err := s.Runs(ctx, backup.RunFilter{Path: current.Path, Incomplete: true})
 	if err != nil {
 		return err
 	}
+	interrupted := slices.DeleteFunc(slices.Clone(runs), func(run backup.Run) bool {
+		return !run.CompletedAt.IsZero() || run.Node != current.Node || !run.CreatedAt.Before(current.CreatedAt)
+	})
+	if len(interrupted) > 0 {
+		t.Log().Infof("delete the runs left incomplete from store %s: %s", s.Ref(), shortIDs(interrupted))
+		if err := pruner.Delete(ctx, interrupted); err != nil {
+			return err
+		}
+	}
+	if retention.IsZero() {
+		return nil
+	}
+	runs = slices.DeleteFunc(runs, func(run backup.Run) bool { return run.CompletedAt.IsZero() })
 	drop := slices.DeleteFunc(retention.Drop(runs), func(run backup.Run) bool { return run.ID == current.ID })
 	if len(drop) == 0 {
 		return nil
 	}
-	ids := make([]string, len(drop))
-	for i, run := range drop {
+	t.Log().Infof("delete the runs keep %s drops from store %s: %s", retention, s.Ref(), shortIDs(drop))
+	return pruner.Delete(ctx, drop)
+}
+
+func shortIDs(runs []backup.Run) string {
+	ids := make([]string, len(runs))
+	for i, run := range runs {
 		ids[i] = run.ShortID()
 	}
-	t.Log().Infof("delete the runs keep %s drops from store %s: %s", retention, s.Ref(), strings.Join(ids, " "))
-	return s.(backup.Pruner).Delete(ctx, drop)
+	return strings.Join(ids, " ")
 }
 
 // Status judges the freshness of the last run written whole from this node,

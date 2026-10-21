@@ -202,6 +202,26 @@ func (t *T) addMember(dir string, run backup.Run, m backup.Member) error {
 	} else {
 		mf.Members = append(mf.Members, m)
 	}
+	return writeManifest(dir, mf)
+}
+
+// Complete marks the run completed in its manifest.
+func (t *T) Complete(ctx context.Context, run backup.Run) error {
+	dir, err := t.runDir(run)
+	if err != nil {
+		return err
+	}
+	mf, err := readManifest(dir)
+	if err != nil {
+		return err
+	}
+	mf.CompletedAt = time.Now()
+	return writeManifest(dir, mf)
+}
+
+// writeManifest writes the manifest of the run in dir, in place once
+// complete.
+func writeManifest(dir string, mf manifest) error {
 	b, err := json.MarshalIndent(mf, "", "  ")
 	if err != nil {
 		return err

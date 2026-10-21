@@ -51,6 +51,11 @@ type (
 		// periods are evaluated on.
 		CreatedAt time.Time `json:"created_at"`
 
+		// CompletedAt is when the run saved its last member, every
+		// member saved. A run failed or interrupted has none, and no
+		// listing or restore selects it.
+		CompletedAt time.Time `json:"completed_at,omitzero"`
+
 		// Members are the members the run saved.
 		Members []Member `json:"members"`
 	}
@@ -72,6 +77,10 @@ type (
 
 		// ID selects the run whose id is, or starts with, ID.
 		ID string
+
+		// Incomplete selects the runs not completed too, as a failed
+		// or interrupted run left them.
+		Incomplete bool
 	}
 
 	// Store is what every store driver does.
@@ -86,6 +95,9 @@ type (
 
 		// Runs returns the runs filter selects, oldest first.
 		Runs(ctx context.Context, filter RunFilter) ([]Run, error)
+
+		// Complete marks the run completed, every member saved.
+		Complete(ctx context.Context, run Run) error
 
 		// Restore writes the member of run into the directory dst.
 		Restore(ctx context.Context, run Run, member string, dst string) error
@@ -229,6 +241,9 @@ func (f RunFilter) Match(run Run) bool {
 		return false
 	}
 	if f.ID != "" && !strings.HasPrefix(run.ID, f.ID) {
+		return false
+	}
+	if !f.Incomplete && run.CompletedAt.IsZero() {
 		return false
 	}
 	return true
