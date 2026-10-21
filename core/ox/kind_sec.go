@@ -55,6 +55,7 @@ func init() {
 	)
 	cmdObjectCertificate.AddCommand(
 		newCmdObjectCertificateCreate(kind),
+		newCmdObjectCertificateRenew(kind),
 		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(

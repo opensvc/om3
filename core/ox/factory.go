@@ -1470,6 +1470,40 @@ func newCmdObjectCertificateCreate(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectCertificateRenew(kind string) *cobra.Command {
+	var options commands.CmdObjectCertificateRenew
+	cmd := &cobra.Command{
+		Use:   "renew",
+		Short: "renew the certificate, when due",
+		Long: `Renew the certificate of the sec, when it is due: there is none, it names
+other domains than the sec asks, it expires within acme.renew_before, or,
+where an ACME directory is asked, it is self-signed or issued by another
+directory. A renewal not due does nothing.
+
+A sec naming an acme.directory obtains its certificate there, the domains
+proved with the http-01 challenge: its token is written under
+.well-known/acme-challenge/ in the acme.webroot of the sec, or answered by the
+listener on listener.acme_port for a sec of listener.tls_secs.
+
+A sec naming no directory has its certificate generated as certificate create
+does, self-signed or signed by its ca.
+
+The renewal runs on a node holding the sec, as the daemon of that node.`,
+		Example: `  # renew the certificate of a sec, when due
+  ox ns1/sec/web certificate renew
+
+  # obtain a new certificate now
+  ox ns1/sec/web certificate renew --force`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.BoolVar(&options.Force, "force", false, "obtain a certificate even when the current one is not due")
+	return cmd
+}
+
 func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 	var options commands.CmdObjectCertificatePKCS
 	cmd := &cobra.Command{

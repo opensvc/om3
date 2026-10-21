@@ -5545,6 +5545,79 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/object/path/{namespace}/{kind}/{name}/certificate/create:
+    post:
+      description: |
+        Create the certificate of a sec and store it as its private_key,
+        certificate, certificate_chain and fullpem keys: self-signed, or
+        signed by the ca of the sec. An existing private key is kept.
+      operationId: PostObjectCertificateCreate
+      tags:
+        - object / sec
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/certificate/renew:
+    post:
+      description: |
+        Renew the certificate of a sec, when it is due, as the
+        certificate renew command does: from the ACME directory the sec
+        names, or generated as a certificate create does. The http-01
+        challenge token is written in the acme.webroot of the sec, or
+        answered by the listener for a sec of listener.tls_secs.
+      operationId: PostObjectCertificateRenew
+      tags:
+        - object / sec
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - in: query
+          name: force
+          description: Obtain a certificate even when the current one is not due.
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificateRenewal'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/object/path/{namespace}/{kind}/{name}/config:
     get:
       operationId: GetObjectConfig
@@ -6478,6 +6551,31 @@ components:
       properties:
         name:
           type: string
+
+    CertificateRenewal:
+      type: object
+      required:
+        - renewed
+        - reason
+        - domains
+      properties:
+        renewed:
+          type: boolean
+          description: A certificate was issued.
+        reason:
+          type: string
+          description: Why a certificate was issued, or why none was.
+        domains:
+          type: array
+          items:
+            type: string
+        directory:
+          type: string
+          description: The ACME directory the certificate is issued by, empty for a certificate generated.
+        not_after:
+          type: string
+          format: date-time
+          description: The end of validity of the certificate.
 
     ConsoleTicket:
       type: object

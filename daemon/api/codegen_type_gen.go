@@ -1150,6 +1150,22 @@ type CapabilityList struct {
 // CapabilityListKind defines model for CapabilityList.Kind.
 type CapabilityListKind string
 
+// CertificateRenewal defines model for CertificateRenewal.
+type CertificateRenewal struct {
+	// Directory The ACME directory the certificate is issued by, empty for a certificate generated.
+	Directory *string  `json:"directory,omitempty"`
+	Domains   []string `json:"domains"`
+
+	// NotAfter The end of validity of the certificate.
+	NotAfter *time.Time `json:"not_after,omitempty"`
+
+	// Reason Why a certificate was issued, or why none was.
+	Reason string `json:"reason"`
+
+	// Renewed A certificate was issued.
+	Renewed bool `json:"renewed"`
+}
+
 // ClusterEnrollAccepted defines model for ClusterEnrollAccepted.
 type ClusterEnrollAccepted struct {
 	// Node The nodename of the enrolled node, as read from its own
@@ -4490,6 +4506,12 @@ type PostObjectActionStopParams struct {
 	// InterruptSyncs End the syncs running on the instance before stopping it, instead of
 	// waiting for them to end.
 	InterruptSyncs *InQueryInterruptSyncs `form:"interrupt_syncs,omitempty" json:"interrupt_syncs,omitempty"`
+}
+
+// PostObjectCertificateRenewParams defines parameters for PostObjectCertificateRenew.
+type PostObjectCertificateRenewParams struct {
+	// Force Obtain a certificate even when the current one is not due.
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.
