@@ -305,7 +305,7 @@ type (
 		// it exposes and the ones it is made on, as a filesystem on the
 		// device another resource exposes. A configuration holding one
 		// of them on this node is refused.
-		Holds []Hold `json:"holds,omitempty"`
+		Holds Holds `json:"holds,omitempty"`
 
 		// Files exposes the list of files the driver wants the daemon to replicate
 		// from the primary instance to secondary instances.
@@ -1824,7 +1824,7 @@ func (t Files) Lookup(name string) (File, bool) {
 // getRuntimeHolds returns the block devices the resource exposes and the ones
 // it is made on, while it is up, by the paths they are named by and the
 // devices these resolve to: a configuration names a device by any of them.
-func getRuntimeHolds(ctx context.Context, r Driver, st status.T) []Hold {
+func getRuntimeHolds(ctx context.Context, r Driver, st status.T) Holds {
 	if !st.Is(status.Up, status.StandbyUp) {
 		return nil
 	}

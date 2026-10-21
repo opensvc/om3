@@ -48,8 +48,14 @@ var publishedHolds = func(p naming.Path) []publishedHold {
 		if e.Path == p || e.Value == nil || e.Value.ActorConfig == nil {
 			continue
 		}
-		for _, h := range e.Value.Holds {
-			l = append(l, publishedHold{Path: e.Path, ObjectHold: h})
+		for rid, rcfg := range e.Value.Resources {
+			for _, h := range rcfg.Holds {
+				oh := resource.ObjectHold{RID: rid, Hold: h, Cluster: rcfg.IsShared}
+				if !oh.Cluster {
+					oh.Nodes = []string{e.Node}
+				}
+				l = append(l, publishedHold{Path: e.Path, ObjectHold: oh})
+			}
 		}
 	}
 	for _, e := range instance.StatusData.GetAll() {
