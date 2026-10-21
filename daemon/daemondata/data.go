@@ -100,7 +100,11 @@ type (
 		// set to false after a hb message is created
 		needMsg bool
 
-		hasEventHeartbeatStaleOrAlive bool
+		// hbStatusChanged says the heartbeat status changed on an event: a
+		// heartbeat went stale or alive, or the cluster configuration
+		// changed, which the heartbeats start or stop streams on. The status
+		// is then republished soon, rather than at the backed off interval.
+		hbStatusChanged bool
 
 		labelLocalhost pubsub.Label
 	}
@@ -338,7 +342,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
 					d.log.Debugf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 				}
-				d.hasEventHeartbeatStaleOrAlive = false
+				d.hbStatusChanged = false
 			default:
 			}
 			select {
@@ -362,13 +366,13 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 						hbMsgType = d.hbMessageType
 						needHbRefresh = true
 					}
-					if needHbRefresh || d.hasEventHeartbeatStaleOrAlive {
+					if needHbRefresh || d.hbStatusChanged {
 						if subHbRefreshAdaptiveInterval > 4*propagationInterval {
 							subHbRefreshAdaptiveInterval = 4 * propagationInterval
 							d.log.Debugf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 							subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
 						}
-						d.hasEventHeartbeatStaleOrAlive = false
+						d.hbStatusChanged = false
 					}
 				}
 			}
@@ -601,8 +605,11 @@ func (d *data) onSubEvent(i interface{}) {
 			d.log.Infof("removed cluster node => drop peer node %s data", s)
 			d.dropPeer(s)
 		}
+		// A hb section added or removed starts or stops its streams,
+		// which the heartbeat status lists.
+		d.hbStatusChanged = true
 	case *msgbus.HeartbeatStale, *msgbus.HeartbeatAlive:
-		d.hasEventHeartbeatStaleOrAlive = true
+		d.hbStatusChanged = true
 	case *msgbus.ClusterDataSnapshotRequest:
 		select {
 		case c.ReplyC <- d.clusterData.DeepCopy():

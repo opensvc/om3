@@ -469,7 +469,11 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectProvisioned:
-		resp, err := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		params := api.PostObjectActionProvisionParams{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsProvisioned); ok && options.Adopt {
+			params.Adopt = &options.Adopt
+		}
+		resp, err := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return nil, err
 		}

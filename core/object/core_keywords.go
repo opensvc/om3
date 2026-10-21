@@ -947,6 +947,13 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/provision"),
 	},
 	{
+		Example: "store1 ns1/svc/svc1 7c0e41d2-9a1b-4c3d-8e5f-0a1b2c3d4e5f",
+		Kind:    naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Option:  "restore_from",
+		Section: "DEFAULT",
+		Text:    keywords.NewText(fs, "text/kw/core/restore_from"),
+	},
+	{
 		Attr:      "Unprovision",
 		Converter: converters.Bool,
 		Default:   "true",

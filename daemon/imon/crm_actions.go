@@ -160,7 +160,15 @@ func (t *Manager) crmProvisionNonLeader() error {
 }
 
 func (t *Manager) crmProvisionLeader() error {
-	return t.crmAction("provision leader", t.path.String(), "instance", "provision", "--leader")
+	args := []string{t.path.String(), "instance", "provision", "--leader"}
+	if t.provisionedOptions().Adopt {
+		args = append(args, "--adopt")
+	}
+	return t.crmAction("provision leader", args...)
+}
+
+func (t *Manager) crmProvisionPreflight() error {
+	return t.crmAction("provision preflight", t.path.String(), "instance", "provision", "--preflight")
 }
 
 func (t *Manager) crmStartStandby() error {

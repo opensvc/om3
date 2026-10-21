@@ -2,11 +2,13 @@ package instance
 
 import (
 	"maps"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/util/deepcopy"
@@ -107,6 +109,17 @@ type (
 		IsStandby    bool           `json:"is_standby"`
 		Restart      int            `json:"restart,omitempty"`
 		RestartDelay *time.Duration `json:"restart_delay,omitempty"`
+
+		// IsShared is true when the resource is shared: what it holds is
+		// reachable from every cluster node, and held on every one.
+		IsShared bool `json:"is_shared,omitempty"`
+
+		// Holds are the values the resource holds on the node publishing
+		// the configuration, or on every cluster node when shared: mount
+		// points, block devices, volume group names, addresses. A
+		// configuration written is refused when it holds one of them on
+		// the same node.
+		Holds resource.Holds `json:"holds,omitempty"`
 	}
 	SubsetConfig struct {
 		Parallel bool `json:"parallel,omitempty"`
@@ -123,6 +136,7 @@ func (m ResourceConfigs) DeepCopy() ResourceConfigs {
 			restartDelay := *cfg.RestartDelay
 			newCfg.RestartDelay = &restartDelay
 		}
+		newCfg.Holds = slices.Clone(cfg.Holds)
 		newM[rid] = newCfg
 	}
 	return newM

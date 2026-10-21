@@ -52,6 +52,12 @@ func (a *DaemonAPI) postLocalInstanceActionProvision(ctx echo.Context, namespace
 	if params.StateOnly != nil && *params.StateOnly {
 		args = append(args, "--state-only")
 	}
+	if params.Adopt != nil && *params.Adopt {
+		args = append(args, "--adopt")
+	}
+	if params.Preflight != nil && *params.Preflight {
+		args = append(args, "--preflight")
+	}
 	if params.Subset != nil && *params.Subset != "" {
 		args = append(args, "--subset", *params.Subset)
 	}

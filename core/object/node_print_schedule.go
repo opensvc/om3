@@ -50,7 +50,7 @@ func (t *Node) newScheduleEntry(action, section, rid, base string) schedule.Entr
 // table, which a name built from configuration can never be in.
 var sectionScheduleActions = map[driver.Group]string{
 	driver.GroupArray:  "pusharray",
-	driver.GroupBackup: "pushbackup",
+	driver.GroupStore:  "pushbackup",
 	driver.GroupSwitch: "pushswitch",
 }
 

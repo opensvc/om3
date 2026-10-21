@@ -27,6 +27,11 @@ type (
 		volatile bool
 		log      *plog.Logger
 
+		// staticReferences has the references evaluating only at run
+		// time refused rather than evaluated: what another resource
+		// exposes, the head of a volume, a pool's space, a dns lookup.
+		staticReferences bool
+
 		// caches
 		id         uuid.UUID
 		configFile string

@@ -89,6 +89,8 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 		} else if errors.Is(err, ErrInvalidConfig) {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Update config", "%s", err)
+		} else if errors.Is(err, ErrHoldConflict) {
+			return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)
 		} else if errors.Is(err, ErrConfigChanged) {
 			return JSONProblemf(ctx, http.StatusConflict, "Update config", "%s", err)
 		} else if err != nil {

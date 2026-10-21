@@ -2,6 +2,7 @@ package oxcmd
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
@@ -9,6 +10,7 @@ type (
 	CmdObjectProvision struct {
 		OptsGlobal
 		commoncmd.OptsAsync
+		Adopt bool
 	}
 )
 
@@ -21,6 +23,7 @@ func (t *CmdObjectProvision) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("provisioned"),
+		objectaction.WithAsyncTargetOptions(instance.MonitorGlobalExpectOptionsProvisioned{Adopt: t.Adopt}),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),

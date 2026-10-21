@@ -166,7 +166,7 @@ func FlagCreateConfig(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagCreateForce(flags *pflag.FlagSet, p *bool) {
-	flags.BoolVar(p, "force", false, "allow overwriting existing configuration files (dangerous)")
+	flags.BoolVar(p, "force", false, "allow overwriting an existing object, and holding a value another object's resources hold, as a mount point or a device (dangerous, requires the root grant for the latter)")
 }
 
 func FlagCreateNamespace(flags *pflag.FlagSet, p *string) {
@@ -268,7 +268,18 @@ func FlagForce(flags *pflag.FlagSet, p *bool) {
 // FlagConfigForce is the force of a configuration write a resource up on a
 // node would leak by.
 func FlagConfigForce(flags *pflag.FlagSet, p *bool) {
-	flags.BoolVar(p, "force", false, "write a change a resource up would leak by: of a keyword saying what it holds on a node, as a mount point or an address, or the removal of its section (requires the root grant)")
+	flags.BoolVar(p, "force", false, "write a change a resource up would leak by, as a new mount point or the removal of its section, or a value another object's resources hold (requires the root grant)")
+}
+
+// FlagAdopt is the adoption by a provision of the system resources it finds
+// holding what it would take.
+func FlagAdopt(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "adopt", false, "take over the system resources found holding what the provision would take, as replicated storage a restored object finds, rather than refusing them")
+}
+
+// FlagPreflight is the check alone of what a provision would take.
+func FlagPreflight(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "preflight", false, "check only that nothing on the node holds what the provision would take, provisioning nothing")
 }
 
 func FlagIgnoreNotFound(flags *pflag.FlagSet, p *bool) {
@@ -678,6 +689,21 @@ func FlagTo(flags *pflag.FlagSet, p *string) {
 
 func FlagTag(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "tag", "", "a tag selector expression (ex: t1,t2)")
+}
+
+// FlagsCreateFromStore adds the options of a create from a snapshot.
+func FlagsCreateFromStore(flags *pflag.FlagSet, store, snapshot *string) {
+	flags.StringVar(store, "store", "", "the store holding the snapshot to create the object from")
+	flags.StringVar(snapshot, "snapshot", "", "the snapshot to create the object from, by id or a prefix of it, or the path of an object for its latest snapshot: its configuration, and its heads restored at provision")
+}
+
+// FlagsRestore adds the options of a sync restore.
+func FlagsRestore(flags *pflag.FlagSet, p *OptsRestore) {
+	flags.StringVar(&p.Snapshot, "snapshot", "", "the snapshot to restore, by id or a prefix of it, the latest when not set")
+	flags.StringVar(&p.Into, "into", "", "restore aside, into a directory per head of this directory, instead of into the heads")
+	flags.BoolVar(&p.Config, "config", false, "also restore the configuration of the object")
+	flags.StringSliceVar(&p.Heads, "head", []string{}, "the heads to restore, by resource id, every head of the snapshot when not set")
+	flags.StringVar(&p.Refs, "refs", "missing", "how to restore the keys of the sec and cfg the object references, in place: missing creates the absent ones and leaves the others, skip restores none, overwrite rewrites them all")
 }
 
 func FlagTarget(flags *pflag.FlagSet, p *[]string) {

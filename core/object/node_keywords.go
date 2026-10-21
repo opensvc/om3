@@ -180,10 +180,31 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/array.xtremio.name"),
 		Types:   []string{"xtremio"},
 	}
-	kwNodeBackupSchedule = keywords.Keyword{
+	kwNodeStoreSchedule = keywords.Keyword{
 		Option:  "schedule",
-		Section: "backup",
-		Text:    keywords.NewText(fs, "text/kw/node/backup.schedule"),
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.schedule"),
+	}
+	kwNodeStoreType = keywords.Keyword{
+		Candidates: []string{"tar"},
+		Option:     "type",
+		Required:   true,
+		Section:    "store",
+		Text:       keywords.NewText(fs, "text/kw/node/store.type"),
+	}
+	kwNodeStoreURL = keywords.Keyword{
+		Example:  "/srv/backups",
+		Option:   "url",
+		Required: true,
+		Section:  "store",
+		Text:     keywords.NewText(fs, "text/kw/node/store.tar.url"),
+		Types:    []string{"tar"},
+	}
+	kwNodeStoreKeep = keywords.Keyword{
+		Example: "24h 7d 4w 6m",
+		Option:  "keep",
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.keep"),
 	}
 	kwNodeSwitchSchedule = keywords.Keyword{
 		Option:  "schedule",
@@ -214,7 +235,6 @@ var (
 		&kwNodeTZ,
 		&kwNodeManufacturer,
 		&kwNodeModel,
-		&kwNodeBackupSchedule,
 		&kwNodeSwitchSchedule,
 	}
 
@@ -1995,6 +2015,10 @@ var (
 		&kwNodeSysreportSchedule,
 		&kwNodeComplianceSchedule,
 		&kwNodeArraySchedule,
+		&kwNodeStoreSchedule,
+		&kwNodeStoreType,
+		&kwNodeStoreURL,
+		&kwNodeStoreKeep,
 		&kwNodeArrayXtremioName,
 		&kwNodeComplianceAutoUpdate,
 		&kwNodeChecksSchedule,

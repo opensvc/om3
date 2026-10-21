@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -43,7 +44,9 @@ func (a *DaemonAPI) PostSvcDisable(ctx echo.Context, namespace string, name stri
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewSvc", "%s", err)
 		}
-		if err := oc.Disable(c); err != nil {
+		if err := oc.Disable(c); errors.Is(err, object.ErrStopToChange) {
+			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+		} else if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Disable", "%s", err)
 		}
 		return ctx.NoContent(http.StatusNoContent)

@@ -1,0 +1,12 @@
+The snapshot the heads of the object are restored from when they are
+provisioned: `<store> <object path> <snapshot id>`, the store by its name,
+the object the snapshot is of, and the id of the snapshot.
+
+A provision restores the member of the snapshot named after a resource into
+the head of that resource when it moved the resource from unprovisioned to
+provisioned, after the heads are up and before the resources using their
+data start. A head provisioned already is left as it is, so a provision run
+again, or on a node added later, restores into the new heads only.
+
+`deploy --store <store> --snapshot <id>` sets it, the configuration of the
+object being the one of the snapshot.

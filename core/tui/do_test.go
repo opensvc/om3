@@ -16,7 +16,7 @@ func TestDoFlagsAreTheAPIBooleans(t *testing.T) {
 		got  []string
 		want []string
 	}{
-		{"instance provision", doInstance["provision"].flags(), []string{"--disable-rollback", "--force", "--leader", "--master", "--slaves", "--state-only"}},
+		{"instance provision", doInstance["provision"].flags(), []string{"--adopt", "--disable-rollback", "--force", "--leader", "--master", "--preflight", "--slaves", "--state-only"}},
 		{"instance stop", doInstance["stop"].flags(), []string{"--force", "--interrupt-syncs", "--master", "--slaves"}},
 		{"instance takeover", doInstance["takeover"].flags(), []string{"--interrupt-syncs", "--live"}},
 		{"resource run", doResource["run"].flags(), []string{"--force", "--master", "--slaves"}},

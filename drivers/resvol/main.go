@@ -62,6 +62,7 @@ type (
 		startBlocker *resource.StartBlocker
 		Name         string `json:"name"`
 		Access       string `json:"access"`
+		Exclusive    bool   `json:"exclusive"`
 		Pool         string `json:"pool"`
 		PoolType     string `json:"type"`
 		Size         *int64 `json:"size"`
@@ -651,6 +652,12 @@ func (t *T) ResizeTarget(ctx context.Context) (naming.Path, error) {
 		return naming.Path{}, err
 	}
 	return volume.Path(), nil
+}
+
+// IsVolatile tells whether the volume is volatile: its data is discarded at
+// stop, so nothing in it is meant to outlive the instance, nor be backed up.
+func (t *T) IsVolatile() bool {
+	return t.Volatile
 }
 
 func (t *T) Head() string {

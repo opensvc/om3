@@ -327,6 +327,47 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
       
     These driver group names were already deprecated in v2.1.
 
+* **A configuration holding what another object holds is refused**
+
+    A configuration written, by a create, a deploy, a clone, an edit or an
+    update, is refused when one of its resources would hold what a resource
+    of another object holds on the same node: a mount point, a block device,
+    a volume group or logical volume, a zpool, an md array, a container name,
+    an ip address, a directory, a volume. A resource `shared = true` holds
+    its values on every node of the cluster, a resource `shared = false` on
+    the nodes they evaluate to them on. The resources up also say the devices
+    they were found holding.
+    v2 accepted it, and the provision of the clone took what the source held.
+
+    Root writes it all the same with `--force`. The api answers 409, titled
+    "Held by another object".
+
+    A disabled object holds nothing: stopping and disabling an object frees
+    its holds for an object restored under another name, or in place of a
+    receiver of its replicated data. Enabling it is refused while another
+    holds them.
+
+    A volume is used by one object, unless every object using it says
+    `exclusive = false` on its volume resource. v2 let any object use a
+    volume another used: the objects sharing a volume since v2 keep it, and
+    a new one is refused until they all say so.
+
+* **A provision checks every node first**
+
+    Before any node provisions an object, every node checks that nothing on
+    it holds what the provision would take: a filesystem mounted on a mount
+    point, a device in use or holding a signature, a volume group, a zpool or
+    an md array of the name, a container of the name, a kvm domain or an lxc
+    container of the name when the provision would create one, an address
+    that answers. A conflict ends the
+    orchestration as a provision failure, with nothing provisioned. v2
+    adopted what it found, and formatted a device not recognized.
+
+    `--adopt` takes over what the provision finds, and `--restore` on a
+    create or a deploy implies it. What a provision made is recorded, and not
+    checked again: an object provisioned before this version may be refused
+    a new provision for what it holds itself, and `--adopt` once records it.
+
 * **Create and deploy go through the api**
 
     `om <path> create` and `om <path> deploy` send the configuration to the
@@ -342,8 +383,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     A change of a keyword saying what a resource holds on a node once
     started, as the `mnt` or `dev` of a fs, the address, `dev`, `netns` or
     `network` of an ip, the `name` of a volume group or a container, a change
-    of the type of a resource, or the removal of its section, is refused
-    while the resource is up on a node, by root too. v2 accepted it, and the
+    of the type of a resource, its disable, or the removal of its section, is
+    refused while the resource is up on a node, by root too. v2 accepted it, and the
     stop of the resource then acted on the new value, leaving the former
     mount, address or device on the node.
 

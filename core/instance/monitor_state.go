@@ -78,6 +78,14 @@ const (
 	MonitorStateReady
 	MonitorStateRestarted
 
+	// MonitorStatePreflightProgress and MonitorStatePreflightSuccess are
+	// the states of an instance checking, before any node provisions an
+	// object provisioned nowhere, that nothing on its node holds what the
+	// object would take. A conflict ends on MonitorStateProvisionFailure,
+	// as a provision nothing was done of.
+	MonitorStatePreflightProgress
+	MonitorStatePreflightSuccess
+
 	// MonitorStateUnknown is what a value this agent does not know decodes to:
 	// a peer running a later version publishes values this one has no
 	// name for, and failing to decode them failed the whole heartbeat
@@ -183,6 +191,8 @@ func init() {
 		{MonitorStatePurgeFailed, "purge failed"},
 		{MonitorStateReady, "ready"},
 		{MonitorStateRestarted, "restarted"},
+		{MonitorStatePreflightProgress, "preflighting"},
+		{MonitorStatePreflightSuccess, "preflighted"},
 		{MonitorStateUnknown, "unknown"},
 	}
 

@@ -13,6 +13,10 @@ func TestMonitorGlobalExpectOptionsRoundTrip(t *testing.T) {
 			GlobalExpect:        MonitorGlobalExpectStopped,
 			GlobalExpectOptions: MonitorGlobalExpectOptionsStopped{InterruptSyncs: true},
 		},
+		"provisioned, adopting": {
+			GlobalExpect:        MonitorGlobalExpectProvisioned,
+			GlobalExpectOptions: MonitorGlobalExpectOptionsProvisioned{Adopt: true},
+		},
 		"restarted, forced": {
 			GlobalExpect:        MonitorGlobalExpectRestarted,
 			GlobalExpectOptions: MonitorGlobalExpectOptionsRestarted{Force: true},

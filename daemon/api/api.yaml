@@ -3085,6 +3085,8 @@ paths:
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryAdopt'
+        - $ref: '#/components/parameters/inQueryPreflight'
       responses:
         200:
           content:
@@ -3706,6 +3708,52 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/restore:
+    post:
+      description: |
+        Write back the data the sync resources of the object instance backed up,
+        from a snapshot: into the heads, or aside into a directory.
+      operationId: PostInstanceActionRestore
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRestoreConfig'
+        - $ref: '#/components/parameters/inQueryRestoreHead'
+        - $ref: '#/components/parameters/inQueryRestoreInto'
+        - $ref: '#/components/parameters/inQueryRestoreRefs'
+        - $ref: '#/components/parameters/inQueryRestoreSnapshot'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/resync:
     post:
       description: Restore optimal synchronization of the object instance.
@@ -4280,6 +4328,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/sync/snapshots:
+    get:
+      operationId: GetInstanceSyncSnapshots
+      description: |
+        Return the snapshots the sync resources of the object instance can
+        restore.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSnapshotList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -4873,7 +4957,10 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Enable the whole svc or some of its resources.
+      description: |
+        Enable the whole svc or some of its resources. A resource enabled
+        holds its values again: one holding what another object's resources
+        hold on the same node is answered 409, naming them.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathName'
@@ -4889,6 +4976,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
 
@@ -5130,10 +5219,21 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+      description: |
+        Provision the object on its nodes.
+
+        An object provisioned on none of its nodes is checked first on every
+        node, before any provisions: a system resource holding what a
+        resource of the object would take, a filesystem mounted on its mount
+        point, a volume group of its name, a device in use, ends the
+        orchestration as a provision failure, and nothing is provisioned.
+        With adopt, the provision takes over what it finds, as replicated
+        storage a restored object finds.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAdopt'
       responses:
         200:
           description: OK
@@ -5463,6 +5563,79 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/object/path/{namespace}/{kind}/{name}/certificate/create:
+    post:
+      description: |
+        Create the certificate of a sec and store it as its private_key,
+        certificate, certificate_chain and fullpem keys: self-signed, or
+        signed by the ca of the sec. An existing private key is kept.
+      operationId: PostObjectCertificateCreate
+      tags:
+        - object / sec
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/certificate/renew:
+    post:
+      description: |
+        Renew the certificate of a sec, when it is due, as the
+        certificate renew command does: from the ACME directory the sec
+        names, or generated as a certificate create does. The http-01
+        challenge token is written in the acme.webroot of the sec, or
+        answered by the listener for a sec of listener.tls_secs.
+      operationId: PostObjectCertificateRenew
+      tags:
+        - object / sec
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - in: query
+          name: force
+          description: Obtain a certificate even when the current one is not due.
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificateRenewal'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/object/path/{namespace}/{kind}/{name}/config:
     get:
       operationId: GetObjectConfig
@@ -5537,6 +5710,10 @@ paths:
         former one set up. Stop the resource first. With force, root writes
         it all the same, as to undo a change that left a resource that
         cannot be stopped.
+
+        A change giving a resource a value another object's resources hold
+        on the same node is answered 409, naming them. With force, root
+        writes it all the same.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5636,6 +5813,11 @@ paths:
         An object the daemon would start on its own, orchestrate ha or start,
         is flagged stopped on this node, so it does not start before anything
         is asked of it.
+
+        A configuration whose resources would hold a value another object's
+        resources hold on the same node, a mount point, a block device, a
+        volume group name, an address, is answered 409, naming them. With
+        force, root writes it all the same.
 
         An object that exists is refused, unless force, which replaces its
         configuration as a creation does, with the checks of an update.
@@ -6396,6 +6578,31 @@ components:
       properties:
         name:
           type: string
+
+    CertificateRenewal:
+      type: object
+      required:
+        - renewed
+        - reason
+        - domains
+      properties:
+        renewed:
+          type: boolean
+          description: A certificate was issued.
+        reason:
+          type: string
+          description: Why a certificate was issued, or why none was.
+        domains:
+          type: array
+          items:
+            type: string
+        directory:
+          type: string
+          description: The ACME directory the certificate is issued by, empty for a certificate generated.
+        not_after:
+          type: string
+          format: date-time
+          description: The end of validity of the certificate.
 
     ConsoleTicket:
       type: object
@@ -10010,6 +10217,71 @@ components:
         items:
           $ref: '#/components/schemas/ScheduleItems'
 
+    SyncSnapshot:
+      type: object
+      required:
+        - rid
+        - id
+        - created_at
+        - node
+        - members
+        - location
+      properties:
+        rid:
+          type: string
+          description: The sync resource holding the snapshot.
+        id:
+          type: string
+          description: The snapshot id, the session id of the sync update that took it.
+        created_at:
+          type: string
+          format: date-time
+        node:
+          type: string
+          description: The node that took the snapshot.
+        members:
+          type: array
+          description: What the snapshot holds, the heads by resource id and the configuration.
+          items:
+            type: string
+        location:
+          type: string
+          description: Where the snapshot is, as the store holding it.
+
+    SyncSnapshotItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - SyncSnapshotItem
+        meta:
+          $ref: '#/components/schemas/InstanceMeta'
+        data:
+          $ref: '#/components/schemas/SyncSnapshot'
+
+    SyncSnapshotItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SyncSnapshotItem'
+
+    SyncSnapshotList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - SyncSnapshotList
+        items:
+          $ref: '#/components/schemas/SyncSnapshotItems'
+
     Scope:
       type: array
       items:
@@ -10506,6 +10778,25 @@ components:
       schema:
         type: boolean
 
+    inQueryAdopt:
+      in: query
+      name: adopt
+      description: |
+        Take over the system resources found holding what the provision would
+        take, as replicated storage a restored object finds, rather than
+        refusing them.
+      schema:
+        type: boolean
+
+    inQueryPreflight:
+      in: query
+      name: preflight
+      description: |
+        Check only that nothing on the node holds what the provision would
+        take, provisioning nothing.
+      schema:
+        type: boolean
+
     inQueryInterruptSyncs:
       in: query
       name: interrupt_syncs
@@ -10825,6 +11116,47 @@ components:
       name: rid
       description: The rid that is expected to expose the requested file path.
       required: true
+      schema:
+        type: string
+
+    inQueryRestoreConfig:
+      in: query
+      name: config
+      description: Restore the configuration of the object too.
+      schema:
+        type: boolean
+
+    inQueryRestoreHead:
+      in: query
+      name: head
+      description: The heads to restore, by resource id, every head of the snapshot when not set.
+      schema:
+        type: array
+        items:
+          type: string
+
+    inQueryRestoreInto:
+      in: query
+      name: into
+      description: A directory to restore aside into, a directory per head, instead of into the heads.
+      schema:
+        type: string
+
+    inQueryRestoreRefs:
+      in: query
+      name: refs
+      description: How to restore the keys of the sec and cfg the object references, in place.
+      schema:
+        type: string
+        enum:
+          - missing
+          - skip
+          - overwrite
+
+    inQueryRestoreSnapshot:
+      in: query
+      name: snapshot
+      description: The snapshot to restore, by id or a prefix of it, the latest when not set.
       schema:
         type: string
 

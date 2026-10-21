@@ -240,3 +240,47 @@ func NewCmdArrayList() *cobra.Command {
 	}
 	return cmd
 }
+
+// NewCmdStore returns the parent of the store commands.
+func NewCmdStore() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "store",
+		Short:   "manage the backup stores",
+		Long: `A store keeps the backups the sync.store resources of the objects write
+into it, as runs: one sync update of an object, all of its heads and its
+configuration, under one snapshot id. Stores are declared as store#<name>
+sections of the cluster configuration.`,
+	}
+}
+
+// NewCmdStoreList returns the store list command.
+func NewCmdStoreList() *cobra.Command {
+	return &cobra.Command{
+		Use:     "list",
+		Short:   "list the stores declared in the cluster configuration",
+		Aliases: []string{"ls"},
+		GroupID: GroupIDQuery,
+	}
+}
+
+// NewCmdStoreSnapshot returns the parent of the store snapshot commands.
+func NewCmdStoreSnapshot() *cobra.Command {
+	return &cobra.Command{
+		Use:     "snapshot",
+		Short:   "list the snapshots the stores hold",
+		GroupID: GroupIDQuery,
+	}
+}
+
+// NewCmdStoreSnapshotList returns the store snapshot list command.
+func NewCmdStoreSnapshotList() *cobra.Command {
+	return &cobra.Command{
+		Use:     "list",
+		Short:   "list the snapshots the stores hold, of every object",
+		Aliases: []string{"ls"},
+		Long: `List the snapshots the stores hold, of every object, oldest first, read
+from the stores rather than from the objects: on a cluster where an object
+does not exist yet, its snapshots are listed too.`,
+	}
+}

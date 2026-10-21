@@ -72,10 +72,20 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 		fmt.Printf("%s: created\n", p)
 		return nil
 	case http.StatusConflict:
-		if !force {
+		// Forced, a configuration holding what others hold is written all
+		// the same, and an object that exists has its configuration
+		// replaced.
+		held := resp.JSON409 != nil && resp.JSON409.Title == api.ProblemTitleHeld
+		switch {
+		case !force && held:
+			return fmt.Errorf("%s: %s", p, resp.JSON409.Detail)
+		case !force:
 			return fmt.Errorf("%s already exists", p)
+		case held:
+			return forceObjectConfig(ctx, c, p, b, params, "created")
+		default:
+			return forceObjectConfig(ctx, c, p, b, params, "replaced")
 		}
-		return replaceObjectConfig(ctx, c, p, b, params)
 	case http.StatusBadRequest:
 		return fmt.Errorf("%s: %s", p, *resp.JSON400)
 	case http.StatusUnauthorized:
@@ -93,10 +103,12 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 	}
 }
 
-// replaceObjectConfig replaces the configuration of the object at p by b,
-// as a create with force does: the daemon gives it the treatment of a
-// creation, and the checks of an update.
-func replaceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams) error {
+// forceObjectConfig writes the configuration b of the object at p as a
+// create with force does: root writes it holding what others hold, and the
+// configuration of an object that exists is replaced, the daemon giving it
+// the treatment of a creation, and the checks of an update. done says what
+// was done, created or replaced.
+func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, done string) error {
 	force := true
 	params.Force = &force
 	resp, err := c.PostObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewReader(b))
@@ -105,7 +117,7 @@ func replaceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []by
 	}
 	switch resp.StatusCode() {
 	case http.StatusNoContent:
-		fmt.Printf("%s: replaced\n", p)
+		fmt.Printf("%s: %s\n", p, done)
 		return nil
 	case http.StatusBadRequest:
 		return fmt.Errorf("%s: %s", p, *resp.JSON400)

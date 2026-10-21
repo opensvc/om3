@@ -94,6 +94,14 @@ type (
 		InterruptSyncs bool `json:"interrupt_syncs,omitempty"`
 	}
 
+	// MonitorGlobalExpectOptionsProvisioned carries how a provision treats
+	// the system resources it finds on the nodes: with Adopt, a provision
+	// takes over the ones there already, as replicated storage a restored
+	// object finds, rather than checking first that nothing holds them.
+	MonitorGlobalExpectOptionsProvisioned struct {
+		Adopt bool `json:"adopt,omitempty"`
+	}
+
 	// MonitorGlobalExpectOptionsResized carries the configuration a resize is
 	// for, so a node does not grow to the size it held before the request.
 	MonitorGlobalExpectOptionsResized struct {
@@ -170,6 +178,8 @@ func (t *Monitor) UnmarshalJSON(b []byte) error {
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsRestarted](mon.GlobalExpectOptions)
 	case MonitorGlobalExpectStopped:
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsStopped](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectProvisioned:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsProvisioned](mon.GlobalExpectOptions)
 	}
 	if err != nil {
 		return err
@@ -326,7 +336,7 @@ func (mon Monitor) DeepCopy() *Monitor {
 			// TODO Don't ignore following error
 			_ = json.Unmarshal(b, &placedAt)
 			v.GlobalExpectOptions = placedAt
-		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped, MonitorGlobalExpectRestarted, MonitorGlobalExpectStopped:
+		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped, MonitorGlobalExpectRestarted, MonitorGlobalExpectStopped, MonitorGlobalExpectProvisioned:
 			// Values holding no reference: a copy of the value is a deep
 			// copy, and keeps the type the orchestrations read them as.
 			v.GlobalExpectOptions = mon.GlobalExpectOptions

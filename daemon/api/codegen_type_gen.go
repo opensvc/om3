@@ -918,6 +918,36 @@ func (e Status) Valid() bool {
 	}
 }
 
+// Defines values for SyncSnapshotItemKind.
+const (
+	SyncSnapshotItemKindSyncSnapshotItem SyncSnapshotItemKind = "SyncSnapshotItem"
+)
+
+// Valid indicates whether the value is a known member of the SyncSnapshotItemKind enum.
+func (e SyncSnapshotItemKind) Valid() bool {
+	switch e {
+	case SyncSnapshotItemKindSyncSnapshotItem:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncSnapshotListKind.
+const (
+	SyncSnapshotListKindSyncSnapshotList SyncSnapshotListKind = "SyncSnapshotList"
+)
+
+// Valid indicates whether the value is a known member of the SyncSnapshotListKind enum.
+func (e SyncSnapshotListKind) Valid() bool {
+	switch e {
+	case SyncSnapshotListKindSyncSnapshotList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Topology.
 const (
 	Failover Topology = "failover"
@@ -966,6 +996,27 @@ func (e UserListKind) Valid() bool {
 	}
 }
 
+// Defines values for InQueryRestoreRefs.
+const (
+	InQueryRestoreRefsMissing   InQueryRestoreRefs = "missing"
+	InQueryRestoreRefsOverwrite InQueryRestoreRefs = "overwrite"
+	InQueryRestoreRefsSkip      InQueryRestoreRefs = "skip"
+)
+
+// Valid indicates whether the value is a known member of the InQueryRestoreRefs enum.
+func (e InQueryRestoreRefs) Valid() bool {
+	switch e {
+	case InQueryRestoreRefsMissing:
+		return true
+	case InQueryRestoreRefsOverwrite:
+		return true
+	case InQueryRestoreRefsSkip:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PostDaemonAuditParamsLevel.
 const (
 	Debug PostDaemonAuditParamsLevel = "debug"
@@ -987,6 +1038,27 @@ func (e PostDaemonAuditParamsLevel) Valid() bool {
 	case Trace:
 		return true
 	case Warn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PostInstanceActionRestoreParamsRefs.
+const (
+	PostInstanceActionRestoreParamsRefsMissing   PostInstanceActionRestoreParamsRefs = "missing"
+	PostInstanceActionRestoreParamsRefsOverwrite PostInstanceActionRestoreParamsRefs = "overwrite"
+	PostInstanceActionRestoreParamsRefsSkip      PostInstanceActionRestoreParamsRefs = "skip"
+)
+
+// Valid indicates whether the value is a known member of the PostInstanceActionRestoreParamsRefs enum.
+func (e PostInstanceActionRestoreParamsRefs) Valid() bool {
+	switch e {
+	case PostInstanceActionRestoreParamsRefsMissing:
+		return true
+	case PostInstanceActionRestoreParamsRefsOverwrite:
+		return true
+	case PostInstanceActionRestoreParamsRefsSkip:
 		return true
 	default:
 		return false
@@ -1077,6 +1149,22 @@ type CapabilityList struct {
 
 // CapabilityListKind defines model for CapabilityList.Kind.
 type CapabilityListKind string
+
+// CertificateRenewal defines model for CertificateRenewal.
+type CertificateRenewal struct {
+	// Directory The ACME directory the certificate is issued by, empty for a certificate generated.
+	Directory *string  `json:"directory,omitempty"`
+	Domains   []string `json:"domains"`
+
+	// NotAfter The end of validity of the certificate.
+	NotAfter *time.Time `json:"not_after,omitempty"`
+
+	// Reason Why a certificate was issued, or why none was.
+	Reason string `json:"reason"`
+
+	// Renewed A certificate was issued.
+	Renewed bool `json:"renewed"`
+}
 
 // ClusterEnrollAccepted defines model for ClusterEnrollAccepted.
 type ClusterEnrollAccepted struct {
@@ -2754,6 +2842,48 @@ type SubsetConfig = instance.SubsetConfig
 // SubsetsConfig defines model for SubsetsConfig.
 type SubsetsConfig = []SubsetConfig
 
+// SyncSnapshot defines model for SyncSnapshot.
+type SyncSnapshot struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id The snapshot id, the session id of the sync update that took it.
+	Id string `json:"id"`
+
+	// Location Where the snapshot is, as the store holding it.
+	Location string `json:"location"`
+
+	// Members What the snapshot holds, the heads by resource id and the configuration.
+	Members []string `json:"members"`
+
+	// Node The node that took the snapshot.
+	Node string `json:"node"`
+
+	// Rid The sync resource holding the snapshot.
+	Rid string `json:"rid"`
+}
+
+// SyncSnapshotItem defines model for SyncSnapshotItem.
+type SyncSnapshotItem struct {
+	Data SyncSnapshot         `json:"data"`
+	Kind SyncSnapshotItemKind `json:"kind"`
+	Meta InstanceMeta         `json:"meta"`
+}
+
+// SyncSnapshotItemKind defines model for SyncSnapshotItem.Kind.
+type SyncSnapshotItemKind string
+
+// SyncSnapshotItems defines model for SyncSnapshotItems.
+type SyncSnapshotItems = []SyncSnapshotItem
+
+// SyncSnapshotList defines model for SyncSnapshotList.
+type SyncSnapshotList struct {
+	Items SyncSnapshotItems    `json:"items"`
+	Kind  SyncSnapshotListKind `json:"kind"`
+}
+
+// SyncSnapshotListKind defines model for SyncSnapshotList.Kind.
+type SyncSnapshotListKind string
+
 // Topology object topology
 type Topology string
 
@@ -2910,6 +3040,9 @@ type InPathNodeName = string
 // InPathOrchestrationID An orchestration id.
 type InPathOrchestrationID = string
 
+// InQueryAdopt defines model for inQueryAdopt.
+type InQueryAdopt = bool
+
 // InQueryAllSlaves Act on all encap instances, and don't act on the host instance if not asked for explicitely.
 type InQueryAllSlaves = bool
 
@@ -3006,6 +3139,9 @@ type Origins = []string
 // InQueryPoolName defines model for inQueryPoolName.
 type InQueryPoolName = string
 
+// InQueryPreflight defines model for inQueryPreflight.
+type InQueryPreflight = bool
+
 // RID defines model for inQueryRIDOptional.
 type RID = string
 
@@ -3017,6 +3153,21 @@ type InQueryResourceFileRid = string
 
 // InQueryRestore defines model for inQueryRestore.
 type InQueryRestore = bool
+
+// InQueryRestoreConfig defines model for inQueryRestoreConfig.
+type InQueryRestoreConfig = bool
+
+// InQueryRestoreHead defines model for inQueryRestoreHead.
+type InQueryRestoreHead = []string
+
+// InQueryRestoreInto defines model for inQueryRestoreInto.
+type InQueryRestoreInto = string
+
+// InQueryRestoreRefs defines model for inQueryRestoreRefs.
+type InQueryRestoreRefs string
+
+// InQueryRestoreSnapshot defines model for inQueryRestoreSnapshot.
+type InQueryRestoreSnapshot = string
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
@@ -3751,6 +3902,15 @@ type PostInstanceActionProvisionParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+
+	// Adopt Take over the system resources found holding what the provision would
+	// take, as replicated storage a restored object finds, rather than
+	// refusing them.
+	Adopt *InQueryAdopt `form:"adopt,omitempty" json:"adopt,omitempty"`
+
+	// Preflight Check only that nothing on the node holds what the provision would
+	// take, provisioning nothing.
+	Preflight *InQueryPreflight `form:"preflight,omitempty" json:"preflight,omitempty"`
 }
 
 // PostInstanceActionPRStartParams defines parameters for PostInstanceActionPRStart.
@@ -3842,6 +4002,49 @@ type PostInstanceActionRestartParams struct {
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
+
+// PostInstanceActionRestoreParams defines parameters for PostInstanceActionRestore.
+type PostInstanceActionRestoreParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
+
+	// Config Restore the configuration of the object too.
+	Config *InQueryRestoreConfig `form:"config,omitempty" json:"config,omitempty"`
+
+	// Head The heads to restore, by resource id, every head of the snapshot when not set.
+	Head *InQueryRestoreHead `form:"head,omitempty" json:"head,omitempty"`
+
+	// Into A directory to restore aside into, a directory per head, instead of into the heads.
+	Into *InQueryRestoreInto `form:"into,omitempty" json:"into,omitempty"`
+
+	// Refs How to restore the keys of the sec and cfg the object references, in place.
+	Refs *PostInstanceActionRestoreParamsRefs `form:"refs,omitempty" json:"refs,omitempty"`
+
+	// Snapshot The snapshot to restore, by id or a prefix of it, the latest when not set.
+	Snapshot *InQueryRestoreSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
+}
+
+// PostInstanceActionRestoreParamsRefs defines parameters for PostInstanceActionRestore.
+type PostInstanceActionRestoreParamsRefs string
 
 // PostInstanceActionResyncParams defines parameters for PostInstanceActionResync.
 type PostInstanceActionResyncParams struct {
@@ -4210,6 +4413,12 @@ type PostInstanceStateFileParams struct {
 	LastModified *string `json:"OM-Last-Modified,omitempty"`
 }
 
+// GetInstanceSyncSnapshotsParams defines parameters for GetInstanceSyncSnapshots.
+type GetInstanceSyncSnapshotsParams struct {
+	// Rid a resource selector expression
+	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
+}
+
 // DeleteNodeLockParams defines parameters for DeleteNodeLock.
 type DeleteNodeLockParams struct {
 	// Name the name of the lock
@@ -4290,6 +4499,14 @@ type PostObjectActionCapParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostObjectActionProvisionParams defines parameters for PostObjectActionProvision.
+type PostObjectActionProvisionParams struct {
+	// Adopt Take over the system resources found holding what the provision would
+	// take, as replicated storage a restored object finds, rather than
+	// refusing them.
+	Adopt *InQueryAdopt `form:"adopt,omitempty" json:"adopt,omitempty"`
+}
+
 // PostObjectActionResizeParams defines parameters for PostObjectActionResize.
 type PostObjectActionResizeParams struct {
 	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
@@ -4312,6 +4529,12 @@ type PostObjectActionStopParams struct {
 	// InterruptSyncs End the syncs running on the instance before stopping it, instead of
 	// waiting for them to end.
 	InterruptSyncs *InQueryInterruptSyncs `form:"interrupt_syncs,omitempty" json:"interrupt_syncs,omitempty"`
+}
+
+// PostObjectCertificateRenewParams defines parameters for PostObjectCertificateRenew.
+type PostObjectCertificateRenewParams struct {
+	// Force Obtain a certificate even when the current one is not due.
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.

@@ -448,6 +448,7 @@ func (t *Manager) configFileCheck() error {
 				cfg.ActorConfig.Claims = claims
 			}
 		}
+		t.setHolds(cfg.ActorConfig.Resources)
 		for _, e := range actor.Schedules() {
 			cfg.ActorConfig.Schedules = append(cfg.ActorConfig.Schedules, e.Config)
 		}
@@ -539,6 +540,23 @@ func (t *Manager) getSubsets(cf *xconfig.T) map[string]instance.SubsetConfig {
 		}
 	}
 	return m
+}
+
+// setHolds sets the values the resources of the object hold on this node,
+// evaluated from the configuration alone: what references a resource's run
+// time state, as its exposed devices, is held by that resource.
+func (t *Manager) setHolds(m instance.ResourceConfigs) {
+	oc, err := object.NewConfigurer(t.path, object.WithVolatile(true), object.WithStaticReferences())
+	if err != nil {
+		t.log.Warnf("holds: %s", err)
+		return
+	}
+	for _, h := range object.Holds(t.path, oc, []string{t.localhost}) {
+		rcfg := m[h.RID]
+		rcfg.Holds = append(rcfg.Holds, h.Hold)
+		rcfg.IsShared = rcfg.IsShared || h.Cluster
+		m[h.RID] = rcfg
+	}
 }
 
 func (t *Manager) getResources(cf *xconfig.T) instance.ResourceConfigs {

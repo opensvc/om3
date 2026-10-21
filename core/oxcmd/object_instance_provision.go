@@ -23,6 +23,8 @@ type (
 		DisableRollback bool
 		Force           bool
 		Leader          bool
+		Adopt           bool
+		Preflight       bool
 		NodeSelector    string
 
 		// StateOnly indicates that the command will only change the instance-selected
@@ -65,6 +67,12 @@ func (t *CmdObjectInstanceProvision) Run(kind string) error {
 			if t.Force {
 				v := true
 				params.Force = &v
+			}
+			if t.Adopt {
+				params.Adopt = &t.Adopt
+			}
+			if t.Preflight {
+				params.Preflight = &t.Preflight
 			}
 			if t.Leader {
 				v := true

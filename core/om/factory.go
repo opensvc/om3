@@ -2268,7 +2268,9 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagProvision(flags, &options.Provision)
+	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
 	flags.BoolVar(&options.WaitLocal, "wait-local", false, "wait for the local daemon to know the object, listed and watched by an instance monitor, for the command run next to find it")
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
@@ -2319,6 +2321,8 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	commoncmd.FlagCreateNamespace(flags, &options.Namespace)
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
+	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
@@ -2877,9 +2881,57 @@ func newCmdObjectSync(kind string) *cobra.Command {
 		newCmdObjectGroupList(kind, "sync"),
 		newCmdObjectGroupInfo(kind, "sync"),
 		newCmdObjectGroupResync(kind, "sync"),
+		newCmdObjectSyncRestore(kind),
+		newCmdObjectSyncSnapshot(kind),
 		newCmdObjectGroupSplit(kind, "sync"),
 		newCmdObjectGroupUpdate(kind, "sync"),
 	)
+	return cmd
+}
+
+func newCmdObjectSyncRestore(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRestore
+	cmd := commoncmd.NewCmdObjectSyncRestore(kind)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagsRestore(flags, &options.OptsRestore)
+	hiddenFlagLocal(flags, &options.Local)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	// The daemon executing a restore the api asked passes the resource
+	// selector as options: the patterns are the command line's.
+	commoncmd.FlagRID(flags, &options.RID)
+	commoncmd.FlagSubset(flags, &options.Subset)
+	commoncmd.FlagTag(flags, &options.Tag)
+	for _, name := range []string{"rid", "subset", "tag"} {
+		_ = flags.MarkHidden(name)
+	}
+	return cmd
+}
+
+func newCmdObjectSyncSnapshot(kind string) *cobra.Command {
+	cmd := commoncmd.NewCmdObjectSyncSnapshot()
+	cmd.AddCommand(newCmdObjectSyncSnapshotList(kind))
+	return cmd
+}
+
+func newCmdObjectSyncSnapshotList(kind string) *cobra.Command {
+	var options commands.CmdObjectSyncSnapshots
+	cmd := commoncmd.NewCmdObjectSyncSnapshotList()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3254,6 +3306,8 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.HiddenFlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagStateOnly(flags, &options.StateOnly)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
+	commoncmd.FlagPreflight(flags, &options.Preflight)
 	return cmd
 }
 
@@ -3687,6 +3741,7 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	commoncmd.HiddenFlagLeader(flags, &options.Leader)
 	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 

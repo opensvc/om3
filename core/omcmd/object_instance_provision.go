@@ -27,6 +27,8 @@ type (
 		Force           bool
 		Leader          bool
 		NodeSelector    string
+		Adopt           bool
+		Preflight       bool
 
 		// StateOnly indicates that the command will only change the instance-selected
 		// resources provisioned state value to `provisioned` without any provisioning
@@ -61,6 +63,12 @@ func (t *CmdObjectInstanceProvision) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionProvisionParams{}
+			if t.Adopt {
+				params.Adopt = &t.Adopt
+			}
+			if t.Preflight {
+				params.Preflight = &t.Preflight
+			}
 			if t.Force {
 				v := true
 				params.Force = &v
@@ -132,6 +140,8 @@ func (t *CmdObjectInstanceProvision) Run(kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
+			ctx = actioncontext.WithAdopt(ctx, t.Adopt)
+			ctx = actioncontext.WithPreflight(ctx, t.Preflight)
 			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
 			if t.StateOnly {
 				return nil, o.SetProvisioned(ctx)

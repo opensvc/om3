@@ -1,0 +1,18 @@
+The retention of the runs of each object backed up into this store, when
+its `sync.store` resource sets none. A list of rules, a run kept by any of
+them being kept:
+
+`<n>`
+  The `<n>` latest runs.
+
+`<n>h`, `<n>d`, `<n>w`, `<n>m`, `<n>y`
+  The latest run of each of the `<n>` latest hours, days, weeks (Monday to
+  Sunday), months or years holding a run.
+
+The periods are counted among the ones holding a run, not back from now,
+so an object whose runs stopped for a while keeps its last ones. They are
+in UTC, of the time a run started, so runs written by different nodes
+after a failover fall in the same periods. Without `keep`, no run is ever
+deleted.
+
+For example, `keep = 24h 7d 4w 6m` keeps 41 runs at most.

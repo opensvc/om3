@@ -52,6 +52,27 @@ type (
 		TimeoutSet bool
 	}
 
+	// OptsRestore contains the options of a sync restore.
+	OptsRestore struct {
+		// Snapshot is the snapshot to restore, by id or a prefix of
+		// it, the latest when empty.
+		Snapshot string
+
+		// Into is a directory to restore aside into.
+		Into string
+
+		// Config asks the configuration of the object restored too.
+		Config bool
+
+		// Heads are the heads to restore, every head of the snapshot
+		// when empty.
+		Heads []string
+
+		// Refs is how the referenced keys are restored: missing, skip
+		// or overwrite.
+		Refs string
+	}
+
 	// OptTo sets a barrier when iterating over a resource lister
 	OptTo struct {
 		To     string

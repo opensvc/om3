@@ -21,6 +21,11 @@ const (
 // with when another session preempts it.
 const AuditEventPreempted = "preempted"
 
+// ProblemTitleHeld is the title of the 409 answering a configuration whose
+// resources would hold a value another object's resources hold, told apart
+// from the 409 answering the creation of an object that exists.
+const ProblemTitleHeld = "Held by another object"
+
 const (
 	AliasLocalhost      = "localhost"
 	AliasShortLocalhost = "_"

@@ -1,0 +1,6 @@
+The driver of the store, the tool keeping the backups the `sync.store`
+resources of the objects write into it.
+
+`tar`
+  A directory holding a gzipped tar archive per member of a run. It
+  neither deduplicates nor encrypts: a test and reference store.

@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/actionresdeps"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -183,6 +184,36 @@ type (
 	}
 	updater interface {
 		Update(context.Context) error
+	}
+	restorer interface {
+		Restore(context.Context) error
+	}
+
+	// SnapshotLister is a sync resource holding restorable points in
+	// time.
+	SnapshotLister interface {
+		Snapshots(context.Context) ([]Snapshot, error)
+	}
+
+	// Snapshot is a point in time a sync resource can restore.
+	Snapshot struct {
+		// ID is om's snapshot id: the session id of the action
+		// shared by every resource of one sync update, which
+		// --snapshot takes.
+		ID string `json:"id"`
+
+		// CreatedAt is when the snapshot was taken.
+		CreatedAt time.Time `json:"created_at"`
+
+		// Node is the node that took it.
+		Node string `json:"node"`
+
+		// Members are what it holds: the heads, by resource id, and
+		// the configuration of the object.
+		Members []string `json:"members"`
+
+		// Location is where it is: the store holding it.
+		Location string `json:"location"`
 	}
 	datastoreLister interface {
 		DatastoreList(context.Context) naming.Paths

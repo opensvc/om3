@@ -1,0 +1,5 @@
+Set to false to share the volume with the other objects using it with `exclusive=false`.
+
+A volume is used by one object by default: a configuration using a volume another object uses is refused, as a clone or a restore keeping the volume name of its source would write in its data. The objects sharing a volume each say so.
+
+A volume resource with `shared=true` also asks the objects sharing its volume to be local parents of each other, so they fail over together.

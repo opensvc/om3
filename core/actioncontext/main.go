@@ -22,6 +22,8 @@ const (
 	forceAffinityKey
 	interruptSyncsKey
 	leaderKey
+	preflightKey
+	adoptKey
 	lockTimeoutKey
 	lockTimeoutSetKey
 	lockDisabledKey
@@ -31,6 +33,7 @@ const (
 	finalSyncKey
 	propsKey
 	quietKey
+	restoreKey
 	ridKey
 	rollbackDisabledKey
 	selectedRIDsKey
@@ -309,6 +312,38 @@ func Subset(ctx context.Context) string {
 	return ""
 }
 
+// RestoreOptions are the options of a sync restore.
+type RestoreOptions struct {
+	// Snapshot is the run to restore, by id or a prefix of it: the
+	// latest run when empty.
+	Snapshot string
+
+	// Into is a directory to restore aside into, a directory per member,
+	// instead of into the heads.
+	Into string
+
+	// Config asks the configuration of the object restored too.
+	Config bool
+
+	// Heads are the heads to restore, every head of the run when empty.
+	Heads []string
+
+	// Refs is how the keys of the sec and cfg the object references are
+	// restored: missing, skip or overwrite, missing when empty.
+	Refs string
+}
+
+func WithRestoreOptions(ctx context.Context, o RestoreOptions) context.Context {
+	return context.WithValue(ctx, restoreKey, o)
+}
+
+func Restore(ctx context.Context) RestoreOptions {
+	if i := ctx.Value(restoreKey); i != nil {
+		return i.(RestoreOptions)
+	}
+	return RestoreOptions{}
+}
+
 func WithTarget(ctx context.Context, s []string) context.Context {
 	return context.WithValue(ctx, targetKey, s)
 }
@@ -412,4 +447,31 @@ func WithoutResourceSelector(ctx context.Context) context.Context {
 	ctx = WithTag(ctx, "")
 	ctx = WithSubset(ctx, "")
 	return WithTo(ctx, "")
+}
+
+// WithPreflight has a provision check only that nothing on the node holds
+// what it would take, provisioning nothing.
+func WithPreflight(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, preflightKey, v)
+}
+
+func IsPreflight(ctx context.Context) bool {
+	if i := ctx.Value(preflightKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+// WithAdopt has a provision take over the system resources it finds holding
+// what it would take, as replicated storage a restored object finds, rather
+// than refuse them.
+func WithAdopt(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, adoptKey, v)
+}
+
+func IsAdopt(ctx context.Context) bool {
+	if i := ctx.Value(adoptKey); i != nil {
+		return i.(bool)
+	}
+	return false
 }

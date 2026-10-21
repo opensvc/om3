@@ -1,0 +1,9 @@
+The paths a run leaves out, relative to the head they are in.
+
+A pattern prefixed with a resource id and a colon, as `fs#1:/tmp`,
+applies to that head only, one with no prefix to every head. A pattern
+holding a slash matches the path from the head, one without matches a
+name at any depth, as `*.log`.
+
+The excluded paths are absent after a restore aside, and left as they are
+by a restore in place.
