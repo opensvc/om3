@@ -304,7 +304,7 @@ func (t *T) openMember(run backup.Run, member string) (backup.Member, io.ReadClo
 	if err != nil {
 		return m, nil, err
 	}
-	f, err := os.Open(filepath.Join(dir, memberFile(m)))
+	f, err := os.OpenInRoot(dir, memberFile(m))
 	if err != nil {
 		return m, nil, err
 	}
@@ -428,8 +428,16 @@ func within(p, dir string) bool {
 // writeTar writes the tree under src as a tar archive, its paths relative to
 // src, without the paths excludes matches.
 func writeTar(ctx context.Context, w io.Writer, src string, excludes []string) error {
+	// The files are opened through the root, which no symlink escapes:
+	// an entry replaced by one after the walk saw it, by a process
+	// writing the head, is not read from out of the head.
+	root, err := os.OpenRoot(src)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
 	tw := tar.NewWriter(w)
-	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -478,11 +486,16 @@ func writeTar(ctx context.Context, w io.Writer, src string, excludes []string) e
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		f, err := os.Open(p)
+		f, err := root.Open(filepath.FromSlash(rel))
 		if err != nil {
 			return err
 		}
 		defer f.Close()
+		if fi, err := f.Stat(); err != nil {
+			return err
+		} else if !os.SameFile(info, fi) {
+			return fmt.Errorf("%s: replaced while saved", p)
+		}
 		_, err = io.Copy(tw, f)
 		return err
 	})
