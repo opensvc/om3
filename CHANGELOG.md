@@ -333,7 +333,7 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     update, is refused when one of its resources would hold what a resource
     of another object holds on the same node: a mount point, a block device,
     a volume group or logical volume, a zpool, an md array, a container name,
-    an ip address, a directory. A resource `shared = true` holds
+    an ip address, a directory, a volume. A resource `shared = true` holds
     its values on every node of the cluster, a resource `shared = false` on
     the nodes they evaluate to them on. The resources up also say the devices
     they were found holding.
@@ -346,6 +346,11 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     its holds for an object restored under another name, or in place of a
     receiver of its replicated data. Enabling it is refused while another
     holds them.
+
+    A volume is used by one object, unless every object using it says
+    `exclusive = false` on its volume resource. v2 let any object use a
+    volume another used: the objects sharing a volume since v2 keep it, and
+    a new one is refused until they all say so.
 
 * **A provision checks every node first**
 

@@ -75,6 +75,7 @@ const (
 	HoldIPAddress     = "ip address"
 	HoldExport        = "export"
 	HoldVolume        = "volume"
+	HoldSharedVolume  = "shared volume"
 )
 
 // holdClassCodes are the codes the classes are published as.
@@ -95,6 +96,7 @@ var holdClassCodes = map[string]string{
 	HoldIPAddress:     "ip",
 	HoldExport:        "export",
 	HoldVolume:        "vol",
+	HoldSharedVolume:  "svol",
 }
 
 var holdClassesByCode = func() map[string]string {
@@ -170,9 +172,28 @@ func (t ObjectHold) HeldOn(node string) bool {
 	return false
 }
 
-// Overlaps says whether the two holds hold the same value on a node.
+// Excludes says whether two objects cannot hold the two holds: the same
+// value of the same class, but for the uses of a volume, which exclude each
+// other unless both are shared.
+func (t Hold) Excludes(o Hold) bool {
+	if t.Value != o.Value {
+		return false
+	}
+	if t.IsVolume() && o.IsVolume() {
+		return t.Class == HoldVolume || o.Class == HoldVolume
+	}
+	return t.Class == o.Class
+}
+
+// IsVolume says whether the hold is a use of a volume, exclusive or shared.
+func (t Hold) IsVolume() bool {
+	return t.Class == HoldVolume || t.Class == HoldSharedVolume
+}
+
+// Overlaps says whether the two holds hold the same value on a node, one
+// excluding the other.
 func (t ObjectHold) Overlaps(o ObjectHold) bool {
-	if t.Hold != o.Hold {
+	if !t.Excludes(o.Hold) {
 		return false
 	}
 	if t.Cluster || o.Cluster {

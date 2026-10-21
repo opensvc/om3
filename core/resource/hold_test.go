@@ -41,3 +41,18 @@ func TestHoldsJSON(t *testing.T) {
 func TestHoldClassCodes(t *testing.T) {
 	require.Len(t, holdClassesByCode, len(holdClassCodes))
 }
+
+// The uses of a volume exclude each other unless both are shared, and other
+// holds exclude the same value of the same class.
+func TestHoldExcludes(t *testing.T) {
+	vol := Hold{Class: HoldVolume, Value: "ns1/vol/data"}
+	svol := Hold{Class: HoldSharedVolume, Value: "ns1/vol/data"}
+	require.True(t, vol.Excludes(vol))
+	require.True(t, vol.Excludes(svol))
+	require.True(t, svol.Excludes(vol))
+	require.False(t, svol.Excludes(svol))
+	require.False(t, vol.Excludes(Hold{Class: HoldVolume, Value: "ns1/vol/other"}))
+	mnt := Hold{Class: HoldMountPoint, Value: "/srv/a"}
+	require.True(t, mnt.Excludes(mnt))
+	require.False(t, mnt.Excludes(Hold{Class: HoldFile, Value: "/srv/a"}))
+}

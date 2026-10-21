@@ -110,10 +110,11 @@ func refuseHoldConflicts(ctx echo.Context, p naming.Path, body []byte, scope []s
 	}
 	others := publishedHolds(p)
 	type conflictKey struct {
-		rid   string
-		hold  resource.Hold
-		path  naming.Path
-		other string
+		rid        string
+		hold       resource.Hold
+		path       naming.Path
+		other      string
+		otherClass string
 	}
 	where := make(map[conflictKey][]string)
 	everywhere := make(map[conflictKey]bool)
@@ -123,7 +124,7 @@ func refuseHoldConflicts(ctx echo.Context, p naming.Path, body []byte, scope []s
 			if !h.Overlaps(o.ObjectHold) {
 				continue
 			}
-			k := conflictKey{rid: h.RID, hold: h.Hold, path: o.Path, other: o.RID}
+			k := conflictKey{rid: h.RID, hold: h.Hold, path: o.Path, other: o.RID, otherClass: o.Class}
 			if _, ok := where[k]; !ok {
 				where[k] = make([]string, 0)
 				order = append(order, k)
@@ -150,6 +151,15 @@ func refuseHoldConflicts(ctx echo.Context, p naming.Path, body []byte, scope []s
 			on = strings.Join(where[k], ", ")
 		}
 		l[i] = fmt.Sprintf("%s: %s %s on %s is held by %s %s", k.rid, k.hold.Class, k.hold.Value, on, k.path, k.other)
+		// A volume is shared when every object using it says so.
+		switch {
+		case k.hold.Class == resource.HoldSharedVolume:
+			l[i] += ", which uses it exclusively: set exclusive=false there too to share it"
+		case k.hold.Class == resource.HoldVolume && k.otherClass == resource.HoldSharedVolume:
+			l[i] += ", which shares it: set exclusive=false here to share it"
+		case k.hold.Class == resource.HoldVolume:
+			l[i] += ", which uses it exclusively: set exclusive=false on both to share it"
+		}
 	}
 	return holdConflictError{conflicts: l}
 }

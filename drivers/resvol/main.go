@@ -62,6 +62,7 @@ type (
 		startBlocker *resource.StartBlocker
 		Name         string `json:"name"`
 		Access       string `json:"access"`
+		Exclusive    bool   `json:"exclusive"`
 		Pool         string `json:"pool"`
 		PoolType     string `json:"type"`
 		Size         *int64 `json:"size"`

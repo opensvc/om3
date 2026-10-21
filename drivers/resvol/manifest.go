@@ -44,6 +44,13 @@ var (
 			Text:         keywords.NewText(fs, "text/kw/volatile"),
 		},
 		{
+			Attr:      "Exclusive",
+			Converter: converters.Bool,
+			Default:   "true",
+			Option:    "exclusive",
+			Text:      keywords.NewText(fs, "text/kw/exclusive"),
+		},
+		{
 			Attr:         "Access",
 			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
 			Default:      "rwo",
