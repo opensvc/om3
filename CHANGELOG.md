@@ -333,9 +333,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     update, is refused when one of its resources would hold what a resource
     of another object holds on the same node: a mount point, a block device,
     a volume group or logical volume, a zpool, an md array, a container name,
-    an ip address. A resource `shared = true` holds its values on every node
-    of the cluster, a resource `shared = false` on the nodes they evaluate to
-    them on. The resources up also say the devices they were found holding.
+    an ip address, a directory. A resource `shared = true` holds
+    its values on every node of the cluster, a resource `shared = false` on
+    the nodes they evaluate to them on. The resources up also say the devices
+    they were found holding.
     v2 accepted it, and the provision of the clone took what the source held.
 
     Root writes it all the same with `--force`. The api answers 409, titled

@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/opensvc/om3/v3/drivers/rescontainerdocker"
 	_ "github.com/opensvc/om3/v3/drivers/resdisklv"
+	_ "github.com/opensvc/om3/v3/drivers/resfsdir"
 	_ "github.com/opensvc/om3/v3/drivers/resfshost"
 	_ "github.com/opensvc/om3/v3/drivers/resiphost"
 )
@@ -103,4 +104,16 @@ name = 10.0.0.5
 		}
 	}
 	assert.Equal(t, 1, conflicts, "a device path meets the lv exposing it")
+}
+
+// A directory is held as a mount point is, unless it is in a volume, which
+// holds it.
+func TestHoldsDirectory(t *testing.T) {
+	p := naming.Path{Namespace: "ns1", Kind: naming.KindSvc, Name: "web"}
+	l := holdsOf(t, p, "[DEFAULT]\nnodes = n1\n[fs#1]\ntype = directory\npath = /srv/{name}/logs/\n[fs#2]\ntype = directory\npath = volume#1:/conf\n[fs#3]\ntype = directory\npath = data/conf\n", "n1")
+	got := make([]string, 0)
+	for _, h := range l {
+		got = append(got, h.RID+" "+h.Class+" "+h.Value)
+	}
+	assert.Equal(t, []string{"fs#1 mount point /srv/web/logs"}, got)
 }
