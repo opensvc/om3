@@ -105,3 +105,25 @@ func TestAProvisionedOrchestrationRunsOnWhileTheInstanceIsIdle(t *testing.T) {
 	require.False(t, m.provisionedClearIfReached(), "the orchestration must run on")
 	require.False(t, m.state.OrchestrationIsDone, "the orchestration must not be marked done")
 }
+
+// The leader provisions once every peer checked what the object would take on
+// its node, whether the peer waits for it, went past its check, or is done:
+// a peer whose leader instance needs no provision does not wait for it.
+func TestTheLeaderCountsAPeerDoneWithTheOrchestrationAsPreflighted(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStatePreflightSuccess)
+	peer := func(state instance.MonitorState, id uuid.UUID, done bool) {
+		m.instMonitor["node2"] = instance.Monitor{State: state, OrchestrationID: id, OrchestrationIsDone: done}
+	}
+	peer(instance.MonitorStatePreflightProgress, m.state.OrchestrationID, false)
+	require.False(t, m.arePeersPreflighted(), "checking")
+	peer(instance.MonitorStateWaitLeader, m.state.OrchestrationID, false)
+	require.True(t, m.arePeersPreflighted(), "waiting for the leader")
+	peer(instance.MonitorStateStartSuccess, m.state.OrchestrationID, false)
+	require.True(t, m.arePeersPreflighted(), "past its check")
+	peer(instance.MonitorStateIdle, m.state.OrchestrationID, true)
+	require.True(t, m.arePeersPreflighted(), "done with the orchestration")
+	peer(instance.MonitorStateIdle, uuid.New(), true)
+	require.False(t, m.arePeersPreflighted(), "done with another orchestration")
+	peer(instance.MonitorStateIdle, m.state.OrchestrationID, false)
+	require.False(t, m.arePeersPreflighted(), "not started yet")
+}

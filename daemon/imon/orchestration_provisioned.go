@@ -107,13 +107,25 @@ func (t *Manager) provisionedFromPreflighted() {
 }
 
 // arePeersPreflighted says whether every peer instance monitor has checked
-// what the object would take on its node.
+// what the object would take on its node: it is past its check in the
+// orchestration, or done with it, as a peer is once checked when the leader
+// instance needs no provision, which it does not wait for.
 func (t *Manager) arePeersPreflighted() bool {
 	for node, instMon := range t.instMonitor {
 		if node == t.localhost {
 			continue
 		}
-		if !instMon.State.IsOneOf(instance.MonitorStatePreflightSuccess, instance.MonitorStateWaitLeader) {
+		if instMon.OrchestrationIsDone && instMon.OrchestrationID == t.state.OrchestrationID {
+			continue
+		}
+		if !instMon.State.IsOneOf(
+			instance.MonitorStatePreflightSuccess,
+			instance.MonitorStateWaitLeader,
+			instance.MonitorStateStartProgress,
+			instance.MonitorStateStartSuccess,
+			instance.MonitorStateProvisionProgress,
+			instance.MonitorStateProvisionSuccess,
+		) {
 			return false
 		}
 	}
