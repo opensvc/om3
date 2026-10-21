@@ -9,11 +9,25 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 func (a *DaemonAPI) PostInstanceActionRestore(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionRestoreParams) error {
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
+	}
+	// A restore aside writes in a host directory the daemon creates as
+	// root, and one in place writes the keys of the sec and cfg the run
+	// saved, unless asked not to.
+	if params.Into != nil && *params.Into != "" {
+		if v, err := assertRoot(ctx); !v {
+			return err
+		}
+	} else if params.Refs == nil || *params.Refs != api.PostInstanceActionRestoreParamsRefsSkip {
+		grants := []rbac.Grant{rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.NewGrant(rbac.RoleAdmin, ""), rbac.GrantRoot}
+		if !grantsFromContext(ctx).HasGrant(grants...) {
+			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "need one of %v grant to restore the keys of the referenced sec and cfg the run saved: restore with refs=skip", grants)
+		}
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
