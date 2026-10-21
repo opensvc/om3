@@ -1,0 +1,2 @@
+CI webhook test: draft pull requests must not start the QA runs (opensvc/gh-webhook#16).
+This pull request is a test and will be closed without merge.
