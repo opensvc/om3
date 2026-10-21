@@ -587,6 +587,11 @@ func (t *T) Restore(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if opts.Snapshot == "" && opts.Into == "" && run.ObjectID != "" && run.ObjectID != t.ObjectID.String() {
+		// The latest run of the path is of an object purged and
+		// created again there, whose data this one may not want.
+		return fmt.Errorf("the latest run of %s, %s, is of another object at this path, of id %s: name it with --snapshot to restore it", t.Path, run.ShortID(), run.ObjectID)
+	}
 	members := make([]string, 0, len(run.Members))
 	for _, m := range run.Members {
 		if m.Name == backup.MemberConfig || m.Name == backup.MemberRefs {
