@@ -37,7 +37,7 @@ func writeFile(t *testing.T, p, content string, mode os.FileMode) {
 }
 
 func newRun(id string, tm time.Time) backup.Run {
-	return backup.Run{ID: id, Path: "ns1/svc/svc1", ObjectID: "oid", Node: "n1", CreatedAt: tm}
+	return backup.Run{ID: id, Path: "ns1/svc/svc1", ObjectID: "oid", ClusterID: "c1", ClusterName: "cluster1", Node: "n1", CreatedAt: tm}
 }
 
 func TestBackupRestore(t *testing.T) {
@@ -141,7 +141,7 @@ func TestRestoreRefusesEscapes(t *testing.T) {
 	s := newStore(t, storeDir)
 	run := newRun("evil", time.Now())
 	run.Members = []backup.Member{{Name: "fs#1", Kind: backup.MemberDir}}
-	dir, err := s.runDir(run)
+	_, dir, err := s.runDir(run)
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(dir, 0700))
 
@@ -173,6 +173,7 @@ func TestRunsFilterAndDelete(t *testing.T) {
 	}
 	other := newRun("aaaa-4", t0)
 	other.Path = "ns2/svc/web"
+	other.ObjectID = "oid2"
 	require.NoError(t, s.Backup(ctx, other, "fs#1", src, nil))
 	require.NoError(t, s.Complete(ctx, other))
 
@@ -185,15 +186,15 @@ func TestRunsFilterAndDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, runs, 4)
 
-	_, err = backup.FindRun(ctx, s, "ns1/svc/svc1", "7c0e")
+	_, err = backup.FindRun(ctx, s, backup.RunFilter{ObjectID: "oid", ID: "7c0e"})
 	assert.ErrorIs(t, err, backup.ErrAmbiguous)
-	run, err := backup.FindRun(ctx, s, "ns1/svc/svc1", "7c0e4")
+	run, err := backup.FindRun(ctx, s, backup.RunFilter{ObjectID: "oid", ID: "7c0e4"})
 	require.NoError(t, err)
 	assert.Equal(t, "7c0e41d2-1", run.ID)
-	run, err = backup.FindRun(ctx, s, "ns1/svc/svc1", "")
+	run, err = backup.FindRun(ctx, s, backup.RunFilter{ObjectID: "oid"})
 	require.NoError(t, err)
 	assert.Equal(t, "b93f0a17-3", run.ID, "no id is the latest run")
-	_, err = backup.FindRun(ctx, s, "ns1/svc/svc1", "ffff")
+	_, err = backup.FindRun(ctx, s, backup.RunFilter{ObjectID: "oid", ID: "ffff"})
 	assert.ErrorIs(t, err, backup.ErrNotFound)
 
 	require.NoError(t, s.Delete(ctx, []backup.Run{run}))
@@ -220,7 +221,7 @@ func TestInterruptedMemberIsNotListed(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, runs, 1)
 	assert.Equal(t, []string{"fs#1"}, runs[0].MemberNames())
-	dir, err := s.runDir(run)
+	_, dir, err := s.runDir(run)
 	require.NoError(t, err)
 	assert.NoFileExists(t, filepath.Join(dir, "fs#2.tar.gz"+tmpSuffix))
 }
@@ -233,7 +234,7 @@ func TestCheckFindsCorruption(t *testing.T) {
 	run := newRun("run1", time.Now())
 	require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
 	require.NoError(t, s.Complete(ctx, run))
-	dir, err := s.runDir(run)
+	_, dir, err := s.runDir(run)
 	require.NoError(t, err)
 	p := filepath.Join(dir, "fs#1.tar.gz")
 	b, err := os.ReadFile(p)
@@ -260,4 +261,66 @@ func TestWithin(t *testing.T) {
 	assert.True(t, within("/srv/a", "/srv/a"))
 	assert.False(t, within("/srv/ab", "/srv/a"))
 	assert.False(t, within("/srv", "/srv/a"))
+}
+
+// The runs of an object are its own whatever its path, as it was renamed,
+// and the ones of another cluster writing the store are apart. A path names
+// the object the store last recorded there, the local cluster's first.
+func TestRunsByClusterAndObject(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t, t.TempDir())
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a"), "a", 0600)
+	t0 := time.Date(2026, 10, 22, 2, 0, 0, 0, time.UTC)
+	save := func(run backup.Run) {
+		t.Helper()
+		require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+		require.NoError(t, s.Complete(ctx, run))
+	}
+	ids := func(runs []backup.Run, err error) []string {
+		t.Helper()
+		require.NoError(t, err)
+		l := make([]string, len(runs))
+		for i, run := range runs {
+			l[i] = run.ID
+		}
+		return l
+	}
+
+	a1 := newRun("a1", t0)
+	save(a1)
+	a2 := newRun("a2", t0.Add(time.Hour))
+	a2.Path = "ns1/svc/renamed"
+	save(a2)
+	assert.Equal(t, []string{"a1", "a2"}, ids(s.Runs(ctx, backup.RunFilter{Path: "ns1/svc/renamed"})), "the runs before the rename are the object's")
+	assert.Empty(t, ids(s.Runs(ctx, backup.RunFilter{Path: "ns1/svc/svc1"})), "the former path names no object")
+
+	// A drp cluster deployed the object with its id, and backs it up too.
+	b1 := newRun("b1", t0.Add(2*time.Hour))
+	b1.Path, b1.ClusterID, b1.ClusterName = "ns1/svc/renamed", "c2", "cluster2"
+	save(b1)
+	assert.Equal(t, []string{"a1", "a2"}, ids(s.Runs(ctx, backup.RunFilter{ObjectID: "oid", Cluster: "c1"})))
+	assert.Equal(t, []string{"a1", "a2", "b1"}, ids(s.Runs(ctx, backup.RunFilter{ObjectID: "oid"})))
+	assert.Equal(t, []string{"b1"}, ids(s.Runs(ctx, backup.RunFilter{Cluster: "cluster2"})), "a cluster by its name")
+	assert.Equal(t, []string{"b1"}, ids(s.Runs(ctx, backup.RunFilter{Cluster: "c2"})), "a cluster by its id")
+
+	// The drp cluster is renamed: its former runs are its own, under the
+	// name it has now.
+	b2 := newRun("b2", t0.Add(3*time.Hour))
+	b2.Path, b2.ClusterID, b2.ClusterName = "ns1/svc/renamed", "c2", "drp"
+	save(b2)
+	runs, err := s.Runs(ctx, backup.RunFilter{Cluster: "drp"})
+	assert.Equal(t, []string{"b1", "b2"}, ids(runs, err))
+	assert.Equal(t, "drp", runs[0].ClusterName)
+	assert.Empty(t, ids(s.Runs(ctx, backup.RunFilter{Cluster: "cluster2"})), "the former name names no cluster")
+
+	run, err := backup.FindSnapshot(ctx, s, "ns1/svc/renamed", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, "a2", run.ID, "the local cluster's latest, not the latest")
+	_, err = backup.FindSnapshot(ctx, s, "ns1/svc/renamed", "c3")
+	assert.ErrorIs(t, err, backup.ErrAmbiguous, "the runs of two other clusters")
+	run, err = backup.FindSnapshot(ctx, s, "b1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, "b1", run.ID, "an id names a run of any cluster")
+	assert.FileExists(t, filepath.Join(s.Get("url"), "c2", clusterName))
 }

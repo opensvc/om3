@@ -10318,6 +10318,9 @@ components:
         created_at:
           type: string
           format: date-time
+        cluster:
+          type: string
+          description: The name of the cluster of the node that took the snapshot, several clusters writing one store.
         node:
           type: string
           description: The node that took the snapshot.
