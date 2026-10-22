@@ -857,7 +857,7 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 			// The resources are named rather than a barrier given: a
 			// stop --to a group the object has none of stops it all,
 			// heads included.
-			return fmt.Errorf("%s up, using the data a restore in place would write under: stop them with 'om %s instance stop --rid %s', or restore aside with --into", strings.Join(up, " "), t.Path, strings.Join(up, ","))
+			return fmt.Errorf("%s up, using the data a restore in place would write under: stop them with 'om %s instance stop --rid %s', or restore with --stop, or aside with --into", strings.Join(up, " "), t.Path, strings.Join(up, ","))
 		}
 	}
 	objectHeads := t.objectHeads()
@@ -883,7 +883,7 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 			}
 		}
 		if !headAvailable(sb, under.rid, under.dir) {
-			return fmt.Errorf("%s: down, its head is not mounted to restore %s into: start it with 'om %s instance start --to %s'", under.rid, m, t.Path, under.rid)
+			return fmt.Errorf("%s: down, its head is not mounted to restore %s into: start it with 'om %s instance start --to %s', or restore with --stop", under.rid, m, t.Path, under.rid)
 		}
 		if err := noSymlinkBetween(under.dir, dir); err != nil {
 			return fmt.Errorf("restore %s into %s: %w", m, dir, err)

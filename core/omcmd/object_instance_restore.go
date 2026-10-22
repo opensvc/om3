@@ -75,6 +75,9 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			if t.ByRID {
 				params.ByRid = &t.ByRID
 			}
+			if t.Stop {
+				params.Stop = &t.Stop
+			}
 			if len(t.Heads) > 0 {
 				params.Head = &t.Heads
 			}
@@ -124,6 +127,7 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 				Into:     t.Into,
 				Config:   t.Config,
 				ByRID:    t.ByRID,
+				Stop:     t.Stop,
 				Heads:    t.Heads,
 				Refs:     t.Refs,
 			})

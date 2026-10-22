@@ -330,6 +330,11 @@ type RestoreOptions struct {
 	// of its rid, rather than at the path it was saved from.
 	ByRID bool
 
+	// Stop asks the instance brought to the state a restore in place
+	// needs, rather than the restore refused: the resources using the
+	// heads stopped, the heads started, and the instance left stopped.
+	Stop bool
+
 	// Heads are the heads to restore, every head of the run when empty.
 	Heads []string
 

@@ -84,6 +84,9 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 	if params.ByRid != nil && *params.ByRid {
 		args = append(args, "--by-rid")
 	}
+	if params.Stop != nil && *params.Stop {
+		args = append(args, "--stop")
+	}
 	if params.Refs != nil && *params.Refs != "" {
 		args = append(args, "--refs", string(*params.Refs))
 	}

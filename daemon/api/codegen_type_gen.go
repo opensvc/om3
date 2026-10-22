@@ -3191,6 +3191,9 @@ type InQueryRestoreRefs string
 // InQueryRestoreSnapshot defines model for inQueryRestoreSnapshot.
 type InQueryRestoreSnapshot = string
 
+// InQueryRestoreStop defines model for inQueryRestoreStop.
+type InQueryRestoreStop = bool
+
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
 
@@ -4070,6 +4073,10 @@ type PostInstanceActionRestoreParams struct {
 
 	// Snapshot The snapshot to restore, by id or a prefix of it, the latest when not set.
 	Snapshot *InQueryRestoreSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
+
+	// Stop Stop the resources using the heads and start the heads, rather than
+	// refuse the restore in place, and leave the instance stopped.
+	Stop *InQueryRestoreStop `form:"stop,omitempty" json:"stop,omitempty"`
 }
 
 // PostInstanceActionRestoreParamsRefs defines parameters for PostInstanceActionRestore.
