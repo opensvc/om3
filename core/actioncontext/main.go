@@ -42,6 +42,7 @@ const (
 	subsetKey
 	tagKey
 	targetKey
+	runMarksKey
 	toKey
 	verboseKey
 )
@@ -352,6 +353,24 @@ func Restore(ctx context.Context) RestoreOptions {
 		return i.(RestoreOptions)
 	}
 	return RestoreOptions{}
+}
+
+// RunMarks are what a sync update marks the run it writes with: protected
+// from the retention, and a note, set when the run is written.
+type RunMarks struct {
+	Protect bool
+	Note    string
+}
+
+func WithRunMarks(ctx context.Context, m RunMarks) context.Context {
+	return context.WithValue(ctx, runMarksKey, m)
+}
+
+func RunMarksOf(ctx context.Context) RunMarks {
+	if i := ctx.Value(runMarksKey); i != nil {
+		return i.(RunMarks)
+	}
+	return RunMarks{}
 }
 
 func WithTarget(ctx context.Context, s []string) context.Context {

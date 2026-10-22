@@ -2860,6 +2860,12 @@ type SyncSnapshot struct {
 	// Node The node that took the snapshot.
 	Node string `json:"node"`
 
+	// Note The text the snapshot was marked with when taken.
+	Note *string `json:"note,omitempty"`
+
+	// Protected The retention keeps the snapshot, which only an explicit removal deletes.
+	Protected *bool `json:"protected,omitempty"`
+
 	// Rid The sync resource holding the snapshot.
 	Rid string `json:"rid"`
 }
@@ -3179,6 +3185,12 @@ type InQueryRestoreStop = bool
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
+
+// InQueryRunNote defines model for inQueryRunNote.
+type InQueryRunNote = string
+
+// InQueryRunProtect defines model for inQueryRunProtect.
+type InQueryRunProtect = bool
 
 // InQuerySection defines model for inQuerySection.
 type InQuerySection = string
@@ -4377,6 +4389,12 @@ type PostInstanceActionUpdateParams struct {
 
 	// SyncTarget The peers to sync to, as node or drpnode names.
 	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
+
+	// Protect Keep the run a sync.store resource writes from the retention.
+	Protect *InQueryRunProtect `form:"protect,omitempty" json:"protect,omitempty"`
+
+	// Note A note to mark the run a sync.store resource writes with.
+	Note *InQueryRunNote `form:"note,omitempty" json:"note,omitempty"`
 }
 
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.

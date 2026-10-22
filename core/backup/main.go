@@ -66,6 +66,13 @@ type (
 
 		// Members are the members the run saved.
 		Members []Member `json:"members"`
+
+		// Protected keeps the run from the retention: only an explicit
+		// removal deletes it.
+		Protected bool `json:"protected,omitempty"`
+
+		// Note is a text the run was marked with when written.
+		Note string `json:"note,omitempty"`
 	}
 
 	// Member is a part of a run: a head saved from a directory, or a
@@ -472,4 +479,20 @@ func ReadMember(ctx context.Context, s Store, run Run, member string) ([]byte, e
 		return nil, err
 	}
 	return os.ReadFile(filepath.Join(dir, member))
+}
+
+// noteMax is the longest note a run takes.
+const noteMax = 256
+
+// CheckNote refuses a note no store records as written: a comma, which
+// separates the tags a plakar snapshot holds, a line break, or a note
+// longer than noteMax.
+func CheckNote(s string) error {
+	switch {
+	case strings.ContainsAny(s, ",\n\r"):
+		return fmt.Errorf("a note holds no comma nor line break, as a store records it as a tag")
+	case len(s) > noteMax:
+		return fmt.Errorf("a note holds at most %d characters", noteMax)
+	}
+	return nil
 }

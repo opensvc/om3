@@ -3855,6 +3855,8 @@ paths:
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQuerySyncTarget'
+        - $ref: '#/components/parameters/inQueryRunProtect'
+        - $ref: '#/components/parameters/inQueryRunNote'
       responses:
         200:
           content:
@@ -10277,6 +10279,12 @@ components:
         cluster:
           type: string
           description: The name of the cluster of the node that took the snapshot, several clusters writing one store.
+        protected:
+          type: boolean
+          description: The retention keeps the snapshot, which only an explicit removal deletes.
+        note:
+          type: string
+          description: The text the snapshot was marked with when taken.
         node:
           type: string
           description: The node that took the snapshot.
@@ -11247,6 +11255,20 @@ components:
           type: string
           description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
           example: env.eat=fruits
+
+    inQueryRunProtect:
+      in: query
+      name: protect
+      description: Keep the run a sync.store resource writes from the retention.
+      schema:
+        type: boolean
+
+    inQueryRunNote:
+      in: query
+      name: note
+      description: A note to mark the run a sync.store resource writes with.
+      schema:
+        type: string
 
     inQuerySyncTarget:
       in: query

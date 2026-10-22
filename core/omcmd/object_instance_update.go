@@ -23,6 +23,8 @@ type (
 		Force        bool
 		Local        bool
 		Target       []string
+		Protect      bool
+		Note         string
 		NodeSelector string
 	}
 )
@@ -65,6 +67,12 @@ func (t *CmdObjectInstanceUpdate) Run(kind string) error {
 			if len(t.Target) > 0 {
 				params.SyncTarget = &t.Target
 			}
+			if t.Protect {
+				params.Protect = &t.Protect
+			}
+			if t.Note != "" {
+				params.Note = &t.Note
+			}
 			{
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
@@ -97,6 +105,7 @@ func (t *CmdObjectInstanceUpdate) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithTarget(ctx, t.Target)
+			ctx = actioncontext.WithRunMarks(ctx, actioncontext.RunMarks{Protect: t.Protect, Note: t.Note})
 			return nil, o.SyncUpdate(ctx)
 		}),
 	).Do()

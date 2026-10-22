@@ -71,6 +71,8 @@ func (t *CmdObjectSyncSnapshots) extractLocal(selector string) (api.SyncSnapshot
 					Id:        e.ID,
 					CreatedAt: e.CreatedAt,
 					Cluster:   &e.Cluster,
+					Protected: &e.Protected,
+					Note:      &e.Note,
 					Node:      e.Node,
 					Members:   append([]string{}, e.Members...),
 					Location:  e.Location,
