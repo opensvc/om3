@@ -268,6 +268,7 @@ func NewCmdStoreList() *cobra.Command {
 func NewCmdStoreSnapshot() *cobra.Command {
 	return &cobra.Command{
 		Use:     "snapshot",
+		Aliases: []string{"snap"},
 		Short:   "list the snapshots the stores hold",
 		GroupID: GroupIDQuery,
 	}
