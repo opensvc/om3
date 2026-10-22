@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,7 +24,9 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/backup"
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -31,6 +34,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/drivers/ressync"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -649,12 +653,168 @@ func (t *T) Restore(ctx context.Context) error {
 		return t.restoreInto(ctx, s, run, members, opts)
 	}
 	if opts.Config {
-		return fmt.Errorf("--config: restoring the configuration in place is not supported yet, restore it aside with --into")
+		// The heads and the configuration need the instance in two
+		// states when the configuration changes a keyword of a head:
+		// the head down to change it, up to restore into it.
+		if len(opts.Heads) > 0 {
+			return fmt.Errorf("--config restores the configuration alone: restore the heads with a restore of their own, once it is restored")
+		}
+		// The referenced keys are restored with the heads.
+		return t.restoreConfig(ctx, s, run)
 	}
-	if err := t.restoreInPlace(ctx, s, run, members); err != nil {
+	t.sayConfigDrift(ctx, s, run)
+	if err := t.restoreInPlace(ctx, s, run, members, opts.ByRID); err != nil {
 		return err
 	}
 	return t.restoreRefs(ctx, s, run, refsMode)
+}
+
+// runConfig returns the configuration the run saved, as the object restores
+// it: with its own id, which the run of another object of its path, or of
+// its source on a drp cluster, does not hold, and without restore_from, the
+// once of a deploy from a snapshot.
+func (t *T) runConfig(ctx context.Context, s backup.Store, run backup.Run) (*xconfig.T, error) {
+	b, err := backup.ReadMember(ctx, s, run, backup.MemberConfig)
+	if err != nil {
+		return nil, fmt.Errorf("read the configuration of run %s: %w", run.ShortID(), err)
+	}
+	cfg, err := xconfig.NewObject("", b)
+	if err != nil {
+		return nil, fmt.Errorf("the configuration of run %s: %w", run.ShortID(), err)
+	}
+	if err := cfg.Set(*keyop.New(key.New("DEFAULT", "id"), keyop.Set, t.ObjectID.String(), 0)); err != nil {
+		return nil, err
+	}
+	if err := cfg.Unset(key.New("DEFAULT", "restore_from")); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// configKeys returns the keywords of cfg and their values, as written,
+// restore_from aside.
+func configKeys(cfg *xconfig.T) map[string]string {
+	m := make(map[string]string)
+	for _, section := range cfg.SectionStrings() {
+		for _, option := range cfg.Keys(section) {
+			k := key.New(section, option)
+			if k.String() == "DEFAULT.restore_from" {
+				continue
+			}
+			m[k.String()] = cfg.Get(k)
+		}
+	}
+	return m
+}
+
+// configDrift returns the keywords whose value the configuration of the
+// object and the one of the run differ on, sorted.
+func (t *T) configDrift(ctx context.Context, s backup.Store, run backup.Run) ([]string, *xconfig.T, error) {
+	saved, err := t.runConfig(ctx, s, run)
+	if err != nil {
+		return nil, nil, err
+	}
+	current, err := xconfig.NewObject("", t.Path.ConfigFile())
+	if err != nil {
+		return nil, nil, err
+	}
+	a, b := configKeys(saved), configKeys(current)
+	l := make([]string, 0)
+	for k, v := range a {
+		if w, ok := b[k]; !ok || w != v {
+			l = append(l, k)
+		}
+	}
+	for k := range b {
+		if _, ok := a[k]; !ok {
+			l = append(l, k)
+		}
+	}
+	slices.Sort(l)
+	return l, saved, nil
+}
+
+// sayConfigDrift says when the configuration of the object changed since the
+// run, which a restore of the heads leaves as it is.
+func (t *T) sayConfigDrift(ctx context.Context, s backup.Store, run backup.Run) {
+	if !run.Has(backup.MemberConfig) {
+		return
+	}
+	drift, _, err := t.configDrift(ctx, s, run)
+	switch {
+	case err != nil:
+		t.Log().Debugf("compare the configuration with the one of run %s: %s", run.ShortID(), err)
+	case len(drift) > 0:
+		t.Log().Infof("the configuration changed since run %s, on %s: restore it with 'om %s sync restore --snapshot %s --config'", run.ShortID(), strings.Join(drift, " "), t.Path, run.ShortID())
+	}
+}
+
+// RestoredConfig implements resource.ConfigRestorer: the configuration of
+// the run the restore options name, as the object restores it, and the
+// keywords it changes. The api replaces the configuration with it itself, as
+// the requester, whose grants its checks weigh.
+func (t *T) RestoredConfig(ctx context.Context) ([]byte, []string, error) {
+	s, err := t.store()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer s.Close()
+	run, err := t.restoreRun(ctx, s, actioncontext.Restore(ctx).Snapshot)
+	if err != nil {
+		return nil, nil, err
+	}
+	return t.restoredConfig(ctx, s, run)
+}
+
+func (t *T) restoredConfig(ctx context.Context, s backup.Store, run backup.Run) ([]byte, []string, error) {
+	if !run.Has(backup.MemberConfig) {
+		return nil, nil, fmt.Errorf("run %s holds no configuration", run.ShortID())
+	}
+	drift, saved, err := t.configDrift(ctx, s, run)
+	if err != nil {
+		return nil, nil, err
+	}
+	b, err := saved.Dump()
+	return b, drift, err
+}
+
+// restoreConfig replaces the configuration of the object with the one the
+// run saved, through the daemon, which checks it as any configuration
+// replaced: the keywords, the grants, the resources up a change would leak,
+// the claims of the namespace and what other objects hold. The command runs
+// as root on the node: through the api, the daemon replaces it itself, as
+// the requester.
+func (t *T) restoreConfig(ctx context.Context, s backup.Store, run backup.Run) error {
+	b, drift, err := t.restoredConfig(ctx, s, run)
+	if err != nil {
+		return err
+	}
+	if len(drift) == 0 {
+		t.Log().Infof("the configuration is the one of run %s already", run.ShortID())
+		return nil
+	}
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	t.Log().Infof("restore the configuration of run %s from store %s, changing %s", run.ShortID(), s.Ref(), strings.Join(drift, " "))
+	resp, err := c.PutObjectConfigFileWithBodyWithResponse(ctx, t.Path.Namespace, t.Path.Kind, t.Path.Name, &api.PutObjectConfigFileParams{}, "application/octet-stream", bytes.NewReader(b))
+	switch {
+	case err != nil:
+		return fmt.Errorf("restore the configuration: the daemon checks a configuration replaced: %w", err)
+	case resp.StatusCode() == http.StatusNoContent:
+		return nil
+	case resp.JSON400 != nil:
+		return fmt.Errorf("restore the configuration: %s", resp.JSON400)
+	case resp.JSON403 != nil:
+		return fmt.Errorf("restore the configuration: %s", resp.JSON403)
+	case resp.JSON409 != nil:
+		return fmt.Errorf("restore the configuration: %s", resp.JSON409)
+	case resp.JSON500 != nil:
+		return fmt.Errorf("restore the configuration: %s", resp.JSON500)
+	default:
+		return fmt.Errorf("restore the configuration: unexpected response: %s", resp.Status())
+	}
 }
 
 func (t *T) restoreInto(ctx context.Context, s backup.Store, run backup.Run, members []string, opts actioncontext.RestoreOptions) error {
@@ -674,7 +834,16 @@ func (t *T) restoreInto(ctx context.Context, s backup.Store, run backup.Run, mem
 	return nil
 }
 
-func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, members []string) error {
+// restoreInPlace writes the members back at the path each was saved from,
+// which must be under a head of the object, whatever resource holds it now:
+// a resource renumbered, of another driver, or a head merged with another
+// or split from it. With byRID, each member is written into the current
+// head of the resource of its rid instead, as a deploy from a snapshot does.
+//
+// What a member is written into is emptied first, but the paths excluded
+// from the run and the heads of the other resources under it, which their
+// own members restore.
+func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, members []string, byRID bool) error {
 	o := t.GetObjectDriver()
 	sb := statusbus.FromContext(ctx)
 	if !actioncontext.IsForce(ctx) {
@@ -691,28 +860,42 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 			return fmt.Errorf("%s up, using the data a restore in place would write under: stop them with 'om %s instance stop --rid %s', or restore aside with --into", strings.Join(up, " "), t.Path, strings.Join(up, ","))
 		}
 	}
-	heads := make([]head, 0, len(members))
+	objectHeads := t.objectHeads()
+	targets := make([]head, 0, len(members))
 	for _, m := range members {
-		r := o.ResourceByID(m)
-		if r == nil {
-			return fmt.Errorf("run %s holds %s, a resource the object no longer has: restore it aside with --into", run.ShortID(), m)
+		var under head
+		var dir string
+		if byRID {
+			i := slices.IndexFunc(objectHeads, func(h head) bool { return h.rid == m })
+			if i < 0 {
+				return fmt.Errorf("run %s holds %s, a resource the object no longer has, or one holding no head: restore it aside with --into", run.ShortID(), m)
+			}
+			under, dir = objectHeads[i], objectHeads[i].dir
+		} else {
+			member, _ := run.Member(m)
+			if member.Head == "" || !filepath.IsAbs(member.Head) {
+				return fmt.Errorf("run %s does not say where %s was saved from: restore it into the current head of %s with --by-rid", run.ShortID(), m, m)
+			}
+			dir = filepath.Clean(member.Head)
+			var ok bool
+			if under, ok = containingHead(objectHeads, dir); !ok {
+				return fmt.Errorf("run %s saved %s from %s, under none of the heads of the object, %s: restore it into the current head of %s with --by-rid, or aside with --into", run.ShortID(), m, dir, headsString(objectHeads), m)
+			}
 		}
-		h, ok := r.(header)
-		if !ok {
-			return fmt.Errorf("%s: its driver holds no head", m)
+		if !headAvailable(sb, under.rid, under.dir) {
+			return fmt.Errorf("%s: down, its head is not mounted to restore %s into: start it with 'om %s instance start --to %s'", under.rid, m, t.Path, under.rid)
 		}
-		dir := h.Head()
-		if dir == "" {
-			return fmt.Errorf("%s: no head directory", m)
+		if err := noSymlinkBetween(under.dir, dir); err != nil {
+			return fmt.Errorf("restore %s into %s: %w", m, dir, err)
 		}
-		if !headAvailable(sb, m, dir) {
-			return fmt.Errorf("%s: down, its head is not mounted to restore into: start it with 'om %s instance start --to %s'", m, t.Path, m)
-		}
-		heads = append(heads, head{rid: m, dir: dir, excludes: backup.HeadExcludes(m, t.Exclude)})
+		targets = append(targets, head{rid: m, dir: dir, excludes: backup.HeadExcludes(m, t.Exclude)})
 	}
-	for _, h := range heads {
+	for _, h := range targets {
 		t.Log().Infof("restore %s of run %s from store %s into %s", h.rid, run.ShortID(), s.Ref(), h.dir)
-		if err := emptyDir(h.dir, h.excludes); err != nil {
+		if err := os.MkdirAll(h.dir, 0755); err != nil {
+			return fmt.Errorf("restore %s: %w", h.rid, err)
+		}
+		if err := emptyDir(h.dir, h.excludes, nestedHeads(objectHeads, h.dir)); err != nil {
 			return fmt.Errorf("restore %s: empty %s: %w", h.rid, h.dir, err)
 		}
 		if err := s.Restore(ctx, run, h.rid, h.dir); err != nil {
@@ -722,9 +905,95 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 	return nil
 }
 
+// objectHeads returns the heads of the resources of the object, enabled and
+// holding one, whether up or not.
+func (t *T) objectHeads() []head {
+	l := make([]head, 0)
+	for _, r := range t.GetObjectDriver().ResourcesByDrivergroups(headGroups) {
+		if r.IsDisabled() {
+			continue
+		}
+		h, ok := r.(header)
+		if !ok {
+			continue
+		}
+		if dir := h.Head(); dir != "" {
+			l = append(l, head{rid: r.RID(), dir: filepath.Clean(dir)})
+		}
+	}
+	return l
+}
+
+// containingHead returns the head dir is in, the deepest one when heads are
+// mounted under heads.
+func containingHead(heads []head, dir string) (head, bool) {
+	var found head
+	ok := false
+	for _, h := range heads {
+		if within(dir, h.dir) && (!ok || len(h.dir) > len(found.dir)) {
+			found, ok = h, true
+		}
+	}
+	return found, ok
+}
+
+// nestedHeads returns the paths, relative to dir, of the heads under it.
+func nestedHeads(heads []head, dir string) []string {
+	l := make([]string, 0)
+	for _, h := range heads {
+		if h.dir != dir && within(h.dir, dir) {
+			rel, _ := filepath.Rel(dir, h.dir)
+			l = append(l, filepath.ToSlash(rel))
+		}
+	}
+	return l
+}
+
+func headsString(heads []head) string {
+	l := make([]string, len(heads))
+	for i, h := range heads {
+		l[i] = h.rid + " " + h.dir
+	}
+	return strings.Join(l, ", ")
+}
+
+// within tells whether p is dir or under it.
+func within(p, dir string) bool {
+	rel, err := filepath.Rel(dir, p)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, "../")
+}
+
+// noSymlinkBetween refuses a path from head to dir holding a symlink: the
+// restore, writing as root, would follow it out of the head, where a process
+// of the object could have pointed it.
+func noSymlinkBetween(headDir, dir string) error {
+	rel, err := filepath.Rel(headDir, dir)
+	if err != nil {
+		return err
+	}
+	p := headDir
+	for _, name := range strings.Split(rel, string(filepath.Separator)) {
+		if name == "." || name == "" {
+			continue
+		}
+		p = filepath.Join(p, name)
+		fi, err := os.Lstat(p)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			return nil
+		case err != nil:
+			return err
+		case fi.Mode()&os.ModeSymlink != 0:
+			return fmt.Errorf("%s is a symlink", p)
+		}
+	}
+	return nil
+}
+
 // emptyDir removes what dir holds, but the paths excludes matches, which a
-// run never saved and a restore leaves as they are.
-func emptyDir(dir string, excludes []string) error {
+// run never saved and a restore leaves as they are, and the heads under it,
+// relative paths too, which are other resources'.
+func emptyDir(dir string, excludes, heads []string) error {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return err
@@ -746,10 +1015,10 @@ func emptyDir(dir string, excludes []string) error {
 			if rel != "." {
 				p = rel + "/" + e.Name()
 			}
-			if backup.Excluded(p, excludes) {
+			if backup.Excluded(p, excludes) || slices.Contains(heads, p) {
 				continue
 			}
-			if e.IsDir() && hasExcludedUnder(p, excludes) {
+			if e.IsDir() && (hasExcludedUnder(p, excludes) || hasHeadUnder(p, heads)) {
 				if err := walk(p); err != nil {
 					return err
 				}
@@ -762,6 +1031,16 @@ func emptyDir(dir string, excludes []string) error {
 		return nil
 	}
 	return walk(".")
+}
+
+// hasHeadUnder tells whether a head is under the directory rel.
+func hasHeadUnder(rel string, heads []string) bool {
+	for _, h := range heads {
+		if strings.HasPrefix(h, rel+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // hasExcludedUnder tells whether a pattern of excludes may match a path

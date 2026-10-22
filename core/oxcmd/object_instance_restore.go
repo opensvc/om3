@@ -3,6 +3,7 @@ package oxcmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
@@ -67,6 +68,9 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			if t.Config {
 				params.Config = &t.Config
 			}
+			if t.ByRID {
+				params.ByRid = &t.ByRID
+			}
 			if len(t.Heads) > 0 {
 				params.Head = &t.Heads
 			}
@@ -85,6 +89,9 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			switch {
 			case response.JSON200 != nil:
 				return *response.JSON200, nil
+			case response.StatusCode() == http.StatusNoContent:
+				// The configuration restored by the daemon itself.
+				return nil, nil
 			case response.JSON401 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
 			case response.JSON403 != nil:

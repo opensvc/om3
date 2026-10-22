@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
@@ -71,6 +72,9 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			if t.Config {
 				params.Config = &t.Config
 			}
+			if t.ByRID {
+				params.ByRid = &t.ByRID
+			}
 			if len(t.Heads) > 0 {
 				params.Head = &t.Heads
 			}
@@ -89,6 +93,9 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			switch {
 			case response.JSON200 != nil:
 				return *response.JSON200, nil
+			case response.StatusCode() == http.StatusNoContent:
+				// The configuration restored by the daemon itself.
+				return nil, nil
 			case response.JSON401 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
 			case response.JSON403 != nil:
@@ -106,13 +113,17 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			// A restore of the configuration in place has the daemon
+			// replace it, which takes the lock of the object: it reads
+			// the store, and writes no head, without holding it.
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable || (t.Config && t.Into == ""))
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithRestoreOptions(ctx, actioncontext.RestoreOptions{
 				Snapshot: t.Snapshot,
 				Into:     t.Into,
 				Config:   t.Config,
+				ByRID:    t.ByRID,
 				Heads:    t.Heads,
 				Refs:     t.Refs,
 			})

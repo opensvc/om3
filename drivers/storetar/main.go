@@ -165,7 +165,7 @@ func (t *T) Backup(ctx context.Context, run backup.Run, member string, src strin
 	if _, ok := fsys.(localFS); ok && within(root, src) {
 		return fmt.Errorf("store %s at %s is under %s: a store is never inside a head it backs up", t.Ref(), root, src)
 	}
-	m := backup.Member{Name: member, Kind: backup.MemberDir}
+	m := backup.Member{Name: member, Kind: backup.MemberDir, Head: filepath.Clean(src)}
 	return t.writeMember(ctx, run, m, func(w io.Writer) error {
 		return writeTar(ctx, w, src, excludes)
 	})

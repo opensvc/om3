@@ -322,8 +322,13 @@ type RestoreOptions struct {
 	// instead of into the heads.
 	Into string
 
-	// Config asks the configuration of the object restored too.
+	// Config asks the configuration of the object restored: in place, it
+	// alone, aside, beside the heads.
 	Config bool
+
+	// ByRID asks each head restored into the current head of the resource
+	// of its rid, rather than at the path it was saved from.
+	ByRID bool
 
 	// Heads are the heads to restore, every head of the run when empty.
 	Heads []string

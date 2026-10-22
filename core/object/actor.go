@@ -95,6 +95,7 @@ type (
 		SyncResync(context.Context) error
 		SyncRestore(context.Context) error
 		SyncSnapshots(context.Context) ([]SyncSnapshot, error)
+		RestoredConfig(context.Context) ([]byte, []string, error)
 		SyncSplit(context.Context) error
 		SyncUpdate(context.Context) error
 		SyncIngest(context.Context) error

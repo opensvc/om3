@@ -3780,6 +3780,7 @@ paths:
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRestoreByRid'
         - $ref: '#/components/parameters/inQueryRestoreConfig'
         - $ref: '#/components/parameters/inQueryRestoreHead'
         - $ref: '#/components/parameters/inQueryRestoreInto'
@@ -3792,6 +3793,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        204:
+          description: |
+            The configuration restored in place, or the one of the snapshot
+            already: a restore of the configuration in place is the daemon's,
+            as the requester.
         400:
           $ref: '#/components/responses/400'
         401:
@@ -11207,7 +11213,20 @@ components:
     inQueryRestoreConfig:
       in: query
       name: config
-      description: Restore the configuration of the object too.
+      description: |
+        Restore the configuration of the object: in place, it alone,
+        through the checks of a configuration replaced, the object keeping
+        its id; aside, beside the heads.
+      schema:
+        type: boolean
+
+    inQueryRestoreByRid:
+      in: query
+      name: by_rid
+      description: |
+        Restore each head into the current head of the resource of its
+        resource id, rather than at the path the head had when saved, which
+        must be under a head of the object.
       schema:
         type: boolean
 
