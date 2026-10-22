@@ -3731,6 +3731,7 @@ paths:
         - $ref: '#/components/parameters/inQueryRestoreInto'
         - $ref: '#/components/parameters/inQueryRestoreRefs'
         - $ref: '#/components/parameters/inQueryRestoreSnapshot'
+        - $ref: '#/components/parameters/inQueryRestoreStop'
       responses:
         200:
           content:
@@ -11135,6 +11136,15 @@ components:
         Restore the configuration of the object: in place, it alone,
         through the checks of a configuration replaced, the object keeping
         its id; aside, beside the heads.
+      schema:
+        type: boolean
+
+    inQueryRestoreStop:
+      in: query
+      name: stop
+      description: |
+        Stop the resources using the heads and start the heads, rather than
+        refuse the restore in place, and leave the instance stopped.
       schema:
         type: boolean
 

@@ -880,6 +880,12 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 		// don't verify instance avail if a resource selection was requested
 		return nil
 	}
+	if actioncontext.IsStep(ctx) {
+		// A step of another action acts on part of the instance: the
+		// stop ending a provision leaves what was up before, the steps
+		// of a restore leave the heads up.
+		return nil
+	}
 	if len(actioncontext.Slaves(ctx)) > 0 || actioncontext.AllSlaves(ctx) || actioncontext.Master(ctx) {
 		// don't verify instance avail if a encap selection was requested
 		return nil

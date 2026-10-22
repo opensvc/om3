@@ -70,6 +70,10 @@ type (
 		// from.
 		ByRID bool
 
+		// Stop asks the instance brought to the state a restore in place
+		// needs, and left stopped.
+		Stop bool
+
 		// Heads are the heads to restore, every head of the snapshot
 		// when empty.
 		Heads []string
