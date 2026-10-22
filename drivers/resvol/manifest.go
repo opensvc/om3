@@ -44,6 +44,15 @@ var (
 			Text:         keywords.NewText(fs, "text/kw/volatile"),
 		},
 		{
+			Attr:         "Snap",
+			Converter:    converters.Bool,
+			Default:      "false",
+			Option:       "snap",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/snap"),
+		},
+		{
 			Attr:      "Exclusive",
 			Converter: converters.Bool,
 			Default:   "true",
