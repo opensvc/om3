@@ -516,3 +516,13 @@ func TestSyncIntoANamespaceStore(t *testing.T) {
 		assert.Error(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "rsync", none), "%s of an rsync", option)
 	}
 }
+
+// The quiesce of a container runs in the container, its namespace's to set;
+// the quiesce of an app runs on the node, root's as the app is.
+func TestQuiesceKeywords(t *testing.T) {
+	for _, option := range []string{"quiesce", "quiesce_input", "quiesce_ready", "resume_input", "quiesce_timeout"} {
+		assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", option, "pause", none), option)
+	}
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "app#1", "quiesce", "/bin/true", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "app#1", "resume", "/bin/true", none))
+}

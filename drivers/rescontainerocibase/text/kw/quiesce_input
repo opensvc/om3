@@ -1,0 +1,3 @@
+What the quiesce command reads on its stdin when it starts, as the statements
+a database client runs. Variables expand in the container, so a password read
+from its environment never shows in the configuration or a process list.

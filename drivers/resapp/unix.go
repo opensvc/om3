@@ -43,6 +43,8 @@ type (
 		StopCmd      string         `json:"stop"`
 		CheckCmd     string         `json:"check"`
 		InfoCmd      string         `json:"info"`
+		QuiesceCmd   string         `json:"quiesce"`
+		ResumeCmd    string         `json:"resume"`
 		StatusLogKw  bool           `json:"status_log"`
 		CheckTimeout *time.Duration `json:"check_timeout"`
 		InfoTimeout  *time.Duration `json:"info_timeout"`
@@ -117,6 +119,48 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 
 	t.Log().Infof("run: %s", cmd)
 	return cmd.Run()
+}
+
+// Quiesce implements resource.Quiescer: it runs the quiesce command, which
+// suspends the writes of the app, and returns how to run the resume command.
+// An app with no quiesce command quiesces nothing.
+func (t *T) Quiesce(ctx context.Context) (func(context.Context) error, error) {
+	if t.QuiesceCmd == "" {
+		return nil, nil
+	}
+	if err := t.runAction(ctx, t.QuiesceCmd, "quiesce"); err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context) error {
+		if t.ResumeCmd == "" {
+			return nil
+		}
+		return t.runAction(ctx, t.ResumeCmd, "resume")
+	}, nil
+}
+
+// runAction runs the command s of the action, logged as the stop command is.
+func (t *T) runAction(ctx context.Context, s, action string) error {
+	opts, err := t.GetFuncOpts(ctx, s, action)
+	if err != nil {
+		return fmt.Errorf("prepare '%s' command: %w", action, err)
+	}
+	if len(opts) == 0 {
+		return nil
+	}
+	opts = append(opts,
+		command.WithLogger(t.Log()),
+		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+		command.WithTimeout(t.GetTimeout(action)),
+	)
+	cmd := command.New(opts...)
+	t.Log().Infof("%s: run: %s", action, cmd)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s: %w", action, err)
+	}
+	return nil
 }
 
 func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
@@ -481,6 +525,8 @@ func (t *T) GetTimeout(action string) time.Duration {
 		timeout = t.CheckTimeout
 	case "info":
 		timeout = t.InfoTimeout
+	case "quiesce", "resume":
+		timeout = t.StopTimeout
 	}
 	if timeout == nil {
 		timeout = t.Timeout

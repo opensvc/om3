@@ -134,6 +134,48 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
+// quiesce suspends the writes of the resources of the object that are up and
+// quiesce something, in the order of a stop, and returns how to resume them,
+// in the order of a start. A quiesce failing aborts the run, and resumes the
+// resources already quiesced.
+func (t *T) quiesce(ctx context.Context) (func(context.Context) error, error) {
+	sb := statusbus.FromContext(ctx)
+	rs := t.GetObjectDriver().ResourcesByDrivergroups(allGroups)
+	rs.Reverse()
+	resumes := make([]func(context.Context) error, 0)
+	resume := func(ctx context.Context) error {
+		var errs error
+		for i := len(resumes) - 1; i >= 0; i-- {
+			errs = errors.Join(errs, resumes[i](ctx))
+		}
+		return errs
+	}
+	for _, r := range rs {
+		q, ok := r.(resource.Quiescer)
+		if !ok || r.IsDisabled() || !isUp(sb, r.RID()) {
+			continue
+		}
+		rid := r.RID()
+		f, err := q.Quiesce(ctx)
+		if err != nil {
+			err = fmt.Errorf("%s: %w: no run", rid, err)
+			if rerr := resume(ctx); rerr != nil {
+				err = errors.Join(err, rerr)
+			}
+			return nil, err
+		}
+		if f != nil {
+			resumes = append(resumes, func(ctx context.Context) error {
+				if err := f(ctx); err != nil {
+					return fmt.Errorf("%s: %w", rid, err)
+				}
+				return nil
+			})
+		}
+	}
+	return resume, nil
+}
+
 // cluster returns the id and the name of the cluster of the node.
 func (t *T) cluster() (id, name string) {
 	n, err := object.NewNode(object.WithVolatile(true))
@@ -368,12 +410,28 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 	if err != nil {
 		return run, err
 	}
+	resume, err := t.quiesce(ctx)
+	if err != nil {
+		return run, err
+	}
+	resumed := false
+	defer func() {
+		if !resumed {
+			_ = resume(ctx)
+		}
+	}()
 	var errs error
 	for _, h := range heads {
 		t.Log().Infof("save %s (%s) into store %s, run %s", h.rid, h.dir, s.Ref(), run.ID)
 		if err := s.Backup(ctx, run, h.rid, h.dir, h.excludes); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("save %s: %w", h.rid, err))
 		}
+	}
+	// The writes resume once the heads are saved: the configuration and
+	// the referenced keys are not the data the resources write.
+	resumed = true
+	if err := resume(ctx); err != nil {
+		errs = errors.Join(errs, err)
 	}
 	if t.IncludeRefs {
 		if err := t.saveRefs(ctx, s, run); err != nil {

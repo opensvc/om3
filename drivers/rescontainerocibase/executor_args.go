@@ -261,6 +261,16 @@ func (ea *ExecutorArg) StartArgs(ctx context.Context) (*args.T, error) {
 	return args.New("container", "start", id), nil
 }
 
+// PauseArgs are the args freezing the processes of the container.
+func (ea *ExecutorArg) PauseArgs() *args.T {
+	return args.New("container", "pause", ea.BT.ContainerName())
+}
+
+// UnpauseArgs are the args thawing the processes of the container.
+func (ea *ExecutorArg) UnpauseArgs() *args.T {
+	return args.New("container", "unpause", ea.BT.ContainerName())
+}
+
 func (ea *ExecutorArg) StopArgs() *args.T {
 	a := args.New("container", "stop", ea.BT.ContainerName())
 	if ea.BT.StopTimeout != nil && *ea.BT.StopTimeout > 0 {

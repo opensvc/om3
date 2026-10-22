@@ -1,0 +1,11 @@
+How the writes of the container are suspended during a run of a sync resource
+of the object, for the data it saves to be consistent: the processes of the
+container frozen with `pause`, using the engine's pause and unpause, or a
+command run in the container with `sh -c`. Nothing by default.
+
+A command ends before the run, as a flush, unless `quiesce_ready` is set: it is
+then a session held open during the run, as a database client holding a lock,
+and ended at the resume. A command that fails, or a session not ready within
+`quiesce_timeout`, aborts the run, and what was quiesced is resumed.
+
+It runs in the container, so a namespace admin sets it.
