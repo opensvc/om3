@@ -16,7 +16,7 @@ import (
 // provisionRestore is the snapshot a provision restores the heads it
 // provisions from, as the restore_from keyword names it.
 type provisionRestore struct {
-	store backup.Store
+	store backup.Driver
 	run   backup.Run
 }
 
@@ -27,20 +27,25 @@ func (t *actor) provisionRestoreSource(ctx context.Context) (*provisionRestore, 
 	if s == "" {
 		return nil, nil
 	}
+	// The store reference is one word for a store of the cluster
+	// configuration, from <sec> store#<name> for one of a sec.
 	fields := strings.Fields(s)
-	if len(fields) != 3 {
+	if len(fields) != 3 && len(fields) != 5 {
 		return nil, fmt.Errorf("restore_from %q: want <store> <object path> <snapshot id>", s)
 	}
 	n, err := t.Node()
 	if err != nil {
 		return nil, err
 	}
-	store, err := n.Store(fields[0])
+	last := len(fields) - 2
+	store, err := n.Store(strings.Join(fields[:last], " "), t.path)
 	if err != nil {
 		return nil, fmt.Errorf("restore_from: %w", err)
 	}
-	run, err := backup.FindRun(ctx, store, fields[1], fields[2])
+	// The id names the run: the path says what it was of.
+	run, err := backup.FindRun(ctx, store, backup.RunFilter{ID: fields[last+1]})
 	if err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("restore_from: %w", err)
 	}
 	return &provisionRestore{store: store, run: run}, nil

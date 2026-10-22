@@ -42,6 +42,7 @@ func newCmdStoreSnapshotList() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	flags.StringVar(&options.Store, "store", "", "the store to list, every store when not set")
-	flags.StringVar(&options.Path, "path", "", "the object whose snapshots to list, every object when not set")
+	flags.StringVar(&options.Path, "path", "", "the object whose snapshots to list, by the path the store last recorded for it, every object when not set")
+	flags.StringVar(&options.Cluster, "cluster", "", "the cluster whose snapshots to list, by name or id, every cluster when not set")
 	return cmd
 }

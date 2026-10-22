@@ -59,6 +59,7 @@ func (a *DaemonAPI) getLocalInstanceSyncSnapshots(ctx echo.Context, namespace st
 				Rid:       e.RID,
 				Id:        e.ID,
 				CreatedAt: e.CreatedAt,
+				Cluster:   &e.Cluster,
 				Node:      e.Node,
 				Members:   append([]string{}, e.Members...),
 				Location:  e.Location,

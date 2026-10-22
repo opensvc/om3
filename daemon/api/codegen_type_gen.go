@@ -2844,6 +2844,8 @@ type SubsetsConfig = []SubsetConfig
 
 // SyncSnapshot defines model for SyncSnapshot.
 type SyncSnapshot struct {
+	// Cluster The name of the cluster of the node that took the snapshot, several clusters writing one store.
+	Cluster   *string   `json:"cluster,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 
 	// Id The snapshot id, the session id of the sync update that took it.

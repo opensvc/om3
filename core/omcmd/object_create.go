@@ -256,11 +256,13 @@ func (t *CmdObjectCreate) fromStore() error {
 	if err != nil {
 		return err
 	}
-	s, err := n.Store(t.Store)
+	s, err := n.Store(t.Store, t.path)
 	if err != nil {
 		return err
 	}
-	run, err := backup.FindSnapshot(ctx, s, t.Snapshot)
+	defer s.Close()
+	clusterID, _ := n.Cluster()
+	run, err := backup.FindSnapshot(ctx, s, t.Snapshot, clusterID)
 	if err != nil {
 		return err
 	}

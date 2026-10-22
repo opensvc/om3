@@ -1,5 +1,15 @@
-// Package storetar is the tar store driver: a directory holding, per run, a
-// gzipped tar archive per head and a gzipped file per streamed member.
+// Package storetar is the tar store driver: a directory, of the node or of an
+// sftp server, holding, per run, a gzipped tar archive per head and a gzipped
+// file per streamed member.
+//
+// The runs of an object are under <cluster id>/<object id>/<run id>: several
+// clusters may write one store, an object keeps its runs when renamed, and an
+// object created again at a path does not take the runs of the former one.
+// An object.json beside the runs of an object says the path it had at its
+// last completed run, which a listing by path reads, and a cluster.json beside
+// the objects of a cluster the name it had then, which a listing by cluster
+// name reads. Both are this driver's: another store records the same in its
+// own way, as tags.
 //
 // It neither deduplicates nor encrypts. It is the reference store of the
 // backup framework, exercising every capability with nothing but the
@@ -24,24 +34,48 @@ import (
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/driver"
-	"github.com/opensvc/om3/v3/core/naming"
 )
 
 type (
 	// T is the tar store driver.
 	T struct {
 		backup.T
+
+		// fsys is the connection to the sftp server of the store, once
+		// connected.
+		fsys storeFS
 	}
 
 	// manifest is the description of a run, beside its members.
 	manifest struct {
 		backup.Run
 	}
+
+	// clusterMarker says, in the directory of a cluster, the name the
+	// cluster had at its last completed run, which a listing shows and
+	// selects the cluster by.
+	clusterMarker struct {
+		ID        string    `json:"id"`
+		Name      string    `json:"name"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+
+	// marker says, in the directory of an object, the path the object had
+	// at its last completed run: the runs are found by path through it, and
+	// an object renamed keeps its runs.
+	marker struct {
+		Path        string    `json:"path"`
+		ClusterName string    `json:"cluster_name"`
+		UpdatedAt   time.Time `json:"updated_at"`
+	}
 )
 
 const (
-	manifestName = "manifest.json"
-	tmpSuffix    = ".tmp"
+	manifestName    = "manifest.json"
+	markerName      = "object.json"
+	clusterName     = "cluster.json"
+	tmpSuffix       = ".tmp"
+	sftpDialTimeout = 10 * time.Second
 )
 
 var (
@@ -50,6 +84,7 @@ var (
 	_ backup.Driver   = (*T)(nil)
 	_ backup.Streamer = (*T)(nil)
 	_ backup.Pruner   = (*T)(nil)
+	_ backup.Localer  = (*T)(nil)
 )
 
 func init() {
@@ -61,42 +96,44 @@ func New() backup.Driver {
 	return &T{}
 }
 
-// root returns the directory holding the store, from its url.
-func (t *T) root() (string, error) {
-	s := t.Get("url")
-	s = strings.TrimPrefix(s, "file://")
-	switch {
-	case s == "":
-		return "", fmt.Errorf("store %s: no url", t.Ref())
-	case !filepath.IsAbs(s):
-		return "", fmt.Errorf("store %s: url %q is not an absolute path", t.Ref(), s)
+// Close closes the connection to the sftp server of the store, if any.
+func (t *T) Close() error {
+	if t.fsys == nil {
+		return nil
 	}
-	return filepath.Clean(s), nil
+	err := t.fsys.Close()
+	t.fsys = nil
+	return err
 }
 
-// objectDir returns the directory holding the runs of the object at p.
-func (t *T) objectDir(p string) (string, error) {
-	root, err := t.root()
-	if err != nil {
-		return "", err
+// objectDir returns the directory holding the runs of the object of the run:
+// <cluster id>/<object id>, which a rename of the object does not change, and
+// which another cluster writing the store, or an object of the same path,
+// never shares.
+func (t *T) objectDir(run backup.Run) (storeFS, string, error) {
+	if err := validName("cluster id", run.ClusterID); err != nil {
+		return nil, "", err
 	}
-	objPath, err := naming.ParsePath(p)
-	if err != nil {
-		return "", fmt.Errorf("run of %q: %w", p, err)
+	if err := validName("object id", run.ObjectID); err != nil {
+		return nil, "", err
 	}
-	return filepath.Join(root, objPath.Namespace, objPath.Kind.String(), objPath.Name), nil
+	fsys, root, err := t.location()
+	if err != nil {
+		return nil, "", err
+	}
+	return fsys, filepath.Join(root, run.ClusterID, run.ObjectID), nil
 }
 
 // runDir returns the directory holding the run.
-func (t *T) runDir(run backup.Run) (string, error) {
+func (t *T) runDir(run backup.Run) (storeFS, string, error) {
 	if err := validName("run id", run.ID); err != nil {
-		return "", err
+		return nil, "", err
 	}
-	dir, err := t.objectDir(run.Path)
+	fsys, dir, err := t.objectDir(run)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
-	return filepath.Join(dir, run.ID), nil
+	return fsys, filepath.Join(dir, run.ID), nil
 }
 
 // validName refuses a name that is not one path element of its own, as a
@@ -121,11 +158,11 @@ func (t *T) Backup(ctx context.Context, run backup.Run, member string, src strin
 	if err := validName("member", member); err != nil {
 		return err
 	}
-	root, err := t.root()
+	fsys, root, err := t.location()
 	if err != nil {
 		return err
 	}
-	if within(root, src) {
+	if _, ok := fsys.(localFS); ok && within(root, src) {
 		return fmt.Errorf("store %s at %s is under %s: a store is never inside a head it backs up", t.Ref(), root, src)
 	}
 	m := backup.Member{Name: member, Kind: backup.MemberDir}
@@ -151,20 +188,20 @@ func (t *T) BackupStream(ctx context.Context, run backup.Run, member string, r i
 // complete, and the manifest after it, so a run interrupted lists only the
 // members it saved whole.
 func (t *T) writeMember(ctx context.Context, run backup.Run, m backup.Member, write func(io.Writer) error) error {
-	dir, err := t.runDir(run)
+	fsys, dir, err := t.runDir(run)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := fsys.MkdirAll(dir); err != nil {
 		return err
 	}
 	final := filepath.Join(dir, memberFile(m))
 	tmp := final + tmpSuffix
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	f, err := fsys.Create(tmp)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp)
+	defer func() { _ = fsys.Remove(tmp) }()
 	zw := gzip.NewWriter(f)
 	if err := write(zw); err != nil {
 		_ = f.Close()
@@ -181,15 +218,15 @@ func (t *T) writeMember(ctx context.Context, run backup.Run, m backup.Member, wr
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, final); err != nil {
+	if err := fsys.Rename(tmp, final); err != nil {
 		return err
 	}
-	return t.addMember(dir, run, m)
+	return t.addMember(fsys, dir, run, m)
 }
 
 // addMember records the member in the manifest of the run in dir.
-func (t *T) addMember(dir string, run backup.Run, m backup.Member) error {
-	mf, err := readManifest(dir)
+func (t *T) addMember(fsys storeFS, dir string, run backup.Run, m backup.Member) error {
+	mf, err := readManifest(fsys, dir)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		mf = manifest{Run: run}
@@ -202,41 +239,85 @@ func (t *T) addMember(dir string, run backup.Run, m backup.Member) error {
 	} else {
 		mf.Members = append(mf.Members, m)
 	}
-	return writeManifest(dir, mf)
+	return writeManifest(fsys, dir, mf)
 }
 
 // Complete marks the run completed in its manifest.
 func (t *T) Complete(ctx context.Context, run backup.Run) error {
-	dir, err := t.runDir(run)
+	fsys, dir, err := t.runDir(run)
 	if err != nil {
 		return err
 	}
-	mf, err := readManifest(dir)
+	mf, err := readManifest(fsys, dir)
 	if err != nil {
 		return err
 	}
 	mf.CompletedAt = time.Now()
-	return writeManifest(dir, mf)
+	if err := writeManifest(fsys, dir, mf); err != nil {
+		return err
+	}
+	objectDir := filepath.Dir(dir)
+	if err := writeJSON(fsys, filepath.Join(objectDir, markerName), marker{Path: run.Path, ClusterName: run.ClusterName, UpdatedAt: mf.CompletedAt}); err != nil {
+		return err
+	}
+	return writeJSON(fsys, filepath.Join(filepath.Dir(objectDir), clusterName), clusterMarker{ID: run.ClusterID, Name: run.ClusterName, UpdatedAt: mf.CompletedAt})
+}
+
+// writeJSON writes v as the file final, in place once complete.
+func writeJSON(fsys storeFS, final string, v any) error {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := final + tmpSuffix
+	if err := fsys.WriteFile(tmp, b); err != nil {
+		return err
+	}
+	return fsys.Rename(tmp, final)
+}
+
+func readClusterMarker(fsys storeFS, dir string) (clusterMarker, error) {
+	var m clusterMarker
+	b, err := fsys.ReadFile(filepath.Join(dir, clusterName))
+	if err != nil {
+		return m, err
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return m, fmt.Errorf("%s: %w", filepath.Join(dir, clusterName), err)
+	}
+	return m, nil
+}
+
+func readMarker(fsys storeFS, dir string) (marker, error) {
+	var m marker
+	b, err := fsys.ReadFile(filepath.Join(dir, markerName))
+	if err != nil {
+		return m, err
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return m, fmt.Errorf("%s: %w", filepath.Join(dir, markerName), err)
+	}
+	return m, nil
 }
 
 // writeManifest writes the manifest of the run in dir, in place once
 // complete.
-func writeManifest(dir string, mf manifest) error {
+func writeManifest(fsys storeFS, dir string, mf manifest) error {
 	b, err := json.MarshalIndent(mf, "", "  ")
 	if err != nil {
 		return err
 	}
 	final := filepath.Join(dir, manifestName)
 	tmp := final + tmpSuffix
-	if err := os.WriteFile(tmp, b, 0600); err != nil {
+	if err := fsys.WriteFile(tmp, b); err != nil {
 		return err
 	}
-	return os.Rename(tmp, final)
+	return fsys.Rename(tmp, final)
 }
 
-func readManifest(dir string) (manifest, error) {
+func readManifest(fsys storeFS, dir string) (manifest, error) {
 	var mf manifest
-	b, err := os.ReadFile(filepath.Join(dir, manifestName))
+	b, err := fsys.ReadFile(filepath.Join(dir, manifestName))
 	if err != nil {
 		return mf, err
 	}
@@ -246,49 +327,119 @@ func readManifest(dir string) (manifest, error) {
 	return mf, nil
 }
 
-// Runs returns the runs filter selects, oldest first.
+// Runs returns the runs filter selects, oldest first: the object directories
+// its cluster and object ids name, or every one, and of them the ones whose
+// marker says its path.
 func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, error) {
-	root, err := t.root()
+	fsys, root, err := t.location()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := os.Stat(root); err != nil {
+	if err := fsys.Stat(root); err != nil {
 		return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
 	}
-	pattern := filepath.Join(root, "*", "*", "*", "*", manifestName)
-	if filter.Path != "" {
-		dir, err := t.objectDir(filter.Path)
+	clusterDirs, err := t.clusterDirs(fsys, root, filter.Cluster)
+	if err != nil {
+		return nil, err
+	}
+	objectGlob := "*"
+	if filter.ObjectID != "" {
+		if err := validName("object id", filter.ObjectID); err != nil {
+			return nil, err
+		}
+		objectGlob = filter.ObjectID
+	}
+	// The cluster is selected by its directory: a run written before the
+	// cluster was renamed says the former name.
+	filter.Cluster = ""
+	names := make(map[string]string)
+	dirs := make([]string, 0)
+	for _, clusterDir := range clusterDirs {
+		if m, err := readClusterMarker(fsys, clusterDir); err == nil {
+			names[filepath.Base(clusterDir)] = m.Name
+		}
+		l, err := fsys.Glob(filepath.Join(clusterDir, objectGlob))
 		if err != nil {
 			return nil, err
 		}
-		pattern = filepath.Join(dir, "*", manifestName)
+		for _, dir := range l {
+			if filepath.Base(dir) != clusterName {
+				dirs = append(dirs, dir)
+			}
+		}
 	}
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, err
-	}
-	runs := make([]backup.Run, 0, len(matches))
+	runs := make([]backup.Run, 0)
 	var errs error
-	for _, match := range matches {
+	for _, dir := range dirs {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		mf, err := readManifest(filepath.Dir(match))
+		if filter.Path != "" {
+			m, err := readMarker(fsys, dir)
+			switch {
+			case errors.Is(err, os.ErrNotExist):
+				// No run of the object completed.
+				continue
+			case err != nil:
+				errs = errors.Join(errs, err)
+				continue
+			case m.Path != filter.Path:
+				continue
+			}
+		}
+		matches, err := fsys.Glob(filepath.Join(dir, "*", manifestName))
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue
 		}
-		if filepath.Base(filepath.Dir(match)) != mf.ID {
-			errs = errors.Join(errs, fmt.Errorf("%s: run %s in the directory of run %s", match, mf.ID, filepath.Base(filepath.Dir(match))))
-			continue
+		for _, match := range matches {
+			mf, err := readManifest(fsys, filepath.Dir(match))
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			if filepath.Base(filepath.Dir(match)) != mf.ID {
+				errs = errors.Join(errs, fmt.Errorf("%s: run %s in the directory of run %s", match, mf.ID, filepath.Base(filepath.Dir(match))))
+				continue
+			}
+			if !filter.Match(mf.Run) {
+				continue
+			}
+			if name, ok := names[mf.ClusterID]; ok {
+				// The cluster as it is named now.
+				mf.ClusterName = name
+			}
+			runs = append(runs, mf.Run)
 		}
-		if !filter.Match(mf.Run) {
-			continue
-		}
-		runs = append(runs, mf.Run)
 	}
 	slices.SortStableFunc(runs, func(a, b backup.Run) int { return a.CreatedAt.Compare(b.CreatedAt) })
 	return runs, errs
+}
+
+// clusterDirs returns the directories of the clusters the filter names, by id
+// or by the name their cluster.json says, of every cluster when it names
+// none. The directories holding files are left to the glob of their objects.
+func (t *T) clusterDirs(fsys storeFS, root, cluster string) ([]string, error) {
+	if cluster == "" {
+		return fsys.Glob(filepath.Join(root, "*"))
+	}
+	if err := validName("cluster", cluster); err != nil {
+		return nil, err
+	}
+	if fsys.Stat(filepath.Join(root, cluster)) == nil {
+		return []string{filepath.Join(root, cluster)}, nil
+	}
+	markers, err := fsys.Glob(filepath.Join(root, "*", clusterName))
+	if err != nil {
+		return nil, err
+	}
+	l := make([]string, 0)
+	for _, p := range markers {
+		if m, err := readClusterMarker(fsys, filepath.Dir(p)); err == nil && m.Name == cluster {
+			l = append(l, filepath.Dir(p))
+		}
+	}
+	return l, nil
 }
 
 // openMember opens the gzipped file of the member of the run.
@@ -300,11 +451,11 @@ func (t *T) openMember(run backup.Run, member string) (backup.Member, io.ReadClo
 	if err := validName("member", member); err != nil {
 		return m, nil, err
 	}
-	dir, err := t.runDir(run)
+	fsys, dir, err := t.runDir(run)
 	if err != nil {
 		return m, nil, err
 	}
-	f, err := os.OpenInRoot(dir, memberFile(m))
+	f, err := fsys.OpenIn(dir, memberFile(m))
 	if err != nil {
 		return m, nil, err
 	}
@@ -360,12 +511,12 @@ func (t *T) Delete(ctx context.Context, runs []backup.Run) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		dir, err := t.runDir(run)
+		fsys, dir, err := t.runDir(run)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue
 		}
-		if err := os.RemoveAll(dir); err != nil {
+		if err := fsys.RemoveAll(dir); err != nil {
 			errs = errors.Join(errs, err)
 		}
 	}

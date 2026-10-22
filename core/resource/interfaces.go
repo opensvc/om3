@@ -205,6 +205,10 @@ type (
 		// CreatedAt is when the snapshot was taken.
 		CreatedAt time.Time `json:"created_at"`
 
+		// Cluster is the name of the cluster of the node that took it:
+		// several clusters may write one store.
+		Cluster string `json:"cluster"`
+
 		// Node is the node that took it.
 		Node string `json:"node"`
 

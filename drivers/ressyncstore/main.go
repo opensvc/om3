@@ -130,13 +130,42 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
+// cluster returns the id and the name of the cluster of the node.
+func (t *T) cluster() (id, name string) {
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return "", ""
+	}
+	return n.Cluster()
+}
+
+// restoreRun returns the run a restore writes back: the one snapshot names,
+// a run of the object or of an object of its path, of any cluster, as its
+// source on a drp cluster, or the latest run of the object its cluster
+// wrote. An object purged and created again at its path has a new id: its
+// latest run is never the former object's.
+func (t *T) restoreRun(ctx context.Context, s backup.Store, snapshot string) (backup.Run, error) {
+	if snapshot == "" {
+		clusterID, _ := t.cluster()
+		return backup.FindRun(ctx, s, backup.RunFilter{ObjectID: t.ObjectID.String(), Cluster: clusterID})
+	}
+	run, err := backup.FindRun(ctx, s, backup.RunFilter{ID: snapshot})
+	if err != nil {
+		return run, err
+	}
+	if run.ObjectID != t.ObjectID.String() && run.Path != t.Path.String() {
+		return run, fmt.Errorf("run %s is of %s, of the cluster %s, not of %s", run.ShortID(), run.Path, run.ClusterName, t.Path)
+	}
+	return run, nil
+}
+
 // store returns the driver of the store the store keyword names.
 func (t *T) store() (backup.Driver, error) {
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return nil, err
 	}
-	return n.Store(t.Store)
+	return n.Store(t.Store, t.Path)
 }
 
 // retention returns the retention of the runs: the keep of the resource, or
@@ -299,6 +328,7 @@ func (t *T) Full(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer s.Close()
 	t.Log().Infof("check run %s in store %s", run.ID, s.Ref())
 	return s.Check(ctx, backup.RunFilter{Path: run.Path, ID: run.ID})
 }
@@ -311,6 +341,7 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 		Node:      hostname.Hostname(),
 		CreatedAt: time.Now(),
 	}
+	run.ClusterID, run.ClusterName = t.cluster()
 	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
 		t.Log().Infof("the instance is not sufficiently started (%s): no run from this node", reason)
 		return run, errPassive
@@ -324,6 +355,7 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 	if err != nil {
 		return run, err
 	}
+	defer s.Close()
 	retention, err := t.retention(s)
 	if err != nil {
 		return run, err
@@ -498,7 +530,7 @@ func (t *T) prune(ctx context.Context, s backup.Store, current backup.Run, reten
 	if !ok {
 		return nil
 	}
-	runs, err := s.Runs(ctx, backup.RunFilter{Path: current.Path, Incomplete: true})
+	runs, err := s.Runs(ctx, backup.RunFilter{ObjectID: current.ObjectID, Cluster: current.ClusterID, Incomplete: true})
 	if err != nil {
 		return err
 	}
@@ -543,6 +575,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Warn
 	}
+	defer s.Close()
 	if _, err := t.retention(s); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Warn
@@ -557,7 +590,8 @@ func (t *T) Snapshots(ctx context.Context) ([]resource.Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	runs, err := s.Runs(ctx, backup.RunFilter{Path: t.Path.String()})
+	defer s.Close()
+	runs, err := s.Runs(ctx, backup.RunFilter{ObjectID: t.ObjectID.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -566,6 +600,7 @@ func (t *T) Snapshots(ctx context.Context) ([]resource.Snapshot, error) {
 		l[i] = resource.Snapshot{
 			ID:        run.ID,
 			CreatedAt: run.CreatedAt,
+			Cluster:   run.ClusterName,
 			Node:      run.Node,
 			Members:   run.MemberNames(),
 			Location:  s.Ref(),
@@ -583,14 +618,10 @@ func (t *T) Restore(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	run, err := backup.FindRun(ctx, s, t.Path.String(), opts.Snapshot)
+	defer s.Close()
+	run, err := t.restoreRun(ctx, s, opts.Snapshot)
 	if err != nil {
 		return err
-	}
-	if opts.Snapshot == "" && opts.Into == "" && run.ObjectID != "" && run.ObjectID != t.ObjectID.String() {
-		// The latest run of the path is of an object purged and
-		// created again there, whose data this one may not want.
-		return fmt.Errorf("the latest run of %s, %s, is of another object at this path, of id %s: name it with --snapshot to restore it", t.Path, run.ShortID(), run.ObjectID)
 	}
 	members := make([]string, 0, len(run.Members))
 	for _, m := range run.Members {

@@ -108,11 +108,12 @@ func TestRetentionDropWeeks(t *testing.T) {
 }
 
 func TestFilterAndRun(t *testing.T) {
-	run := Run{ID: "7c0e41d2-aaaa", Path: "ns1/svc/svc1", CompletedAt: time.Now(), Members: []Member{{Name: "fs#1", Kind: MemberDir}, {Name: MemberConfig, Kind: MemberStream}}}
+	run := Run{ID: "7c0e41d2-aaaa", Path: "ns1/svc/svc1", ObjectID: "oid", ClusterID: "c1", CompletedAt: time.Now(), Members: []Member{{Name: "fs#1", Kind: MemberDir}, {Name: MemberConfig, Kind: MemberStream}}}
 	assert.True(t, RunFilter{}.Match(run))
-	assert.True(t, RunFilter{Path: "ns1/svc/svc1", ID: "7c0e"}.Match(run))
+	assert.True(t, RunFilter{ObjectID: "oid", Cluster: "c1", ID: "7c0e"}.Match(run))
 	assert.False(t, RunFilter{ID: "7c0f"}.Match(run))
-	assert.False(t, RunFilter{Path: "ns1/svc/svc2"}.Match(run))
+	assert.False(t, RunFilter{ObjectID: "oid2"}.Match(run))
+	assert.False(t, RunFilter{Cluster: "c2"}.Match(run))
 	assert.True(t, run.Has("fs#1"))
 	assert.False(t, run.Has("fs#2"))
 	assert.Equal(t, []string{"fs#1", "config"}, run.MemberNames())
