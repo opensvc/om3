@@ -33,7 +33,11 @@ type (
 		Shared   bool
 		Usage    bool
 		Volatile bool
-		Nodes    []string
+
+		// Snap asks a pool whose volumes take snapshots, which a backup
+		// copies rather than the head of the volume.
+		Snap  bool
+		Nodes []string
 
 		manager manager
 	}
@@ -112,6 +116,10 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 		}
 		if t.Shared == true && !HasCapability(p, CapShared) {
 			cause = append(cause, fmt.Sprintf("[%s] not shared capable", p.Name()))
+			continue
+		}
+		if t.Snap && !HasCapability(p, CapSnap) {
+			cause = append(cause, fmt.Sprintf("[%s] not snap capable", p.Name()))
 			continue
 		}
 		if t.Volatile == true && !HasCapability(p, CapVolatile) {
