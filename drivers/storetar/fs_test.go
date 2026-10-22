@@ -53,7 +53,7 @@ func TestSFTPStore(t *testing.T) {
 	writeFile(t, filepath.Join(src, "a.txt"), "a", 0640)
 	writeFile(t, filepath.Join(src, "sub", "b.txt"), "b", 0600)
 	run := newRun("run1", time.Date(2026, 10, 22, 2, 0, 0, 0, time.UTC))
-	require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+	require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
 	require.NoError(t, s.BackupStream(ctx, run, backup.MemberConfig, strings.NewReader("[DEFAULT]\n")))
 	require.NoError(t, s.Complete(ctx, run))
 	assert.FileExists(t, filepath.Join(storeDir, "c1", "oid", "run1", "fs#1.tar.gz"), "written on the server")

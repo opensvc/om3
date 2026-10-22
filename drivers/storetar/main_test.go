@@ -56,7 +56,7 @@ func TestBackupRestore(t *testing.T) {
 	require.NoError(t, os.Chmod(filepath.Join(src, "sub"), 0750))
 
 	run := newRun("run1", time.Date(2026, 10, 20, 2, 0, 0, 0, time.UTC))
-	require.NoError(t, s.Backup(ctx, run, "fs#1", src, []string{"/tmp", "*.log"}))
+	require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, []string{"/tmp", "*.log"}))
 	require.NoError(t, s.BackupStream(ctx, run, backup.MemberConfig, strings.NewReader("[DEFAULT]\n")))
 
 	runs, err := s.Runs(ctx, backup.RunFilter{})
@@ -118,7 +118,7 @@ func TestRestoreOverExisting(t *testing.T) {
 	src := t.TempDir()
 	writeFile(t, filepath.Join(src, "a.txt"), "new", 0600)
 	run := newRun("run1", time.Now())
-	require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+	require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
 	run.Members = []backup.Member{{Name: "fs#1", Kind: backup.MemberDir}}
 
 	outside := filepath.Join(t.TempDir(), "outside")
@@ -168,13 +168,13 @@ func TestRunsFilterAndDelete(t *testing.T) {
 	t0 := time.Date(2026, 10, 20, 2, 0, 0, 0, time.UTC)
 	for i, id := range []string{"7c0e41d2-1", "7c0e9999-2", "b93f0a17-3"} {
 		run := newRun(id, t0.Add(time.Duration(i)*time.Hour))
-		require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+		require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
 		require.NoError(t, s.Complete(ctx, run))
 	}
 	other := newRun("aaaa-4", t0)
 	other.Path = "ns2/svc/web"
 	other.ObjectID = "oid2"
-	require.NoError(t, s.Backup(ctx, other, "fs#1", src, nil))
+	require.NoError(t, s.Backup(ctx, other, "fs#1", src, src, nil))
 	require.NoError(t, s.Complete(ctx, other))
 
 	runs, err := s.Runs(ctx, backup.RunFilter{Path: "ns1/svc/svc1"})
@@ -211,9 +211,9 @@ func TestInterruptedMemberIsNotListed(t *testing.T) {
 	src := t.TempDir()
 	writeFile(t, filepath.Join(src, "a"), "a", 0600)
 	run := newRun("run1", time.Now())
-	require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+	require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
 	cancel()
-	assert.Error(t, s.Backup(ctx, run, "fs#2", src, nil))
+	assert.Error(t, s.Backup(ctx, run, "fs#2", src, src, nil))
 	runs, err := s.Runs(context.Background(), backup.RunFilter{})
 	require.NoError(t, err)
 	assert.Empty(t, runs, "an interrupted run is not listed")
@@ -232,7 +232,7 @@ func TestCheckFindsCorruption(t *testing.T) {
 	src := t.TempDir()
 	writeFile(t, filepath.Join(src, "a"), strings.Repeat("a", 4096), 0600)
 	run := newRun("run1", time.Now())
-	require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+	require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
 	require.NoError(t, s.Complete(ctx, run))
 	_, dir, err := s.runDir(run)
 	require.NoError(t, err)
@@ -248,11 +248,11 @@ func TestRefusals(t *testing.T) {
 	ctx := context.Background()
 	src := t.TempDir()
 	s := newStore(t, filepath.Join(src, "store"))
-	assert.ErrorContains(t, s.Backup(ctx, newRun("run1", time.Now()), "fs#1", src, nil), "never inside a head")
+	assert.ErrorContains(t, s.Backup(ctx, newRun("run1", time.Now()), "fs#1", src, src, nil), "never inside a head")
 
 	s = newStore(t, t.TempDir())
-	assert.Error(t, s.Backup(ctx, newRun("../x", time.Now()), "fs#1", src, nil))
-	assert.Error(t, s.Backup(ctx, newRun("run1", time.Now()), "../fs", src, nil))
+	assert.Error(t, s.Backup(ctx, newRun("../x", time.Now()), "fs#1", src, src, nil))
+	assert.Error(t, s.Backup(ctx, newRun("run1", time.Now()), "../fs", src, src, nil))
 	assert.Error(t, newStore(t, "relative/dir").Check(ctx, backup.RunFilter{}))
 }
 
@@ -274,7 +274,7 @@ func TestRunsByClusterAndObject(t *testing.T) {
 	t0 := time.Date(2026, 10, 22, 2, 0, 0, 0, time.UTC)
 	save := func(run backup.Run) {
 		t.Helper()
-		require.NoError(t, s.Backup(ctx, run, "fs#1", src, nil))
+		require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
 		require.NoError(t, s.Complete(ctx, run))
 	}
 	ids := func(runs []backup.Run, err error) []string {

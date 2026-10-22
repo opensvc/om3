@@ -47,6 +47,13 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/include_refs"),
 		},
 		{
+			Attr:       "Snapshot",
+			Candidates: []string{"auto", "none"},
+			Default:    "auto",
+			Option:     "snapshot",
+			Text:       keywords.NewText(fs, "text/kw/snapshot"),
+		},
+		{
 			Attr:    "Keep",
 			Example: "24h 7d 4w 6m",
 			Option:  "keep",

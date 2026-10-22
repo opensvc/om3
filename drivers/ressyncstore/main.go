@@ -50,6 +50,7 @@ type (
 		Exclude     []string
 		Keep        string
 		IncludeRefs bool
+		Snapshot    string
 		ObjectID    uuid.UUID
 	}
 
@@ -174,6 +175,45 @@ func (t *T) quiesce(ctx context.Context) (func(context.Context) error, error) {
 		}
 	}
 	return resume, nil
+}
+
+// snapshotHeads takes a snapshot of each head whose storage takes them, as
+// the snapshot keyword lets it, and returns the directories to copy them
+// from, by rid, and how to release them. A snapshot failing releases the
+// ones taken, and aborts the run rather than copy the head under a quiesce
+// held for the whole copy.
+func (t *T) snapshotHeads(ctx context.Context, run backup.Run, heads []head) (map[string]string, func(), error) {
+	dirs := make(map[string]string)
+	releases := make([]func() error, 0)
+	release := func() {
+		for i := len(releases) - 1; i >= 0; i-- {
+			if err := releases[i](); err != nil {
+				t.Log().Warnf("release a snapshot: %s", err)
+			}
+		}
+	}
+	if t.Snapshot == "none" {
+		return dirs, release, nil
+	}
+	o := t.GetObjectDriver()
+	name := "opensvc-" + run.ShortID()
+	for _, h := range heads {
+		snapshotter, ok := o.ResourceByID(h.rid).(resource.HeadSnapshotter)
+		if !ok {
+			continue
+		}
+		dir, rel, ok, err := snapshotter.SnapshotHead(ctx, name)
+		if err != nil {
+			release()
+			return nil, func() {}, fmt.Errorf("%s: snapshot: %w: no run", h.rid, err)
+		}
+		if !ok {
+			continue
+		}
+		dirs[h.rid] = dir
+		releases = append(releases, rel)
+	}
+	return dirs, release, nil
 }
 
 // cluster returns the id and the name of the cluster of the node.
@@ -420,18 +460,45 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 			_ = resume(ctx)
 		}
 	}()
+	// The heads whose storage takes snapshots are snapshotted under the
+	// quiesce, and copied once the writes resume, the others copied
+	// under it: the writes resume once the snapshots are taken when every
+	// head is snapshotted.
+	snapshots, release, err := t.snapshotHeads(ctx, run, heads)
+	if err != nil {
+		resumed = true
+		return run, errors.Join(err, resume(ctx))
+	}
+	defer release()
 	var errs error
-	for _, h := range heads {
-		t.Log().Infof("save %s (%s) into store %s, run %s", h.rid, h.dir, s.Ref(), run.ID)
-		if err := s.Backup(ctx, run, h.rid, h.dir, h.excludes); err != nil {
+	save := func(h head) {
+		src := h.dir
+		if dir, ok := snapshots[h.rid]; ok {
+			src = dir
+			t.Log().Infof("save %s (%s) from its snapshot %s into store %s, run %s", h.rid, h.dir, dir, s.Ref(), run.ID)
+		} else {
+			t.Log().Infof("save %s (%s) into store %s, run %s", h.rid, h.dir, s.Ref(), run.ID)
+		}
+		if err := s.Backup(ctx, run, h.rid, src, h.dir, h.excludes); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("save %s: %w", h.rid, err))
 		}
 	}
-	// The writes resume once the heads are saved: the configuration and
-	// the referenced keys are not the data the resources write.
+	for _, h := range heads {
+		if _, ok := snapshots[h.rid]; !ok {
+			save(h)
+		}
+	}
+	// The writes resume once the heads are saved, or snapshotted: the
+	// configuration and the referenced keys are not the data the
+	// resources write.
 	resumed = true
 	if err := resume(ctx); err != nil {
 		errs = errors.Join(errs, err)
+	}
+	for _, h := range heads {
+		if _, ok := snapshots[h.rid]; ok {
+			save(h)
+		}
 	}
 	if t.IncludeRefs {
 		if err := t.saveRefs(ctx, s, run); err != nil {
@@ -580,7 +647,7 @@ func (t *T) saveConfig(ctx context.Context, s backup.Store, run backup.Run) erro
 	if err := os.WriteFile(filepath.Join(dir, backup.MemberConfig), b, 0600); err != nil {
 		return err
 	}
-	return s.Backup(ctx, run, backup.MemberConfig, dir, nil)
+	return s.Backup(ctx, run, backup.MemberConfig, dir, "", nil)
 }
 
 // prune deletes the runs of the object the retention drops, never the run
