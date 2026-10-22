@@ -198,6 +198,16 @@ type (
 		Quiesce(context.Context) (func(context.Context) error, error)
 	}
 
+	// HeadSnapshotter is a resource whose head its storage takes
+	// point-in-time snapshots of: a run of a sync resource copies the
+	// snapshot rather than the head, so the writes it quiesced resume
+	// once the snapshot is taken. SnapshotHead returns the directory
+	// holding the snapshot and how to release it, and ok false when the
+	// storage of this head takes none.
+	HeadSnapshotter interface {
+		SnapshotHead(ctx context.Context, name string) (dir string, release func() error, ok bool, err error)
+	}
+
 	// ConfigRestorer is a sync resource holding the configuration of the
 	// object at the points in time it can restore.
 	ConfigRestorer interface {

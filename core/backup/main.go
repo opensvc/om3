@@ -113,9 +113,10 @@ type (
 		Ref() string
 
 		// Backup saves the directory src as the member of run, without
-		// the paths excludes matches, relative to src, and records src as
-		// the head of the member.
-		Backup(ctx context.Context, run Run, member string, src string, excludes []string) error
+		// the paths excludes matches, relative to src, and records head
+		// as the head of the member: src itself, or the head a snapshot
+		// at src is of.
+		Backup(ctx context.Context, run Run, member, src, head string, excludes []string) error
 
 		// Runs returns the runs filter selects, oldest first.
 		Runs(ctx context.Context, filter RunFilter) ([]Run, error)

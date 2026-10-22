@@ -1,0 +1,8 @@
+How a head is copied: `auto` copies a snapshot of the heads whose storage takes
+them, a zfs dataset, a btrfs subvolume or an LVM thin volume, taken while the
+resources of the object are quiesced, which resume once the snapshots are
+taken; `none` copies the heads themselves, the resources quiesced for the
+whole copy.
+
+A snapshot failing aborts the run, rather than copy the head under a quiesce
+held for the whole copy.

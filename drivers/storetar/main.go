@@ -154,7 +154,7 @@ func memberFile(m backup.Member) string {
 }
 
 // Backup saves the directory src as a gzipped tar archive, member of the run.
-func (t *T) Backup(ctx context.Context, run backup.Run, member string, src string, excludes []string) error {
+func (t *T) Backup(ctx context.Context, run backup.Run, member, src, head string, excludes []string) error {
 	if err := validName("member", member); err != nil {
 		return err
 	}
@@ -165,7 +165,10 @@ func (t *T) Backup(ctx context.Context, run backup.Run, member string, src strin
 	if _, ok := fsys.(localFS); ok && within(root, src) {
 		return fmt.Errorf("store %s at %s is under %s: a store is never inside a head it backs up", t.Ref(), root, src)
 	}
-	m := backup.Member{Name: member, Kind: backup.MemberDir, Head: filepath.Clean(src)}
+	m := backup.Member{Name: member, Kind: backup.MemberDir}
+	if head != "" {
+		m.Head = filepath.Clean(head)
+	}
 	return t.writeMember(ctx, run, m, func(w io.Writer) error {
 		return writeTar(ctx, w, src, excludes)
 	})
