@@ -189,6 +189,15 @@ type (
 		Restore(context.Context) error
 	}
 
+	// Quiescer is a resource whose writes a run of a sync resource
+	// suspends, for the data it saves to be consistent: quiesced before
+	// the run, in the order of a stop, resumed after it, in the order of
+	// a start. Quiesce returns how to resume them, nil when the resource
+	// quiesces nothing.
+	Quiescer interface {
+		Quiesce(context.Context) (func(context.Context) error, error)
+	}
+
 	// ConfigRestorer is a sync resource holding the configuration of the
 	// object at the points in time it can restore.
 	ConfigRestorer interface {
