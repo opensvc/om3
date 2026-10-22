@@ -487,3 +487,32 @@ func TestAContainerNameAndImageAreTheObjects(t *testing.T) {
 		assert.NoError(t, Denied(admin, naming.KindSvc, rid, "image", "ghcr.io/opensvc/pause", set), rid)
 	}
 }
+
+// The stores of a sec are its namespace's to declare: a store reached over
+// the network, its key kept in a sec. A directory of the node, and a key
+// written in the section, are root's.
+func TestNamespaceStores(t *testing.T) {
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "type", "tar", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "url", "sftp://backup@sftp.example/srv", none))
+	assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#local", "url", "/srv/backups", none), "a directory of the node")
+	assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#local", "url", "file:///srv/backups", none), "a directory of the node")
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "host_key", "ssh-ed25519 AAAA", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "ssh_private_key", "from . key ssh_private_key", none))
+	assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", "ssh_private_key", "-----BEGIN OPENSSH PRIVATE KEY-----", none), "from <sec> key <key>")
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "keep", "7d", none))
+	assert.Error(t, Denied(noGrant, naming.KindSec, "store#remote", "schedule", "@1d", none), "a keyword the policy has not weighed")
+}
+
+// A sync resource of the store type is the namespace's, backing the object
+// up into a store of a sec. The stores of the cluster configuration, and the
+// other sync drivers, are root's.
+func TestSyncIntoANamespaceStore(t *testing.T) {
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "sync#1", "type", "store", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "sync#1", "type", "rsync", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "sync#1", "store", "from ./sec/stores store#remote", none))
+	assert.ErrorContains(t, Denied(noGrant, naming.KindSvc, "sync#1", "store", "tar1", none), "a store of the cluster configuration")
+	for _, option := range []string{"rids", "exclude", "include_refs", "keep", "schedule", "max_delay", "log"} {
+		assert.NoError(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "store", none), option)
+		assert.Error(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "rsync", none), "%s of an rsync", option)
+	}
+}
