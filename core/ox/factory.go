@@ -2934,6 +2934,9 @@ func newCmdObjectGroupUpdate(kind, group string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	if group == "sync" {
+		commoncmd.FlagsRunMarks(flags, &options.Protect, &options.Note)
+	}
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -3934,6 +3937,7 @@ func newCmdObjectInstanceUpdate(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	commoncmd.FlagsRunMarks(flags, &options.Protect, &options.Note)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

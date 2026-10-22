@@ -21,6 +21,8 @@ type (
 		NodeSelector string
 		Force        bool
 		Target       []string
+		Protect      bool
+		Note         string
 	}
 )
 
@@ -60,6 +62,12 @@ func (t *CmdObjectInstanceUpdate) Run(kind string) error {
 			}
 			if len(t.Target) > 0 {
 				params.SyncTarget = &t.Target
+			}
+			if t.Protect {
+				params.Protect = &t.Protect
+			}
+			if t.Note != "" {
+				params.Note = &t.Note
 			}
 			{
 				sessionID := xsession.SessionID().UUID()

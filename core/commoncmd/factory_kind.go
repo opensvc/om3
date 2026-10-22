@@ -274,6 +274,21 @@ func NewCmdStoreSnapshot() *cobra.Command {
 	}
 }
 
+// NewCmdStoreSnapshotRm returns the store snapshot rm command.
+func NewCmdStoreSnapshotRm() *cobra.Command {
+	return &cobra.Command{
+		Use:   "rm",
+		Short: "remove a snapshot from a store",
+		Long: `Remove a snapshot from a store: the run of an object a sync update wrote,
+named by its id or a prefix of it.
+
+A run marked protected, by a sync update with --protect, is never removed by
+the retention: this command is how it goes.`,
+		Example: `  # remove a run kept before an upgrade
+  om store snapshot rm --store tar1 --snapshot 7c0e41d2`,
+	}
+}
+
 // NewCmdStoreSnapshotList returns the store snapshot list command.
 func NewCmdStoreSnapshotList() *cobra.Command {
 	return &cobra.Command{

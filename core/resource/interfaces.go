@@ -241,6 +241,11 @@ type (
 		// Node is the node that took it.
 		Node string `json:"node"`
 
+		// Protected says the retention keeps it, and Note is the text
+		// it was marked with.
+		Protected bool   `json:"protected,omitempty"`
+		Note      string `json:"note,omitempty"`
+
 		// Members are what it holds: the heads, by resource id, and
 		// the configuration of the object.
 		Members []string `json:"members"`

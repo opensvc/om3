@@ -30,6 +30,8 @@ type (
 		ClusterID   string    `json:"cluster_id"`
 		ClusterName string    `json:"cluster_name"`
 		Node        string    `json:"node"`
+		Protected   bool      `json:"protected"`
+		Note        string    `json:"note"`
 		Members     []string  `json:"members"`
 	}
 )
@@ -69,12 +71,14 @@ func (t *CmdStoreSnapshotList) Run() error {
 				ClusterID:   run.ClusterID,
 				ClusterName: run.ClusterName,
 				Node:        run.Node,
+				Protected:   run.Protected,
+				Note:        run.Note,
 				Members:     run.MemberNames(),
 			})
 		}
 	}
 	return errors.Join(errs, output.Renderer{
-		DefaultOutput: "tab=STORE:store,PATH:path,CREATED_AT:created_at,SNAPSHOT:id,CLUSTER:cluster_name,NODE:node,MEMBERS:members[*]",
+		DefaultOutput: "tab=STORE:store,PATH:path,CREATED_AT:created_at,SNAPSHOT:id,CLUSTER:cluster_name,NODE:node,MEMBERS:members[*],PROTECTED:protected,NOTE:note",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,

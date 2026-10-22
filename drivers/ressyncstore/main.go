@@ -428,6 +428,11 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 		CreatedAt: time.Now(),
 	}
 	run.ClusterID, run.ClusterName = t.cluster()
+	marks := actioncontext.RunMarksOf(ctx)
+	if err := backup.CheckNote(marks.Note); err != nil {
+		return run, err
+	}
+	run.Protected, run.Note = marks.Protect, marks.Note
 	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
 		t.Log().Infof("the instance is not sufficiently started (%s): no run from this node", reason)
 		return run, errPassive
@@ -675,7 +680,9 @@ func (t *T) prune(ctx context.Context, s backup.Store, current backup.Run, reten
 	if retention.IsZero() {
 		return nil
 	}
-	runs = slices.DeleteFunc(runs, func(run backup.Run) bool { return run.CompletedAt.IsZero() })
+	// A protected run is neither dropped nor counted: keep says the runs
+	// kept besides the protected ones.
+	runs = slices.DeleteFunc(runs, func(run backup.Run) bool { return run.CompletedAt.IsZero() || run.Protected })
 	drop := slices.DeleteFunc(retention.Drop(runs), func(run backup.Run) bool { return run.ID == current.ID })
 	if len(drop) == 0 {
 		return nil
@@ -731,6 +738,8 @@ func (t *T) Snapshots(ctx context.Context) ([]resource.Snapshot, error) {
 			CreatedAt: run.CreatedAt,
 			Cluster:   run.ClusterName,
 			Node:      run.Node,
+			Protected: run.Protected,
+			Note:      run.Note,
 			Members:   run.MemberNames(),
 			Location:  s.Ref(),
 		}
