@@ -29,7 +29,7 @@ func TestEmptyDir(t *testing.T) {
 	touch(t, filepath.Join(dir, "data", "z"))
 	require.NoError(t, os.Symlink(outside, filepath.Join(dir, "link")))
 
-	require.NoError(t, emptyDir(dir, []string{"/tmp", "*.log", "data/cache"}))
+	require.NoError(t, emptyDir(dir, []string{"/tmp", "*.log", "data/cache"}, nil))
 	assert.NoFileExists(t, filepath.Join(dir, "a"))
 	assert.NoFileExists(t, filepath.Join(dir, "sub", "b"))
 	assert.FileExists(t, filepath.Join(dir, "sub", "c.log"))
@@ -39,8 +39,48 @@ func TestEmptyDir(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(dir, "link"))
 	assert.FileExists(t, filepath.Join(outside, "keep"), "a symlink is removed, not followed")
 
-	require.NoError(t, emptyDir(dir, nil))
+	require.NoError(t, emptyDir(dir, nil, nil))
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	assert.Empty(t, entries)
+}
+
+// A member saved from a path restores under the deepest head holding it, and
+// emptying it leaves the heads of the other resources under it.
+func TestRestoreTargets(t *testing.T) {
+	heads := []head{{rid: "fs#1", dir: "/srv/app"}, {rid: "fs#2", dir: "/srv/app/logs"}, {rid: "volume#1", dir: "/srv/vols/v1"}}
+	h, ok := containingHead(heads, "/srv/app/data")
+	require.True(t, ok)
+	assert.Equal(t, "fs#1", h.rid, "a head merged into fs#1")
+	h, ok = containingHead(heads, "/srv/app/logs/old")
+	require.True(t, ok)
+	assert.Equal(t, "fs#2", h.rid, "the deepest head")
+	_, ok = containingHead(heads, "/srv/application")
+	assert.False(t, ok, "a prefix of a name is not a head")
+	_, ok = containingHead(heads, "/etc")
+	assert.False(t, ok)
+	assert.Equal(t, []string{"logs"}, nestedHeads(heads, "/srv/app"))
+	assert.Empty(t, nestedHeads(heads, "/srv/app/logs"))
+
+	dir := t.TempDir()
+	for _, p := range []string{"a", "logs/x", "sub/deep/y", "sub/z"} {
+		require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(dir, p)), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, p), nil, 0644))
+	}
+	require.NoError(t, emptyDir(dir, nil, []string{"logs", "sub/deep"}))
+	assert.NoFileExists(t, filepath.Join(dir, "a"))
+	assert.NoFileExists(t, filepath.Join(dir, "sub/z"))
+	assert.FileExists(t, filepath.Join(dir, "logs/x"), "a head under it")
+	assert.FileExists(t, filepath.Join(dir, "sub/deep/y"), "a head deeper under it")
+}
+
+// The restore writes as root: a symlink between the head and where a member
+// restores, which a process of the object could have made, is refused.
+func TestNoSymlinkBetween(t *testing.T) {
+	headDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(headDir, "data"), 0755))
+	require.NoError(t, os.Symlink("/etc", filepath.Join(headDir, "conf")))
+	assert.NoError(t, noSymlinkBetween(headDir, filepath.Join(headDir, "data", "sub")))
+	assert.NoError(t, noSymlinkBetween(headDir, filepath.Join(headDir, "new", "dir")), "created by the restore")
+	assert.ErrorContains(t, noSymlinkBetween(headDir, filepath.Join(headDir, "conf", "x")), "is a symlink")
 }

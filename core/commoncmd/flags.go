@@ -701,7 +701,8 @@ func FlagsCreateFromStore(flags *pflag.FlagSet, store, snapshot *string) {
 func FlagsRestore(flags *pflag.FlagSet, p *OptsRestore) {
 	flags.StringVar(&p.Snapshot, "snapshot", "", "the snapshot to restore, by id or a prefix of it, the latest when not set")
 	flags.StringVar(&p.Into, "into", "", "restore aside, into a directory per head of this directory, instead of into the heads")
-	flags.BoolVar(&p.Config, "config", false, "also restore the configuration of the object")
+	flags.BoolVar(&p.Config, "config", false, "restore the configuration of the object: in place, it alone, through the checks of a configuration replaced, the object keeping its id; aside, beside the heads")
+	flags.BoolVar(&p.ByRID, "by-rid", false, "restore each head into the current head of the resource of its resource id, rather than at the path the head had when saved, which must be under a head of the object")
 	flags.StringSliceVar(&p.Heads, "head", []string{}, "the heads to restore, by resource id, every head of the snapshot when not set")
 	flags.StringVar(&p.Refs, "refs", "missing", "how to restore the keys of the sec and cfg the object references, in place: missing creates the absent ones and leaves the others, skip restores none, overwrite rewrites them all")
 }

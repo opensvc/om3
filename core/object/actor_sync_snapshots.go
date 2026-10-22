@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -39,4 +40,30 @@ func (t *actor) SyncSnapshots(ctx context.Context) ([]SyncSnapshot, error) {
 		}
 	}
 	return l, errs
+}
+
+// RestoredConfig returns the configuration the selected sync resource holds
+// at the snapshot the restore options of the context name, as the object
+// restores it, and the keywords it changes. One resource holding
+// configurations is selected, a --rid naming it among several.
+func (t *actor) RestoredConfig(ctx context.Context) ([]byte, []string, error) {
+	selector := resourceselector.New(t, resourceselector.WithRID(actioncontext.RID(ctx)))
+	restorers := make([]resource.ConfigRestorer, 0)
+	rids := make([]string, 0)
+	for _, r := range selector.Resources() {
+		restorer, ok := r.(resource.ConfigRestorer)
+		if !ok || r.IsDisabled() {
+			continue
+		}
+		restorers = append(restorers, restorer)
+		rids = append(rids, r.RID())
+	}
+	switch len(restorers) {
+	case 0:
+		return nil, nil, fmt.Errorf("no sync resource holds the configuration of the object")
+	case 1:
+		return restorers[0].RestoredConfig(ctx)
+	default:
+		return nil, nil, fmt.Errorf("the configuration is held by %s: name the one to restore it from with --rid", strings.Join(rids, " "))
+	}
 }

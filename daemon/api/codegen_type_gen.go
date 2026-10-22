@@ -3156,6 +3156,9 @@ type InQueryResourceFileRid = string
 // InQueryRestore defines model for inQueryRestore.
 type InQueryRestore = bool
 
+// InQueryRestoreByRid defines model for inQueryRestoreByRid.
+type InQueryRestoreByRid = bool
+
 // InQueryRestoreConfig defines model for inQueryRestoreConfig.
 type InQueryRestoreConfig = bool
 
@@ -4029,7 +4032,14 @@ type PostInstanceActionRestoreParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
 
-	// Config Restore the configuration of the object too.
+	// ByRid Restore each head into the current head of the resource of its
+	// resource id, rather than at the path the head had when saved, which
+	// must be under a head of the object.
+	ByRid *InQueryRestoreByRid `form:"by_rid,omitempty" json:"by_rid,omitempty"`
+
+	// Config Restore the configuration of the object: in place, it alone,
+	// through the checks of a configuration replaced, the object keeping
+	// its id; aside, beside the heads.
 	Config *InQueryRestoreConfig `form:"config,omitempty" json:"config,omitempty"`
 
 	// Head The heads to restore, by resource id, every head of the snapshot when not set.

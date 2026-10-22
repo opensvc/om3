@@ -73,6 +73,10 @@ type (
 	Member struct {
 		Name string     `json:"name"`
 		Kind MemberKind `json:"kind"`
+
+		// Head is the directory a member saved from a directory was
+		// saved from, which a restore in place writes it back into.
+		Head string `json:"head,omitempty"`
 	}
 
 	// MemberKind says how a member was saved, and so how it is restored.
@@ -109,7 +113,8 @@ type (
 		Ref() string
 
 		// Backup saves the directory src as the member of run, without
-		// the paths excludes matches, relative to src.
+		// the paths excludes matches, relative to src, and records src as
+		// the head of the member.
 		Backup(ctx context.Context, run Run, member string, src string, excludes []string) error
 
 		// Runs returns the runs filter selects, oldest first.

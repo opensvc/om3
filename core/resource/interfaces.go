@@ -189,6 +189,16 @@ type (
 		Restore(context.Context) error
 	}
 
+	// ConfigRestorer is a sync resource holding the configuration of the
+	// object at the points in time it can restore.
+	ConfigRestorer interface {
+		// RestoredConfig returns the configuration of the snapshot the
+		// restore options of the context name, as the object restores
+		// it, and the keywords it changes, none when it is the
+		// configuration of the object already.
+		RestoredConfig(context.Context) ([]byte, []string, error)
+	}
+
 	// SnapshotLister is a sync resource holding restorable points in
 	// time.
 	SnapshotLister interface {
