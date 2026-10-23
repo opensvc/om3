@@ -69,7 +69,7 @@ func (t *CmdStoreSnapshotList) Run() error {
 				Store:       s.Ref(),
 				Path:        run.Path,
 				ID:          run.ID,
-				CreatedAt:   run.CreatedAt,
+				CreatedAt:   run.CreatedAt.Local(),
 				ClusterID:   run.ClusterID,
 				ClusterName: run.ClusterName,
 				Node:        run.Node,
@@ -77,7 +77,7 @@ func (t *CmdStoreSnapshotList) Run() error {
 				Note:        run.Note,
 				Members:     run.MemberNames(),
 
-				CompletedAt:  run.CompletedAt,
+				CompletedAt:  localTime(run.CompletedAt),
 				LogicalBytes: run.LogicalBytes,
 			})
 		}
@@ -90,4 +90,13 @@ func (t *CmdStoreSnapshotList) Run() error {
 		Data:          l,
 		Colorize:      rawconfig.Colorize,
 	}.Print())
+}
+
+// localTime returns t in the local zone of the requester, the zero time kept
+// zero for the listing to leave it out: the stores hold their times in UTC.
+func localTime(t time.Time) time.Time {
+	if t.IsZero() {
+		return t
+	}
+	return t.Local()
 }

@@ -148,6 +148,7 @@ func (t *CmdObjectSyncSnapshots) Run(kind string) error {
 		return err
 	}
 	data, err := t.extract(mergedSelector, c)
+	commoncmd.LocalSyncSnapshots(data.Items)
 	return errors.Join(err, output.Renderer{
 		DefaultOutput: commoncmd.SyncSnapshotsTab,
 		Output:        t.Output,
