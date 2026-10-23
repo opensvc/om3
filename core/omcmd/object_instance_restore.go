@@ -99,6 +99,8 @@ func (t *CmdObjectInstanceRestore) Run(kind string) error {
 			case response.StatusCode() == http.StatusNoContent:
 				// The configuration restored by the daemon itself.
 				return nil, nil
+			case response.JSON400 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON400)
 			case response.JSON401 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
 			case response.JSON403 != nil:

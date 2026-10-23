@@ -57,6 +57,15 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 		return err
 	}
 	if params.Config != nil && *params.Config && (params.Into == nil || *params.Into == "") {
+		// The daemon restores the configuration itself, out of the
+		// action, which refuses the options it does not apply: told
+		// accepted, they would be said done and be ignored.
+		switch {
+		case params.Stop != nil && *params.Stop:
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--stop readies the instance for a restore of the heads in place, which --into and --config are not")
+		case params.Head != nil && len(*params.Head) > 0:
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--config restores the configuration alone: restore the heads with a restore of their own, once it is restored")
+		}
 		return a.restoreConfigInPlace(ctx, p, params)
 	}
 	args := []string{p.String(), "sync", "restore"}
