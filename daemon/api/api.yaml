@@ -6648,12 +6648,56 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/store/object:
+    get:
+      description: |
+        List the objects a store holds runs of, with their figures, as the
+        stats the store records per object: one read per object, never per
+        run, and cached by the daemon, so the figures may be as old as
+        their updated_at says. A store keeping its runs in a directory of
+        each node is read on every node.
+
+        The objects of the namespaces the requester holds a role on are
+        listed, the ones another cluster wrote through a store of a sec,
+        and every one to root.
+      operationId: GetStoreObjects
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: store
+          required: true
+          description: The store, as a store keyword names it.
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreObjectStatsList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/store/snapshot:
     get:
       description: |
         List the snapshots the stores hold, read from the stores, of the
-        objects of the namespaces the requester has a grant on. A store
-        keeping its runs in a directory of each node is read on every node.
+        objects of the namespaces the requester has a grant on, newest
+        first. A store keeping its runs in a directory of each node is read
+        on every node.
       operationId: GetStoreSnapshots
       tags:
         - store
@@ -6664,6 +6708,17 @@ paths:
         - $ref: '#/components/parameters/inQueryStore'
         - $ref: '#/components/parameters/inQueryStorePath'
         - $ref: '#/components/parameters/inQueryStoreCluster'
+        - in: query
+          name: limit
+          description: The most snapshots to answer, newest first. The next page is asked with before set to the next value of the answer.
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: before
+          description: The next value of a previous answer, for the snapshots older than its last one.
+          schema:
+            type: string
       responses:
         200:
           description: OK
@@ -10571,6 +10626,13 @@ components:
         - url
         - share
       properties:
+        stats:
+          $ref: '#/components/schemas/StoreStats'
+        node_stats:
+          type: object
+          description: The stats of the directory of each node, by node name, for a store keeping its runs in a directory of each node.
+          additionalProperties:
+            $ref: '#/components/schemas/StoreStats'
         ref:
           type: string
           description: The reference to the store, as a store keyword names it.
@@ -10590,6 +10652,9 @@ components:
         - items
         - kind
       properties:
+        next:
+          type: string
+          description: The before value asking the next page, set when the answer was cut at the limit.
         kind:
           type: string
           enum:
@@ -10612,6 +10677,7 @@ components:
         - members
         - protected
         - note
+        - logical_bytes
       properties:
         store:
           type: string
@@ -10638,6 +10704,168 @@ components:
           type: boolean
         note:
           type: string
+        completed_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+          description: The size of what the run saved, 0 when the store does not tell.
+
+    StoreStats:
+      type: object
+      description: |
+        The figures of a store, summed from the stats every object of it
+        records, of every cluster writing it, and cached by the daemon.
+      required:
+        - runs
+        - incomplete
+        - protected
+        - objects
+        - logical_bytes
+        - updated_at
+        - clusters
+      properties:
+        runs:
+          type: integer
+          description: The completed runs.
+        incomplete:
+          type: integer
+          description: The runs a failed or interrupted update left.
+        protected:
+          type: integer
+        objects:
+          type: integer
+          description: The objects with a run, counted by object id.
+        first_created_at:
+          type: string
+          format: date-time
+        last_created_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+          description: The size of what the runs saved.
+        stored_bytes:
+          type: integer
+          format: int64
+          description: What the runs take in the store, absent when the store can not tell.
+        free_bytes:
+          type: integer
+          format: int64
+          description: The space left in the store, absent when it does not tell.
+        checked_at:
+          type: string
+          format: date-time
+          description: When the store was last reached.
+        check_error:
+          type: string
+          description: Why the last attempt failed to reach the store.
+        updated_at:
+          type: string
+          format: date-time
+          description: When these figures were computed.
+        clusters:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreClusterStats'
+
+    StoreClusterStats:
+      type: object
+      required:
+        - cluster_id
+        - cluster_name
+        - runs
+        - incomplete
+        - protected
+        - objects
+        - logical_bytes
+      properties:
+        cluster_id:
+          type: string
+        cluster_name:
+          type: string
+        runs:
+          type: integer
+        incomplete:
+          type: integer
+        protected:
+          type: integer
+        objects:
+          type: integer
+        last_created_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+
+    StoreObjectStatsList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - StoreObjectStatsList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreObjectStats'
+
+    StoreObjectStats:
+      type: object
+      required:
+        - cluster_id
+        - cluster_name
+        - object_id
+        - path
+        - runs
+        - incomplete
+        - protected
+        - nodes
+        - logical_bytes
+        - updated_at
+      properties:
+        cluster_id:
+          type: string
+        cluster_name:
+          type: string
+        object_id:
+          type: string
+        path:
+          type: string
+          description: The path of the object at its last run.
+        runs:
+          type: integer
+        incomplete:
+          type: integer
+        protected:
+          type: integer
+        nodes:
+          type: array
+          description: The nodes that wrote its completed runs.
+          items:
+            type: string
+        first_created_at:
+          type: string
+          format: date-time
+        last_created_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+        stored_bytes:
+          type: integer
+          format: int64
+        updated_at:
+          type: string
+          format: date-time
+          description: When the node completing or removing a run of the object counted these.
 
     SyncSnapshotList:
       type: object

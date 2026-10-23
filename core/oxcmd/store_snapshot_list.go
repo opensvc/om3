@@ -3,6 +3,7 @@ package oxcmd
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
@@ -40,6 +41,9 @@ func (t *CmdStoreSnapshotList) Run() error {
 	}
 	switch resp.StatusCode() {
 	case 200:
+		// The api answers newest first, for a page to show the latest:
+		// listed whole, oldest first, as om lists them.
+		slices.Reverse(resp.JSON200.Items)
 		return output.Renderer{
 			DefaultOutput: "tab=STORE:store,PATH:path,CREATED_AT:created_at,SNAPSHOT:id,CLUSTER:cluster_name,NODE:node,MEMBERS:members[*],PROTECTED:protected,NOTE:note",
 			Output:        t.Output,

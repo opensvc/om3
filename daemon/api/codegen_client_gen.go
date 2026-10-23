@@ -689,6 +689,9 @@ type ClientInterface interface {
 	// GetStores request
 	GetStores(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetStoreObjects request
+	GetStoreObjects(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteStoreSnapshot request
 	DeleteStoreSnapshot(ctx context.Context, params *DeleteStoreSnapshotParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3170,6 +3173,18 @@ func (c *Client) GetResources(ctx context.Context, params *GetResourcesParams, r
 
 func (c *Client) GetStores(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetStoresRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStoreObjects(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStoreObjectsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -16988,6 +17003,56 @@ func NewGetStoresRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetStoreObjectsRequest generates requests for GetStoreObjects
+func NewGetStoreObjectsRequest(server string, params *GetStoreObjectsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/store/object")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "store", params.Store, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeleteStoreSnapshotRequest generates requests for DeleteStoreSnapshot
 func NewDeleteStoreSnapshotRequest(server string, params *DeleteStoreSnapshotParams) (*http.Request, error) {
 	var err error
@@ -17101,6 +17166,30 @@ func NewGetStoreSnapshotsRequest(server string, params *GetStoreSnapshotsParams)
 		if params.Cluster != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cluster", *params.Cluster, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Before != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "before", *params.Before, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -17766,6 +17855,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetStoresWithResponse request
 	GetStoresWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetStoresResponse, error)
+
+	// GetStoreObjectsWithResponse request
+	GetStoreObjectsWithResponse(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*GetStoreObjectsResponse, error)
 
 	// DeleteStoreSnapshotWithResponse request
 	DeleteStoreSnapshotWithResponse(ctx context.Context, params *DeleteStoreSnapshotParams, reqEditors ...RequestEditorFn) (*DeleteStoreSnapshotResponse, error)
@@ -24153,6 +24245,41 @@ func (r GetStoresResponse) ContentType() string {
 	return ""
 }
 
+type GetStoreObjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StoreObjectStatsList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStoreObjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStoreObjectsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetStoreObjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteStoreSnapshotResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -26061,6 +26188,15 @@ func (c *ClientWithResponses) GetStoresWithResponse(ctx context.Context, reqEdit
 		return nil, err
 	}
 	return ParseGetStoresResponse(rsp)
+}
+
+// GetStoreObjectsWithResponse request returning *GetStoreObjectsResponse
+func (c *ClientWithResponses) GetStoreObjectsWithResponse(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*GetStoreObjectsResponse, error) {
+	rsp, err := c.GetStoreObjects(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStoreObjectsResponse(rsp)
 }
 
 // DeleteStoreSnapshotWithResponse request returning *DeleteStoreSnapshotResponse
@@ -36497,6 +36633,67 @@ func ParseGetStoresResponse(rsp *http.Response) (*GetStoresResponse, error) {
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStoreObjectsResponse parses an HTTP response from a GetStoreObjectsWithResponse call
+func ParseGetStoreObjectsResponse(rsp *http.Response) (*GetStoreObjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStoreObjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StoreObjectStatsList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

@@ -324,3 +324,60 @@ func TestRunsByClusterAndObject(t *testing.T) {
 	assert.Equal(t, "b1", run.ID, "an id names a run of any cluster")
 	assert.FileExists(t, filepath.Join(s.Get("url"), "c2", clusterName))
 }
+
+// The runs record their sizes, and the object its stats, recounted from its
+// directory as a run starts, completes and goes: the store sums one record
+// per object, of every cluster.
+func TestObjectStats(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t, "file://"+t.TempDir())
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a.txt"), strings.Repeat("a", 10000), 0640)
+	t0 := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+
+	r1 := newRun("r1", t0)
+	require.NoError(t, s.Backup(ctx, r1, "fs#1", src, src, nil))
+	l, err := s.ObjectStats(ctx)
+	require.NoError(t, err)
+	require.Len(t, l, 1)
+	assert.Equal(t, 1, l[0].Incomplete, "a run started counts, incomplete")
+	assert.Equal(t, 0, l[0].Runs)
+
+	require.NoError(t, s.Complete(ctx, r1))
+	r2 := newRun("r2", t0.Add(time.Hour))
+	r2.Protected = true
+	require.NoError(t, s.Backup(ctx, r2, "fs#1", src, src, nil))
+	require.NoError(t, s.Complete(ctx, r2))
+	other := newRun("r3", t0.Add(2*time.Hour))
+	other.ClusterID, other.ClusterName, other.ObjectID, other.Path = "c2", "cluster2", "oid2", "ns2/svc/web"
+	require.NoError(t, s.Backup(ctx, other, "fs#1", src, src, nil))
+	require.NoError(t, s.Complete(ctx, other))
+
+	runs, err := s.Runs(ctx, backup.RunFilter{ObjectID: "oid"})
+	require.NoError(t, err)
+	require.Len(t, runs, 2)
+	assert.Greater(t, runs[0].LogicalBytes, int64(10000), "the tar stream of the head")
+	assert.Greater(t, runs[0].StoredBytes, int64(0))
+	assert.Less(t, runs[0].StoredBytes, runs[0].LogicalBytes, "compressed")
+
+	stats := backup.StoreStats(ctx, s)
+	assert.Equal(t, 3, stats.Runs)
+	assert.Equal(t, 0, stats.Incomplete)
+	assert.Equal(t, 1, stats.Protected)
+	assert.Equal(t, 2, stats.Objects)
+	assert.Equal(t, t0, stats.FirstCreatedAt)
+	assert.Equal(t, t0.Add(2*time.Hour), stats.LastCreatedAt)
+	assert.Equal(t, 3*runs[0].LogicalBytes, stats.LogicalBytes)
+	require.NotNil(t, stats.StoredBytes)
+	assert.Equal(t, 3*runs[0].StoredBytes, *stats.StoredBytes)
+	assert.NotNil(t, stats.FreeBytes, "a directory says the space left")
+	assert.Empty(t, stats.CheckError)
+	require.Len(t, stats.Clusters, 2)
+	assert.Equal(t, "cluster2", stats.Clusters[0].ClusterName, "the latest cluster first")
+	assert.Equal(t, 2, stats.Clusters[1].Runs)
+
+	require.NoError(t, s.Delete(ctx, []backup.Run{runs[0]}))
+	stats = backup.StoreStats(ctx, s)
+	assert.Equal(t, 2, stats.Runs, "a run removed is uncounted")
+	assert.Equal(t, 1, stats.Protected)
+}

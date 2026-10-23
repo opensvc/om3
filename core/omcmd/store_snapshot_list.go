@@ -32,6 +32,9 @@ type (
 		Protected   bool      `json:"protected"`
 		Note        string    `json:"note"`
 		Members     []string  `json:"members"`
+
+		CompletedAt  time.Time `json:"completed_at,omitzero"`
+		LogicalBytes int64     `json:"logical_bytes"`
 	}
 )
 
@@ -73,6 +76,9 @@ func (t *CmdStoreSnapshotList) Run() error {
 				Protected:   run.Protected,
 				Note:        run.Note,
 				Members:     run.MemberNames(),
+
+				CompletedAt:  run.CompletedAt,
+				LogicalBytes: run.LogicalBytes,
 			})
 		}
 	}

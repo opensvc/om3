@@ -74,6 +74,13 @@ type (
 
 		// Note is a text the run was marked with when written.
 		Note string `json:"note,omitempty"`
+
+		// LogicalBytes is the size of what the run saved, the sum of
+		// its members', and StoredBytes what it takes in the store, as
+		// written: compressed, before what a store shares between runs.
+		// A driver telling neither leaves them zero.
+		LogicalBytes int64 `json:"logical_bytes,omitempty"`
+		StoredBytes  int64 `json:"stored_bytes,omitempty"`
 	}
 
 	// Member is a part of a run: a head saved from a directory, or a
@@ -85,6 +92,11 @@ type (
 		// Head is the directory a member saved from a directory was
 		// saved from, which a restore in place writes it back into.
 		Head string `json:"head,omitempty"`
+
+		// LogicalBytes and StoredBytes are the size of what the member
+		// saved, and what it takes in the store, as the run's.
+		LogicalBytes int64 `json:"logical_bytes,omitempty"`
+		StoredBytes  int64 `json:"stored_bytes,omitempty"`
 	}
 
 	// MemberKind says how a member was saved, and so how it is restored.

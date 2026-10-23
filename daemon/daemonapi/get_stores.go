@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -36,15 +37,32 @@ func (a *DaemonAPI) GetStores(ctx echo.Context) error {
 		if !mayReadStore(grants, item.Share) {
 			continue
 		}
-		items = append(items, api.StoreItem{
+		i := api.StoreItem{
 			Ref:   item.Ref,
 			Type:  item.Type,
 			Url:   item.URL,
 			Share: item.Share,
-		})
+		}
+		e := cachedStoreStats(item.Ref, storeStatsFirstWait)
+		if e.stats != nil {
+			stats := apiStoreStats(*e.stats)
+			i.Stats = &stats
+		}
+		if len(e.nodeStats) > 0 {
+			m := make(map[string]api.StoreStats, len(e.nodeStats))
+			for node, stats := range e.nodeStats {
+				m[node] = apiStoreStats(stats)
+			}
+			i.NodeStats = &m
+		}
+		items = append(items, i)
 	}
 	return ctx.JSON(http.StatusOK, api.StoreList{Kind: "StoreList", Items: items})
 }
+
+// storeStatsFirstWait is how long a listing waits for the first figures of
+// a store, the daemon knowing none yet.
+const storeStatsFirstWait = 2 * time.Second
 
 // mayReadStores says the requester holds a role letting it see a store.
 func mayReadStores(grants rbac.Grants) bool {
