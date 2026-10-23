@@ -381,3 +381,34 @@ func TestObjectStats(t *testing.T) {
 	assert.Equal(t, 2, stats.Runs, "a run removed is uncounted")
 	assert.Equal(t, 1, stats.Protected)
 }
+
+// The times the store holds are written in UTC, whatever the offset of the
+// node, and a time of another offset, as the stores written before hold,
+// reads the same.
+func TestTimesAreWrittenInUTC(t *testing.T) {
+	ctx := context.Background()
+	storeDir := t.TempDir()
+	s := newStore(t, "file://"+storeDir)
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a.txt"), "a", 0640)
+	local := time.Date(2026, 10, 23, 14, 0, 0, 0, time.FixedZone("CEST", 2*3600))
+	run := newRun("r1", local)
+	require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
+	require.NoError(t, s.Complete(ctx, run))
+
+	matches, err := filepath.Glob(filepath.Join(storeDir, "*", "*", "*", manifestName))
+	require.NoError(t, err)
+	require.Len(t, matches, 1)
+	b, err := os.ReadFile(matches[0])
+	require.NoError(t, err)
+	assert.Contains(t, string(b), `"created_at": "2026-10-23T12:00:00Z"`)
+	assert.NotContains(t, string(b), "+02:00")
+	marker, err := os.ReadFile(filepath.Join(filepath.Dir(filepath.Dir(matches[0])), markerName))
+	require.NoError(t, err)
+	assert.NotContains(t, string(marker), "+02:00")
+
+	runs, err := s.Runs(ctx, backup.RunFilter{})
+	require.NoError(t, err)
+	require.Len(t, runs, 1)
+	assert.True(t, runs[0].CreatedAt.Equal(local), "the same instant")
+}
