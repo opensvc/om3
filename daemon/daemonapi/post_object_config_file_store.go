@@ -110,11 +110,16 @@ func (t *storeSource) apply(ctx echo.Context, p naming.Path, body []byte, base c
 			return nil, nil, base, err
 		}
 		base = base.landing(func() (func(bool), error) {
+			unlock, err := object.LockRefs(p.Namespace)
+			if err != nil {
+				return nil, err
+			}
 			notes, undo, err := object.ApplyRefsUndoable(p.Namespace, doc, object.RefsMissing)
 			for _, note := range notes {
 				log.Infof("%s: refs: %s", p, note)
 			}
 			done := func(landed bool) {
+				defer unlock()
 				if landed {
 					return
 				}

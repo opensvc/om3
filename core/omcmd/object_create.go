@@ -287,12 +287,26 @@ func (t *CmdObjectCreate) fromStore() error {
 	fmt.Fprintf(os.Stderr, "%s: the configuration of %s from snapshot %s in store %s, its heads restored at provision\n", t.path, run.Path, run.ShortID(), s.Ref())
 	undo := func() error { return nil }
 	if run.Has(backup.MemberRefs) {
+		unlock, err := object.LockRefs(t.path.Namespace)
+		if err != nil {
+			return err
+		}
+		defer unlock()
 		if undo, err = t.applySnapshotRefs(ctx, s, run); err != nil {
 			return errors.Join(err, undo())
 		}
 	}
 	t.Keywords = append(t.Keywords, fmt.Sprintf("restore_from=%s %s %s", s.Ref(), run.Path, run.ID))
+	existed, err := objectExists(t.path)
+	if err != nil {
+		return errors.Join(err, undo())
+	}
 	if err := t.localFromData(t.path, b); err != nil {
+		// A configuration written before the failure references the
+		// keys: they stay with it.
+		if written, _ := objectExists(t.path); written && !existed {
+			return fmt.Errorf("%w: the configuration is written, with the keys copied from snapshot %s", err, run.ShortID())
+		}
 		if uerr := undo(); uerr != nil {
 			return errors.Join(err, fmt.Errorf("the keys copied from snapshot %s were not all taken back: %w", run.ShortID(), uerr))
 		}
