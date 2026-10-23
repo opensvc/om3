@@ -145,7 +145,7 @@ func (t *Manager) handle(i any) {
 			// The orchestration that deleted the object took the monitors
 			// naming it with it. Nothing else says this node is out of it,
 			// and an orchestration nobody is in any more is over.
-			NoteMonitor(m.Path.String(), m.Node, "", "", "", time.Time{})
+			NoteMonitorDeleted(m.Path.String(), m.Node)
 		case *msgbus.NodeMonitorDeleted:
 			NoteMonitor("", m.Node, "", "", "", time.Time{})
 		case *msgbus.Exec:
