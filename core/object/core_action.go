@@ -464,6 +464,7 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("crm", "true")
 	logger.Infof(">>> do %s %s (origin %s, session_id %s)", action.Name, argv, env.Origin(), xsession.SessionID())
 	beginTime := time.Now()
+	ctx = actioncontext.WithBeganAt(ctx, beginTime)
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
 	defer func() {

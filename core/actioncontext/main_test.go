@@ -3,6 +3,7 @@ package actioncontext
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -75,4 +76,17 @@ func TestIsForceAffinity(t *testing.T) {
 	assert.False(t, IsForce(WithForceAffinity(ctx, true)), "force affinity is not force")
 	assert.True(t, IsForceAffinity(WithForce(ctx, true)), "force implies force affinity")
 	assert.True(t, IsForceAffinity(WithForceAffinity(WithForce(ctx, true), false)))
+}
+
+func TestBeganAt(t *testing.T) {
+	// The resources of one action, acting at different times of it, read
+	// the one time it began.
+	began := time.Date(2026, 10, 23, 23, 59, 58, 0, time.UTC)
+	ctx := WithBeganAt(context.Background(), began)
+	assert.Equal(t, began, BeganAt(ctx))
+	assert.Equal(t, began, BeganAt(WithRID(ctx, "sync#2")))
+
+	// Outside an action, it is now.
+	before := time.Now()
+	assert.False(t, BeganAt(context.Background()).Before(before))
 }
