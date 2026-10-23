@@ -1,6 +1,7 @@
 package ressyncstore
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,4 +84,35 @@ func TestNoSymlinkBetween(t *testing.T) {
 	assert.NoError(t, noSymlinkBetween(headDir, filepath.Join(headDir, "data", "sub")))
 	assert.NoError(t, noSymlinkBetween(headDir, filepath.Join(headDir, "new", "dir")), "created by the restore")
 	assert.ErrorContains(t, noSymlinkBetween(headDir, filepath.Join(headDir, "conf", "x")), "is a symlink")
+}
+
+// The target of a restore in place is created and opened through the head: a
+// symlink out of the head is refused, and one a process writing in the head
+// swaps in after the target is opened does not move the restore, which
+// writes into the directory opened.
+func TestOpenUnderStaysInTheHead(t *testing.T) {
+	base := t.TempDir()
+	headDir := filepath.Join(base, "head")
+	outside := filepath.Join(base, "outside")
+	require.NoError(t, os.MkdirAll(headDir, 0755))
+	require.NoError(t, os.MkdirAll(outside, 0755))
+	require.NoError(t, os.Symlink("../outside", filepath.Join(headDir, "escape")))
+
+	_, err := openUnder(headDir, filepath.Join(headDir, "escape", "data"))
+	require.Error(t, err, "a symlink out of the head is not followed")
+	_, err = os.Stat(filepath.Join(outside, "data"))
+	assert.True(t, os.IsNotExist(err), "nothing created outside the head")
+
+	f, err := openUnder(headDir, filepath.Join(headDir, "app", "data"))
+	require.NoError(t, err)
+	defer f.Close()
+
+	// The process writing in the head swaps the target for a symlink out.
+	require.NoError(t, os.Rename(filepath.Join(headDir, "app"), filepath.Join(headDir, "moved")))
+	require.NoError(t, os.Symlink("../outside", filepath.Join(headDir, "app")))
+
+	dst := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), f.Fd())
+	require.NoError(t, os.WriteFile(filepath.Join(dst, "restored"), []byte("x"), 0600))
+	assert.FileExists(t, filepath.Join(headDir, "moved", "data", "restored"), "written into the directory opened")
+	assert.NoFileExists(t, filepath.Join(outside, "restored"))
 }
