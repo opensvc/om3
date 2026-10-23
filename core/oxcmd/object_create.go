@@ -29,6 +29,12 @@ type (
 		Force       bool
 		Namespace   string
 
+		// Store and Snapshot name a snapshot to create the object from:
+		// the daemon reads it, and names it for the provision to restore
+		// the heads from.
+		Store    string
+		Snapshot string
+
 		client *client.T
 		path   naming.Path
 	}
@@ -142,6 +148,9 @@ func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 }
 
 func (t *CmdObjectCreate) do() error {
+	if t.Store != "" || t.Snapshot != "" {
+		return t.fromStore()
+	}
 	template := t.getTemplate()
 	paths := t.getSourcePaths()
 	pathsCount := len(paths)
@@ -167,6 +176,22 @@ func (t *CmdObjectCreate) do() error {
 // keyword operations applying after.
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force)
+}
+
+// fromStore creates the object from a snapshot: the configuration of the
+// object the snapshot is of, which the daemon reads from the store.
+func (t *CmdObjectCreate) fromStore() error {
+	switch {
+	case t.Store == "":
+		return fmt.Errorf("--snapshot needs --store, the store holding it")
+	case t.Snapshot == "":
+		return fmt.Errorf("--store needs --snapshot, an id or the path of an object whose latest snapshot to take")
+	case t.Config != "":
+		return fmt.Errorf("--store and --config are mutually exclusive: the configuration is the one of the snapshot")
+	case t.path.IsZero():
+		return fmt.Errorf("need a target object path")
+	}
+	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force)
 }
 
 func (t *CmdObjectCreate) fromPath(p naming.Path) error {

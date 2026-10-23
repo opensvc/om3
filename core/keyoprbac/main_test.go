@@ -57,6 +57,14 @@ func TestDeniedKeywords(t *testing.T) {
 	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "DEFAULT", "pre_monitor_action", "/bin/true", none), "requires the root grant")
 }
 
+func TestRestoreFromIsSetByTheDaemon(t *testing.T) {
+	// The snapshot may be of an object of another namespace: only root
+	// names one, the daemon on a create from a store, and anyone may take
+	// it away.
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "DEFAULT", "restore_from", "tar1 ns2/svc/web 7c0e41d2", none), "requires the root grant")
+	assert.NoError(t, DeniedUnset(noGrant, naming.KindSvc, "DEFAULT", "restore_from", "tar1 ns2/svc/web 7c0e41d2", none))
+}
+
 func TestDeniedByValue(t *testing.T) {
 	cases := []struct {
 		section string
