@@ -45,3 +45,36 @@ func TestDocHeadingsOfTheKeywordsOfOneResourceAreTheOptions(t *testing.T) {
 		"## Keyword `stat_timeout`",
 	}, docHeadings(t, store, "", "task#1.s*"))
 }
+
+// A section keyword no driver of the binary registers a type for, as a store
+// keyword in ox, which holds no node driver, belongs to the types the other
+// keywords of the section name.
+func TestDriverKeywordsOfADriverTheBinaryLacks(t *testing.T) {
+	store := Store{
+		{Section: "store", Option: "type", Candidates: []string{"tar"}},
+		{Section: "store", Option: "keep"},
+		{Section: "store", Option: "url", Types: []string{"tar"}},
+	}
+	l, err := store.DriverKeywords("store", "tar", naming.KindSvc)
+	require.NoError(t, err)
+	options := make([]string, 0, len(l))
+	for _, kw := range l {
+		options = append(options, kw.Option)
+	}
+	assert.ElementsMatch(t, []string{"type", "keep", "url"}, options)
+}
+
+// The type of a driver may be empty, as the one of the volume driver.
+func TestDriverKeywordsOfADriverOfEmptyTypeTheBinaryLacks(t *testing.T) {
+	store := Store{
+		{Section: "volume", Option: "name", Types: []string{""}},
+		{Section: "volume", Option: "comment"},
+	}
+	l, err := store.DriverKeywords("volume", "", naming.KindSvc)
+	require.NoError(t, err)
+	options := make([]string, 0, len(l))
+	for _, kw := range l {
+		options = append(options, kw.Option)
+	}
+	assert.ElementsMatch(t, []string{"name", "comment"}, options)
+}

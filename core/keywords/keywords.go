@@ -497,6 +497,19 @@ func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]*Keyword 
 	for group, names := range driver.NamesByGroup() {
 		typesByGroup[group.String()] = names
 	}
+	// The types of a section are also the ones its keywords name: a store
+	// read from the api documents the drivers of the daemon, which the
+	// client may not hold, as ox holds none of the node drivers.
+	for _, kw := range t {
+		if kw.Section == "" {
+			continue
+		}
+		for _, typ := range kw.Types {
+			if !slices.Contains(typesByGroup[kw.Section], typ) {
+				typesByGroup[kw.Section] = append(typesByGroup[kw.Section], typ)
+			}
+		}
+	}
 
 	do := func(ptr *Keyword, section string) {
 		kw := *ptr
