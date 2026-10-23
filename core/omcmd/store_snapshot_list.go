@@ -3,7 +3,6 @@ package omcmd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/backup"
@@ -60,7 +59,7 @@ func (t *CmdStoreSnapshotList) Run() error {
 		runs, err := s.Runs(ctx, backup.RunFilter{Path: t.Path, Cluster: t.Cluster})
 		_ = s.Close()
 		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("store %s: %w", ref, err))
+			errs = errors.Join(errs, err)
 		}
 		for _, run := range runs {
 			l = append(l, storeSnapshot{

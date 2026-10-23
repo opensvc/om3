@@ -55,8 +55,9 @@ type (
 		// Node is the node that wrote the run.
 		Node string `json:"node"`
 
-		// CreatedAt is when the run started, which the retention
-		// periods are evaluated on.
+		// CreatedAt is when the action writing the run began, which the
+		// retention periods are evaluated on: the runs one action writes
+		// into several stores, under one id, carry the same time.
 		CreatedAt time.Time `json:"created_at"`
 
 		// CompletedAt is when the run saved its last member, every

@@ -63,9 +63,9 @@ func (a *DaemonAPI) GetStoreSnapshots(ctx echo.Context, params api.GetStoreSnaps
 		_ = s.Close()
 		if err != nil {
 			if params.Store != nil {
-				return JSONProblemf(ctx, http.StatusInternalServerError, "Store", "store %s: %s", ref, err)
+				return JSONProblemf(ctx, http.StatusInternalServerError, "Store", "%s", err)
 			}
-			log.Warnf("store %s: %s", ref, err)
+			log.Warnf("%s", err)
 		}
 		for _, run := range runs {
 			if !mayUseRun(grants, ref, run, clusterID, storeReaderRoles...) {

@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -425,7 +424,7 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 		Path:      t.Path.String(),
 		ObjectID:  t.ObjectID.String(),
 		Node:      hostname.Hostname(),
-		CreatedAt: time.Now(),
+		CreatedAt: actioncontext.BeganAt(ctx),
 	}
 	run.ClusterID, run.ClusterName = t.cluster()
 	marks := actioncontext.RunMarksOf(ctx)

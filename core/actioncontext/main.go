@@ -24,6 +24,7 @@ const (
 	leaderKey
 	preflightKey
 	adoptKey
+	beganAtKey
 	lockTimeoutKey
 	lockTimeoutSetKey
 	lockDisabledKey
@@ -371,6 +372,21 @@ func RunMarksOf(ctx context.Context) RunMarks {
 		return i.(RunMarks)
 	}
 	return RunMarks{}
+}
+
+// WithBeganAt says when the action began, which the resources acting at
+// different times of it share: the runs one sync update writes into several
+// stores, under one snapshot id, carry this one time.
+func WithBeganAt(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, beganAtKey, t)
+}
+
+// BeganAt returns when the action began, now outside an action.
+func BeganAt(ctx context.Context) time.Time {
+	if i := ctx.Value(beganAtKey); i != nil {
+		return i.(time.Time)
+	}
+	return time.Now()
 }
 
 func WithTarget(ctx context.Context, s []string) context.Context {

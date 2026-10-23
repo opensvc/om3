@@ -333,7 +333,8 @@ func readManifest(fsys storeFS, dir string) (manifest, error) {
 
 // Runs returns the runs filter selects, oldest first: the object directories
 // its cluster and object ids name, or every one, and of them the ones whose
-// marker says its path.
+// marker says its path. Its errors name the store, which the listings
+// spanning several stores print as they come.
 func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, error) {
 	fsys, root, err := t.location()
 	if err != nil {
@@ -347,12 +348,12 @@ func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, er
 	}
 	clusterDirs, err := t.clusterDirs(fsys, root, filter.Cluster)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
 	}
 	objectGlob := "*"
 	if filter.ObjectID != "" {
 		if err := validName("object id", filter.ObjectID); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
 		}
 		objectGlob = filter.ObjectID
 	}
@@ -367,7 +368,7 @@ func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, er
 		}
 		l, err := fsys.Glob(filepath.Join(clusterDir, objectGlob))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
 		}
 		for _, dir := range l {
 			if filepath.Base(dir) != clusterName {
@@ -420,6 +421,9 @@ func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, er
 		}
 	}
 	slices.SortStableFunc(runs, func(a, b backup.Run) int { return a.CreatedAt.Compare(b.CreatedAt) })
+	if errs != nil {
+		errs = fmt.Errorf("store %s: %w", t.Ref(), errs)
+	}
 	return runs, errs
 }
 
