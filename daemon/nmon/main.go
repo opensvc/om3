@@ -131,6 +131,17 @@ type (
 		// arbitrators is a map for arbitratorConfig
 		arbitrators map[string]arbitratorConfig
 
+		// arbitratorC receives the status of the arbitrators a background
+		// check found, the check running out of the loop, which an
+		// arbitrator not answering held for its whole timeout.
+		arbitratorC chan map[string]node.ArbitratorStatus
+
+		// arbitratorChecking says a background check runs, and
+		// arbitratorRecheck that another is wanted once it ends, the
+		// configuration having changed since it began.
+		arbitratorChecking bool
+		arbitratorRecheck  bool
+
 		localhost string
 		change    bool
 
@@ -202,6 +213,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 			State:        node.MonitorStateRejoin,
 		},
 		cmdC:        make(chan any),
+		arbitratorC: make(chan map[string]node.ArbitratorStatus, 1),
 		poolC:       make(chan any, 1),
 		logBase:     plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
 		localhost:   localhost,
@@ -470,7 +482,7 @@ func (t *Manager) worker() {
 	defer t.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
 	defer node.MonitorData.Unset(t.localhost)
 
-	t.getAndUpdateStatusArbitrator()
+	t.refreshArbitrators()
 
 	if len(initialNodes) > 1 {
 		t.startRejoin()
@@ -562,6 +574,8 @@ func (t *Manager) worker() {
 			t.updateStats()
 		case <-arbitratorTicker.C:
 			t.onArbitratorTicker()
+		case arbitrators := <-t.arbitratorC:
+			t.onArbitratorsChecked(arbitrators)
 		case <-t.rejoinTicker.C:
 			t.onRejoinGracePeriodExpire()
 		case <-lastShutdownFileTouchTicker.C:
