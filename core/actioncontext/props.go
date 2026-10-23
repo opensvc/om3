@@ -267,9 +267,12 @@ var (
 	}
 	// Unstop lowers the flags a stop raised, as a start does, and starts
 	// nothing: the daemon may start the instance, or restart the
-	// resources, on its own again.
+	// resources, on its own again. It takes the action lock a start and a
+	// stop take, so a stop running meanwhile does not raise a flag it
+	// lowered, or the other way round.
 	Unstop = Properties{
 		Name:          "unstop",
+		MustLock:      true,
 		ClearsStopped: true,
 	}
 	Unprovision = Properties{

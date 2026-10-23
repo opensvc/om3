@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -15,6 +16,7 @@ type (
 	CmdObjectInstanceUnstop struct {
 		OptsGlobal
 		commoncmd.OptsAsync
+		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		NodeSelector string
 	}
@@ -55,6 +57,8 @@ func (t *CmdObjectInstanceUnstop) Run(kind string) error {
 			if !ok {
 				return nil, xerrors.InstanceActionNotSupported
 			}
+			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			return nil, i.Unstop(ctx)
 		}),
 	).Do()
