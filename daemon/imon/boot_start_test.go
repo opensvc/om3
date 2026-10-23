@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 )
 
@@ -65,4 +66,18 @@ func TestBootStartSaysWhyNothingIsStarted(t *testing.T) {
 	m.orchestrateBootStart()
 	require.False(t, m.isBootStartPending)
 	require.Equal(t, "this node is not the placement leader", m.bootStartNoopReason())
+}
+
+// A resource stopped on purpose keeps the boot of an orchestrate=start object
+// from starting its instance, which would start the resource back: the
+// decision closes, saying which resources.
+func TestBootStartLeavesAResourceStoppedOnPurpose(t *testing.T) {
+	m := newBootStartTestManager(instance.MonitorStateIdle)
+	local := m.instStatus["node1"]
+	local.Resources = instance.ResourceStatuses{"app#1": resource.Status{IsStopped: true}}
+	m.instStatus["node1"] = local
+	m.orchestrateBootStart()
+	require.False(t, m.isBootStartPending)
+	require.Equal(t, instance.MonitorStateIdle, m.state.State, "nothing started")
+	require.Equal(t, "the resources app#1 are flagged stopped", m.bootStartNoopReason())
 }
