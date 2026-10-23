@@ -67,8 +67,26 @@ type (
 		Path        string    `json:"path"`
 		ClusterName string    `json:"cluster_name"`
 		UpdatedAt   time.Time `json:"updated_at"`
+
+		// Stats are the figures of the runs of the object, recounted
+		// from its directory as a run of it is started, completed or
+		// removed, for the stats of the store to sum one record per
+		// object.
+		Stats *backup.ObjectStats `json:"stats,omitempty"`
+	}
+
+	// countWriter counts the bytes written through it.
+	countWriter struct {
+		w io.Writer
+		n int64
 	}
 )
+
+func (t *countWriter) Write(b []byte) (int, error) {
+	n, err := t.w.Write(b)
+	t.n += int64(n)
+	return n, err
+}
 
 const (
 	manifestName    = "manifest.json"
@@ -86,6 +104,8 @@ var (
 	_ backup.Pruner   = (*T)(nil)
 	_ backup.Localer  = (*T)(nil)
 	_ backup.Sharer   = (*T)(nil)
+	_ backup.Statser  = (*T)(nil)
+	_ backup.Usager   = (*T)(nil)
 )
 
 func init() {
@@ -206,8 +226,10 @@ func (t *T) writeMember(ctx context.Context, run backup.Run, m backup.Member, wr
 		return err
 	}
 	defer func() { _ = fsys.Remove(tmp) }()
-	zw := gzip.NewWriter(f)
-	if err := write(zw); err != nil {
+	stored := &countWriter{w: f}
+	zw := gzip.NewWriter(stored)
+	logical := &countWriter{w: zw}
+	if err := write(logical); err != nil {
 		_ = f.Close()
 		return fmt.Errorf("member %s of run %s: %w", m.Name, run.ID, err)
 	}
@@ -225,16 +247,21 @@ func (t *T) writeMember(ctx context.Context, run backup.Run, m backup.Member, wr
 	if err := fsys.Rename(tmp, final); err != nil {
 		return err
 	}
+	m.LogicalBytes, m.StoredBytes = logical.n, stored.n
 	return t.addMember(fsys, dir, run, m)
 }
 
 // addMember records the member in the manifest of the run in dir.
+// The first member of a run recounts the stats of the object, the run
+// counted incomplete until it completes, so a run interrupted is counted.
 func (t *T) addMember(fsys storeFS, dir string, run backup.Run, m backup.Member) error {
 	mf, err := readManifest(fsys, dir)
+	first := false
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		mf = manifest{Run: run}
 		mf.Members = nil
+		first = true
 	case err != nil:
 		return err
 	}
@@ -243,7 +270,18 @@ func (t *T) addMember(fsys storeFS, dir string, run backup.Run, m backup.Member)
 	} else {
 		mf.Members = append(mf.Members, m)
 	}
-	return writeManifest(fsys, dir, mf)
+	mf.LogicalBytes, mf.StoredBytes = 0, 0
+	for _, e := range mf.Members {
+		mf.LogicalBytes += e.LogicalBytes
+		mf.StoredBytes += e.StoredBytes
+	}
+	if err := writeManifest(fsys, dir, mf); err != nil {
+		return err
+	}
+	if first {
+		return t.recountObject(fsys, filepath.Dir(dir), run, false)
+	}
+	return nil
 }
 
 // Complete marks the run completed in its manifest.
@@ -261,10 +299,131 @@ func (t *T) Complete(ctx context.Context, run backup.Run) error {
 		return err
 	}
 	objectDir := filepath.Dir(dir)
-	if err := writeJSON(fsys, filepath.Join(objectDir, markerName), marker{Path: run.Path, ClusterName: run.ClusterName, UpdatedAt: mf.CompletedAt}); err != nil {
+	if err := t.recountObject(fsys, objectDir, run, true); err != nil {
 		return err
 	}
 	return writeJSON(fsys, filepath.Join(filepath.Dir(objectDir), clusterName), clusterMarker{ID: run.ClusterID, Name: run.ClusterName, UpdatedAt: mf.CompletedAt})
+}
+
+// recountObject writes the marker of the object in objectDir with the stats
+// of its runs, read from its directory. A completed run of it names the path
+// and the cluster the marker says, the path the runs are found by. Otherwise
+// the marker keeps what it says, or says the run's when it is the object's
+// first.
+func (t *T) recountObject(fsys storeFS, objectDir string, run backup.Run, completed bool) error {
+	runs, err := objectRuns(fsys, objectDir)
+	if err != nil {
+		return err
+	}
+	m, err := readMarker(fsys, objectDir)
+	switch {
+	case completed || errors.Is(err, os.ErrNotExist):
+		m.Path, m.ClusterName, m.UpdatedAt = run.Path, run.ClusterName, time.Now()
+	case err != nil:
+		return err
+	}
+	stats := backup.NewObjectStats(filepath.Base(filepath.Dir(objectDir)), m.ClusterName, filepath.Base(objectDir), m.Path, runs)
+	m.Stats = &stats
+	return writeJSON(fsys, filepath.Join(objectDir, markerName), m)
+}
+
+// objectRuns returns the runs of the object in objectDir, the incomplete
+// ones too.
+func objectRuns(fsys storeFS, objectDir string) ([]backup.Run, error) {
+	matches, err := fsys.Glob(filepath.Join(objectDir, "*", manifestName))
+	if err != nil {
+		return nil, err
+	}
+	runs := make([]backup.Run, 0, len(matches))
+	for _, match := range matches {
+		mf, err := readManifest(fsys, filepath.Dir(match))
+		if errors.Is(err, os.ErrNotExist) {
+			// removed meanwhile
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		runs = append(runs, mf.Run)
+	}
+	return runs, nil
+}
+
+// ObjectStats returns the stats every object of the store records, of every
+// cluster, the cluster named as it is now. An object whose marker holds none,
+// written before the stats were, is recounted from its directory, without
+// writing it.
+func (t *T) ObjectStats(ctx context.Context) ([]backup.ObjectStats, error) {
+	fsys, root, err := t.location()
+	if err != nil {
+		return nil, err
+	}
+	if err := fsys.Stat(root); errors.Is(err, os.ErrNotExist) && t.IsLocal() {
+		return []backup.ObjectStats{}, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
+	}
+	matches, err := fsys.Glob(filepath.Join(root, "*", "*", markerName))
+	if err != nil {
+		return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
+	}
+	names := make(map[string]string)
+	l := make([]backup.ObjectStats, 0, len(matches))
+	for _, match := range matches {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		objectDir := filepath.Dir(match)
+		clusterDir := filepath.Dir(objectDir)
+		clusterID := filepath.Base(clusterDir)
+		if _, ok := names[clusterID]; !ok {
+			if cm, err := readClusterMarker(fsys, clusterDir); err == nil {
+				names[clusterID] = cm.Name
+			} else {
+				names[clusterID] = ""
+			}
+		}
+		m, err := readMarker(fsys, objectDir)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
+		}
+		var stats backup.ObjectStats
+		if m.Stats != nil {
+			stats = *m.Stats
+		} else {
+			runs, err := objectRuns(fsys, objectDir)
+			if err != nil {
+				return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
+			}
+			stats = backup.NewObjectStats(clusterID, m.ClusterName, filepath.Base(objectDir), m.Path, runs)
+		}
+		if name := names[clusterID]; name != "" {
+			stats.ClusterName = name
+		}
+		l = append(l, stats)
+	}
+	return l, nil
+}
+
+// Usage says the space left where the store keeps its runs. What they take
+// is summed from the stats of the objects.
+func (t *T) Usage(ctx context.Context) (backup.Usage, error) {
+	fsys, root, err := t.location()
+	if err != nil {
+		return backup.Usage{}, err
+	}
+	dir := root
+	if err := fsys.Stat(dir); err != nil {
+		// A node writes its directory with its first run: the space is
+		// the one of where it will be.
+		dir = filepath.Dir(root)
+	}
+	free, ok, err := fsys.Free(dir)
+	if err != nil || !ok {
+		return backup.Usage{}, err
+	}
+	return backup.Usage{FreeBytes: &free}, nil
 }
 
 // writeJSON writes v as the file final, in place once complete.
@@ -529,6 +688,10 @@ func (t *T) Delete(ctx context.Context, runs []backup.Run) error {
 		}
 		if err := fsys.RemoveAll(dir); err != nil {
 			errs = errors.Join(errs, err)
+			continue
+		}
+		if err := t.recountObject(fsys, filepath.Dir(dir), run, false); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("recount the stats of %s: %w", run.Path, err))
 		}
 	}
 	return errs

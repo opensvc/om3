@@ -32,6 +32,10 @@ type (
 		OpenIn(dir, name string) (io.ReadCloser, error)
 		Remove(name string) error
 		RemoveAll(dir string) error
+
+		// Free returns the space left in the filesystem of dir, and
+		// false when it can not tell.
+		Free(dir string) (int64, bool, error)
 		Close() error
 	}
 
@@ -76,9 +80,21 @@ func (localFS) Remove(name string) error { return os.Remove(name) }
 
 func (localFS) RemoveAll(dir string) error { return os.RemoveAll(dir) }
 
+func (localFS) Free(dir string) (int64, bool, error) { return localFree(dir) }
+
 func (localFS) Close() error { return nil }
 
 func (t *sftpFS) MkdirAll(dir string) error { return t.client.MkdirAll(dir) }
+
+// Free asks the server through the statvfs@openssh.com extension, which a
+// server not offering it answers with an error, said as not telling.
+func (t *sftpFS) Free(dir string) (int64, bool, error) {
+	st, err := t.client.StatVFS(dir)
+	if err != nil {
+		return 0, false, nil
+	}
+	return int64(st.Bavail * st.Frsize), true, nil
+}
 
 func (t *sftpFS) Create(name string) (storeFile, error) {
 	f, err := t.client.OpenFile(name, os.O_CREATE|os.O_TRUNC|os.O_WRONLY)

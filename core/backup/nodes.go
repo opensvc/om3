@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -34,9 +35,11 @@ type nodesStore struct {
 }
 
 var (
-	_ Driver   = (*nodesStore)(nil)
-	_ Streamer = (*nodesStore)(nil)
-	_ Pruner   = (*nodesStore)(nil)
+	_ Driver      = (*nodesStore)(nil)
+	_ Streamer    = (*nodesStore)(nil)
+	_ Pruner      = (*nodesStore)(nil)
+	_ Statser     = (*nodesStore)(nil)
+	_ NodeStatser = (*nodesStore)(nil)
 )
 
 // NewNodesStore returns the store local, the driver of the directory of the
@@ -183,4 +186,46 @@ func (t *nodesStore) Close() error {
 // IsLocal says the store is a directory of the node, as its driver is.
 func (t *nodesStore) IsLocal() bool {
 	return true
+}
+
+// ObjectStats merges the stats the objects record in the directories of
+// every node. A peer not reachable is said, and its objects are not counted.
+func (t *nodesStore) ObjectStats(ctx context.Context) ([]ObjectStats, error) {
+	lists := make([][]ObjectStats, 0, len(t.peers)+1)
+	for _, node := range append([]string{t.local}, t.peers...) {
+		d, err := t.driverOf(node)
+		if err != nil {
+			t.warnf("%s: its objects are not counted", err)
+			continue
+		}
+		statser, ok := d.(Statser)
+		if !ok {
+			continue
+		}
+		l, err := statser.ObjectStats(ctx)
+		if err != nil {
+			if node == t.local {
+				return nil, err
+			}
+			t.warnf("store %s: the stats of %s: %s", t.Ref(), node, err)
+			continue
+		}
+		lists = append(lists, l)
+	}
+	return MergeObjectStats(lists...), nil
+}
+
+// NodeStats returns the stats of the directory of each node, a node not
+// reachable saying why.
+func (t *nodesStore) NodeStats(ctx context.Context) map[string]Stats {
+	m := make(map[string]Stats)
+	for _, node := range append([]string{t.local}, t.peers...) {
+		d, err := t.driverOf(node)
+		if err != nil {
+			m[node] = Stats{Clusters: make([]ClusterStats, 0), UpdatedAt: time.Now().UTC(), CheckError: err.Error()}
+			continue
+		}
+		m[node] = StoreStats(ctx, d)
+	}
+	return m
 }

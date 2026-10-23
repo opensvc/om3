@@ -933,6 +933,21 @@ func (e StoreListKind) Valid() bool {
 	}
 }
 
+// Defines values for StoreObjectStatsListKind.
+const (
+	StoreObjectStatsListKindStoreObjectStatsList StoreObjectStatsListKind = "StoreObjectStatsList"
+)
+
+// Valid indicates whether the value is a known member of the StoreObjectStatsListKind enum.
+func (e StoreObjectStatsListKind) Valid() bool {
+	switch e {
+	case StoreObjectStatsListKindStoreObjectStatsList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StoreSnapshotListKind.
 const (
 	StoreSnapshotListKindStoreSnapshotList StoreSnapshotListKind = "StoreSnapshotList"
@@ -2866,15 +2881,34 @@ type Scope = []string
 // Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 type Status string
 
+// StoreClusterStats defines model for StoreClusterStats.
+type StoreClusterStats struct {
+	ClusterId     string     `json:"cluster_id"`
+	ClusterName   string     `json:"cluster_name"`
+	Incomplete    int        `json:"incomplete"`
+	LastCreatedAt *time.Time `json:"last_created_at,omitempty"`
+	LogicalBytes  int64      `json:"logical_bytes"`
+	Objects       int        `json:"objects"`
+	Protected     int        `json:"protected"`
+	Runs          int        `json:"runs"`
+}
+
 // StoreItem defines model for StoreItem.
 type StoreItem struct {
+	// NodeStats The stats of the directory of each node, by node name, for a store keeping its runs in a directory of each node.
+	NodeStats *map[string]StoreStats `json:"node_stats,omitempty"`
+
 	// Ref The reference to the store, as a store keyword names it.
 	Ref string `json:"ref"`
 
 	// Share The namespaces whose objects may use the store, * for every one.
 	Share []string `json:"share"`
-	Type  string   `json:"type"`
-	Url   string   `json:"url"`
+
+	// Stats The figures of a store, summed from the stats every object of it
+	// records, of every cluster writing it, and cached by the daemon.
+	Stats *StoreStats `json:"stats,omitempty"`
+	Type  string      `json:"type"`
+	Url   string      `json:"url"`
 }
 
 // StoreList defines model for StoreList.
@@ -2886,13 +2920,49 @@ type StoreList struct {
 // StoreListKind defines model for StoreList.Kind.
 type StoreListKind string
 
+// StoreObjectStats defines model for StoreObjectStats.
+type StoreObjectStats struct {
+	ClusterId      string     `json:"cluster_id"`
+	ClusterName    string     `json:"cluster_name"`
+	FirstCreatedAt *time.Time `json:"first_created_at,omitempty"`
+	Incomplete     int        `json:"incomplete"`
+	LastCreatedAt  *time.Time `json:"last_created_at,omitempty"`
+	LogicalBytes   int64      `json:"logical_bytes"`
+
+	// Nodes The nodes that wrote its completed runs.
+	Nodes    []string `json:"nodes"`
+	ObjectId string   `json:"object_id"`
+
+	// Path The path of the object at its last run.
+	Path        string `json:"path"`
+	Protected   int    `json:"protected"`
+	Runs        int    `json:"runs"`
+	StoredBytes *int64 `json:"stored_bytes,omitempty"`
+
+	// UpdatedAt When the node completing or removing a run of the object counted these.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// StoreObjectStatsList defines model for StoreObjectStatsList.
+type StoreObjectStatsList struct {
+	Items []StoreObjectStats       `json:"items"`
+	Kind  StoreObjectStatsListKind `json:"kind"`
+}
+
+// StoreObjectStatsListKind defines model for StoreObjectStatsList.Kind.
+type StoreObjectStatsListKind string
+
 // StoreSnapshot defines model for StoreSnapshot.
 type StoreSnapshot struct {
-	ClusterId   string    `json:"cluster_id"`
-	ClusterName string    `json:"cluster_name"`
-	CreatedAt   time.Time `json:"created_at"`
-	Id          string    `json:"id"`
-	Members     []string  `json:"members"`
+	ClusterId   string     `json:"cluster_id"`
+	ClusterName string     `json:"cluster_name"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Id          string     `json:"id"`
+
+	// LogicalBytes The size of what the run saved, 0 when the store does not tell.
+	LogicalBytes int64    `json:"logical_bytes"`
+	Members      []string `json:"members"`
 
 	// Node The node that took the snapshot.
 	Node string `json:"node"`
@@ -2908,10 +2978,48 @@ type StoreSnapshot struct {
 type StoreSnapshotList struct {
 	Items []StoreSnapshot       `json:"items"`
 	Kind  StoreSnapshotListKind `json:"kind"`
+
+	// Next The before value asking the next page, set when the answer was cut at the limit.
+	Next *string `json:"next,omitempty"`
 }
 
 // StoreSnapshotListKind defines model for StoreSnapshotList.Kind.
 type StoreSnapshotListKind string
+
+// StoreStats The figures of a store, summed from the stats every object of it
+// records, of every cluster writing it, and cached by the daemon.
+type StoreStats struct {
+	// CheckError Why the last attempt failed to reach the store.
+	CheckError *string `json:"check_error,omitempty"`
+
+	// CheckedAt When the store was last reached.
+	CheckedAt      *time.Time          `json:"checked_at,omitempty"`
+	Clusters       []StoreClusterStats `json:"clusters"`
+	FirstCreatedAt *time.Time          `json:"first_created_at,omitempty"`
+
+	// FreeBytes The space left in the store, absent when it does not tell.
+	FreeBytes *int64 `json:"free_bytes,omitempty"`
+
+	// Incomplete The runs a failed or interrupted update left.
+	Incomplete    int        `json:"incomplete"`
+	LastCreatedAt *time.Time `json:"last_created_at,omitempty"`
+
+	// LogicalBytes The size of what the runs saved.
+	LogicalBytes int64 `json:"logical_bytes"`
+
+	// Objects The objects with a run, counted by object id.
+	Objects   int `json:"objects"`
+	Protected int `json:"protected"`
+
+	// Runs The completed runs.
+	Runs int `json:"runs"`
+
+	// StoredBytes What the runs take in the store, absent when the store can not tell.
+	StoredBytes *int64 `json:"stored_bytes,omitempty"`
+
+	// UpdatedAt When these figures were computed.
+	UpdatedAt time.Time `json:"updated_at"`
+}
 
 // SubsetConfig defines model for SubsetConfig.
 type SubsetConfig = instance.SubsetConfig
@@ -4884,6 +4992,12 @@ type GetResourcesParams struct {
 	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
 }
 
+// GetStoreObjectsParams defines parameters for GetStoreObjects.
+type GetStoreObjectsParams struct {
+	// Store The store, as a store keyword names it.
+	Store string `form:"store" json:"store"`
+}
+
 // DeleteStoreSnapshotParams defines parameters for DeleteStoreSnapshot.
 type DeleteStoreSnapshotParams struct {
 	// Store The store, as a store keyword names it.
@@ -4904,6 +5018,12 @@ type GetStoreSnapshotsParams struct {
 
 	// Cluster The cluster whose snapshots to list, by name or id.
 	Cluster *InQueryStoreCluster `form:"cluster,omitempty" json:"cluster,omitempty"`
+
+	// Limit The most snapshots to answer, newest first. The next page is asked with before set to the next value of the answer.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Before The next value of a previous answer, for the snapshots older than its last one.
+	Before *string `form:"before,omitempty" json:"before,omitempty"`
 }
 
 // PostClusterEnrollJSONRequestBody defines body for PostClusterEnroll for application/json ContentType.

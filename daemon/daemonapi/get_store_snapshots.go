@@ -1,7 +1,11 @@
 package daemonapi
 
 import (
+	"fmt"
 	"net/http"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -72,18 +76,65 @@ func (a *DaemonAPI) GetStoreSnapshots(ctx echo.Context, params api.GetStoreSnaps
 				continue
 			}
 			items = append(items, api.StoreSnapshot{
-				Store:       s.Ref(),
-				Path:        run.Path,
-				Id:          run.ID,
-				CreatedAt:   run.CreatedAt,
-				ClusterId:   run.ClusterID,
-				ClusterName: run.ClusterName,
-				Node:        run.Node,
-				Members:     run.MemberNames(),
-				Protected:   run.Protected,
-				Note:        run.Note,
+				Store:        s.Ref(),
+				Path:         run.Path,
+				Id:           run.ID,
+				CreatedAt:    run.CreatedAt,
+				ClusterId:    run.ClusterID,
+				ClusterName:  run.ClusterName,
+				Node:         run.Node,
+				Members:      run.MemberNames(),
+				Protected:    run.Protected,
+				Note:         run.Note,
+				CompletedAt:  timePtr(run.CompletedAt),
+				LogicalBytes: run.LogicalBytes,
 			})
 		}
 	}
-	return ctx.JSON(http.StatusOK, api.StoreSnapshotList{Kind: "StoreSnapshotList", Items: items})
+	list, err := pageStoreSnapshots(items, params.Limit, params.Before)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	return ctx.JSON(http.StatusOK, list)
+}
+
+// pageStoreSnapshots sorts the snapshots newest first, and cuts the page
+// limit asks, after the snapshot before names: the runs one sync update
+// writes into several stores share their creation time, so the cursor names
+// the snapshot, by its time, store and id, which a time alone would not.
+func pageStoreSnapshots(items []api.StoreSnapshot, limit *int, before *string) (api.StoreSnapshotList, error) {
+	key := func(i api.StoreSnapshot) string {
+		return i.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + i.Store + "|" + i.Id
+	}
+	newer := func(a, b api.StoreSnapshot) int {
+		if c := b.CreatedAt.Compare(a.CreatedAt); c != 0 {
+			return c
+		}
+		if c := strings.Compare(a.Store, b.Store); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Id, b.Id)
+	}
+	slices.SortStableFunc(items, newer)
+	list := api.StoreSnapshotList{Kind: "StoreSnapshotList", Items: items}
+	if before != nil && *before != "" {
+		at, rest, ok := strings.Cut(*before, "|")
+		t, err := time.Parse(time.RFC3339Nano, at)
+		if !ok || err != nil {
+			return list, fmt.Errorf("before %q: not the next value of a previous answer", *before)
+		}
+		store, id, _ := strings.Cut(rest, "|")
+		cursor := api.StoreSnapshot{CreatedAt: t, Store: store, Id: id}
+		i := slices.IndexFunc(items, func(i api.StoreSnapshot) bool { return newer(cursor, i) < 0 })
+		if i < 0 {
+			i = len(items)
+		}
+		list.Items = items[i:]
+	}
+	if limit != nil && *limit > 0 && len(list.Items) > *limit {
+		list.Items = list.Items[:*limit]
+		next := key(list.Items[len(list.Items)-1])
+		list.Next = &next
+	}
+	return list, nil
 }
