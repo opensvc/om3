@@ -52,6 +52,15 @@ func (a *DaemonAPI) GetStoreSnapshots(ctx echo.Context, params api.GetStoreSnaps
 	if params.Cluster != nil {
 		filter.Cluster = *params.Cluster
 	}
+	if params.ObjectId != nil {
+		filter.ObjectID = *params.ObjectId
+	}
+	if params.Since != nil {
+		filter.Since = *params.Since
+	}
+	if params.Until != nil {
+		filter.Until = *params.Until
+	}
 	reqCtx := ctx.Request().Context()
 	items := make([]api.StoreSnapshot, 0)
 	for _, ref := range refs {
@@ -91,18 +100,24 @@ func (a *DaemonAPI) GetStoreSnapshots(ctx echo.Context, params api.GetStoreSnaps
 			})
 		}
 	}
-	list, err := pageStoreSnapshots(items, params.Limit, params.Before)
+	asc := params.Order != nil && *params.Order == api.Asc
+	cursor := params.Before
+	if asc {
+		cursor = params.After
+	}
+	list, err := pageStoreSnapshots(items, params.Limit, cursor, asc)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	return ctx.JSON(http.StatusOK, list)
 }
 
-// pageStoreSnapshots sorts the snapshots newest first, and cuts the page
-// limit asks, after the snapshot before names: the runs one sync update
-// writes into several stores share their creation time, so the cursor names
-// the snapshot, by its time, store and id, which a time alone would not.
-func pageStoreSnapshots(items []api.StoreSnapshot, limit *int, before *string) (api.StoreSnapshotList, error) {
+// pageStoreSnapshots sorts the snapshots newest first, or oldest first with
+// asc, and cuts the page limit asks, after the snapshot the cursor names:
+// the runs one sync update writes into several stores share their creation
+// time, so the cursor names the snapshot, by its time, store and id, which a
+// time alone would not.
+func pageStoreSnapshots(items []api.StoreSnapshot, limit *int, before *string, asc bool) (api.StoreSnapshotList, error) {
 	key := func(i api.StoreSnapshot) string {
 		return i.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + i.Store + "|" + i.Id
 	}
@@ -114,6 +129,10 @@ func pageStoreSnapshots(items []api.StoreSnapshot, limit *int, before *string) (
 			return c
 		}
 		return strings.Compare(a.Id, b.Id)
+	}
+	if asc {
+		order := newer
+		newer = func(a, b api.StoreSnapshot) int { return order(b, a) }
 	}
 	slices.SortStableFunc(items, newer)
 	list := api.StoreSnapshotList{Kind: "StoreSnapshotList", Items: items}
