@@ -5,11 +5,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
@@ -87,6 +96,41 @@ func refsName(p naming.Path) string {
 func ApplyRefs(ns string, doc RefsDocument, mode RefsMode) ([]string, error) {
 	notes, _, err := ApplyRefsUndoable(ns, doc, mode)
 	return notes, err
+}
+
+// refsLockTimeout bounds the wait for another copy of keys into a namespace.
+const refsLockTimeout = time.Minute
+
+var refsMutexes sync.Map
+
+// LockRefs takes the lock of the copies of referenced keys into the
+// namespace ns. Held from a copy until the configuration it is made for
+// lands or is taken back, a second copy of the same keys finds those of the
+// first there and adds none, so the undo of either takes back nothing the
+// other committed. The lock of the file serializes the processes, the mutex
+// the requests of one, as the daemon api serves them, a lock of the file
+// being held per process.
+func LockRefs(ns string) (func(), error) {
+	if ns == "" {
+		ns = naming.NsRoot
+	}
+	v, _ := refsMutexes.LoadOrStore(ns, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	p := filepath.Join(rawconfig.Paths.Lock, "refs", ns)
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		mu.Unlock()
+		return nil, err
+	}
+	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
+	if err := lock.Lock(refsLockTimeout, "refs"); err != nil {
+		mu.Unlock()
+		return nil, fmt.Errorf("lock the copies of keys into the namespace %s: %w", ns, err)
+	}
+	return func() {
+		_ = lock.UnLock()
+		mu.Unlock()
+	}, nil
 }
 
 // ApplyRefsUndoable is ApplyRefs, returning too how to undo what it did,

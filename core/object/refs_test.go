@@ -3,6 +3,7 @@ package object
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -115,4 +116,34 @@ func TestApplyRefsUndo(t *testing.T) {
 	v, err := o.DecodeKey("b")
 	require.NoError(t, err)
 	assert.Equal(t, "mine", string(v), "the value rewritten is put back")
+}
+
+// The copies of keys into one namespace are serialized, in one process as
+// across processes: a second waits for the first to release the lock.
+func TestLockRefsSerializesTheCopies(t *testing.T) {
+	testhelper.Setup(t)
+	unlock, err := LockRefs("ns1")
+	require.NoError(t, err)
+	got := make(chan func(), 1)
+	go func() {
+		u, err := LockRefs("ns1")
+		if err == nil {
+			got <- u
+		}
+	}()
+	select {
+	case <-got:
+		t.Fatal("a second copy took the lock the first holds")
+	case <-time.After(200 * time.Millisecond):
+	}
+	other, err := LockRefs("ns2")
+	require.NoError(t, err, "another namespace is not held")
+	other()
+	unlock()
+	select {
+	case u := <-got:
+		u()
+	case <-time.After(5 * time.Second):
+		t.Fatal("the second copy did not take the lock once released")
+	}
 }
