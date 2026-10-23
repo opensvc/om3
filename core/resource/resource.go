@@ -1028,6 +1028,13 @@ func PGReset(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// Unstop lowers the flag a stop of the resource alone raised, which keeps the
+// daemon from restarting it, and starts nothing.
+func Unstop(ctx context.Context, r Driver) error {
+	defer EvalStatus(ctx, r)
+	return removeStopped(r)
+}
+
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
 	var i any = r

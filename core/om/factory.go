@@ -3695,6 +3695,20 @@ func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceUnstop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnstop
+	cmd := commoncmd.NewCmdObjectInstanceUnstop()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{

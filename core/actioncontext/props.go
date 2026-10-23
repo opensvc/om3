@@ -265,6 +265,13 @@ var (
 		Failure:  "unfreeze failed",
 		PG:       true,
 	}
+	// Unstop lowers the flags a stop raised, as a start does, and starts
+	// nothing: the daemon may start the instance, or restart the
+	// resources, on its own again.
+	Unstop = Properties{
+		Name:          "unstop",
+		ClearsStopped: true,
+	}
 	Unprovision = Properties{
 		Name:            "unprovision",
 		Target:          "unprovisioned",
