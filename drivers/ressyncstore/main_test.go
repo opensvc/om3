@@ -103,6 +103,14 @@ func TestOpenUnderStaysInTheHead(t *testing.T) {
 	_, err = os.Stat(filepath.Join(outside, "data"))
 	assert.True(t, os.IsNotExist(err), "nothing created outside the head")
 
+	// A symlink staying in the head is refused too: it could point at the
+	// head of another resource under this one.
+	require.NoError(t, os.MkdirAll(filepath.Join(headDir, "other"), 0755))
+	require.NoError(t, os.Symlink("other", filepath.Join(headDir, "inner")))
+	_, err = openUnder(headDir, filepath.Join(headDir, "inner", "data"))
+	require.Error(t, err, "a symlink in the head is not followed")
+	assert.NoDirExists(t, filepath.Join(headDir, "other", "data"))
+
 	f, err := openUnder(headDir, filepath.Join(headDir, "app", "data"))
 	require.NoError(t, err)
 	defer f.Close()

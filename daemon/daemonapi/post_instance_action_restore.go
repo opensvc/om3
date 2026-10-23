@@ -65,6 +65,8 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--stop readies the instance for a restore of the heads in place, which --into and --config are not")
 		case params.Head != nil && len(*params.Head) > 0:
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--config restores the configuration alone: restore the heads with a restore of their own, once it is restored")
+		case params.ByRid != nil && *params.ByRid:
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--by-rid says where to restore the heads, which --config does not restore")
 		}
 		return a.restoreConfigInPlace(ctx, p, params)
 	}

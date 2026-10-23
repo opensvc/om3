@@ -792,6 +792,9 @@ func (t *T) Restore(ctx context.Context) error {
 		if len(opts.Heads) > 0 {
 			return fmt.Errorf("--config restores the configuration alone: restore the heads with a restore of their own, once it is restored")
 		}
+		if opts.ByRID {
+			return fmt.Errorf("--by-rid says where to restore the heads, which --config does not restore")
+		}
 		// The referenced keys are restored with the heads.
 		return t.restoreConfig(ctx, s, run)
 	}
@@ -1059,34 +1062,65 @@ func restoreUnder(ctx context.Context, s backup.Store, run backup.Run, h, under 
 }
 
 // openUnder creates the directory dir under the head headDir, and opens it,
-// through a root opened on the head.
+// one component after the other, each through the one before: a symlink is
+// refused, one pointing in the head too, as at another head under it, and a
+// directory swapped for another between its check and its opening is
+// refused, the directory opened having to be the one checked.
 func openUnder(headDir, dir string) (*os.File, error) {
-	root, err := os.OpenRoot(headDir)
-	if err != nil {
-		return nil, err
-	}
-	defer root.Close()
 	rel, err := filepath.Rel(headDir, dir)
 	if err != nil {
 		return nil, err
 	}
-	if rel != "." {
-		if err := root.MkdirAll(rel, 0755); err != nil {
-			return nil, err
-		}
-	}
-	f, err := root.Open(rel)
+	root, err := os.OpenRoot(headDir)
 	if err != nil {
 		return nil, err
 	}
-	if fi, err := f.Stat(); err != nil {
-		_ = f.Close()
-		return nil, err
-	} else if !fi.IsDir() {
-		_ = f.Close()
-		return nil, fmt.Errorf("%s is not a directory", dir)
+	for _, name := range strings.Split(rel, string(filepath.Separator)) {
+		if name == "." || name == "" {
+			continue
+		}
+		next, err := openComponent(root, name)
+		_ = root.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", dir, err)
+		}
+		root = next
 	}
-	return f, nil
+	defer root.Close()
+	return root.Open(".")
+}
+
+// openComponent opens the directory name of root, created when absent.
+func openComponent(root *os.Root, name string) (*os.Root, error) {
+	fi, err := root.Lstat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := root.Mkdir(name, 0755); err != nil && !errors.Is(err, os.ErrExist) {
+			return nil, err
+		}
+		fi, err = root.Lstat(name)
+	}
+	switch {
+	case err != nil:
+		return nil, err
+	case fi.Mode()&os.ModeSymlink != 0:
+		return nil, fmt.Errorf("%s is a symlink", name)
+	case !fi.IsDir():
+		return nil, fmt.Errorf("%s is not a directory", name)
+	}
+	sub, err := root.OpenRoot(name)
+	if err != nil {
+		return nil, err
+	}
+	opened, err := sub.Stat(".")
+	if err != nil {
+		_ = sub.Close()
+		return nil, err
+	}
+	if !os.SameFile(fi, opened) {
+		_ = sub.Close()
+		return nil, fmt.Errorf("%s changed while opened", name)
+	}
+	return sub, nil
 }
 
 // objectHeads returns the heads of the resources of the object, enabled and
