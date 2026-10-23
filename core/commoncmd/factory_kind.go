@@ -250,7 +250,8 @@ func NewCmdStore() *cobra.Command {
 		Long: `A store keeps the backups the sync.store resources of the objects write
 into it, as runs: one sync update of an object, all of its heads and its
 configuration, under one snapshot id. Stores are declared as store#<name>
-sections of the cluster configuration.`,
+sections of the cluster configuration, which every namespace may use, or of
+a sec, which its namespace and the ones it shares with may use.`,
 	}
 }
 
@@ -258,7 +259,7 @@ sections of the cluster configuration.`,
 func NewCmdStoreList() *cobra.Command {
 	return &cobra.Command{
 		Use:     "list",
-		Short:   "list the stores declared in the cluster configuration",
+		Short:   "list the stores declared in the cluster configuration and in the secs",
 		Aliases: []string{"ls"},
 		GroupID: GroupIDQuery,
 	}
@@ -284,8 +285,8 @@ named by its id or a prefix of it.
 
 A run marked protected, by a sync update with --protect, is never removed by
 the retention: this command is how it goes.`,
-		Example: `  # remove a run kept before an upgrade
-  om store snapshot rm --store tar1 --snapshot 7c0e41d2`,
+		Example: ForProgram(`  # remove a run kept before an upgrade
+  om store snapshot rm --store tar1 --snapshot 7c0e41d2`),
 	}
 }
 

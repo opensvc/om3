@@ -5916,6 +5916,13 @@ paths:
 
         An object that exists is refused, unless force, which replaces its
         configuration as a creation does, with the checks of an update.
+
+        With store and snapshot, the configuration is the one of the object
+        the snapshot is of, and the request has no body. It passes the same
+        checks, then the keys of the sec and cfg it references that the
+        namespace lacks are created, and restore_from names the snapshot,
+        for the provision to restore the heads from. The snapshot is one of
+        an object of a namespace the requester is an administrator of.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5924,6 +5931,8 @@ paths:
         - $ref: '#/components/parameters/inQueryWaitLocal'
         - $ref: '#/components/parameters/inQueryRestore'
         - $ref: '#/components/parameters/inQuerySets'
+        - $ref: '#/components/parameters/inQueryStore'
+        - $ref: '#/components/parameters/inQueryCreateSnapshot'
         - $ref: '#/components/parameters/inQueryForce'
       requestBody:
         description: OK
@@ -6568,6 +6577,103 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/store:
+    get:
+      description: |
+        List the stores the requester may use or read: the stores of the
+        cluster configuration, to a requester with a grant, and the stores
+        a sec declares, to the namespaces it serves.
+      operationId: GetStores
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/store/snapshot:
+    get:
+      description: |
+        List the snapshots the stores hold, read from the stores, of the
+        objects of the namespaces the requester has a grant on. A store
+        keeping its runs in a directory of each node is read on every node.
+      operationId: GetStoreSnapshots
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inQueryStore'
+        - $ref: '#/components/parameters/inQueryStorePath'
+        - $ref: '#/components/parameters/inQueryStoreCluster'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreSnapshotList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    delete:
+      description: |
+        Remove a snapshot from a store, protected or not: the retention
+        never removes a protected one. Needs the admin grant of the
+        namespace of the object the snapshot is of, a namespace of this
+        cluster: the snapshot another cluster wrote into a store of the
+        cluster configuration needs root.
+      operationId: DeleteStoreSnapshot
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: store
+          required: true
+          description: The store, as a store keyword names it.
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          description: The snapshot id, or a prefix of it.
+          schema:
+            type: string
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
         500:
           $ref: '#/components/responses/500'
 
@@ -10400,6 +10506,97 @@ components:
       items:
         $ref: '#/components/schemas/SyncSnapshotItem'
 
+    StoreList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - StoreList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreItem'
+
+    StoreItem:
+      type: object
+      required:
+        - ref
+        - type
+        - url
+        - share
+      properties:
+        ref:
+          type: string
+          description: The reference to the store, as a store keyword names it.
+        type:
+          type: string
+        url:
+          type: string
+        share:
+          type: array
+          description: The namespaces whose objects may use the store, * for every one.
+          items:
+            type: string
+
+    StoreSnapshotList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - StoreSnapshotList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreSnapshot'
+
+    StoreSnapshot:
+      type: object
+      required:
+        - store
+        - path
+        - id
+        - created_at
+        - cluster_id
+        - cluster_name
+        - node
+        - members
+        - protected
+        - note
+      properties:
+        store:
+          type: string
+        path:
+          type: string
+          description: The object the snapshot is of, as it was named then.
+        id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        cluster_id:
+          type: string
+        cluster_name:
+          type: string
+        node:
+          type: string
+          description: The node that took the snapshot.
+        members:
+          type: array
+          items:
+            type: string
+        protected:
+          type: boolean
+        note:
+          type: string
+
     SyncSnapshotList:
       type: object
       required:
@@ -11247,6 +11444,42 @@ components:
       name: rid
       description: The rid that is expected to expose the requested file path.
       required: true
+      schema:
+        type: string
+
+    inQueryStore:
+      in: query
+      name: store
+      description: |
+        The store, as a store keyword names it: a name for a store of the
+        cluster configuration, from <sec> store#<name> for one of a sec.
+      schema:
+        type: string
+
+    inQueryStorePath:
+      in: query
+      name: path
+      description: The object whose snapshots to list, by the path the store last recorded for it.
+      schema:
+        type: string
+
+    inQueryStoreCluster:
+      in: query
+      name: cluster
+      description: The cluster whose snapshots to list, by name or id.
+      schema:
+        type: string
+
+    inQueryCreateSnapshot:
+      in: query
+      name: snapshot
+      description: |
+        The snapshot of the store to create the object from: its id or a
+        prefix of it, or the path of an object for its latest snapshot. The
+        object takes its configuration, the keys of the sec and cfg it
+        references that its namespace lacks, and its heads are restored at
+        provision. Needs the admin grant of the namespace of the object the
+        snapshot is of.
       schema:
         type: string
 

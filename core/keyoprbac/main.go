@@ -519,6 +519,15 @@ var rules = map[string]Group{
 				Grant:  rbac.GrantRoot,
 				Reason: reasonRoot,
 			},
+			// The provision restores the heads from the snapshot it
+			// names, which may be of an object of another namespace: the
+			// daemon sets it on a create from a store, once it checked the
+			// requester is an administrator of the namespace of that one.
+			"restore_from": {
+				Grant:    rbac.GrantRoot,
+				Reason:   reasonRoot,
+				MayUnset: true,
+			},
 		}},
 
 	// A claim says how much of a pool, or how many addresses of a network,

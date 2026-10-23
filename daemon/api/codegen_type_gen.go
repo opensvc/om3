@@ -918,6 +918,36 @@ func (e Status) Valid() bool {
 	}
 }
 
+// Defines values for StoreListKind.
+const (
+	StoreListKindStoreList StoreListKind = "StoreList"
+)
+
+// Valid indicates whether the value is a known member of the StoreListKind enum.
+func (e StoreListKind) Valid() bool {
+	switch e {
+	case StoreListKindStoreList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoreSnapshotListKind.
+const (
+	StoreSnapshotListKindStoreSnapshotList StoreSnapshotListKind = "StoreSnapshotList"
+)
+
+// Valid indicates whether the value is a known member of the StoreSnapshotListKind enum.
+func (e StoreSnapshotListKind) Valid() bool {
+	switch e {
+	case StoreSnapshotListKindStoreSnapshotList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SyncSnapshotItemKind.
 const (
 	SyncSnapshotItemKindSyncSnapshotItem SyncSnapshotItemKind = "SyncSnapshotItem"
@@ -2853,6 +2883,53 @@ type Scope = []string
 // Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 type Status string
 
+// StoreItem defines model for StoreItem.
+type StoreItem struct {
+	// Ref The reference to the store, as a store keyword names it.
+	Ref string `json:"ref"`
+
+	// Share The namespaces whose objects may use the store, * for every one.
+	Share []string `json:"share"`
+	Type  string   `json:"type"`
+	Url   string   `json:"url"`
+}
+
+// StoreList defines model for StoreList.
+type StoreList struct {
+	Items []StoreItem   `json:"items"`
+	Kind  StoreListKind `json:"kind"`
+}
+
+// StoreListKind defines model for StoreList.Kind.
+type StoreListKind string
+
+// StoreSnapshot defines model for StoreSnapshot.
+type StoreSnapshot struct {
+	ClusterId   string    `json:"cluster_id"`
+	ClusterName string    `json:"cluster_name"`
+	CreatedAt   time.Time `json:"created_at"`
+	Id          string    `json:"id"`
+	Members     []string  `json:"members"`
+
+	// Node The node that took the snapshot.
+	Node string `json:"node"`
+	Note string `json:"note"`
+
+	// Path The object the snapshot is of, as it was named then.
+	Path      string `json:"path"`
+	Protected bool   `json:"protected"`
+	Store     string `json:"store"`
+}
+
+// StoreSnapshotList defines model for StoreSnapshotList.
+type StoreSnapshotList struct {
+	Items []StoreSnapshot       `json:"items"`
+	Kind  StoreSnapshotListKind `json:"kind"`
+}
+
+// StoreSnapshotListKind defines model for StoreSnapshotList.Kind.
+type StoreSnapshotListKind string
+
 // SubsetConfig defines model for SubsetConfig.
 type SubsetConfig = instance.SubsetConfig
 
@@ -3080,6 +3157,9 @@ type ConfigUpdatedAt = time.Time
 // InQueryConfirm defines model for inQueryConfirm.
 type InQueryConfirm = bool
 
+// InQueryCreateSnapshot defines model for inQueryCreateSnapshot.
+type InQueryCreateSnapshot = string
+
 // InQueryCron defines model for inQueryCron.
 type InQueryCron = bool
 
@@ -3229,6 +3309,15 @@ type InQuerySlaves = []string
 
 // InQueryStateOnly defines model for inQueryStateOnly.
 type InQueryStateOnly = bool
+
+// InQueryStore defines model for inQueryStore.
+type InQueryStore = string
+
+// InQueryStoreCluster defines model for inQueryStoreCluster.
+type InQueryStoreCluster = string
+
+// InQueryStorePath defines model for inQueryStorePath.
+type InQueryStorePath = string
 
 // InQuerySubset defines model for inQuerySubset.
 type InQuerySubset = string
@@ -4653,7 +4742,19 @@ type PostObjectConfigFileParams struct {
 	// from it.
 	Restore *InQueryRestore `form:"restore,omitempty" json:"restore,omitempty"`
 	Set     *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
-	Force   *InQueryForce   `form:"force,omitempty" json:"force,omitempty"`
+
+	// Store The store, as a store keyword names it: a name for a store of the
+	// cluster configuration, from <sec> store#<name> for one of a sec.
+	Store *InQueryStore `form:"store,omitempty" json:"store,omitempty"`
+
+	// Snapshot The snapshot of the store to create the object from: its id or a
+	// prefix of it, or the path of an object for its latest snapshot. The
+	// object takes its configuration, the keys of the sec and cfg it
+	// references that its namespace lacks, and its heads are restored at
+	// provision. Needs the admin grant of the namespace of the object the
+	// snapshot is of.
+	Snapshot *InQueryCreateSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
+	Force    *InQueryForce          `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PutObjectConfigFileParams defines parameters for PutObjectConfigFile.
@@ -4774,6 +4875,28 @@ type GetResourcesParams struct {
 
 	// Resource resource selector expression.
 	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
+}
+
+// DeleteStoreSnapshotParams defines parameters for DeleteStoreSnapshot.
+type DeleteStoreSnapshotParams struct {
+	// Store The store, as a store keyword names it.
+	Store string `form:"store" json:"store"`
+
+	// Id The snapshot id, or a prefix of it.
+	Id string `form:"id" json:"id"`
+}
+
+// GetStoreSnapshotsParams defines parameters for GetStoreSnapshots.
+type GetStoreSnapshotsParams struct {
+	// Store The store, as a store keyword names it: a name for a store of the
+	// cluster configuration, from <sec> store#<name> for one of a sec.
+	Store *InQueryStore `form:"store,omitempty" json:"store,omitempty"`
+
+	// Path The object whose snapshots to list, by the path the store last recorded for it.
+	Path *InQueryStorePath `form:"path,omitempty" json:"path,omitempty"`
+
+	// Cluster The cluster whose snapshots to list, by name or id.
+	Cluster *InQueryStoreCluster `form:"cluster,omitempty" json:"cluster,omitempty"`
 }
 
 // PostClusterEnrollJSONRequestBody defines body for PostClusterEnroll for application/json ContentType.
