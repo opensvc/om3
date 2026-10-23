@@ -17,6 +17,13 @@ import (
 )
 
 type (
+	// arbitratorCheck is what a background check of the arbitrators found,
+	// and which check it was.
+	arbitratorCheck struct {
+		gen    int
+		status map[string]node.ArbitratorStatus
+	}
+
 	arbitratorConfig struct {
 		Name     string `json:"name"`
 		URI      string `json:"uri"`
@@ -110,9 +117,11 @@ func (t *Manager) refreshArbitrators() {
 		return
 	}
 	t.arbitratorChecking = true
+	t.arbitratorGen++
+	gen := t.arbitratorGen
 	arbitrators := maps.Clone(t.arbitrators)
 	go func() {
-		result := t.checkArbitrators(arbitrators)
+		result := arbitratorCheck{gen: gen, status: t.checkArbitrators(arbitrators)}
 		select {
 		case t.arbitratorC <- result:
 		case <-t.ctx.Done():
@@ -120,15 +129,19 @@ func (t *Manager) refreshArbitrators() {
 	}()
 }
 
-// onArbitratorsChecked records what a background check found.
-func (t *Manager) onArbitratorsChecked(arbitrators map[string]node.ArbitratorStatus) {
+// onArbitratorsChecked records what a background check found, unless the
+// check of a split began after it, whose answer is fresher.
+func (t *Manager) onArbitratorsChecked(c arbitratorCheck) {
 	t.arbitratorChecking = false
 	if t.arbitratorRecheck {
 		t.arbitratorRecheck = false
 		t.refreshArbitrators()
 		return
 	}
-	t.updateStatusArbitrator(arbitrators)
+	if c.gen <= t.arbitratorFreshGen {
+		return
+	}
+	t.updateStatusArbitrator(c.status)
 }
 
 func (t *Manager) updateStatusArbitrator(arbitrators map[string]node.ArbitratorStatus) {
@@ -154,8 +167,13 @@ func (t *Manager) arbitratorTotal() int {
 	return i
 }
 
+// arbitratorVotes checks the arbitrators, for a split, and records the
+// answer, fresher than a background check begun before it.
 func (t *Manager) arbitratorVotes() (votes []string) {
-	for s, v := range t.getStatusArbitrators() {
+	arbitrators := t.getStatusArbitrators()
+	t.arbitratorFreshGen = t.arbitratorGen
+	t.updateStatusArbitrator(arbitrators)
+	for s, v := range arbitrators {
 		if v.Status == status.Up {
 			for i := 0; i < v.Weight; i++ {
 				votes = append(votes, s)
