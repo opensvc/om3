@@ -2,10 +2,9 @@ The directory holding the store: an absolute path or a `file://` url for a
 directory of the node, or `sftp://<user>@<host>[:<port>]/<path>` for a
 directory of an sftp server.
 
-A directory of the node must be reachable from every node writing or
-restoring the objects backed up into it, as an nfs mount, so that a run written
-on one node is restored on another. The store is never inside a head it backs
-up.
+A directory of the node is one per node, each holding the runs its node
+writes, unless `shared` says it is the same on every node, as an nfs mount.
+The store is never inside a head it backs up.
 
 An sftp server is reached from every node by itself. Its user is authenticated
 by `ssh_private_key`, and the server by `host_key`. A store declared in a sec is

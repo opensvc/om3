@@ -85,6 +85,7 @@ var (
 	_ backup.Streamer = (*T)(nil)
 	_ backup.Pruner   = (*T)(nil)
 	_ backup.Localer  = (*T)(nil)
+	_ backup.Sharer   = (*T)(nil)
 )
 
 func init() {
@@ -338,7 +339,10 @@ func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, er
 	if err != nil {
 		return nil, err
 	}
-	if err := fsys.Stat(root); err != nil {
+	if err := fsys.Stat(root); errors.Is(err, os.ErrNotExist) && t.IsLocal() {
+		// A node writes its directory with its first run.
+		return []backup.Run{}, nil
+	} else if err != nil {
 		return nil, fmt.Errorf("store %s: %w", t.Ref(), err)
 	}
 	clusterDirs, err := t.clusterDirs(fsys, root, filter.Cluster)

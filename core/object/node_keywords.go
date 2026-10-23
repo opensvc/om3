@@ -199,6 +199,14 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/store.tar.host_key"),
 		Types:   []string{"tar"},
 	}
+	kwNodeStoreShared = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "shared",
+		Section:   "store",
+		Text:      keywords.NewText(fs, "text/kw/node/store.tar.shared"),
+		Types:     []string{"tar"},
+	}
 	kwNodeStoreSSHPrivateKey = keywords.Keyword{
 		Example:      "from system/sec/backup key ssh_private_key",
 		Option:       "ssh_private_key",
@@ -2035,6 +2043,7 @@ var (
 		&kwNodeStoreURL,
 		&kwNodeStoreHostKey,
 		&kwNodeStoreSSHPrivateKey,
+		&kwNodeStoreShared,
 		&kwNodeStoreKeep,
 		&kwNodeArrayXtremioName,
 		&kwNodeComplianceAutoUpdate,

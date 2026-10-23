@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/sftp"
@@ -185,12 +186,39 @@ func (t *T) location() (storeFS, string, error) {
 	if !filepath.IsAbs(dir) {
 		return nil, "", fmt.Errorf("store %s: url %q is not an absolute path", t.Ref(), s)
 	}
+	if t.fsys != nil {
+		// The directory of a peer, reached over ssh.
+		return t.fsys, filepath.Clean(dir), nil
+	}
 	return localFS{}, filepath.Clean(dir), nil
 }
 
 // IsLocal says whether the store is a directory of the node.
 func (t *T) IsLocal() bool {
 	return !strings.HasPrefix(t.Get("url"), "sftp://")
+}
+
+// IsShared implements backup.Sharer: an sftp store is the same for every
+// node, and a directory of the node is when its shared keyword says so, as
+// an nfs mount.
+func (t *T) IsShared() bool {
+	if !t.IsLocal() {
+		return true
+	}
+	shared, _ := strconv.ParseBool(t.Get("shared"))
+	return shared
+}
+
+// OverSSH implements backup.Sharer: the store is the directory of the url on
+// the node conn is connected to, read and written over sftp, conn closed at
+// Close.
+func (t *T) OverSSH(conn *ssh.Client) error {
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		return err
+	}
+	t.fsys = &sftpFS{conn: conn, client: client}
+	return nil
 }
 
 // dialSFTP connects to the sftp server of u as its user, authenticated by
