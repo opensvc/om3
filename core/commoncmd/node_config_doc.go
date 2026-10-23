@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/doc"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -82,7 +83,7 @@ func (t *CmdNodeConfigDoc) Run() error {
 
 	return output.Renderer{
 		HumanRenderer: func() string {
-			Doc(os.Stdout, items, "node", t.Driver, t.Keyword, t.Depth)
+			NodeDoc(os.Stdout, items, naming.KindInvalid, t.Driver, t.Keyword, t.Depth)
 			return ""
 		},
 		Output:   t.Output,
