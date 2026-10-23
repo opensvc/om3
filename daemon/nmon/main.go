@@ -134,13 +134,20 @@ type (
 		// arbitratorC receives the status of the arbitrators a background
 		// check found, the check running out of the loop, which an
 		// arbitrator not answering held for its whole timeout.
-		arbitratorC chan map[string]node.ArbitratorStatus
+		arbitratorC chan arbitratorCheck
 
 		// arbitratorChecking says a background check runs, and
 		// arbitratorRecheck that another is wanted once it ends, the
 		// configuration having changed since it began.
 		arbitratorChecking bool
 		arbitratorRecheck  bool
+
+		// arbitratorGen numbers the background checks, and
+		// arbitratorFreshGen is the last one begun before the check of a
+		// split, whose fresher answer a result of it or of one before
+		// does not overwrite.
+		arbitratorGen      int
+		arbitratorFreshGen int
 
 		localhost string
 		change    bool
@@ -213,7 +220,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 			State:        node.MonitorStateRejoin,
 		},
 		cmdC:        make(chan any),
-		arbitratorC: make(chan map[string]node.ArbitratorStatus, 1),
+		arbitratorC: make(chan arbitratorCheck, 1),
 		poolC:       make(chan any, 1),
 		logBase:     plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
 		localhost:   localhost,
@@ -574,8 +581,8 @@ func (t *Manager) worker() {
 			t.updateStats()
 		case <-arbitratorTicker.C:
 			t.onArbitratorTicker()
-		case arbitrators := <-t.arbitratorC:
-			t.onArbitratorsChecked(arbitrators)
+		case c := <-t.arbitratorC:
+			t.onArbitratorsChecked(c)
 		case <-t.rejoinTicker.C:
 			t.onRejoinGracePeriodExpire()
 		case <-lastShutdownFileTouchTicker.C:

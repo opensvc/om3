@@ -39,7 +39,7 @@ func TestTheArbitratorCheckDoesNotHoldTheMonitor(t *testing.T) {
 		publisher:   pubNop{},
 		localhost:   "n1",
 		arbitrators: map[string]arbitratorConfig{"a1": {Name: "a1", URI: srv.URL, Weight: 1}},
-		arbitratorC: make(chan map[string]node.ArbitratorStatus, 1),
+		arbitratorC: make(chan arbitratorCheck, 1),
 	}
 
 	began := time.Now()
@@ -55,4 +55,34 @@ func TestTheArbitratorCheckDoesNotHoldTheMonitor(t *testing.T) {
 	require.Contains(t, m.nodeStatus.Arbitrators, "a1")
 	assert.Equal(t, status.Up, m.nodeStatus.Arbitrators["a1"].Status)
 	assert.Equal(t, 1, m.arbitratorTotal())
+}
+
+// The check of a split is fresher than a background check begun before it,
+// whose result, landing after, is dropped.
+func TestASplitCheckIsNotOverwrittenByAnOlderBackgroundCheck(t *testing.T) {
+	release := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	defer slow.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m := &Manager{
+		ctx:         ctx,
+		log:         plog.NewDefaultLogger(),
+		publisher:   pubNop{},
+		localhost:   "n1",
+		arbitrators: map[string]arbitratorConfig{"a1": {Name: "a1", URI: slow.URL, Weight: 1}},
+		arbitratorC: make(chan arbitratorCheck, 1),
+	}
+	m.refreshArbitrators()
+	close(release)
+	votes := m.arbitratorVotes()
+	assert.Equal(t, []string{"a1"}, votes)
+	m.onArbitratorsChecked(arbitratorCheck{gen: 1, status: map[string]node.ArbitratorStatus{"a1": {Status: status.Down}}})
+	assert.Equal(t, status.Up, m.nodeStatus.Arbitrators["a1"].Status, "the older background result is dropped")
+	<-m.arbitratorC
 }
