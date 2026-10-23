@@ -995,6 +995,7 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 	}
 	objectHeads := t.objectHeads()
 	targets := make([]head, 0, len(members))
+	heads := make([]head, 0, len(members))
 	for _, m := range members {
 		var under head
 		var dir string
@@ -1022,20 +1023,70 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 			return fmt.Errorf("restore %s into %s: %w", m, dir, err)
 		}
 		targets = append(targets, head{rid: m, dir: dir, excludes: backup.HeadExcludes(m, t.Exclude)})
+		heads = append(heads, under)
 	}
-	for _, h := range targets {
+	for i, h := range targets {
 		t.Log().Infof("restore %s of run %s from store %s into %s", h.rid, run.ShortID(), s.Ref(), h.dir)
-		if err := os.MkdirAll(h.dir, 0755); err != nil {
-			return fmt.Errorf("restore %s: %w", h.rid, err)
-		}
-		if err := emptyDir(h.dir, h.excludes, nestedHeads(objectHeads, h.dir)); err != nil {
-			return fmt.Errorf("restore %s: empty %s: %w", h.rid, h.dir, err)
-		}
-		if err := s.Restore(ctx, run, h.rid, h.dir); err != nil {
+		if err := restoreUnder(ctx, s, run, h, heads[i], nestedHeads(objectHeads, h.dir)); err != nil {
 			return fmt.Errorf("restore %s: %w", h.rid, err)
 		}
 	}
 	return nil
+}
+
+// restoreUnder empties the target h, under the head under, and restores its
+// member into it, reaching it through the head rather than by its path.
+//
+// The check that no component between the head and the target is a symlink
+// comes before, and a process writing in the head, a container or an app
+// using it, could swap one in after it: the restore runs as root, and by
+// path it would follow the symlink, emptying and writing wherever it points.
+// So the target is created and opened through a root opened on the head,
+// which follows no symlink out of it, and the directory opened is what is
+// emptied and restored into, named by its descriptor whatever the head holds
+// by then: the store driver restoring by path, out of this process too.
+func restoreUnder(ctx context.Context, s backup.Store, run backup.Run, h, under head, nested []string) error {
+	dir, err := openUnder(under.dir, h.dir)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	dst := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), dir.Fd())
+	if err := emptyDir(dst, h.excludes, nested); err != nil {
+		return fmt.Errorf("empty %s: %w", h.dir, err)
+	}
+	return s.Restore(ctx, run, h.rid, dst)
+}
+
+// openUnder creates the directory dir under the head headDir, and opens it,
+// through a root opened on the head.
+func openUnder(headDir, dir string) (*os.File, error) {
+	root, err := os.OpenRoot(headDir)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	rel, err := filepath.Rel(headDir, dir)
+	if err != nil {
+		return nil, err
+	}
+	if rel != "." {
+		if err := root.MkdirAll(rel, 0755); err != nil {
+			return nil, err
+		}
+	}
+	f, err := root.Open(rel)
+	if err != nil {
+		return nil, err
+	}
+	if fi, err := f.Stat(); err != nil {
+		_ = f.Close()
+		return nil, err
+	} else if !fi.IsDir() {
+		_ = f.Close()
+		return nil, fmt.Errorf("%s is not a directory", dir)
+	}
+	return f, nil
 }
 
 // objectHeads returns the heads of the resources of the object, enabled and
