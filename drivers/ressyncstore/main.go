@@ -424,7 +424,7 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 		Path:      t.Path.String(),
 		ObjectID:  t.ObjectID.String(),
 		Node:      hostname.Hostname(),
-		CreatedAt: actioncontext.BeganAt(ctx),
+		CreatedAt: actioncontext.BeganAt(ctx).UTC(),
 	}
 	run.ClusterID, run.ClusterName = t.cluster()
 	marks := actioncontext.RunMarksOf(ctx)

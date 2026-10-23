@@ -261,6 +261,7 @@ func (t *T) addMember(fsys storeFS, dir string, run backup.Run, m backup.Member)
 	case errors.Is(err, os.ErrNotExist):
 		mf = manifest{Run: run}
 		mf.Members = nil
+		mf.CreatedAt = run.CreatedAt.UTC()
 		first = true
 	case err != nil:
 		return err
@@ -294,7 +295,11 @@ func (t *T) Complete(ctx context.Context, run backup.Run) error {
 	if err != nil {
 		return err
 	}
-	mf.CompletedAt = time.Now()
+	// The times the store holds are written in UTC: a store several
+	// clusters write, in several time zones, or one crossing a change of
+	// the daylight saving time, keeps them in one offset, for the tools
+	// sorting them as text. A time of another offset reads the same.
+	mf.CompletedAt = time.Now().UTC()
 	if err := writeManifest(fsys, dir, mf); err != nil {
 		return err
 	}
@@ -318,7 +323,7 @@ func (t *T) recountObject(fsys storeFS, objectDir string, run backup.Run, comple
 	m, err := readMarker(fsys, objectDir)
 	switch {
 	case completed || errors.Is(err, os.ErrNotExist):
-		m.Path, m.ClusterName, m.UpdatedAt = run.Path, run.ClusterName, time.Now()
+		m.Path, m.ClusterName, m.UpdatedAt = run.Path, run.ClusterName, time.Now().UTC()
 	case err != nil:
 		return err
 	}
