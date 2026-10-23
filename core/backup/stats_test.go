@@ -55,3 +55,20 @@ func TestNewObjectStatsAndSum(t *testing.T) {
 	require.Len(t, s.Clusters, 1)
 	assert.Equal(t, s.Runs, s.Clusters[0].Runs)
 }
+
+// A filter by time selects the runs of the period, and tells the objects
+// whose runs are all out of it.
+func TestTimeFilter(t *testing.T) {
+	at := []time.Time{
+		time.Date(2026, 10, 19, 22, 30, 0, 0, time.UTC),
+		time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC),
+		time.Date(2026, 10, 26, 8, 0, 0, 0, time.UTC),
+	}
+	f := RunFilter{Since: at[1], Until: at[2]}
+	done := func(t time.Time) Run { return Run{CreatedAt: t, CompletedAt: t} }
+	assert.False(t, f.Match(done(at[0])))
+	assert.True(t, f.Match(done(at[1])), "since is inclusive")
+	assert.False(t, f.Match(done(at[2])), "until is exclusive")
+	assert.False(t, f.MayHold(at[2], at[2]), "an object with runs after the period only")
+	assert.True(t, f.MayHold(at[0], at[2]), "an object with runs around the period")
+}

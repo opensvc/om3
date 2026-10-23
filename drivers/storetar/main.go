@@ -546,7 +546,8 @@ func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, er
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if filter.Path != "" {
+		timed := !filter.Incomplete && (!filter.Since.IsZero() || !filter.Until.IsZero())
+		if filter.Path != "" || timed {
 			m, err := readMarker(fsys, dir)
 			switch {
 			case errors.Is(err, os.ErrNotExist):
@@ -555,7 +556,10 @@ func (t *T) Runs(ctx context.Context, filter backup.RunFilter) ([]backup.Run, er
 			case err != nil:
 				errs = errors.Join(errs, err)
 				continue
-			case m.Path != filter.Path:
+			case filter.Path != "" && m.Path != filter.Path:
+				continue
+			case timed && m.Stats != nil && !filter.MayHold(m.Stats.FirstCreatedAt, m.Stats.LastCreatedAt):
+				// None of its completed runs is in the period.
 				continue
 			}
 		}

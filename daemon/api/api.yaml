@@ -6661,9 +6661,25 @@ paths:
             minimum: 1
         - in: query
           name: before
-          description: The next value of a previous answer, for the snapshots older than its last one.
+          description: The next value of a previous answer, for the snapshots older than its last one, newest first.
           schema:
             type: string
+        - in: query
+          name: after
+          description: The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/inQueryStoreObjectID'
+        - $ref: '#/components/parameters/inQueryStoreSince'
+        - $ref: '#/components/parameters/inQueryStoreUntil'
+        - in: query
+          name: order
+          description: newest first, by default, or asc, oldest first, as the first snapshot after a date is asked with since and limit 1.
+          schema:
+            type: string
+            enum:
+              - desc
+              - asc
       responses:
         200:
           description: OK
@@ -11657,6 +11673,29 @@ components:
       description: The cluster whose snapshots to list, by name or id.
       schema:
         type: string
+
+    inQueryStoreObjectID:
+      in: query
+      name: object_id
+      description: The object whose snapshots to list, by its id, which a path names two of after a rename or a create over a purged one.
+      schema:
+        type: string
+
+    inQueryStoreSince:
+      in: query
+      name: since
+      description: The snapshots created from this time on.
+      schema:
+        type: string
+        format: date-time
+
+    inQueryStoreUntil:
+      in: query
+      name: until
+      description: The snapshots created before this time.
+      schema:
+        type: string
+        format: date-time
 
     inQueryCreateSnapshot:
       in: query

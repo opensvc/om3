@@ -124,6 +124,12 @@ type (
 		// Incomplete selects the runs not completed too, as a failed
 		// or interrupted run left them.
 		Incomplete bool
+
+		// Since and Until select the runs created from Since on, and
+		// before Until. A driver skips what it can with them, as the
+		// objects with no run in the period, and Match applies them.
+		Since time.Time
+		Until time.Time
 	}
 
 	// Store is what every store driver does.
@@ -337,6 +343,28 @@ func (f RunFilter) Match(run Run) bool {
 		return false
 	}
 	if !f.Incomplete && run.CompletedAt.IsZero() {
+		return false
+	}
+	if !f.Since.IsZero() && run.CreatedAt.Before(f.Since) {
+		return false
+	}
+	if !f.Until.IsZero() && !run.CreatedAt.Before(f.Until) {
+		return false
+	}
+	return true
+}
+
+// MayHold says whether an object whose completed runs were created between
+// first and last may hold a run the period of the filter selects, for a
+// driver to skip the others without reading their runs.
+func (f RunFilter) MayHold(first, last time.Time) bool {
+	if first.IsZero() || last.IsZero() {
+		return true
+	}
+	if !f.Since.IsZero() && last.Before(f.Since) {
+		return false
+	}
+	if !f.Until.IsZero() && !first.Before(f.Until) {
 		return false
 	}
 	return true

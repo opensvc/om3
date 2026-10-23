@@ -1110,6 +1110,24 @@ func (e PostInstanceActionRestoreParamsRefs) Valid() bool {
 	}
 }
 
+// Defines values for GetStoreSnapshotsParamsOrder.
+const (
+	Asc  GetStoreSnapshotsParamsOrder = "asc"
+	Desc GetStoreSnapshotsParamsOrder = "desc"
+)
+
+// Valid indicates whether the value is a known member of the GetStoreSnapshotsParamsOrder enum.
+func (e GetStoreSnapshotsParamsOrder) Valid() bool {
+	switch e {
+	case Asc:
+		return true
+	case Desc:
+		return true
+	default:
+		return false
+	}
+}
+
 // ArbitratorStatus defines model for ArbitratorStatus.
 type ArbitratorStatus struct {
 	// Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
@@ -3407,8 +3425,17 @@ type InQueryStore = string
 // InQueryStoreCluster defines model for inQueryStoreCluster.
 type InQueryStoreCluster = string
 
+// InQueryStoreObjectID defines model for inQueryStoreObjectID.
+type InQueryStoreObjectID = string
+
 // InQueryStorePath defines model for inQueryStorePath.
 type InQueryStorePath = string
+
+// InQueryStoreSince defines model for inQueryStoreSince.
+type InQueryStoreSince = time.Time
+
+// InQueryStoreUntil defines model for inQueryStoreUntil.
+type InQueryStoreUntil = time.Time
 
 // InQuerySubset defines model for inQuerySubset.
 type InQuerySubset = string
@@ -5022,9 +5049,27 @@ type GetStoreSnapshotsParams struct {
 	// Limit The most snapshots to answer, newest first. The next page is asked with before set to the next value of the answer.
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// Before The next value of a previous answer, for the snapshots older than its last one.
+	// Before The next value of a previous answer, for the snapshots older than its last one, newest first.
 	Before *string `form:"before,omitempty" json:"before,omitempty"`
+
+	// After The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first.
+	After *string `form:"after,omitempty" json:"after,omitempty"`
+
+	// ObjectId The object whose snapshots to list, by its id, which a path names two of after a rename or a create over a purged one.
+	ObjectId *InQueryStoreObjectID `form:"object_id,omitempty" json:"object_id,omitempty"`
+
+	// Since The snapshots created from this time on.
+	Since *InQueryStoreSince `form:"since,omitempty" json:"since,omitempty"`
+
+	// Until The snapshots created before this time.
+	Until *InQueryStoreUntil `form:"until,omitempty" json:"until,omitempty"`
+
+	// Order newest first, by default, or asc, oldest first, as the first snapshot after a date is asked with since and limit 1.
+	Order *GetStoreSnapshotsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
 }
+
+// GetStoreSnapshotsParamsOrder defines parameters for GetStoreSnapshots.
+type GetStoreSnapshotsParamsOrder string
 
 // PostClusterEnrollJSONRequestBody defines body for PostClusterEnroll for application/json ContentType.
 type PostClusterEnrollJSONRequestBody = ClusterEnrollBody

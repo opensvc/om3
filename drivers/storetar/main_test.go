@@ -412,3 +412,26 @@ func TestTimesAreWrittenInUTC(t *testing.T) {
 	require.Len(t, runs, 1)
 	assert.True(t, runs[0].CreatedAt.Equal(local), "the same instant")
 }
+
+// A period selects the runs created in it, the objects with no run in it
+// skipped from their marker.
+func TestRunsOfAPeriod(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t, "file://"+t.TempDir())
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a.txt"), "a", 0640)
+	t0 := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	for i, id := range []string{"r1", "r2", "r3"} {
+		run := newRun(id, t0.Add(time.Duration(i)*24*time.Hour))
+		require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
+		require.NoError(t, s.Complete(ctx, run))
+	}
+	runs, err := s.Runs(ctx, backup.RunFilter{Since: t0.Add(24 * time.Hour), Until: t0.Add(48 * time.Hour)})
+	require.NoError(t, err)
+	require.Len(t, runs, 1)
+	assert.Equal(t, "r2", runs[0].ID)
+
+	runs, err = s.Runs(ctx, backup.RunFilter{Since: t0.Add(72 * time.Hour)})
+	require.NoError(t, err)
+	assert.Empty(t, runs)
+}
