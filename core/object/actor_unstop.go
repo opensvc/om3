@@ -20,5 +20,10 @@ func (t *actor) Unstop(ctx context.Context) error {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
+	unlock, err := t.lockAction(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	return t.action(ctx, resource.Unstop)
 }
