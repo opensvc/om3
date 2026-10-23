@@ -1239,7 +1239,9 @@ func (t *Manager) newIsHALeader() bool {
 //
 // isDaemonDecision leaves out the instances the daemon may not start on its
 // own: the frozen ones, where an operator said the daemon may not act, and
-// the ones a stop flagged stopped on purpose. Those are the rules about
+// the ones a stop flagged stopped on purpose, or one of whose resources a
+// stop of its own flagged: a start of the instance would start the resource
+// back, which the flag is there to prevent. Those are the rules about
 // whether the daemon is allowed to act. Every other rule, being not
 // applicable, unprovisioned, unrankable or start failed, says the instance
 // cannot start whoever is asking, and holds for a start a user requested just
@@ -1262,7 +1264,7 @@ func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 			if t.nodeStatus[node].IsFrozen() || t.instStatus[node].IsFrozen() {
 				continue
 			}
-			if t.instStatus[node].IsStopped() {
+			if t.instStatus[node].IsStopped() || len(t.instStatus[node].StoppedResources()) > 0 {
 				continue
 			}
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
 )
@@ -53,4 +54,18 @@ func TestAFlexInstanceStaysStartedWhileAPeerRuns(t *testing.T) {
 	m.objStatus.Topology = topology.Flex
 	m.orchestrateResourceRestart()
 	assert.Equal(t, instance.MonitorLocalExpectStarted, m.state.LocalExpect)
+}
+
+// A resource stopped on purpose keeps the daemon from starting its instance
+// on its own, as the instance flag does: the start would start the resource
+// back. A peer takes the object over, and a start a user asks for still
+// counts the instance.
+func TestAnInstanceWithAResourceStoppedIsNoCandidateOfTheDaemon(t *testing.T) {
+	m := newAffinityTestManager(instance.ActorConfig{})
+	local := m.instStatus["node1"]
+	local.Resources = instance.ResourceStatuses{"app#1": resource.Status{IsStopped: true}, "fs#1": resource.Status{}}
+	m.instStatus["node1"] = local
+	assert.False(t, m.isStartCandidateLeader(true), "node1 is no candidate of the daemon")
+	assert.True(t, m.isStartCandidateLeader(false), "node1 is a candidate of a user start")
+	assert.Equal(t, []string{"app#1"}, local.StoppedResources())
 }

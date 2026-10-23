@@ -116,6 +116,20 @@ func (t Status) IsStopped() bool {
 	return !t.StoppedAt.IsZero()
 }
 
+// StoppedResources returns, sorted, the resources a stop of their own
+// flagged stopped on purpose, which the daemon must not start back on its
+// own, a start of the instance included.
+func (t Status) StoppedResources() []string {
+	l := make([]string, 0)
+	for rid, rstat := range t.Resources {
+		if rstat.IsStopped {
+			l = append(l, rid)
+		}
+	}
+	sort.Strings(l)
+	return l
+}
+
 func (t EncapStatus) DeepCopy() *EncapStatus {
 	n := t
 	n.Status = *t.Status.DeepCopy()
