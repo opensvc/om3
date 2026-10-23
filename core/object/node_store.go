@@ -2,12 +2,17 @@ package object
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sshnode"
 )
 
 // The keywords of a store section are the ones of the cluster configuration,
@@ -60,14 +65,58 @@ func (t *Node) Store(ref string, reader naming.Path) (backup.Driver, error) {
 	if !config.HasSectionString(section) {
 		return nil, fmt.Errorf("store %q: no %s section in the cluster configuration", ref, section)
 	}
-	drv, err := storeDriver(ref, config.GetString(key.New(section, "type")))
+	storeType := config.GetString(key.New(section, "type"))
+	drv, err := storeDriver(ref, storeType)
 	if err != nil {
 		return nil, err
 	}
 	drv.SetName(section)
 	drv.SetConfig(config)
+	if sharer, ok := drv.(backup.Sharer); ok && !sharer.IsShared() {
+		return t.nodesStore(drv, ref, section, storeType), nil
+	}
 	return drv, nil
 }
+
+// nodesStore spreads the store drv, a directory of each node, over the
+// directories of the cluster nodes: the ones of the peers reached over ssh,
+// as root, through the trust om cluster ssh trust sets up.
+func (t *Node) nodesStore(drv backup.Driver, ref, section, storeType string) backup.Driver {
+	config := t.MergedConfig()
+	local := hostname.Hostname()
+	peers := make([]string, 0)
+	for _, node := range config.GetStrings(key.New("cluster", "nodes")) {
+		if node != local {
+			peers = append(peers, node)
+		}
+	}
+	keyFile := ""
+	if home, err := os.UserHomeDir(); err == nil {
+		keyFile = filepath.Join(home, ".ssh", config.GetString(key.New("node", "sshkey")))
+	}
+	newPeer := func(node string) (backup.Driver, error) {
+		peer, err := storeDriver(ref, storeType)
+		if err != nil {
+			return nil, err
+		}
+		peer.SetName(section)
+		peer.SetConfig(config)
+		conn, err := sshnode.NewClient(node, sshnode.WithPrivateKeyFiles(keyFile), sshnode.WithTimeout(storePeerTimeout))
+		if err != nil {
+			return nil, fmt.Errorf("ssh as root: %w: is the trust of 'om cluster ssh trust' in place?", err)
+		}
+		if err := peer.(backup.Sharer).OverSSH(conn); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		return peer, nil
+	}
+	return backup.NewNodesStore(drv, local, peers, newPeer, t.Log().Warnf)
+}
+
+// storePeerTimeout is how long a node waits for the ssh connection to the
+// directory of a store on a peer.
+const storePeerTimeout = 10 * time.Second
 
 func (t *Node) secStore(fields []string, reader naming.Path) (backup.Driver, error) {
 	ref := strings.Join(fields, " ")

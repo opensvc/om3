@@ -1,0 +1,7 @@
+Set to true when the directory of the store is the same on every node, as an
+nfs mount: a node reads it alone.
+
+Otherwise each node has a directory of its own, holding the runs it writes,
+and the store is the directories of every node: a node lists the runs of the
+others, and restores or deletes a run in the directory of the node that wrote
+it, over ssh, as root, through the trust `om cluster ssh trust` sets up.
