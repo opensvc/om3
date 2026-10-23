@@ -242,6 +242,10 @@ func (t *CmdObjectCreate) fromPath(p naming.Path) error {
 // fromStore creates the object from a snapshot: the configuration of the
 // object the snapshot is of, with restore_from naming the snapshot, so the
 // provision restores the heads it creates from it.
+//
+// The daemon does it, as for ox. With --local, or the daemon not running, it
+// is done here, and the keys of the sec and cfg the snapshot references,
+// copied before the configuration is written, are taken back if it is not.
 func (t *CmdObjectCreate) fromStore() error {
 	switch {
 	case t.Store == "":
@@ -252,6 +256,16 @@ func (t *CmdObjectCreate) fromStore() error {
 		return fmt.Errorf("--store and --config are mutually exclusive: the configuration is the one of the snapshot")
 	}
 	ctx := context.Background()
+	if !t.Local {
+		// The daemon reads the snapshot, checks its configuration as any
+		// other, and writes the keys it references with it, taking them
+		// back if the configuration does not land.
+		err := commoncmd.CreateObjectConfigFromStore(ctx, t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force)
+		if !daemonUnreachable(err) {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "%s: the daemon is not running: the configuration is written on this node only, with none of the checks of the daemon\n", t.path)
+	}
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return err
@@ -271,32 +285,40 @@ func (t *CmdObjectCreate) fromStore() error {
 		return fmt.Errorf("read the configuration of snapshot %s: %w", run.ShortID(), err)
 	}
 	fmt.Fprintf(os.Stderr, "%s: the configuration of %s from snapshot %s in store %s, its heads restored at provision\n", t.path, run.Path, run.ShortID(), s.Ref())
+	undo := func() error { return nil }
 	if run.Has(backup.MemberRefs) {
-		if err := t.applySnapshotRefs(ctx, s, run); err != nil {
-			return err
+		if undo, err = t.applySnapshotRefs(ctx, s, run); err != nil {
+			return errors.Join(err, undo())
 		}
 	}
 	t.Keywords = append(t.Keywords, fmt.Sprintf("restore_from=%s %s %s", s.Ref(), run.Path, run.ID))
-	return t.fromData(t.path, b)
+	if err := t.localFromData(t.path, b); err != nil {
+		if uerr := undo(); uerr != nil {
+			return errors.Join(err, fmt.Errorf("the keys copied from snapshot %s were not all taken back: %w", run.ShortID(), uerr))
+		}
+		return err
+	}
+	return nil
 }
 
 // applySnapshotRefs creates the sec and cfg keys the snapshot holds that the
 // namespace of the object lacks, leaving the others, before the object
 // referencing them is.
-func (t *CmdObjectCreate) applySnapshotRefs(ctx context.Context, s backup.Store, run backup.Run) error {
+func (t *CmdObjectCreate) applySnapshotRefs(ctx context.Context, s backup.Store, run backup.Run) (func() error, error) {
+	nothing := func() error { return nil }
 	b, err := backup.ReadMember(ctx, s, run, backup.MemberRefs)
 	if err != nil {
-		return fmt.Errorf("read the referenced keys of snapshot %s: %w", run.ShortID(), err)
+		return nothing, fmt.Errorf("read the referenced keys of snapshot %s: %w", run.ShortID(), err)
 	}
 	var doc object.RefsDocument
 	if err := json.Unmarshal(b, &doc); err != nil {
-		return fmt.Errorf("%s: %w", backup.MemberRefs, err)
+		return nothing, fmt.Errorf("%s: %w", backup.MemberRefs, err)
 	}
-	notes, err := object.ApplyRefs(t.path.Namespace, doc, object.RefsMissing)
+	notes, undo, err := object.ApplyRefsUndoable(t.path.Namespace, doc, object.RefsMissing)
 	for _, note := range notes {
 		fmt.Fprintf(os.Stderr, "%s: refs: %s\n", t.path, note)
 	}
-	return err
+	return undo, err
 }
 
 func (t *CmdObjectCreate) fromTemplate(template string) error {

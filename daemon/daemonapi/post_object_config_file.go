@@ -88,10 +88,10 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	// The keys the configuration references, and the snapshot its
 	// provision restores from, come once the configuration passed: the
-	// requester may read the snapshot, and the keys land in a namespace it
-	// is an administrator of.
+	// requester may read the snapshot, and the keys land with the
+	// configuration in a namespace it is an administrator of.
 	if src != nil {
-		if oc, body, err = src.apply(ctx, p, body); err != nil {
+		if oc, body, base, err = src.apply(ctx, p, body, base); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Create from store", "%s", err)
 		}
 	}
