@@ -11,5 +11,5 @@
    Execute this command on `stop` action.
 
 The driver then terminates the processes the start command left running,
-as it does when the keyword is not set: a stop command not ending them
-leaves the resource stopped all the same.
+as the `kill` keyword says, as it does when the keyword is not set: a stop
+command not ending them leaves the resource stopped all the same.

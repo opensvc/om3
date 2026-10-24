@@ -1,0 +1,18 @@
+The processes the `stop` action terminates, and the `status` action looks
+for when the `check` keyword is not set.
+
+* `tree`
+
+   Every process carrying the resource identity, the `OPENSVC_ID` and
+   `OPENSVC_RID` variables, in its environment: the one the start command
+   launched, and the ones it started.
+
+* `parent`
+
+   The process the start command launched, which the start records. The
+   processes it started are left running, for example the sessions of a
+   server outliving its restart, and the resource is down once it is gone.
+
+   A process the application wants terminated with the resource is then for
+   a `stop` command to end. A process staying in the resource process group
+   keeps its limits, and the group can not be removed while it runs.

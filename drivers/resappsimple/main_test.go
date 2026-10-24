@@ -2,6 +2,7 @@ package resappsimple
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -227,5 +229,95 @@ func TestStop(t *testing.T) {
 		defer cancel()
 		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
 		assert.False(t, file.Exists(filename), "stop cmd called !")
+	})
+}
+
+func TestKill(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("skipped for non root user")
+	}
+	testhelper.SetExecutable(t, "../..")
+	defer executable.Unset()
+
+	// startServer starts a parent with a child carrying the resource
+	// identity, as a server starting a process per session, and waits for
+	// both to run.
+	startServer := func(t *testing.T, app *T, ctx context.Context) {
+		t.Helper()
+		app.StartCmd = `sh -c "sleep 30 & exec sleep 31"`
+		require.Nil(t, app.Start(ctx), "Start(...) returned value")
+		for i := 0; i < 100; i++ {
+			if procs, err := app.getRunning(nil); err == nil && procs.Len() == 2 {
+				return
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		t.Fatalf("the parent and its child do not run")
+	}
+	stopAll := func(app *T, ctx context.Context) {
+		app.Kill = killTree
+		_ = app.Stop(ctx)
+	}
+
+	t.Run("parent leaves the processes it started running", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killParent})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		startServer(t, &app, ctx)
+		defer stopAll(&app, ctx)
+		assert.Equal(t, status.Up, app.Status(ctx), "status after start")
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+		assert.Equal(t, status.Down, app.Status(ctx), "status after stop")
+		procs, err := app.getRunning(nil)
+		require.NoError(t, err)
+		assert.Equal(t, 1, procs.Len(), "the child is left running")
+	})
+
+	t.Run("tree terminates the processes the parent started", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killTree})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		startServer(t, &app, ctx)
+		defer stopAll(&app, ctx)
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+		assert.Equal(t, status.Down, app.Status(ctx), "status after stop")
+		procs, err := app.getRunning(nil)
+		require.NoError(t, err)
+		assert.Equal(t, 0, procs.Len(), "no process is left running")
+	})
+
+	t.Run("parent is not a process reusing its pid", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killParent})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		startServer(t, &app, ctx)
+		defer stopAll(&app, ctx)
+		pid, startTime, err := app.readStarted()
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(app.startedFile(), []byte(fmt.Sprintf("%d %d\n", pid, startTime+1)), 0o644))
+		assert.Equal(t, status.Down, app.Status(ctx), "status of a reused pid")
+	})
+
+	t.Run("parent is the topmost process when the start was not recorded", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killParent})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		startServer(t, &app, ctx)
+		defer stopAll(&app, ctx)
+		pid, _, err := app.readStarted()
+		require.NoError(t, err)
+		require.NoError(t, os.Remove(app.startedFile()))
+		procs, err := app.getTargets(nil)
+		require.NoError(t, err)
+		require.Equal(t, 1, procs.Len(), "one topmost process")
+		assert.Equal(t, pid, procs.Procs()[0].PID())
 	})
 }
