@@ -97,3 +97,38 @@ func TestNodesStore(t *testing.T) {
 	err = s.Restore(ctx, fakeRun("c", "n3", t0), "fs#1", "/tmp/x")
 	assert.ErrorContains(t, err, "the directory of n3 is not reachable")
 }
+
+func (t *fakeStore) ObjectStats(context.Context) ([]ObjectStats, error) {
+	return []ObjectStats{NewObjectStats("c1", "cl1", "o-"+t.node, "svc-"+t.node, t.runs)}, nil
+}
+
+// The stats of a store with a directory per node leave out a node not read,
+// and say so: the figures are not taken for the whole store.
+func TestNodesStoreStatsSayTheMissingNodes(t *testing.T) {
+	t0 := time.Date(2026, 10, 23, 2, 0, 0, 0, time.UTC)
+	n1 := &fakeStore{node: "n1", runs: []Run{fakeRun("a", "n1", t0)}}
+	n2 := &fakeStore{node: "n2", runs: []Run{fakeRun("b", "n2", t0.Add(time.Hour))}}
+	s := NewNodesStore(n1, "n1", []string{"n2", "n3"}, func(node string) (Driver, error) {
+		if node == "n2" {
+			return n2, nil
+		}
+		return nil, errors.New("connection refused")
+	}, func(string, ...any) {})
+	ctx := context.Background()
+
+	objects, err := s.(Statser).ObjectStats(ctx)
+	var partial *PartialError
+	require.ErrorAs(t, err, &partial)
+	assert.Equal(t, []string{"n3"}, partial.NodeNames())
+	assert.Len(t, objects, 2, "the objects of the nodes read")
+
+	stats, _ := ComputeStats(ctx, s)
+	assert.Equal(t, 2, stats.Runs)
+	assert.Equal(t, []string{"n3"}, stats.MissingNodes)
+	assert.Contains(t, stats.CheckError, "n3")
+
+	nodes := s.(NodeStatser).NodeStats(ctx)
+	assert.Equal(t, 1, nodes["n2"].Stats.Runs)
+	assert.Len(t, nodes["n2"].Objects, 1, "the objects a node holds, for a namespace to see its share")
+	assert.NotEmpty(t, nodes["n3"].Stats.CheckError)
+}

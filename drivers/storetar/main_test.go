@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -434,4 +436,44 @@ func TestRunsOfAPeriod(t *testing.T) {
 	runs, err = s.Runs(ctx, backup.RunFilter{Since: t0.Add(72 * time.Hour)})
 	require.NoError(t, err)
 	assert.Empty(t, runs)
+}
+
+// Runs completed and removed at once on one object leave its stats counting
+// the runs as they are.
+func TestConcurrentRecounts(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t, "file://"+t.TempDir())
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a.txt"), "a", 0640)
+	t0 := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	old := make([]backup.Run, 0)
+	for i := range 5 {
+		run := newRun(fmt.Sprintf("old%d", i), t0.Add(time.Duration(i)*time.Minute))
+		require.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
+		require.NoError(t, s.Complete(ctx, run))
+		old = append(old, run)
+	}
+	var wg sync.WaitGroup
+	for i := range 5 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			run := newRun(fmt.Sprintf("new%d", i), t0.Add(time.Hour+time.Duration(i)*time.Minute))
+			assert.NoError(t, s.Backup(ctx, run, "fs#1", src, src, nil))
+			assert.NoError(t, s.Complete(ctx, run))
+		}()
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, s.Delete(ctx, []backup.Run{old[i]}))
+		}()
+	}
+	wg.Wait()
+	l, err := s.ObjectStats(ctx)
+	require.NoError(t, err)
+	require.Len(t, l, 1)
+	assert.Equal(t, 5, l[0].Runs, "the 5 new runs, the 5 old ones removed")
+	assert.Equal(t, 0, l[0].Incomplete)
+	leftovers, err := filepath.Glob(filepath.Join(s.Get("url")[len("file://"):], "*", "*", "*"+tmpSuffix))
+	require.NoError(t, err)
+	assert.Empty(t, leftovers, "no temporary file left")
 }

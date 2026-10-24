@@ -30,7 +30,10 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/driver"
@@ -220,7 +223,7 @@ func (t *T) writeMember(ctx context.Context, run backup.Run, m backup.Member, wr
 		return err
 	}
 	final := filepath.Join(dir, memberFile(m))
-	tmp := final + tmpSuffix
+	tmp := tmpName(final)
 	f, err := fsys.Create(tmp)
 	if err != nil {
 		return err
@@ -315,21 +318,71 @@ func (t *T) Complete(ctx context.Context, run backup.Run) error {
 // and the cluster the marker says, the path the runs are found by. Otherwise
 // the marker keeps what it says, or says the run's when it is the object's
 // first.
+//
+// The recounts of one object are serialized in a process. Another process,
+// as the update of a run beside the removal of another through the daemon,
+// can count meanwhile: once written, the runs are read again, and counted
+// again when they changed, so the last marker written counts the runs as
+// they are.
 func (t *T) recountObject(fsys storeFS, objectDir string, run backup.Run, completed bool) error {
+	unlock := lockObject(objectDir)
+	defer unlock()
 	runs, err := objectRuns(fsys, objectDir)
 	if err != nil {
 		return err
 	}
-	m, err := readMarker(fsys, objectDir)
-	switch {
-	case completed || errors.Is(err, os.ErrNotExist):
-		m.Path, m.ClusterName, m.UpdatedAt = run.Path, run.ClusterName, time.Now().UTC()
-	case err != nil:
-		return err
+	for range recountAttempts {
+		m, err := readMarker(fsys, objectDir)
+		switch {
+		case completed || errors.Is(err, os.ErrNotExist):
+			m.Path, m.ClusterName, m.UpdatedAt = run.Path, run.ClusterName, time.Now().UTC()
+		case err != nil:
+			return err
+		}
+		stats := backup.NewObjectStats(filepath.Base(filepath.Dir(objectDir)), m.ClusterName, filepath.Base(objectDir), m.Path, runs)
+		m.Stats = &stats
+		if err := writeJSON(fsys, filepath.Join(objectDir, markerName), m); err != nil {
+			return err
+		}
+		now, err := objectRuns(fsys, objectDir)
+		if err != nil {
+			return err
+		}
+		if sameRuns(runs, now) {
+			return nil
+		}
+		runs = now
 	}
-	stats := backup.NewObjectStats(filepath.Base(filepath.Dir(objectDir)), m.ClusterName, filepath.Base(objectDir), m.Path, runs)
-	m.Stats = &stats
-	return writeJSON(fsys, filepath.Join(objectDir, markerName), m)
+	return nil
+}
+
+// recountAttempts bounds the recounts of an object its runs keep changing
+// under: the next completion or removal counts them again.
+const recountAttempts = 3
+
+var objectLocks sync.Map
+
+// lockObject serializes the recounts of the object in objectDir in this
+// process.
+func lockObject(objectDir string) func() {
+	v, _ := objectLocks.LoadOrStore(objectDir, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
+// sameRuns says the two reads of the runs of an object hold the same runs,
+// in the same state.
+func sameRuns(a, b []backup.Run) bool {
+	key := func(l []backup.Run) []string {
+		keys := make([]string, 0, len(l))
+		for _, run := range l {
+			keys = append(keys, fmt.Sprintf("%s %v %v %d", run.ID, run.CompletedAt.IsZero(), run.Protected, run.LogicalBytes))
+		}
+		slices.Sort(keys)
+		return keys
+	}
+	return slices.Equal(key(a), key(b))
 }
 
 // objectRuns returns the runs of the object in objectDir, the incomplete
@@ -431,13 +484,20 @@ func (t *T) Usage(ctx context.Context) (backup.Usage, error) {
 	return backup.Usage{FreeBytes: &free}, nil
 }
 
+// tmpName returns the name a file is written as before it is put in place,
+// its own to the writer: two writers of one file, as two nodes recounting an
+// object, never write into the same temporary file.
+func tmpName(final string) string {
+	return fmt.Sprintf("%s.%s%s", final, uuid.NewString()[:8], tmpSuffix)
+}
+
 // writeJSON writes v as the file final, in place once complete.
 func writeJSON(fsys storeFS, final string, v any) error {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := final + tmpSuffix
+	tmp := tmpName(final)
 	if err := fsys.WriteFile(tmp, b); err != nil {
 		return err
 	}
@@ -476,7 +536,7 @@ func writeManifest(fsys storeFS, dir string, mf manifest) error {
 		return err
 	}
 	final := filepath.Join(dir, manifestName)
-	tmp := final + tmpSuffix
+	tmp := tmpName(final)
 	if err := fsys.WriteFile(tmp, b); err != nil {
 		return err
 	}
