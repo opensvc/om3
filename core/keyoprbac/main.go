@@ -213,6 +213,58 @@ var rules = map[string]Group{
 		},
 		Default: &rootRule,
 	},
+	// The store sections of a sec declare the stores of its namespace, which
+	// the daemon writes and reads as root: a store of a namespace is one it
+	// reaches over the network, an sftp server whose key the namespace keeps
+	// in a sec, never a directory of the node.
+	"store": {
+		Rules: map[string]Rule{
+			"type": {
+				Grant:  rbac.GrantRoot,
+				Reason: reasonRoot,
+				Values: []string{"tar"},
+			},
+			"url": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a store url other than sftp://, a directory of the node, requires the root grant",
+				Denies: valueOnly(func(value string) bool { return !strings.HasPrefix(value, "sftp://") }),
+			},
+			"host_key": {},
+			"ssh_private_key": {
+				Grant:  rbac.GrantRoot,
+				Reason: "an ssh private key not written from <sec> key <key> requires the root grant",
+				Denies: valueOnly(func(value string) bool { return !isKeyReference(value) }),
+			},
+			"keep": {},
+		},
+		Default: &rootRule,
+	},
+	// A sync resource of the store type backs the object up into a store of
+	// a sec its namespace may use. The stores of the cluster configuration
+	// are root's, and so are the other sync drivers, which copy data between
+	// nodes.
+	"sync": {
+		Rules: map[string]Rule{
+			"type": {
+				Grant:  rbac.GrantRoot,
+				Reason: reasonRoot,
+				Values: []string{"store"},
+			},
+			"store": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a store of the cluster configuration, named bare, requires the root grant: name a store of a sec, from <sec> store#<name>",
+				Denies: valueOnly(func(value string) bool { return !strings.HasPrefix(strings.TrimSpace(value), "from ") }),
+			},
+			"exclude":      {},
+			"include_refs": {},
+			"keep":         {},
+			"log":          {},
+			"max_delay":    {},
+			"rids":         {},
+			"schedule":     {},
+		},
+		Default: &rootRule,
+	},
 	"task": {Rules: map[string]Rule{
 		"type": {
 			Grant:  rbac.GrantRoot,
@@ -467,6 +519,15 @@ var rules = map[string]Group{
 				Grant:  rbac.GrantRoot,
 				Reason: reasonRoot,
 			},
+			// The provision restores the heads from the snapshot it
+			// names, which may be of an object of another namespace: the
+			// daemon sets it on a create from a store, once it checked the
+			// requester is an administrator of the namespace of that one.
+			"restore_from": {
+				Grant:    rbac.GrantRoot,
+				Reason:   reasonRoot,
+				MayUnset: true,
+			},
 		}},
 
 	// A claim says how much of a pool, or how many addresses of a network,
@@ -674,6 +735,12 @@ func isNFSOptAllowed(opt string) bool {
 // isTrue reports whether a boolean keyword value is not a false one. A value
 // that does not parse is taken as true: what the driver makes of it is not
 // for the policy to guess.
+// isKeyReference says whether s is written from <datastore> key <key>.
+func isKeyReference(s string) bool {
+	words := strings.Fields(s)
+	return len(words) >= 4 && words[0] == "from" && words[2] == "key"
+}
+
 func isTrue(s string) bool {
 	s = strings.TrimSpace(s)
 	if s == "" {

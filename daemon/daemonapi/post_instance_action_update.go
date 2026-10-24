@@ -52,6 +52,12 @@ func (a *DaemonAPI) postLocalInstanceActionUpdate(ctx echo.Context, namespace st
 	if params.SyncTarget != nil && len(*params.SyncTarget) > 0 {
 		args = append(args, "--target", strings.Join(*params.SyncTarget, ","))
 	}
+	if params.Protect != nil && *params.Protect {
+		args = append(args, "--protect")
+	}
+	if params.Note != nil && *params.Note != "" {
+		args = append(args, "--note", *params.Note)
+	}
 	if params.SessionID != nil {
 		requesterSessionID = *params.SessionID
 	}

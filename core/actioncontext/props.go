@@ -213,6 +213,31 @@ var (
 		MustLock: true,
 		PG:       true,
 	}
+	// RestoreStop and RestoreStart are the steps of a sync restore --stop
+	// bringing the instance to the state a restore in place needs: the
+	// resources using the heads stopped, the heads started. The restore
+	// flags the instance stopped itself, and the start leaves the flag
+	// raised, so the daemon starts nothing back on its own.
+	RestoreStop = Properties{
+		Name:            "stop",
+		Target:          "stopped",
+		Progress:        "stopping",
+		Failure:         "stop failed",
+		MustLock:        true,
+		Order:           ordering.Desc,
+		StepOf:          "sync_restore",
+		TimeoutKeywords: []string{"stop_timeout", "timeout"},
+		PG:              true,
+	}
+	RestoreStart = Properties{
+		Name:            "start",
+		Progress:        "starting",
+		Failure:         "start failed",
+		MustLock:        true,
+		StepOf:          "sync_restore",
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
+		PG:              true,
+	}
 	SyncRestore = Properties{
 		Name:     "sync_restore",
 		MustLock: true,
@@ -239,6 +264,16 @@ var (
 		Progress: "unfreezing",
 		Failure:  "unfreeze failed",
 		PG:       true,
+	}
+	// Unstop lowers the flags a stop raised, as a start does, and starts
+	// nothing: the daemon may start the instance, or restart the
+	// resources, on its own again. It takes the action lock a start and a
+	// stop take, so a stop running meanwhile does not raise a flag it
+	// lowered, or the other way round.
+	Unstop = Properties{
+		Name:          "unstop",
+		MustLock:      true,
+		ClearsStopped: true,
 	}
 	Unprovision = Properties{
 		Name:            "unprovision",

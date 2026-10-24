@@ -50,7 +50,7 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	}
 	t.setArbitratorConfig()
 
-	t.getAndUpdateStatusArbitrator()
+	t.refreshArbitrators()
 
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
 	t.checkRejoinTicker()
@@ -356,7 +356,7 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 }
 
 func (t *Manager) onArbitratorTicker() {
-	t.getAndUpdateStatusArbitrator()
+	t.refreshArbitrators()
 }
 
 func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {

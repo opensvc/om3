@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -254,6 +255,16 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	todoRestart := newTodoMap()
 	todoStandby := newTodoMap()
+
+	// A failover instance down while a peer runs the object is no longer
+	// the one started, whatever stopped it: its resources stopped alone,
+	// the object moved. Restarting them, or the monitor action of one,
+	// would run the object twice, or act on a node it does not run on.
+	if t.state.LocalExpect == instance.MonitorLocalExpectStarted {
+		if peer := t.failoverRunsOnPeer(); peer != "" {
+			t.disableMonitor("the object runs on %s", peer)
+		}
+	}
 
 	started := t.state.LocalExpect == instance.MonitorLocalExpectStarted
 
@@ -565,4 +576,21 @@ func (or *orchestrationResource) dropScheduled(rid string, reason string) (chang
 func (or *orchestrationResource) alreadyScheduled(rid string) bool {
 	_, ok := or.scheduled[rid]
 	return ok
+}
+
+// failoverRunsOnPeer returns the peer whose instance runs the failover object
+// while the local instance is not up, and "" otherwise.
+func (t *Manager) failoverRunsOnPeer() string {
+	if t.objStatus.Topology != topology.Failover {
+		return ""
+	}
+	if t.instStatus[t.localhost].Avail.Is(status.Up) {
+		return ""
+	}
+	for node, instStatus := range t.instStatus {
+		if node != t.localhost && instStatus.Avail.Is(status.Up) {
+			return node
+		}
+	}
+	return ""
 }

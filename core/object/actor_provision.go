@@ -142,6 +142,9 @@ func (t *actor) lockedProvision(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if src != nil {
+		defer src.store.Close()
+	}
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		rid := r.RID()
 		t.log.Attr("rid", rid).Tracef("%s: provision resource", rid)

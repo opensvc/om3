@@ -144,6 +144,8 @@ func (t *Manager) bootStartNoopReason() string {
 		return "the instance is frozen"
 	case t.isStopped():
 		return "the instance is flagged stopped"
+	case len(local.StoppedResources()) > 0:
+		return fmt.Sprintf("the resources %s are flagged stopped", strings.Join(local.StoppedResources(), " "))
 	case !t.state.IsLeader:
 		return "this node is not the placement leader"
 	case !t.isHardAffinitySatisfied(t.localhost):

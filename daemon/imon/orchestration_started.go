@@ -59,6 +59,13 @@ func (t *Manager) startedFromIdle() {
 		if t.isStopped() {
 			return
 		}
+		if len(t.instStatus[t.localhost].StoppedResources()) > 0 {
+			// A resource stopped on purpose is not the daemon's to
+			// start back, and a start of the instance would: the boot
+			// start of an orchestrate=start object, which asks the
+			// natural placement leader, included.
+			return
+		}
 	}
 	t.startedFromUnfrozen()
 }

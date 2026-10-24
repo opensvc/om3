@@ -51,7 +51,6 @@ func (t T) Capabilities() pool.Capabilities {
 		pool.CapRWO,
 		pool.CapRWX,
 		pool.CapShared,
-		pool.CapSnap,
 	}
 }
 

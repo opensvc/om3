@@ -433,6 +433,9 @@ type ClientInterface interface {
 	// PostInstanceActionUnprovision request
 	PostInstanceActionUnprovision(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnprovisionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostInstanceActionUnstop request
+	PostInstanceActionUnstop(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnstopParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostInstanceActionUpdate request
 	PostInstanceActionUpdate(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -485,6 +488,9 @@ type ClientInterface interface {
 
 	// GetNodeMetrics request
 	GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeMetricsPG request
+	GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeNetworkReservations request
 	GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -674,6 +680,18 @@ type ClientInterface interface {
 
 	// GetResources request
 	GetResources(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStores request
+	GetStores(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStoreObjects request
+	GetStoreObjects(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteStoreSnapshot request
+	DeleteStoreSnapshot(ctx context.Context, params *DeleteStoreSnapshotParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStoreSnapshots request
+	GetStoreSnapshots(ctx context.Context, params *GetStoreSnapshotsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetArray(ctx context.Context, params *GetArrayParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2104,6 +2122,18 @@ func (c *Client) PostInstanceActionUnprovision(ctx context.Context, nodename InP
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostInstanceActionUnstop(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnstopParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceActionUnstopRequest(c.Server, nodename, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostInstanceActionUpdate(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceActionUpdateRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
@@ -2310,6 +2340,18 @@ func (c *Client) GetNodeLogs(ctx context.Context, nodename InPathNodeName, param
 
 func (c *Client) GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeMetricsRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeMetricsPGRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -3090,6 +3132,54 @@ func (c *Client) GetRelayStatus(ctx context.Context, params *GetRelayStatusParam
 
 func (c *Client) GetResources(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetResourcesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStores(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStoresRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStoreObjects(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStoreObjectsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteStoreSnapshot(ctx context.Context, params *DeleteStoreSnapshotParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteStoreSnapshotRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStoreSnapshots(ctx context.Context, params *GetStoreSnapshotsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStoreSnapshotsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -9933,6 +10023,18 @@ func NewPostInstanceActionRestoreRequest(server string, nodename InPathNodeName,
 
 		}
 
+		if params.ByRid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "by_rid", *params.ByRid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Config != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "config", *params.Config, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
@@ -9984,6 +10086,18 @@ func NewPostInstanceActionRestoreRequest(server string, nodename InPathNodeName,
 		if params.Snapshot != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "snapshot", *params.Snapshot, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Stop != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "stop", *params.Stop, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -11787,6 +11901,136 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 	return req, nil
 }
 
+// NewPostInstanceActionUnstopRequest generates requests for PostInstanceActionUnstop
+func NewPostInstanceActionUnstopRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnstopParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/unstop", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Rid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Subset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "subset", *params.Subset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Tag != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tag", *params.Tag, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ConfigUpdatedAt != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "config_updated_at", *params.ConfigUpdatedAt, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInstanceActionUpdateRequest generates requests for PostInstanceActionUpdate
 func NewPostInstanceActionUpdateRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams) (*http.Request, error) {
 	var err error
@@ -11918,6 +12162,30 @@ func NewPostInstanceActionUpdateRequest(server string, nodename InPathNodeName, 
 		if params.SyncTarget != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target", *params.SyncTarget, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Protect != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "protect", *params.Protect, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Note != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "note", *params.Note, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -13064,6 +13332,40 @@ func NewGetNodeMetricsRequest(server string, nodename InPathNodeName) (*http.Req
 	}
 
 	operationPath := fmt.Sprintf("/api/node/name/%s/metrics", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNodeMetricsPGRequest generates requests for GetNodeMetricsPG
+func NewGetNodeMetricsPGRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/metrics/pg", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -15302,6 +15604,30 @@ func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNames
 
 		}
 
+		if params.Store != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "store", *params.Store, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Snapshot != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "snapshot", *params.Snapshot, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Force != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "force", *params.Force, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
@@ -16581,6 +16907,303 @@ func NewGetResourcesRequest(server string, params *GetResourcesParams) (*http.Re
 	return req, nil
 }
 
+// NewGetStoresRequest generates requests for GetStores
+func NewGetStoresRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/store")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStoreObjectsRequest generates requests for GetStoreObjects
+func NewGetStoreObjectsRequest(server string, params *GetStoreObjectsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/store/object")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "store", params.Store, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteStoreSnapshotRequest generates requests for DeleteStoreSnapshot
+func NewDeleteStoreSnapshotRequest(server string, params *DeleteStoreSnapshotParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/store/snapshot")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "store", params.Store, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStoreSnapshotsRequest generates requests for GetStoreSnapshots
+func NewGetStoreSnapshotsRequest(server string, params *GetStoreSnapshotsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/store/snapshot")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Store != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "store", *params.Store, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cluster != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cluster", *params.Cluster, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Before != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "before", *params.Before, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.After != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "after", *params.After, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ObjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "object_id", *params.ObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "since", *params.Since, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Until != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "until", *params.Until, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Order != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "order", *params.Order, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -16968,6 +17591,9 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceActionUnprovisionWithResponse request
 	PostInstanceActionUnprovisionWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnprovisionParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnprovisionResponse, error)
 
+	// PostInstanceActionUnstopWithResponse request
+	PostInstanceActionUnstopWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnstopParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnstopResponse, error)
+
 	// PostInstanceActionUpdateWithResponse request
 	PostInstanceActionUpdateWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUpdateResponse, error)
 
@@ -17020,6 +17646,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeMetricsWithResponse request
 	GetNodeMetricsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsResponse, error)
+
+	// GetNodeMetricsPGWithResponse request
+	GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error)
 
 	// GetNodeNetworkReservationsWithResponse request
 	GetNodeNetworkReservationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*GetNodeNetworkReservationsResponse, error)
@@ -17209,6 +17838,18 @@ type ClientWithResponsesInterface interface {
 
 	// GetResourcesWithResponse request
 	GetResourcesWithResponse(ctx context.Context, params *GetResourcesParams, reqEditors ...RequestEditorFn) (*GetResourcesResponse, error)
+
+	// GetStoresWithResponse request
+	GetStoresWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetStoresResponse, error)
+
+	// GetStoreObjectsWithResponse request
+	GetStoreObjectsWithResponse(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*GetStoreObjectsResponse, error)
+
+	// DeleteStoreSnapshotWithResponse request
+	DeleteStoreSnapshotWithResponse(ctx context.Context, params *DeleteStoreSnapshotParams, reqEditors ...RequestEditorFn) (*DeleteStoreSnapshotResponse, error)
+
+	// GetStoreSnapshotsWithResponse request
+	GetStoreSnapshotsWithResponse(ctx context.Context, params *GetStoreSnapshotsParams, reqEditors ...RequestEditorFn) (*GetStoreSnapshotsResponse, error)
 }
 
 type GetArrayResponse struct {
@@ -20834,6 +21475,41 @@ func (r PostInstanceActionUnprovisionResponse) ContentType() string {
 	return ""
 }
 
+type PostInstanceActionUnstopResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceActionUnstopResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceActionUnstopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostInstanceActionUnstopResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PostInstanceActionUpdateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21401,6 +22077,39 @@ func (r GetNodeMetricsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNodeMetricsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNodeMetricsPGResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeMetricsPGResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeMetricsPGResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNodeMetricsPGResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -23453,6 +24162,142 @@ func (r GetResourcesResponse) ContentType() string {
 	return ""
 }
 
+type GetStoresResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StoreList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStoresResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStoresResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetStoresResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetStoreObjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StoreObjectStatsList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStoreObjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStoreObjectsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetStoreObjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteStoreSnapshotResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteStoreSnapshotResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteStoreSnapshotResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteStoreSnapshotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetStoreSnapshotsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StoreSnapshotList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStoreSnapshotsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStoreSnapshotsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetStoreSnapshotsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetArrayWithResponse request returning *GetArrayResponse
 func (c *ClientWithResponses) GetArrayWithResponse(ctx context.Context, params *GetArrayParams, reqEditors ...RequestEditorFn) (*GetArrayResponse, error) {
 	rsp, err := c.GetArray(ctx, params, reqEditors...)
@@ -24511,6 +25356,15 @@ func (c *ClientWithResponses) PostInstanceActionUnprovisionWithResponse(ctx cont
 	return ParsePostInstanceActionUnprovisionResponse(rsp)
 }
 
+// PostInstanceActionUnstopWithResponse request returning *PostInstanceActionUnstopResponse
+func (c *ClientWithResponses) PostInstanceActionUnstopWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUnstopParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUnstopResponse, error) {
+	rsp, err := c.PostInstanceActionUnstop(ctx, nodename, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceActionUnstopResponse(rsp)
+}
+
 // PostInstanceActionUpdateWithResponse request returning *PostInstanceActionUpdateResponse
 func (c *ClientWithResponses) PostInstanceActionUpdateWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionUpdateParams, reqEditors ...RequestEditorFn) (*PostInstanceActionUpdateResponse, error) {
 	rsp, err := c.PostInstanceActionUpdate(ctx, nodename, namespace, kind, name, params, reqEditors...)
@@ -24670,6 +25524,15 @@ func (c *ClientWithResponses) GetNodeMetricsWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParseGetNodeMetricsResponse(rsp)
+}
+
+// GetNodeMetricsPGWithResponse request returning *GetNodeMetricsPGResponse
+func (c *ClientWithResponses) GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error) {
+	rsp, err := c.GetNodeMetricsPG(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeMetricsPGResponse(rsp)
 }
 
 // GetNodeNetworkReservationsWithResponse request returning *GetNodeNetworkReservationsResponse
@@ -25249,6 +26112,42 @@ func (c *ClientWithResponses) GetResourcesWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseGetResourcesResponse(rsp)
+}
+
+// GetStoresWithResponse request returning *GetStoresResponse
+func (c *ClientWithResponses) GetStoresWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetStoresResponse, error) {
+	rsp, err := c.GetStores(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStoresResponse(rsp)
+}
+
+// GetStoreObjectsWithResponse request returning *GetStoreObjectsResponse
+func (c *ClientWithResponses) GetStoreObjectsWithResponse(ctx context.Context, params *GetStoreObjectsParams, reqEditors ...RequestEditorFn) (*GetStoreObjectsResponse, error) {
+	rsp, err := c.GetStoreObjects(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStoreObjectsResponse(rsp)
+}
+
+// DeleteStoreSnapshotWithResponse request returning *DeleteStoreSnapshotResponse
+func (c *ClientWithResponses) DeleteStoreSnapshotWithResponse(ctx context.Context, params *DeleteStoreSnapshotParams, reqEditors ...RequestEditorFn) (*DeleteStoreSnapshotResponse, error) {
+	rsp, err := c.DeleteStoreSnapshot(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteStoreSnapshotResponse(rsp)
+}
+
+// GetStoreSnapshotsWithResponse request returning *GetStoreSnapshotsResponse
+func (c *ClientWithResponses) GetStoreSnapshotsWithResponse(ctx context.Context, params *GetStoreSnapshotsParams, reqEditors ...RequestEditorFn) (*GetStoreSnapshotsResponse, error) {
+	rsp, err := c.GetStoreSnapshots(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStoreSnapshotsResponse(rsp)
 }
 
 // ParseGetArrayResponse parses an HTTP response from a GetArrayWithResponse call
@@ -31108,6 +32007,67 @@ func ParsePostInstanceActionUnprovisionResponse(rsp *http.Response) (*PostInstan
 	return response, nil
 }
 
+// ParsePostInstanceActionUnstopResponse parses an HTTP response from a PostInstanceActionUnstopWithResponse call
+func ParsePostInstanceActionUnstopResponse(rsp *http.Response) (*PostInstanceActionUnstopResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceActionUnstopResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostInstanceActionUpdateResponse parses an HTTP response from a PostInstanceActionUpdateWithResponse call
 func ParsePostInstanceActionUpdateResponse(rsp *http.Response) (*PostInstanceActionUpdateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -31953,6 +32913,53 @@ func ParseGetNodeMetricsResponse(rsp *http.Response) (*GetNodeMetricsResponse, e
 	}
 
 	response := &GetNodeMetricsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeMetricsPGResponse parses an HTTP response from a GetNodeMetricsPGWithResponse call
+func ParseGetNodeMetricsPGResponse(rsp *http.Response) (*GetNodeMetricsPGResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeMetricsPGResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -35419,6 +36426,222 @@ func ParseGetResourcesResponse(rsp *http.Response) (*GetResourcesResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ResourceList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStoresResponse parses an HTTP response from a GetStoresWithResponse call
+func ParseGetStoresResponse(rsp *http.Response) (*GetStoresResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStoresResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StoreList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStoreObjectsResponse parses an HTTP response from a GetStoreObjectsWithResponse call
+func ParseGetStoreObjectsResponse(rsp *http.Response) (*GetStoreObjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStoreObjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StoreObjectStatsList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteStoreSnapshotResponse parses an HTTP response from a DeleteStoreSnapshotWithResponse call
+func ParseDeleteStoreSnapshotResponse(rsp *http.Response) (*DeleteStoreSnapshotResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteStoreSnapshotResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStoreSnapshotsResponse parses an HTTP response from a GetStoreSnapshotsWithResponse call
+func ParseGetStoreSnapshotsResponse(rsp *http.Response) (*GetStoreSnapshotsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStoreSnapshotsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StoreSnapshotList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

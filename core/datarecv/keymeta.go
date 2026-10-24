@@ -97,6 +97,19 @@ func ParseKeyMetaRel(line, namespace string) (KeyMeta, error) {
 	return km, nil
 }
 
+// ParseKeyMetaRelSelf is ParseKeyMetaRel for a reference in the
+// configuration of self: "from ." names self, and a relative path is of the
+// namespace of self.
+func ParseKeyMetaRelSelf(line string, self naming.Path) (KeyMeta, error) {
+	words := strings.Fields(line)
+	for i := 0; i+1 < len(words); i++ {
+		if words[i] == "from" && words[i+1] == "." {
+			words[i+1] = self.String()
+		}
+	}
+	return ParseKeyMetaRel(strings.Join(words, " "), self.Namespace)
+}
+
 func (t *KeyMeta) RootDecode() ([]byte, error) {
 	ds, err := object.NewDataStore(t.Path, object.WithVolatile(true))
 	if err != nil {

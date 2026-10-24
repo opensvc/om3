@@ -66,6 +66,13 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 	switch t.state.State {
 	case instance.MonitorStateIdle, instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
+	case instance.MonitorStateStartSuccess:
+		// Started meanwhile, by a start begun before this instance knew it
+		// was not the one to run the object: idle once its status says
+		// it is up, to be stopped then.
+		if t.isLocalStarted() {
+			t.transitionTo(instance.MonitorStateIdle)
+		}
 	case instance.MonitorStateStopFailure:
 		t.orchestratePlacedStopFromStopFailure()
 	case instance.MonitorStateStopSuccess:
@@ -96,6 +103,13 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 	switch t.state.State {
 	case instance.MonitorStateIdle, instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
+	case instance.MonitorStateStartSuccess:
+		// Started meanwhile, by a start begun before this instance knew it
+		// was not the one to run the object: idle once its status says
+		// it is up, to be stopped then.
+		if t.isLocalStarted() {
+			t.transitionTo(instance.MonitorStateIdle)
+		}
 	case instance.MonitorStateStopFailure:
 		t.orchestratePlacedStopFromStopFailure()
 	case instance.MonitorStateStopSuccess:

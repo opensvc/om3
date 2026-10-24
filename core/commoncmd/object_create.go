@@ -55,6 +55,22 @@ func DataFromTemplate(template string) ([]byte, error) {
 // after, so a keyword they name is kept. With force, an object that exists
 // already has its configuration replaced, with the same treatment.
 func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force bool) error {
+	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore), force)
+}
+
+// CreateObjectConfigFromStore creates the object at p from the snapshot of
+// the store, through the api: the daemon reads the configuration of the
+// object the snapshot is of, creates the keys of the sec and cfg it
+// references that the namespace of p lacks, and names the snapshot the
+// provision restores the heads from.
+func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force bool) error {
+	params := createParams(keywords, restore)
+	params.Store = &store
+	params.Snapshot = &snapshot
+	return postObjectConfig(ctx, c, p, nil, params, force)
+}
+
+func createParams(keywords []string, restore bool) api.PostObjectConfigFileParams {
 	waitLocal := true
 	params := api.PostObjectConfigFileParams{WaitLocal: &waitLocal}
 	if restore {
@@ -63,6 +79,10 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 	if len(keywords) > 0 {
 		params.Set = &keywords
 	}
+	return params
+}
+
+func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, force bool) error {
 	resp, err := c.PostObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -92,6 +112,8 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 		return fmt.Errorf("%s: %s", p, *resp.JSON401)
 	case http.StatusForbidden:
 		return fmt.Errorf("%s: %s", p, *resp.JSON403)
+	case http.StatusNotFound:
+		return fmt.Errorf("%s: %s", p, *resp.JSON404)
 	case http.StatusRequestTimeout:
 		// Created, and not known to the daemon yet: the command run next
 		// may not find it.
@@ -125,6 +147,8 @@ func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte
 		return fmt.Errorf("%s: %s", p, *resp.JSON401)
 	case http.StatusForbidden:
 		return fmt.Errorf("%s: %s", p, *resp.JSON403)
+	case http.StatusNotFound:
+		return fmt.Errorf("%s: %s", p, *resp.JSON404)
 	case http.StatusConflict:
 		return fmt.Errorf("%s: %s", p, *resp.JSON409)
 	case http.StatusRequestTimeout:

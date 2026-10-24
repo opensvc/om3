@@ -17,6 +17,13 @@ import (
 )
 
 type (
+	// arbitratorCheck is what a background check of the arbitrators found,
+	// and which check it was.
+	arbitratorCheck struct {
+		gen    int
+		status map[string]node.ArbitratorStatus
+	}
+
 	arbitratorConfig struct {
 		Name     string `json:"name"`
 		URI      string `json:"uri"`
@@ -52,22 +59,30 @@ func (t *Manager) setArbitratorConfig() {
 	t.arbitrators = arbitrators
 }
 
-// getStatusArbitrators checks all arbitrators and returns result
+// getStatusArbitrators checks all arbitrators and returns result, waiting
+// for the answers: the split decision is the one place a fresh answer is
+// worth holding the monitor for.
 func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
+	return t.checkArbitrators(t.arbitrators)
+}
+
+// checkArbitrators checks the arbitrators given, a copy of the configuration
+// for a check running out of the loop.
+func (t *Manager) checkArbitrators(arbitrators map[string]arbitratorConfig) map[string]node.ArbitratorStatus {
 	type res struct {
 		name string
 		err  error
 	}
 	ctx, cancel := context.WithTimeout(t.ctx, arbitratorCheckDuration)
 	defer cancel()
-	c := make(chan res, len(t.arbitrators))
-	for _, a := range t.arbitrators {
+	c := make(chan res, len(arbitrators))
+	for _, a := range arbitrators {
 		go func(a arbitratorConfig) {
 			c <- res{name: a.Name, err: t.arbitratorCheck(ctx, a)}
 		}(a)
 	}
 	result := make(map[string]node.ArbitratorStatus)
-	for i := 0; i < len(t.arbitrators); i++ {
+	for i := 0; i < len(arbitrators); i++ {
 		r := <-c
 		name := r.name
 		aStatus := status.Up
@@ -82,16 +97,54 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 			})
 		}
 		result[name] = node.ArbitratorStatus{
-			URL:    t.arbitrators[name].URI,
+			URL:    arbitrators[name].URI,
 			Status: aStatus,
-			Weight: t.arbitrators[name].Weight,
+			Weight: arbitrators[name].Weight,
 		}
 	}
 	return result
 }
 
-func (t *Manager) getAndUpdateStatusArbitrator() {
-	arbitrators := t.getStatusArbitrators()
+// refreshArbitrators checks the arbitrators out of the loop, the result
+// coming back through arbitratorC: an arbitrator not answering held the
+// monitor for the whole timeout of the check, at the daemon start, every
+// arbitratorInterval and at every configuration change, and a request the
+// api handed the monitor meanwhile timed out. A check asked while one runs
+// runs once it ends, the configuration having changed.
+func (t *Manager) refreshArbitrators() {
+	if t.arbitratorChecking {
+		t.arbitratorRecheck = true
+		return
+	}
+	t.arbitratorChecking = true
+	t.arbitratorGen++
+	gen := t.arbitratorGen
+	arbitrators := maps.Clone(t.arbitrators)
+	go func() {
+		result := arbitratorCheck{gen: gen, status: t.checkArbitrators(arbitrators)}
+		select {
+		case t.arbitratorC <- result:
+		case <-t.ctx.Done():
+		}
+	}()
+}
+
+// onArbitratorsChecked records what a background check found, unless the
+// check of a split began after it, whose answer is fresher.
+func (t *Manager) onArbitratorsChecked(c arbitratorCheck) {
+	t.arbitratorChecking = false
+	if t.arbitratorRecheck {
+		t.arbitratorRecheck = false
+		t.refreshArbitrators()
+		return
+	}
+	if c.gen <= t.arbitratorFreshGen {
+		return
+	}
+	t.updateStatusArbitrator(c.status)
+}
+
+func (t *Manager) updateStatusArbitrator(arbitrators map[string]node.ArbitratorStatus) {
 	if maps.Equal(arbitrators, t.nodeStatus.Arbitrators) {
 		return
 	}
@@ -104,16 +157,23 @@ func (t *Manager) getAndUpdateStatusArbitrator() {
 	t.publisher.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: t.localhost, Value: pubValue}, t.labelLocalhost)
 }
 
+// arbitratorTotal is the weight of the arbitrators, which their
+// configuration says, with no need to reach them.
 func (t *Manager) arbitratorTotal() int {
 	i := 0
-	for _, v := range t.getStatusArbitrators() {
-		i += v.Weight
+	for _, a := range t.arbitrators {
+		i += a.Weight
 	}
 	return i
 }
 
+// arbitratorVotes checks the arbitrators, for a split, and records the
+// answer, fresher than a background check begun before it.
 func (t *Manager) arbitratorVotes() (votes []string) {
-	for s, v := range t.getStatusArbitrators() {
+	arbitrators := t.getStatusArbitrators()
+	t.arbitratorFreshGen = t.arbitratorGen
+	t.updateStatusArbitrator(arbitrators)
+	for s, v := range arbitrators {
 		if v.Status == status.Up {
 			for i := 0; i < v.Weight; i++ {
 				votes = append(votes, s)

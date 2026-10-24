@@ -14,6 +14,7 @@ import (
 // path and helper lines, and the initial state, do not.
 func TestParseEvent(t *testing.T) {
 	const res = "testdrbd.root.vol.reliable-leopard"
+	states := newEventStates()
 	for _, tc := range []struct {
 		line string
 		want bool
@@ -33,11 +34,43 @@ func TestParseEvent(t *testing.T) {
 		{"change device name:" + res + " volume:0 minor:4 disk:Inconsistent", true},
 		{"", false},
 	} {
-		name, ok := parseEvent(tc.line)
+		name, ok := states.parse(tc.line)
 		require.Equal(t, tc.want, ok, tc.line)
 		if ok {
 			require.Equal(t, res, name, tc.line)
 		}
+	}
+}
+
+// A process opening an unused drbd device, as lvs scanning the block devices
+// does, changes its open count, and events2 repeats every field of the device
+// with it, its disk state too: that is no change of state, and nothing is
+// notified, where a status refresh used to be every 5 seconds. A change of a
+// state key still is, and the objects are told apart by peer and volume.
+func TestParseEventOnlyCountsChangedValues(t *testing.T) {
+	const res = "c33loop.root.vol.cluster33"
+	states := newEventStates()
+	for _, tc := range []struct {
+		line string
+		want bool
+	}{
+		{"exists resource name:" + res + " role:Primary suspended:no", false},
+		{"exists device name:" + res + " volume:0 minor:0 backing_dev:/dev/data/c33loop disk:UpToDate client:no open:no quorum:yes", false},
+		{"exists peer-device name:" + res + " peer-node-id:1 conn-name:n2 volume:0 replication:Established peer-disk:UpToDate peer-client:no", false},
+		{"exists -", false},
+		{"change device name:" + res + " volume:0 minor:0 backing_dev:/dev/data/c33loop disk:UpToDate client:no open:yes quorum:yes", false},
+		{"change device name:" + res + " volume:0 minor:0 backing_dev:/dev/data/c33loop disk:UpToDate client:no open:no quorum:yes", false},
+		{"change device name:" + res + " volume:0 minor:0 disk:UpToDate client:no open:no quorum:no", false},
+		{"change peer-device name:" + res + " peer-node-id:1 conn-name:n2 volume:0 replication:Established peer-disk:UpToDate peer-client:no", false},
+		{"change peer-device name:" + res + " peer-node-id:1 conn-name:n2 volume:0 replication:SyncSource peer-disk:Inconsistent peer-client:no", true},
+		{"change peer-device name:" + res + " peer-node-id:2 conn-name:n3 volume:0 replication:SyncSource peer-disk:Inconsistent peer-client:no", true},
+		{"change resource name:" + res + " role:Secondary suspended:no", true},
+		{"change resource name:" + res + " role:Secondary suspended:no", false},
+		{"destroy resource name:" + res, true},
+		{"create device name:" + res + " volume:0 minor:0 disk:Diskless", true},
+	} {
+		_, ok := states.parse(tc.line)
+		require.Equal(t, tc.want, ok, tc.line)
 	}
 }
 

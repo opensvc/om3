@@ -1,0 +1,5 @@
+The public key of the sftp server of the store, as `ssh-keyscan` prints it,
+with or without the host before it.
+
+The server must present this key: a store is never written to, nor read from, a
+server it did not recognize.

@@ -61,6 +61,18 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	if params.Set != nil {
 		sets = keyop.ParseOps(*params.Set)
 	}
+	var src *storeSource
+	if params.Store != nil || params.Snapshot != nil {
+		if len(body) > 0 {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "a create from a store takes the configuration of the snapshot, and no body")
+		}
+		var status int
+		if src, status, err = openStoreSource(ctx, p, params.Store, params.Snapshot); err != nil {
+			return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
+		}
+		defer src.close()
+		body = src.config
+	}
 	oc, body, err := object.CreatedConfig(p, body, restore, sets...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad config", "%s", err)
@@ -73,6 +85,16 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	}
 
 	log.Tracef("%s: rbac passed", p)
+
+	// The keys the configuration references, and the snapshot its
+	// provision restores from, come once the configuration passed: the
+	// requester may read the snapshot, and the keys land with the
+	// configuration in a namespace it is an administrator of.
+	if src != nil {
+		if oc, body, base, err = src.apply(ctx, p, body, base); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Create from store", "%s", err)
+		}
+	}
 
 	if exists {
 		if err := stopToChange(ctx, p, body, force); err != nil {

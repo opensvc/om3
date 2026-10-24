@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -36,7 +37,14 @@ type (
 		// wrote the run, shared by every member.
 		ID string `json:"id"`
 
-		// Path is the object the run backs up.
+		// ClusterID and ClusterName are the cluster of the node that
+		// wrote the run: a store several clusters write holds objects of
+		// the same path, and of the same id, as one deployed on a drp
+		// cluster with its source's id.
+		ClusterID   string `json:"cluster_id"`
+		ClusterName string `json:"cluster_name"`
+
+		// Path is the object the run backs up, as it was named then.
 		Path string `json:"path"`
 
 		// ObjectID is the id of the object, telling apart two objects
@@ -47,8 +55,9 @@ type (
 		// Node is the node that wrote the run.
 		Node string `json:"node"`
 
-		// CreatedAt is when the run started, which the retention
-		// periods are evaluated on.
+		// CreatedAt is when the action writing the run began, which the
+		// retention periods are evaluated on: the runs one action writes
+		// into several stores, under one id, carry the same time.
 		CreatedAt time.Time `json:"created_at"`
 
 		// CompletedAt is when the run saved its last member, every
@@ -58,6 +67,20 @@ type (
 
 		// Members are the members the run saved.
 		Members []Member `json:"members"`
+
+		// Protected keeps the run from the retention: only an explicit
+		// removal deletes it.
+		Protected bool `json:"protected,omitempty"`
+
+		// Note is a text the run was marked with when written.
+		Note string `json:"note,omitempty"`
+
+		// LogicalBytes is the size of what the run saved, the sum of
+		// its members', and StoredBytes what it takes in the store, as
+		// written: compressed, before what a store shares between runs.
+		// A driver telling neither leaves them zero.
+		LogicalBytes int64 `json:"logical_bytes,omitempty"`
+		StoredBytes  int64 `json:"stored_bytes,omitempty"`
 	}
 
 	// Member is a part of a run: a head saved from a directory, or a
@@ -65,6 +88,15 @@ type (
 	Member struct {
 		Name string     `json:"name"`
 		Kind MemberKind `json:"kind"`
+
+		// Head is the directory a member saved from a directory was
+		// saved from, which a restore in place writes it back into.
+		Head string `json:"head,omitempty"`
+
+		// LogicalBytes and StoredBytes are the size of what the member
+		// saved, and what it takes in the store, as the run's.
+		LogicalBytes int64 `json:"logical_bytes,omitempty"`
+		StoredBytes  int64 `json:"stored_bytes,omitempty"`
 	}
 
 	// MemberKind says how a member was saved, and so how it is restored.
@@ -72,8 +104,19 @@ type (
 
 	// RunFilter selects runs. A zero field selects any.
 	RunFilter struct {
-		// Path selects the runs of an object.
+		// Path selects the runs of the objects the store last recorded at
+		// this path, of every cluster: an object keeps its runs when it
+		// is renamed, and the runs it took before still say the path it
+		// had then. The store applies it, Match does not.
 		Path string
+
+		// ObjectID selects the runs of an object, whatever its path.
+		ObjectID string
+
+		// Cluster selects the runs the nodes of a cluster wrote, by the
+		// cluster id or name. A store resolves a name to the cluster it
+		// names now, so the runs a renamed cluster wrote are selected.
+		Cluster string
 
 		// ID selects the run whose id is, or starts with, ID.
 		ID string
@@ -81,6 +124,12 @@ type (
 		// Incomplete selects the runs not completed too, as a failed
 		// or interrupted run left them.
 		Incomplete bool
+
+		// Since and Until select the runs created from Since on, and
+		// before Until. A driver skips what it can with them, as the
+		// objects with no run in the period, and Match applies them.
+		Since time.Time
+		Until time.Time
 	}
 
 	// Store is what every store driver does.
@@ -90,8 +139,10 @@ type (
 		Ref() string
 
 		// Backup saves the directory src as the member of run, without
-		// the paths excludes matches, relative to src.
-		Backup(ctx context.Context, run Run, member string, src string, excludes []string) error
+		// the paths excludes matches, relative to src, and records head
+		// as the head of the member: src itself, or the head a snapshot
+		// at src is of.
+		Backup(ctx context.Context, run Run, member, src, head string, excludes []string) error
 
 		// Runs returns the runs filter selects, oldest first.
 		Runs(ctx context.Context, filter RunFilter) ([]Run, error)
@@ -127,6 +178,16 @@ type (
 		Store
 		SetName(string)
 		SetConfig(*xconfig.T)
+		SetOwner(naming.Path)
+		SetReader(string)
+		Close() error
+	}
+
+	// Localer is a store keeping its runs on the node, as a directory.
+	// A sec does not declare one: the daemon would read and write it as
+	// root where the namespace says.
+	Localer interface {
+		IsLocal() bool
 	}
 )
 
@@ -179,17 +240,52 @@ func SectionName(name string) string {
 	return SectionPrefix + name
 }
 
-// T is the base of the store drivers: the section declaring the store, and
-// the configuration holding it.
+// T is the base of the store drivers: the section declaring the store, the
+// configuration holding it, the sec it is of, zero for a store of the cluster
+// configuration, and the namespace of the object reading it, empty for a
+// node command.
 type T struct {
 	name   string
 	config *xconfig.T
+	owner  naming.Path
+	reader string
 }
 
-// Ref returns the reference to the store: its name, the section without its
-// prefix.
+// Ref returns the reference to the store, as a store keyword names it: its
+// name, the section without its prefix, for a store of the cluster
+// configuration, and from <sec> store#<name> for a store of a sec.
 func (t *T) Ref() string {
+	if !t.owner.IsZero() {
+		return fmt.Sprintf("from %s %s", t.owner, t.name)
+	}
 	return strings.TrimPrefix(t.name, SectionPrefix)
+}
+
+// SetOwner sets the sec declaring the store.
+func (t *T) SetOwner(p naming.Path) {
+	t.owner = p
+}
+
+// Owner returns the sec declaring the store, zero for a store of the
+// cluster configuration.
+func (t *T) Owner() naming.Path {
+	return t.owner
+}
+
+// SetReader sets the namespace of the object reading the store.
+func (t *T) SetReader(ns string) {
+	t.reader = ns
+}
+
+// Reader returns the namespace of the object reading the store, empty for a
+// node command.
+func (t *T) Reader() string {
+	return t.reader
+}
+
+// Close releases what the driver holds, as a connection to the store.
+func (t *T) Close() error {
+	return nil
 }
 
 // SetName sets the section declaring the store.
@@ -237,13 +333,38 @@ func Keep(s Store) string {
 
 // Match tells whether the run is one filter selects.
 func (f RunFilter) Match(run Run) bool {
-	if f.Path != "" && run.Path != f.Path {
+	if f.ObjectID != "" && run.ObjectID != f.ObjectID {
+		return false
+	}
+	if f.Cluster != "" && run.ClusterID != f.Cluster && run.ClusterName != f.Cluster {
 		return false
 	}
 	if f.ID != "" && !strings.HasPrefix(run.ID, f.ID) {
 		return false
 	}
 	if !f.Incomplete && run.CompletedAt.IsZero() {
+		return false
+	}
+	if !f.Since.IsZero() && run.CreatedAt.Before(f.Since) {
+		return false
+	}
+	if !f.Until.IsZero() && !run.CreatedAt.Before(f.Until) {
+		return false
+	}
+	return true
+}
+
+// MayHold says whether an object whose completed runs were created between
+// first and last may hold a run the period of the filter selects, for a
+// driver to skip the others without reading their runs.
+func (f RunFilter) MayHold(first, last time.Time) bool {
+	if first.IsZero() || last.IsZero() {
+		return true
+	}
+	if !f.Since.IsZero() && last.Before(f.Since) {
+		return false
+	}
+	if !f.Until.IsZero() && !first.Before(f.Until) {
 		return false
 	}
 	return true
@@ -282,37 +403,57 @@ func (t Run) ShortID() string {
 	return t.ID
 }
 
-// FindRun returns the one run of the object at path whose id is, or starts
-// with, id, or the latest run when id is empty.
-func FindRun(ctx context.Context, s Store, path, id string) (Run, error) {
-	runs, err := s.Runs(ctx, RunFilter{Path: path, ID: id})
+// FindRun returns the one run filter selects whose id is, or starts with,
+// filter.ID, or the latest run filter selects when it names no id.
+func FindRun(ctx context.Context, s Store, filter RunFilter) (Run, error) {
+	runs, err := s.Runs(ctx, filter)
 	if err != nil {
 		return Run{}, err
 	}
 	switch {
-	case len(runs) == 0 && id == "":
-		return Run{}, fmt.Errorf("%w: store %s holds no run of %s", ErrNotFound, s.Ref(), path)
+	case len(runs) == 0 && filter.ID == "":
+		return Run{}, fmt.Errorf("%w: store %s holds no run %s", ErrNotFound, s.Ref(), filter)
 	case len(runs) == 0:
-		return Run{}, fmt.Errorf("%w: store %s holds no run %s of %s", ErrNotFound, s.Ref(), id, path)
-	case id == "":
+		return Run{}, fmt.Errorf("%w: store %s holds no run %s %s", ErrNotFound, s.Ref(), filter.ID, filter)
+	case filter.ID == "":
 		return runs[len(runs)-1], nil
 	case len(runs) > 1:
 		for _, run := range runs {
-			if run.ID == id {
+			if run.ID == filter.ID {
 				return run, nil
 			}
 		}
-		return Run{}, fmt.Errorf("%w: %s matches %d runs of %s in store %s", ErrAmbiguous, id, len(runs), path, s.Ref())
+		return Run{}, fmt.Errorf("%w: %s matches %d runs in store %s", ErrAmbiguous, filter.ID, len(runs), s.Ref())
 	default:
 		return runs[0], nil
 	}
 }
 
+// String says what the filter selects, for a message.
+func (f RunFilter) String() string {
+	l := make([]string, 0, 3)
+	if f.Path != "" {
+		l = append(l, "of "+f.Path)
+	}
+	if f.ObjectID != "" {
+		l = append(l, "of the object "+f.ObjectID)
+	}
+	if f.Cluster != "" {
+		l = append(l, "of the cluster "+f.Cluster)
+	}
+	return strings.Join(l, " ")
+}
+
 // FindSnapshot returns the run ref names among the runs of every object of
 // the store: its id, or a prefix of it, or else an object path, meaning the
-// latest run of that object. An id never holds a "/", but the path of an
-// object of the root namespace has none either, so an id is tried first.
-func FindSnapshot(ctx context.Context, s Store, ref string) (Run, error) {
+// latest run of the object the store last recorded at that path. An id never
+// holds a "/", but the path of an object of the root namespace has none
+// either, so an id is tried first.
+//
+// A path the runs of several clusters hold means the latest run of the local
+// cluster, cluster, or of the one other cluster holding runs of it: the
+// latest of several other clusters is not one to pick for the user.
+func FindSnapshot(ctx context.Context, s Store, ref, cluster string) (Run, error) {
 	runs, err := s.Runs(ctx, RunFilter{ID: ref})
 	if err != nil {
 		return Run{}, err
@@ -329,11 +470,28 @@ func FindSnapshot(ctx context.Context, s Store, ref string) (Run, error) {
 	default:
 		return Run{}, fmt.Errorf("%w: %s matches %d runs in store %s", ErrAmbiguous, ref, len(runs), s.Ref())
 	}
-	run, err := FindRun(ctx, s, ref, "")
-	if errors.Is(err, ErrNotFound) {
+	runs, err = s.Runs(ctx, RunFilter{Path: ref})
+	if err != nil {
+		return Run{}, err
+	}
+	if len(runs) == 0 {
 		return Run{}, fmt.Errorf("%w: store %s holds no run %s, nor a run of an object %s", ErrNotFound, s.Ref(), ref, ref)
 	}
-	return run, err
+	byCluster := make(map[string][]Run)
+	names := make([]string, 0)
+	for _, run := range runs {
+		if _, ok := byCluster[run.ClusterID]; !ok {
+			names = append(names, run.ClusterName)
+		}
+		byCluster[run.ClusterID] = append(byCluster[run.ClusterID], run)
+	}
+	if l, ok := byCluster[cluster]; ok {
+		return l[len(l)-1], nil
+	}
+	if len(byCluster) > 1 {
+		return Run{}, fmt.Errorf("%w: store %s holds runs of %s from the clusters %s: name the snapshot by its id", ErrAmbiguous, s.Ref(), ref, strings.Join(names, " "))
+	}
+	return runs[len(runs)-1], nil
 }
 
 // ReadMember returns the content of a member saved as a file: streamed from
@@ -362,4 +520,20 @@ func ReadMember(ctx context.Context, s Store, run Run, member string) ([]byte, e
 		return nil, err
 	}
 	return os.ReadFile(filepath.Join(dir, member))
+}
+
+// noteMax is the longest note a run takes.
+const noteMax = 256
+
+// CheckNote refuses a note no store records as written: a comma, which
+// separates the tags a plakar snapshot holds, a line break, or a note
+// longer than noteMax.
+func CheckNote(s string) error {
+	switch {
+	case strings.ContainsAny(s, ",\n\r"):
+		return fmt.Errorf("a note holds no comma nor line break, as a store records it as a tag")
+	case len(s) > noteMax:
+		return fmt.Errorf("a note holds at most %d characters", noteMax)
+	}
+	return nil
 }

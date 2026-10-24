@@ -297,8 +297,9 @@ func (t *Manager) readEvents() error {
 		return err
 	}
 	scanner := bufio.NewScanner(stdout)
+	states := newEventStates()
 	for scanner.Scan() {
-		if name, ok := parseEvent(scanner.Text()); ok {
+		if name, ok := states.parse(scanner.Text()); ok {
 			t.notify(name)
 		}
 	}
@@ -325,27 +326,43 @@ func (t *Manager) notify(name string) {
 	})
 }
 
-// parseEvent returns the name of the drbd resource whose state an events2
-// line reports a change of.
+// eventStates are the values of the state keys of each drbd object, as the
+// events2 lines of one stream say them: a "change" line repeats every field
+// of its object, the ones that did not change too, as the disk state of a
+// device whose open count changed. Each object is known by its resource
+// name, and its peer node id and volume when it has them.
+type eventStates map[string]map[string]string
+
+func newEventStates() eventStates {
+	return make(eventStates)
+}
+
+// parse returns the name of the drbd resource whose state an events2 line
+// reports a change of.
 //
-// The lines are "<event> <object> <key>:<value> ...". The "exists" lines
-// describing the state when the stream starts, a change of fields the status
-// does not read, and the objects it does not read are ignored.
-func parseEvent(line string) (string, bool) {
+// The lines are "<event> <object> <key>:<value> ...". The "exists" lines,
+// describing the state when the stream starts, are recorded, and so is
+// every line after, so a "change" line counts only when a state key takes
+// another value: the open count of a device, which a process opening it as
+// lvs scanning the block devices changes, the promotion score, the path and
+// helper lines, and the objects the status does not read, count for
+// nothing. A "create" or a "destroy" line always counts.
+func (t eventStates) parse(line string) (string, bool) {
 	fields := strings.Fields(line)
 	if len(fields) < 3 {
 		return "", false
 	}
-	switch fields[0] {
-	case "create", "change", "destroy":
+	event, object := fields[0], fields[1]
+	switch event {
+	case "exists", "create", "change", "destroy":
 	default:
 		return "", false
 	}
-	if !objects[fields[1]] {
+	if !objects[object] {
 		return "", false
 	}
-	var name string
-	changed := fields[0] != "change"
+	var name, peer, volume string
+	values := make(map[string]string)
 	for _, field := range fields[2:] {
 		k, v, ok := strings.Cut(field, ":")
 		if !ok {
@@ -354,12 +371,45 @@ func parseEvent(line string) (string, bool) {
 		switch {
 		case k == "name":
 			name = v
+		case k == "peer-node-id":
+			peer = v
+		case k == "volume":
+			volume = v
 		case stateKeys[k]:
-			changed = true
+			values[k] = v
 		}
 	}
-	if name == "" || !changed {
+	if name == "" {
 		return "", false
 	}
-	return name, true
+	key := object + " " + name + " " + peer + " " + volume
+	switch event {
+	case "exists", "create":
+		t[key] = values
+		return name, event == "create"
+	case "destroy":
+		delete(t, key)
+		if object == "resource" {
+			// Its connections, devices and peer devices go with it.
+			for k := range t {
+				if strings.Fields(k)[1] == name {
+					delete(t, k)
+				}
+			}
+		}
+		return name, true
+	}
+	known, ok := t[key]
+	if !ok {
+		known = make(map[string]string)
+		t[key] = known
+	}
+	changed := false
+	for k, v := range values {
+		if previous, ok := known[k]; !ok || previous != v {
+			changed = true
+			known[k] = v
+		}
+	}
+	return name, changed
 }

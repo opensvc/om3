@@ -1,0 +1,7 @@
+A text the quiesce command prints on its stdout once the writes are
+suspended: the quiesce is then a session held open until the resume, as a
+database lock lasts only while the client holding it is connected. The run
+starts once a line holds it, within `quiesce_timeout`.
+
+If om ends before the resume, the session's stdin closes, the command exits,
+and a lock it held drops by itself.

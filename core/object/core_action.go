@@ -464,6 +464,7 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("crm", "true")
 	logger.Infof(">>> do %s %s (origin %s, session_id %s)", action.Name, argv, env.Origin(), xsession.SessionID())
 	beginTime := time.Now()
+	ctx = actioncontext.WithBeganAt(ctx, beginTime)
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
 	defer func() {
@@ -878,6 +879,12 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 	}
 	if actioncontext.HasResourceSelector(ctx) {
 		// don't verify instance avail if a resource selection was requested
+		return nil
+	}
+	if actioncontext.IsStep(ctx) {
+		// A step of another action acts on part of the instance: the
+		// stop ending a provision leaves what was up before, the steps
+		// of a restore leave the heads up.
 		return nil
 	}
 	if len(actioncontext.Slaves(ctx)) > 0 || actioncontext.AllSlaves(ctx) || actioncontext.Master(ctx) {
