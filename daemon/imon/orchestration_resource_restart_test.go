@@ -69,3 +69,21 @@ func TestAnInstanceWithAResourceStoppedIsNoCandidateOfTheDaemon(t *testing.T) {
 	assert.True(t, m.isStartCandidateLeader(false), "node1 is a candidate of a user start")
 	assert.Equal(t, []string{"app#1"}, local.StoppedResources())
 }
+
+// A giveback is a user request: the instance to start is the leader of the
+// placement, still flagged stopped or frozen, where the ha leader rule
+// skipped it and handed the start to a peer that had lowered its own flag
+// first, or that a user had unstopped.
+func TestGivebackStartsTheLeaderStillFlaggedStopped(t *testing.T) {
+	m := newAffinityTestManager(instance.ActorConfig{})
+	local := m.instStatus["node1"]
+	local.StoppedAt = time.Now()
+	m.instStatus["node1"] = local
+	assert.False(t, m.isStartCandidateLeader(true), "the daemon, by itself, skips node1")
+	assert.True(t, m.isStartCandidateLeader(false), "a request starts it")
+
+	local.StoppedAt = time.Time{}
+	local.FrozenAt = time.Now()
+	m.instStatus["node1"] = local
+	assert.True(t, m.isStartCandidateLeader(false), "frozen, it takes part in a request too")
+}
