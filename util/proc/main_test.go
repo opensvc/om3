@@ -52,6 +52,20 @@ func TestEnv(t *testing.T) {
 	assert.Equal(t, os.Getenv("PATH"), p.Env()["PATH"])
 }
 
+func TestStartTime(t *testing.T) {
+	self, err := New(os.Getpid()).StartTime()
+	require.NoError(t, err)
+	again, err := New(os.Getpid()).StartTime()
+	require.NoError(t, err)
+	require.Equal(t, self, again, "a process keeps its start time")
+	cmd := exec.Command("sleep", "30")
+	require.NoError(t, cmd.Start())
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	child, err := New(cmd.Process.Pid).StartTime()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, child, self, "a child starts after its parent")
+}
+
 func TestTree(t *testing.T) {
 	cmd := exec.Command("/bin/sh", "-c", "sleep 30 & sleep 30 & wait")
 	require.NoError(t, cmd.Start())
