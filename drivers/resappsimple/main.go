@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resapp"
+	"github.com/opensvc/om3/v3/util/bootid"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/funcopt"
@@ -238,16 +239,18 @@ func (t *T) getTargets(cmdArgs []string) (proc.L, error) {
 	return t.parentOf(procs), nil
 }
 
-// parentOf returns, among the processes carrying the resource identity, the
-// one the start command launched, if it still runs.
+// parentOf returns the process the start command launched, if it still
+// runs. It may no longer carry the resource identity, as a launcher clearing
+// its environment before it exec's: the record names it all the same.
 //
 // Without a record of it, as for a process an older agent started, they are
-// the topmost ones: those whose parent does not carry the identity. A
-// process the application detached from its parent then counts as one, but
-// a status saying down while the application runs would start it again.
+// the topmost processes carrying the resource identity: those whose parent
+// does not carry it. A process the application detached from its parent
+// then counts as one, but a status saying down while the application runs
+// would start it again.
 func (t *T) parentOf(procs proc.L) proc.L {
 	l := proc.NewList()
-	pid, startTime, err := t.readStarted()
+	pid, startTime, bootID, err := t.readStarted()
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			t.Log().Debugf("read the started process: %s", err)
@@ -260,15 +263,20 @@ func (t *T) parentOf(procs proc.L) proc.L {
 		}
 		return l
 	}
-	for _, p := range procs.Procs() {
-		if p.PID() != pid {
-			continue
-		}
-		// the pid may be reused by a process the application started.
-		if st, err := p.StartTime(); err == nil && st == startTime {
-			l.Add(p)
-		}
+	if bootID != bootid.Get() {
+		// the start times of the processes of another boot are no
+		// telling them apart from those of this one.
+		return l
 	}
+	p := proc.New(pid)
+	if st, err := p.StartTime(); err != nil || st != startTime {
+		// gone, or the pid reused.
+		return l
+	}
+	if zombie, err := p.IsZombie(); err != nil || zombie {
+		return l
+	}
+	l.Add(p)
 	return l
 }
 
@@ -286,7 +294,8 @@ func (t *T) logLeftRunning(cmdArgs []string) {
 }
 
 // startedFile is where the start records the process its command launched,
-// as "<pid> <start time>", the start time telling a reused pid apart.
+// as "<pid> <start time> <boot id>", the start time and the boot id telling
+// a reused pid apart.
 //
 // The record outlives the process: without it, the processes the
 // application detached from a stopped parent would be taken for it.
@@ -299,29 +308,33 @@ func (t *T) recordStarted(pid int) error {
 	if err != nil {
 		return err
 	}
+	bootID := bootid.Get()
+	if bootID == "" {
+		return fmt.Errorf("no boot id")
+	}
 	p := t.startedFile()
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(p, []byte(fmt.Sprintf("%d %d\n", pid, startTime)), 0o644)
+	return os.WriteFile(p, []byte(fmt.Sprintf("%d %d %s\n", pid, startTime, bootID)), 0o644)
 }
 
-func (t *T) readStarted() (int, uint64, error) {
+func (t *T) readStarted() (int, uint64, string, error) {
 	b, err := os.ReadFile(t.startedFile())
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, "", err
 	}
 	words := strings.Fields(string(b))
-	if len(words) != 2 {
-		return 0, 0, fmt.Errorf("%s: want \"<pid> <start time>\", got %q", t.startedFile(), b)
+	if len(words) != 3 {
+		return 0, 0, "", fmt.Errorf("%s: want \"<pid> <start time> <boot id>\", got %q", t.startedFile(), b)
 	}
 	pid, err := strconv.Atoi(words[0])
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", t.startedFile(), err)
+		return 0, 0, "", fmt.Errorf("%s: %w", t.startedFile(), err)
 	}
 	startTime, err := strconv.ParseUint(words[1], 10, 64)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", t.startedFile(), err)
+		return 0, 0, "", fmt.Errorf("%s: %w", t.startedFile(), err)
 	}
-	return pid, startTime, nil
+	return pid, startTime, words[2], nil
 }

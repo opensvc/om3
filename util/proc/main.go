@@ -373,9 +373,21 @@ func (t T) PPID() (int, error) {
 	return strconv.Atoi(fields[1])
 }
 
+// IsZombie says the process ended, its parent not having reaped it yet.
+func (t T) IsZombie() (bool, error) {
+	fields, err := t.statFields()
+	if err != nil {
+		return false, err
+	}
+	if len(fields) < 1 {
+		return false, fmt.Errorf("%s/stat: no state field", t.Head())
+	}
+	return fields[0] == "Z" || fields[0] == "X", nil
+}
+
 // StartTime is when the process started, in clock ticks since the boot, read
-// from /proc/<pid>/stat. With the pid, it names a process: a pid is reused,
-// but not with the same start time before a reboot.
+// from /proc/<pid>/stat. With the pid and the boot id, it names a process: a
+// pid is reused, but not with the same start time before a reboot.
 func (t T) StartTime() (uint64, error) {
 	fields, err := t.statFields()
 	if err != nil {

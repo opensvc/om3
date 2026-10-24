@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/proc"
 )
 
 var (
@@ -298,10 +299,47 @@ func TestKill(t *testing.T) {
 		defer cancel()
 		startServer(t, &app, ctx)
 		defer stopAll(&app, ctx)
-		pid, startTime, err := app.readStarted()
+		pid, startTime, bootID, err := app.readStarted()
 		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(app.startedFile(), []byte(fmt.Sprintf("%d %d\n", pid, startTime+1)), 0o644))
+		require.NoError(t, os.WriteFile(app.startedFile(), []byte(fmt.Sprintf("%d %d %s\n", pid, startTime+1, bootID)), 0o644))
 		assert.Equal(t, status.Down, app.Status(ctx), "status of a reused pid")
+	})
+
+	t.Run("parent is not a process of another boot", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killParent})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		startServer(t, &app, ctx)
+		defer stopAll(&app, ctx)
+		pid, startTime, _, err := app.readStarted()
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(app.startedFile(), []byte(fmt.Sprintf("%d %d %s\n", pid, startTime, "another-boot")), 0o644))
+		assert.Equal(t, status.Down, app.Status(ctx), "status of a pid recorded in another boot")
+	})
+
+	t.Run("parent is found when it clears its environment", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killParent, T: resapp.T{StartCmd: "env -i sleep 31"}})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		require.Nil(t, app.Start(ctx), "Start(...) returned value")
+		pid, _, _, err := app.readStarted()
+		require.NoError(t, err)
+		for i := 0; i < 100; i++ {
+			if p := proc.New(pid); p.CommandLine() == "sleep" {
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		procs, err := app.getRunning(nil)
+		require.NoError(t, err)
+		require.Equal(t, 0, procs.Len(), "the parent does not carry the resource identity")
+		assert.Equal(t, status.Up, app.Status(ctx), "status after start")
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+		assert.Equal(t, status.Down, app.Status(ctx), "status after stop")
 	})
 
 	t.Run("parent is the topmost process when the start was not recorded", func(t *testing.T) {
@@ -312,7 +350,7 @@ func TestKill(t *testing.T) {
 		defer cancel()
 		startServer(t, &app, ctx)
 		defer stopAll(&app, ctx)
-		pid, _, err := app.readStarted()
+		pid, _, _, err := app.readStarted()
 		require.NoError(t, err)
 		require.NoError(t, os.Remove(app.startedFile()))
 		procs, err := app.getTargets(nil)
