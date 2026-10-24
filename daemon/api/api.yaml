@@ -6628,6 +6628,11 @@ paths:
         List the stores the requester may use or read: the stores of the
         cluster configuration, to a requester with a grant, and the stores
         a sec declares, to the namespaces it serves.
+
+        The stats of a store are of the whole store to root and to a role
+        on every namespace, and summed from the objects of the namespaces
+        the requester holds a role on otherwise. The space left and the
+        reach of the store are the store's.
       operationId: GetStores
       tags:
         - store
@@ -6721,7 +6726,7 @@ paths:
             type: string
         - in: query
           name: after
-          description: The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first.
+          description: The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first. Passed as before, it is taken the same way.
           schema:
             type: string
         - $ref: '#/components/parameters/inQueryStoreObjectID'
@@ -10670,7 +10675,7 @@ components:
       properties:
         next:
           type: string
-          description: The before value asking the next page, set when the answer was cut at the limit.
+          description: The value asking the next page, as before, or as after for an answer asked with order asc, set when the answer was cut at the limit.
         kind:
           type: string
           enum:
@@ -10782,6 +10787,11 @@ components:
           type: string
           format: date-time
           description: When these figures were computed.
+        missing_nodes:
+          type: array
+          description: The nodes whose directory was not read, for a store keeping its runs in a directory of each node, whose runs the figures leave out.
+          items:
+            type: string
         clusters:
           type: array
           items:
@@ -10823,6 +10833,11 @@ components:
         - items
         - kind
       properties:
+        missing_nodes:
+          type: array
+          description: The nodes whose directory was not read, whose objects the list leaves out.
+          items:
+            type: string
         kind:
           type: string
           enum:

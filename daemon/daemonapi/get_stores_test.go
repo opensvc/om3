@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -36,4 +37,26 @@ func TestMayUseRun(t *testing.T) {
 
 	// The root namespace is the one of a path without one.
 	assert.True(t, mayUseRun(rbac.NewGrants("admin:root"), "tar1", backup.Run{Path: "web", ClusterID: "c1"}, "c1", rbac.RoleAdmin))
+}
+
+// A namespace sees the stats of its own objects in a store others use too,
+// with the space left of the whole store; root and a role on every
+// namespace see the whole store.
+func TestStoreStatsFor(t *testing.T) {
+	free := int64(1000)
+	whole := backup.Stats{Runs: 5, Objects: 2, FreeBytes: &free, MissingNodes: []string{"n3"}}
+	objects := []backup.ObjectStats{
+		{ClusterID: "c1", Path: "ns1/svc/web", Runs: 2, LogicalBytes: 10},
+		{ClusterID: "c1", Path: "ns2/svc/db", Runs: 3, LogicalBytes: 20},
+	}
+	s := storeStatsFor(rbac.NewGrants("guest:ns1"), "tar1", "c1", whole, objects)
+	assert.Equal(t, 2, s.Runs)
+	assert.Equal(t, 1, s.Objects)
+	assert.Equal(t, int64(10), s.LogicalBytes)
+	require.NotNil(t, s.FreeBytes)
+	assert.Equal(t, free, *s.FreeBytes, "the space left is the store's")
+	assert.Equal(t, []string{"n3"}, s.MissingNodes)
+
+	assert.Equal(t, 5, storeStatsFor(rbac.NewGrants("root"), "tar1", "c1", whole, objects).Runs)
+	assert.Equal(t, 5, storeStatsFor(rbac.NewGrants("guest"), "tar1", "c1", whole, objects).Runs, "a role on every namespace")
 }

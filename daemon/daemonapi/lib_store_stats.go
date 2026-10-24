@@ -9,13 +9,14 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 type (
 	// storeStatsEntry is what the daemon knows of the figures of a store.
 	storeStatsEntry struct {
 		stats     *backup.Stats
-		nodeStats map[string]backup.Stats
+		nodeStats map[string]backup.NodeStats
 		objects   []backup.ObjectStats
 
 		refreshing bool
@@ -79,7 +80,7 @@ func refreshStoreStats(ref string, done chan struct{}) {
 	var (
 		stats     backup.Stats
 		objects   []backup.ObjectStats
-		nodeStats map[string]backup.Stats
+		nodeStats map[string]backup.NodeStats
 	)
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err == nil {
@@ -109,6 +110,28 @@ func refreshStoreStats(ref string, done chan struct{}) {
 	e.stats, e.objects, e.nodeStats = &stats, objects, nodeStats
 }
 
+// storeStatsFor returns the stats of a store as the requester may see them:
+// of the whole store, to root and to a role on every namespace, and summed
+// from the objects the requester may see otherwise, so a namespace does not
+// learn what the others hold. The space left and the reach of the store are
+// the store's, which every user of it writes into.
+func storeStatsFor(grants rbac.Grants, ref, clusterID string, whole backup.Stats, objects []backup.ObjectStats) backup.Stats {
+	if grants.HasRole(rbac.RoleRoot) || grants.HasRoleOn("", storeReaderRoles...) {
+		return whole
+	}
+	visible := make([]backup.ObjectStats, 0, len(objects))
+	for _, o := range objects {
+		if mayUseRun(grants, ref, backup.Run{Path: o.Path, ClusterID: o.ClusterID}, clusterID, storeReaderRoles...) {
+			visible = append(visible, o)
+		}
+	}
+	s := backup.SumStats(visible)
+	s.FreeBytes = whole.FreeBytes
+	s.CheckedAt, s.CheckError = whole.CheckedAt, whole.CheckError
+	s.UpdatedAt, s.MissingNodes = whole.UpdatedAt, whole.MissingNodes
+	return s
+}
+
 func apiStoreStats(s backup.Stats) api.StoreStats {
 	r := api.StoreStats{
 		Runs:         s.Runs,
@@ -126,6 +149,9 @@ func apiStoreStats(s backup.Stats) api.StoreStats {
 	r.CheckedAt = timePtr(s.CheckedAt)
 	if s.CheckError != "" {
 		r.CheckError = &s.CheckError
+	}
+	if len(s.MissingNodes) > 0 {
+		r.MissingNodes = &s.MissingNodes
 	}
 	for _, c := range s.Clusters {
 		r.Clusters = append(r.Clusters, api.StoreClusterStats{

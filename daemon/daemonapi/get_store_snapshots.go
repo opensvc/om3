@@ -102,7 +102,7 @@ func (a *DaemonAPI) GetStoreSnapshots(ctx echo.Context, params api.GetStoreSnaps
 	}
 	asc := params.Order != nil && *params.Order == api.Asc
 	cursor := params.Before
-	if asc {
+	if asc && params.After != nil && *params.After != "" {
 		cursor = params.After
 	}
 	list, err := pageStoreSnapshots(items, params.Limit, cursor, asc)

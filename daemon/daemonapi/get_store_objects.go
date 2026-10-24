@@ -54,7 +54,11 @@ func (a *DaemonAPI) GetStoreObjects(ctx echo.Context, params api.GetStoreObjects
 		}
 		return strings.Compare(a.Path, b.Path)
 	})
-	return ctx.JSON(http.StatusOK, api.StoreObjectStatsList{Kind: "StoreObjectStatsList", Items: items})
+	list := api.StoreObjectStatsList{Kind: "StoreObjectStatsList", Items: items}
+	if e.stats != nil && len(e.stats.MissingNodes) > 0 {
+		list.MissingNodes = &e.stats.MissingNodes
+	}
+	return ctx.JSON(http.StatusOK, list)
 }
 
 // compareTimePtr orders two times, a nil one first.

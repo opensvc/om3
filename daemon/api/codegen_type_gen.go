@@ -2982,6 +2982,9 @@ type StoreObjectStats struct {
 type StoreObjectStatsList struct {
 	Items []StoreObjectStats       `json:"items"`
 	Kind  StoreObjectStatsListKind `json:"kind"`
+
+	// MissingNodes The nodes whose directory was not read, whose objects the list leaves out.
+	MissingNodes *[]string `json:"missing_nodes,omitempty"`
 }
 
 // StoreObjectStatsListKind defines model for StoreObjectStatsList.Kind.
@@ -3014,7 +3017,7 @@ type StoreSnapshotList struct {
 	Items []StoreSnapshot       `json:"items"`
 	Kind  StoreSnapshotListKind `json:"kind"`
 
-	// Next The before value asking the next page, set when the answer was cut at the limit.
+	// Next The value asking the next page, as before, or as after for an answer asked with order asc, set when the answer was cut at the limit.
 	Next *string `json:"next,omitempty"`
 }
 
@@ -3041,6 +3044,9 @@ type StoreStats struct {
 
 	// LogicalBytes The size of what the runs saved.
 	LogicalBytes int64 `json:"logical_bytes"`
+
+	// MissingNodes The nodes whose directory was not read, for a store keeping its runs in a directory of each node, whose runs the figures leave out.
+	MissingNodes *[]string `json:"missing_nodes,omitempty"`
 
 	// Objects The objects with a run, counted by object id.
 	Objects   int `json:"objects"`
@@ -5069,7 +5075,7 @@ type GetStoreSnapshotsParams struct {
 	// Before The next value of a previous answer, for the snapshots older than its last one, newest first.
 	Before *string `form:"before,omitempty" json:"before,omitempty"`
 
-	// After The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first.
+	// After The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first. Passed as before, it is taken the same way.
 	After *string `form:"after,omitempty" json:"after,omitempty"`
 
 	// ObjectId The object whose snapshots to list, by its id, which a path names two of after a rename or a create over a purged one.

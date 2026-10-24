@@ -32,6 +32,7 @@ func (a *DaemonAPI) GetStores(ctx echo.Context) error {
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
 	}
+	clusterID, _ := n.Cluster()
 	items := make([]api.StoreItem, 0)
 	for _, item := range n.ListStores() {
 		if !mayReadStore(grants, item.Share) {
@@ -45,13 +46,13 @@ func (a *DaemonAPI) GetStores(ctx echo.Context) error {
 		}
 		e := cachedStoreStats(item.Ref, storeStatsFirstWait)
 		if e.stats != nil {
-			stats := apiStoreStats(*e.stats)
+			stats := apiStoreStats(storeStatsFor(grants, item.Ref, clusterID, *e.stats, e.objects))
 			i.Stats = &stats
 		}
 		if len(e.nodeStats) > 0 {
 			m := make(map[string]api.StoreStats, len(e.nodeStats))
-			for node, stats := range e.nodeStats {
-				m[node] = apiStoreStats(stats)
+			for node, ns := range e.nodeStats {
+				m[node] = apiStoreStats(storeStatsFor(grants, item.Ref, clusterID, ns.Stats, ns.Objects))
 			}
 			i.NodeStats = &m
 		}

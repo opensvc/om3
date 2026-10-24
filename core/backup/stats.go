@@ -2,7 +2,10 @@ package backup
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -38,6 +41,11 @@ type (
 
 		// UpdatedAt is when these figures were computed.
 		UpdatedAt time.Time `json:"updated_at"`
+
+		// MissingNodes are the nodes whose directory was not read, a
+		// store keeping its runs in a directory of each node: the
+		// figures leave their runs out.
+		MissingNodes []string `json:"missing_nodes,omitempty"`
 
 		// Clusters break the figures down by the cluster that wrote the
 		// runs.
@@ -89,7 +97,20 @@ type (
 	// NodeStatser is a store keeping its runs in a directory of each node,
 	// whose stats are of each node, by node name.
 	NodeStatser interface {
-		NodeStats(ctx context.Context) map[string]Stats
+		NodeStats(ctx context.Context) map[string]NodeStats
+	}
+
+	// NodeStats are the stats of the directory of one node, and the stats
+	// of the objects they sum.
+	NodeStats struct {
+		Stats   Stats
+		Objects []ObjectStats
+	}
+
+	// PartialError is the stats of a store read without some of its
+	// nodes, by node name, with why.
+	PartialError struct {
+		Nodes map[string]error
 	}
 
 	// Statser is a store reading the stats every object of it records,
@@ -208,11 +229,16 @@ func ComputeStats(ctx context.Context, s Store) (Stats, []ObjectStats) {
 		return Stats{Clusters: make([]ClusterStats, 0), UpdatedAt: time.Now().UTC(), CheckError: "the store keeps no stats"}, nil
 	}
 	objects, err := statser.ObjectStats(ctx)
-	if err != nil {
+	var partial *PartialError
+	if err != nil && !errors.As(err, &partial) {
 		return Stats{Clusters: make([]ClusterStats, 0), UpdatedAt: time.Now().UTC(), CheckError: err.Error()}, nil
 	}
 	stats := SumStats(objects)
 	stats.CheckedAt = stats.UpdatedAt
+	if partial != nil {
+		stats.MissingNodes = partial.NodeNames()
+		stats.CheckError = partial.Error()
+	}
 	if usager, ok := s.(Usager); ok {
 		if u, err := usager.Usage(ctx); err != nil {
 			stats.CheckError = err.Error()
@@ -269,5 +295,23 @@ func MergeObjectStats(lists ...[]ObjectStats) []ObjectStats {
 	for _, k := range order {
 		l = append(l, *merged[k])
 	}
+	return l
+}
+
+func (t *PartialError) Error() string {
+	l := make([]string, 0, len(t.Nodes))
+	for _, node := range t.NodeNames() {
+		l = append(l, fmt.Sprintf("%s: %s", node, t.Nodes[node]))
+	}
+	return "the directories of some nodes were not read: " + strings.Join(l, "; ")
+}
+
+// NodeNames returns the nodes not read, sorted.
+func (t *PartialError) NodeNames() []string {
+	l := make([]string, 0, len(t.Nodes))
+	for node := range t.Nodes {
+		l = append(l, node)
+	}
+	slices.Sort(l)
 	return l
 }

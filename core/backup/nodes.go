@@ -189,43 +189,53 @@ func (t *nodesStore) IsLocal() bool {
 }
 
 // ObjectStats merges the stats the objects record in the directories of
-// every node. A peer not reachable is said, and its objects are not counted.
+// every node. A peer not read, its objects are not counted, and the error
+// is a PartialError naming it, beside the stats of the others.
 func (t *nodesStore) ObjectStats(ctx context.Context) ([]ObjectStats, error) {
 	lists := make([][]ObjectStats, 0, len(t.peers)+1)
+	missing := make(map[string]error)
 	for _, node := range append([]string{t.local}, t.peers...) {
-		d, err := t.driverOf(node)
-		if err != nil {
-			t.warnf("%s: its objects are not counted", err)
-			continue
-		}
-		statser, ok := d.(Statser)
-		if !ok {
-			continue
-		}
-		l, err := statser.ObjectStats(ctx)
+		l, err := t.nodeObjectStats(ctx, node)
 		if err != nil {
 			if node == t.local {
 				return nil, err
 			}
 			t.warnf("store %s: the stats of %s: %s", t.Ref(), node, err)
+			missing[node] = err
 			continue
 		}
 		lists = append(lists, l)
 	}
+	if len(missing) > 0 {
+		return MergeObjectStats(lists...), &PartialError{Nodes: missing}
+	}
 	return MergeObjectStats(lists...), nil
 }
 
-// NodeStats returns the stats of the directory of each node, a node not
-// reachable saying why.
-func (t *nodesStore) NodeStats(ctx context.Context) map[string]Stats {
-	m := make(map[string]Stats)
+func (t *nodesStore) nodeObjectStats(ctx context.Context, node string) ([]ObjectStats, error) {
+	d, err := t.driverOf(node)
+	if err != nil {
+		return nil, err
+	}
+	statser, ok := d.(Statser)
+	if !ok {
+		return []ObjectStats{}, nil
+	}
+	return statser.ObjectStats(ctx)
+}
+
+// NodeStats returns the stats of the directory of each node, and of the
+// objects they sum, a node not reachable saying why.
+func (t *nodesStore) NodeStats(ctx context.Context) map[string]NodeStats {
+	m := make(map[string]NodeStats)
 	for _, node := range append([]string{t.local}, t.peers...) {
 		d, err := t.driverOf(node)
 		if err != nil {
-			m[node] = Stats{Clusters: make([]ClusterStats, 0), UpdatedAt: time.Now().UTC(), CheckError: err.Error()}
+			m[node] = NodeStats{Stats: Stats{Clusters: make([]ClusterStats, 0), UpdatedAt: time.Now().UTC(), CheckError: err.Error()}}
 			continue
 		}
-		m[node] = StoreStats(ctx, d)
+		stats, objects := ComputeStats(ctx, d)
+		m[node] = NodeStats{Stats: stats, Objects: objects}
 	}
 	return m
 }
