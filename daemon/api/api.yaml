@@ -668,6 +668,61 @@ paths:
         - cluster
       x-internal: true
 
+  /api/cluster/join/register:
+    post:
+      description: |
+        For internal use only.
+
+        Register on the collector a node joining the cluster of the requested
+        api node, on its behalf.
+
+        The requester must be granted the 'root' or 'join' roles.
+
+        The join moves the joining node configuration aside, its registration
+        id included, so the joining node can't register itself before its
+        daemon starts. The api node, authenticated on the collector by its own
+        registration id, registers it instead: the collector moves the joining
+        node to the app and the cluster of the api node, and mints a new
+        registration id, returned for the joining node to store in its
+        node.uuid keyword.
+
+        The joining node must be a cluster node, and must give the
+        registration id it held before the join: the collector only registers
+        a node already registered under its nodename. A node without one
+        registers itself with 'om node register'.
+      operationId: PostClusterJoinRegister
+      requestBody:
+        description: the joining node and its previous registration id
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterJoinRegisterBody'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterJoinRegistered'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+        502:
+          $ref: '#/components/responses/502'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+
   /api/cluster/lock:
     get:
       description: |
@@ -6750,6 +6805,33 @@ components:
             Register the nodes in this app. Without it, the node app keyword
             is used, or the collector picks an app owned by the user.
           example: MyApp
+
+    ClusterJoinRegisterBody:
+      type: object
+      required:
+        - node
+        - uuid
+      properties:
+        node:
+          type: string
+          description: The nodename of the joining node.
+          example: node3
+        uuid:
+          type: string
+          description: |
+            The registration id the joining node held before the join, from
+            its node.uuid keyword.
+
+    ClusterJoinRegistered:
+      type: object
+      required:
+        - uuid
+      properties:
+        uuid:
+          type: string
+          description: |
+            The new registration id of the joining node, for its node.uuid
+            keyword.
 
     ClusterEvictBody:
       type: object

@@ -1214,6 +1214,23 @@ type ClusterEvictBody struct {
 	Timeout *string `json:"timeout,omitempty"`
 }
 
+// ClusterJoinRegisterBody defines model for ClusterJoinRegisterBody.
+type ClusterJoinRegisterBody struct {
+	// Node The nodename of the joining node.
+	Node string `json:"node"`
+
+	// Uuid The registration id the joining node held before the join, from
+	// its node.uuid keyword.
+	Uuid string `json:"uuid"`
+}
+
+// ClusterJoinRegistered defines model for ClusterJoinRegistered.
+type ClusterJoinRegistered struct {
+	// Uuid The new registration id of the joining node, for its node.uuid
+	// keyword.
+	Uuid string `json:"uuid"`
+}
+
 // ClusterLock defines model for ClusterLock.
 type ClusterLock struct {
 	AcquiredAt time.Time `json:"acquired_at"`
@@ -4727,6 +4744,9 @@ type PostClusterEnrollJSONRequestBody = ClusterEnrollBody
 
 // PostClusterEvictJSONRequestBody defines body for PostClusterEvict for application/json ContentType.
 type PostClusterEvictJSONRequestBody = ClusterEvictBody
+
+// PostClusterJoinRegisterJSONRequestBody defines body for PostClusterJoinRegister for application/json ContentType.
+type PostClusterJoinRegisterJSONRequestBody = ClusterJoinRegisterBody
 
 // PostClusterLockJSONRequestBody defines body for PostClusterLock for application/json ContentType.
 type PostClusterLockJSONRequestBody = PostClusterLock

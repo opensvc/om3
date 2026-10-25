@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -24,6 +26,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/remoteconfig"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (
@@ -71,6 +74,9 @@ func (t *CmdClusterJoin) run() error {
 	if err := t.checkParams(); err != nil {
 		return err
 	}
+	// The join moves the node config aside: read the collector registration
+	// id before, for the api node to register this node with it.
+	prevUUID := localNodeUUID()
 	certChain, err := t.extractCaClaim()
 	if err != nil {
 		return err
@@ -156,7 +162,7 @@ func (t *CmdClusterJoin) run() error {
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
 		return fmt.Errorf("wait join result: %w", err)
 	}
-	err = t.onJoined(ctx, cli)
+	err = t.onJoined(ctx, cli, prevUUID)
 	if err != nil {
 		return fmt.Errorf("on joined: %w", err)
 	}
@@ -238,7 +244,7 @@ func (t *CmdClusterJoin) createTmpCertFile(b []byte) (certFile string, err error
 	return
 }
 
-func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error) {
+func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID string) (err error) {
 	filePaths := make(map[string]naming.Path)
 	fileTimestamps := make(map[string]time.Time)
 	toFetch := []naming.Path{
@@ -313,6 +319,10 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		}
 	}
 
+	// Not bound to the join timeout, which a long drain may have used up:
+	// the client timeout bounds the request.
+	t.collectorRegister(context.Background(), cli, prevUUID)
+
 	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
@@ -356,4 +366,58 @@ func (t *CmdClusterJoin) waitJoinResult(ctx context.Context, evReader event.Read
 			}
 		}
 	}
+}
+
+// localNodeUUID returns the collector registration id of the node, empty when
+// it has none.
+func localNodeUUID() string {
+	n, err := object.NewNode()
+	if err != nil {
+		return ""
+	}
+	return n.Config().GetString(key.Parse("node.uuid"))
+}
+
+// collectorRegister has the api node register this node on the collector
+// with the registration id it held before the join, and stores the new one
+// in the node config, so the daemon speaks to the collector as soon as it
+// starts.
+//
+// The join does not depend on the collector: a node without a registration
+// id is left as it is, and a refused one is warned to register itself.
+func (t *CmdClusterJoin) collectorRegister(ctx context.Context, cli *client.T, prevUUID string) {
+	if prevUUID == "" {
+		return
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "Register on the collector through %s\n", t.Node)
+	if err := t.collectorRegisterThroughAPINode(ctx, cli, prevUUID); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: register on the collector: %s: register with 'om node register'\n", err)
+	}
+}
+
+func (t *CmdClusterJoin) collectorRegisterThroughAPINode(ctx context.Context, cli *client.T, prevUUID string) error {
+	body := api.ClusterJoinRegisterBody{Node: hostname.Hostname(), Uuid: prevUUID}
+	resp, err := cli.PostClusterJoinRegisterWithResponse(ctx, body)
+	if err != nil {
+		return fmt.Errorf("%w: %w", commoncmd.ErrClientRequest, err)
+	}
+	if resp.JSON200 == nil {
+		var problem api.Problem
+		_ = json.Unmarshal(resp.Body, &problem)
+		return fmt.Errorf("%w: %s: %s", commoncmd.ErrClientStatusCode, resp.Status(), problem.Detail)
+	}
+	return storeCollectorRegistration(resp.JSON200.Uuid)
+}
+
+// storeCollectorRegistration sets the collector registration id of the node
+// in the node config.
+func storeCollectorRegistration(nodeUUID string) error {
+	n, err := object.NewNode()
+	if err != nil {
+		return err
+	}
+	if err := n.Config().Set(*keyop.New(key.Parse("node.uuid"), keyop.Set, nodeUUID, 0)); err != nil {
+		return fmt.Errorf("store the collector registration: %w", err)
+	}
+	return nil
 }

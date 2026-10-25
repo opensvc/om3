@@ -25,6 +25,15 @@ type (
 	registerReq struct {
 		Nodename string `json:"nodename"`
 		App      string `json:"app,omitempty"`
+
+		// ClusterID is the cluster id of the node, so the collector knows
+		// it before the first daemon status. Only the oc3 collector reads
+		// it.
+		ClusterID string `json:"cluster_id,omitempty"`
+
+		// UUID is the registration id a node joining the cluster held
+		// before the join, for the node registering it.
+		UUID string `json:"uuid,omitempty"`
 	}
 
 	// registerRes structures the POST /register response body
@@ -134,8 +143,9 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 		return fmt.Errorf("create collector server: %w", err)
 	}
 	reqData := registerReq{
-		Nodename: hostname.Hostname(),
-		App:      app,
+		Nodename:  hostname.Hostname(),
+		App:       app,
+		ClusterID: t.clusterID(),
 	}
 	if b, err := json.Marshal(reqData); err != nil {
 		return fmt.Errorf("encode request body:%w", err)
@@ -169,6 +179,60 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 		t.Log().Infof("%s", data.Info)
 	}
 	return t.writeUUID(data.UUID)
+}
+
+// RegisterJoiningNode registers on the collector the node nodename joining
+// the cluster, authenticated by this node registration id, and returns the
+// new registration id of the joining node.
+//
+// prevUUID is the registration id the joining node held before the join:
+// the collector only registers a joining node already registered under its
+// nodename, and moves it to the app and the cluster of this node.
+func (t *Node) RegisterJoiningNode(ctx context.Context, nodename, prevUUID string) (string, error) {
+	var (
+		method = http.MethodPost
+		path   = oc3path.ServerRegister
+	)
+	oc3, err := t.CollectorServer()
+	if err != nil {
+		return "", fmt.Errorf("create collector server: %w", err)
+	}
+	b, err := json.Marshal(registerReq{Nodename: nodename, UUID: prevUUID})
+	if err != nil {
+		return "", fmt.Errorf("encode request body: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, defaultPostCollectorTimeout)
+	defer cancel()
+
+	req, err := oc3.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))
+	if err != nil {
+		return "", fmt.Errorf("create collector request %s %s: %w", method, path, err)
+	}
+	resp, err := oc3.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("collector %s %s: %w", method, path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if err := CollectorResponseStatusCheck(resp, method, path, []int{http.StatusOK}); err != nil {
+		return "", err
+	}
+	data := registerResOK{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", fmt.Errorf("decode response body: %w", err)
+	}
+	if data.UUID == "" {
+		return "", fmt.Errorf("collector %s %s: empty uuid in response", method, path)
+	}
+	return data.UUID, nil
+}
+
+// clusterID returns the cluster id of the node, empty when it has none.
+func (t Node) clusterID() string {
+	v, _ := t.MergedConfig().Eval(key.T{Section: "cluster", Option: "id"})
+	s, _ := v.(string)
+	return s
 }
 
 func (t Node) registerAsUserV2(user, password, app string) error {
