@@ -23,6 +23,7 @@ type (
 	// accounts connected to the user socket.
 	UXUserGranter interface {
 		UsrFromUXUser(login string, uid uint32) (string, []string, error)
+		UXGrantsFromCgroup(cg string) (string, []string, error)
 	}
 
 	// uxUserStrategy authenticates the local accounts connected to the
@@ -56,11 +57,11 @@ func (t *uxUserStrategy) Authenticate(ctx context.Context, _ *http.Request) (*In
 	if peer == nil {
 		return nil, fmt.Errorf("strategies/uxuser: the peer of the connection is unknown")
 	}
-	switch {
-	case peer.UID == 0:
+	if peer.ForeignMountNS {
+		return t.authenticateContainer(peer)
+	}
+	if peer.UID == 0 {
 		return nil, fmt.Errorf("strategies/uxuser: root uses the root socket")
-	case peer.ForeignMountNS:
-		return nil, fmt.Errorf("strategies/uxuser: a container is not identified by its uid")
 	}
 	key := cacheKey(StrategyUXUser, strconv.FormatUint(uint64(peer.UID), 10))
 	if info, ok := authCache.get(key); ok {
@@ -114,6 +115,40 @@ func (t *uxUserStrategy) authenticate(ctx context.Context, peer *peercred.T) (*I
 		Issuer:   hostname.Hostname(),
 		Grants:   grants,
 	}, nil
+}
+
+// authenticateContainer grants a process of a container, a sidecar, what
+// the uxgrant keyword of the container resource whose process group holds
+// it says. A container is told by its cgroup, which its processes can not
+// leave, never by its uid, which its own user namespace may map to any local
+// account: root in a rootful container is not root here. The cgroup is the
+// one read through the pidfd of the process connected, which a pid reused
+// can not stand for, so a kernel without SO_PEERPIDFD identifies no
+// container.
+func (t *uxUserStrategy) authenticateContainer(peer *peercred.T) (*Info, error) {
+	if !peer.Pinned {
+		return nil, fmt.Errorf("strategies/uxuser: a container is identified through the pidfd of its process, which this kernel does not give")
+	}
+	key := cacheKey(StrategyUXUser, "cgroup", peer.Cgroup)
+	if info, ok := authCache.get(key); ok {
+		return info, nil
+	}
+	name, grants, err := t.users.UXGrantsFromCgroup(peer.Cgroup)
+	if err != nil {
+		return nil, fmt.Errorf("strategies/uxuser: cgroup %s: %w", peer.Cgroup, err)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("strategies/uxuser: cgroup %s: no container resource with uxgrant holds it", peer.Cgroup)
+	}
+	t.log.Infof("container=%s pid=%d cgroup=%s grants=%s", name, peer.PID, peer.Cgroup, strings.Join(grants, " "))
+	info := &Info{
+		Username: name,
+		Strategy: StrategyUXUser,
+		Issuer:   hostname.Hostname(),
+		Grants:   grants,
+	}
+	authCache.set(key, info, cacheTTL)
+	return info, nil
 }
 
 func initUXUser(ctx context.Context, i interface{}) (string, Strategy, error) {

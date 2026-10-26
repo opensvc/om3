@@ -30,6 +30,13 @@ func (t stubUsers) UsrFromUXUser(login string, uid uint32) (string, []string, er
 	return "", nil, nil
 }
 
+func (t stubUsers) UXGrantsFromCgroup(cg string) (string, []string, error) {
+	if u, ok := t["cgroup:"+cg]; ok {
+		return u.name, u.grants, nil
+	}
+	return "", nil, nil
+}
+
 func newTestUXUserStrategy(users stubUsers, lookup uxid.LookupFunc) *uxUserStrategy {
 	return &uxUserStrategy{
 		users:    users,
@@ -91,9 +98,24 @@ func TestUXUserStrategy(t *testing.T) {
 		assert.ErrorContains(t, err, "root uses the root socket")
 	})
 	t.Run("a container is not judged by its uid", func(t *testing.T) {
+		authCache = newCache()
+		s := newTestUXUserStrategy(stubUsers{"alice": {"u-alice", []string{"admin:ns2"}}}, alice)
+		_, err := s.Authenticate(uxUserContext(&peercred.T{UID: 1001, ForeignMountNS: true, Pinned: true, Cgroup: "/user.slice/x.scope"}), nil)
+		assert.ErrorContains(t, err, "no container resource")
+	})
+	t.Run("a sidecar gets the uxgrant of its container resource, root included", func(t *testing.T) {
+		authCache = newCache()
+		cg := "/opensvc.slice/opensvc-ns.ns1.slice/opensvc-ns.ns1-svc.app.slice/opensvc-ns.ns1-svc.app-container.sidecar.slice/libpod-1.scope"
+		s := newTestUXUserStrategy(stubUsers{"cgroup:" + cg: {"ns1/svc/app:container#sidecar", []string{"root"}}}, alice)
+		info, err := s.Authenticate(uxUserContext(&peercred.T{UID: 0, ForeignMountNS: true, Pinned: true, Cgroup: cg}), nil)
+		require.NoError(t, err)
+		assert.Equal(t, "ns1/svc/app:container#sidecar", info.Username)
+		assert.Equal(t, []string{"root"}, info.Grants)
+	})
+	t.Run("a container is not identified without a pidfd", func(t *testing.T) {
 		s := newTestUXUserStrategy(stubUsers{}, alice)
-		_, err := s.Authenticate(uxUserContext(&peercred.T{UID: 1001, ForeignMountNS: true}), nil)
-		assert.ErrorContains(t, err, "container")
+		_, err := s.Authenticate(uxUserContext(&peercred.T{UID: 1001, ForeignMountNS: true, Cgroup: "/x"}), nil)
+		assert.ErrorContains(t, err, "pidfd")
 	})
 	t.Run("another listener is not the user socket", func(t *testing.T) {
 		s := newTestUXUserStrategy(stubUsers{}, alice)
