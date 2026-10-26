@@ -26,6 +26,20 @@ var (
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/info"),
 	}
+	UnixKeywordQuiesceCmd = keywords.Keyword{
+		Attr:     "QuiesceCmd",
+		Example:  "/usr/local/bin/app-flush --lock",
+		Option:   "quiesce",
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/quiesce"),
+	}
+	UnixKeywordResumeCmd = keywords.Keyword{
+		Attr:     "ResumeCmd",
+		Example:  "/usr/local/bin/app-flush --unlock",
+		Option:   "resume",
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/resume"),
+	}
 	UnixKeywordStatusLogKw = keywords.Keyword{
 		Attr:      "StatusLogKw",
 		Converter: converters.Bool,
@@ -157,6 +171,8 @@ var (
 	UnixKeywords = []*keywords.Keyword{
 		&UnixKeywordScriptPath,
 		&UnixKeywordInfoCmd,
+		&UnixKeywordQuiesceCmd,
+		&UnixKeywordResumeCmd,
 		&UnixKeywordStatusLogKw,
 		&UnixKeywordCheckTimeout,
 		&UnixKeywordInfoTimeout,

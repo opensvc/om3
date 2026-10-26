@@ -1,0 +1,4 @@
+Set to true to allocate the volume from a pool whose volumes take snapshots,
+as a zpool pool: a backup of the object then copies a snapshot of the volume
+taken while its resources are quiesced, which resume once it is taken,
+rather than the volume itself, quiesced for the whole copy.

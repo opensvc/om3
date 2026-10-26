@@ -1,0 +1,2 @@
+What the quiesce session reads on its stdin at the resume, before its stdin is
+closed and it is waited for, as the statement releasing a lock.

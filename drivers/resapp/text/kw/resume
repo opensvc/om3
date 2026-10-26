@@ -1,0 +1,5 @@
+The command resuming the writes of the app `quiesce` suspended, after the run
+of a sync resource of the object.
+
+As the other commands of the app, `true` runs the script with the resume
+argument.

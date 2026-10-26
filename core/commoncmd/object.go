@@ -401,6 +401,7 @@ share resources using their data down: stop them with "instance stop
 func NewCmdObjectSyncSnapshot() *cobra.Command {
 	return &cobra.Command{
 		Use:     "snapshot",
+		Aliases: []string{"snap"},
 		Short:   "list the snapshots of the sync resources",
 		GroupID: GroupIDQuery,
 	}

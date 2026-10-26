@@ -2,12 +2,23 @@ package object
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
@@ -83,6 +94,102 @@ func refsName(p naming.Path) string {
 // datastore created, a key added, rewritten, or left with a value differing
 // from the document's.
 func ApplyRefs(ns string, doc RefsDocument, mode RefsMode) ([]string, error) {
+	notes, _, err := ApplyRefsUndoable(ns, doc, mode)
+	return notes, err
+}
+
+// refsLockTimeout bounds the wait for another copy of keys into a namespace.
+const refsLockTimeout = time.Minute
+
+var refsMutexes sync.Map
+
+// LockRefs takes the lock of the copies of referenced keys into the
+// namespace ns. Held from a copy until the configuration it is made for
+// lands or is taken back, a second copy of the same keys finds those of the
+// first there and adds none, so the undo of either takes back nothing the
+// other committed. The lock of the file serializes the processes, the mutex
+// the requests of one, as the daemon api serves them, a lock of the file
+// being held per process.
+func LockRefs(ns string) (func(), error) {
+	if ns == "" {
+		ns = naming.NsRoot
+	}
+	v, _ := refsMutexes.LoadOrStore(ns, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	p := filepath.Join(rawconfig.Paths.Lock, "refs", ns)
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		mu.Unlock()
+		return nil, err
+	}
+	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
+	if err := lock.Lock(refsLockTimeout, "refs"); err != nil {
+		mu.Unlock()
+		return nil, fmt.Errorf("lock the copies of keys into the namespace %s: %w", ns, err)
+	}
+	return func() {
+		_ = lock.UnLock()
+		mu.Unlock()
+	}, nil
+}
+
+// ApplyRefsUndoable is ApplyRefs, returning too how to undo what it did,
+// on an error as well: remove the keys it added, put back the values it
+// rewrote, and delete the datastores it created, as the create of an object
+// the keys were applied for does when it fails after.
+func ApplyRefsUndoable(ns string, doc RefsDocument, mode RefsMode) ([]string, func() error, error) {
+	var (
+		created   []naming.Path
+		added     = make(map[naming.Path][]string)
+		rewritten = make(map[naming.Path]map[string][]byte)
+	)
+	undo := func() error {
+		var errs error
+		for p, keys := range added {
+			if slices.Contains(created, p) {
+				continue
+			}
+			o, err := NewDataStore(p)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			for _, k := range keys {
+				errs = errors.Join(errs, o.RemoveKey(k))
+			}
+		}
+		for p, keys := range rewritten {
+			o, err := NewDataStore(p)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			for k, value := range keys {
+				errs = errors.Join(errs, o.ChangeKey(k, value))
+			}
+		}
+		for _, p := range created {
+			o, err := NewDataStore(p)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			if d, ok := o.(interface{ Delete(context.Context) error }); ok {
+				errs = errors.Join(errs, d.Delete(context.Background()))
+			}
+		}
+		return errs
+	}
+	notes, err := applyRefs(ns, doc, mode, func(p naming.Path) { created = append(created, p) }, func(p naming.Path, k string) { added[p] = append(added[p], k) }, func(p naming.Path, k string, previous []byte) {
+		if rewritten[p] == nil {
+			rewritten[p] = make(map[string][]byte)
+		}
+		rewritten[p][k] = previous
+	})
+	return notes, undo, err
+}
+
+func applyRefs(ns string, doc RefsDocument, mode RefsMode, onCreate func(naming.Path), onAdd func(naming.Path, string), onRewrite func(naming.Path, string, []byte)) ([]string, error) {
 	if mode == RefsSkip {
 		return nil, nil
 	}
@@ -103,6 +210,7 @@ func ApplyRefs(ns string, doc RefsDocument, mode RefsMode) ([]string, error) {
 		}
 		if !p.Exists() {
 			notes = append(notes, fmt.Sprintf("create %s", p))
+			onCreate(p)
 		}
 		o, err := NewDataStore(p)
 		if err != nil {
@@ -119,6 +227,7 @@ func ApplyRefs(ns string, doc RefsDocument, mode RefsMode) ([]string, error) {
 				if err := o.AddKey(k, value); err != nil {
 					return notes, fmt.Errorf("%s key %s: %w", p, k, err)
 				}
+				onAdd(p, k)
 				notes = append(notes, fmt.Sprintf("add %s key %s", p, k))
 				continue
 			}
@@ -130,6 +239,7 @@ func ApplyRefs(ns string, doc RefsDocument, mode RefsMode) ([]string, error) {
 				continue
 			}
 			if mode == RefsOverwrite {
+				onRewrite(p, k, current)
 				if err := o.ChangeKey(k, value); err != nil {
 					return notes, fmt.Errorf("%s key %s: %w", p, k, err)
 				}

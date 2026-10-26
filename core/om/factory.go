@@ -2868,6 +2868,9 @@ func newCmdObjectGroupUpdate(kind, group string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	if group == "sync" {
+		commoncmd.FlagsRunMarks(flags, &options.Protect, &options.Note)
+	}
 	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
@@ -3692,6 +3695,21 @@ func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceUnstop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnstop
+	cmd := commoncmd.NewCmdObjectInstanceUnstop()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
@@ -3976,6 +3994,7 @@ func newCmdObjectInstanceUpdate(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	commoncmd.FlagsRunMarks(flags, &options.Protect, &options.Note)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

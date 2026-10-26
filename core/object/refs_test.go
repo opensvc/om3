@@ -3,6 +3,7 @@ package object
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,4 +82,68 @@ func TestRefsDocumentRoundTrip(t *testing.T) {
 
 	_, err = ApplyRefs("ns1", RefsDocument{"svc/web": {"a": nil}}, RefsMissing)
 	assert.Error(t, err, "only sec and cfg are applied")
+}
+
+// What applying the keys did is undone on demand, as the create of an object
+// failing after they were applied for it does: the keys added removed, the
+// values rewritten put back, and the datastores created deleted.
+func TestApplyRefsUndo(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	existing := naming.Path{Name: "app", Kind: naming.KindCfg, Namespace: "ns1"}
+	o, err := NewDataStore(existing)
+	require.NoError(t, err)
+	require.NoError(t, o.AddKey("b", []byte("mine")))
+	doc := RefsDocument{
+		"cfg/app": {"a": []byte("1"), "b": []byte("2")},
+		"cfg/new": {"c": []byte("3")},
+	}
+
+	_, undo, err := ApplyRefsUndoable("ns1", doc, RefsOverwrite)
+	require.NoError(t, err)
+	created := naming.Path{Name: "new", Kind: naming.KindCfg, Namespace: "ns1"}
+	require.True(t, created.Exists())
+
+	require.NoError(t, undo())
+	assert.False(t, created.Exists(), "the datastore created is deleted")
+	o, err = NewDataStore(existing)
+	require.NoError(t, err)
+	assert.False(t, o.HasKey("a"), "the key added is removed")
+	v, err := o.DecodeKey("b")
+	require.NoError(t, err)
+	assert.Equal(t, "mine", string(v), "the value rewritten is put back")
+}
+
+// The copies of keys into one namespace are serialized, in one process as
+// across processes: a second waits for the first to release the lock.
+func TestLockRefsSerializesTheCopies(t *testing.T) {
+	testhelper.Setup(t)
+	unlock, err := LockRefs("ns1")
+	require.NoError(t, err)
+	got := make(chan func(), 1)
+	go func() {
+		u, err := LockRefs("ns1")
+		if err == nil {
+			got <- u
+		}
+	}()
+	select {
+	case <-got:
+		t.Fatal("a second copy took the lock the first holds")
+	case <-time.After(200 * time.Millisecond):
+	}
+	other, err := LockRefs("ns2")
+	require.NoError(t, err, "another namespace is not held")
+	other()
+	unlock()
+	select {
+	case u := <-got:
+		u()
+	case <-time.After(5 * time.Second):
+		t.Fatal("the second copy did not take the lock once released")
+	}
 }

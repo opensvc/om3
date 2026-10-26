@@ -192,6 +192,29 @@ var (
 		Section:    "store",
 		Text:       keywords.NewText(fs, "text/kw/node/store.type"),
 	}
+	kwNodeStoreHostKey = keywords.Keyword{
+		Example: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBc1nVQ6Ck8M6zKQ1dHoRcgYzBH9Cf2rBG7aJ1LGq2xp",
+		Option:  "host_key",
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.tar.host_key"),
+		Types:   []string{"tar"},
+	}
+	kwNodeStoreShared = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "shared",
+		Section:   "store",
+		Text:      keywords.NewText(fs, "text/kw/node/store.tar.shared"),
+		Types:     []string{"tar"},
+	}
+	kwNodeStoreSSHPrivateKey = keywords.Keyword{
+		Example:      "from system/sec/backup key ssh_private_key",
+		Option:       "ssh_private_key",
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.tar.ssh_private_key"),
+		Types:        []string{"tar"},
+	}
 	kwNodeStoreURL = keywords.Keyword{
 		Example:  "/srv/backups",
 		Option:   "url",
@@ -2018,6 +2041,9 @@ var (
 		&kwNodeStoreSchedule,
 		&kwNodeStoreType,
 		&kwNodeStoreURL,
+		&kwNodeStoreHostKey,
+		&kwNodeStoreSSHPrivateKey,
+		&kwNodeStoreShared,
 		&kwNodeStoreKeep,
 		&kwNodeArrayXtremioName,
 		&kwNodeComplianceAutoUpdate,

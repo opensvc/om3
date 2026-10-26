@@ -70,6 +70,9 @@ func (t *CmdObjectSyncSnapshots) extractLocal(selector string) (api.SyncSnapshot
 					Rid:       e.RID,
 					Id:        e.ID,
 					CreatedAt: e.CreatedAt,
+					Cluster:   &e.Cluster,
+					Protected: &e.Protected,
+					Note:      &e.Note,
 					Node:      e.Node,
 					Members:   append([]string{}, e.Members...),
 					Location:  e.Location,
@@ -145,6 +148,7 @@ func (t *CmdObjectSyncSnapshots) Run(kind string) error {
 		return err
 	}
 	data, err := t.extract(mergedSelector, c)
+	commoncmd.LocalSyncSnapshots(data.Items)
 	return errors.Join(err, output.Renderer{
 		DefaultOutput: commoncmd.SyncSnapshotsTab,
 		Output:        t.Output,

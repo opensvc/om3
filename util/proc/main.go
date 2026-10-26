@@ -345,24 +345,58 @@ func (t *L) FilterByEnv(key string, value string) L {
 	return l
 }
 
+// statFields returns the /proc/<pid>/stat fields after the comm one: the
+// first is the field 3 of proc_pid_stat(5), the state.
+func (t T) statFields() ([]string, error) {
+	b, err := os.ReadFile(t.Head() + "/stat")
+	if err != nil {
+		return nil, err
+	}
+	// the comm field is parenthesized and may contain spaces, so the
+	// fields are split after its closing parenthesis.
+	i := bytes.LastIndexByte(b, ')')
+	if i < 0 {
+		return nil, fmt.Errorf("%s/stat: no comm field end", t.Head())
+	}
+	return strings.Fields(string(b[i+1:])), nil
+}
+
 // PPID is the id of the parent process, read from /proc/<pid>/stat.
 func (t T) PPID() (int, error) {
-	b, err := os.ReadFile(t.Head() + "/stat")
+	fields, err := t.statFields()
 	if err != nil {
 		return 0, err
 	}
-	// the comm field is parenthesized and may contain spaces, so the
-	// fields are split after its closing parenthesis: the state, then the
-	// parent process id.
-	i := bytes.LastIndexByte(b, ')')
-	if i < 0 {
-		return 0, fmt.Errorf("%s/stat: no comm field end", t.Head())
-	}
-	fields := strings.Fields(string(b[i+1:]))
 	if len(fields) < 2 {
 		return 0, fmt.Errorf("%s/stat: no ppid field", t.Head())
 	}
 	return strconv.Atoi(fields[1])
+}
+
+// IsZombie says the process ended, its parent not having reaped it yet.
+func (t T) IsZombie() (bool, error) {
+	fields, err := t.statFields()
+	if err != nil {
+		return false, err
+	}
+	if len(fields) < 1 {
+		return false, fmt.Errorf("%s/stat: no state field", t.Head())
+	}
+	return fields[0] == "Z" || fields[0] == "X", nil
+}
+
+// StartTime is when the process started, in clock ticks since the boot, read
+// from /proc/<pid>/stat. With the pid and the boot id, it names a process: a
+// pid is reused, but not with the same start time before a reboot.
+func (t T) StartTime() (uint64, error) {
+	fields, err := t.statFields()
+	if err != nil {
+		return 0, err
+	}
+	if len(fields) < 22-2 {
+		return 0, fmt.Errorf("%s/stat: no starttime field", t.Head())
+	}
+	return strconv.ParseUint(fields[22-3], 10, 64)
 }
 
 // Tree is pid and the ids of all its descendants, parents first, from one

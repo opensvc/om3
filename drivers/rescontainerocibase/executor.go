@@ -286,6 +286,16 @@ func (e *Executor) Stop(ctx context.Context) error {
 	return nil
 }
 
+// Pause freezes the processes of the container.
+func (e *Executor) Pause(ctx context.Context) error {
+	return e.doExecRun(ctx, nil, e.args.PauseArgs().Get()...)
+}
+
+// Unpause thaws the processes of the container.
+func (e *Executor) Unpause(ctx context.Context) error {
+	return e.doExecRun(ctx, nil, e.args.UnpauseArgs().Get()...)
+}
+
 func (e *Executor) WaitNotRunning(ctx context.Context) error {
 	if err := e.args.WaitNotRunning(ctx); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {

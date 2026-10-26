@@ -91,6 +91,11 @@ type (
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		StartTimeout    *time.Duration `json:"start_timeout"`
 		StopTimeout     *time.Duration `json:"stop_timeout"`
+		QuiesceCmd      string         `json:"quiesce"`
+		QuiesceInput    string         `json:"quiesce_input"`
+		QuiesceReady    string         `json:"quiesce_ready"`
+		ResumeInput     string         `json:"resume_input"`
+		QuiesceTimeout  *time.Duration `json:"quiesce_timeout"`
 		Sysctl          []string       `json:"sysctl"`
 		LogOutputs      bool           `json:"log_outputs"`
 
@@ -183,6 +188,15 @@ type (
 		RunCmdEnv() (map[string]string, error)
 		StartArgs(ctx context.Context) (*args.T, error)
 		StopArgs() *args.T
+		PauseArgs() *args.T
+		UnpauseArgs() *args.T
+	}
+
+	// ExecutePauser is an executer freezing and thawing the processes of
+	// the container.
+	ExecutePauser interface {
+		Pause(context.Context) error
+		Unpause(context.Context) error
 	}
 
 	// ExecutorInspectArgser defines interfaces functions that provides

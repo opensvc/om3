@@ -1,6 +1,7 @@
 package xconfig
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -116,6 +117,36 @@ func TestInstallLanding(t *testing.T) {
 	base = base.Landing(func() (func(bool), error) { landed++; return done, os.ErrPermission })
 	assert.ErrorIs(t, install(newSrc(), dst, &base), os.ErrPermission, "an error of the landing refuses the write")
 	assert.Equal(t, 2, undone, "and undoes what the landing did before failing")
+}
+
+// Landings given to one base run in order, a failing one refusing the write
+// without the next run, and every one run is told the write did not land.
+func TestInstallLandingsChain(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "foo.conf")
+	src := filepath.Join(dir, ".foo.conf.tmp")
+	require.NoError(t, os.WriteFile(src, []byte("[DEFAULT]\n"), 0600))
+	var order []string
+	step := func(name string, err error) func() (func(bool), error) {
+		return func() (func(bool), error) {
+			order = append(order, name)
+			return func(landed bool) { order = append(order, fmt.Sprintf("%s landed=%v", name, landed)) }, err
+		}
+	}
+
+	base, err := ReadBase(dst)
+	require.NoError(t, err)
+	base = base.Landing(step("a", nil)).Landing(step("b", os.ErrPermission)).Landing(step("c", nil))
+	assert.ErrorIs(t, install(src, dst, &base), os.ErrPermission)
+	assert.Equal(t, []string{"a", "b", "b landed=false", "a landed=false"}, order)
+	assert.NoFileExists(t, dst)
+
+	order = nil
+	base, err = ReadBase(dst)
+	require.NoError(t, err)
+	base = base.Landing(step("a", nil)).Landing(step("b", nil))
+	require.NoError(t, install(src, dst, &base))
+	assert.Equal(t, []string{"a", "b", "b landed=true", "a landed=true"}, order)
 }
 
 func TestInstallLockPath(t *testing.T) {

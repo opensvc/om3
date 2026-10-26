@@ -108,11 +108,12 @@ func TestRetentionDropWeeks(t *testing.T) {
 }
 
 func TestFilterAndRun(t *testing.T) {
-	run := Run{ID: "7c0e41d2-aaaa", Path: "ns1/svc/svc1", CompletedAt: time.Now(), Members: []Member{{Name: "fs#1", Kind: MemberDir}, {Name: MemberConfig, Kind: MemberStream}}}
+	run := Run{ID: "7c0e41d2-aaaa", Path: "ns1/svc/svc1", ObjectID: "oid", ClusterID: "c1", CompletedAt: time.Now(), Members: []Member{{Name: "fs#1", Kind: MemberDir}, {Name: MemberConfig, Kind: MemberStream}}}
 	assert.True(t, RunFilter{}.Match(run))
-	assert.True(t, RunFilter{Path: "ns1/svc/svc1", ID: "7c0e"}.Match(run))
+	assert.True(t, RunFilter{ObjectID: "oid", Cluster: "c1", ID: "7c0e"}.Match(run))
 	assert.False(t, RunFilter{ID: "7c0f"}.Match(run))
-	assert.False(t, RunFilter{Path: "ns1/svc/svc2"}.Match(run))
+	assert.False(t, RunFilter{ObjectID: "oid2"}.Match(run))
+	assert.False(t, RunFilter{Cluster: "c2"}.Match(run))
 	assert.True(t, run.Has("fs#1"))
 	assert.False(t, run.Has("fs#2"))
 	assert.Equal(t, []string{"fs#1", "config"}, run.MemberNames())
@@ -125,6 +126,19 @@ func TestExcluded(t *testing.T) {
 	assert.True(t, Excluded("a/b", []string{"a/b"}))
 	assert.False(t, Excluded("x/a/b", []string{"a/b"}), "a pattern with a slash is anchored at the head")
 	assert.False(t, Excluded("a", nil))
+	assert.False(t, Excluded("x/tmp", []string{"/tmp"}), "a pattern starting with a slash is anchored at the head")
+	assert.True(t, Excluded("x/tmp", []string{"tmp"}), "one without matches a name at any depth")
+}
+
+// A literal pattern matches its path from the head and nothing else, its
+// wildcards taken as they are.
+func TestLiteralPattern(t *testing.T) {
+	p := LiteralPattern("data")
+	assert.True(t, Excluded("data", []string{p}))
+	assert.False(t, Excluded("x/data", []string{p}))
+	p = LiteralPattern("a/[x]*?")
+	assert.True(t, Excluded("a/[x]*?", []string{p}))
+	assert.False(t, Excluded("a/xyz", []string{p}), "the wildcards are escaped")
 }
 
 func TestHeadExcludes(t *testing.T) {

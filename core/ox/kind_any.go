@@ -114,6 +114,7 @@ func init() {
 		newCmdObjectInstanceStop(kind),
 		newCmdObjectInstanceUnfreeze(kind),
 		newCmdObjectInstanceUnprovision(kind),
+		newCmdObjectInstanceUnstop(kind),
 		commoncmd.NewCmdObjectInstanceClear(kind, ""),
 
 		// sync

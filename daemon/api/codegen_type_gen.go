@@ -918,6 +918,51 @@ func (e Status) Valid() bool {
 	}
 }
 
+// Defines values for StoreListKind.
+const (
+	StoreListKindStoreList StoreListKind = "StoreList"
+)
+
+// Valid indicates whether the value is a known member of the StoreListKind enum.
+func (e StoreListKind) Valid() bool {
+	switch e {
+	case StoreListKindStoreList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoreObjectStatsListKind.
+const (
+	StoreObjectStatsListKindStoreObjectStatsList StoreObjectStatsListKind = "StoreObjectStatsList"
+)
+
+// Valid indicates whether the value is a known member of the StoreObjectStatsListKind enum.
+func (e StoreObjectStatsListKind) Valid() bool {
+	switch e {
+	case StoreObjectStatsListKindStoreObjectStatsList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoreSnapshotListKind.
+const (
+	StoreSnapshotListKindStoreSnapshotList StoreSnapshotListKind = "StoreSnapshotList"
+)
+
+// Valid indicates whether the value is a known member of the StoreSnapshotListKind enum.
+func (e StoreSnapshotListKind) Valid() bool {
+	switch e {
+	case StoreSnapshotListKindStoreSnapshotList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SyncSnapshotItemKind.
 const (
 	SyncSnapshotItemKindSyncSnapshotItem SyncSnapshotItemKind = "SyncSnapshotItem"
@@ -1059,6 +1104,24 @@ func (e PostInstanceActionRestoreParamsRefs) Valid() bool {
 	case PostInstanceActionRestoreParamsRefsOverwrite:
 		return true
 	case PostInstanceActionRestoreParamsRefsSkip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetStoreSnapshotsParamsOrder.
+const (
+	Asc  GetStoreSnapshotsParamsOrder = "asc"
+	Desc GetStoreSnapshotsParamsOrder = "desc"
+)
+
+// Valid indicates whether the value is a known member of the GetStoreSnapshotsParamsOrder enum.
+func (e GetStoreSnapshotsParamsOrder) Valid() bool {
+	switch e {
+	case Asc:
+		return true
+	case Desc:
 		return true
 	default:
 		return false
@@ -2853,6 +2916,152 @@ type Scope = []string
 // Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 type Status string
 
+// StoreClusterStats defines model for StoreClusterStats.
+type StoreClusterStats struct {
+	ClusterId     string     `json:"cluster_id"`
+	ClusterName   string     `json:"cluster_name"`
+	Incomplete    int        `json:"incomplete"`
+	LastCreatedAt *time.Time `json:"last_created_at,omitempty"`
+	LogicalBytes  int64      `json:"logical_bytes"`
+	Objects       int        `json:"objects"`
+	Protected     int        `json:"protected"`
+	Runs          int        `json:"runs"`
+}
+
+// StoreItem defines model for StoreItem.
+type StoreItem struct {
+	// NodeStats The stats of the directory of each node, by node name, for a store keeping its runs in a directory of each node.
+	NodeStats *map[string]StoreStats `json:"node_stats,omitempty"`
+
+	// Ref The reference to the store, as a store keyword names it.
+	Ref string `json:"ref"`
+
+	// Share The namespaces whose objects may use the store, * for every one.
+	Share []string `json:"share"`
+
+	// Stats The figures of a store, summed from the stats every object of it
+	// records, of every cluster writing it, and cached by the daemon.
+	Stats *StoreStats `json:"stats,omitempty"`
+	Type  string      `json:"type"`
+	Url   string      `json:"url"`
+}
+
+// StoreList defines model for StoreList.
+type StoreList struct {
+	Items []StoreItem   `json:"items"`
+	Kind  StoreListKind `json:"kind"`
+}
+
+// StoreListKind defines model for StoreList.Kind.
+type StoreListKind string
+
+// StoreObjectStats defines model for StoreObjectStats.
+type StoreObjectStats struct {
+	ClusterId      string     `json:"cluster_id"`
+	ClusterName    string     `json:"cluster_name"`
+	FirstCreatedAt *time.Time `json:"first_created_at,omitempty"`
+	Incomplete     int        `json:"incomplete"`
+	LastCreatedAt  *time.Time `json:"last_created_at,omitempty"`
+	LogicalBytes   int64      `json:"logical_bytes"`
+
+	// Nodes The nodes that wrote its completed runs.
+	Nodes    []string `json:"nodes"`
+	ObjectId string   `json:"object_id"`
+
+	// Path The path of the object at its last run.
+	Path        string `json:"path"`
+	Protected   int    `json:"protected"`
+	Runs        int    `json:"runs"`
+	StoredBytes *int64 `json:"stored_bytes,omitempty"`
+
+	// UpdatedAt When the node completing or removing a run of the object counted these.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// StoreObjectStatsList defines model for StoreObjectStatsList.
+type StoreObjectStatsList struct {
+	Items []StoreObjectStats       `json:"items"`
+	Kind  StoreObjectStatsListKind `json:"kind"`
+
+	// MissingNodes The nodes whose directory was not read, whose objects the list leaves out.
+	MissingNodes *[]string `json:"missing_nodes,omitempty"`
+}
+
+// StoreObjectStatsListKind defines model for StoreObjectStatsList.Kind.
+type StoreObjectStatsListKind string
+
+// StoreSnapshot defines model for StoreSnapshot.
+type StoreSnapshot struct {
+	ClusterId   string     `json:"cluster_id"`
+	ClusterName string     `json:"cluster_name"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Id          string     `json:"id"`
+
+	// LogicalBytes The size of what the run saved, 0 when the store does not tell.
+	LogicalBytes int64    `json:"logical_bytes"`
+	Members      []string `json:"members"`
+
+	// Node The node that took the snapshot.
+	Node string `json:"node"`
+	Note string `json:"note"`
+
+	// Path The object the snapshot is of, as it was named then.
+	Path      string `json:"path"`
+	Protected bool   `json:"protected"`
+	Store     string `json:"store"`
+}
+
+// StoreSnapshotList defines model for StoreSnapshotList.
+type StoreSnapshotList struct {
+	Items []StoreSnapshot       `json:"items"`
+	Kind  StoreSnapshotListKind `json:"kind"`
+
+	// Next The value asking the next page, as before, or as after for an answer asked with order asc, set when the answer was cut at the limit.
+	Next *string `json:"next,omitempty"`
+}
+
+// StoreSnapshotListKind defines model for StoreSnapshotList.Kind.
+type StoreSnapshotListKind string
+
+// StoreStats The figures of a store, summed from the stats every object of it
+// records, of every cluster writing it, and cached by the daemon.
+type StoreStats struct {
+	// CheckError Why the last attempt failed to reach the store.
+	CheckError *string `json:"check_error,omitempty"`
+
+	// CheckedAt When the store was last reached.
+	CheckedAt      *time.Time          `json:"checked_at,omitempty"`
+	Clusters       []StoreClusterStats `json:"clusters"`
+	FirstCreatedAt *time.Time          `json:"first_created_at,omitempty"`
+
+	// FreeBytes The space left in the store, absent when it does not tell.
+	FreeBytes *int64 `json:"free_bytes,omitempty"`
+
+	// Incomplete The runs a failed or interrupted update left.
+	Incomplete    int        `json:"incomplete"`
+	LastCreatedAt *time.Time `json:"last_created_at,omitempty"`
+
+	// LogicalBytes The size of what the runs saved.
+	LogicalBytes int64 `json:"logical_bytes"`
+
+	// MissingNodes The nodes whose directory was not read, for a store keeping its runs in a directory of each node, whose runs the figures leave out.
+	MissingNodes *[]string `json:"missing_nodes,omitempty"`
+
+	// Objects The objects with a run, counted by object id.
+	Objects   int `json:"objects"`
+	Protected int `json:"protected"`
+
+	// Runs The completed runs.
+	Runs int `json:"runs"`
+
+	// StoredBytes What the runs take in the store, absent when the store can not tell.
+	StoredBytes *int64 `json:"stored_bytes,omitempty"`
+
+	// UpdatedAt When these figures were computed.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // SubsetConfig defines model for SubsetConfig.
 type SubsetConfig = instance.SubsetConfig
 
@@ -2861,6 +3070,8 @@ type SubsetsConfig = []SubsetConfig
 
 // SyncSnapshot defines model for SyncSnapshot.
 type SyncSnapshot struct {
+	// Cluster The name of the cluster of the node that took the snapshot, several clusters writing one store.
+	Cluster   *string   `json:"cluster,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 
 	// Id The snapshot id, the session id of the sync update that took it.
@@ -2874,6 +3085,12 @@ type SyncSnapshot struct {
 
 	// Node The node that took the snapshot.
 	Node string `json:"node"`
+
+	// Note The text the snapshot was marked with when taken.
+	Note *string `json:"note,omitempty"`
+
+	// Protected The retention keeps the snapshot, which only an explicit removal deletes.
+	Protected *bool `json:"protected,omitempty"`
 
 	// Rid The sync resource holding the snapshot.
 	Rid string `json:"rid"`
@@ -3072,6 +3289,9 @@ type ConfigUpdatedAt = time.Time
 // InQueryConfirm defines model for inQueryConfirm.
 type InQueryConfirm = bool
 
+// InQueryCreateSnapshot defines model for inQueryCreateSnapshot.
+type InQueryCreateSnapshot = string
+
 // InQueryCron defines model for inQueryCron.
 type InQueryCron = bool
 
@@ -3171,6 +3391,9 @@ type InQueryResourceFileRid = string
 // InQueryRestore defines model for inQueryRestore.
 type InQueryRestore = bool
 
+// InQueryRestoreByRid defines model for inQueryRestoreByRid.
+type InQueryRestoreByRid = bool
+
 // InQueryRestoreConfig defines model for inQueryRestoreConfig.
 type InQueryRestoreConfig = bool
 
@@ -3186,8 +3409,17 @@ type InQueryRestoreRefs string
 // InQueryRestoreSnapshot defines model for inQueryRestoreSnapshot.
 type InQueryRestoreSnapshot = string
 
+// InQueryRestoreStop defines model for inQueryRestoreStop.
+type InQueryRestoreStop = bool
+
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
+
+// InQueryRunNote defines model for inQueryRunNote.
+type InQueryRunNote = string
+
+// InQueryRunProtect defines model for inQueryRunProtect.
+type InQueryRunProtect = bool
 
 // InQuerySection defines model for inQuerySection.
 type InQuerySection = string
@@ -3209,6 +3441,24 @@ type InQuerySlaves = []string
 
 // InQueryStateOnly defines model for inQueryStateOnly.
 type InQueryStateOnly = bool
+
+// InQueryStore defines model for inQueryStore.
+type InQueryStore = string
+
+// InQueryStoreCluster defines model for inQueryStoreCluster.
+type InQueryStoreCluster = string
+
+// InQueryStoreObjectID defines model for inQueryStoreObjectID.
+type InQueryStoreObjectID = string
+
+// InQueryStorePath defines model for inQueryStorePath.
+type InQueryStorePath = string
+
+// InQueryStoreSince defines model for inQueryStoreSince.
+type InQueryStoreSince = time.Time
+
+// InQueryStoreUntil defines model for inQueryStoreUntil.
+type InQueryStoreUntil = time.Time
 
 // InQuerySubset defines model for inQuerySubset.
 type InQuerySubset = string
@@ -4044,7 +4294,14 @@ type PostInstanceActionRestoreParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
 
-	// Config Restore the configuration of the object too.
+	// ByRid Restore each head into the current head of the resource of its
+	// resource id, rather than at the path the head had when saved, which
+	// must be under a head of the object.
+	ByRid *InQueryRestoreByRid `form:"by_rid,omitempty" json:"by_rid,omitempty"`
+
+	// Config Restore the configuration of the object: in place, it alone,
+	// through the checks of a configuration replaced, the object keeping
+	// its id; aside, beside the heads.
 	Config *InQueryRestoreConfig `form:"config,omitempty" json:"config,omitempty"`
 
 	// Head The heads to restore, by resource id, every head of the snapshot when not set.
@@ -4058,6 +4315,10 @@ type PostInstanceActionRestoreParams struct {
 
 	// Snapshot The snapshot to restore, by id or a prefix of it, the latest when not set.
 	Snapshot *InQueryRestoreSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
+
+	// Stop Stop the resources using the heads and start the heads, rather than
+	// refuse the restore in place, and leave the instance stopped.
+	Stop *InQueryRestoreStop `form:"stop,omitempty" json:"stop,omitempty"`
 }
 
 // PostInstanceActionRestoreParamsRefs defines parameters for PostInstanceActionRestore.
@@ -4349,6 +4610,30 @@ type PostInstanceActionUnprovisionParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostInstanceActionUnstopParams defines parameters for PostInstanceActionUnstop.
+type PostInstanceActionUnstopParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
 // PostInstanceActionUpdateParams defines parameters for PostInstanceActionUpdate.
 type PostInstanceActionUpdateParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
@@ -4375,6 +4660,12 @@ type PostInstanceActionUpdateParams struct {
 
 	// SyncTarget The peers to sync to, as node or drpnode names.
 	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
+
+	// Protect Keep the run a sync.store resource writes from the retention.
+	Protect *InQueryRunProtect `form:"protect,omitempty" json:"protect,omitempty"`
+
+	// Note A note to mark the run a sync.store resource writes with.
+	Note *InQueryRunNote `form:"note,omitempty" json:"note,omitempty"`
 }
 
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
@@ -4616,7 +4907,19 @@ type PostObjectConfigFileParams struct {
 	// from it.
 	Restore *InQueryRestore `form:"restore,omitempty" json:"restore,omitempty"`
 	Set     *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
-	Force   *InQueryForce   `form:"force,omitempty" json:"force,omitempty"`
+
+	// Store The store, as a store keyword names it: a name for a store of the
+	// cluster configuration, from <sec> store#<name> for one of a sec.
+	Store *InQueryStore `form:"store,omitempty" json:"store,omitempty"`
+
+	// Snapshot The snapshot of the store to create the object from: its id or a
+	// prefix of it, or the path of an object for its latest snapshot. The
+	// object takes its configuration, the keys of the sec and cfg it
+	// references that its namespace lacks, and its heads are restored at
+	// provision. Needs the admin grant of the namespace of the object the
+	// snapshot is of.
+	Snapshot *InQueryCreateSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
+	Force    *InQueryForce          `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PutObjectConfigFileParams defines parameters for PutObjectConfigFile.
@@ -4738,6 +5041,58 @@ type GetResourcesParams struct {
 	// Resource resource selector expression.
 	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
 }
+
+// GetStoreObjectsParams defines parameters for GetStoreObjects.
+type GetStoreObjectsParams struct {
+	// Store The store, as a store keyword names it.
+	Store string `form:"store" json:"store"`
+}
+
+// DeleteStoreSnapshotParams defines parameters for DeleteStoreSnapshot.
+type DeleteStoreSnapshotParams struct {
+	// Store The store, as a store keyword names it.
+	Store string `form:"store" json:"store"`
+
+	// Id The snapshot id, or a prefix of it.
+	Id string `form:"id" json:"id"`
+}
+
+// GetStoreSnapshotsParams defines parameters for GetStoreSnapshots.
+type GetStoreSnapshotsParams struct {
+	// Store The store, as a store keyword names it: a name for a store of the
+	// cluster configuration, from <sec> store#<name> for one of a sec.
+	Store *InQueryStore `form:"store,omitempty" json:"store,omitempty"`
+
+	// Path The object whose snapshots to list, by the path the store last recorded for it.
+	Path *InQueryStorePath `form:"path,omitempty" json:"path,omitempty"`
+
+	// Cluster The cluster whose snapshots to list, by name or id.
+	Cluster *InQueryStoreCluster `form:"cluster,omitempty" json:"cluster,omitempty"`
+
+	// Limit The most snapshots to answer, newest first. The next page is asked with before set to the next value of the answer.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Before The next value of a previous answer, for the snapshots older than its last one, newest first.
+	Before *string `form:"before,omitempty" json:"before,omitempty"`
+
+	// After The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first. Passed as before, it is taken the same way.
+	After *string `form:"after,omitempty" json:"after,omitempty"`
+
+	// ObjectId The object whose snapshots to list, by its id, which a path names two of after a rename or a create over a purged one.
+	ObjectId *InQueryStoreObjectID `form:"object_id,omitempty" json:"object_id,omitempty"`
+
+	// Since The snapshots created from this time on.
+	Since *InQueryStoreSince `form:"since,omitempty" json:"since,omitempty"`
+
+	// Until The snapshots created before this time.
+	Until *InQueryStoreUntil `form:"until,omitempty" json:"until,omitempty"`
+
+	// Order newest first, by default, or asc, oldest first, as the first snapshot after a date is asked with since and limit 1.
+	Order *GetStoreSnapshotsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+}
+
+// GetStoreSnapshotsParamsOrder defines parameters for GetStoreSnapshots.
+type GetStoreSnapshotsParamsOrder string
 
 // PostClusterEnrollJSONRequestBody defines body for PostClusterEnroll for application/json ContentType.
 type PostClusterEnrollJSONRequestBody = ClusterEnrollBody

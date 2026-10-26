@@ -68,8 +68,30 @@ func (t Base) Exists() bool {
 // refused, as one losing a race with another. An error of fn refuses the
 // write. done, if any, is run once the write is over, saying whether the
 // file was replaced, on an error of fn too, for what fn did before failing.
+//
+// A base given several runs them in the order given, one failing refusing
+// the write without the next run, and every done of those run is run.
 func (t Base) Landing(fn func() (done func(landed bool), err error)) Base {
-	t.landing = fn
+	previous := t.landing
+	if previous == nil {
+		t.landing = fn
+		return t
+	}
+	t.landing = func() (func(bool), error) {
+		done1, err := previous()
+		if err != nil {
+			return done1, err
+		}
+		done2, err := fn()
+		return func(landed bool) {
+			if done2 != nil {
+				done2(landed)
+			}
+			if done1 != nil {
+				done1(landed)
+			}
+		}, err
+	}
 	return t
 }
 

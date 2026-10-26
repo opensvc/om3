@@ -1,1 +1,4 @@
-The mount point where to mount the filesystem.
+The mount point where to mount the filesystem, an absolute path.
+
+With `zone` set, the path in the container, the filesystem being mounted
+under the root directory of that container on the host.

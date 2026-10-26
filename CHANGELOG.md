@@ -14,6 +14,16 @@
     max_delay = 10m  # interpreted as 10m in om2 and om3         => Good
     ```
 
+* Set an explicit `kill = parent` to every `app.simple` resource whose processes, started by the start command, must outlive a stop, for example the sessions of a server.
+
+    ```
+    [app#1]
+    type = simple
+    start = /usr/sbin/sessiond
+    # no kill        # parent in om2, but tree in om3 => Bad
+    kill = parent    # parent in om2 and om3          => Good
+    ```
+
 ## What's New in v3
 
 OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and maintainability. Beyond the migration considerations, v3 introduces exciting new capabilities:
@@ -906,7 +916,10 @@ which share the same executor.
         
     * `vg`
         Configure a disk.lv resource
- 
+
+* **`mnt` is an absolute path:**
+    A relative mount point is refused by the configuration validation. It resolved against the working directory of whichever process ran the action, and the status never saw it mounted.
+
 ### Driver: sync
 
 * **Removed actions:**
@@ -1120,13 +1133,14 @@ which share the same executor.
       In 2.1, `OPENSVC_ID` was set to the object name (for example `foo` in `test/svc/foo`).
       In v3 , `OPENSVC_ID` is set to the `DEFAULT.id` value.
   
-* **Removed keywords:**
-    * `kill`
-        The default behaviour is now to kill all processes with the matching `OPENSVC_ID` and `OPENSVC_RID` variables in their environment.
-    
-        In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
-    
-        If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
+* **`kill` defaults to `tree`:**
+    The default behaviour is now to kill all processes with the matching `OPENSVC_ID` and `OPENSVC_RID` variables in their environment, and the status is up while one runs.
+
+    In 2.1 the default was `parent`, and both modes tried to identify the processes matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
+
+    With `kill = parent`, the stop terminates, and the status looks for, the process the start command launched, which the start records by its pid. The processes it started are left running.
+
+    An app relying on the 2.1 default to leave the processes it started running, for example a server starting a process per session, sets `kill = parent`.
 
 * **Status**
     The instance container resources are no longer considered when evaluating if the instance is sufficiently started to execute the app checker. Services that have only a container resource as witness can add a `fs.flag`.

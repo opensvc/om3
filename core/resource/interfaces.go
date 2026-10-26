@@ -189,6 +189,35 @@ type (
 		Restore(context.Context) error
 	}
 
+	// Quiescer is a resource whose writes a run of a sync resource
+	// suspends, for the data it saves to be consistent: quiesced before
+	// the run, in the order of a stop, resumed after it, in the order of
+	// a start. Quiesce returns how to resume them, nil when the resource
+	// quiesces nothing.
+	Quiescer interface {
+		Quiesce(context.Context) (func(context.Context) error, error)
+	}
+
+	// HeadSnapshotter is a resource whose head its storage takes
+	// point-in-time snapshots of: a run of a sync resource copies the
+	// snapshot rather than the head, so the writes it quiesced resume
+	// once the snapshot is taken. SnapshotHead returns the directory
+	// holding the snapshot and how to release it, and ok false when the
+	// storage of this head takes none.
+	HeadSnapshotter interface {
+		SnapshotHead(ctx context.Context, name string) (dir string, release func() error, ok bool, err error)
+	}
+
+	// ConfigRestorer is a sync resource holding the configuration of the
+	// object at the points in time it can restore.
+	ConfigRestorer interface {
+		// RestoredConfig returns the configuration of the snapshot the
+		// restore options of the context name, as the object restores
+		// it, and the keywords it changes, none when it is the
+		// configuration of the object already.
+		RestoredConfig(context.Context) ([]byte, []string, error)
+	}
+
 	// SnapshotLister is a sync resource holding restorable points in
 	// time.
 	SnapshotLister interface {
@@ -205,8 +234,17 @@ type (
 		// CreatedAt is when the snapshot was taken.
 		CreatedAt time.Time `json:"created_at"`
 
+		// Cluster is the name of the cluster of the node that took it:
+		// several clusters may write one store.
+		Cluster string `json:"cluster"`
+
 		// Node is the node that took it.
 		Node string `json:"node"`
+
+		// Protected says the retention keeps it, and Note is the text
+		// it was marked with.
+		Protected bool   `json:"protected,omitempty"`
+		Note      string `json:"note,omitempty"`
 
 		// Members are what it holds: the heads, by resource id, and
 		// the configuration of the object.

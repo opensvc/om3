@@ -40,6 +40,14 @@ var (
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/check"),
 		},
+		{
+			Attr:       "Kill",
+			Candidates: []string{killParent, killTree},
+			Default:    killTree,
+			Option:     "kill",
+			Scopable:   true,
+			Text:       keywords.NewText(fs, "text/kw/kill"),
+		},
 	}
 )
 

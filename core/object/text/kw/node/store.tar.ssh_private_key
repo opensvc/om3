@@ -1,0 +1,7 @@
+The private key the sftp user of the store authenticates with, written
+`from <sec> key <key>`: a key is never written in the section, nor read from a
+file of the node.
+
+In a store declared in a sec, `from .` is that sec, a relative path is of its
+namespace, and the key is read as the object using the store, so the
+datastore holding it must share with its namespace.

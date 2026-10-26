@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -102,6 +103,11 @@ var (
 	// carried, so the one a node drops is known when its monitor stops
 	// naming one.
 	monitorOrchestration = make(map[string]string)
+
+	// leftOnDeletion is the orchestration each instance monitor dropped the
+	// id of a delete or purge with, the node leaving it only once the
+	// monitor is deleted: the instance is gone then.
+	leftOnDeletion = make(map[string]string)
 
 	// failures is, per orchestration, what its participants left it on when
 	// they left it on a failure.
@@ -347,13 +353,30 @@ func EndOrchestration(id string, state State, errS string) {
 // id is empty when the monitor names no orchestration, which is how the end
 // of one is seen: the id is unset on a node when the orchestration is reached
 // there, so the last node to drop it ends it.
+//
+// A node reaches a delete or a purge before its instance monitor is deleted,
+// and drops the id then: it leaves the orchestration once its monitor is
+// deleted, which NoteMonitorDeleted says, for a client told the
+// orchestration is over to find no trace of the object, as a create of the
+// same name that the daemon refuses while it still knows an instance. A node
+// dropping the id on a failure leaves it at once, its instance staying.
 func NoteMonitor(path, node, id, expect, failure string, updatedAt time.Time) {
 	mu.Lock()
 	defer mu.Unlock()
 
 	key := path + "/" + node
+	if pending, ok := leftOnDeletion[key]; ok && id != "" {
+		// The instance lives on, under a new orchestration.
+		delete(leftOnDeletion, key)
+		leave(pending, node, "")
+	}
 	previous := monitorOrchestration[key]
 	if previous == id {
+		return
+	}
+	if previous != "" && id == "" && failure == "" && endsWithDeletion(previous) {
+		delete(monitorOrchestration, key)
+		leftOnDeletion[key] = previous
 		return
 	}
 	if previous != "" {
@@ -365,6 +388,39 @@ func NoteMonitor(path, node, id, expect, failure string, updatedAt time.Time) {
 	}
 	monitorOrchestration[key] = id
 	join(id, path, node, expect, updatedAt)
+}
+
+// NoteMonitorDeleted records that the instance monitor of a node is deleted,
+// which takes the node out of the orchestration its monitor carried, or the
+// delete or purge it dropped the id of.
+func NoteMonitorDeleted(path, node string) {
+	mu.Lock()
+	defer mu.Unlock()
+	key := path + "/" + node
+	if pending, ok := leftOnDeletion[key]; ok {
+		delete(leftOnDeletion, key)
+		leave(pending, node, "")
+	}
+	if previous, ok := monitorOrchestration[key]; ok {
+		delete(monitorOrchestration, key)
+		leave(previous, node, "")
+	}
+}
+
+// endsWithDeletion says the orchestration of id deletes the instances, its
+// participants leaving it when their monitor is deleted. The caller holds the
+// lock.
+func endsWithDeletion(id string) bool {
+	o, ok := orchestrations[id]
+	if !ok {
+		return false
+	}
+	switch o.Expect {
+	case instance.MonitorGlobalExpectDeleted.String(), instance.MonitorGlobalExpectPurged.String():
+		return true
+	default:
+		return false
+	}
 }
 
 // join adds a node to an orchestration, and records the orchestration when it
@@ -629,6 +685,7 @@ func reset() {
 	orchestrations = make(map[string]*Orchestration)
 	participants = make(map[string]map[string]bool)
 	monitorOrchestration = make(map[string]string)
+	leftOnDeletion = make(map[string]string)
 	failures = make(map[string][]string)
 }
 

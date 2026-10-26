@@ -401,3 +401,63 @@ func TestANodeOrchestrationEndsWhenTheNodesRunningItAreGone(t *testing.T) {
 	o, _ = GetOrchestration(id.String())
 	assert.Equal(t, StateSucceeded, o.State)
 }
+
+// A node drops the id of a purge before its instance monitor is deleted, and
+// the purge is over only once the monitors are: a client told it ended finds
+// no trace of the object, as a create of the same name refused while the
+// daemon still knows an instance.
+func TestAPurgeEndsWhenTheMonitorsAreDeletedNotWhenTheyDropIt(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+	p := naming.Path{Name: "s1", Kind: naming.KindSvc}
+	mon := func(node string, orchestrationID uuid.UUID, state instance.MonitorState) *msgbus.InstanceMonitorUpdated {
+		return &msgbus.InstanceMonitorUpdated{
+			Path:  p,
+			Node:  node,
+			Value: instance.Monitor{OrchestrationID: orchestrationID, GlobalExpect: instance.MonitorGlobalExpectPurged, State: state},
+		}
+	}
+	m.handle(mon("n1", id, instance.MonitorStateIdle))
+	m.handle(mon("n2", id, instance.MonitorStateIdle))
+	m.handle(mon("n1", uuid.Nil, instance.MonitorStateIdle))
+	m.handle(mon("n2", uuid.Nil, instance.MonitorStateIdle))
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, StateRunning, o.State, "the monitors dropped the id, and still exist")
+
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n1"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateRunning, o.State, "n2 still knows its instance")
+
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n2"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+}
+
+// A purge failing on a node leaves its instance there, and ends at once.
+func TestAPurgeFailingOnANodeEndsFailed(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+	p := naming.Path{Name: "s1", Kind: naming.KindSvc}
+	m.handle(&msgbus.InstanceMonitorUpdated{Path: p, Node: "n1", Value: instance.Monitor{OrchestrationID: id, GlobalExpect: instance.MonitorGlobalExpectPurged}})
+	m.handle(&msgbus.InstanceMonitorUpdated{Path: p, Node: "n1", Value: instance.Monitor{State: instance.MonitorStatePurgeFailed}})
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, StateFailed, o.State)
+}
+
+// An instance whose monitor names a new orchestration after dropping the id
+// of a delete lives on: it is out of the delete.
+func TestAMonitorTakingANewOrchestrationLeavesTheDelete(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id, next := uuid.New(), uuid.New()
+	p := naming.Path{Name: "s1", Kind: naming.KindSvc}
+	m.handle(&msgbus.InstanceMonitorUpdated{Path: p, Node: "n1", Value: instance.Monitor{OrchestrationID: id, GlobalExpect: instance.MonitorGlobalExpectDeleted}})
+	m.handle(&msgbus.InstanceMonitorUpdated{Path: p, Node: "n1", Value: instance.Monitor{}})
+	m.handle(&msgbus.InstanceMonitorUpdated{Path: p, Node: "n1", Value: instance.Monitor{OrchestrationID: next, GlobalExpect: instance.MonitorGlobalExpectStarted}})
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+	o, _ = GetOrchestration(next.String())
+	assert.Equal(t, StateRunning, o.State)
+}

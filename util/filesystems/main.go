@@ -40,7 +40,9 @@ type (
 		IsFileBacked() bool
 		IsMultiDevice() bool
 		Mount(context.Context, string, string, string) error
+		MountNoCanonicalize(context.Context, string, string, string) error
 		Umount(context.Context, string) error
+		UmountNoFollow(context.Context, string) error
 		KillUsers(context.Context, string) error
 		Log() *plog.Logger
 		SetLog(*plog.Logger)

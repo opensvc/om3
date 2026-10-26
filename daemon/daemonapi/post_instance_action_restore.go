@@ -6,8 +6,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
@@ -21,6 +23,11 @@ func (a *DaemonAPI) PostInstanceActionRestore(ctx echo.Context, nodename, namesp
 	// saved, unless asked not to.
 	if params.Into != nil && *params.Into != "" {
 		if v, err := assertRoot(ctx); !v {
+			return err
+		}
+	} else if params.Config != nil && *params.Config {
+		// The configuration replaced, as a configuration write does.
+		if v, err := assertAdmin(ctx, namespace); !v {
 			return err
 		}
 	} else if params.Refs == nil || *params.Refs != api.PostInstanceActionRestoreParamsRefsSkip {
@@ -49,6 +56,20 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
 		return err
 	}
+	if params.Config != nil && *params.Config && (params.Into == nil || *params.Into == "") {
+		// The daemon restores the configuration itself, out of the
+		// action, which refuses the options it does not apply: told
+		// accepted, they would be said done and be ignored.
+		switch {
+		case params.Stop != nil && *params.Stop:
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--stop readies the instance for a restore of the heads in place, which --into and --config are not")
+		case params.Head != nil && len(*params.Head) > 0:
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--config restores the configuration alone: restore the heads with a restore of their own, once it is restored")
+		case params.ByRid != nil && *params.ByRid:
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "--by-rid says where to restore the heads, which --config does not restore")
+		}
+		return a.restoreConfigInPlace(ctx, p, params)
+	}
 	args := []string{p.String(), "sync", "restore"}
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)
@@ -71,6 +92,12 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 	if params.Config != nil && *params.Config {
 		args = append(args, "--config")
 	}
+	if params.ByRid != nil && *params.ByRid {
+		args = append(args, "--by-rid")
+	}
+	if params.Stop != nil && *params.Stop {
+		args = append(args, "--stop")
+	}
 	if params.Refs != nil && *params.Refs != "" {
 		args = append(args, "--refs", string(*params.Refs))
 	}
@@ -87,4 +114,45 @@ func (a *DaemonAPI) postLocalInstanceActionRestore(ctx echo.Context, namespace s
 	} else {
 		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
+}
+
+// restoreConfigInPlace replaces the configuration of the object with the one
+// a snapshot holds, as a configuration replaced is: its keywords checked
+// against the grants of the requester, the resources up a change would leak,
+// the claims of the namespace and what other objects hold. The daemon does it
+// itself: the command an action runs is root on the node, and would replace
+// it as root.
+func (a *DaemonAPI) restoreConfigInPlace(ctx echo.Context, p naming.Path, params api.PostInstanceActionRestoreParams) error {
+	// Read before the configuration restored is: the write lands only over
+	// this file.
+	base, err := readConfigBase(p)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Read config", "%s", err)
+	}
+	o, err := object.NewActor(p, object.WithVolatile(true))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New object", "%s", err)
+	}
+	opts := actioncontext.RestoreOptions{Config: true}
+	if params.Snapshot != nil {
+		opts.Snapshot = *params.Snapshot
+	}
+	rctx := actioncontext.WithRestoreOptions(ctx.Request().Context(), opts)
+	if params.Rid != nil {
+		rctx = actioncontext.WithRID(rctx, *params.Rid)
+	}
+	body, drift, err := o.RestoredConfig(rctx)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Restore config", "%s", err)
+	}
+	if len(drift) == 0 {
+		return ctx.NoContent(http.StatusNoContent)
+	}
+	if err := configRbac(ctx, p, body); err != nil {
+		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
+	}
+	if err := stopToChange(ctx, p, body, false); err != nil {
+		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+	}
+	return a.writeObjectConfigFile(ctx, p, body, base, nil, false, false, false)
 }

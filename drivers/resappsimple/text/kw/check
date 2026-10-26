@@ -10,4 +10,4 @@
 
    Execute this command on `status` action.
 
-If not set, the driver will lookup the process it started.
+If not set, the driver looks for the processes the `kill` keyword says.

@@ -1,0 +1,7 @@
+The command suspending the writes of the app before a run of a sync resource
+of the object, for the data it saves to be consistent, as a flush and a lock.
+`resume` resumes them after the run. A failure aborts the run, and what was
+quiesced is resumed.
+
+As the other commands of the app, `true` runs the script with the quiesce
+argument.

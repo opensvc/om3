@@ -24,6 +24,7 @@ const (
 	leaderKey
 	preflightKey
 	adoptKey
+	beganAtKey
 	lockTimeoutKey
 	lockTimeoutSetKey
 	lockDisabledKey
@@ -42,6 +43,7 @@ const (
 	subsetKey
 	tagKey
 	targetKey
+	runMarksKey
 	toKey
 	verboseKey
 )
@@ -322,8 +324,18 @@ type RestoreOptions struct {
 	// instead of into the heads.
 	Into string
 
-	// Config asks the configuration of the object restored too.
+	// Config asks the configuration of the object restored: in place, it
+	// alone, aside, beside the heads.
 	Config bool
+
+	// ByRID asks each head restored into the current head of the resource
+	// of its rid, rather than at the path it was saved from.
+	ByRID bool
+
+	// Stop asks the instance brought to the state a restore in place
+	// needs, rather than the restore refused: the resources using the
+	// heads stopped, the heads started, and the instance left stopped.
+	Stop bool
 
 	// Heads are the heads to restore, every head of the run when empty.
 	Heads []string
@@ -342,6 +354,39 @@ func Restore(ctx context.Context) RestoreOptions {
 		return i.(RestoreOptions)
 	}
 	return RestoreOptions{}
+}
+
+// RunMarks are what a sync update marks the run it writes with: protected
+// from the retention, and a note, set when the run is written.
+type RunMarks struct {
+	Protect bool
+	Note    string
+}
+
+func WithRunMarks(ctx context.Context, m RunMarks) context.Context {
+	return context.WithValue(ctx, runMarksKey, m)
+}
+
+func RunMarksOf(ctx context.Context) RunMarks {
+	if i := ctx.Value(runMarksKey); i != nil {
+		return i.(RunMarks)
+	}
+	return RunMarks{}
+}
+
+// WithBeganAt says when the action began, which the resources acting at
+// different times of it share: the runs one sync update writes into several
+// stores, under one snapshot id, carry this one time.
+func WithBeganAt(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, beganAtKey, t)
+}
+
+// BeganAt returns when the action began, now outside an action.
+func BeganAt(ctx context.Context) time.Time {
+	if i := ctx.Value(beganAtKey); i != nil {
+		return i.(time.Time)
+	}
+	return time.Now()
 }
 
 func WithTarget(ctx context.Context, s []string) context.Context {

@@ -50,6 +50,7 @@ var (
 		Scopable:     true,
 		StopToChange: true,
 		Text:         keywords.NewText(fs, "text/kw/mnt"),
+		Validate:     validateMountPoint,
 	}
 	KeywordMountOptions = keywords.Keyword{
 		Attr:     "MountOptions",

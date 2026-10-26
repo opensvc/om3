@@ -798,6 +798,12 @@ func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver
 	return obj.(object.Actor).ResourceHandlingFile(ctx, p)
 }
 
+// ContainerName returns the name of the container, which the zone keyword of
+// a filesystem names to be mounted under its root directory.
+func (t *T) ContainerName() string {
+	return t.Name
+}
+
 // ContainerHead implements the interface replacing b2.1 the zonepath resource attribute
 func (t *T) ContainerHead(ctx context.Context) (string, error) {
 	return t.rootDir(ctx)

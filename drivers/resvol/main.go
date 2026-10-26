@@ -68,6 +68,7 @@ type (
 		Size         *int64 `json:"size"`
 		Format       bool   `json:"format"`
 		Volatile     bool   `json:"volatile"`
+		Snap         bool   `json:"snap"`
 		VolNodes     []string
 
 		// Context
@@ -497,6 +498,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	l.Format = t.Format
 	l.Shared = t.Shared
 	l.Volatile = t.Volatile
+	l.Snap = t.Snap
 	l.Access, err = t.access()
 	if err != nil {
 		return nil, err
@@ -666,6 +668,25 @@ func (t *T) Head() string {
 		return ""
 	}
 	return volume.Head()
+}
+
+// SnapshotHead implements resource.HeadSnapshotter: the snapshot of the head
+// of the vol, which the resource of the vol holding it takes, when its storage
+// takes them.
+func (t *T) SnapshotHead(ctx context.Context, name string) (string, func() error, bool, error) {
+	volume, err := t.Volume()
+	if err != nil {
+		return "", nil, false, err
+	}
+	rid, err := volume.HeadRID(ctx)
+	if err != nil || rid == "" {
+		return "", nil, false, err
+	}
+	snapshotter, ok := volume.ResourceByID(rid).(resource.HeadSnapshotter)
+	if !ok {
+		return "", nil, false, nil
+	}
+	return snapshotter.SnapshotHead(ctx, name)
 }
 
 func (t *T) exposedDevice(ctx context.Context) *device.T {

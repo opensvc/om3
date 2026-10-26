@@ -1,3 +1,7 @@
-The zone name the fs refers to.
+The name, or the rid, of the container.lxc resource of the object the
+filesystem is mounted in.
 
-If set, the fs mount point is reparented into the zonepath rootfs.
+If set, the `mnt` path is taken in the container: the filesystem is
+mounted under the root directory of the container on the host. A zone
+naming no such container fails the actions of the resource, rather than
+mount the filesystem on the host path.

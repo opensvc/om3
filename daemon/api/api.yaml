@@ -3780,11 +3780,13 @@ paths:
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryRestoreByRid'
         - $ref: '#/components/parameters/inQueryRestoreConfig'
         - $ref: '#/components/parameters/inQueryRestoreHead'
         - $ref: '#/components/parameters/inQueryRestoreInto'
         - $ref: '#/components/parameters/inQueryRestoreRefs'
         - $ref: '#/components/parameters/inQueryRestoreSnapshot'
+        - $ref: '#/components/parameters/inQueryRestoreStop'
       responses:
         200:
           content:
@@ -3792,6 +3794,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceActionAccepted'
           description: OK
+        204:
+          description: |
+            The configuration restored in place, or the one of the snapshot
+            already: a restore of the configuration in place is the daemon's,
+            as the requester.
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3903,6 +3910,8 @@ paths:
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQuerySyncTarget'
+        - $ref: '#/components/parameters/inQueryRunProtect'
+        - $ref: '#/components/parameters/inQueryRunNote'
       responses:
         200:
           content:
@@ -3985,6 +3994,48 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unstop:
+    post:
+      description: |
+        Lower the flags a stop raised on the object instance, as a start
+        does, and start nothing: the daemon may start the instance on its
+        own again, and restart its resources. With a resource selector,
+        only the flags of the resources selected.
+      operationId: PostInstanceActionUnstop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
@@ -4527,6 +4578,37 @@ paths:
         Guest role on the namespace or all namespaces or better is sufficient to access object metrics.
         Root role is necessary to access daemon metrics.
       operationId: GetNodeMetrics
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/metrics/pg:
+    get:
+      description: |
+        Proxy to node's /metrics/pg endpoint, the cgroup usage of the objects on
+        that node, filtering metrics based on requester's RBAC grants.
+        Guest role on the namespace or all namespaces or better is sufficient to
+        access the metrics of the objects of the namespace.
+      operationId: GetNodeMetricsPG
       tags:
         - node
       security:
@@ -5876,6 +5958,13 @@ paths:
 
         An object that exists is refused, unless force, which replaces its
         configuration as a creation does, with the checks of an update.
+
+        With store and snapshot, the configuration is the one of the object
+        the snapshot is of, and the request has no body. It passes the same
+        checks, then the keys of the sec and cfg it references that the
+        namespace lacks are created, and restore_from names the snapshot,
+        for the provision to restore the heads from. The snapshot is one of
+        an object of a namespace the requester is an administrator of.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5884,6 +5973,8 @@ paths:
         - $ref: '#/components/parameters/inQueryWaitLocal'
         - $ref: '#/components/parameters/inQueryRestore'
         - $ref: '#/components/parameters/inQuerySets'
+        - $ref: '#/components/parameters/inQueryStore'
+        - $ref: '#/components/parameters/inQueryCreateSnapshot'
         - $ref: '#/components/parameters/inQueryForce'
       requestBody:
         description: OK
@@ -6528,6 +6619,179 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/store:
+    get:
+      description: |
+        List the stores the requester may use or read: the stores of the
+        cluster configuration, to a requester with a grant, and the stores
+        a sec declares, to the namespaces it serves.
+
+        The stats of a store are of the whole store to root and to a role
+        on every namespace, and summed from the objects of the namespaces
+        the requester holds a role on otherwise. The space left and the
+        reach of the store are the store's.
+      operationId: GetStores
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/store/object:
+    get:
+      description: |
+        List the objects a store holds runs of, with their figures, as the
+        stats the store records per object: one read per object, never per
+        run, and cached by the daemon, so the figures may be as old as
+        their updated_at says. A store keeping its runs in a directory of
+        each node is read on every node.
+
+        The objects of the namespaces the requester holds a role on are
+        listed, the ones another cluster wrote through a store of a sec,
+        and every one to root.
+      operationId: GetStoreObjects
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: store
+          required: true
+          description: The store, as a store keyword names it.
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreObjectStatsList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/store/snapshot:
+    get:
+      description: |
+        List the snapshots the stores hold, read from the stores, of the
+        objects of the namespaces the requester has a grant on, newest
+        first. A store keeping its runs in a directory of each node is read
+        on every node.
+      operationId: GetStoreSnapshots
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inQueryStore'
+        - $ref: '#/components/parameters/inQueryStorePath'
+        - $ref: '#/components/parameters/inQueryStoreCluster'
+        - in: query
+          name: limit
+          description: The most snapshots to answer, newest first. The next page is asked with before set to the next value of the answer.
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: before
+          description: The next value of a previous answer, for the snapshots older than its last one, newest first.
+          schema:
+            type: string
+        - in: query
+          name: after
+          description: The next value of a previous answer asked with order asc, for the snapshots newer than its last one, oldest first. Passed as before, it is taken the same way.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/inQueryStoreObjectID'
+        - $ref: '#/components/parameters/inQueryStoreSince'
+        - $ref: '#/components/parameters/inQueryStoreUntil'
+        - in: query
+          name: order
+          description: newest first, by default, or asc, oldest first, as the first snapshot after a date is asked with since and limit 1.
+          schema:
+            type: string
+            enum:
+              - desc
+              - asc
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreSnapshotList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    delete:
+      description: |
+        Remove a snapshot from a store, protected or not: the retention
+        never removes a protected one. Needs the admin grant of the
+        namespace of the object the snapshot is of, a namespace of this
+        cluster: the snapshot another cluster wrote into a store of the
+        cluster configuration needs root.
+      operationId: DeleteStoreSnapshot
+      tags:
+        - store
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: store
+          required: true
+          description: The store, as a store keyword names it.
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          description: The snapshot id, or a prefix of it.
+          schema:
+            type: string
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
         500:
           $ref: '#/components/responses/500'
 
@@ -10318,6 +10582,15 @@ components:
         created_at:
           type: string
           format: date-time
+        cluster:
+          type: string
+          description: The name of the cluster of the node that took the snapshot, several clusters writing one store.
+        protected:
+          type: boolean
+          description: The retention keeps the snapshot, which only an explicit removal deletes.
+        note:
+          type: string
+          description: The text the snapshot was marked with when taken.
         node:
           type: string
           description: The node that took the snapshot.
@@ -10350,6 +10623,280 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/SyncSnapshotItem'
+
+    StoreList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - StoreList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreItem'
+
+    StoreItem:
+      type: object
+      required:
+        - ref
+        - type
+        - url
+        - share
+      properties:
+        stats:
+          $ref: '#/components/schemas/StoreStats'
+        node_stats:
+          type: object
+          description: The stats of the directory of each node, by node name, for a store keeping its runs in a directory of each node.
+          additionalProperties:
+            $ref: '#/components/schemas/StoreStats'
+        ref:
+          type: string
+          description: The reference to the store, as a store keyword names it.
+        type:
+          type: string
+        url:
+          type: string
+        share:
+          type: array
+          description: The namespaces whose objects may use the store, * for every one.
+          items:
+            type: string
+
+    StoreSnapshotList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        next:
+          type: string
+          description: The value asking the next page, as before, or as after for an answer asked with order asc, set when the answer was cut at the limit.
+        kind:
+          type: string
+          enum:
+            - StoreSnapshotList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreSnapshot'
+
+    StoreSnapshot:
+      type: object
+      required:
+        - store
+        - path
+        - id
+        - created_at
+        - cluster_id
+        - cluster_name
+        - node
+        - members
+        - protected
+        - note
+        - logical_bytes
+      properties:
+        store:
+          type: string
+        path:
+          type: string
+          description: The object the snapshot is of, as it was named then.
+        id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        cluster_id:
+          type: string
+        cluster_name:
+          type: string
+        node:
+          type: string
+          description: The node that took the snapshot.
+        members:
+          type: array
+          items:
+            type: string
+        protected:
+          type: boolean
+        note:
+          type: string
+        completed_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+          description: The size of what the run saved, 0 when the store does not tell.
+
+    StoreStats:
+      type: object
+      description: |
+        The figures of a store, summed from the stats every object of it
+        records, of every cluster writing it, and cached by the daemon.
+      required:
+        - runs
+        - incomplete
+        - protected
+        - objects
+        - logical_bytes
+        - updated_at
+        - clusters
+      properties:
+        runs:
+          type: integer
+          description: The completed runs.
+        incomplete:
+          type: integer
+          description: The runs a failed or interrupted update left.
+        protected:
+          type: integer
+        objects:
+          type: integer
+          description: The objects with a run, counted by object id.
+        first_created_at:
+          type: string
+          format: date-time
+        last_created_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+          description: The size of what the runs saved.
+        stored_bytes:
+          type: integer
+          format: int64
+          description: What the runs take in the store, absent when the store can not tell.
+        free_bytes:
+          type: integer
+          format: int64
+          description: The space left in the store, absent when it does not tell.
+        checked_at:
+          type: string
+          format: date-time
+          description: When the store was last reached.
+        check_error:
+          type: string
+          description: Why the last attempt failed to reach the store.
+        updated_at:
+          type: string
+          format: date-time
+          description: When these figures were computed.
+        missing_nodes:
+          type: array
+          description: The nodes whose directory was not read, for a store keeping its runs in a directory of each node, whose runs the figures leave out.
+          items:
+            type: string
+        clusters:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreClusterStats'
+
+    StoreClusterStats:
+      type: object
+      required:
+        - cluster_id
+        - cluster_name
+        - runs
+        - incomplete
+        - protected
+        - objects
+        - logical_bytes
+      properties:
+        cluster_id:
+          type: string
+        cluster_name:
+          type: string
+        runs:
+          type: integer
+        incomplete:
+          type: integer
+        protected:
+          type: integer
+        objects:
+          type: integer
+        last_created_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+
+    StoreObjectStatsList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        missing_nodes:
+          type: array
+          description: The nodes whose directory was not read, whose objects the list leaves out.
+          items:
+            type: string
+        kind:
+          type: string
+          enum:
+            - StoreObjectStatsList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreObjectStats'
+
+    StoreObjectStats:
+      type: object
+      required:
+        - cluster_id
+        - cluster_name
+        - object_id
+        - path
+        - runs
+        - incomplete
+        - protected
+        - nodes
+        - logical_bytes
+        - updated_at
+      properties:
+        cluster_id:
+          type: string
+        cluster_name:
+          type: string
+        object_id:
+          type: string
+        path:
+          type: string
+          description: The path of the object at its last run.
+        runs:
+          type: integer
+        incomplete:
+          type: integer
+        protected:
+          type: integer
+        nodes:
+          type: array
+          description: The nodes that wrote its completed runs.
+          items:
+            type: string
+        first_created_at:
+          type: string
+          format: date-time
+        last_created_at:
+          type: string
+          format: date-time
+        logical_bytes:
+          type: integer
+          format: int64
+        stored_bytes:
+          type: integer
+          format: int64
+        updated_at:
+          type: string
+          format: date-time
+          description: When the node completing or removing a run of the object counted these.
 
     SyncSnapshotList:
       type: object
@@ -11201,10 +11748,91 @@ components:
       schema:
         type: string
 
+    inQueryStore:
+      in: query
+      name: store
+      description: |
+        The store, as a store keyword names it: a name for a store of the
+        cluster configuration, from <sec> store#<name> for one of a sec.
+      schema:
+        type: string
+
+    inQueryStorePath:
+      in: query
+      name: path
+      description: The object whose snapshots to list, by the path the store last recorded for it.
+      schema:
+        type: string
+
+    inQueryStoreCluster:
+      in: query
+      name: cluster
+      description: The cluster whose snapshots to list, by name or id.
+      schema:
+        type: string
+
+    inQueryStoreObjectID:
+      in: query
+      name: object_id
+      description: The object whose snapshots to list, by its id, which a path names two of after a rename or a create over a purged one.
+      schema:
+        type: string
+
+    inQueryStoreSince:
+      in: query
+      name: since
+      description: The snapshots created from this time on.
+      schema:
+        type: string
+        format: date-time
+
+    inQueryStoreUntil:
+      in: query
+      name: until
+      description: The snapshots created before this time.
+      schema:
+        type: string
+        format: date-time
+
+    inQueryCreateSnapshot:
+      in: query
+      name: snapshot
+      description: |
+        The snapshot of the store to create the object from: its id or a
+        prefix of it, or the path of an object for its latest snapshot. The
+        object takes its configuration, the keys of the sec and cfg it
+        references that its namespace lacks, and its heads are restored at
+        provision. Needs the admin grant of the namespace of the object the
+        snapshot is of.
+      schema:
+        type: string
+
     inQueryRestoreConfig:
       in: query
       name: config
-      description: Restore the configuration of the object too.
+      description: |
+        Restore the configuration of the object: in place, it alone,
+        through the checks of a configuration replaced, the object keeping
+        its id; aside, beside the heads.
+      schema:
+        type: boolean
+
+    inQueryRestoreStop:
+      in: query
+      name: stop
+      description: |
+        Stop the resources using the heads and start the heads, rather than
+        refuse the restore in place, and leave the instance stopped.
+      schema:
+        type: boolean
+
+    inQueryRestoreByRid:
+      in: query
+      name: by_rid
+      description: |
+        Restore each head into the current head of the resource of its
+        resource id, rather than at the path the head had when saved, which
+        must be under a head of the object.
       schema:
         type: boolean
 
@@ -11266,6 +11894,20 @@ components:
           type: string
           description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
           example: env.eat=fruits
+
+    inQueryRunProtect:
+      in: query
+      name: protect
+      description: Keep the run a sync.store resource writes from the retention.
+      schema:
+        type: boolean
+
+    inQueryRunNote:
+      in: query
+      name: note
+      description: A note to mark the run a sync.store resource writes with.
+      schema:
+        type: string
 
     inQuerySyncTarget:
       in: query

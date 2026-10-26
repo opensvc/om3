@@ -56,6 +56,7 @@ func (t *CmdObjectSyncSnapshots) Run(kind string) error {
 			data.Items = append(data.Items, items...)
 		}
 	}
+	commoncmd.LocalSyncSnapshots(data.Items)
 	return errors.Join(errs, output.Renderer{
 		DefaultOutput: commoncmd.SyncSnapshotsTab,
 		Output:        t.Output,
