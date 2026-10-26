@@ -124,3 +124,28 @@ func TestOpenUnderStaysInTheHead(t *testing.T) {
 	assert.FileExists(t, filepath.Join(headDir, "moved", "data", "restored"), "written into the directory opened")
 	assert.NoFileExists(t, filepath.Join(outside, "restored"))
 }
+
+// The head itself is reached from the root directory with no symlink
+// followed: a process writing in an outer head swapping a component of the
+// path of this one for a symlink does not move the restore.
+func TestOpenUnderRefusesAHeadPathSwapped(t *testing.T) {
+	base := t.TempDir()
+	outer := filepath.Join(base, "outer")
+	headDir := filepath.Join(outer, "inner", "head")
+	outside := filepath.Join(base, "outside")
+	require.NoError(t, os.MkdirAll(headDir, 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(outside, "head"), 0755))
+
+	f, err := openUnder(headDir, filepath.Join(headDir, "data"))
+	require.NoError(t, err)
+	_ = f.Close()
+	assert.DirExists(t, filepath.Join(headDir, "data"))
+
+	// The process writing in the outer head swaps the head's parent for a
+	// symlink out, after the checks.
+	require.NoError(t, os.Rename(filepath.Join(outer, "inner"), filepath.Join(outer, "moved")))
+	require.NoError(t, os.Symlink(outside, filepath.Join(outer, "inner")))
+	_, err = openUnder(headDir, filepath.Join(headDir, "data"))
+	assert.ErrorContains(t, err, "is a symlink")
+	assert.NoDirExists(t, filepath.Join(outside, "head", "data"), "nothing created outside")
+}

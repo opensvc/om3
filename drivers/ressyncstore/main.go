@@ -1071,7 +1071,7 @@ func openUnder(headDir, dir string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	root, err := os.OpenRoot(headDir)
+	root, err := openHead(headDir)
 	if err != nil {
 		return nil, err
 	}
@@ -1079,7 +1079,7 @@ func openUnder(headDir, dir string) (*os.File, error) {
 		if name == "." || name == "" {
 			continue
 		}
-		next, err := openComponent(root, name)
+		next, err := openComponent(root, name, true)
 		_ = root.Close()
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", dir, err)
@@ -1090,10 +1090,39 @@ func openUnder(headDir, dir string) (*os.File, error) {
 	return root.Open(".")
 }
 
-// openComponent opens the directory name of root, created when absent.
-func openComponent(root *os.Root, name string) (*os.Root, error) {
+// openHead opens the head headDir from the root directory, one component
+// after the other, refusing a symlink: a process writing in a head holding
+// this one, as an outer filesystem, could swap one of its components for a
+// symlink after the checks, and the restore would empty and write where it
+// points. A head configured through a symlink is refused all the same: the
+// path of a mount point is the one to configure.
+func openHead(headDir string) (*os.Root, error) {
+	if !filepath.IsAbs(headDir) {
+		return nil, fmt.Errorf("%s: not an absolute path", headDir)
+	}
+	root, err := os.OpenRoot("/")
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range strings.Split(filepath.Clean(headDir), string(filepath.Separator)) {
+		if name == "" {
+			continue
+		}
+		next, err := openComponent(root, name, false)
+		_ = root.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", headDir, err)
+		}
+		root = next
+	}
+	return root, nil
+}
+
+// openComponent opens the directory name of root, created when absent if
+// create is set.
+func openComponent(root *os.Root, name string, create bool) (*os.Root, error) {
 	fi, err := root.Lstat(name)
-	if errors.Is(err, os.ErrNotExist) {
+	if create && errors.Is(err, os.ErrNotExist) {
 		if err := root.Mkdir(name, 0755); err != nil && !errors.Is(err, os.ErrExist) {
 			return nil, err
 		}
