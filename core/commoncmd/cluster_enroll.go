@@ -116,7 +116,7 @@ func (t *CmdClusterEnroll) run() error {
 		}
 		evReader, err = streamClient.NewGetEvents().
 			SetRelatives(false).
-			SetFilters([]string{"JoinSuccess", "JoinError", "JoinIgnored", "NodeAlive"}).
+			SetFilters([]string{"JoinSuccess", "JoinError", "JoinIgnored", "NodeAlive", "DaemonCollectorUpdated"}).
 			SetDuration(t.Timeout).
 			GetReader(ctx)
 		if err != nil {
@@ -182,16 +182,28 @@ func (t *CmdClusterEnroll) token() (string, error) {
 	return token, nil
 }
 
-// waitResult reports the join progress of the node until its heartbeat beats.
+// waitResult reports the join progress of the node until its heartbeat beats,
+// then its collector registration.
 //
 // JoinSuccess only tells the api node updated its cluster.nodes: the enrolled
 // node has not drained, stopped, reconfigured, or restarted yet. NodeAlive is
 // what proves it is a live member of this cluster.
+//
+// The join registers the node on the collector before its daemon starts, so
+// the first collector state the node publishes says whether it is registered.
+// It may come before or after NodeAlive.
 func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCloser, node string) error {
-	joined := false
+	var (
+		joined, alive  bool
+		collectorState string
+	)
 	for {
 		select {
 		case <-ctx.Done():
+			if alive {
+				_, _ = fmt.Fprintf(os.Stdout, "Node %s collector state not received: check it with 'om daemon status'\n", node)
+				return nil
+			}
 			if joined {
 				return fmt.Errorf("node %s was added to the cluster nodes but its heartbeat is not beating yet: %w", node, ctx.Err())
 			}
@@ -200,6 +212,10 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 		}
 		ev, err := evReader.Read()
 		if err != nil {
+			if alive {
+				_, _ = fmt.Fprintf(os.Stdout, "Node %s collector state not received: check it with 'om daemon status'\n", node)
+				return nil
+			}
 			if joined {
 				return fmt.Errorf("node %s was added to the cluster nodes but its heartbeat is not beating yet: %w", node, err)
 			}
@@ -237,7 +253,35 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 				continue
 			}
 			_, _ = fmt.Fprintf(os.Stdout, "Node %s is alive\n", node)
-			return nil
+			if collectorState != "" {
+				printCollectorState(node, collectorState)
+				return nil
+			}
+			alive = true
+		case *msgbus.DaemonCollectorUpdated:
+			// A state not published yet is empty.
+			if m.Node != node || m.Value.State == "" {
+				continue
+			}
+			collectorState = m.Value.State
+			if alive {
+				printCollectorState(node, collectorState)
+				return nil
+			}
 		}
+	}
+}
+
+// printCollectorState reports the collector registration of the enrolled
+// node from its collector state. The collector daemon component only has a
+// client, needed by the speaker and speaker-candidate states, when the node
+// has a registration id. A cluster without collector has nothing to report.
+func printCollectorState(node, state string) {
+	switch state {
+	case "speaker", "speaker-candidate":
+		_, _ = fmt.Fprintf(os.Stdout, "Node %s is registered on the collector\n", node)
+	case "disabled":
+	default:
+		_, _ = fmt.Fprintf(os.Stdout, "Node %s is not registered on the collector (state %s): register it with 'om node register'\n", node, state)
 	}
 }
