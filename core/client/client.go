@@ -210,19 +210,6 @@ func (t *T) URL() string {
 	return t.url
 }
 
-// userSocketForNonRoot makes the clients of a caller other than root, with no
-// context nor url, reach the user socket rather than the root one, which
-// they can not reach.
-var userSocketForNonRoot bool
-
-// UseUserSocketForNonRoot makes the clients of a caller other than root,
-// with no context nor url, reach the user socket, as ox does: the daemon
-// authenticates the local account connected, with the grants the cluster
-// configuration and the usr objects give it.
-func UseUserSocketForNonRoot() {
-	userSocketForNonRoot = true
-}
-
 // userSocketURL returns the url of the user socket, or why the caller can
 // not reach it.
 func userSocketURL() (string, error) {
@@ -268,7 +255,7 @@ func (t *T) configure() error {
 			return err
 		}
 	} else {
-		if t.url == "" && userSocketForNonRoot && os.Geteuid() != 0 {
+		if t.url == "" && clientcontext.UsesUserSocket() {
 			u, err := userSocketURL()
 			if err != nil {
 				return err

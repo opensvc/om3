@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -144,7 +144,7 @@ func setExecuteArgs(args []string) []string {
 //
 //	ExecuteArgs([]string{"mysvc*", "ls"})
 func ExecuteArgs(args []string) {
-	client.UseUserSocketForNonRoot()
+	clientcontext.UseUserSocketForNonRoot()
 	type exitcoder interface {
 		ExitCode() int
 	}

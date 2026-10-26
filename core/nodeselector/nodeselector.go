@@ -245,7 +245,7 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
-	if clientcontext.IsSet() || !cluster.ConfigData.IsSet() {
+	if clientcontext.IsRemote() || !cluster.ConfigData.IsSet() {
 		return t.KnownRemoteNodes()
 	} else {
 		return t.KnownLocalNodes()
@@ -303,7 +303,7 @@ func (t *T) getNodesInfo() (nodesinfo.M, error) {
 	if t.info != nil {
 		return t.info, nil
 	}
-	if clientcontext.IsSet() {
+	if clientcontext.IsRemote() {
 		if info, err := t.getNodesInfoFromAPI(); err != nil {
 			return nil, err
 		} else {

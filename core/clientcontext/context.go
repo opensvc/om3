@@ -85,6 +85,34 @@ func IsSet() bool {
 	return env.Context() != ""
 }
 
+// userSocketForNonRoot makes the clients of a caller other than root, with no
+// context, reach the user socket rather than the root one, which they can
+// not reach.
+var userSocketForNonRoot bool
+
+// UseUserSocketForNonRoot makes the clients of a caller other than root,
+// with no context, reach the user socket, as ox does: the daemon
+// authenticates the local account connected, with the grants the cluster
+// configuration and the usr objects give it.
+func UseUserSocketForNonRoot() {
+	userSocketForNonRoot = true
+}
+
+// UsesUserSocket says the clients reach the user socket: a caller other than
+// root, with no context, of a command that uses it.
+func UsesUserSocket() bool {
+	return userSocketForNonRoot && !IsSet() && os.Geteuid() != 0
+}
+
+// IsRemote says the command reaches the daemon as a client only, reading
+// nothing of the node it runs on: a context names the cluster, or the
+// caller, not root, goes through the user socket. A caller that is not
+// remote is root on a node, which may read the node files, as the known
+// nodes or the installed objects, when the daemon does not answer.
+func IsRemote() bool {
+	return IsSet() || UsesUserSocket()
+}
+
 func Load() (config, error) {
 	var errs error
 	cfg := config{
