@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,17 +103,24 @@ func captureStdout(t *testing.T, f func()) string {
 
 // TestCmdClusterEnrollWaitCollector pins that the enroll wait reports the
 // collector registration of the enrolled node from its first collector
-// state, whether it comes before or after the node is alive.
+// state, whether it comes before or after the node is alive, or from the
+// cluster status past the event stream, and fails when it stays unknown.
 func TestCmdClusterEnrollWaitCollector(t *testing.T) {
+	timeout, interval := collectorStateTimeout, collectorStateInterval
+	collectorStateTimeout, collectorStateInterval = 50*time.Millisecond, 10*time.Millisecond
+	t.Cleanup(func() { collectorStateTimeout, collectorStateInterval = timeout, interval })
+
 	collectorUpdated := func(node, state string) *msgbus.DaemonCollectorUpdated {
 		m := &msgbus.DaemonCollectorUpdated{Node: node}
 		m.Value.State = state
 		return m
 	}
 	for name, tc := range map[string]struct {
-		msgs []any
-		want string
-		not  string
+		msgs    []any
+		status  string
+		want    string
+		not     string
+		wantErr string
 	}{
 		"registered, state after alive": {
 			msgs: []any{
@@ -145,19 +153,34 @@ func TestCmdClusterEnrollWaitCollector(t *testing.T) {
 			want: "Node node2 is alive\n",
 			not:  "collector",
 		},
+		"collector state from the cluster status": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+			},
+			status: "speaker-candidate",
+			want:   "Node node2 is alive\nNode node2 is registered on the collector\n",
+		},
 		"no collector state": {
 			msgs: []any{
 				&msgbus.NodeAlive{Node: "node2"},
 			},
-			want: "Node node2 collector state not received",
+			want:    "Node node2 is alive\n",
+			wantErr: "node node2 is alive, but its collector state is unknown",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var err error
+			c := &CmdClusterEnroll{
+				collectorState: func(string) (string, error) { return tc.status, nil },
+			}
 			out := captureStdout(t, func() {
-				err = (&CmdClusterEnroll{}).waitResult(context.Background(), &fakeEventReader{msgs: tc.msgs}, "node2")
+				err = c.waitResult(context.Background(), &fakeEventReader{msgs: tc.msgs}, "node2")
 			})
-			require.NoError(t, err)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
 			assert.Contains(t, out, tc.want)
 			if tc.not != "" {
 				assert.NotContains(t, out, tc.not)

@@ -2,6 +2,7 @@ package commoncmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -39,11 +41,26 @@ type (
 
 		// Wait blocks until the enrolled node heartbeat is beating.
 		Wait bool
+
+		// collectorState returns the collector state of a node, as the
+		// cluster status of the api node holds it, empty when not known
+		// yet.
+		collectorState func(node string) (string, error)
 	}
 )
 
 var (
 	ErrCmdClusterEnroll = errors.New("command cluster enroll")
+
+	// collectorStateTimeout bounds the wait for the collector state of the
+	// enrolled node once alive, past the enroll timeout or the end of the
+	// event stream: its collector publishes its first state a few seconds
+	// after its daemon starts.
+	collectorStateTimeout = 30 * time.Second
+
+	// collectorStateInterval is the interval between the reads of the
+	// collector state of the enrolled node, past the event stream.
+	collectorStateInterval = time.Second
 )
 
 func NewCmdClusterEnroll() *cobra.Command {
@@ -167,6 +184,7 @@ func (t *CmdClusterEnroll) run() error {
 		_, _ = fmt.Fprintf(os.Stdout, "Follow with: om daemon events --filter 'NodeAlive,.node=%s'\n", node)
 		return nil
 	}
+	t.collectorState = collectorStateFromStatus(c)
 	return t.waitResult(ctx, evReader, node)
 }
 
@@ -191,7 +209,10 @@ func (t *CmdClusterEnroll) token() (string, error) {
 //
 // The join registers the node on the collector before its daemon starts, so
 // the first collector state the node publishes says whether it is registered.
-// It may come before or after NodeAlive.
+// It may come before or after NodeAlive. A node alive whose collector state
+// did not come before the timeout or the end of the event stream gets its
+// state read from the cluster status, for a bounded time: the enroll does
+// not succeed without telling whether the node is registered.
 func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCloser, node string) error {
 	var (
 		joined, alive  bool
@@ -201,8 +222,7 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 		select {
 		case <-ctx.Done():
 			if alive {
-				_, _ = fmt.Fprintf(os.Stdout, "Node %s collector state not received: check it with 'om daemon status'\n", node)
-				return nil
+				return t.waitCollectorState(node)
 			}
 			if joined {
 				return fmt.Errorf("node %s was added to the cluster nodes but its heartbeat is not beating yet: %w", node, ctx.Err())
@@ -213,8 +233,7 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 		ev, err := evReader.Read()
 		if err != nil {
 			if alive {
-				_, _ = fmt.Fprintf(os.Stdout, "Node %s collector state not received: check it with 'om daemon status'\n", node)
-				return nil
+				return t.waitCollectorState(node)
 			}
 			if joined {
 				return fmt.Errorf("node %s was added to the cluster nodes but its heartbeat is not beating yet: %w", node, err)
@@ -269,6 +288,42 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 				return nil
 			}
 		}
+	}
+}
+
+// waitCollectorState reads the collector state of the alive node from the
+// cluster status, until it is known or collectorStateTimeout.
+func (t *CmdClusterEnroll) waitCollectorState(node string) error {
+	deadline := time.Now().Add(collectorStateTimeout)
+	for {
+		state, err := t.collectorState(node)
+		if err == nil && state != "" {
+			printCollectorState(node, state)
+			return nil
+		}
+		if time.Now().After(deadline) {
+			if err != nil {
+				return fmt.Errorf("node %s is alive, but its collector state is unknown: %w", node, err)
+			}
+			return fmt.Errorf("node %s is alive, but its collector state is unknown: check it with 'om daemon status'", node)
+		}
+		time.Sleep(collectorStateInterval)
+	}
+}
+
+// collectorStateFromStatus returns a function reading the collector state of
+// a node from the cluster status of the api node c is connected to.
+func collectorStateFromStatus(c *client.T) func(string) (string, error) {
+	return func(node string) (string, error) {
+		b, err := c.NewGetClusterStatus().Get()
+		if err != nil {
+			return "", err
+		}
+		var data clusterdump.Data
+		if err := json.Unmarshal(b, &data); err != nil {
+			return "", err
+		}
+		return data.Cluster.Node[node].Daemon.Collector.State, nil
 	}
 }
 
