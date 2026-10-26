@@ -15,9 +15,16 @@ func (t *T) SnapshotHead(ctx context.Context, name string) (string, func() error
 		Log:  t.Log().Attr("device", t.Device).WithPrefix(t.Log().Prefix() + t.Device + ": "),
 		Name: t.Device + "@" + name,
 	}
+	// The snapshot is read under the mount point the dataset is
+	// mounted on, in the root of the container when zoned, checked free
+	// of links first.
+	mnt, err := t.resolveMountPoint()
+	if err != nil {
+		return "", nil, false, err
+	}
 	if err := snap.Snapshot(); err != nil {
 		return "", nil, false, err
 	}
-	dir := filepath.Join(t.MountPoint, ".zfs", "snapshot", name)
+	dir := filepath.Join(mnt, ".zfs", "snapshot", name)
 	return dir, func() error { return snap.Destroy() }, true, nil
 }

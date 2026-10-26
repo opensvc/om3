@@ -62,9 +62,9 @@ type (
 		Subvol     string `json:"subvol"`
 		BtrfsLabel string `json:"label"`
 
-		// zoneMountPoint caches the mount point under the root
-		// directory of the container Zone names.
-		zoneMountPoint string
+		// zone caches the mount point in the root directory of the
+		// container Zone names.
+		zone *Zone
 	}
 
 	IsFormateder interface {
@@ -123,8 +123,11 @@ func (t *T) Stop(ctx context.Context) error {
 	}
 	mnt := t.mountPoint()
 	fs := t.fs()
-	if err := fs.Umount(ctx, mnt); err != nil {
-		if file.IsProtected(mnt) {
+	if err := t.umountFS(ctx); err != nil {
+		// The users of a zoned filesystem are not killed: fuser
+		// resolves the path, which a process of the container could
+		// lead to a host path.
+		if file.IsProtected(mnt) || t.Zone != "" {
 			return err
 		}
 		if errors.Is(err, syscall.EBUSY) {
@@ -243,7 +246,16 @@ func (t *T) removeMountPoint() error {
 	if !fi.IsDir() && !(fi.Mode().IsRegular() && fi.Size() == 0) {
 		return nil
 	}
-	if err := os.Remove(mnt); err != nil {
+	remove := os.Remove
+	if z, err := t.zoneOf(); err != nil {
+		return err
+	} else if z != nil {
+		if z.IsRoot() {
+			return nil
+		}
+		remove = func(string) error { return z.Remove() }
+	}
+	if err := remove(mnt); err != nil {
 		t.Log().Infof("leave the mount point %s: %s", mnt, err)
 		return nil
 	}
@@ -439,18 +451,77 @@ func (t *T) mountPoint() string {
 
 // resolveMountPoint returns the mount point, or why the zone the filesystem
 // is mounted in can not be found.
+//
+// The path of a zoned mount point is checked at each call: a process of the
+// container can make a component of it a link since the last one.
 func (t *T) resolveMountPoint() (string, error) {
-	if t.Zone == "" {
+	z, err := t.zoneOf()
+	if err != nil {
+		return "", err
+	}
+	if z == nil {
 		return filepath.Clean(t.MountPoint), nil
 	}
-	if t.zoneMountPoint == "" {
-		p, err := ZoneMountPoint(context.Background(), t.GetObjectDriver(), t.Zone, t.MountPoint)
-		if err != nil {
-			return "", err
-		}
-		t.zoneMountPoint = p
+	if err := z.Check(); err != nil {
+		return "", err
 	}
-	return t.zoneMountPoint, nil
+	return z.Path(), nil
+}
+
+// zoneOf returns the mount point in the root directory of the container the
+// zone keyword names, nil when it is not set.
+func (t *T) zoneOf() (*Zone, error) {
+	if t.Zone == "" {
+		return nil, nil
+	}
+	if t.zone == nil {
+		z, err := ZoneOf(context.Background(), t.GetObjectDriver(), t.Zone, t.MountPoint)
+		if err != nil {
+			return nil, err
+		}
+		t.zone = &z
+	}
+	return t.zone, nil
+}
+
+// mountFS mounts the filesystem. A zoned one is mounted on the mount point
+// opened through the root of the container, never on where its path leads
+// by then.
+func (t *T) mountFS(ctx context.Context) error {
+	z, err := t.zoneOf()
+	if err != nil {
+		return err
+	}
+	if z == nil {
+		return t.fs().Mount(ctx, t.devpath(ctx), t.mountPoint(), t.mountOptions())
+	}
+	f, err := z.Open()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return t.fs().MountNoCanonicalize(ctx, t.devpath(ctx), FDPath(f), t.mountOptions())
+}
+
+// umountFS unmounts the filesystem. A zoned one is unmounted through the
+// parent of its mount point opened through the root of the container, a
+// link swapped in at the mount point not followed.
+func (t *T) umountFS(ctx context.Context) error {
+	z, err := t.zoneOf()
+	if err != nil {
+		return err
+	}
+	if z == nil {
+		return t.fs().Umount(ctx, t.mountPoint())
+	}
+	target, parent, err := z.UmountTarget()
+	if err != nil {
+		return err
+	}
+	if parent != nil {
+		defer parent.Close()
+	}
+	return t.fs().UmountNoFollow(ctx, target)
 }
 
 func (t *T) device(ctx context.Context) device.T {
@@ -507,11 +578,11 @@ func (t *T) mount(ctx context.Context) error {
 	if err := t.fsck(ctx); err != nil {
 		return err
 	}
-	if err := t.fs().Mount(ctx, t.devpath(ctx), t.mountPoint(), t.mountOptions()); err != nil {
+	if err := t.mountFS(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.fs().Umount(ctx, t.mountPoint())
+		return t.umountFS(ctx)
 	})
 	return nil
 }
@@ -539,9 +610,22 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if isRegular && t.isBind() {
+	z, err := t.zoneOf()
+	if err != nil {
+		return err
+	}
+	switch {
+	case z != nil && isRegular && t.isBind():
+		// A zoned mount point is made through the root of the
+		// container, never out of it.
+		t.Log().Infof("create missing mountpoint file %s", t.mountPoint())
+		err = z.CreateFile(t.mountPointDirPerm())
+	case z != nil:
+		t.Log().Infof("create missing mountpoint dir %s", t.mountPoint())
+		err = z.MkdirAll(t.mountPointDirPerm())
+	case isRegular && t.isBind():
 		err = t.createMountPointFile()
-	} else {
+	default:
 		err = t.createMountPointDir(t.mountPoint())
 	}
 	if err != nil {
@@ -599,17 +683,19 @@ func (t *T) createMountPointDir(dir string) error {
 	}
 
 	t.Log().Infof("create missing mountpoint dir %s", dir)
-	var perm os.FileMode
-	if p := t.DataRecv.RootDirPerm(); p != nil {
-		perm = *p
-	} else {
-		perm = defaultPerm
-	}
-
-	if err := os.MkdirAll(dir, perm); err != nil {
+	if err := os.MkdirAll(dir, t.mountPointDirPerm()); err != nil {
 		return fmt.Errorf("error creating mountpoint %s: %w", dir, err)
 	}
 	return nil
+}
+
+// mountPointDirPerm is the mode of the mount point directories the resource
+// makes.
+func (t *T) mountPointDirPerm() os.FileMode {
+	if p := t.DataRecv.RootDirPerm(); p != nil {
+		return *p
+	}
+	return defaultPerm
 }
 
 func (t *T) validateDevice(ctx context.Context) error {

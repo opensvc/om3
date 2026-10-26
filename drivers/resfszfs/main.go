@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -53,9 +54,9 @@ type (
 		// keeps as the base of the next move.
 		moveSnapshot string
 
-		// zoneMountPoint caches the mount point under the root
-		// directory of the container Zone names.
-		zoneMountPoint string
+		// zone caches the mount point in the root directory of the
+		// container Zone names.
+		zone *resfshost.Zone
 	}
 )
 
@@ -188,18 +189,37 @@ func (t *T) mountPoint() string {
 
 // resolveMountPoint returns the mount point, or why the zone the dataset is
 // mounted in can not be found.
+//
+// The path of a zoned mount point is checked at each call: a process of the
+// container can make a component of it a link since the last one.
 func (t *T) resolveMountPoint() (string, error) {
-	if t.Zone == "" {
+	z, err := t.zoneOf()
+	if err != nil {
+		return "", err
+	}
+	if z == nil {
 		return filepath.Clean(t.MountPoint), nil
 	}
-	if t.zoneMountPoint == "" {
-		p, err := resfshost.ZoneMountPoint(context.Background(), t.GetObjectDriver(), t.Zone, t.MountPoint)
-		if err != nil {
-			return "", err
-		}
-		t.zoneMountPoint = p
+	if err := z.Check(); err != nil {
+		return "", err
 	}
-	return t.zoneMountPoint, nil
+	return z.Path(), nil
+}
+
+// zoneOf returns the mount point in the root directory of the container the
+// zone keyword names, nil when it is not set.
+func (t *T) zoneOf() (*resfshost.Zone, error) {
+	if t.Zone == "" {
+		return nil, nil
+	}
+	if t.zone == nil {
+		z, err := resfshost.ZoneOf(context.Background(), t.GetObjectDriver(), t.Zone, t.MountPoint)
+		if err != nil {
+			return nil, err
+		}
+		t.zone = &z
+	}
+	return t.zone, nil
 }
 
 func (t *T) device() device.T {
@@ -219,9 +239,18 @@ func (t *T) mount(ctx context.Context) error {
 	if err := t.createMountPoint(ctx); err != nil {
 		return err
 	}
-	if legacy, err := t.isLegacy(); err != nil {
+	legacy, err := t.isLegacy()
+	if err != nil {
 		return err
-	} else if err := t.mountWithLegacy(legacy); err != nil {
+	}
+	if !legacy && t.Zone != "" {
+		// zfs mounts a dataset at its mountpoint property by path,
+		// which a process of the container could lead out of it: a
+		// zoned dataset is mounted by the agent, on the mount point it
+		// opened through the root of the container.
+		return fmt.Errorf("%s: a zoned dataset is mounted with mountpoint=legacy: set it with 'zfs set mountpoint=legacy %s'", t.Device, t.Device)
+	}
+	if err := t.mountWithLegacy(legacy); err != nil {
 		return err
 	} else {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
@@ -254,7 +283,20 @@ func (t *T) mountLegacy() error {
 	if len(mountOptions) > 0 {
 		a.Append("-o", strings.Join(mountOptions, ","))
 	}
-	a.Append(t.Device, t.mountPoint())
+	if z, err := t.zoneOf(); err != nil {
+		return err
+	} else if z != nil {
+		// Mounted on the mount point opened through the root of the
+		// container, which mount(8) is told not to resolve again.
+		f, err := z.Open()
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		a.Append("--no-canonicalize", t.Device, resfshost.FDPath(f))
+	} else {
+		a.Append(t.Device, t.mountPoint())
+	}
 	cmd := command.New(
 		command.WithName("mount"),
 		command.WithArgs(a.Get()),
@@ -273,6 +315,25 @@ func (t *T) mountLegacy() error {
 }
 
 func (t *T) umountLegacy() error {
+	if z, err := t.zoneOf(); err != nil {
+		return err
+	} else if z != nil {
+		// Unmounted through the parent of the mount point opened
+		// through the root of the container, a link swapped in at the
+		// mount point not followed.
+		target, parent, err := z.UmountTarget()
+		if err != nil {
+			return err
+		}
+		if parent != nil {
+			defer parent.Close()
+		}
+		t.Log().Infof("umount %s", t.mountPoint())
+		if err := unix.Unmount(target, unix.UMOUNT_NOFOLLOW); err != nil {
+			return fmt.Errorf("umount %s: %w", t.mountPoint(), err)
+		}
+		return nil
+	}
 	cmd := command.New(
 		command.WithName("umount"),
 		command.WithVarArgs(t.mountPoint()),
@@ -338,6 +399,16 @@ func (t *T) createMountPoint(ctx context.Context) error {
 		perm = defaultPerm
 	}
 
+	if z, err := t.zoneOf(); err != nil {
+		return err
+	} else if z != nil {
+		// A zoned mount point is made through the root of the
+		// container, never out of it.
+		if err := z.MkdirAll(perm); err != nil {
+			return fmt.Errorf("error creating mountpoint %s: %w", t.mountPoint(), err)
+		}
+		return nil
+	}
 	if err := os.MkdirAll(t.mountPoint(), perm); err != nil {
 		return fmt.Errorf("error creating mountpoint %s: %s", t.mountPoint(), err)
 	}
@@ -650,7 +721,11 @@ func (t *T) mkfsOptions() []string {
 	if !a.HasOption("-p") {
 		a.Append("-p")
 	}
-	if !a.HasOptionAndMatchingValue("-o", "^mountpoint=") {
+	if !a.HasOptionAndMatchingValue("-o", "^mountpoint=") && t.Zone != "" {
+		// A zoned dataset is mounted by the agent, through the root of
+		// the container.
+		a.Append("-o", "mountpoint=legacy")
+	} else if !a.HasOptionAndMatchingValue("-o", "^mountpoint=") {
 		a.Append("-o", "mountpoint="+t.mountPoint())
 	}
 	if !a.HasOptionAndMatchingValue("-o", "^canmount=") {
@@ -724,6 +799,19 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 func (t *T) removeMountPoint() error {
 	mnt := t.mountPoint()
 	if mnt == "" {
+		return nil
+	}
+	if z, err := t.zoneOf(); err != nil {
+		return err
+	} else if z != nil {
+		// The mount point is removed through the root of the
+		// container, when empty, and never the root itself.
+		if z.IsRoot() {
+			return nil
+		}
+		if err := z.Remove(); err != nil {
+			t.Log().Infof("leave the mount point %s: %s", mnt, err)
+		}
 		return nil
 	}
 	if file.IsProtected(mnt) {
