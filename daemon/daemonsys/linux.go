@@ -42,22 +42,35 @@ func (t *T) Activated(ctx context.Context) (bool, error) {
 // systemd sets INVOCATION_ID in the environment of the processes of a unit
 // since its version 232. Before, as the 219 of RHEL 7, the process is known
 // launched by systemd from its cgroup: systemd runs every process of a unit,
-// the ExecStop ones too, in the cgroup of the unit.
+// the ExecStop ones too, in the cgroup of the unit, which the system manager
+// says, so a unit of the same name a user manager runs is not taken for it.
 func (t *T) CalledFromManager() bool {
 	if os.Getenv("INVOCATION_ID") != "" {
 		return true
+	}
+	if t.conn == nil {
+		return false
+	}
+	prop, err := t.conn.GetUnitTypePropertyContext(context.Background(), UnitName, "Service", "ControlGroup")
+	if err != nil || prop == nil {
+		return false
+	}
+	unitCgroup, ok := prop.Value.Value().(string)
+	if !ok || unitCgroup == "" {
+		return false
 	}
 	b, err := os.ReadFile("/proc/self/cgroup")
 	if err != nil {
 		return false
 	}
-	return inUnitCgroup(b, UnitName)
+	return inCgroup(b, unitCgroup)
 }
 
-// inUnitCgroup says if a /proc/<pid>/cgroup content places the process in
-// the cgroup of the unit, or one under it: the line of the systemd hierarchy
-// on cgroup v1, "name=systemd", or the line of the unified hierarchy, "0::".
-func inUnitCgroup(b []byte, unit string) bool {
+// inCgroup says if a /proc/<pid>/cgroup content places the process in the
+// cgroup cg of the systemd hierarchy, or one under it: the line of the
+// systemd hierarchy on cgroup v1, "name=systemd", or the line of the unified
+// hierarchy, "0::".
+func inCgroup(b []byte, cg string) bool {
 	for _, line := range strings.Split(string(b), "\n") {
 		fields := strings.SplitN(line, ":", 3)
 		if len(fields) != 3 {
@@ -66,10 +79,8 @@ func inUnitCgroup(b []byte, unit string) bool {
 		if fields[1] != "name=systemd" && !(fields[0] == "0" && fields[1] == "") {
 			continue
 		}
-		for _, elem := range strings.Split(fields[2], "/") {
-			if elem == unit {
-				return true
-			}
+		if fields[2] == cg || strings.HasPrefix(fields[2], cg+"/") {
+			return true
 		}
 	}
 	return false

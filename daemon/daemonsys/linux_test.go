@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInUnitCgroup(t *testing.T) {
+func TestInCgroup(t *testing.T) {
+	unit := "/system.slice/opensvc-server.service"
 	cases := map[string]struct {
 		content string
 		want    bool
@@ -45,10 +46,18 @@ func TestInUnitCgroup(t *testing.T) {
 			content: "0::/system.slice/opensvc-server.service.d\n",
 			want:    false,
 		},
+		"a unit of the same name of a user manager": {
+			content: "0::/user.slice/user-0.slice/user@0.service/app.slice/opensvc-server.service\n",
+			want:    false,
+		},
+		"cgroup v1, a unit of the same name of a user manager": {
+			content: "1:name=systemd:/user.slice/user-0.slice/user@0.service/opensvc-server.service\n",
+			want:    false,
+		},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, c.want, inUnitCgroup([]byte(c.content), UnitName))
+			assert.Equal(t, c.want, inCgroup([]byte(c.content), unit))
 		})
 	}
 }
