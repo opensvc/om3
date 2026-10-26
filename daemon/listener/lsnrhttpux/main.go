@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -37,6 +38,14 @@ type (
 		ownerGroup func() string
 		group      string
 		gid        int
+
+		// closed says the socket was closed by the janitor, the owner
+		// group emptied.
+		closed atomic.Bool
+
+		// tracked holds the connections of a listener owned by a group,
+		// closed with its socket.
+		tracked *trackListener
 	}
 )
 
@@ -72,6 +81,10 @@ func (t *T) Start(ctx context.Context) error {
 		t.log.Errorf("listen failed: %s", err)
 		return err
 	} else {
+		if t.ownerGroup != nil {
+			t.tracked = newTrackListener(listener)
+			listener = t.tracked
+		}
 		t.listener = &listener
 	}
 	if t.ownerGroup != nil {
@@ -84,6 +97,10 @@ func (t *T) Start(ctx context.Context) error {
 		t.log.Infof("socket owned by the group %s (%d)", t.group, t.gid)
 	}
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
+	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
+	if t.peerCred {
+		t.server.ConnContext = t.withPeer
+	}
 
 	t.wg.Add(1)
 	go t.serve(ctx, errC)
@@ -97,8 +114,9 @@ func (t *T) Start(ctx context.Context) error {
 func (t *T) Stop() error {
 	t.log.Infof("stopping")
 	defer t.log.Infof("stopped")
-	if t.listener == nil {
+	if t.listener == nil || t.closed.Load() {
 		t.log.Infof("listener already closed")
+		t.wg.Wait()
 		return nil
 	}
 	err := (*t.listener).Close()
@@ -112,10 +130,6 @@ func (t *T) Stop() error {
 func (t *T) serve(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 
-	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
-	if t.peerCred {
-		t.server.ConnContext = t.withPeer
-	}
 	t.log.Infof("started")
 	errC <- nil
 	if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
@@ -128,12 +142,33 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 // are the kernel's, recorded at connect: a connection whose peer can not be
 // read carries none, and is authenticated as nobody.
 func (t *T) withPeer(ctx context.Context, c net.Conn) context.Context {
+	if u, ok := c.(interface{ NetConn() net.Conn }); ok {
+		c = u.NetConn()
+	}
 	peer, err := peercred.FromConn(c)
 	if err != nil {
 		t.log.Warnf("read the peer of a connection: %s", err)
 		return ctx
 	}
 	return daemonctx.WithPeer(ctx, peer)
+}
+
+// closeSocket stops serving the socket, and the connections open through it,
+// and removes it: the owner group was emptied, which serves no socket. The
+// members of the former group lose the api at once, rather than at the next
+// daemon start. A group set again is served from the next daemon start.
+func (t *T) closeSocket() {
+	t.closed.Store(true)
+	if err := t.server.Close(); err != nil {
+		t.log.Warnf("close the socket: %s", err)
+	}
+	if t.tracked != nil {
+		t.tracked.closeConns()
+	}
+	if err := os.Remove(t.addr); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.log.Warnf("remove the socket: %s", err)
+	}
+	t.log.Infof("socket closed: listener.ux_owner_group is empty")
 }
 
 // newServer returns the server of the ux listener, serving handler over
@@ -190,9 +225,11 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.ClusterConfigUpdated:
-				// A group emptied is applied at the next daemon
-				// start: the socket stays owned by the former one.
+				if t.closed.Load() {
+					continue
+				}
 				if t.ownerGroup() == "" {
+					t.closeSocket()
 					continue
 				}
 				if err := t.applyOwnerGroup(ctx); err != nil {

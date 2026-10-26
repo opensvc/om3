@@ -6,7 +6,9 @@ say.
 
 The socket is mode 0660 and its directory 0750, both owned by root and
 this group. A group the node does not know serves no socket, and the
-daemon logs why. Set it empty to serve none.
+daemon logs why. Set it empty to serve none: a socket served is closed at
+once, with the connections open through it. A group set on a node serving
+no socket is served from the next daemon start.
 
 The root user of the node is not root through this socket: it uses the
 root socket.
