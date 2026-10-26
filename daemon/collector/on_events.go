@@ -155,6 +155,9 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 			t.log.Errorf("can't setup requester: %s", err)
 		}
 	}
+	// The collector configuration enables or disables the speaker, as a
+	// collector url set or unset on a node already elected.
+	t.updateSpeaker()
 	t.publishOnChange(t.getState())
 }
 
@@ -168,28 +171,36 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		t.nodeFrozenAt[c.Node] = c.Value.FrozenAt
 		t.daemonStatusChange[c.Node] = struct{}{}
 	}
-	if c.Node == t.localhost {
-		isSpeaker := !t.disable && c.Value.IsLeader
-		if isSpeaker != t.isSpeaker {
-			t.isSpeaker = isSpeaker
-			if isSpeaker {
-				t.seedResInfoToSend()
-			} else {
-				t.dropActionToSend()
-				t.daemonStatusFailure.reset()
-				t.resInfoFailure.reset()
-				t.objectConfigFailure.reset()
-			}
-			t.publishOnChange(t.getState())
-		}
-	}
 	wasLeader := t.nodeIsLeader[c.Node]
 	t.nodeIsLeader[c.Node] = c.Value.IsLeader
+	if c.Node == t.localhost {
+		t.updateSpeaker()
+	}
 	if c.Value.IsLeader && !wasLeader {
 		// A new speaker has none of the local actions pending: announce
 		// them all again.
 		t.announceActionPending(true)
 	}
+}
+
+// updateSpeaker sets isSpeaker from the collector configuration and the
+// localhost election, and applies its transition. It must be called on a
+// change of either: t.disable or t.nodeIsLeader[t.localhost].
+func (t *T) updateSpeaker() {
+	isSpeaker := !t.disable && t.nodeIsLeader[t.localhost]
+	if isSpeaker == t.isSpeaker {
+		return
+	}
+	t.isSpeaker = isSpeaker
+	if isSpeaker {
+		t.seedResInfoToSend()
+	} else {
+		t.dropActionToSend()
+		t.daemonStatusFailure.reset()
+		t.resInfoFailure.reset()
+		t.objectConfigFailure.reset()
+	}
+	t.publishOnChange(t.getState())
 }
 
 func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {

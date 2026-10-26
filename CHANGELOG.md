@@ -64,6 +64,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     The parameter is optional: an action asking for no configuration in particular runs on whatever the node holds, as before.
 
+* **Cluster join keeps the collector registration**: `om cluster join` moves the node configuration aside, its `node.uuid` registration id included. The node it joins through now registers it on the oc3 collector with that id, in its own app and cluster, and the joining node stores the new id before its daemon starts, so it is fed to the collector right away. A node without a registration id is left unregistered, and a refused one is warned to run `om node register`, which now sends the cluster id too, so the collector places the node in its cluster before its first daemon status.
+
 ### Security
 
 * **SSRF protection for HTTP fetches**: 

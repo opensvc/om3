@@ -144,6 +144,11 @@ type ClientInterface interface {
 	// PostClusterJoin request
 	PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterJoinRegisterWithBody request with any body
+	PostClusterJoinRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostClusterJoinRegister(ctx context.Context, body PostClusterJoinRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostClusterLeave request
 	PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -894,6 +899,30 @@ func (c *Client) PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...R
 
 func (c *Client) PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterJoinRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterJoinRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterJoinRegisterRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterJoinRegister(ctx context.Context, body PostClusterJoinRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterJoinRegisterRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3951,6 +3980,46 @@ func NewPostClusterJoinRequest(server string, params *PostClusterJoinParams) (*h
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostClusterJoinRegisterRequest calls the generic PostClusterJoinRegister builder with application/json body
+func NewPostClusterJoinRegisterRequest(server string, body PostClusterJoinRegisterJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostClusterJoinRegisterRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostClusterJoinRegisterRequestWithBody generates requests for PostClusterJoinRegister with any type of body
+func NewPostClusterJoinRegisterRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/join/register")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -16679,6 +16748,11 @@ type ClientWithResponsesInterface interface {
 	// PostClusterJoinWithResponse request
 	PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error)
 
+	// PostClusterJoinRegisterWithBodyWithResponse request with any body
+	PostClusterJoinRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterJoinRegisterResponse, error)
+
+	PostClusterJoinRegisterWithResponse(ctx context.Context, body PostClusterJoinRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterJoinRegisterResponse, error)
+
 	// PostClusterLeaveWithResponse request
 	PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error)
 
@@ -17789,6 +17863,42 @@ func (r PostClusterJoinResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostClusterJoinResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostClusterJoinRegisterResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterJoinRegistered
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+	JSON502      *N502
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterJoinRegisterResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterJoinRegisterResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostClusterJoinRegisterResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -23622,6 +23732,23 @@ func (c *ClientWithResponses) PostClusterJoinWithResponse(ctx context.Context, p
 	return ParsePostClusterJoinResponse(rsp)
 }
 
+// PostClusterJoinRegisterWithBodyWithResponse request with arbitrary body returning *PostClusterJoinRegisterResponse
+func (c *ClientWithResponses) PostClusterJoinRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterJoinRegisterResponse, error) {
+	rsp, err := c.PostClusterJoinRegisterWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterJoinRegisterResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostClusterJoinRegisterWithResponse(ctx context.Context, body PostClusterJoinRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterJoinRegisterResponse, error) {
+	rsp, err := c.PostClusterJoinRegister(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterJoinRegisterResponse(rsp)
+}
+
 // PostClusterLeaveWithResponse request returning *PostClusterLeaveResponse
 func (c *ClientWithResponses) PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error) {
 	rsp, err := c.PostClusterLeave(ctx, params, reqEditors...)
@@ -26205,6 +26332,74 @@ func ParsePostClusterJoinResponse(rsp *http.Response) (*PostClusterJoinResponse,
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterJoinRegisterResponse parses an HTTP response from a PostClusterJoinRegisterWithResponse call
+func ParsePostClusterJoinRegisterResponse(rsp *http.Response) (*PostClusterJoinRegisterResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterJoinRegisterResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterJoinRegistered
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest N502
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
 
 	}
 
