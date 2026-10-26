@@ -227,6 +227,9 @@ func (t *T) device() device.T {
 }
 
 func (t *T) mount(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if err := t.validateDevice(); err != nil {
 		return err
 	}
@@ -654,9 +657,15 @@ func (t *T) validateDevice() error {
 	return nil
 }
 
+// isMounted says if the dataset is mounted on its mount point. A mount point
+// that does not resolve, as a zoned one with a link on its path, is an
+// error: asked about an empty path, findmnt could answer with any mount.
 func (t *T) isMounted(ctx context.Context) (bool, error) {
-	v, err := findmnt.Has(ctx, t.Device, t.mountPoint())
-	return v, err
+	mnt, err := t.resolveMountPoint()
+	if err != nil {
+		return false, err
+	}
+	return findmnt.Has(ctx, t.Device, mnt)
 }
 
 func factor(size *int64, expr string) (*int64, error) {

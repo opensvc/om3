@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -150,7 +151,21 @@ func (z Zone) Open() (*os.File, error) {
 		defer r.Close()
 		return r.Open(".")
 	}
-	return parent.Open(name)
+	// The file of a file bind mount is opened not following a link,
+	// and has to be the one checked: a process of the container could
+	// swap it for a link, or another file, in between.
+	f, err := parent.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", z.Path(), err)
+	}
+	if opened, err := f.Stat(); err != nil {
+		_ = f.Close()
+		return nil, err
+	} else if !os.SameFile(fi, opened) {
+		_ = f.Close()
+		return nil, fmt.Errorf("%s changed while opened", z.Path())
+	}
+	return f, nil
 }
 
 // FDPath returns the path the kernel follows to the file f, from another

@@ -138,6 +138,8 @@ func TestAZonedFilesystemMountsInTheContainer(t *testing.T) {
 	require.NoError(t, os.MkdirAll(host, 0755))
 	require.NoError(t, os.RemoveAll(filepath.Join(root, "srv")))
 	require.NoError(t, os.Symlink(host, filepath.Join(root, "srv")))
+	_, err = r.isMounted(ctx)
+	assert.ErrorContains(t, err, "is a link", "the mounted check refuses the path too, whatever findmnt says of an empty one")
 	assert.ErrorContains(t, r.mount(ctx), "is a link")
 	assert.NoDirExists(t, filepath.Join(host, "data"), "nothing made nor mounted out of the container")
 }
@@ -146,4 +148,22 @@ func TestValidateMountPoint(t *testing.T) {
 	assert.NoError(t, validateMountPoint("/srv/data"))
 	assert.ErrorContains(t, validateMountPoint("relmnt-data"), "not an absolute path")
 	assert.ErrorContains(t, validateMountPoint("./data"), "not an absolute path")
+}
+
+// The file of a zoned file bind mount is the one checked: a link swapped in
+// at its name, even one staying in the container, is not followed.
+func TestZoneOpenFileRefusesALink(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "srv"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "srv", "other"), nil, 0644))
+	z := Zone{Root: root, Rel: "/srv/file"}
+	require.NoError(t, z.CreateFile(0755))
+	f, err := z.Open()
+	require.NoError(t, err)
+	_ = f.Close()
+
+	require.NoError(t, os.Remove(filepath.Join(root, "srv", "file")))
+	require.NoError(t, os.Symlink("other", filepath.Join(root, "srv", "file")))
+	_, err = z.Open()
+	assert.Error(t, err, "a link at the name of the file is refused")
 }

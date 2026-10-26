@@ -550,6 +550,9 @@ func (t *T) devpath(ctx context.Context) string {
 }
 
 func (t *T) mount(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if err := errors.Join(t.btrfsConflicts()...); err != nil {
 		return err
 	}
@@ -837,17 +840,24 @@ func (t *T) isBind() bool {
 	return t.hasMountOption("bind") || t.Type == "bind"
 }
 
+// isMounted says if the filesystem is mounted on its mount point. A mount
+// point that does not resolve, as a zoned one with a link on its path, is an
+// error: asked about an empty path, findmnt could answer with any mount.
 func (t *T) isMounted(ctx context.Context) (bool, error) {
+	mnt, err := t.resolveMountPoint()
+	if err != nil {
+		return false, err
+	}
 	if t.hasMountOption("loop") {
-		return findmnt.HasFromMount(t.devpath(ctx), t.mountPoint())
+		return findmnt.HasFromMount(t.devpath(ctx), mnt)
 	}
 	if t.isBind() {
 		return t.isBindMounted(ctx)
 	}
 	if t.fs().IsVirtual() {
-		return findmnt.HasMntWithTypes(ctx, []string{t.Type}, t.mountPoint())
+		return findmnt.HasMntWithTypes(ctx, []string{t.Type}, mnt)
 	}
-	return findmnt.Has(ctx, t.devpath(ctx), t.mountPoint())
+	return findmnt.Has(ctx, t.devpath(ctx), mnt)
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
