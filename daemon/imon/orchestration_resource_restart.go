@@ -2,6 +2,7 @@ package imon
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -260,9 +261,17 @@ func (t *Manager) orchestrateResourceRestart() {
 	// the one started, whatever stopped it: its resources stopped alone,
 	// the object moved. Restarting them, or the monitor action of one,
 	// would run the object twice, or act on a node it does not run on.
+	//
+	// A regular restart armed before the peer took the object over is
+	// dropped too: still scheduled, the plan would skip it as such rather
+	// than drop it, and its timer would start the resources here. The
+	// standby resources run on every node, their restarts stay.
 	if t.state.LocalExpect == instance.MonitorLocalExpectStarted {
 		if peer := t.failoverRunsOnPeer(); peer != "" {
 			t.disableMonitor("the object runs on %s", peer)
+			if t.regularResourceOrchestrate.dropAllScheduled(fmt.Sprintf("the object runs on %s", peer)) {
+				t.change = true
+			}
 		}
 	}
 
@@ -569,6 +578,24 @@ func (or *orchestrationResource) dropScheduled(rid string, reason string) (chang
 		}
 	}
 	return
+}
+
+// dropAllScheduled cancels the pending schedule and empties the scheduled
+// list, logging the resources dropped with the given reason. It returns true
+// if a resource was dropped.
+func (or *orchestrationResource) dropAllScheduled(reason string) (change bool) {
+	or.cancelSchedule()
+	if len(or.scheduled) == 0 {
+		return false
+	}
+	rids := make([]string, 0, len(or.scheduled))
+	for rid := range or.scheduled {
+		rids = append(rids, rid)
+	}
+	sort.Strings(rids)
+	or.log.Infof("%s: drop delayed restart of %v", reason, rids)
+	or.scheduled = make(map[string]bool)
+	return true
 }
 
 // alreadyScheduled returns true if a resource, identified by its ID, has been

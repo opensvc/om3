@@ -34,6 +34,30 @@ func TestAFailoverInstanceDownIsNotRestartedWhileAPeerRunsTheObject(t *testing.T
 	assert.Equal(t, instance.MonitorLocalExpectNone, m.state.LocalExpect)
 }
 
+// A regular restart armed before a peer took the object over is dropped with
+// its timer: kept, the plan would skip it as already scheduled, and the timer
+// would start the resources on this node too. A standby restart stays, as the
+// standby resources run on every node.
+func TestARestartArmedBeforeAPeerTookTheObjectIsDropped(t *testing.T) {
+	m := newRestartTestManager(status.Down, status.Up)
+	m.regularResourceOrchestrate.log = m.log
+	m.standbyResourceOrchestrate.log = m.log
+	fired := make(chan struct{}, 2)
+	m.regularResourceOrchestrate.scheduled = map[string]bool{"app#1": true}
+	m.regularResourceOrchestrate.scheduler = time.AfterFunc(50*time.Millisecond, func() { fired <- struct{}{} })
+	m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#1": true}
+	m.orchestrateResourceRestart()
+	assert.Equal(t, instance.MonitorLocalExpectNone, m.state.LocalExpect)
+	assert.Empty(t, m.regularResourceOrchestrate.scheduled, "the regular restart is dropped")
+	assert.Nil(t, m.regularResourceOrchestrate.scheduler, "its timer is cancelled")
+	assert.Equal(t, map[string]bool{"disk#1": true}, m.standbyResourceOrchestrate.scheduled, "the standby restart stays")
+	select {
+	case <-fired:
+		t.Fatal("the timer of the dropped restart fired")
+	case <-time.After(150 * time.Millisecond):
+	}
+}
+
 // The instance running the object, or the one of an object down everywhere,
 // stays the one started.
 func TestAFailoverInstanceStaysStartedWhenNoPeerRunsTheObject(t *testing.T) {
