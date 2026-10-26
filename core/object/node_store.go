@@ -1,6 +1,7 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -118,6 +119,11 @@ func (t *Node) nodesStore(drv backup.Driver, ref, section, storeType string) bac
 // directory of a store on a peer.
 const storePeerTimeout = 10 * time.Second
 
+// ErrStoreNotUsable is the refusal of a store of a sec to a namespace other
+// than the sec's, which the sec does not share with, or which names a sec,
+// or a store of it, that does not exist: the api answers it 403.
+var ErrStoreNotUsable = errors.New("not usable")
+
 func (t *Node) secStore(fields []string, reader naming.Path) (backup.Driver, error) {
 	ref := strings.Join(fields, " ")
 	if len(fields) != 3 || fields[0] != "from" || !strings.HasPrefix(fields[2], backup.SectionPrefix) {
@@ -136,15 +142,26 @@ func (t *Node) secStore(fields []string, reader naming.Path) (backup.Driver, err
 	if p.Kind != naming.KindSec {
 		return nil, fmt.Errorf("store %q: %s is not a sec", ref, p)
 	}
+	// A namespace other than the one of the sec learns nothing of the
+	// sec it is not shared with: whether it exists, the stores it
+	// declares, the namespaces it shares with. One refusal answers all
+	// of these, the reference alone in it, which the requester wrote.
+	foreign := !reader.IsZero() && p.Namespace != reader.Namespace
+	notUsable := func(detail error) error {
+		if foreign {
+			return fmt.Errorf("store %q: %w from the %s namespace", ref, ErrStoreNotUsable, reader.Namespace)
+		}
+		return detail
+	}
 	if !p.Exists() {
-		return nil, fmt.Errorf("store %q: %s does not exist", ref, p)
+		return nil, notUsable(fmt.Errorf("store %q: %s does not exist", ref, p))
 	}
 	sec, err := NewSec(p, WithVolatile(true))
 	if err != nil {
-		return nil, fmt.Errorf("store %q: %w", ref, err)
+		return nil, notUsable(fmt.Errorf("store %q: %w", ref, err))
 	}
 	if !reader.IsZero() && !sec.Allow(reader.Namespace) {
-		return nil, fmt.Errorf("store %q: the %s namespace may not use the stores of %s, which shares with %s", ref, reader.Namespace, p, strings.Join(sec.Shares(), " "))
+		return nil, notUsable(fmt.Errorf("store %q: the %s namespace may not use the stores of %s", ref, reader.Namespace, p))
 	}
 	section := fields[2]
 	config := sec.Config()

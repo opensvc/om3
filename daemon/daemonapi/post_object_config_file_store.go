@@ -45,7 +45,9 @@ func openStoreSource(ctx echo.Context, p naming.Path, store *api.InQueryStore, s
 		return nil, http.StatusInternalServerError, err
 	}
 	s, err := n.Store(*store, p)
-	if err != nil {
+	if errors.Is(err, object.ErrStoreNotUsable) {
+		return nil, http.StatusForbidden, err
+	} else if err != nil {
 		return nil, http.StatusBadRequest, err
 	}
 	src := &storeSource{store: s}
