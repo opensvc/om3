@@ -3,9 +3,9 @@ package daemonauth
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -20,10 +20,13 @@ type (
 	}
 )
 
+// Authenticate grants root to a request of the root unix socket, whose
+// directory only root reaches. A request of any other listener, as the user
+// socket a group reaches, is not one it vouches for.
 func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (*Info, error) {
 	addr := t.getter.ListenAddr(ctx)
-	if _, _, err := net.SplitHostPort(addr); err == nil {
-		return nil, fmt.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
+	if addr != daemonenv.HTTPUnixFile() {
+		return nil, fmt.Errorf("strategies/ux: not a client of the root unix socket (%s)", addr)
 	}
 	return &Info{
 		Username: "root",
