@@ -104,6 +104,25 @@ func (t *T) Start(ctx context.Context) error {
 		t.stopFunc = append(t.stopFunc, lsnr.Stop)
 	}
 
+	// The user socket is not one the daemon depends on either: a group the
+	// node does not know leaves its users without the socket, not root
+	// without the api.
+	if group := clusterConfig.Listener.UXOwnerGroup; group != "" {
+		userListener := lsnrhttpux.New(
+			ctx,
+			lsnrhttpux.WithAddr(daemonenv.HTTPUserUnixFile()),
+			lsnrhttpux.WithPeerCred(),
+			lsnrhttpux.WithOwnerGroup(func() string { return cluster.ConfigData.Get().Listener.UXOwnerGroup }),
+		)
+		if err := userListener.Start(ctx); err != nil {
+			t.log.Errorf("start the user socket listener: %s", err)
+		} else {
+			t.stopFunc = append(t.stopFunc, userListener.Stop)
+		}
+	} else {
+		t.log.Infof("serve no user socket: listener.ux_owner_group is empty")
+	}
+
 	// The ACME challenge listener, on listener.acme_port when set, is not
 	// one the daemon depends on either: a port that can not be listened on
 	// fails the renewals proved through it, not the api.

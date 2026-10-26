@@ -3,6 +3,7 @@ package object
 import (
 	"crypto/subtle"
 	"fmt"
+	"strconv"
 
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -72,6 +73,45 @@ func (_ *UsrDB) GrantsFromUsernameAndPassword(username, password string) ([]stri
 		return nil, fmt.Errorf("wrong password")
 	}
 	return user.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"}), nil
+}
+
+// UsrFromUXUser returns the name and the grants of the user of the system
+// namespace whose uxuser keyword names login or uid, the local account
+// connected to the user socket. A user naming neither is no local account,
+// whatever its name. It returns an empty name when no user names them, and
+// refuses several users naming them, a configuration to fix rather than
+// grants to merge.
+func (_ *UsrDB) UsrFromUXUser(login string, uid uint32) (string, []string, error) {
+	paths, err := naming.InstalledPaths()
+	if err != nil {
+		return "", nil, err
+	}
+	uidStr := strconv.FormatUint(uint64(uid), 10)
+	var (
+		name   string
+		grants []string
+	)
+	for _, p := range paths {
+		if p.Kind != naming.KindUsr || p.Namespace != naming.NsSys {
+			continue
+		}
+		user, err := NewUsr(p, WithVolatile(true))
+		if err != nil {
+			continue
+		}
+		cfg := user.Config()
+		for _, s := range cfg.GetStrings(key.T{Section: "DEFAULT", Option: "uxuser"}) {
+			if s != uidStr && (login == "" || s != login) {
+				continue
+			}
+			if name != "" && name != p.Name {
+				return "", nil, fmt.Errorf("the users %s and %s both name the local account %s (uid %d) in uxuser", name, p.Name, login, uid)
+			}
+			name = p.Name
+			grants = cfg.GetStrings(key.T{Section: "DEFAULT", Option: "grant"})
+		}
+	}
+	return name, grants, nil
 }
 
 // GrantsFromUsername returns grants for username if username existing usr object

@@ -8,6 +8,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/util/auditstate"
+	"github.com/opensvc/om3/v3/util/peercred"
 	"github.com/opensvc/om3/v3/util/plog"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -26,6 +27,7 @@ var (
 	contextLsnrRateLimiterConfig = contextKey("lsnr-rate-limiter-config")
 	contextAuditRegistry         = contextKey("audit-registry")
 	contextLogger                = contextKey("logger")
+	contextPeer                  = contextKey("peer")
 )
 
 func (c contextKey) String() string {
@@ -92,6 +94,19 @@ func UUID(ctx context.Context) uuid.UUID {
 		return id
 	}
 	return uuid.UUID{}
+}
+
+// WithPeer returns a copy of parent with the peer of a unix socket
+// connection, as the kernel recorded it.
+func WithPeer(parent context.Context, peer *peercred.T) context.Context {
+	return context.WithValue(parent, contextPeer, peer)
+}
+
+// Peer returns the peer of the unix socket connection of a request, nil when
+// the listener does not read it.
+func Peer(ctx context.Context) *peercred.T {
+	peer, _ := ctx.Value(contextPeer).(*peercred.T)
+	return peer
 }
 
 // WithListenAddr function returns copy of parent with listener addr.

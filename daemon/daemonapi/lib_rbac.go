@@ -204,6 +204,16 @@ func usrRbac(grants rbac.Grants, p naming.Path, from, to *xconfig.T) error {
 	if cn, _ := to.EvalNoConv(cnKey); cn != heldCN {
 		return fmt.Errorf("%w: %s: setting the cn of a user requires the root grant", ErrDenied, p)
 	}
+	// The local logins a user is bound to authenticate as that user on the
+	// user socket, as the certificate named by its cn does.
+	uxuserKey := key.New("DEFAULT", "uxuser")
+	var heldUX string
+	if from != nil {
+		heldUX = strings.Join(from.GetStrings(uxuserKey), " ")
+	}
+	if strings.Join(to.GetStrings(uxuserKey), " ") != heldUX {
+		return fmt.Errorf("%w: %s: setting the uxuser of a user requires the root grant", ErrDenied, p)
+	}
 	return nil
 }
 

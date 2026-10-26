@@ -39,7 +39,8 @@ func usrConfig(t *testing.T, s string) *xconfig.T {
 }
 
 // A user is its grants, so a writer gives a user only what it holds itself,
-// and the name a user authenticates by with a certificate is root's to set.
+// and the name a user authenticates by with a certificate, or the local login
+// it is on the user socket, is root's to set.
 func TestUsrRbac(t *testing.T) {
 	withClusterConfig(t)
 	p, _ := naming.ParsePath("system/usr/u1")
@@ -60,6 +61,10 @@ func TestUsrRbac(t *testing.T) {
 		{"keep the cn of a user", "[DEFAULT]\ncn = u1\n", "[DEFAULT]\ncn = u1\ncomment = x\n", false},
 		{"make a user with its own name as cn", "", "[DEFAULT]\ncn = u1\n", false},
 		{"make a user with the cn of another", "", "[DEFAULT]\ncn = root\n", true},
+		{"bind a user to a local login", "[DEFAULT]\ngrant = guest:system\n", "[DEFAULT]\ngrant = guest:system\nuxuser = alice\n", true},
+		{"make a user bound to a local login", "", "[DEFAULT]\nuxuser = 1001\n", true},
+		{"keep the local login of a user", "[DEFAULT]\nuxuser = alice\n", "[DEFAULT]\nuxuser = alice\ncomment = x\n", false},
+		{"unbind a user from its local login", "[DEFAULT]\nuxuser = alice\n", "[DEFAULT]\ncomment = x\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var from *xconfig.T

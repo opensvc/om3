@@ -59,7 +59,7 @@ func (a *DaemonAPI) newProxyClient(ctx echo.Context, nodename string, opts ...fu
 	} else {
 		strategy := strategyFromContext(ctx)
 		switch strategy {
-		case daemonauth.StrategyUX, daemonauth.StrategyX509:
+		case daemonauth.StrategyUX, daemonauth.StrategyUXUser, daemonauth.StrategyX509:
 			username := userFromContext(ctx).Username
 			grantL := grantsFromContext(ctx).AsStringList()
 			GetLogger(ctx).Tracef("create proxy client token for %s@%s with grants %s", username, nodename, grantL)

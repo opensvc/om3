@@ -17,6 +17,8 @@ import (
 	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/peercred"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -28,6 +30,13 @@ type (
 		addr     string
 		wg       sync.WaitGroup
 		server   *http.Server
+		peerCred bool
+
+		// ownerGroup returns the group owning the socket, nil for the
+		// root socket, and group is the one applied.
+		ownerGroup func() string
+		group      string
+		gid        int
 	}
 )
 
@@ -53,11 +62,26 @@ func (t *T) Start(ctx context.Context) error {
 		t.log.Errorf("remove file: %s", err)
 		return err
 	}
+	if t.ownerGroup != nil {
+		if err := t.applyOwnerGroup(ctx); err != nil {
+			t.log.Errorf("own the socket directory: %s", err)
+			return err
+		}
+	}
 	if listener, err := net.Listen("unix", t.addr); err != nil {
 		t.log.Errorf("listen failed: %s", err)
 		return err
 	} else {
 		t.listener = &listener
+	}
+	if t.ownerGroup != nil {
+		if err := ownSocket(t.addr, t.gid); err != nil {
+			t.log.Errorf("own the socket: %s", err)
+			_ = (*t.listener).Close()
+			t.listener = nil
+			return err
+		}
+		t.log.Infof("socket owned by the group %s (%d)", t.group, t.gid)
 	}
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
 
@@ -89,12 +113,27 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 
 	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
+	if t.peerCred {
+		t.server.ConnContext = t.withPeer
+	}
 	t.log.Infof("started")
 	errC <- nil
 	if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 		t.log.Tracef("serve ends with unexpected error: %s", err)
 	}
 	t.log.Infof("stopped")
+}
+
+// withPeer adds the peer of the connection c to its context. The credentials
+// are the kernel's, recorded at connect: a connection whose peer can not be
+// read carries none, and is authenticated as nobody.
+func (t *T) withPeer(ctx context.Context, c net.Conn) context.Context {
+	peer, err := peercred.FromConn(c)
+	if err != nil {
+		t.log.Warnf("read the peer of a connection: %s", err)
+		return ctx
+	}
+	return daemonctx.WithPeer(ctx, peer)
 }
 
 // newServer returns the server of the ux listener, serving handler over
@@ -123,9 +162,16 @@ func newServer(handler http.Handler, errorLog *golog.Logger) *http.Server {
 // receive and ignore.
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
-	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
+	name := "daemon.lsnr.http.ux"
+	if t.ownerGroup != nil {
+		name = "daemon.lsnr.http.uxuser"
+	}
+	sub := pubsub.SubFromContext(ctx, name)
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
+	if t.ownerGroup != nil {
+		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
+	}
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -143,6 +189,15 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				t.log.HandleAuditStart(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
+			case *msgbus.ClusterConfigUpdated:
+				// A group emptied is applied at the next daemon
+				// start: the socket stays owned by the former one.
+				if t.ownerGroup() == "" {
+					continue
+				}
+				if err := t.applyOwnerGroup(ctx); err != nil {
+					t.log.Errorf("own the socket: %s", err)
+				}
 			}
 		}
 	}

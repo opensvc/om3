@@ -121,6 +121,14 @@ func HTTPUnixFile() string {
 	return filepath.Join(rawconfig.Paths.Lsnr, HTTPUnixFileBasename)
 }
 
+// HTTPUserUnixFile is the unix socket of the users of the node, reached by
+// the members of the listener.ux_owner_group group. It is in a directory of
+// its own beside the run directory, /run/opensvc-ux by default: the var and
+// the run directories, where the root socket is, only root reaches.
+func HTTPUserUnixFile() string {
+	return filepath.Join(rawconfig.Paths.Run+"-ux", HTTPUnixFileBasename)
+}
+
 func HTTPLocalURL() string {
 	return fmt.Sprintf("https://localhost:%d", HTTPPort)
 }
@@ -135,6 +143,10 @@ func HTTPNodeAndPortURL(node, port string) string {
 
 func HTTPUnixURL() string {
 	return "http://" + HTTPUnixFile()
+}
+
+func HTTPUserUnixURL() string {
+	return "http://" + HTTPUserUnixFile()
 }
 
 func init() {
