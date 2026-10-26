@@ -321,11 +321,16 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 
 	// Not bound to the join timeout, which a long drain may have used up:
 	// the client timeout bounds the request.
-	t.collectorRegister(context.Background(), cli, prevUUID)
+	registered := t.collectorRegister(context.Background(), cli, prevUUID)
 
 	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
+	}
+
+	// After the daemon start, which the inventory collection would delay.
+	if registered {
+		collectorPush(context.Background())
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Joined\n")
 	if cleanupErr != nil {
@@ -385,13 +390,33 @@ func localNodeUUID() string {
 //
 // The join does not depend on the collector: a node without a registration
 // id is left as it is, and a refused one is warned to register itself.
-func (t *CmdClusterJoin) collectorRegister(ctx context.Context, cli *client.T, prevUUID string) {
+//
+// It returns true when the node is registered.
+func (t *CmdClusterJoin) collectorRegister(ctx context.Context, cli *client.T, prevUUID string) bool {
 	if prevUUID == "" {
-		return
+		return false
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Register on the collector through %s\n", t.Node)
 	if err := t.collectorRegisterThroughAPINode(ctx, cli, prevUUID); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: register on the collector: %s: register with 'om node register'\n", err)
+		return false
+	}
+	return true
+}
+
+// collectorPush sends the collector the initial inventory 'om node register'
+// sends, so the collector knows the node registered by the join as well.
+//
+// The join does not depend on the collector: a failure is warned, and left
+// to the scheduled pushes.
+func collectorPush(ctx context.Context) {
+	_, _ = fmt.Fprintf(os.Stdout, "Push the node inventory to the collector\n")
+	n, err := object.NewNode()
+	if err == nil {
+		err = n.PushRegistered(ctx)
+	}
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: push the node inventory to the collector: %s: left to the scheduled pushes\n", err)
 	}
 }
 

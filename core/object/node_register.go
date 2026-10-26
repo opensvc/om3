@@ -70,6 +70,17 @@ func (t Node) Register(ctx context.Context, user, password, app string) error {
 	if err := t.register(user, password, app); err != nil {
 		return fmt.Errorf("register: %w", err)
 	}
+	return t.PushRegistered(ctx)
+}
+
+// PushRegistered sends the collector the initial inventory of a node just
+// registered: asset, packages, disks, sysreport and checks. The collector
+// then knows the node in details, and can serve it contextualized
+// compliance rulesets, without waiting for the scheduled pushes.
+//
+// The asset, package and disk pushes are required, the sysreport and checks
+// pushes are not supported by every collector yet.
+func (t Node) PushRegistered(ctx context.Context) error {
 	if _, err := t.PushAsset(); err != nil {
 		return fmt.Errorf("push asset: %w", err)
 	} else {
