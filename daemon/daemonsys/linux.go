@@ -37,9 +37,42 @@ func (t *T) Activated(ctx context.Context) (bool, error) {
 	return prop.Value.String() == "\"active\"", nil
 }
 
-// CalledFromManager detects if current process as been launched by systemd
+// CalledFromManager detects if current process as been launched by systemd.
+//
+// systemd sets INVOCATION_ID in the environment of the processes of a unit
+// since its version 232. Before, as the 219 of RHEL 7, the process is known
+// launched by systemd from its cgroup: systemd runs every process of a unit,
+// the ExecStop ones too, in the cgroup of the unit.
 func (t *T) CalledFromManager() bool {
-	return os.Getenv("INVOCATION_ID") != ""
+	if os.Getenv("INVOCATION_ID") != "" {
+		return true
+	}
+	b, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return false
+	}
+	return inUnitCgroup(b, UnitName)
+}
+
+// inUnitCgroup says if a /proc/<pid>/cgroup content places the process in
+// the cgroup of the unit, or one under it: the line of the systemd hierarchy
+// on cgroup v1, "name=systemd", or the line of the unified hierarchy, "0::".
+func inUnitCgroup(b []byte, unit string) bool {
+	for _, line := range strings.Split(string(b), "\n") {
+		fields := strings.SplitN(line, ":", 3)
+		if len(fields) != 3 {
+			continue
+		}
+		if fields[1] != "name=systemd" && !(fields[0] == "0" && fields[1] == "") {
+			continue
+		}
+		for _, elem := range strings.Split(fields[2], "/") {
+			if elem == unit {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Close closes systemd dbus connection
