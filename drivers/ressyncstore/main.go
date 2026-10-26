@@ -37,6 +37,7 @@ import (
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/mountinfo"
@@ -62,6 +63,10 @@ type (
 		rid      string
 		dir      string
 		excludes []string
+
+		// apart are the paths under dir left out of its run, the heads
+		// and the mounts under it when the run began copying it.
+		apart []string
 	}
 
 	header interface {
@@ -430,11 +435,11 @@ func (t *T) sameDirsOnce(l []head) []head {
 // their own, and the filesystems mounted under it that are not the object's,
 // as the /proc of a container root. A copy from a snapshot of the head holds
 // neither, a copy of the head as it is now holds the same.
-func (t *T) excludeApart(heads []head) {
-	objectHeads := t.objectHeads()
+func (t *T) excludeApart(heads []head, objectHeads []head) {
 	mounts := t.mounts()
 	for i, h := range heads {
 		apart := apartUnder(h.dir, objectHeads, mounts)
+		heads[i].apart = apart
 		if len(apart) == 0 {
 			continue
 		}
@@ -456,6 +461,19 @@ func (t *T) mounts() []string {
 	l := make([]string, 0, len(entries))
 	for _, e := range entries {
 		l = append(l, filepath.Clean(e.Target))
+	}
+	return l
+}
+
+// foreignUnder returns the paths, relative to dir and sorted, of the mount
+// points under dir that are not heads of the object.
+func foreignUnder(dir string, objectHeads []head, mounts []string) []string {
+	nested := nestedHeads(objectHeads, filepath.Clean(dir))
+	l := make([]string, 0)
+	for _, rel := range apartUnder(dir, nil, mounts) {
+		if !slices.Contains(nested, rel) {
+			l = append(l, rel)
+		}
 	}
 	return l
 }
@@ -546,11 +564,14 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 	if err != nil {
 		return run, err
 	}
-	t.excludeApart(heads)
 	resume, err := t.quiesce(ctx)
 	if err != nil {
 		return run, err
 	}
+	// The mounts under the heads are the ones of the quiesced instance,
+	// which the copy sees: a quiesce command can unmount some.
+	objectHeads := t.objectHeads()
+	t.excludeApart(heads, objectHeads)
 	resumed := false
 	defer func() {
 		if !resumed {
@@ -578,6 +599,16 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 		}
 		if err := s.Backup(ctx, run, h.rid, src, h.dir, h.excludes); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("save %s: %w", h.rid, err))
+			return
+		}
+		// A head copied as it is was walked while mounts could be made
+		// under it, whose content the walk would have taken in: the
+		// member is refused when the mounts under it changed. A copy
+		// from a snapshot holds none of them.
+		if src == h.dir {
+			if now := apartUnder(h.dir, objectHeads, t.mounts()); !slices.Equal(now, h.apart) {
+				errs = errors.Join(errs, fmt.Errorf("save %s: the mounts under %s changed while it was saved, from [%s] to [%s]", h.rid, h.dir, strings.Join(h.apart, " "), strings.Join(now, " ")))
+			}
 		}
 	}
 	for _, h := range heads {
@@ -1122,6 +1153,15 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 		heads = append(heads, under)
 	}
 	mounts := t.mounts()
+	// A run saved before the mounts under its head were left out holds
+	// what they hid, which the extraction would write into the mounted
+	// filesystem: a restore in place is refused while a filesystem not
+	// of the object is mounted under the target.
+	for _, h := range targets {
+		if foreign := foreignUnder(h.dir, objectHeads, mounts); len(foreign) > 0 {
+			return fmt.Errorf("restore %s into %s: %s mounted under it, not a head of the object: unmount it, or restore aside with --into", h.rid, h.dir, strings.Join(foreign, " "))
+		}
+	}
 	for i, h := range targets {
 		t.Log().Infof("restore %s of run %s from store %s into %s", h.rid, run.ShortID(), s.Ref(), h.dir)
 		if err := restoreUnder(ctx, s, run, h, heads[i], apartUnder(h.dir, objectHeads, mounts)); err != nil {
@@ -1156,94 +1196,34 @@ func restoreUnder(ctx context.Context, s backup.Store, run backup.Run, h, under 
 }
 
 // openUnder creates the directory dir under the head headDir, and opens it,
-// one component after the other, each through the one before: a symlink is
-// refused, one pointing in the head too, as at another head under it, and a
-// directory swapped for another between its check and its opening is
-// refused, the directory opened having to be the one checked.
+// one component after the other, each through the one before, from the root
+// directory: a link is refused, one pointing in the head too, as at another
+// head under it, and a directory swapped for another between its check and
+// its opening is refused, the directory opened having to be the one checked.
+// A process writing in a head holding this one, as an outer filesystem,
+// could swap a component of the path of the head itself for a link after
+// the checks, so the head is reached from the root directory too, and a head
+// configured through a link is refused: the path of a mount point is the
+// one to configure.
 func openUnder(headDir, dir string) (*os.File, error) {
+	if !filepath.IsAbs(headDir) {
+		return nil, fmt.Errorf("%s: not an absolute path", headDir)
+	}
 	rel, err := filepath.Rel(headDir, dir)
 	if err != nil {
 		return nil, err
 	}
-	root, err := openHead(headDir)
+	head, err := confined.OpenDirNoLink("/", headDir, false, 0)
 	if err != nil {
 		return nil, err
 	}
-	for _, name := range strings.Split(rel, string(filepath.Separator)) {
-		if name == "." || name == "" {
-			continue
-		}
-		next, err := openComponent(root, name, true)
-		_ = root.Close()
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", dir, err)
-		}
-		root = next
+	defer head.Close()
+	root, err := confined.OpenRootNoLink(head, rel, true, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", dir, err)
 	}
 	defer root.Close()
 	return root.Open(".")
-}
-
-// openHead opens the head headDir from the root directory, one component
-// after the other, refusing a symlink: a process writing in a head holding
-// this one, as an outer filesystem, could swap one of its components for a
-// symlink after the checks, and the restore would empty and write where it
-// points. A head configured through a symlink is refused all the same: the
-// path of a mount point is the one to configure.
-func openHead(headDir string) (*os.Root, error) {
-	if !filepath.IsAbs(headDir) {
-		return nil, fmt.Errorf("%s: not an absolute path", headDir)
-	}
-	root, err := os.OpenRoot("/")
-	if err != nil {
-		return nil, err
-	}
-	for _, name := range strings.Split(filepath.Clean(headDir), string(filepath.Separator)) {
-		if name == "" {
-			continue
-		}
-		next, err := openComponent(root, name, false)
-		_ = root.Close()
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", headDir, err)
-		}
-		root = next
-	}
-	return root, nil
-}
-
-// openComponent opens the directory name of root, created when absent if
-// create is set.
-func openComponent(root *os.Root, name string, create bool) (*os.Root, error) {
-	fi, err := root.Lstat(name)
-	if create && errors.Is(err, os.ErrNotExist) {
-		if err := root.Mkdir(name, 0755); err != nil && !errors.Is(err, os.ErrExist) {
-			return nil, err
-		}
-		fi, err = root.Lstat(name)
-	}
-	switch {
-	case err != nil:
-		return nil, err
-	case fi.Mode()&os.ModeSymlink != 0:
-		return nil, fmt.Errorf("%s is a symlink", name)
-	case !fi.IsDir():
-		return nil, fmt.Errorf("%s is not a directory", name)
-	}
-	sub, err := root.OpenRoot(name)
-	if err != nil {
-		return nil, err
-	}
-	opened, err := sub.Stat(".")
-	if err != nil {
-		_ = sub.Close()
-		return nil, err
-	}
-	if !os.SameFile(fi, opened) {
-		_ = sub.Close()
-		return nil, fmt.Errorf("%s changed while opened", name)
-	}
-	return sub, nil
 }
 
 // objectHeads returns the heads of the resources of the object, enabled and

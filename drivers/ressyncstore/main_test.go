@@ -149,7 +149,7 @@ func TestOpenUnderRefusesAHeadPathSwapped(t *testing.T) {
 	require.NoError(t, os.Rename(filepath.Join(outer, "inner"), filepath.Join(outer, "moved")))
 	require.NoError(t, os.Symlink(outside, filepath.Join(outer, "inner")))
 	_, err = openUnder(headDir, filepath.Join(headDir, "data"))
-	assert.ErrorContains(t, err, "is a symlink")
+	assert.ErrorContains(t, err, "is a link")
 	assert.NoDirExists(t, filepath.Join(outside, "head", "data"), "nothing created outside")
 }
 
@@ -190,4 +190,13 @@ func TestSameDirsOnce(t *testing.T) {
 		rids[i] = h.rid
 	}
 	assert.Equal(t, []string{"fs#1", "fs#3"}, rids)
+}
+
+// The mounts under a target of a restore in place that are not heads of the
+// object are the ones refusing it.
+func TestForeignUnder(t *testing.T) {
+	heads := []head{{rid: "fs#1", dir: "/srv/app"}, {rid: "fs#2", dir: "/srv/app/data"}}
+	mounts := []string{"/", "/srv/app", "/srv/app/data", "/srv/app/rootfs/proc"}
+	assert.Equal(t, []string{"rootfs/proc"}, foreignUnder("/srv/app", heads, mounts))
+	assert.Empty(t, foreignUnder("/srv/app/data", heads, mounts))
 }
