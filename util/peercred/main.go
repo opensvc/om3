@@ -17,9 +17,10 @@ type (
 
 		// Pinned says the process was read through a pidfd the kernel
 		// handed with the connection (SO_PEERPIDFD, Linux 6.5 and
-		// later), and still ran once read: Cgroup and MountNS are the
-		// ones of the peer, never of a process reusing its pid. Without
-		// it, they are left empty.
+		// later), and still ran once read: Cgroup and ForeignMountNS
+		// are the ones of the peer, never of a process reusing its
+		// pid. Without it, they are read by the pid, which a peer
+		// ending lets another process take.
 		Pinned bool
 
 		// Cgroup is the path of the peer in the systemd hierarchy, the
@@ -36,4 +37,8 @@ var (
 	// ErrNotUnix is returned for a connection that is not a unix socket
 	// one.
 	ErrNotUnix = errors.New("not a unix socket connection")
+
+	// ErrUnknownProcess is returned for a peer whose process can not be
+	// read: whether it runs in a container is not known.
+	ErrUnknownProcess = errors.New("the process of the peer can not be read")
 )

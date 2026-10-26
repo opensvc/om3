@@ -4,6 +4,7 @@ package peercred
 
 import (
 	"bytes"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -13,6 +14,13 @@ import (
 )
 
 // FromConn returns the peer of the unix socket connection c.
+//
+// The cgroup and the mount namespace of the process are read too, and a peer
+// whose process can not be read is not returned: a peer whose namespace is
+// unknown could be a container taken for a process of the node, so it is
+// refused rather than returned half known. The process is read through the
+// pidfd of the connection where the kernel gives one, and by its pid
+// otherwise.
 func FromConn(c net.Conn) (*T, error) {
 	uc, ok := c.(*net.UnixConn)
 	if !ok {
@@ -39,36 +47,45 @@ func FromConn(c net.Conn) (*T, error) {
 	}
 	t := &T{UID: cred.Uid, GID: cred.Gid, PID: cred.Pid}
 	if pidfdErr != nil || pidfd < 0 {
-		return t, nil
+		pidfd = -1
+	} else {
+		defer unix.Close(pidfd)
 	}
-	defer unix.Close(pidfd)
-	t.readProcess(pidfd)
+	if err := t.readProcess(pidfd); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrUnknownProcess, err)
+	}
 	return t, nil
 }
 
 // readProcess reads the cgroup and the mount namespace of the peer from its
-// pid, then makes sure, through the pidfd, that the process read is still
-// the peer: a pid reused meanwhile would have shown another process.
-func (t *T) readProcess(pidfd int) {
+// pid, then makes sure, through the pidfd when there is one, that the process
+// read is still the peer: a pid reused meanwhile would have shown another
+// process. Without a pidfd the process read is the one holding the pid then,
+// which the peer still is unless it ended and its pid was given again in the
+// meantime.
+func (t *T) readProcess(pidfd int) error {
 	head := "/proc/" + strconv.Itoa(int(t.PID))
 	b, err := os.ReadFile(head + "/cgroup")
 	if err != nil {
-		return
+		return err
 	}
 	mnt, err := os.Readlink(head + "/ns/mnt")
 	if err != nil {
-		return
+		return err
 	}
 	self, err := os.Readlink("/proc/self/ns/mnt")
 	if err != nil {
-		return
+		return err
 	}
-	if err := unix.PidfdSendSignal(pidfd, 0, nil, 0); err != nil {
-		return
+	if pidfd >= 0 {
+		if err := unix.PidfdSendSignal(pidfd, 0, nil, 0); err != nil {
+			return fmt.Errorf("the peer ended: %w", err)
+		}
+		t.Pinned = true
 	}
 	t.Cgroup = systemdCgroup(b)
 	t.ForeignMountNS = mnt != self
-	t.Pinned = true
+	return nil
 }
 
 // systemdCgroup returns the path of the systemd hierarchy in a

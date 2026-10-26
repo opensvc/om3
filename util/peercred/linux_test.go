@@ -3,6 +3,7 @@
 package peercred
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -62,4 +63,29 @@ func TestSystemdCgroup(t *testing.T) {
 	assert.Equal(t, "/system.slice/a.service", systemdCgroup([]byte("2:cpu:/x\n1:name=systemd:/system.slice/a.service\n0::/y\n")))
 	assert.Equal(t, "/user.slice/u.scope", systemdCgroup([]byte("0::/user.slice/u.scope\n")))
 	assert.Equal(t, "", systemdCgroup([]byte("2:cpu:/x\n")))
+}
+
+// Without a pidfd, the process is read by its pid: the peer is known, but not
+// pinned.
+func TestReadProcessByPid(t *testing.T) {
+	peer := &T{PID: int32(os.Getpid())}
+	require.NoError(t, peer.readProcess(-1))
+	assert.False(t, peer.Pinned)
+	assert.False(t, peer.ForeignMountNS, "the peer is this process")
+	b, err := os.ReadFile("/proc/self/cgroup")
+	require.NoError(t, err)
+	assert.Equal(t, systemdCgroup(b), peer.Cgroup)
+}
+
+// A process that can not be read leaves the peer unknown, rather than taken
+// for a process of the node.
+func TestReadProcessGone(t *testing.T) {
+	b, err := os.ReadFile("/proc/sys/kernel/pid_max")
+	require.NoError(t, err)
+	var max int32
+	_, err = fmt.Sscan(string(b), &max)
+	require.NoError(t, err)
+	peer := &T{PID: max}
+	assert.Error(t, peer.readProcess(-1))
+	assert.False(t, peer.ForeignMountNS)
 }
