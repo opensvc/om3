@@ -8,16 +8,21 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -56,11 +61,22 @@ type (
 
 var (
 	ErrCmdClusterJoin = errors.New("command cluster join")
+
+	// objectDiscoverTimeout bounds the wait for the object configurations
+	// the daemon installs from its peers after the join, before the checks
+	// and disks pushes.
+	objectDiscoverTimeout = 5 * time.Minute
+
+	// objectDiscoverInterval is the interval between the checks of the
+	// object configurations installed.
+	objectDiscoverInterval = 2 * time.Second
 )
 
 func (t *CmdClusterJoin) Run() error {
+	t.setLogger("cluster join: ")
 	err := t.run()
 	if err != nil {
+		t.logger().Errorf("%s", err)
 		return fmt.Errorf("%w: %w", ErrCmdClusterJoin, err)
 	}
 	return nil
@@ -102,7 +118,7 @@ func (t *CmdClusterJoin) run() error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(os.Stdout, "Fetch cluster config from %s\n", t.Node)
+	t.logger().Infof("Fetch cluster config from %s", t.Node)
 	file, _, err := remoteconfig.FetchObjectConfigFile(cli, naming.Cluster)
 	if err != nil {
 		return err
@@ -148,8 +164,8 @@ func (t *CmdClusterJoin) run() error {
 		_ = evReader.Close()
 	}()
 
-	_, _ = fmt.Fprintf(os.Stdout, "Add localhost node to the remote cluster configuration on %s\n", t.Node)
-	_, _ = fmt.Fprintf(os.Stdout, "Daemon join\n")
+	t.logger().Infof("Add localhost node to the remote cluster configuration on %s", t.Node)
+	t.logger().Infof("Daemon join")
 	params := api.PostClusterJoinParams{
 		Node: hostname.Hostname(),
 	}
@@ -266,7 +282,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 			file      string
 			timestamp time.Time
 		)
-		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
+		t.logger().Infof("Fetch %s from %s", p, t.Node)
 		file, timestamp, err = remoteconfig.FetchObjectConfigFile(cli, p)
 		if err != nil {
 			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
@@ -284,7 +300,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 		if err := t.nodeDrain(ctx); err != nil {
 			return err
 		}
-		_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
+		t.logger().Infof("Stop daemon")
 		if err := (&CmdDaemonStop{}).Run(); err != nil {
 			return err
 		}
@@ -302,7 +318,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 	}
 
 	for fileName, p := range filePaths {
-		_, _ = fmt.Fprintf(os.Stdout, "Install fetched config %s with timestamp %s\n", p, fileTimestamps[fileName])
+		t.logger().Infof("Install fetched config %s with timestamp %s", p, fileTimestamps[fileName])
 		configFile := p.ConfigFile()
 		dir := filepath.Dir(configFile)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
@@ -323,16 +339,16 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 	// the client timeout bounds the request.
 	registered := t.collectorRegister(context.Background(), cli, prevUUID)
 
-	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
+	t.logger().Infof("Start daemon")
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
 	}
 
 	// After the daemon start, which the inventory collection would delay.
 	if registered {
-		collectorPush(context.Background())
+		t.collectorPush(context.Background())
 	}
-	_, _ = fmt.Fprintf(os.Stdout, "Joined\n")
+	t.logger().Infof("Joined")
 	if cleanupErr != nil {
 		return fmt.Errorf("cleanup opensvc var dir: %w", cleanupErr)
 	}
@@ -357,14 +373,14 @@ func (t *CmdClusterJoin) waitJoinResult(ctx context.Context, evReader event.Read
 			}
 			switch msg.(type) {
 			case *msgbus.JoinSuccess:
-				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
+				t.logger().Infof("Cluster nodes updated")
 				return nil
 			case *msgbus.JoinError:
 				err := fmt.Errorf("join error event %s", ev.Data)
 				return err
 			case *msgbus.JoinIgnored:
 				// TODO parse Reason
-				_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s", ev.Data)
+				t.logger().Infof("Join ignored: %s", ev.Data)
 				return nil
 			default:
 				return fmt.Errorf("%w: %s data: %v", commoncmd.ErrEventKindUnexpected, ev.Kind, ev.Data)
@@ -396,9 +412,9 @@ func (t *CmdClusterJoin) collectorRegister(ctx context.Context, cli *client.T, p
 	if prevUUID == "" {
 		return false
 	}
-	_, _ = fmt.Fprintf(os.Stdout, "Register on the collector through %s\n", t.Node)
+	t.logger().Infof("Register on the collector through %s", t.Node)
 	if err := t.collectorRegisterThroughAPINode(ctx, cli, prevUUID); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: register on the collector: %s: register with 'om node register'\n", err)
+		t.logger().Warnf("register on the collector: %s: register with 'om node register'", err)
 		return false
 	}
 	return true
@@ -407,17 +423,117 @@ func (t *CmdClusterJoin) collectorRegister(ctx context.Context, cli *client.T, p
 // collectorPush sends the collector the initial inventory 'om node register'
 // sends, so the collector knows the node registered by the join as well.
 //
+// The checks and disks pushes replace what the collector holds of the node
+// with what the node reports of its svc and vol objects, which the daemon
+// installs from its peers after it starts: they wait for these objects, or
+// are left to the scheduled pushes, not to delete the checks and disk claims
+// of the objects not installed yet.
+//
 // The join does not depend on the collector: a failure is warned, and left
 // to the scheduled pushes.
-func collectorPush(ctx context.Context) {
-	_, _ = fmt.Fprintf(os.Stdout, "Push the node inventory to the collector\n")
+func (t *CmdClusterJoin) collectorPush(ctx context.Context) {
 	n, err := object.NewNode()
-	if err == nil {
-		err = n.PushRegistered(ctx)
-	}
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: push the node inventory to the collector: %s: left to the scheduled pushes\n", err)
+		t.logger().Warnf("push the node inventory to the collector: %s: left to the scheduled pushes", err)
+		return
 	}
+	t.logger().Infof("Wait for the object configurations to push the node inventory to the collector")
+	waitCtx, cancel := context.WithTimeout(ctx, objectDiscoverTimeout)
+	defer cancel()
+	if err := waitObjectsDiscovered(waitCtx); err != nil {
+		t.logger().Warnf("%s: push the node inventory to the collector but the checks and disks, left to the scheduled pushes", err)
+		t.pushObjectFreeInventory(n)
+		return
+	}
+	t.logger().Infof("Push the node inventory to the collector")
+	if err := n.PushRegistered(ctx); err != nil {
+		t.logger().Warnf("push the node inventory to the collector: %s: left to the scheduled pushes", err)
+	}
+}
+
+// pushObjectFreeInventory sends the collector the part of the initial
+// inventory that does not depend on the objects installed.
+func (t *CmdClusterJoin) pushObjectFreeInventory(n *object.Node) {
+	if _, err := n.PushAsset(); err != nil {
+		t.logger().Warnf("push asset: %s", err)
+	}
+	if _, err := n.PushPkg(); err != nil {
+		t.logger().Warnf("push pkg: %s", err)
+	}
+	if err := n.Sysreport(); err != nil {
+		t.logger().Warnf("sysreport: %s", err)
+	}
+}
+
+// waitObjectsDiscovered waits for the local daemon to have installed the
+// configurations of the svc and vol objects scoped on this node.
+func waitObjectsDiscovered(ctx context.Context) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	ticker := time.NewTicker(objectDiscoverInterval)
+	defer ticker.Stop()
+	for {
+		missing, err := objectsNotDiscovered(c)
+		if err == nil && len(missing) == 0 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			if err != nil {
+				return fmt.Errorf("wait for the object configurations: %w: %w", ctx.Err(), err)
+			}
+			return fmt.Errorf("wait for the object configurations: %w: missing %s", ctx.Err(), strings.Join(missing, ", "))
+		case <-ticker.C:
+		}
+	}
+}
+
+// objectsNotDiscovered returns the svc and vol objects scoped on this node
+// whose configuration is not installed yet.
+//
+// The daemon knows the objects of the cluster from the data of its peers, so
+// the answer only holds once it has left the rejoin state: it has the data of
+// every peer, or has stopped waiting for the ones that did not answer.
+func objectsNotDiscovered(c *client.T) ([]string, error) {
+	b, err := c.NewGetClusterStatus().Get()
+	if err != nil {
+		return nil, err
+	}
+	var data clusterdump.Data
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	localhost := hostname.Hostname()
+	switch data.Cluster.Node[localhost].Monitor.State {
+	case node.MonitorStateInit, node.MonitorStateRejoin:
+		return nil, fmt.Errorf("the daemon is rejoining its peers")
+	}
+	installed, err := naming.InstalledPaths()
+	if err != nil {
+		return nil, err
+	}
+	return notInstalledObjects(data.Cluster.Object, installed, localhost), nil
+}
+
+// notInstalledObjects returns the svc and vol objects of objects scoped on
+// nodename, that are not in installed.
+func notInstalledObjects(objects map[string]object.Status, installed naming.Paths, nodename string) []string {
+	installedMap := installed.StrMap()
+	l := make([]string, 0)
+	for s, o := range objects {
+		p, err := naming.ParsePath(s)
+		if err != nil || (p.Kind != naming.KindSvc && p.Kind != naming.KindVol) {
+			continue
+		}
+		if !slices.Contains(o.Scope, nodename) || installedMap.Has(s) {
+			continue
+		}
+		l = append(l, s)
+	}
+	sort.Strings(l)
+	return l
 }
 
 func (t *CmdClusterJoin) collectorRegisterThroughAPINode(ctx context.Context, cli *client.T, prevUUID string) error {
