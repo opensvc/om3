@@ -8,6 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/backup"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func touch(t *testing.T, p string) {
@@ -148,4 +151,43 @@ func TestOpenUnderRefusesAHeadPathSwapped(t *testing.T) {
 	_, err = openUnder(headDir, filepath.Join(headDir, "data"))
 	assert.ErrorContains(t, err, "is a symlink")
 	assert.NoDirExists(t, filepath.Join(outside, "head", "data"), "nothing created outside")
+}
+
+// The heads of the object and the mounts under a head are left out of its
+// run, and out of what a restore in place empties: they are not its data.
+func TestApartUnder(t *testing.T) {
+	heads := []head{{rid: "fs#1", dir: "/srv/app"}, {rid: "fs#2", dir: "/srv/app/data"}, {rid: "fs#3", dir: "/srv/other"}}
+	mounts := []string{"/", "/srv/app", "/srv/app/rootfs/proc", "/srv/app/data", "/srv/elsewhere"}
+	assert.Equal(t, []string{"data", "rootfs/proc"}, apartUnder("/srv/app", heads, mounts))
+	assert.Empty(t, apartUnder("/srv/app/data", heads, mounts))
+	assert.Empty(t, apartUnder("/srv/other", heads, nil))
+}
+
+// A literal pattern of a nested path keeps a restore in place walking down
+// to it rather than removing the directory holding it.
+func TestHasExcludedUnderAnchored(t *testing.T) {
+	excludes := []string{backup.LiteralPattern("rootfs/proc")}
+	assert.True(t, hasExcludedUnder("rootfs", excludes))
+	assert.False(t, hasExcludedUnder("other", excludes))
+	assert.False(t, hasExcludedUnder("rootfs/proc", excludes), "the pattern itself, not under it")
+	assert.True(t, hasExcludedUnder("x", []string{"*.log"}), "a name pattern matches at any depth")
+	assert.False(t, hasExcludedUnder("x", []string{"/tmp"}), "an anchored one only under its path")
+}
+
+// Two heads naming one directory by different paths are saved once.
+func TestSameDirsOnce(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "data")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.Symlink(dir, filepath.Join(base, "alias")))
+	other := filepath.Join(base, "other")
+	require.NoError(t, os.MkdirAll(other, 0755))
+	r := &T{}
+	r.SetLoggerForTest(plog.NewDefaultLogger())
+	l := r.sameDirsOnce([]head{{rid: "fs#1", dir: dir}, {rid: "fs#2", dir: filepath.Join(base, "alias")}, {rid: "fs#3", dir: other}})
+	rids := make([]string, len(l))
+	for i, h := range l {
+		rids[i] = h.rid
+	}
+	assert.Equal(t, []string{"fs#1", "fs#3"}, rids)
 }

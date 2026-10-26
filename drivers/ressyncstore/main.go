@@ -15,9 +15,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/google/uuid"
 
@@ -37,6 +39,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/ressync"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/mountinfo"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -388,7 +391,96 @@ func (t *T) heads(ctx context.Context) ([]head, error) {
 			return nil, err
 		}
 	}
-	return l, nil
+	return t.sameDirsOnce(l), nil
+}
+
+// sameDirsOnce returns the heads l, each directory once: two resources can
+// name one directory by different paths, as a bind mount or a symlink in
+// the configured path, which their paths do not tell, and their device and
+// inode do. The directory is saved as the member of the first, the others
+// said.
+func (t *T) sameDirsOnce(l []head) []head {
+	type id struct{ dev, ino uint64 }
+	seen := make(map[id]string)
+	kept := make([]head, 0, len(l))
+	for _, h := range l {
+		info, err := os.Stat(h.dir)
+		if err != nil {
+			kept = append(kept, h)
+			continue
+		}
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !ok {
+			kept = append(kept, h)
+			continue
+		}
+		k := id{uint64(st.Dev), uint64(st.Ino)}
+		if rid, ok := seen[k]; ok {
+			t.Log().Infof("skip %s: its head %s is the directory of %s, saved once as %s", h.rid, h.dir, rid, rid)
+			continue
+		}
+		seen[k] = h.rid
+		kept = append(kept, h)
+	}
+	return kept
+}
+
+// excludeApart adds to the excludes of each head the paths under it that are
+// not its data: the heads of the object nested under it, saved as members of
+// their own, and the filesystems mounted under it that are not the object's,
+// as the /proc of a container root. A copy from a snapshot of the head holds
+// neither, a copy of the head as it is now holds the same.
+func (t *T) excludeApart(heads []head) {
+	objectHeads := t.objectHeads()
+	mounts := t.mounts()
+	for i, h := range heads {
+		apart := apartUnder(h.dir, objectHeads, mounts)
+		if len(apart) == 0 {
+			continue
+		}
+		t.Log().Infof("save %s without %s, heads or mounts of their own", h.rid, strings.Join(apart, " "))
+		for _, rel := range apart {
+			heads[i].excludes = append(heads[i].excludes, backup.LiteralPattern(rel))
+		}
+	}
+}
+
+// mounts returns the mount points of the node, none when they can not be
+// read: the heads are then saved with what is mounted under them.
+func (t *T) mounts() []string {
+	entries, err := mountinfo.Read()
+	if err != nil {
+		t.Log().Warnf("read the mounts: %s", err)
+		return nil
+	}
+	l := make([]string, 0, len(entries))
+	for _, e := range entries {
+		l = append(l, filepath.Clean(e.Target))
+	}
+	return l
+}
+
+// apartUnder returns the paths, relative to dir and sorted, of the heads of
+// the object and of the mount points under dir, which are not part of the
+// data of the head at dir.
+func apartUnder(dir string, objectHeads []head, mounts []string) []string {
+	dir = filepath.Clean(dir)
+	l := nestedHeads(objectHeads, dir)
+	for _, m := range mounts {
+		if m == dir || !within(m, dir) {
+			continue
+		}
+		rel, err := filepath.Rel(dir, m)
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		if !slices.Contains(l, rel) {
+			l = append(l, rel)
+		}
+	}
+	slices.Sort(l)
+	return l
 }
 
 // Update writes a run: every head, and the configuration of the object.
@@ -454,6 +546,7 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 	if err != nil {
 		return run, err
 	}
+	t.excludeApart(heads)
 	resume, err := t.quiesce(ctx)
 	if err != nil {
 		return run, err
@@ -1028,9 +1121,10 @@ func (t *T) restoreInPlace(ctx context.Context, s backup.Store, run backup.Run, 
 		targets = append(targets, head{rid: m, dir: dir, excludes: backup.HeadExcludes(m, t.Exclude)})
 		heads = append(heads, under)
 	}
+	mounts := t.mounts()
 	for i, h := range targets {
 		t.Log().Infof("restore %s of run %s from store %s into %s", h.rid, run.ShortID(), s.Ref(), h.dir)
-		if err := restoreUnder(ctx, s, run, h, heads[i], nestedHeads(objectHeads, h.dir)); err != nil {
+		if err := restoreUnder(ctx, s, run, h, heads[i], apartUnder(h.dir, objectHeads, mounts)); err != nil {
 			return fmt.Errorf("restore %s: %w", h.rid, err)
 		}
 	}
@@ -1294,13 +1388,30 @@ func hasHeadUnder(rel string, heads []string) bool {
 // under the directory rel, which is then emptied entry by entry rather than
 // removed whole.
 func hasExcludedUnder(rel string, excludes []string) bool {
+	relParts := strings.Split(rel, "/")
 	for _, pattern := range excludes {
-		pattern = strings.Trim(pattern, "/")
-		if !strings.Contains(pattern, "/") {
+		pattern, anchored := backup.SplitPattern(pattern)
+		if pattern == "" {
+			continue
+		}
+		if !anchored {
 			// A name pattern matches at any depth.
 			return true
 		}
-		if strings.HasPrefix(pattern, rel+"/") {
+		// A path pattern matches under rel when its leading components
+		// match the components of rel, and it has more.
+		parts := strings.Split(pattern, "/")
+		if len(parts) <= len(relParts) {
+			continue
+		}
+		under := true
+		for i, part := range relParts {
+			if ok, _ := path.Match(parts[i], part); !ok {
+				under = false
+				break
+			}
+		}
+		if under {
 			return true
 		}
 	}

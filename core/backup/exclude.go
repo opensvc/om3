@@ -6,18 +6,18 @@ import (
 )
 
 // Excluded tells whether the path rel, relative to a head, slash separated,
-// is one an exclude pattern matches: a pattern holding a slash matches the
-// path from the head, one without matches a name at any depth. Store drivers
-// and the framework share it, so what a run leaves out is what a restore in
-// place leaves alone.
+// is one an exclude pattern matches: a pattern starting with or holding a
+// slash matches the path from the head, one without matches a name at any
+// depth. Store drivers and the framework share it, so what a run leaves out
+// is what a restore in place leaves alone.
 func Excluded(rel string, excludes []string) bool {
 	for _, pattern := range excludes {
-		pattern = strings.Trim(pattern, "/")
+		pattern, anchored := SplitPattern(pattern)
 		if pattern == "" {
 			continue
 		}
 		subject := rel
-		if !strings.Contains(pattern, "/") {
+		if !anchored {
 			subject = path.Base(rel)
 		}
 		if ok, _ := path.Match(pattern, subject); ok {
@@ -45,4 +45,28 @@ func HeadExcludes(rid string, excludes []string) []string {
 		}
 	}
 	return l
+}
+
+// SplitPattern returns the pattern without its leading and trailing
+// slashes, and whether it matches the path from the head, rather than a name
+// at any depth: a pattern starting with a slash, as "/tmp", or holding one.
+func SplitPattern(pattern string) (string, bool) {
+	anchored := strings.HasPrefix(pattern, "/")
+	pattern = strings.Trim(pattern, "/")
+	return pattern, anchored || strings.Contains(pattern, "/")
+}
+
+// LiteralPattern returns the pattern matching the path rel from the head,
+// and nothing else: anchored, its wildcards escaped.
+func LiteralPattern(rel string) string {
+	var b strings.Builder
+	b.WriteString("/")
+	for _, r := range rel {
+		switch r {
+		case '\\', '*', '?', '[':
+			b.WriteRune('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }

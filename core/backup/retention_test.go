@@ -126,6 +126,19 @@ func TestExcluded(t *testing.T) {
 	assert.True(t, Excluded("a/b", []string{"a/b"}))
 	assert.False(t, Excluded("x/a/b", []string{"a/b"}), "a pattern with a slash is anchored at the head")
 	assert.False(t, Excluded("a", nil))
+	assert.False(t, Excluded("x/tmp", []string{"/tmp"}), "a pattern starting with a slash is anchored at the head")
+	assert.True(t, Excluded("x/tmp", []string{"tmp"}), "one without matches a name at any depth")
+}
+
+// A literal pattern matches its path from the head and nothing else, its
+// wildcards taken as they are.
+func TestLiteralPattern(t *testing.T) {
+	p := LiteralPattern("data")
+	assert.True(t, Excluded("data", []string{p}))
+	assert.False(t, Excluded("x/data", []string{p}))
+	p = LiteralPattern("a/[x]*?")
+	assert.True(t, Excluded("a/[x]*?", []string{p}))
+	assert.False(t, Excluded("a/xyz", []string{p}), "the wildcards are escaped")
 }
 
 func TestHeadExcludes(t *testing.T) {

@@ -2,8 +2,14 @@ The paths a run leaves out, relative to the head they are in.
 
 A pattern prefixed with a resource id and a colon, as `fs#1:/tmp`,
 applies to that head only, one with no prefix to every head. A pattern
-holding a slash matches the path from the head, one without matches a
-name at any depth, as `*.log`.
+starting with or holding a slash matches the path from the head, as
+`/tmp` or `cache/*`, one without matches a name at any depth, as `*.log`.
+
+A run also leaves out, by itself, what is under a head and not its data:
+the heads of the object nested under it, saved as members of their own,
+and the filesystems mounted under it that are not resources of the
+object, as the `/proc` of a container root. A head copied from a snapshot
+holds neither, a head copied as it is holds the same.
 
 The excluded paths are absent after a restore aside, and left as they are
 by a restore in place.
