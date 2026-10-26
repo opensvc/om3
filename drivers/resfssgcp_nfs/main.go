@@ -211,6 +211,7 @@ func (t *T) configureUnderlyingFilesystem(resType string) error {
 	r.Type = resType
 	r.Device = t.Device
 	r.MountPoint = t.MountPoint
+	r.Zone = t.Zone
 	r.MountOptions = t.MountOptions
 	r.StatTimeout = t.StatTimeout
 	r.DataRecv = t.DataRecv

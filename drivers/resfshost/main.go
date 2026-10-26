@@ -61,6 +61,10 @@ type (
 		// it is formatted with.
 		Subvol     string `json:"subvol"`
 		BtrfsLabel string `json:"label"`
+
+		// zoneMountPoint caches the mount point under the root
+		// directory of the container Zone names.
+		zoneMountPoint string
 	}
 
 	IsFormateder interface {
@@ -95,6 +99,9 @@ func (t *T) Configure() error {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
@@ -105,6 +112,9 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if !v {
@@ -144,6 +154,10 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.MountPoint == "" {
 		t.StatusLog().Info("mnt is not defined")
 		return status.NotApplicable
+	}
+	if _, err := t.resolveMountPoint(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
 	}
 	if v, err := t.isMounted(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
@@ -193,10 +207,16 @@ func (t *T) Unprovision(ctx context.Context) error {
 // UnprovisionAsLeader removes the mount point, as UnprovisionAsFollower
 // does: it is on each node.
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	return t.removeMountPoint()
 }
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	return t.removeMountPoint()
 }
 
@@ -409,9 +429,28 @@ func octalMode(m os.FileMode) string {
 	return strconv.FormatUint(uint64(n), 8)
 }
 
+// mountPoint returns where the filesystem is mounted on the host: mnt,
+// under the root directory of the container zone names when set. It is
+// empty when the zone names no container, which resolveMountPoint says.
 func (t *T) mountPoint() string {
-	// add zonepath translation, and cache ?
-	return filepath.Clean(t.MountPoint)
+	p, _ := t.resolveMountPoint()
+	return p
+}
+
+// resolveMountPoint returns the mount point, or why the zone the filesystem
+// is mounted in can not be found.
+func (t *T) resolveMountPoint() (string, error) {
+	if t.Zone == "" {
+		return filepath.Clean(t.MountPoint), nil
+	}
+	if t.zoneMountPoint == "" {
+		p, err := ZoneMountPoint(context.Background(), t.GetObjectDriver(), t.Zone, t.MountPoint)
+		if err != nil {
+			return "", err
+		}
+		t.zoneMountPoint = p
+	}
+	return t.zoneMountPoint, nil
 }
 
 func (t *T) device(ctx context.Context) device.T {
@@ -503,7 +542,7 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	if isRegular && t.isBind() {
 		err = t.createMountPointFile()
 	} else {
-		err = t.createMountPointDir(t.MountPoint)
+		err = t.createMountPointDir(t.mountPoint())
 	}
 	if err != nil {
 		return err
@@ -522,12 +561,12 @@ func (t *T) createMountPoint(ctx context.Context) error {
 //	dev = /a/foo
 //	mnt = /b/foo
 func (t *T) createMountPointFile() error {
-	dir := filepath.Dir(t.MountPoint)
+	dir := filepath.Dir(t.mountPoint())
 	if err := t.createMountPointDir(dir); err != nil {
 		return err
 	}
 
-	if stat, err := os.Stat(t.MountPoint); err == nil {
+	if stat, err := os.Stat(t.mountPoint()); err == nil {
 		// file already exists
 		if stat.Mode().IsRegular() {
 			return nil
@@ -535,10 +574,10 @@ func (t *T) createMountPointFile() error {
 			return fmt.Errorf("the mountpoint already exists but is not a regular file")
 		}
 	} else if os.IsNotExist(err) {
-		t.Log().Infof("create missing mountpoint file %s", t.MountPoint)
+		t.Log().Infof("create missing mountpoint file %s", t.mountPoint())
 		// Exclusive, so a symlink made at the mount point since the stat is
 		// not followed to a file created elsewhere.
-		if f, err := os.OpenFile(t.MountPoint, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644); err != nil {
+		if f, err := os.OpenFile(t.mountPoint(), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644); err != nil {
 			return err
 		} else {
 			f.Close()
@@ -695,7 +734,7 @@ func (t *T) isBindMounted(ctx context.Context) (bool, error) {
 
 	// We know we have a entry in findmnt, but not yet sure it's our bind mount.
 	// Verify the dev and mnt have the same maj:min and inode.
-	err = file.VerifySameMajorMinorAndInode(t.Device, t.MountPoint)
+	err = file.VerifySameMajorMinorAndInode(t.Device, t.mountPoint())
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	} else if errors.Is(err, file.ErrNotSame) {
@@ -726,6 +765,9 @@ func (t *T) isMounted(ctx context.Context) (bool, error) {
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if err := errors.Join(t.btrfsConflicts()...); err != nil {
 		return err
 	}
@@ -771,7 +813,7 @@ func (t *T) mkfs(ctx context.Context) error {
 }
 
 func (t *T) Head() string {
-	return t.MountPoint
+	return t.mountPoint()
 }
 
 func (t *T) canCheckWriteAccess() bool {

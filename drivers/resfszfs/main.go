@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resfshost"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
@@ -51,6 +52,10 @@ type (
 		// moveSnapshot is the snapshot PreMove sent, which PostMove
 		// keeps as the base of the next move.
 		moveSnapshot string
+
+		// zoneMountPoint caches the mount point under the root
+		// directory of the container Zone names.
+		zoneMountPoint string
 	}
 )
 
@@ -78,6 +83,9 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
@@ -88,6 +96,9 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if !v {
@@ -117,6 +128,10 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.MountPoint == "" {
 		t.StatusLog().Info("mnt is not defined")
 		return status.NotApplicable
+	}
+	if _, err := t.resolveMountPoint(); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
 	}
 	if v, err := t.isMounted(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
@@ -163,9 +178,28 @@ func (t *T) mountOptions() []string {
 	return strings.Split(t.MountOptions, ",")
 }
 
+// mountPoint returns where the dataset is mounted on the host: mnt, under
+// the root directory of the container zone names when set. It is empty when
+// the zone names no container, which resolveMountPoint says.
 func (t *T) mountPoint() string {
-	// add zonepath translation, and cache ?
-	return filepath.Clean(t.MountPoint)
+	p, _ := t.resolveMountPoint()
+	return p
+}
+
+// resolveMountPoint returns the mount point, or why the zone the dataset is
+// mounted in can not be found.
+func (t *T) resolveMountPoint() (string, error) {
+	if t.Zone == "" {
+		return filepath.Clean(t.MountPoint), nil
+	}
+	if t.zoneMountPoint == "" {
+		p, err := resfshost.ZoneMountPoint(context.Background(), t.GetObjectDriver(), t.Zone, t.MountPoint)
+		if err != nil {
+			return "", err
+		}
+		t.zoneMountPoint = p
+	}
+	return t.zoneMountPoint, nil
 }
 
 func (t *T) device() device.T {
@@ -220,7 +254,7 @@ func (t *T) mountLegacy() error {
 	if len(mountOptions) > 0 {
 		a.Append("-o", strings.Join(mountOptions, ","))
 	}
-	a.Append(t.Device, t.MountPoint)
+	a.Append(t.Device, t.mountPoint())
 	cmd := command.New(
 		command.WithName("mount"),
 		command.WithArgs(a.Get()),
@@ -241,7 +275,7 @@ func (t *T) mountLegacy() error {
 func (t *T) umountLegacy() error {
 	cmd := command.New(
 		command.WithName("umount"),
-		command.WithVarArgs(t.MountPoint),
+		command.WithVarArgs(t.mountPoint()),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(time.Minute),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -287,16 +321,16 @@ func (t *T) umountNative() error {
 }
 
 func (t *T) createMountPoint(ctx context.Context) error {
-	if v, err := file.ExistsAndDir(t.MountPoint); err != nil {
+	if v, err := file.ExistsAndDir(t.mountPoint()); err != nil {
 		return err
 	} else if v {
 		return nil
 	}
-	if file.Exists(t.MountPoint) {
-		return fmt.Errorf("mountpoint %s already exists but is not a directory", t.MountPoint)
+	if file.Exists(t.mountPoint()) {
+		return fmt.Errorf("mountpoint %s already exists but is not a directory", t.mountPoint())
 	}
 
-	t.Log().Infof("create missing mountpoint %s", t.MountPoint)
+	t.Log().Infof("create missing mountpoint %s", t.mountPoint())
 	var perm os.FileMode
 	if p := t.DataRecv.RootDirPerm(); p != nil {
 		perm = *p
@@ -304,8 +338,8 @@ func (t *T) createMountPoint(ctx context.Context) error {
 		perm = defaultPerm
 	}
 
-	if err := os.MkdirAll(t.MountPoint, perm); err != nil {
-		return fmt.Errorf("error creating mountpoint %s: %s", t.MountPoint, err)
+	if err := os.MkdirAll(t.mountPoint(), perm); err != nil {
+		return fmt.Errorf("error creating mountpoint %s: %s", t.mountPoint(), err)
 	}
 	return nil
 }
@@ -626,6 +660,9 @@ func (t *T) mkfsOptions() []string {
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	if v, err := t.fs().Exists(); err != nil {
 		return fmt.Errorf("fs existence check: %w", err)
 	} else if v {
@@ -661,6 +698,9 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
 	fs := t.fs()
 	if v, err := fs.Exists(); err != nil {
 		return err
@@ -713,7 +753,7 @@ func (t *T) getMountPointProperty() (string, error) {
 }
 
 func (t *T) Head() string {
-	return t.MountPoint
+	return t.mountPoint()
 }
 
 func (t *T) ClaimedDevices(ctx context.Context) device.L {
