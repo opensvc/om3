@@ -110,6 +110,19 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     former ca stays trusted, through the cluster `ca` keyword, until the
     certificates it signed are renewed.
 
+* **User socket**:
+
+    The local accounts of the members of the `listener.ux_owner_group`
+    group, `opensvc` by default, reach the api through
+    `/run/opensvc-ux/http.sock` with no credential, the daemon reading who
+    they are from the connection: they get the grants of the
+    `[uxgroup#<group>]` sections naming their groups, and of the `usr`
+    object whose `uxuser` names their login or uid. `ox` uses it when run
+    by a user other than root with no context. A sidecar container the
+    socket is bind mounted into gets the `uxgrant` of its resource, told by
+    its cgroup. Root is not root on this socket. Prefer it to `sudo om`
+    rules, which are root grants whatever arguments they allow.
+
 ### Network & Storage
 
 * **Modern firewall management**: Configuration now uses nftables exclusively, with better support for large subnets including IPv6 via the new `mask_per_node` keyword.
