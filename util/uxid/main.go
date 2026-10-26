@@ -6,8 +6,11 @@
 // answering: nothing interrupts it. So a lookup is given up after a
 // deadline, the lookup itself left to end on its own; at most a few run at
 // once, a caller finding them all taken refused at once rather than piling
-// threads up; and the answers are cached, the failures a short time, so a
-// directory down only hits the identities not seen lately.
+// threads up; and the answers are cached a short time, so a membership
+// changed or an account removed is seen soon. An identity looked up lately is
+// kept longer for when the name service does not answer: a directory down only
+// hits the identities not seen lately, and keeps the others as they were last
+// seen, but a name service answering always has the last word.
 package uxid
 
 import (
@@ -41,10 +44,12 @@ type (
 		timeout     time.Duration
 		positiveTTL time.Duration
 		negativeTTL time.Duration
+		staleTTL    time.Duration
 		slots       chan struct{}
 
 		mu       sync.Mutex
 		cache    map[uint32]entry
+		known    map[uint32]entry
 		inflight map[uint32]*call
 	}
 
@@ -73,8 +78,12 @@ var (
 const (
 	DefaultTimeout     = 3 * time.Second
 	DefaultMaxInFlight = 8
-	DefaultPositiveTTL = 5 * time.Minute
+	DefaultPositiveTTL = 10 * time.Second
 	DefaultNegativeTTL = 10 * time.Second
+
+	// DefaultStaleTTL is how long an identity looked up is used past its
+	// positive TTL, while the name service does not answer.
+	DefaultStaleTTL = 5 * time.Minute
 )
 
 // New returns a resolver asking the name service through lookup, nil for
@@ -88,14 +97,18 @@ func New(lookup LookupFunc) *Resolver {
 		timeout:     DefaultTimeout,
 		positiveTTL: DefaultPositiveTTL,
 		negativeTTL: DefaultNegativeTTL,
+		staleTTL:    DefaultStaleTTL,
 		slots:       make(chan struct{}, DefaultMaxInFlight),
 		cache:       make(map[uint32]entry),
+		known:       make(map[uint32]entry),
 		inflight:    make(map[uint32]*call),
 	}
 }
 
 // Resolve returns the identity of uid, from the cache when it holds a fresh
-// one. Concurrent callers of one uid share a lookup.
+// one. Concurrent callers of one uid share a lookup. When the name service
+// does not answer, at the cap or past the deadline, the identity last looked
+// up is returned, if it is recent enough.
 func (t *Resolver) Resolve(ctx context.Context, uid uint32) (Identity, error) {
 	t.mu.Lock()
 	if e, ok := t.cache[uid]; ok && time.Now().Before(e.expires) {
@@ -108,7 +121,7 @@ func (t *Resolver) Resolve(ctx context.Context, uid uint32) (Identity, error) {
 		case t.slots <- struct{}{}:
 		default:
 			t.mu.Unlock()
-			return Identity{}, ErrBusy
+			return t.stale(uid, ErrBusy)
 		}
 		c = &call{done: make(chan struct{})}
 		t.inflight[uid] = c
@@ -122,14 +135,26 @@ func (t *Resolver) Resolve(ctx context.Context, uid uint32) (Identity, error) {
 	case <-c.done:
 		return c.id, c.err
 	case <-timer.C:
-		return Identity{}, fmt.Errorf("uid %d: %w", uid, ErrTimeout)
+		return t.stale(uid, fmt.Errorf("uid %d: %w", uid, ErrTimeout))
 	case <-ctx.Done():
 		return Identity{}, ctx.Err()
 	}
 }
 
+// stale returns the identity of uid last looked up, when the name service
+// did not answer with err and it is recent enough, and err otherwise.
+func (t *Resolver) stale(uid uint32, err error) (Identity, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if e, ok := t.known[uid]; ok && time.Now().Before(e.expires) {
+		return e.id, nil
+	}
+	return Identity{}, err
+}
+
 // run looks uid up, holding a slot until the name service answers, however
-// late: the slots bound the threads the lookups hold.
+// late: the slots bound the threads the lookups hold. An answer, an identity
+// or a failure, replaces the identity known for uid.
 func (t *Resolver) run(uid uint32, c *call) {
 	id, err := t.lookup(uid)
 	ttl := t.positiveTTL
@@ -138,7 +163,13 @@ func (t *Resolver) run(uid uint32, c *call) {
 	}
 	t.mu.Lock()
 	c.id, c.err = id, err
-	t.cache[uid] = entry{id: id, err: err, expires: time.Now().Add(ttl)}
+	now := time.Now()
+	t.cache[uid] = entry{id: id, err: err, expires: now.Add(ttl)}
+	if err == nil {
+		t.known[uid] = entry{id: id, expires: now.Add(t.staleTTL)}
+	} else {
+		delete(t.known, uid)
+	}
 	delete(t.inflight, uid)
 	t.mu.Unlock()
 	<-t.slots
@@ -149,6 +180,7 @@ func (t *Resolver) run(uid uint32, c *call) {
 func (t *Resolver) Flush() {
 	t.mu.Lock()
 	t.cache = make(map[uint32]entry)
+	t.known = make(map[uint32]entry)
 	t.mu.Unlock()
 }
 

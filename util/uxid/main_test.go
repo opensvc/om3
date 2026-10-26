@@ -73,6 +73,79 @@ func TestResolveBlockedNameService(t *testing.T) {
 	assert.ErrorIs(t, err, ErrTimeout)
 }
 
+// An identity is looked up again past its positive TTL: a group membership
+// removed, or an account removed, is seen then.
+func TestResolveSeesChangesSoon(t *testing.T) {
+	var groups atomic.Value
+	groups.Store([]string{"osvc-ns1"})
+	r := New(func(uid uint32) (Identity, error) {
+		return Identity{UID: uid, Login: "alice", Groups: groups.Load().([]string)}, nil
+	})
+	r.positiveTTL = 50 * time.Millisecond
+	id, err := r.Resolve(context.Background(), 1001)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"osvc-ns1"}, id.Groups)
+	groups.Store([]string{})
+	time.Sleep(60 * time.Millisecond)
+	id, err = r.Resolve(context.Background(), 1001)
+	require.NoError(t, err)
+	assert.Empty(t, id.Groups, "the membership removed is seen")
+}
+
+// A name service not answering leaves the identities looked up lately as
+// they were last seen, for a time, and the others refused.
+func TestResolveKeepsKnownIdentitiesWhileTheNameServiceDoesNotAnswer(t *testing.T) {
+	var blocked atomic.Bool
+	release := make(chan struct{})
+	defer close(release)
+	r := New(func(uid uint32) (Identity, error) {
+		if blocked.Load() {
+			<-release
+		}
+		return Identity{UID: uid, Login: "alice"}, nil
+	})
+	r.positiveTTL = 10 * time.Millisecond
+	r.timeout = 50 * time.Millisecond
+	_, err := r.Resolve(context.Background(), 1001)
+	require.NoError(t, err)
+	blocked.Store(true)
+	time.Sleep(20 * time.Millisecond)
+	id, err := r.Resolve(context.Background(), 1001)
+	require.NoError(t, err, "the identity last seen")
+	assert.Equal(t, "alice", id.Login)
+	_, err = r.Resolve(context.Background(), 1002)
+	assert.ErrorIs(t, err, ErrTimeout, "an identity never seen")
+
+	r.mu.Lock()
+	r.known[1001] = entry{id: r.known[1001].id, expires: time.Now()}
+	r.mu.Unlock()
+	_, err = r.Resolve(context.Background(), 1001)
+	assert.ErrorIs(t, err, ErrTimeout, "an identity seen too long ago")
+}
+
+// A name service answering an identity is gone has the last word: the
+// identity last seen is not kept for it.
+func TestResolveForgetsAnIdentityTheNameServiceRemoved(t *testing.T) {
+	var gone atomic.Bool
+	r := New(func(uid uint32) (Identity, error) {
+		if gone.Load() {
+			return Identity{}, errors.New("unknown uid")
+		}
+		return Identity{UID: uid, Login: "alice"}, nil
+	})
+	r.positiveTTL = 10 * time.Millisecond
+	_, err := r.Resolve(context.Background(), 1001)
+	require.NoError(t, err)
+	gone.Store(true)
+	time.Sleep(20 * time.Millisecond)
+	_, err = r.Resolve(context.Background(), 1001)
+	assert.Error(t, err)
+	r.mu.Lock()
+	_, ok := r.known[1001]
+	r.mu.Unlock()
+	assert.False(t, ok)
+}
+
 func TestSystemLookup(t *testing.T) {
 	id, err := SystemLookup(uint32(os.Getuid()))
 	require.NoError(t, err)
