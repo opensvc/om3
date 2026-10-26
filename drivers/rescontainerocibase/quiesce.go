@@ -82,7 +82,7 @@ func (t *BT) Quiesce(ctx context.Context) (func(context.Context) error, error) {
 	}
 	return func(ctx context.Context) error {
 		t.Log().Infof("resume: end the quiesce session")
-		if err := session.end(t.ResumeInput, timeout); err != nil {
+		if err := session.resume(t.ResumeInput, timeout); err != nil {
 			return fmt.Errorf("resume: %w", err)
 		}
 		return nil
@@ -168,6 +168,20 @@ func (t *quiesceSession) waitReady(timeout time.Duration) error {
 		t.cancel()
 		return fmt.Errorf("the command did not say %q within %s", t.ready, timeout)
 	}
+}
+
+// resume ends the session the command held since it said it was ready. A
+// command that exited first held the writes for part of the copy only, if
+// at all: the resume fails, and so does the run saved under it, rather than
+// keep a copy taken with the writes going on.
+func (t *quiesceSession) resume(input string, timeout time.Duration) error {
+	select {
+	case err := <-t.doneC:
+		t.cancel()
+		return fmt.Errorf("the command ended before the resume, so the writes were not held while the heads were saved: %s", t.failure(err))
+	default:
+	}
+	return t.end(input, timeout)
 }
 
 // end writes input on the stdin of the command, closes it, and waits for the
