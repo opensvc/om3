@@ -916,7 +916,10 @@ which share the same executor.
         
     * `vg`
         Configure a disk.lv resource
- 
+
+* **`mnt` is an absolute path:**
+    A relative mount point is refused by the configuration validation. It resolved against the working directory of whichever process ran the action, and the status never saw it mounted.
+
 ### Driver: sync
 
 * **Removed actions:**
