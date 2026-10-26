@@ -19,8 +19,13 @@ import (
 )
 
 // GetNodeLogs feeds publications in rss format.
+//
+// Root reads every entry. A caller granted a role on some namespaces reads the
+// entries of the objects of these namespaces only, as the entries of an
+// action it asked with --follow, the node entries being root's.
 func (a *DaemonAPI) GetNodeLogs(ctx echo.Context, nodename string, params api.GetNodeLogsParams) error {
-	if v, err := assertRoot(ctx); !v {
+	if grants := grantsFromContext(ctx); !grants.HasRole(rbac.RoleRoot) && !hasObjectAccess(grants) {
+		_, err := assertRoot(ctx)
 		return err
 	}
 	if nodename == a.localhost || nodename == "localhost" {
@@ -72,11 +77,7 @@ func (a *DaemonAPI) getPeerNodeLogs(ctx echo.Context, nodename string, params ap
 }
 
 func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsParams) error {
-	if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
-		return err
-	} else if !v {
-		return nil
-	}
+	readable := readableLogEntries(grantsFromContext(ctx))
 	var (
 		handlerName = "GetNodeLogs"
 	)
@@ -142,6 +143,9 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 		case <-ctx.Request().Context().Done():
 			return nil
 		case ev := <-stream.Events():
+			if readable != nil && !readable(ev.M) {
+				continue
+			}
 			if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
 				log.Tracef("sseWriter.Write: %s", err)
 				break
@@ -155,6 +159,38 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 			// empty stream, so the daemon log is the only place saying why.
 			log.Errorf("stream.Error: %s", err)
 		}
+	}
+}
+
+// hasObjectAccess says grants give a role on the objects of a namespace at
+// least.
+func hasObjectAccess(grants rbac.Grants) bool {
+	return grants.HasRoleOn("", rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin) ||
+		len(grants.Namespaces(rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)) > 0
+}
+
+// readableLogEntries returns what says a log entry is one the grants may
+// read, nil when they read all of them.
+//
+// An entry is read by root, or by a role on the namespace of the object it
+// is of. An entry of no object, of the daemon or the node, is root's. The
+// entries are sorted out as journalctl sends them, rather than by matches
+// added to the ones of the caller: a match of the caller on the same field
+// would widen them.
+func readableLogEntries(grants rbac.Grants) func(map[string]any) bool {
+	if grants.HasRole(rbac.RoleRoot) {
+		return nil
+	}
+	return func(m map[string]any) bool {
+		s, _ := m["OBJ_PATH"].(string)
+		if s == "" {
+			return false
+		}
+		p, err := naming.ParsePath(s)
+		if err != nil {
+			return false
+		}
+		return grants.AssertRoleOn(p.Namespace, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)
 	}
 }
 
