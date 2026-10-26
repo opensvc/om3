@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -162,8 +163,13 @@ func (_ *UsrDB) UXGrantsFromCgroup(cg string) (string, []string, error) {
 			if !slices.Contains(rids, rid) {
 				continue
 			}
-			pgID := r.GetPGID()
-			if pgID == "" || (cg != pgID && !strings.HasPrefix(cg, pgID+"/")) {
+			// A rootless container runs under the subtree of its
+			// user, not where its process group id says.
+			pgPath := r.GetPGID()
+			if p, ok := r.(resource.PGPather); ok {
+				pgPath = p.PGPath()
+			}
+			if pgPath == "" || (cg != pgPath && !strings.HasPrefix(cg, pgPath+"/")) {
 				continue
 			}
 			return p.String() + ":" + rid, cfg.GetStrings(key.T{Section: rid, Option: "uxgrant"}), nil

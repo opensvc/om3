@@ -22,7 +22,10 @@ import (
 	"github.com/opensvc/om3/v3/util/usergroup"
 )
 
-var _ resource.IDMapper = (*T)(nil)
+var (
+	_ resource.IDMapper = (*T)(nil)
+	_ resource.PGPather = (*T)(nil)
+)
 
 // rootlessUser is the unprivileged user a rootless container is run by.
 type rootlessUser struct {
@@ -262,6 +265,24 @@ func (u rootlessUser) delegation() pg.Delegation {
 		UID:  int(u.UID),
 		GID:  int(u.GID),
 	}
+}
+
+// PGPath returns the cgroup the processes of the container run in: its
+// process group, under the subtree delegated to its user for a rootless
+// container, where its systemd instance places it. It is empty when the user
+// of a rootless container is not known.
+func (t *T) PGPath() string {
+	id := t.GetPGID()
+	if id == "" {
+		return ""
+	}
+	u, err := t.rootlessUser()
+	if err != nil {
+		return ""
+	} else if u == nil {
+		return id
+	}
+	return u.delegation().Root + id
 }
 
 // resolvConfRel is where the resolver of the container is written, relative

@@ -310,3 +310,26 @@ func TestARootlessContainerRefusesTheRootGroup(t *testing.T) {
 	_, err = d.rootlessUser()
 	assert.NoError(t, err, "nobody's primary group is nogroup")
 }
+
+// A rootless container runs under the subtree delegated to its user, which
+// is where a sidecar of it is found by its cgroup; a rootful one where its
+// process group id says.
+func TestPGPathFollowsTheDelegation(t *testing.T) {
+	const id = "/opensvc.slice/opensvc-svc.pod.slice/opensvc-svc.pod-container.1.slice"
+	u, err := (&T{RootlessUser: "nobody"}).rootlessUser()
+	require.NoError(t, err)
+
+	d := &T{}
+	d.SetPG(&pg.Config{ID: id})
+	assert.Equal(t, id, d.PGPath(), "rootful")
+
+	d = &T{RootlessUser: "nobody"}
+	d.SetPG(&pg.Config{ID: id})
+	assert.Equal(t, u.delegation().Root+id, d.PGPath(), "rootless")
+
+	d = &T{RootlessUser: "omtest-no-such-user"}
+	d.SetPG(&pg.Config{ID: id})
+	assert.Equal(t, "", d.PGPath(), "a user not known matches nothing")
+
+	assert.Equal(t, "", (&T{}).PGPath(), "no process group")
+}
