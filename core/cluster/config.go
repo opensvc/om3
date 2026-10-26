@@ -97,6 +97,12 @@ func (t *Config) DeepCopy() *Config {
 	n.DNS = deepcopy.Slice(t.DNS)
 	n.CASecPaths = deepcopy.Slice(t.CASecPaths)
 	n.Listener.TLSSecs = deepcopy.Slice(t.Listener.TLSSecs)
+	if t.UXGroups != nil {
+		n.UXGroups = make(map[string][]string, len(t.UXGroups))
+		for group, grants := range t.UXGroups {
+			n.UXGroups[group] = deepcopy.Slice(grants)
+		}
+	}
 	return &n
 }
 
