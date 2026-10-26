@@ -1,0 +1,92 @@
+//go:build linux
+
+package peercred
+
+import (
+	"bytes"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+
+	"golang.org/x/sys/unix"
+)
+
+// FromConn returns the peer of the unix socket connection c.
+func FromConn(c net.Conn) (*T, error) {
+	uc, ok := c.(*net.UnixConn)
+	if !ok {
+		return nil, ErrNotUnix
+	}
+	raw, err := uc.SyscallConn()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		cred     *unix.Ucred
+		credErr  error
+		pidfd    = -1
+		pidfdErr error
+	)
+	if err := raw.Control(func(fd uintptr) {
+		cred, credErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+		pidfd, pidfdErr = unix.GetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_PEERPIDFD)
+	}); err != nil {
+		return nil, err
+	}
+	if credErr != nil {
+		return nil, credErr
+	}
+	t := &T{UID: cred.Uid, GID: cred.Gid, PID: cred.Pid}
+	if pidfdErr != nil || pidfd < 0 {
+		return t, nil
+	}
+	defer unix.Close(pidfd)
+	t.readProcess(pidfd)
+	return t, nil
+}
+
+// readProcess reads the cgroup and the mount namespace of the peer from its
+// pid, then makes sure, through the pidfd, that the process read is still
+// the peer: a pid reused meanwhile would have shown another process.
+func (t *T) readProcess(pidfd int) {
+	head := "/proc/" + strconv.Itoa(int(t.PID))
+	b, err := os.ReadFile(head + "/cgroup")
+	if err != nil {
+		return
+	}
+	mnt, err := os.Readlink(head + "/ns/mnt")
+	if err != nil {
+		return
+	}
+	self, err := os.Readlink("/proc/self/ns/mnt")
+	if err != nil {
+		return
+	}
+	if err := unix.PidfdSendSignal(pidfd, 0, nil, 0); err != nil {
+		return
+	}
+	t.Cgroup = systemdCgroup(b)
+	t.ForeignMountNS = mnt != self
+	t.Pinned = true
+}
+
+// systemdCgroup returns the path of the systemd hierarchy in a
+// /proc/<pid>/cgroup content: the "name=systemd" line on cgroup v1, the
+// "0::" one on cgroup v2.
+func systemdCgroup(b []byte) string {
+	var unified string
+	for _, line := range bytes.Split(b, []byte("\n")) {
+		fields := strings.SplitN(string(line), ":", 3)
+		if len(fields) != 3 {
+			continue
+		}
+		switch {
+		case fields[1] == "name=systemd":
+			return fields[2]
+		case fields[0] == "0" && fields[1] == "":
+			unified = fields[2]
+		}
+	}
+	return unified
+}
