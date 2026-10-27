@@ -337,8 +337,12 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) *Keyword {
 // It is a callback rather than a call into the rbac policy because every
 // driver imports this package, and the policy reads the install grammar of
 // core/datarecv, which imports this package back. The caller of Doc, which
-// sits above both, passes keyoprbac.Doc.
-type RBACDoc func(kind naming.Kind, section, option string) string
+// sits above both, passes doc.KeywordGrantDoc.
+//
+// types are the drivers the keyword belongs to, empty for a keyword of every
+// driver of the section: a keyword of a driver the user may not choose needs
+// the grant choosing it does.
+type RBACDoc func(kind naming.Kind, section, option string, types []string) string
 
 func (t Store) Doc(w io.Writer, kind naming.Kind, driver, asked string, depth int, rbacDoc RBACDoc) error {
 	depth += 1
@@ -686,7 +690,7 @@ func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of stri
 	// asked about by its bare name, carries no rbac line rather than the
 	// one of a section it is not in.
 	if rbacDoc != nil && section != "" {
-		if s := rbacDoc(kind, section, t.Option); s != "" {
+		if s := rbacDoc(kind, section, t.Option, t.Types); s != "" {
 			fprintProp("rbac", s)
 		}
 	}

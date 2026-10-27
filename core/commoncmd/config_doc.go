@@ -3,8 +3,8 @@ package commoncmd
 import (
 	"io"
 
+	"github.com/opensvc/om3/v3/core/doc"
 	"github.com/opensvc/om3/v3/core/keyop"
-	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -56,7 +56,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 // the policy decides which of its keywords the api accepts.
 func Doc(w io.Writer, items api.KeywordDefinitionItems, kind naming.Kind, driver, kw string, depth int) error {
 	store := KeywordStoreFromAPI(items)
-	return store.Doc(w, kind, driver, kw, depth, keyoprbac.Doc)
+	return store.Doc(w, kind, driver, kw, depth, doc.KeywordGrantDoc)
 }
 
 // NodeDoc renders the documentation of the keywords of the node configuration.
