@@ -702,7 +702,14 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 	t.Logf("iteration %d starting", testCount.Load())
 
 	setup := daemontesthelper.Setup(t, nil)
-	defer setup.Cancel()
+
+	// The instance monitors read the paths and the data the next test
+	// resets: their workers have returned before this one ends.
+	var workers sync.WaitGroup
+	defer func() {
+		setup.Cancel()
+		workers.Wait()
+	}()
 
 	if c.bootID != "" {
 		t.Logf("set node boot id for test to %s", c.bootID)
@@ -767,6 +774,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 		DrainDuration: setup.DrainDuration,
 		DelayDuration: 50 * time.Millisecond,
 		SubQS:         pubsub.WithQueueSize(100),
+		Workers:       &workers,
 	}
 	objectMonCreator(t, setup, c, factory)
 
