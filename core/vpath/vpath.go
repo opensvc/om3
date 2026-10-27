@@ -69,9 +69,37 @@ type (
 
 func (t ErrAccess) Error() string {
 	if t.RID != "" {
-		return fmt.Sprintf("resource is not accessible: %s is avail %s", t.RID, t.Avail)
+		return fmt.Sprintf("resource is not accessible: %s is avail %s", t.RID, describeAvail(t.Avail))
 	}
-	return fmt.Sprintf("vol is not accessible: %s is avail %s", t.Path, t.Avail)
+	return fmt.Sprintf("vol is not accessible: %s is avail %s", t.Path, describeAvail(t.Avail))
+}
+
+// accessible says a vol or a resource of this avail holds its paths and its
+// devices here: up, n/a, or standby up, alone or with its other resources up.
+//
+// A vol on standby disks, as the drbd devices of a vol of the drbd pool, is
+// standby up with up when its filesystem is mounted: it is up, and its string
+// says so. With its other resources down, the filesystem is not mounted, and
+// the paths in it are not there.
+func accessible(avail status.T) bool {
+	switch avail {
+	case status.Up, status.NotApplicable, status.StandbyUp, status.StandbyUpWithUp:
+		return true
+	}
+	return false
+}
+
+// describeAvail is the avail of an error, saying the standby states apart:
+// their strings are the ones of up and of standby up, which an error saying
+// the vol is not accessible would contradict.
+func describeAvail(avail status.T) string {
+	switch avail {
+	case status.StandbyUpWithUp:
+		return "stdby up with its other resources up"
+	case status.StandbyUpWithDown:
+		return "stdby up with its other resources down"
+	}
+	return avail.String()
 }
 
 // IsResourceRef says whether the reference before the ':' of a path is the
@@ -145,9 +173,7 @@ func resolve(ctx context.Context, s string, namespace string, resolver Resolver,
 		return Target{}, fmt.Errorf("%s: the resource %s holds no mount point: it is no volume nor filesystem", s, first)
 	}
 	if checkAvail {
-		switch avail := r.Status(ctx); avail {
-		case status.Up, status.NotApplicable, status.StandbyUp:
-		default:
+		if avail := r.Status(ctx); !accessible(avail) {
 			return Target{}, ErrAccess{RID: first, Avail: avail}
 		}
 	}
@@ -208,9 +234,7 @@ func volHostPath(ctx context.Context, s string, namespace string, checkAvail boo
 			err = err1
 			return
 		}
-		switch volStatus.Avail {
-		case status.Up, status.NotApplicable, status.StandbyUp:
-		default:
+		if !accessible(volStatus.Avail) {
 			err = ErrAccess{
 				Path:  volPath,
 				Avail: volStatus.Avail,
@@ -294,9 +318,7 @@ func HostDevpath(ctx context.Context, s string, namespace string) (string, error
 	if err != nil {
 		return s, err
 	}
-	switch st.Avail {
-	case status.Up, status.NotApplicable, status.StandbyUp:
-	default:
+	if !accessible(st.Avail) {
 		err = ErrAccess{
 			Path:  volPath,
 			Avail: st.Avail,
@@ -367,12 +389,10 @@ func Devpaths(ctx context.Context, from, s, namespace string, resolver Resolver)
 	ctx = context.WithValue(ctx, devpathChainKey{}, append(chain[:len(chain):len(chain)], s))
 	devs := x.ExposedDevices(ctx)
 	if len(devs) == 0 {
-		switch avail := r.Status(ctx); avail {
-		case status.Up, status.NotApplicable, status.StandbyUp:
-			return nil, fmt.Errorf("%s: the resource exposes no device", s)
-		default:
+		if avail := r.Status(ctx); !accessible(avail) {
 			return nil, ErrAccess{RID: s, Avail: avail}
 		}
+		return nil, fmt.Errorf("%s: the resource exposes no device", s)
 	}
 	l := make([]string, len(devs))
 	for i, dev := range devs {
