@@ -67,26 +67,28 @@ func TestTheReasonAScopeIsNotFetchedIsSaidOnce(t *testing.T) {
 	assert.False(t, m.files.skipped["container#1"], "a file named as the rid is not marked")
 }
 
-// The files are fetched from a peer holding the files of the same things:
-// with a container named per node, the first up peer may run another one,
-// whose files are all skipped, while another peer runs the same.
-func TestTheFilesArePickedFromAPeerOfTheSameScopes(t *testing.T) {
+// The files are fetched from the peer holding the files of the most of the
+// same things: with a container named per node, a peer may run another one,
+// whose files the fetch skips, and hold the files of the other resources all
+// the same.
+func TestTheFilesArePickedFromThePeerOfTheMostSameScopes(t *testing.T) {
+	files := resource.Files{{Name: "/etc/libvirt/qemu/vm.xml"}}
 	local := instance.Status{Resources: instance.ResourceStatuses{
 		"container#1": {SyncScope: "vm1"},
-		"fs#1":        {},
+		"disk#1":      {},
 	}}
-	files := resource.Files{{Name: "/etc/libvirt/qemu/vm.xml"}}
 	same := instance.Status{Resources: instance.ResourceStatuses{
 		"container#1": {SyncScope: "vm1", Files: files},
-		"fs#1":        {},
+		"disk#1":      {Files: files},
+	}}
+	partly := instance.Status{Resources: instance.ResourceStatuses{
+		"container#1": {SyncScope: "vm2", Files: files},
+		"disk#1":      {Files: files},
 	}}
 	other := instance.Status{Resources: instance.ResourceStatuses{
 		"container#1": {SyncScope: "vm2", Files: files},
 	}}
-	noFiles := instance.Status{Resources: instance.ResourceStatuses{
-		"container#1": {SyncScope: "vm2"},
-	}}
-	assert.True(t, sameSyncScopes(same, local))
-	assert.False(t, sameSyncScopes(other, local), "the peer holds the files of another container")
-	assert.True(t, sameSyncScopes(noFiles, local), "a resource holding no file is no reason to pass a peer by")
+	assert.Equal(t, 2, syncScopeMatches(same, local))
+	assert.Equal(t, 1, syncScopeMatches(partly, local), "the files of the disk are the same, the container ones are not")
+	assert.Equal(t, 0, syncScopeMatches(other, local), "nothing of the peer is to fetch")
 }
