@@ -14,8 +14,8 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/naming"
 	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
