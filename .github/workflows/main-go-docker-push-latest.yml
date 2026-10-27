@@ -27,25 +27,49 @@ jobs:
         uses: actions/setup-go@v7.0.0
         with:
           go-version-file: 'go.mod'
-          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Locate the Go caches
+        id: go-cache
+        run: |
+          echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+
+      # The build cache of the job, of its own as the race detector one: the
+      # cache setup-go keeps, one for both jobs, held the objects of the job
+      # saving it first, and the other compiled everything again.
+      # main saves the cache of each push, which the pull requests and the
+      # releases restore without saving it.
+      - name: Restore and save the Go caches
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.build }}
+            ${{ steps.go-cache.outputs.mod }}
+          key: go-build-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-build-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum') }}-
+            go-build-${{ runner.os }}-
 
       - name: set opensvc version file
         run: git describe --tags --abbrev > ./util/version/text/VERSION
 
       - name: Go build om
-        run: sudo go build -v -o ./bin/om ./cmd/om
+        run: go build -v -o ./bin/om ./cmd/om
 
       - name: Show om version
         run: ./bin/om --version
 
       - name: Go build ox
-        run: sudo go build -v -o ./bin/ox ./cmd/ox
+        run: go build -v -o ./bin/ox ./cmd/ox
 
       - name: Show ox version
         run: ./bin/ox --version
 
+      # Compiled as the runner user, in the caches above, and run as root:
+      # sudo go test compiled in the caches of root, which nothing restores.
       - name: Run Go tests
-        run: sudo go test -ldflags=-w -timeout 120s ./...
+        run: CGO_ENABLED=0 go test -exec sudo -ldflags=-w -timeout 120s ./...
 
   race-test:
     runs-on: ubuntu-24.04
@@ -63,13 +87,33 @@ jobs:
         uses: actions/setup-go@v7.0.0
         with:
           go-version-file: 'go.mod'
-          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Locate the Go caches
+        id: go-cache
+        run: |
+          echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+
+      # The build cache of the race detector, of its own: see build-and-test.
+      # main saves the cache of each push, which the pull requests and the
+      # releases restore without saving it.
+      - name: Restore and save the Go caches
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.build }}
+            ${{ steps.go-cache.outputs.mod }}
+          key: go-race-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-race-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum') }}-
+            go-race-${{ runner.os }}-
 
       - name: set opensvc version file
         run: git describe --tags --abbrev > ./util/version/text/VERSION
 
       - name: Run Go tests with race detector
-        run: sudo go test -ldflags=-w -timeout 600s --race ./...
+        run: go test -exec sudo -ldflags=-w -timeout 600s --race ./...
 
   build-and-push-latest:
     needs: [build-and-test, race-test]
