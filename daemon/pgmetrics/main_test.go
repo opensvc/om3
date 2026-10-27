@@ -519,3 +519,22 @@ func TestProcStatUsageUsec(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, float64(10+1+5+2+3+4)*1e4, usec)
 }
+
+// The cpus of a cgroup are its effective ones: an empty cpuset.cpus is the
+// cpus of its parent, which cpuset.cpus.effective names, and no series is
+// better than a zero where neither says.
+func TestCPUCountIsTheEffectiveOne(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"svc/a", "svc/b", "svc/c"}, []string{"svc/a", "svc/b", "svc/c"})
+	for path, files := range map[string]map[string]string{
+		"svc/a": {"cpuset.cpus": "\n", "cpuset.cpus.effective": "0-7\n"},
+		"svc/b": {"cpuset.cpus": "0-1\n"},
+		"svc/c": {"cpuset.cpus": "\n"},
+	} {
+		p, err := naming.ParsePath(path)
+		require.NoError(t, err)
+		for name, content := range files {
+			require.NoError(t, os.WriteFile(filepath.Join(forgeCgroupPath(p), name), []byte(content), 0644))
+		}
+	}
+	assert.ElementsMatch(t, []string{"object,root,a=8", "object,root,b=2"}, valuesOf(m.snapshot(true).detail, "opensvc_pg_cgroup_cpu_cpus"))
+}

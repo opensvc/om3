@@ -140,7 +140,7 @@ var (
 	cpuPeriodDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_period",
 		"CPU period in microseconds for the cgroup", cgroupLabels, nil)
 	cpuCpusDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_cpus",
-		"CPUs allowed for the cgroup (count)", cgroupLabels, nil)
+		"CPUs the cgroup runs on (count), online CPUs for the host scope", cgroupLabels, nil)
 	blkioWeightDesc = prometheus.NewDesc("opensvc_pg_cgroup_blkio_weight",
 		"Block IO default weight for the cgroup", cgroupLabels, nil)
 	memoryStatDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_stat_bytes",
@@ -572,11 +572,18 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath string,
 		}
 	}
 
-	// Read cpuset.cpus
-	if cpusetCPUs, err := readFile(cgroupPath, "cpuset.cpus"); err == nil {
-		cpus := strings.TrimSpace(cpusetCPUs)
-		count := countCPUs(cpus)
-		e.gauge(cpuCpusDesc, float64(count), labels...)
+	// Read cpuset.cpus.effective, the cpus the cgroup runs on, or
+	// cpuset.cpus where there is no effective one. An empty cpuset.cpus
+	// is the cpus of the parent, not none: no series rather than a zero.
+	for _, name := range []string{"cpuset.cpus.effective", "cpuset.cpus"} {
+		cpusetCPUs, err := readFile(cgroupPath, name)
+		if err != nil {
+			continue
+		}
+		if count := countCPUs(strings.TrimSpace(cpusetCPUs)); count > 0 {
+			e.gauge(cpuCpusDesc, float64(count), labels...)
+		}
+		break
 	}
 
 	// Read io.stat (cgroup v2), whose devices the io controller of the
