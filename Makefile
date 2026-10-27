@@ -4,9 +4,12 @@ GOCMD ?= go
 GOBUILD := $(GOCMD) build
 GOBUILDRACE := GORACE="halt_on_error=1" $(GOCMD) build -race
 GOCLEAN := $(GOCMD) clean
-# The test binaries are linked without DWARF, a third of their link time,
-# which stack traces do not need.
-GOTEST := $(GOCMD) test -ldflags=-w
+# The test binaries are linked without DWARF, which stack traces do not
+# need, and without cgo: om needs it for its driver plugins only, and the
+# external linker it brings took half of the time of go test ./... .
+# The race detector needs cgo.
+GOTEST := CGO_ENABLED=0 $(GOCMD) test -ldflags=-w
+GOTESTRACE := $(GOCMD) test -ldflags=-w
 GOGEN := $(GOCMD) generate
 GOVET := $(GOCMD) vet
 GOINSTALL := $(GOCMD) install
@@ -108,7 +111,7 @@ ox-race:
 	$(GOBUILDRACE) -o $(OX) ./cmd/ox/
 
 test-race:
-	$(GOTEST) -timeout 480s ./... -race
+	$(GOTESTRACE) -timeout 480s ./... -race
 
 restart:
 	$(PREFIX)/$(OM) daemon restart
@@ -117,7 +120,7 @@ test:
 	$(GOTEST) -timeout 120s ./...
 
 test-cover:
-	$(GOTEST) -timeout 480s -race -coverprofile=coverage.out ./...
+	$(GOTESTRACE) -timeout 480s -race -coverprofile=coverage.out ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 
 testinfo:
