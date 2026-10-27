@@ -18,7 +18,10 @@ import (
 // A keyword of a driver, as the rcmd of a kvm container, also needs the grant
 // choosing the driver does: a user who may not set the type of the section
 // may not set any keyword of it, so a keyword whose drivers are all refused
-// to that user is reported needing the grant whatever its value.
+// to that user is reported needing the grant whatever its value. A type
+// refused or not by the rest of the section, as the ip ones, is no such
+// driver: the keywords of a netns address are a namespace administrator's
+// when the address is drawn from a cluster network.
 func AddObjectKeywordGrants(items api.KeywordDefinitionItems, kind naming.Kind) {
 	for i := range items {
 		item := &items[i]
@@ -40,14 +43,18 @@ func keywordGrant(kind naming.Kind, section, option string, types []string) (str
 	if always || len(types) == 0 || option == "type" {
 		return grant, doc, always
 	}
+	typeRule, ok := keyoprbac.Lookup(kind, section, "type")
+	if !ok || typeRule.Denies != nil {
+		// A type allowed or not by the rest of the section, as a netns
+		// address drawn from a cluster network, is not one this can tell
+		// refused: the keyword is said by its own rule, and the type by
+		// the sentence of its keyword.
+		return grant, doc, always
+	}
 	for _, typ := range types {
 		if keyoprbac.DeniedByDriver(rbac.Grants{}, kind, section, option, typ, nil) == nil {
 			return grant, doc, always
 		}
-	}
-	typeRule, ok := keyoprbac.Lookup(kind, section, "type")
-	if !ok {
-		return grant, doc, always
 	}
 	s := fmt.Sprintf("A keyword of the %s driver, which needs the %s grant to choose.", strings.Join(types, ", "), typeRule.Grant)
 	if len(types) > 1 {

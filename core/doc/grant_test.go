@@ -36,6 +36,22 @@ func TestKeywordGrant(t *testing.T) {
 	assert.Equal(t, "A keyword of the rsync driver, which needs the root grant to choose.", doc)
 	assert.True(t, always)
 
+	// A keyword of a driver whose type depends on the rest of the section,
+	// as a netns address a namespace administrator may set when drawn from
+	// a cluster network, is said by its own rule.
+	grant, _, always = keywordGrant(naming.KindSvc, "ip", "netns", []string{"netns"})
+	assert.Equal(t, "root", grant, "the host network namespace is root's")
+	assert.False(t, always, "another one is not")
+	grant, _, always = keywordGrant(naming.KindSvc, "ip", "network", []string{"netns"})
+	assert.Equal(t, "root", grant, "a network named by a path is root's")
+	assert.False(t, always, "one named by its name is not")
+	grant, _, always = keywordGrant(naming.KindSvc, "ip", "nsdev", []string{"cni", "netns"})
+	assert.Equal(t, "", grant)
+	assert.False(t, always)
+	grant, _, always = keywordGrant(naming.KindSvc, "ip", "mode", []string{"netns"})
+	assert.Equal(t, "root", grant)
+	assert.True(t, always, "the keywords the group does not open are root's")
+
 	// A keyword of a driver some user may choose is the keyword's rule.
 	grant, _, always = keywordGrant(naming.KindSvc, "sync", "exclude", []string{"store"})
 	assert.Equal(t, "", grant)
