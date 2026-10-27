@@ -46,6 +46,10 @@ type (
 		// cluster status of the api node holds it, empty when not known
 		// yet.
 		collectorState func(node string) (string, error)
+
+		// nodeBeating returns whether the api node receives the heartbeat
+		// of a node, as its cluster status holds it.
+		nodeBeating func(node string) (bool, error)
 	}
 )
 
@@ -185,6 +189,7 @@ func (t *CmdClusterEnroll) run() error {
 		return nil
 	}
 	t.collectorState = collectorStateFromStatus(c)
+	t.nodeBeating = nodeBeatingFromStatus(c)
 	return t.waitResult(ctx, evReader, node)
 }
 
@@ -257,9 +262,11 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 				continue
 			}
 			// Already a cluster node: it may be beating already, and a beating
-			// node publishes no new NodeAlive, so don't wait for one.
+			// node publishes no new NodeAlive, so read its heartbeat and
+			// collector states from the cluster status instead: being listed
+			// in the cluster nodes tells neither.
 			_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s is already a cluster node\n", node)
-			return nil
+			return t.waitJoinedNode(node)
 		case *msgbus.JoinError:
 			if m.CandidateNode != node {
 				continue
@@ -289,6 +296,28 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 			}
 		}
 	}
+}
+
+// waitJoinedNode reports the heartbeat and the collector state of a node
+// already in the cluster nodes, from the cluster status, waiting up to
+// collectorStateTimeout for its heartbeat.
+func (t *CmdClusterEnroll) waitJoinedNode(node string) error {
+	deadline := time.Now().Add(collectorStateTimeout)
+	for {
+		beating, err := t.nodeBeating(node)
+		if err == nil && beating {
+			break
+		}
+		if time.Now().After(deadline) {
+			if err != nil {
+				return fmt.Errorf("node %s is a cluster node, but its heartbeat state is unknown: %w", node, err)
+			}
+			return fmt.Errorf("node %s is a cluster node, but its heartbeat is not beating", node)
+		}
+		time.Sleep(collectorStateInterval)
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "Node %s is alive\n", node)
+	return t.waitCollectorState(node)
 }
 
 // waitCollectorState reads the collector state of the alive node from the
@@ -325,6 +354,38 @@ func collectorStateFromStatus(c *client.T) func(string) (string, error) {
 		}
 		return data.Cluster.Node[node].Daemon.Collector.State, nil
 	}
+}
+
+// nodeBeatingFromStatus returns a function reading from the cluster status of
+// the api node c is connected to whether it receives the heartbeat of a node,
+// on any of its heartbeat streams. The api node itself is always beating.
+func nodeBeatingFromStatus(c *client.T) func(string) (bool, error) {
+	return func(node string) (bool, error) {
+		b, err := c.NewGetClusterStatus().Get()
+		if err != nil {
+			return false, err
+		}
+		var data clusterdump.Data
+		if err := json.Unmarshal(b, &data); err != nil {
+			return false, err
+		}
+		return isBeating(data, node), nil
+	}
+}
+
+// isBeating returns whether the node whose cluster status is data receives
+// the heartbeat of node.
+func isBeating(data clusterdump.Data, node string) bool {
+	apiNode := data.Daemon.Nodename
+	if node == apiNode {
+		return true
+	}
+	for _, stream := range data.Cluster.Node[apiNode].Daemon.Heartbeat.Streams {
+		if stream.Peers[node].IsBeating {
+			return true
+		}
+	}
+	return false
 }
 
 // printCollectorState reports the collector registration of the enrolled

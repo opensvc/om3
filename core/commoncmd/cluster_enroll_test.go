@@ -11,8 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -105,6 +108,8 @@ func captureStdout(t *testing.T, f func()) string {
 // collector registration of the enrolled node from its first collector
 // state, whether it comes before or after the node is alive, or from the
 // cluster status past the event stream, and fails when it stays unknown.
+// A node already in the cluster nodes is reported from the cluster status,
+// and fails when its heartbeat is not beating.
 func TestCmdClusterEnrollWaitCollector(t *testing.T) {
 	timeout, interval := collectorStateTimeout, collectorStateInterval
 	collectorStateTimeout, collectorStateInterval = 50*time.Millisecond, 10*time.Millisecond
@@ -118,6 +123,7 @@ func TestCmdClusterEnrollWaitCollector(t *testing.T) {
 	for name, tc := range map[string]struct {
 		msgs    []any
 		status  string
+		beating bool
 		want    string
 		not     string
 		wantErr string
@@ -167,11 +173,37 @@ func TestCmdClusterEnrollWaitCollector(t *testing.T) {
 			want:    "Node node2 is alive\n",
 			wantErr: "node node2 is alive, but its collector state is unknown",
 		},
+		"already a cluster node, registered": {
+			msgs: []any{
+				&msgbus.JoinIgnored{CandidateNode: "node2"},
+			},
+			beating: true,
+			status:  "speaker",
+			want:    "Join ignored: node2 is already a cluster node\nNode node2 is alive\nNode node2 is registered on the collector\n",
+		},
+		"already a cluster node, not registered": {
+			msgs: []any{
+				&msgbus.JoinIgnored{CandidateNode: "node2"},
+			},
+			beating: true,
+			status:  "warning",
+			want:    "Node node2 is not registered on the collector (state warning)",
+		},
+		"already a cluster node, not beating": {
+			msgs: []any{
+				&msgbus.JoinIgnored{CandidateNode: "node2"},
+			},
+			status:  "speaker",
+			want:    "Join ignored: node2 is already a cluster node\n",
+			not:     "alive",
+			wantErr: "node node2 is a cluster node, but its heartbeat is not beating",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var err error
 			c := &CmdClusterEnroll{
 				collectorState: func(string) (string, error) { return tc.status, nil },
+				nodeBeating:    func(string) (bool, error) { return tc.beating, nil },
 			}
 			out := captureStdout(t, func() {
 				err = c.waitResult(context.Background(), &fakeEventReader{msgs: tc.msgs}, "node2")
@@ -187,4 +219,24 @@ func TestCmdClusterEnrollWaitCollector(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestIsBeating pins that a node is beating when the api node receives its
+// heartbeat on any stream, and that the api node is.
+func TestIsBeating(t *testing.T) {
+	var data clusterdump.Data
+	data.Daemon.Nodename = "node1"
+	var hb daemonsubsystem.Heartbeat
+	hb.Streams = []daemonsubsystem.HeartbeatStream{
+		{Peers: map[string]daemonsubsystem.HeartbeatStreamPeerStatus{"node2": {IsBeating: false}, "node3": {IsBeating: false}}},
+		{Peers: map[string]daemonsubsystem.HeartbeatStreamPeerStatus{"node2": {IsBeating: true}}},
+	}
+	var n node.Node
+	n.Daemon.Heartbeat = hb
+	data.Cluster.Node = map[string]node.Node{"node1": n}
+
+	assert.True(t, isBeating(data, "node1"), "the api node")
+	assert.True(t, isBeating(data, "node2"), "beating on one stream")
+	assert.False(t, isBeating(data, "node3"), "beating on no stream")
+	assert.False(t, isBeating(data, "node4"), "unknown")
 }
