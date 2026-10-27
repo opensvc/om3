@@ -177,8 +177,13 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 	}
 
 	// If a file was changed or removed or discovered, fetch from the up
-	// instance holding the files of the same things.
+	// instance holding the files of the most of the same things.
 	if needFetch && ev.Value.Avail != status.Up {
+		var (
+			best        string
+			bestStatus  *instance.Status
+			bestMatches int
+		)
 		for nodename, instanceStatus := range instance.StatusData.GetByPath(t.path) {
 			if t.localhost == nodename {
 				continue
@@ -186,14 +191,15 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 			if instanceStatus.Avail != status.Up {
 				continue
 			}
-			if !sameSyncScopes(*instanceStatus, ev.Value) {
-				continue
+			if n := syncScopeMatches(*instanceStatus, ev.Value); n > bestMatches {
+				best, bestStatus, bestMatches = nodename, instanceStatus, n
 			}
+		}
+		if bestStatus != nil {
 			t.handleResourceFiles(&msgbus.InstanceStatusUpdated{
-				Node:  nodename,
-				Value: *instanceStatus,
+				Node:  best,
+				Value: *bestStatus,
 			})
-			break
 		}
 	}
 }
@@ -284,12 +290,14 @@ func sameSyncScope(peer, local resource.Status) bool {
 	return peer.SyncScope == local.SyncScope
 }
 
-// sameSyncScopes says the resources of the peer instance holding files have
-// the scope they have in the local one: the peer holds the files of the same
-// things, and is one to fetch them from. A peer running a container named
-// otherwise holds the files of another one, which are all skipped, while
-// another peer may hold the right ones.
-func sameSyncScopes(peer, local instance.Status) bool {
+// syncScopeMatches is the number of resources of the peer instance holding
+// files with the scope they have in the local one: the files the peer holds
+// of the same things, which it is one to fetch from. A peer running a
+// container named otherwise holds the files of another one, which the fetch
+// skips, while another peer may hold the right ones; the files of its other
+// resources are fetched all the same.
+func syncScopeMatches(peer, local instance.Status) int {
+	n := 0
 	for rid, peerResourceStatus := range peer.Resources {
 		if len(peerResourceStatus.Files) == 0 {
 			continue
@@ -298,11 +306,11 @@ func sameSyncScopes(peer, local instance.Status) bool {
 		if !ok {
 			continue
 		}
-		if !sameSyncScope(peerResourceStatus, localResourceStatus) {
-			return false
+		if sameSyncScope(peerResourceStatus, localResourceStatus) {
+			n++
 		}
 	}
-	return true
+	return n
 }
 
 func scopeSkipKey(rid string) string {
