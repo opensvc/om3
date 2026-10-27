@@ -38,6 +38,10 @@ func VolDestroyWithBusyRetries(count int) funcopt.O {
 	})
 }
 
+// volDestroyBusyDelay is the time between two tries of a destroy reported
+// busy. A var for the tests.
+var volDestroyBusyDelay = time.Second
+
 func volDestroyOptsToArgs(t volDestroyOpts) []string {
 	l := []string{"destroy"}
 	if t.Force {
@@ -46,31 +50,43 @@ func volDestroyOptsToArgs(t volDestroyOpts) []string {
 	return l
 }
 
+// Destroy destroys the volume, a volume already gone being destroyed.
+//
+// A volume just released, as the zvol under a drbd device brought down, is
+// reported busy by zfs for a moment: the destroy is tried again a second
+// later, as many times as VolDestroyWithBusyRetries says. A destroy that
+// fails is an error, the busy one once the retries are spent: the caller
+// would otherwise report the volume unprovisioned and leave it behind.
 func (t *Vol) Destroy(fopts ...funcopt.O) error {
 	opts := &volDestroyOpts{}
 	funcopt.Apply(opts, fopts...)
 	args := append(volDestroyOptsToArgs(*opts), t.Name)
-	cmd := command.New(
-		command.WithName("zfs"),
-		command.WithArgs(args),
-		command.WithBufferedStderr(),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	for i := -1; i < opts.BusyRetries; i++ {
-		err := cmd.Run()
-		if err != nil {
+	var err error
+	for i := 0; i <= opts.BusyRetries; i++ {
+		if i > 0 {
+			time.Sleep(volDestroyBusyDelay)
+		}
+		// A command runs once: a retry is another one.
+		cmd := command.New(
+			command.WithName("zfs"),
+			command.WithArgs(args),
+			command.WithBufferedStderr(),
+			command.WithLogger(t.Log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+		)
+		err = cmd.Run()
+		if err == nil {
 			return nil
 		}
 		stderr := string(cmd.Stderr())
-		if strings.Contains(stderr, "busy") {
-			time.Sleep(time.Second)
-			continue
+		if strings.Contains(stderr, "does not exist") {
+			return nil
 		}
-		return err
-
+		if !strings.Contains(stderr, "busy") {
+			return err
+		}
 	}
-	return nil
+	return err
 }
