@@ -29,6 +29,15 @@ func AddObjectKeywordGrants(items api.KeywordDefinitionItems, kind naming.Kind) 
 	}
 }
 
+// KeywordGrantDoc returns the sentence the documentation of a keyword of an
+// object of kind shows about the grant setting it needs, or an empty string
+// when any user granted on the namespace may set it: the grantDoc of the api.
+// types are the drivers the keyword belongs to.
+func KeywordGrantDoc(kind naming.Kind, section, option string, types []string) string {
+	_, doc, _ := keywordGrant(kind, section, option, types)
+	return doc
+}
+
 func keywordGrant(kind naming.Kind, section, option string, types []string) (string, string, bool) {
 	var (
 		grant  string
