@@ -176,13 +176,17 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 		delete(t.files.states, filename)
 	}
 
-	// If a file was changed or removed or discovered, fetch from the up instance
+	// If a file was changed or removed or discovered, fetch from the up
+	// instance holding the files of the same things.
 	if needFetch && ev.Value.Avail != status.Up {
 		for nodename, instanceStatus := range instance.StatusData.GetByPath(t.path) {
 			if t.localhost == nodename {
 				continue
 			}
 			if instanceStatus.Avail != status.Up {
+				continue
+			}
+			if !sameSyncScopes(*instanceStatus, ev.Value) {
 				continue
 			}
 			t.handleResourceFiles(&msgbus.InstanceStatusUpdated{
@@ -278,6 +282,27 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 // scope, so they compare equal.
 func sameSyncScope(peer, local resource.Status) bool {
 	return peer.SyncScope == local.SyncScope
+}
+
+// sameSyncScopes says the resources of the peer instance holding files have
+// the scope they have in the local one: the peer holds the files of the same
+// things, and is one to fetch them from. A peer running a container named
+// otherwise holds the files of another one, which are all skipped, while
+// another peer may hold the right ones.
+func sameSyncScopes(peer, local instance.Status) bool {
+	for rid, peerResourceStatus := range peer.Resources {
+		if len(peerResourceStatus.Files) == 0 {
+			continue
+		}
+		localResourceStatus, ok := local.Resources[rid]
+		if !ok {
+			continue
+		}
+		if !sameSyncScope(peerResourceStatus, localResourceStatus) {
+			return false
+		}
+	}
+	return true
 }
 
 func scopeSkipKey(rid string) string {

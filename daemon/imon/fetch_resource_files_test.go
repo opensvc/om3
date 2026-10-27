@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -64,4 +65,28 @@ func TestTheReasonAScopeIsNotFetchedIsSaidOnce(t *testing.T) {
 	m.skipResourceScope("container#1", "vm1", "vm2")
 	assert.True(t, m.files.skipped[scopeSkipKey("container#1")])
 	assert.False(t, m.files.skipped["container#1"], "a file named as the rid is not marked")
+}
+
+// The files are fetched from a peer holding the files of the same things:
+// with a container named per node, the first up peer may run another one,
+// whose files are all skipped, while another peer runs the same.
+func TestTheFilesArePickedFromAPeerOfTheSameScopes(t *testing.T) {
+	local := instance.Status{Resources: instance.ResourceStatuses{
+		"container#1": {SyncScope: "vm1"},
+		"fs#1":        {},
+	}}
+	files := resource.Files{{Name: "/etc/libvirt/qemu/vm.xml"}}
+	same := instance.Status{Resources: instance.ResourceStatuses{
+		"container#1": {SyncScope: "vm1", Files: files},
+		"fs#1":        {},
+	}}
+	other := instance.Status{Resources: instance.ResourceStatuses{
+		"container#1": {SyncScope: "vm2", Files: files},
+	}}
+	noFiles := instance.Status{Resources: instance.ResourceStatuses{
+		"container#1": {SyncScope: "vm2"},
+	}}
+	assert.True(t, sameSyncScopes(same, local))
+	assert.False(t, sameSyncScopes(other, local), "the peer holds the files of another container")
+	assert.True(t, sameSyncScopes(noFiles, local), "a resource holding no file is no reason to pass a peer by")
 }
