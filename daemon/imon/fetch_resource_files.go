@@ -290,20 +290,19 @@ func sameSyncScope(peer, local resource.Status) bool {
 	return peer.SyncScope == local.SyncScope
 }
 
-// syncScopeMatches is the number of resources of the peer instance holding
-// files with the scope they have in the local one: the files the peer holds
-// of the same things, which it is one to fetch from. A peer running a
-// container named otherwise holds the files of another one, which the fetch
-// skips, while another peer may hold the right ones; the files of its other
-// resources are fetched all the same.
+// syncScopeMatches is the number of resources whose files the fetch would
+// take from the peer instance: up there, down here, holding files, with the
+// same scope on both. A peer running a container named otherwise holds the
+// files of another one, which the fetch skips, while another peer may hold
+// the right ones; the files of its other resources are fetched all the same.
 func syncScopeMatches(peer, local instance.Status) int {
 	n := 0
 	for rid, peerResourceStatus := range peer.Resources {
-		if len(peerResourceStatus.Files) == 0 {
+		if peerResourceStatus.Status != status.Up || len(peerResourceStatus.Files) == 0 {
 			continue
 		}
 		localResourceStatus, ok := local.Resources[rid]
-		if !ok {
+		if !ok || localResourceStatus.Status != status.Down {
 			continue
 		}
 		if sameSyncScope(peerResourceStatus, localResourceStatus) {
