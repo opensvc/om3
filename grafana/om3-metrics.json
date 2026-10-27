@@ -2153,7 +2153,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6 / sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}[$__rate_interval])) / 1e6",
+          "expr": "(sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6) / (sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}[$__rate_interval])) / 1e6)",
           "legendFormat": "{{instance}} cpu",
           "range": true,
           "refId": "A"
@@ -2164,7 +2164,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}) / sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"})",
+          "expr": "(sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"})) / (sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}))",
           "legendFormat": "{{instance}} memory",
           "range": true,
           "refId": "B"
@@ -2175,7 +2175,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6 / sum by (instance) (opensvc_pg_cgroup_cpu_cpus{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"})",
+          "expr": "(sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6) / (sum by (instance) (opensvc_pg_cgroup_cpu_cpus{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}))",
           "legendFormat": "{{instance}} cpu of its cpus",
           "range": true,
           "refId": "C"
