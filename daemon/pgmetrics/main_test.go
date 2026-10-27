@@ -538,3 +538,11 @@ func TestCPUCountIsTheEffectiveOne(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{"object,root,a=8", "object,root,b=2"}, valuesOf(m.snapshot(true).detail, "opensvc_pg_cgroup_cpu_cpus"))
 }
+
+// A namespace with its configuration and no object yet has its slice
+// reported: the configuration makes it, and may cap it.
+func TestANamespaceWithItsConfigurationOnlyIsReported(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/", "ns2/cfg/c"}, nil)
+	writeCgroupFiles(t, forgeNamespaceCgroupPath("ns1"))
+	assert.ElementsMatch(t, []string{"opensvc,,=1", "namespace,ns1,=1"}, valuesOf(m.snapshot(true).detail, "opensvc_pg_cgroup_exists"))
+}

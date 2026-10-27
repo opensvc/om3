@@ -309,11 +309,13 @@ func (m *Manager) walk(full bool) *snapshot {
 	visit(CgroupRoot, scopeOpensvc, "", "")
 	namespaces := make(map[string]struct{})
 	for _, objPath := range object.StatusData.GetPaths() {
+		// The configuration of a namespace makes its slice, which it
+		// may cap, even with no object in it yet.
+		if objPath.Namespace != naming.NsRoot && (hasCgroup(objPath.Kind) || objPath.Kind == naming.KindNscfg) {
+			namespaces[objPath.Namespace] = struct{}{}
+		}
 		if !hasCgroup(objPath.Kind) {
 			continue
-		}
-		if objPath.Namespace != naming.NsRoot {
-			namespaces[objPath.Namespace] = struct{}{}
 		}
 		if !visit(forgeCgroupPath(objPath), scopeObject, objPath.Namespace, objPath.String()) {
 			s.withoutCgroup++
