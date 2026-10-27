@@ -262,6 +262,16 @@ type (
 	toSyncer interface {
 		ToSync(context.Context) []string
 	}
+
+	// syncScoper is implemented by a toSyncer whose files are the ones of
+	// a thing that may differ from node to node, as a container whose
+	// name is scoped per node: the files of vm1 are not the ones of the
+	// vm2 the same resource runs on another node. The scope is the
+	// evaluated name of the thing, so the nodes evaluating the same one
+	// share the files, whatever the keyword scoping says.
+	syncScoper interface {
+		SyncScope() string
+	}
 	ingester interface {
 		Ingest(context.Context) error
 	}

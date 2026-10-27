@@ -10302,6 +10302,13 @@ components:
             and ignored at the hypervisor level
         files:
           $ref: '#/components/schemas/ResourceFiles'
+        sync_scope:
+          type: string
+          description: |
+            which instances share the files: a node fetches them from a peer
+            only when the resource has the same scope on both, as the name of
+            a container, which a name scoped per node makes another one on
+            another node
         info:
           type: object
           description: |
