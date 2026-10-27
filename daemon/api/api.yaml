@@ -8369,11 +8369,33 @@ components:
         - stopToChange
         - required
         - minimal
+        - grant
+        - grantDoc
+        - grantAlways
       properties:
         section:
           type: string
         option:
           type: string
+        grant:
+          type: string
+          description: >
+            The grant a user must hold to set the keyword of an object through
+            the api, as "root" or "prioritizer", empty when any user granted
+            on the namespace may set it. A keyword of a driver whose type the
+            user may not choose needs the grant the type does. Empty for the
+            node and cluster keywords, whose configurations are root's whole.
+        grantDoc:
+          type: string
+          description: >
+            The sentence the keyword documentation shows about the grant, which
+            says when only some values need it. Empty when grant is.
+        grantAlways:
+          type: boolean
+          description: >
+            True when the keyword needs the grant whatever its value, false
+            when some values need it and others do not, or when grant is
+            empty.
         scopable:
           type: boolean
         converter:

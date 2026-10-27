@@ -1799,11 +1799,20 @@ type KeywordDefinitionItem struct {
 	Depends       []string `json:"depends"`
 	Deprecated    string   `json:"deprecated"`
 	Example       string   `json:"example"`
-	Inherit       string   `json:"inherit"`
-	Kind          []string `json:"kind"`
-	Minimal       bool     `json:"minimal"`
-	Option        string   `json:"option"`
-	Provisioning  bool     `json:"provisioning"`
+
+	// Grant The grant a user must hold to set the keyword of an object through the api, as "root" or "prioritizer", empty when any user granted on the namespace may set it. A keyword of a driver whose type the user may not choose needs the grant the type does. Empty for the node and cluster keywords, whose configurations are root's whole.
+	Grant string `json:"grant"`
+
+	// GrantAlways True when the keyword needs the grant whatever its value, false when some values need it and others do not, or when grant is empty.
+	GrantAlways bool `json:"grantAlways"`
+
+	// GrantDoc The sentence the keyword documentation shows about the grant, which says when only some values need it. Empty when grant is.
+	GrantDoc     string   `json:"grantDoc"`
+	Inherit      string   `json:"inherit"`
+	Kind         []string `json:"kind"`
+	Minimal      bool     `json:"minimal"`
+	Option       string   `json:"option"`
+	Provisioning bool     `json:"provisioning"`
 
 	// Recorded True when the value names a thing that now exists, and was written into the configuration when that thing was made: the id an object was created with, the uuid an md array was created with. A configuration copied to make another thing must not carry it, so these are reset when an object is cloned.
 	Recorded bool `json:"recorded"`

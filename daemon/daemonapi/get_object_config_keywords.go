@@ -51,9 +51,11 @@ func (a *DaemonAPI) GetObjectConfigKeywords(ctx echo.Context, namespace string, 
 		status := http.StatusInternalServerError
 		return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
 	}
+	items := doc.ConvertKeywordStore(store)
+	doc.AddObjectKeywordGrants(items, kind)
 	r := api.KeywordDefinitionList{
 		Kind:  "KeywordDefinitionList",
-		Items: doc.ConvertKeywordStore(store),
+		Items: items,
 	}
 	return ctx.JSON(http.StatusOK, r)
 }

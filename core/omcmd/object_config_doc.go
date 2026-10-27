@@ -70,7 +70,9 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 		if err != nil {
 			return nil, err
 		}
-		return doc.ConvertKeywordStore(store), nil
+		items := doc.ConvertKeywordStore(store)
+		doc.AddObjectKeywordGrants(items, path.Kind)
+		return items, nil
 	})
 	if err != nil {
 		return err
