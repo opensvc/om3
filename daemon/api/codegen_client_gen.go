@@ -495,7 +495,7 @@ type ClientInterface interface {
 	GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeMetricsPG request
-	GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, params *GetNodeMetricsPGParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeNetworkReservations request
 	GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2379,8 +2379,8 @@ func (c *Client) GetNodeMetrics(ctx context.Context, nodename InPathNodeName, re
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeMetricsPGRequest(c.Server, nodename)
+func (c *Client) GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, params *GetNodeMetricsPGParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeMetricsPGRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -13419,7 +13419,7 @@ func NewGetNodeMetricsRequest(server string, nodename InPathNodeName) (*http.Req
 }
 
 // NewGetNodeMetricsPGRequest generates requests for GetNodeMetricsPG
-func NewGetNodeMetricsPGRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+func NewGetNodeMetricsPGRequest(server string, nodename InPathNodeName, params *GetNodeMetricsPGParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13442,6 +13442,33 @@ func NewGetNodeMetricsPGRequest(server string, nodename InPathNodeName) (*http.R
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -17722,7 +17749,7 @@ type ClientWithResponsesInterface interface {
 	GetNodeMetricsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsResponse, error)
 
 	// GetNodeMetricsPGWithResponse request
-	GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error)
+	GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeMetricsPGParams, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error)
 
 	// GetNodeNetworkReservationsWithResponse request
 	GetNodeNetworkReservationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*GetNodeNetworkReservationsResponse, error)
@@ -25654,8 +25681,8 @@ func (c *ClientWithResponses) GetNodeMetricsWithResponse(ctx context.Context, no
 }
 
 // GetNodeMetricsPGWithResponse request returning *GetNodeMetricsPGResponse
-func (c *ClientWithResponses) GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error) {
-	rsp, err := c.GetNodeMetricsPG(ctx, nodename, reqEditors...)
+func (c *ClientWithResponses) GetNodeMetricsPGWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeMetricsPGParams, reqEditors ...RequestEditorFn) (*GetNodeMetricsPGResponse, error) {
+	rsp, err := c.GetNodeMetricsPG(ctx, nodename, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

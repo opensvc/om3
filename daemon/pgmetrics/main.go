@@ -65,6 +65,13 @@ const (
 	// system.slice, user.slice, machine.slice or init.scope: its path label
 	// is its name, its namespace label empty.
 	scopeSlice = "slice"
+
+	// scopeSubset is the slice of a subset of an object, named by the
+	// subset label, and scopeResource the one of a resource, named by the
+	// rid label, its subset label naming the subset it is in, if any.
+	// They are reported for the objects a scrape asks for only.
+	scopeSubset   = "subset"
+	scopeResource = "resource"
 )
 
 // hasCgroup says the objects of kind k have a process group: the kinds with
@@ -171,8 +178,12 @@ var (
 	}
 )
 
-var cgroupLabels = []string{"scope", "namespace", "path"}
-var cgroupStatLabels = []string{"scope", "namespace", "path", "stat"}
+// The labels of the series: the scope says which cgroup a series is of, the
+// namespace and the path the object it belongs to, and the subset and the
+// rid the part of the object, for the subset and resource scopes, which are
+// reported on demand only. A label that does not apply is empty.
+var cgroupLabels = []string{"scope", "namespace", "path", "subset", "rid"}
+var cgroupStatLabels = []string{"scope", "namespace", "path", "subset", "rid", "stat"}
 
 // The hints, on the default registry. Every metric above carries a path
 // label and so grows with the cluster, which is why they are served
@@ -301,12 +312,12 @@ func (m *Manager) walk(full bool) *snapshot {
 		if full {
 			e.gauge(cgroupExistsDesc, 1, labels...)
 		}
-		if utilization := m.collectCgroupMetrics(&e, full, cgroupPath, labels...); utilization > s.utilizationMax {
+		if utilization := collectCgroupMetrics(&e, full, cgroupPath, labels...); utilization > s.utilizationMax {
 			s.utilizationMax = utilization
 		}
 		return true
 	}
-	visit(CgroupRoot, scopeOpensvc, "", "")
+	visit(CgroupRoot, scopeOpensvc, "", "", "", "")
 	namespaces := make(map[string]struct{})
 	for _, objPath := range object.StatusData.GetPaths() {
 		// The configuration of a namespace makes its slice, which it
@@ -317,16 +328,16 @@ func (m *Manager) walk(full bool) *snapshot {
 		if !hasCgroup(objPath.Kind) {
 			continue
 		}
-		if !visit(forgeCgroupPath(objPath), scopeObject, objPath.Namespace, objPath.String()) {
+		if !visit(forgeCgroupPath(objPath), scopeObject, objPath.Namespace, objPath.String(), "", "") {
 			s.withoutCgroup++
 		}
 	}
 	for ns := range namespaces {
-		visit(forgeNamespaceCgroupPath(ns), scopeNamespace, ns, "")
+		visit(forgeNamespaceCgroupPath(ns), scopeNamespace, ns, "", "", "")
 	}
 	if full {
 		for _, name := range otherSlices() {
-			visit(filepath.Join(HostCgroupRoot, name), scopeSlice, "", name)
+			visit(filepath.Join(HostCgroupRoot, name), scopeSlice, "", name, "", "")
 		}
 		collectHost(&e)
 	}
@@ -368,7 +379,7 @@ func otherSlices() []string {
 //   - io: the io.stat of the root cgroup, the devices stacked on left out.
 //   - tasks: the tasks of the node, the total of /proc/loadavg.
 func collectHost(e *emitter) {
-	labels := []string{scopeHost, "", ""}
+	labels := []string{scopeHost, "", "", "", ""}
 	if cpuStat, err := readFile(HostCgroupRoot, "cpu.stat"); err == nil {
 		parseCPUStat(e, cpuStat, labels...)
 	} else if usec, err := procStatUsageUsec(); err == nil {
@@ -500,7 +511,7 @@ func (m *Manager) unregisterMetrics() {
 // With full false it reads only the two files that ratio needs and emits
 // nothing. That is the walk a scrape of /metrics wants: the hint tells
 // you whether to go and look, and it should not cost what looking costs.
-func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath string, labels ...string) (memoryUtilization float64) {
+func collectCgroupMetrics(e *emitter, full bool, cgroupPath string, labels ...string) (memoryUtilization float64) {
 	// Read memory.current and memory.max first: they are the only files
 	// the hint walk opens, and the ratio is computed from them.
 	var memCurrentVal, memMaxVal float64

@@ -546,3 +546,29 @@ func TestANamespaceWithItsConfigurationOnlyIsReported(t *testing.T) {
 	writeCgroupFiles(t, forgeNamespaceCgroupPath("ns1"))
 	assert.ElementsMatch(t, []string{"opensvc,,=1", "namespace,ns1,=1"}, valuesOf(m.snapshot(true).detail, "opensvc_pg_cgroup_exists"))
 }
+
+// valuesWithAllLabels returns the scope, namespace, path, subset and rid
+// labels, joined by commas, and the value of the series named name in
+// metrics, as "<labels>=<value>".
+func valuesWithAllLabels(metrics []prometheus.Metric, name string) []string {
+	l := make([]string, 0)
+	for _, metric := range metrics {
+		if !strings.Contains(metric.Desc().String(), `fqName: "`+name+`"`) {
+			continue
+		}
+		var pb dto.Metric
+		if err := metric.Write(&pb); err != nil {
+			continue
+		}
+		values := make([]string, 0, len(pb.Label))
+		for _, label := range []string{"scope", "namespace", "path", "subset", "rid"} {
+			for _, lp := range pb.Label {
+				if lp.GetName() == label {
+					values = append(values, lp.GetValue())
+				}
+			}
+		}
+		l = append(l, fmt.Sprintf("%s=%g", strings.Join(values, ","), pb.GetGauge().GetValue()))
+	}
+	return l
+}
