@@ -250,10 +250,11 @@ func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
 			// Extract namespace from labels
 			namespace := extractNamespaceFromLine(line, namespaceLabelPattern)
 
-			if strings.Contains(line, `scope="opensvc"`) {
+			if strings.Contains(line, `scope="opensvc"`) || strings.Contains(line, `scope="host"`) || strings.Contains(line, `scope="slice"`) {
 				// The opensvc slice holds the groups of every
-				// namespace: its usage is the node's, which a user
-				// granted some namespaces only is not shown.
+				// namespace, and the host and the other top level
+				// slices are the node's: a user granted some
+				// namespaces only is not shown their usage.
 				keepCurrentMetric = false
 			} else if namespace != "" {
 				// Check if this namespace is allowed

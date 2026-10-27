@@ -156,11 +156,19 @@ func TestParsersAcceptThisHostsCgroupFiles(t *testing.T) {
 // instead.
 func withFakeCgroupTree(t testing.TB, paths []string, withCgroup []string) *Manager {
 	t.Helper()
-	root := t.TempDir()
+	host := t.TempDir()
+	root := filepath.Join(host, "opensvc.slice")
+	require.NoError(t, os.MkdirAll(root, 0755))
 	wasRoot, wasData := CgroupRoot, object.StatusData
-	CgroupRoot = root
+	wasHost, wasProc, wasOnline := HostCgroupRoot, ProcRoot, CPUOnlineFile
+	CgroupRoot, HostCgroupRoot = root, host
+	ProcRoot = t.TempDir()
+	CPUOnlineFile = filepath.Join(ProcRoot, "online")
 	object.StatusData = object.NewData[object.Status]()
-	t.Cleanup(func() { CgroupRoot, object.StatusData = wasRoot, wasData })
+	t.Cleanup(func() {
+		CgroupRoot, object.StatusData = wasRoot, wasData
+		HostCgroupRoot, ProcRoot, CPUOnlineFile = wasHost, wasProc, wasOnline
+	})
 
 	for _, ps := range paths {
 		p, err := naming.ParsePath(ps)
@@ -453,4 +461,61 @@ func TestIOAndTasks(t *testing.T) {
 	} {
 		assert.Equal(t, []string{want}, valuesOf(s.detail, name), name)
 	}
+}
+
+// The host scope reports the totals of the node, the root cgroup having no
+// memory.current nor pids.current, and the slice scope the other top level
+// slices, the opensvc one being the opensvc scope.
+func TestTheHostAndTheOtherSlices(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"svc/a"}, []string{"svc/a"})
+	writeCgroupFiles(t, filepath.Join(HostCgroupRoot, "system.slice"))
+	writeCgroupFiles(t, filepath.Join(HostCgroupRoot, "machine.slice"))
+	require.NoError(t, os.MkdirAll(filepath.Join(HostCgroupRoot, "init.scope"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(HostCgroupRoot, "notaslice"), 0755))
+	for name, content := range map[string]string{
+		filepath.Join(HostCgroupRoot, "cpu.stat"): "usage_usec 5000\nuser_usec 3000\nsystem_usec 2000\n",
+		filepath.Join(HostCgroupRoot, "io.stat"):  "7:0 rbytes=10 wbytes=20 rios=1 wios=2 dbytes=0 dios=0\n",
+		filepath.Join(ProcRoot, "meminfo"):        "MemTotal:       1000 kB\nMemFree:         100 kB\nMemAvailable:    400 kB\n",
+		filepath.Join(ProcRoot, "loadavg"):        "0.10 0.20 0.30 2/345 6789\n",
+		CPUOnlineFile:                             "0-3,6\n",
+	} {
+		require.NoError(t, os.WriteFile(name, []byte(content), 0644))
+	}
+
+	s := m.snapshot(true)
+	for name, want := range map[string]string{
+		"opensvc_pg_cgroup_cpu_usage_usec":       "host,,=5000",
+		"opensvc_pg_cgroup_cpu_cpus":             "host,,=5",
+		"opensvc_pg_cgroup_memory_current_bytes": "host,,=614400",
+		"opensvc_pg_cgroup_memory_max_bytes":     "host,,=1.024e+06",
+		"opensvc_pg_cgroup_io_read_bytes":        "host,,=10",
+		"opensvc_pg_cgroup_io_write_ios":         "host,,=2",
+		"opensvc_pg_cgroup_tasks":                "host,,=345",
+	} {
+		assert.Contains(t, valuesOf(s.detail, name), want, name)
+	}
+	assert.ElementsMatch(t, []string{
+		"opensvc,,=1",
+		"object,root,a=1",
+		"slice,,init.scope=1",
+		"slice,,machine.slice=1",
+		"slice,,system.slice=1",
+	}, valuesOf(s.detail, "opensvc_pg_cgroup_exists"), "notaslice is not a slice, opensvc.slice is the opensvc scope")
+	assert.Contains(t, seriesOf(s.detail, "opensvc_pg_cgroup_memory_current_bytes"), "slice,,machine.slice")
+
+	// The hint walk reads none of it.
+	m.snap = nil
+	assert.Equal(t, 2, m.snapshot(false).cgroups)
+}
+
+// Without the cpu.stat of the root cgroup, the cpu usage of the host is read
+// from /proc/stat, in USER_HZ, idle and iowait left out.
+func TestProcStatUsageUsec(t *testing.T) {
+	wasProc := ProcRoot
+	ProcRoot = t.TempDir()
+	t.Cleanup(func() { ProcRoot = wasProc })
+	require.NoError(t, os.WriteFile(filepath.Join(ProcRoot, "stat"), []byte("cpu  10 1 5 1000 50 2 3 4 0 0\ncpu0 1 1 1 1 1 1 1 1 0 0\n"), 0644))
+	usec, err := procStatUsageUsec()
+	require.NoError(t, err)
+	assert.Equal(t, float64(10+1+5+2+3+4)*1e4, usec)
 }
