@@ -161,9 +161,12 @@ func (t *T) zvolCreate() error {
 	return t.zvol().Create(opts...)
 }
 
+// zvolDestroy destroys the zvol, trying again for a while when zfs says it is
+// busy, as it does for a moment after the drbd device on it is brought down.
 func (t *T) zvolDestroy() error {
 	return t.zvol().Destroy(
 		zfs.VolDestroyWithForce(),
+		zfs.VolDestroyWithBusyRetries(10),
 	)
 }
 
