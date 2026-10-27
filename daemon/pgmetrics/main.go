@@ -29,6 +29,10 @@ var (
 	// CgroupRoot is the root path for opensvc cgroups. A var rather than
 	// a const so the tests can point collect() at a tree they built.
 	CgroupRoot = "/sys/fs/cgroup/opensvc.slice"
+
+	// BlockRoot holds a directory per block device, named by its
+	// major:minor, as io.stat names them. A var for the tests.
+	BlockRoot = "/sys/dev/block"
 )
 
 // The scope label values: the cgroup a series is of.
@@ -128,6 +132,16 @@ var (
 		"Page-based memory statistics for the cgroup", cgroupStatLabels, nil)
 	cpuStatDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_stat",
 		"CPU statistics for the cgroup", cgroupStatLabels, nil)
+	ioReadBytesDesc = prometheus.NewDesc("opensvc_pg_cgroup_io_read_bytes",
+		"Bytes read by the cgroup, over the block devices no other device is stacked on (cgroup v2)", cgroupLabels, nil)
+	ioWriteBytesDesc = prometheus.NewDesc("opensvc_pg_cgroup_io_write_bytes",
+		"Bytes written by the cgroup, over the block devices no other device is stacked on (cgroup v2)", cgroupLabels, nil)
+	ioReadIOsDesc = prometheus.NewDesc("opensvc_pg_cgroup_io_read_ios",
+		"Read operations of the cgroup, over the block devices no other device is stacked on (cgroup v2)", cgroupLabels, nil)
+	ioWriteIOsDesc = prometheus.NewDesc("opensvc_pg_cgroup_io_write_ios",
+		"Write operations of the cgroup, over the block devices no other device is stacked on (cgroup v2)", cgroupLabels, nil)
+	tasksDesc = prometheus.NewDesc("opensvc_pg_cgroup_tasks",
+		"The number of tasks in the cgroup", cgroupLabels, nil)
 
 	// detailDescs is what /metrics/pg answers with.
 	detailDescs = []*prometheus.Desc{
@@ -135,6 +149,8 @@ var (
 		memoryCurrentDesc, memoryMaxDesc, cpuSharesDesc, cpuWeightDesc,
 		cpuQuotaDesc, cpuPeriodDesc, cpuCpusDesc, blkioWeightDesc,
 		memoryStatDesc, memoryStatPagesDesc, cpuStatDesc,
+		ioReadBytesDesc, ioWriteBytesDesc, ioReadIOsDesc, ioWriteIOsDesc,
+		tasksDesc,
 	}
 )
 
@@ -192,7 +208,13 @@ type snapshot struct {
 var minInterval = 15 * time.Second
 
 // emitter accumulates the const metrics of one walk.
-type emitter struct{ out []prometheus.Metric }
+type emitter struct {
+	out []prometheus.Metric
+
+	// stacked caches, for the walk, whether a block device has another
+	// stacked on it.
+	stacked map[string]bool
+}
 
 func (e *emitter) gauge(desc *prometheus.Desc, v float64, labels ...string) {
 	e.out = append(e.out, prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, labels...))
@@ -418,6 +440,18 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath string,
 		e.gauge(cpuCpusDesc, float64(count), labels...)
 	}
 
+	// Read io.stat (cgroup v2), whose devices the io controller of the
+	// cgroup accounts, and pids.current. A cgroup whose controller is not
+	// enabled has neither file, and no series rather than a zero.
+	if ioStat, err := readFile(cgroupPath, "io.stat"); err == nil {
+		parseIOStat(e, ioStat, labels...)
+	}
+	if pids, err := readFile(cgroupPath, "pids.current"); err == nil {
+		if val, err := parseUint(pids); err == nil {
+			e.gauge(tasksDesc, float64(val), labels...)
+		}
+	}
+
 	// Read io.weight (for cgroup v2) or blkio.weight (for cgroup v1)
 	if ioWeight, err := readFile(cgroupPath, "io.weight"); err == nil {
 		if val, err := parseIOWeight(ioWeight); err == nil {
@@ -462,6 +496,82 @@ func parseCPUStat(e *emitter, content string, labels ...string) {
 			e.gauge(cpuStatDesc, float64(statValue), append(labels, statName)...)
 		}
 	}
+}
+
+// parseIOStat sums the io.stat lines, "<major>:<minor> rbytes=<n> wbytes=<n>
+// rios=<n> wios=<n> ...", over the devices no other device is stacked on.
+//
+// An io to a device mapper, md or multipath device is accounted to it and to
+// the devices under it too: summing them all would count it twice. The
+// devices a stacked device holds are left out, as the holders directory of
+// the device, or of one of its partitions, names them. The stacks the kernel
+// does not record there, drbd over its backing device, a loop device over a
+// file, are counted at both levels.
+func parseIOStat(e *emitter, content string, labels ...string) {
+	var rbytes, wbytes, rios, wios uint64
+	for _, line := range strings.Split(content, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 || e.isStacked(fields[0]) {
+			continue
+		}
+		for _, field := range fields[1:] {
+			k, v, ok := strings.Cut(field, "=")
+			if !ok {
+				continue
+			}
+			n, err := parseUint(v)
+			if err != nil {
+				continue
+			}
+			switch k {
+			case "rbytes":
+				rbytes += n
+			case "wbytes":
+				wbytes += n
+			case "rios":
+				rios += n
+			case "wios":
+				wios += n
+			}
+		}
+	}
+	e.gauge(ioReadBytesDesc, float64(rbytes), labels...)
+	e.gauge(ioWriteBytesDesc, float64(wbytes), labels...)
+	e.gauge(ioReadIOsDesc, float64(rios), labels...)
+	e.gauge(ioWriteIOsDesc, float64(wios), labels...)
+}
+
+// isStacked says another block device is stacked on the device dev, a
+// "<major>:<minor>": its holders directory, or the one of a partition of it,
+// is not empty.
+func (e *emitter) isStacked(dev string) bool {
+	if v, ok := e.stacked[dev]; ok {
+		return v
+	}
+	if e.stacked == nil {
+		e.stacked = make(map[string]bool)
+	}
+	dir := filepath.Join(BlockRoot, dev)
+	v := hasEntries(filepath.Join(dir, "holders"))
+	if !v {
+		entries, _ := os.ReadDir(dir)
+		for _, entry := range entries {
+			if _, err := os.Stat(filepath.Join(dir, entry.Name(), "partition")); err != nil {
+				continue
+			}
+			if hasEntries(filepath.Join(dir, entry.Name(), "holders")) {
+				v = true
+				break
+			}
+		}
+	}
+	e.stacked[dev] = v
+	return v
+}
+
+func hasEntries(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	return err == nil && len(entries) > 0
 }
 
 func parseMemoryStat(e *emitter, content string, labels ...string) {

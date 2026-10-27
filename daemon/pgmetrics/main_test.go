@@ -397,3 +397,60 @@ func benchTree(b *testing.B) *Manager {
 	}
 	return withFakeCgroupTree(b, paths, paths[:24])
 }
+
+// The io of a cgroup is summed over the block devices no other device is
+// stacked on: an io to a multipath device is accounted to its paths too, and
+// one to a logical volume to the partition it is on. The tasks are the
+// pids.current of the cgroup. A cgroup with neither file has no series.
+func TestIOAndTasks(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "ns1/svc/b"}, []string{"ns1/svc/a", "ns1/svc/b"})
+	wasBlock := BlockRoot
+	BlockRoot = t.TempDir()
+	t.Cleanup(func() { BlockRoot = wasBlock })
+
+	// 252:0 is a multipath device over 8:0 and 8:16, 252:1 a logical
+	// volume on the partition 8:33 of 8:32, and 7:0 a device nothing is
+	// stacked on.
+	for dir, holders := range map[string][]string{
+		"252:0":       nil,
+		"252:1":       nil,
+		"7:0":         nil,
+		"8:0":         {"dm-0"},
+		"8:16":        {"dm-0"},
+		"8:32":        nil,
+		"8:32/sdc1":   {"dm-1"},
+		"8:32/subdir": {"x"},
+	} {
+		require.NoError(t, os.MkdirAll(filepath.Join(BlockRoot, dir, "holders"), 0755))
+		for _, h := range holders {
+			require.NoError(t, os.WriteFile(filepath.Join(BlockRoot, dir, "holders", h), nil, 0644))
+		}
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(BlockRoot, "8:32/sdc1/partition"), []byte("1\n"), 0644))
+	// A directory with holders that is not a partition is not one.
+	require.NoError(t, os.MkdirAll(filepath.Join(BlockRoot, "8:48/subdir/holders/x"), 0755))
+
+	p, err := naming.ParsePath("ns1/svc/a")
+	require.NoError(t, err)
+	dir := forgeCgroupPath(p)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "io.stat"), []byte(
+		"252:0 rbytes=100 wbytes=10 rios=1 wios=2 dbytes=0 dios=0\n"+
+			"8:0 rbytes=50 wbytes=5 rios=1 wios=1 dbytes=0 dios=0\n"+
+			"8:16 rbytes=50 wbytes=5 rios=1 wios=1 dbytes=0 dios=0\n"+
+			"252:1 rbytes=1000 wbytes=100 rios=3 wios=4 dbytes=0 dios=0\n"+
+			"8:32 rbytes=1000 wbytes=100 rios=3 wios=4 dbytes=0 dios=0\n"+
+			"7:0 rbytes=1 wbytes=1 rios=1 wios=1 dbytes=0 dios=0\n"+
+			"8:48 rbytes=2 wbytes=2 rios=2 wios=2 dbytes=0 dios=0\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "pids.current"), []byte("7\n"), 0644))
+
+	s := m.snapshot(true)
+	for name, want := range map[string]string{
+		"opensvc_pg_cgroup_io_read_bytes":  "object,ns1,ns1/svc/a=1103",
+		"opensvc_pg_cgroup_io_write_bytes": "object,ns1,ns1/svc/a=113",
+		"opensvc_pg_cgroup_io_read_ios":    "object,ns1,ns1/svc/a=7",
+		"opensvc_pg_cgroup_io_write_ios":   "object,ns1,ns1/svc/a=9",
+		"opensvc_pg_cgroup_tasks":          "object,ns1,ns1/svc/a=7",
+	} {
+		assert.Equal(t, []string{want}, valuesOf(s.detail, name), name)
+	}
+}
