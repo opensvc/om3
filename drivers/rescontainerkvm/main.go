@@ -29,6 +29,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
@@ -334,6 +335,20 @@ func (t *T) doPartitions() error {
 		}
 	}
 	return nil
+}
+
+var _ resource.ProvisionStarter = (*T)(nil)
+
+// ProvisionStart starts the guest at the end of its provision on the
+// placement leader only: see rescontainer.ProvisionStarts. Off the leader,
+// the guest is not created yet, and its disks are on the resources the leader
+// alone starts.
+func (t *T) ProvisionStart(ctx context.Context) error {
+	if !rescontainer.ProvisionStarts(ctx, t.IsStandby()) {
+		t.Log().Tracef("skip the start of the provision off the placement leader")
+		return nil
+	}
+	return t.Start(ctx)
 }
 
 func (t *T) Start(ctx context.Context) error {
