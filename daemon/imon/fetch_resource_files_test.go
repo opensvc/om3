@@ -7,6 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // A resource file lives where the resource that holds it lives: the
@@ -41,4 +44,24 @@ func TestTheReasonAFileIsNotFetchedIsSaidOnce(t *testing.T) {
 	assert.True(t, m.skipped["/srv/x/config"], "said once, and not again")
 	delete(m.skipped, "/srv/x/config")
 	assert.False(t, m.skipped["/srv/x/config"], "and said again once it has been there and gone")
+}
+
+// The files of a resource are fetched from a peer only when they are the
+// files of the same thing there: a container named vm1 on the peer and vm2
+// here holds the configuration of vm1 there, which installed here would have
+// the hypervisor define vm1 on this node. The resources whose files do not
+// differ from node to node report no scope, and compare equal.
+func TestFilesAreFetchedFromAPeerOfTheSameScopeOnly(t *testing.T) {
+	assert.True(t, sameSyncScope(resource.Status{SyncScope: "vm1"}, resource.Status{SyncScope: "vm1"}), "the same container on both nodes")
+	assert.False(t, sameSyncScope(resource.Status{SyncScope: "vm1"}, resource.Status{SyncScope: "vm2"}), "a container named per node")
+	assert.True(t, sameSyncScope(resource.Status{}, resource.Status{}), "a resource with no scope")
+}
+
+// The reason the files of a resource are not fetched is said once, as the
+// one of a file.
+func TestTheReasonAScopeIsNotFetchedIsSaidOnce(t *testing.T) {
+	m := &Manager{files: newFilesManager(), log: plog.NewDefaultLogger()}
+	m.skipResourceScope("container#1", "vm1", "vm2")
+	assert.True(t, m.files.skipped[scopeSkipKey("container#1")])
+	assert.False(t, m.files.skipped["container#1"], "a file named as the rid is not marked")
 }

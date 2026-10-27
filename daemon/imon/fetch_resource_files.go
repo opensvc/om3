@@ -214,6 +214,11 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 		if localResourceStatus.Status != status.Down {
 			continue
 		}
+		if !sameSyncScope(peerResourceStatus, localResourceStatus) {
+			t.skipResourceScope(rid, peerResourceStatus.SyncScope, localResourceStatus.SyncScope)
+			continue
+		}
+		delete(t.files.skipped, scopeSkipKey(rid))
 		for _, peerFile := range peerResourceStatus.Files {
 			// try to get the localFile from the fetched cache first
 			// because fetch cache contains more recent data than the
@@ -261,6 +266,33 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 		t.log.Tracef("no transfered resource file needs ingest")
 	}
 	t.cmdC <- done
+}
+
+// sameSyncScope says the files of the resource on the peer are the files of
+// the resource here: the scope the drivers report, as the name of a
+// container, is the same on both. A container named vm1 on the peer and vm2
+// here has the configuration of vm1 there, which is not one to install here:
+// the hypervisor would define vm1 on this node.
+//
+// The resources whose files do not differ from node to node report no
+// scope, so they compare equal.
+func sameSyncScope(peer, local resource.Status) bool {
+	return peer.SyncScope == local.SyncScope
+}
+
+func scopeSkipKey(rid string) string {
+	return "scope:" + rid
+}
+
+// skipResourceScope says once why the files of the resource on the peer are
+// not fetched, as skipResourceFile does.
+func (t *Manager) skipResourceScope(rid, peerScope, localScope string) {
+	key := scopeSkipKey(rid)
+	if t.files.skipped[key] {
+		return
+	}
+	t.files.skipped[key] = true
+	t.log.Infof("%s: files are not fetched: they are the ones of %s on the peer, and this node runs %s", rid, peerScope, localScope)
 }
 
 // fetchDir is the directory a resource file is written in, and says whether

@@ -746,6 +746,13 @@ func (t *T) lxcPath(ctx context.Context) string {
 	return p
 }
 
+// SyncScope is the name of the container: the files to sync are the
+// ones of the container, which a name scoped per node makes another one on
+// another node.
+func (t *T) SyncScope() string {
+	return t.Name
+}
+
 func (t *T) ToSync(ctx context.Context) []string {
 	l := make([]string, 0)
 

@@ -311,6 +311,11 @@ type (
 		// from the primary instance to secondary instances.
 		Files Files `json:"files,omitempty"`
 
+		// SyncScope says which instances share the Files: a node fetches
+		// them from a peer only when the resource has the same scope on
+		// both, as a container named differently on each node does not.
+		SyncScope string `json:"sync_scope,omitempty"`
+
 		// Datastores is the list of datastores used by the resource.
 		// The daemon must watch for these datastore changes
 		// (e.g. reinstall files in fs and volumes)
@@ -1496,6 +1501,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		OutdatedAt: r.StatusLog().ChangeAt(),
 		Info:       getStatusInfo(ctx, r),
 		Files:      getFiles(ctx, r),
+		SyncScope:  getSyncScope(r),
 		Datastores: getDatastores(ctx, r),
 		Volumes:    getVolumes(ctx, r),
 		Holds:      getRuntimeHolds(ctx, r, resStatus),
@@ -1795,6 +1801,14 @@ func getVolumes(ctx context.Context, t Driver) naming.Paths {
 		return nil
 	}
 	return i.VolumeList(ctx)
+}
+
+func getSyncScope(t Driver) string {
+	i, ok := t.(syncScoper)
+	if !ok {
+		return ""
+	}
+	return i.SyncScope()
 }
 
 func getFiles(ctx context.Context, t Driver) Files {
