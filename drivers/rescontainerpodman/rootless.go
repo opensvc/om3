@@ -426,6 +426,19 @@ func (t *T) isObjectGroup(id string) bool {
 	return depth > 2
 }
 
+var _ resource.ProvisionStarter = (*T)(nil)
+
+// ProvisionStart starts the container at the end of its provision on the
+// placement leader only, as the oci base does, with the start of podman, which
+// checks the rootless setup.
+func (t *T) ProvisionStart(ctx context.Context) error {
+	if !rescontainer.ProvisionStarts(ctx, t.IsStandby()) {
+		t.Log().Tracef("skip the start of the provision off the placement leader")
+		return nil
+	}
+	return t.Start(ctx)
+}
+
 // Start refuses to run a rootless container on a node that lacks what podman
 // needs to, naming what it lacks.
 func (t *T) Start(ctx context.Context) error {

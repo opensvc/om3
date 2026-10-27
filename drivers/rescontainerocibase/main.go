@@ -664,6 +664,18 @@ func (t *BT) Provision(_ context.Context) error {
 	return nil
 }
 
+var _ resource.ProvisionStarter = (*BT)(nil)
+
+// ProvisionStart starts the container at the end of its provision on the
+// placement leader only: see rescontainer.ProvisionStarts.
+func (t *BT) ProvisionStart(ctx context.Context) error {
+	if !rescontainer.ProvisionStarts(ctx, t.IsStandby()) {
+		t.Log().Tracef("skip the start of the provision off the placement leader")
+		return nil
+	}
+	return t.Start(ctx)
+}
+
 func (t *BT) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
