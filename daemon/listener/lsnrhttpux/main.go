@@ -3,6 +3,7 @@ package lsnrhttpux
 import (
 	"context"
 	"errors"
+	"fmt"
 	golog "log"
 	"net"
 	"net/http"
@@ -153,29 +154,49 @@ func (t *T) withPeer(ctx context.Context, c net.Conn) context.Context {
 	return daemonctx.WithPeer(ctx, peer)
 }
 
-// onOwnerGroup applies the owner group of a cluster configuration update:
-// the group of the configuration the message carries, rather than the one of
-// the latest, so a group emptied then set again before the message is read
-// is a group emptied all the same. A group emptied closes the socket, which
-// is served again from the next daemon start only.
+// onOwnerGroup applies the owner group of a cluster configuration update.
+//
+// An update emptying the group is applied with the group it carries, rather
+// than the one of the latest configuration, so a group emptied then set again
+// before the update is read is a group emptied all the same: the socket is
+// closed, and served again from the next daemon start only. An update setting
+// a group is applied with the group of the latest configuration instead, so
+// the updates still queued do not give the socket back to a group the latest
+// one replaced.
+//
+// The connections open through the socket are closed when its group changes:
+// the members of the former group lose the api at once, as the ownership of
+// the socket only bars the new connections. A group the node does not know
+// serves no socket, as at start: the socket is closed rather than left to the
+// former group.
 func (t *T) onOwnerGroup(ctx context.Context, group string) {
 	if t.closed.Load() {
 		return
 	}
+	if group != "" {
+		group = t.ownerGroup()
+	}
 	if group == "" {
-		t.closeSocket()
+		t.closeSocket("listener.ux_owner_group is empty")
 		return
 	}
+	former := t.group
 	if err := t.applyOwnerGroup(ctx, group); err != nil {
-		t.log.Errorf("own the socket: %s", err)
+		t.closeSocket(fmt.Sprintf("own it by the group %s: %s", group, err))
+		return
+	}
+	if former != "" && former != group && t.tracked != nil {
+		t.tracked.closeConns()
+		t.log.Infof("connections of the socket closed: its group changed from %s to %s", former, group)
 	}
 }
 
 // closeSocket stops serving the socket, and the connections open through it,
-// and removes it: the owner group was emptied, which serves no socket. The
-// members of the former group lose the api at once, rather than at the next
-// daemon start. A group set again is served from the next daemon start.
-func (t *T) closeSocket() {
+// and removes it: the owner group was emptied, or is not known, which serves
+// no socket. The members of the former group lose the api at once, rather
+// than at the next daemon start. A group set again is served from the next
+// daemon start.
+func (t *T) closeSocket(reason string) {
 	t.closed.Store(true)
 	if err := t.server.Close(); err != nil {
 		t.log.Warnf("close the socket: %s", err)
@@ -186,7 +207,7 @@ func (t *T) closeSocket() {
 	if err := os.Remove(t.addr); err != nil && !errors.Is(err, os.ErrNotExist) {
 		t.log.Warnf("remove the socket: %s", err)
 	}
-	t.log.Infof("socket closed: listener.ux_owner_group is empty")
+	t.log.Infof("socket closed: %s", reason)
 }
 
 // newServer returns the server of the ux listener, serving handler over

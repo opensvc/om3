@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -170,4 +171,66 @@ func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
 
 	lsnrT.onOwnerGroup(context.Background(), "other")
 	assert.Equal(t, "", lsnrT.group, "a closed socket is not owned again")
+}
+
+// An update setting the owner group is applied with the group of the latest
+// configuration, not the one it carries: an update still queued does not give
+// the socket back to a group the latest one replaced. A group changed closes
+// the connections open through the socket, and a group the node does not know
+// closes the socket.
+func TestOwnerGroupUpdates(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("chown needs root")
+	}
+	sock := filepath.Join(t.TempDir(), "uxuser", "http.sock")
+	latest := "4343"
+	lsnrT := &T{log: plog.NewDefaultLogger(), addr: sock, ownerGroup: func() string { return latest }}
+	require.NoError(t, lsnrT.applyOwnerGroup(context.Background(), "4242"))
+	raw, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	lsnrT.tracked = newTrackListener(raw)
+	var lsnr net.Listener = lsnrT.tracked
+	lsnrT.listener = &lsnr
+	require.NoError(t, ownSocket(sock, 4242))
+	lsnrT.server = newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}), golog.New(io.Discard, "", 0))
+	served := make(chan struct{})
+	go func() {
+		defer close(served)
+		_ = lsnrT.server.Serve(lsnr)
+	}()
+	t.Cleanup(func() { _ = lsnrT.server.Close() })
+
+	h2 := &http.Client{Transport: &http2.Transport{
+		AllowHTTP: true,
+		DialTLSContext: func(ctx context.Context, _, _ string, _ *tls.Config) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}}
+	resp, err := h2.Get("http://localhost/")
+	require.NoError(t, err)
+	_, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	open := func() int {
+		lsnrT.tracked.mu.Lock()
+		defer lsnrT.tracked.mu.Unlock()
+		return len(lsnrT.tracked.conns)
+	}
+	require.Equal(t, 1, open())
+
+	// The update queued names 4141, the latest configuration 4343.
+	lsnrT.onOwnerGroup(context.Background(), "4141")
+	info, err := os.Stat(sock)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(4343), info.Sys().(*syscall.Stat_t).Gid, "the group of the latest configuration")
+	assert.Equal(t, 0, open(), "the connections of the former group are closed")
+	assert.False(t, lsnrT.closed.Load())
+
+	latest = "omtest-no-such-group"
+	lsnrT.onOwnerGroup(context.Background(), "omtest-no-such-group")
+	<-served
+	assert.True(t, lsnrT.closed.Load(), "a group the node does not know serves no socket")
+	_, err = os.Stat(sock)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
