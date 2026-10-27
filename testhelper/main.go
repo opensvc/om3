@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,7 +77,18 @@ func SetupEnv(env Env) Env {
 	return env
 }
 
+// setupLogOnce makes the logging of the tests once per test binary. The
+// settings are globals, which the goroutines of a test still logging when the
+// next one sets up would read while they are written, and some pile up: the
+// caller skip frame count grew by one, and the logger got another writer, on
+// each setup.
+var setupLogOnce sync.Once
+
 func setupLog() {
+	setupLogOnce.Do(doSetupLog)
+}
+
+func doSetupLog() {
 	zerolog.TimeFieldFormat = time.StampMicro
 	out := zerolog.ConsoleWriter{
 		Out:        os.Stdout,
