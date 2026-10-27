@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -278,12 +279,18 @@ type (
 		DrainDuration time.Duration
 		SubQS         pubsub.QueueSizer
 		DelayDuration time.Duration
+
+		// Workers, when set, counts the workers of the monitors started,
+		// each done when its worker returns: a test waits on it after
+		// cancelling the daemon, before the next one resets the paths and
+		// the data the workers read. The daemon leaves it nil.
+		Workers *sync.WaitGroup
 	}
 )
 
 // Start creates a new imon and starts worker goroutine to manage local instance monitor
 func (f Factory) Start(parent context.Context, p naming.Path, nodes []string) error {
-	return start(parent, f.SubQS, p, nodes, f.DelayDuration, f.DrainDuration)
+	return start(parent, f.SubQS, p, nodes, f.DelayDuration, f.DrainDuration, f.Workers)
 }
 
 var (
@@ -299,7 +306,7 @@ var (
 )
 
 // start launch goroutine imon worker for a local instance state
-func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []string, delayDuration, drainDuration time.Duration) error {
+func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []string, delayDuration, drainDuration time.Duration, workers *sync.WaitGroup) error {
 	ctx, cancel := context.WithCancel(parent)
 	id := p.String()
 
@@ -365,7 +372,13 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 
 	t.startSubscriptions(qs)
 
+	if workers != nil {
+		workers.Add(1)
+	}
 	go func() {
+		if workers != nil {
+			defer workers.Done()
+		}
 		t.worker(nodes)
 	}()
 
