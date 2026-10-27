@@ -89,3 +89,41 @@ func TestReadProcessGone(t *testing.T) {
 	assert.Error(t, peer.readProcess(-1))
 	assert.False(t, peer.ForeignMountNS)
 }
+
+// The ids of the peer are the ones the access to the socket was checked
+// with: its uid, and its groups, the primary one first.
+func TestIDs(t *testing.T) {
+	sock := filepath.Join(t.TempDir(), "s.sock")
+	l, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	defer l.Close()
+	go func() {
+		c, err := net.Dial("unix", sock)
+		if err == nil {
+			defer c.Close()
+			buf := make([]byte, 1)
+			_, _ = c.Read(buf)
+		}
+	}()
+	c, err := l.Accept()
+	require.NoError(t, err)
+	defer c.Close()
+	uid, gids, err := IDs(c)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(os.Getuid()), uid)
+	require.NotEmpty(t, gids)
+	assert.Equal(t, uint32(os.Getgid()), gids[0])
+	groups, err := os.Getgroups()
+	require.NoError(t, err)
+	for _, g := range groups {
+		assert.Contains(t, gids, uint32(g))
+	}
+}
+
+func TestProcGroups(t *testing.T) {
+	groups, err := procGroups(int32(os.Getpid()))
+	require.NoError(t, err)
+	want, err := os.Getgroups()
+	require.NoError(t, err)
+	assert.Len(t, groups, len(want))
+}

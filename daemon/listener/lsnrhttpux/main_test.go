@@ -102,7 +102,7 @@ func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
 	sock := filepath.Join(t.TempDir(), "http.sock")
 	raw, err := net.Listen("unix", sock)
 	require.NoError(t, err)
-	lsnrT := &T{log: plog.NewDefaultLogger(), addr: sock, peerCred: true, tracked: newTrackListener(raw)}
+	lsnrT := &T{log: plog.NewDefaultLogger(), addr: sock, peerCred: true, tracked: newTrackListener(raw, os.Getgid())}
 	var lsnr net.Listener = lsnrT.tracked
 	lsnrT.listener = &lsnr
 	lsnrT.server = newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +188,7 @@ func TestOwnerGroupUpdates(t *testing.T) {
 	require.NoError(t, lsnrT.applyOwnerGroup(context.Background(), "4242"))
 	raw, err := net.Listen("unix", sock)
 	require.NoError(t, err)
-	lsnrT.tracked = newTrackListener(raw)
+	lsnrT.tracked = newTrackListener(raw, os.Getgid())
 	var lsnr net.Listener = lsnrT.tracked
 	lsnrT.listener = &lsnr
 	require.NoError(t, ownSocket(sock, 4242))

@@ -83,7 +83,7 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	} else {
 		if t.ownerGroup != nil {
-			t.tracked = newTrackListener(listener)
+			t.tracked = newTrackListener(listener, t.gid)
 			listener = t.tracked
 		}
 		t.listener = &listener
@@ -186,7 +186,7 @@ func (t *T) onOwnerGroup(ctx context.Context, group string) {
 		return
 	}
 	if former != "" && former != group && t.tracked != nil {
-		t.tracked.closeConns()
+		t.tracked.regroup(t.gid)
 		t.log.Infof("connections of the socket closed: its group changed from %s to %s", former, group)
 	}
 }
