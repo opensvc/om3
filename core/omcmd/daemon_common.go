@@ -17,11 +17,31 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/mountinfo"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (
-	CmdDaemonCommon struct{}
+	CmdDaemonCommon struct {
+		log *plog.Logger
+	}
 )
+
+// setLogger sets the logger of the command steps, its messages headed by
+// prefix to tell the command they are steps of. The daemon forks the cluster
+// join and leave commands, with no one to read their output: their steps are
+// logged, which reaches the journal, and the console when there is one. It
+// is called by the command Run, once the logging is configured.
+func (t *CmdDaemonCommon) setLogger(prefix string) {
+	t.log = plog.NewDefaultLogger().Attr("pkg", "core/omcmd").WithPrefix(prefix)
+}
+
+// logger returns the logger of the command steps, set by setLogger.
+func (t *CmdDaemonCommon) logger() *plog.Logger {
+	if t.log == nil {
+		t.setLogger("")
+	}
+	return t.log
+}
 
 // isRunning returns true if daemon is running
 func (t *CmdDaemonCommon) isRunning() bool {
@@ -43,7 +63,7 @@ func (t *CmdDaemonCommon) nodeDrain(ctx context.Context) (err error) {
 		command.WithArgs([]string{"node", "drain", "--wait"}),
 		command.WithContext(ctx),
 	)
-	_, _ = fmt.Fprintf(os.Stdout, "Draining node\n")
+	t.logger().Infof("Draining node")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%s: %w", cmd, err)
 	}
@@ -55,12 +75,12 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 	if v, err := file.ExistsAndDir(backupDir); err != nil {
 		return err
 	} else if !v {
-		_, _ = fmt.Fprintf(os.Stdout, "Missing directory %s, skip backup\n", backupDir)
+		t.logger().Infof("Missing directory %s, skip backup", backupDir)
 		return nil
 	}
 
 	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05"))
-	_, _ = fmt.Fprintf(os.Stdout, "move all configs to %s\n", backup)
+	t.logger().Infof("move all configs to %s", backup)
 	// Prefer file.Move to avoid syscall.EXDEV errors on os.Rename
 	err := file.Move(rawconfig.Paths.Etc, backup)
 	if err != nil {
@@ -85,7 +105,7 @@ func (t *CmdDaemonCommon) cleanupVarDir() error {
 	if err != nil {
 		return err
 	}
-	return removeTree(varDir, append(mounts, backup))
+	return removeTree(t.logger(), varDir, append(mounts, backup))
 }
 
 // mountsUnder returns the mount points under dir.
@@ -106,7 +126,7 @@ func mountsUnder(dir string) ([]string, error) {
 // removeTree removes the entries of dir, but the paths of keep and what they
 // hold. A directory holding a path of keep is not removed, its other entries
 // are.
-func removeTree(dir string, keep []string) error {
+func removeTree(log *plog.Logger, dir string, keep []string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("read directory %s: %w", dir, err)
@@ -115,14 +135,14 @@ func removeTree(dir string, keep []string) error {
 	for _, entry := range entries {
 		p := filepath.Join(dir, entry.Name())
 		if slices.Contains(keep, p) {
-			_, _ = fmt.Fprintf(os.Stdout, "Keep %s\n", p)
+			log.Infof("Keep %s", p)
 			continue
 		}
 		holds := slices.ContainsFunc(keep, func(s string) bool {
 			return strings.HasPrefix(s, p+"/")
 		})
 		if holds && entry.IsDir() {
-			if err := removeTree(p, keep); err != nil {
+			if err := removeTree(log, p, keep); err != nil {
 				errs = append(errs, err)
 			}
 			continue

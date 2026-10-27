@@ -1,14 +1,22 @@
 package commoncmd
 
 import (
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
 func TestCmdClusterEnrollToken(t *testing.T) {
@@ -63,4 +71,172 @@ func TestCmdClusterEnrollToken(t *testing.T) {
 		_, err := c.token()
 		assert.ErrorIs(t, err, ErrFlagInvalid)
 	})
+}
+
+// fakeEventReader serves the events of msgs, then io.EOF.
+type fakeEventReader struct {
+	msgs []any
+}
+
+func (r *fakeEventReader) Read() (*event.Event, error) {
+	if len(r.msgs) == 0 {
+		return nil, io.EOF
+	}
+	m := r.msgs[0]
+	r.msgs = r.msgs[1:]
+	return event.ToEvent(m, 0), nil
+}
+
+func (r *fakeEventReader) Close() error { return nil }
+
+// captureStdout returns what f writes on the standard output.
+func captureStdout(t *testing.T, f func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	stdout := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = stdout }()
+	f()
+	require.NoError(t, w.Close())
+	b, err := io.ReadAll(r)
+	require.NoError(t, err)
+	return string(b)
+}
+
+// TestCmdClusterEnrollWaitCollector pins that the enroll wait reports the
+// collector registration of the enrolled node from its first collector
+// state, whether it comes before or after the node is alive, or from the
+// cluster status past the event stream, and fails when it stays unknown.
+// A node already in the cluster nodes is reported from the cluster status,
+// and fails when its heartbeat is not beating.
+func TestCmdClusterEnrollWaitCollector(t *testing.T) {
+	timeout, interval := collectorStateTimeout, collectorStateInterval
+	collectorStateTimeout, collectorStateInterval = 50*time.Millisecond, 10*time.Millisecond
+	t.Cleanup(func() { collectorStateTimeout, collectorStateInterval = timeout, interval })
+
+	collectorUpdated := func(node, state string) *msgbus.DaemonCollectorUpdated {
+		m := &msgbus.DaemonCollectorUpdated{Node: node}
+		m.Value.State = state
+		return m
+	}
+	for name, tc := range map[string]struct {
+		msgs    []any
+		status  string
+		beating bool
+		want    string
+		not     string
+		wantErr string
+	}{
+		"registered, state after alive": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+				collectorUpdated("node2", ""),
+				collectorUpdated("node3", "warning"),
+				collectorUpdated("node2", "speaker-candidate"),
+			},
+			want: "Node node2 is alive\nNode node2 is registered on the collector\n",
+		},
+		"registered, state before alive": {
+			msgs: []any{
+				collectorUpdated("node2", "speaker"),
+				&msgbus.NodeAlive{Node: "node2"},
+			},
+			want: "Node node2 is alive\nNode node2 is registered on the collector\n",
+		},
+		"not registered": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+				collectorUpdated("node2", "warning"),
+			},
+			want: "Node node2 is not registered on the collector (state warning): register it with 'om node register'\n",
+		},
+		"no collector": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+				collectorUpdated("node2", "disabled"),
+			},
+			want: "Node node2 is alive\n",
+			not:  "collector",
+		},
+		"collector state from the cluster status": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+			},
+			status: "speaker-candidate",
+			want:   "Node node2 is alive\nNode node2 is registered on the collector\n",
+		},
+		"no collector state": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+			},
+			want:    "Node node2 is alive\n",
+			wantErr: "node node2 is alive, but its collector state is unknown",
+		},
+		"already a cluster node, registered": {
+			msgs: []any{
+				&msgbus.JoinIgnored{CandidateNode: "node2"},
+			},
+			beating: true,
+			status:  "speaker",
+			want:    "Join ignored: node2 is already a cluster node\nNode node2 is alive\nNode node2 is registered on the collector\n",
+		},
+		"already a cluster node, not registered": {
+			msgs: []any{
+				&msgbus.JoinIgnored{CandidateNode: "node2"},
+			},
+			beating: true,
+			status:  "warning",
+			want:    "Node node2 is not registered on the collector (state warning)",
+		},
+		"already a cluster node, not beating": {
+			msgs: []any{
+				&msgbus.JoinIgnored{CandidateNode: "node2"},
+			},
+			status:  "speaker",
+			want:    "Join ignored: node2 is already a cluster node\n",
+			not:     "alive",
+			wantErr: "node node2 is a cluster node, but its heartbeat is not beating",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var err error
+			c := &CmdClusterEnroll{
+				collectorState: func(string) (string, error) { return tc.status, nil },
+				nodeBeating:    func(string) (bool, error) { return tc.beating, nil },
+			}
+			out := captureStdout(t, func() {
+				err = c.waitResult(context.Background(), &fakeEventReader{msgs: tc.msgs}, "node2")
+			})
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Contains(t, out, tc.want)
+			if tc.not != "" {
+				assert.NotContains(t, out, tc.not)
+			}
+		})
+	}
+}
+
+// TestIsBeating pins that a node is beating when the api node receives its
+// heartbeat on any stream, and that the api node is.
+func TestIsBeating(t *testing.T) {
+	var data clusterdump.Data
+	data.Daemon.Nodename = "node1"
+	var hb daemonsubsystem.Heartbeat
+	hb.Streams = []daemonsubsystem.HeartbeatStream{
+		{Peers: map[string]daemonsubsystem.HeartbeatStreamPeerStatus{"node2": {IsBeating: false}, "node3": {IsBeating: false}}},
+		{Peers: map[string]daemonsubsystem.HeartbeatStreamPeerStatus{"node2": {IsBeating: true}}},
+	}
+	var n node.Node
+	n.Daemon.Heartbeat = hb
+	data.Cluster.Node = map[string]node.Node{"node1": n}
+
+	assert.True(t, isBeating(data, "node1"), "the api node")
+	assert.True(t, isBeating(data, "node2"), "beating on one stream")
+	assert.False(t, isBeating(data, "node3"), "beating on no stream")
+	assert.False(t, isBeating(data, "node4"), "unknown")
 }

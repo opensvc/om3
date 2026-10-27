@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,8 +54,10 @@ var (
 )
 
 func (t *CmdClusterLeave) Run() error {
+	t.setLogger("cluster leave: ")
 	err := t.run()
 	if err != nil {
+		t.logger().Errorf("%s", err)
 		return fmt.Errorf("%w: %w", ErrCmdClusterLeave, err)
 	}
 	return nil
@@ -144,7 +145,7 @@ func (t *CmdClusterLeave) run() (err error) {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(os.Stdout, "Stop daemon\n")
+	t.logger().Infof("Stop daemon")
 	if err := (&CmdDaemonStop{}).Run(); err != nil {
 		return err
 	}
@@ -160,7 +161,7 @@ func (t *CmdClusterLeave) run() (err error) {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(os.Stdout, "Start daemon\n")
+	t.logger().Infof("Start daemon")
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
 	}
@@ -211,7 +212,7 @@ func (t *CmdClusterLeave) createUser(ctx context.Context, username, password str
 		return err
 	}
 	p := naming.Path{Name: username, Namespace: naming.NsSys, Kind: naming.KindUsr}
-	_, _ = fmt.Fprintf(os.Stdout, "Create %s\n", p)
+	t.logger().Infof("Create %s", p)
 
 	usr, err := object.NewUsr(p)
 	if err != nil {
@@ -309,14 +310,14 @@ func (t *CmdClusterLeave) waitResult(ctx context.Context) error {
 			}
 			switch ev.Kind {
 			case (&msgbus.LeaveSuccess{}).Kind():
-				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
+				t.logger().Infof("Cluster nodes updated")
 				return nil
 			case (&msgbus.LeaveError{}).Kind():
 				err := fmt.Errorf("leave error: %s", ev.Data)
 				return err
 			case (&msgbus.LeaveIgnored{}).Kind():
 				// TODO parse Reason
-				_, _ = fmt.Fprintf(os.Stdout, "Leave ignored: %s", ev.Data)
+				t.logger().Infof("Leave ignored: %s", ev.Data)
 				return nil
 			default:
 				return fmt.Errorf("unexpected event %s %v", ev.Kind, ev.Data)
@@ -326,7 +327,7 @@ func (t *CmdClusterLeave) waitResult(ctx context.Context) error {
 }
 
 func (t *CmdClusterLeave) leave(ctx context.Context, c *client.T) error {
-	_, _ = fmt.Fprintf(os.Stdout, "Daemon leave\n")
+	t.logger().Infof("Daemon leave")
 	params := api.PostClusterLeaveParams{
 		Node: t.localhost,
 	}

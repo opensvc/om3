@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // The paths kept and what they hold stay, the directories leading to them
@@ -25,7 +27,7 @@ func TestRemoveTree(t *testing.T) {
 		require.NoError(t, os.WriteFile(p, nil, 0600))
 	}
 	keep := []string{filepath.Join(dir, "backup"), filepath.Join(dir, "pool/quota")}
-	require.NoError(t, removeTree(dir, keep))
+	require.NoError(t, removeTree(plog.NewDefaultLogger(), dir, keep))
 	assert.FileExists(t, filepath.Join(dir, "backup/a"))
 	assert.FileExists(t, filepath.Join(dir, "pool/quota/dirquota1/data"))
 	assert.NoDirExists(t, filepath.Join(dir, "pool/other"))
