@@ -59,7 +59,9 @@ func New(ctx context.Context, enableUI bool) *T {
 	// left on /metrics for each is a few aggregates, enough to tell that
 	// coming here is worth it. See util/metricsreg.
 	for name, registry := range metricsreg.Detail {
-		e.GET(detailMetricsURL+name, echo.WrapHandler(promhttp.HandlerFor(registry, promhttp.HandlerOpts{})))
+		// They name the objects, and the pg one the usage of the
+		// node: root's, where /metrics is public.
+		e.GET(detailMetricsURL+name, echo.WrapHandler(promhttp.HandlerFor(registry, promhttp.HandlerOpts{})), daemonapi.RequireRoot)
 	}
 	if enableUI {
 		e.Group(docPrefixURL).Use(daemonapi.UIMiddleware(ctx, docPrefixURL, docSpecURL))

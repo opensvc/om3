@@ -172,30 +172,44 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	}
 }
 
+// isPublic says the request of the route path is served with no
+// authentication: the gets of the webapp, of the api documentation, and of
+// /metrics, which a prometheus scrapes and which holds the aggregates alone.
+//
+// The detail pages, /metrics/<subsystem>, are not: they name the objects,
+// and the pg one the usage of the node, so they are root's.
+func isPublic(method, path string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+	switch {
+	case strings.HasPrefix(path, "/api/docs"):
+		return true
+	case strings.HasPrefix(path, "/api/"):
+		return path == "/api/auth/info" || path == "/api/openapi"
+	case strings.HasPrefix(path, "/metrics/"):
+		return false
+	}
+	return true
+}
+
+// RequireRoot answers a caller without the root grant with a 403, as the
+// detail metrics pages do, which are served out of the api.
+func RequireRoot(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if v, err := assertRoot(c); !v {
+			return err
+		}
+		return next(c)
+	}
+}
+
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	serverAddr := daemonctx.ListenAddr(parent)
 
-	isPublic := func(c echo.Context) bool {
-		if c.Request().Method != http.MethodGet {
-			return false
-		}
-		usrPath := c.Path()
-		// TODO confirm no auth GET /metrics
-		if strings.HasPrefix(usrPath, "/api/docs") {
-			return true
-		} else if strings.HasPrefix(usrPath, "/api/") {
-			if usrPath == "/api/auth/info" || usrPath == "/api/openapi" {
-				return true
-			}
-			return false
-		}
-		return true
-	}
-
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// TODO verify for alternate method for /public, /metrics
-			if isPublic(c) {
+			if isPublic(c.Request().Method, c.Path()) {
 				c.Set("user", &daemonauth.Info{Username: "nobody", Strategy: "public"})
 				c.Set("grants", rbac.Grants{})
 				return next(c)
