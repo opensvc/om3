@@ -10,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -68,27 +69,34 @@ func TestTheReasonAScopeIsNotFetchedIsSaidOnce(t *testing.T) {
 }
 
 // The files are fetched from the peer holding the files of the most of the
-// same things: with a container named per node, a peer may run another one,
-// whose files the fetch skips, and hold the files of the other resources all
-// the same.
+// same things the fetch takes: up there and down here. With a container named
+// per node, a peer may run another one, whose files the fetch skips, and hold
+// the files of the other resources all the same.
 func TestTheFilesArePickedFromThePeerOfTheMostSameScopes(t *testing.T) {
 	files := resource.Files{{Name: "/etc/libvirt/qemu/vm.xml"}}
+	up, down := status.Up, status.Down
 	local := instance.Status{Resources: instance.ResourceStatuses{
-		"container#1": {SyncScope: "vm1"},
-		"disk#1":      {},
+		"container#1": {Status: down, SyncScope: "vm1"},
+		"disk#1":      {Status: down},
+		"disk#2":      {Status: up},
 	}}
 	same := instance.Status{Resources: instance.ResourceStatuses{
-		"container#1": {SyncScope: "vm1", Files: files},
-		"disk#1":      {Files: files},
+		"container#1": {Status: up, SyncScope: "vm1", Files: files},
+		"disk#1":      {Status: up, Files: files},
 	}}
 	partly := instance.Status{Resources: instance.ResourceStatuses{
-		"container#1": {SyncScope: "vm2", Files: files},
-		"disk#1":      {Files: files},
+		"container#1": {Status: up, SyncScope: "vm2", Files: files},
+		"disk#1":      {Status: up, Files: files},
 	}}
 	other := instance.Status{Resources: instance.ResourceStatuses{
-		"container#1": {SyncScope: "vm2", Files: files},
+		"container#1": {Status: up, SyncScope: "vm2", Files: files},
+	}}
+	unfetchable := instance.Status{Resources: instance.ResourceStatuses{
+		"container#1": {Status: down, SyncScope: "vm1", Files: files},
+		"disk#2":      {Status: up, Files: files},
 	}}
 	assert.Equal(t, 2, syncScopeMatches(same, local))
 	assert.Equal(t, 1, syncScopeMatches(partly, local), "the files of the disk are the same, the container ones are not")
 	assert.Equal(t, 0, syncScopeMatches(other, local), "nothing of the peer is to fetch")
+	assert.Equal(t, 0, syncScopeMatches(unfetchable, local), "a resource down there, or up here, is not fetched")
 }
