@@ -1,0 +1,948 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "om3 metrics",
+      "type": "link",
+      "url": "d/om3-metrics"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "oc3 metrics",
+      "type": "link",
+      "url": "d/oc3-metrics"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "oc3 logs",
+      "type": "link",
+      "url": "d/oc3-logs"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) | stats by (LEVEL) count() as logs",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "logs by level",
+      "type": "timeseries",
+      "description": "All om3 logs, daemon and commands, by level."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) (LEVEL:i(warn) or LEVEL:i(warning) or LEVEL:i(err) or LEVEL:i(error)) | stats by (NODE) count() as logs",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "warnings and errors by node",
+      "type": "timeseries",
+      "description": "A node standing out is worth a look in the warnings and errors panel below, filtered on it."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) PKG:daemon/daemon \"daemon ✅ started\" | stats by (NODE) count() as starts",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "daemon starts by node",
+      "type": "timeseries",
+      "description": "Daemon starts. A start not preceded by a stop in the daemon starts and stops panel means the daemon died."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) CRM:=true ACTION:* \"<<< done\" | stats by (OBJ_PATH, ACTION) count() as actions",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "actions by object",
+      "type": "timeseries",
+      "description": "Object actions that ran to their end, by object and action, wherever they were started from."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) CRM:=true ACTION:* \">>> do\" | stats by (ORIGIN) count() as actions",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "actions by origin",
+      "type": "timeseries",
+      "description": "Object actions begun, by origin. user: a command run by hand. daemon/monitor: the orchestration. daemon/scheduler: a scheduled task. daemon/api: asked over the api, from another node or a client."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) (LEVEL:i(warn) or LEVEL:i(warning) or LEVEL:i(err) or LEVEL:i(error)) OBJ_PATH:* | stats by (OBJ_PATH, LEVEL) count() as n | sort by (n desc) limit 20",
+          "queryType": "stats",
+          "refId": "A"
+        }
+      ],
+      "title": "objects with the most warnings and errors",
+      "type": "table",
+      "description": "The objects that log the most warnings and errors, daemon and actions alike."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) (LEVEL:i(warn) or LEVEL:i(warning) or LEVEL:i(err) or LEVEL:i(error)) RID:* | stats by (OBJ_PATH, RID) count() as n | sort by (n desc) limit 20",
+          "queryType": "stats",
+          "refId": "A"
+        }
+      ],
+      "title": "resources with the most warnings and errors",
+      "type": "table",
+      "description": "The same, by resource: which disk, fs, ip or app of an object keeps failing."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) (LEVEL:i(warn) or LEVEL:i(warning) or LEVEL:i(err) or LEVEL:i(error)) | collapse_nums | stats by (PKG, _msg) count() as n | sort by (n desc) limit 20",
+          "queryType": "stats",
+          "refId": "A"
+        }
+      ],
+      "title": "top warning and error messages",
+      "type": "table",
+      "description": "Numbers in the messages are replaced by <N>, so messages that only differ by a count, a pid or an id are counted as one. PKG is the om3 package that logged it."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 0,
+        "y": 22
+      },
+      "id": 9,
+      "options": {
+        "dedupStrategy": "none",
+        "detailsMode": "sidebar",
+        "displayedFields": [
+          "NODE",
+          "HOSTNAME",
+          "___LOG_LINE_BODY___"
+        ],
+        "enableInfiniteScrolling": true,
+        "enableLogDetails": true,
+        "showControls": true,
+        "showFieldSelector": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) PKG:daemon/daemon (\"daemon ❌ stopped\" or \"daemon ✅ started\")",
+          "queryType": "instant",
+          "refId": "A",
+          "direction": "desc"
+        }
+      ],
+      "title": "daemon starts and stops",
+      "type": "logs",
+      "description": "Daemon start and stop messages, newest first."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 16,
+        "x": 8,
+        "y": 22
+      },
+      "id": 10,
+      "options": {
+        "dedupStrategy": "none",
+        "detailsMode": "sidebar",
+        "displayedFields": [
+          "NODE",
+          "OBJ_PATH",
+          "ACTION",
+          "ORIGIN",
+          "___LOG_LINE_BODY___"
+        ],
+        "enableInfiniteScrolling": true,
+        "enableLogDetails": true,
+        "showControls": true,
+        "showFieldSelector": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) CRM:=true ACTION:* (\">>> do\" or \"<<< done\")",
+          "queryType": "instant",
+          "refId": "A",
+          "direction": "desc"
+        }
+      ],
+      "title": "actions",
+      "type": "logs",
+      "description": "The begin and end of each object action, with the command line, the origin and, at the end, the duration and the instance status."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 11,
+      "options": {
+        "dedupStrategy": "none",
+        "detailsMode": "sidebar",
+        "displayedFields": [
+          "LEVEL",
+          "NODE",
+          "OBJ_PATH",
+          "RID",
+          "PKG",
+          "___LOG_LINE_BODY___"
+        ],
+        "enableInfiniteScrolling": true,
+        "enableLogDetails": true,
+        "showControls": true,
+        "showFieldSelector": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter) (LEVEL:i(warn) or LEVEL:i(warning) or LEVEL:i(err) or LEVEL:i(error))",
+          "queryType": "instant",
+          "refId": "A",
+          "direction": "desc"
+        }
+      ],
+      "title": "warnings and errors",
+      "type": "logs",
+      "description": "om3 warnings and errors, newest first."
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "id": 12,
+      "options": {
+        "dedupStrategy": "none",
+        "detailsMode": "sidebar",
+        "displayedFields": [
+          "LEVEL",
+          "NODE",
+          "OBJ_PATH",
+          "RID",
+          "PKG",
+          "___LOG_LINE_BODY___"
+        ],
+        "enableInfiniteScrolling": true,
+        "enableLogDetails": true,
+        "showControls": true,
+        "showFieldSelector": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" OBJ_PATH:~\"^(${object:regex})$\" PKG:~\"^(${pkg:regex})$\" ($filter)",
+          "queryType": "instant",
+          "refId": "A",
+          "direction": "desc"
+        }
+      ],
+      "title": "logs",
+      "type": "logs",
+      "description": "All om3 logs. Narrow them with the node, object and package pickers, or a LogsQL filter such as ACTION:start or SESSION_ID:<id>."
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "om3",
+    "logs"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "label": "datasource",
+        "name": "datasource",
+        "options": [],
+        "query": "victoriametrics-logs-datasource",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "*",
+          "value": "*"
+        },
+        "description": "LogsQL filter added to every query, e.g. HOSTNAME:node1 or error:timeout",
+        "label": "LogsQL filter",
+        "name": "filter",
+        "options": [
+          {
+            "selected": true,
+            "text": "*",
+            "value": "*"
+          }
+        ],
+        "query": "*",
+        "type": "textbox"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "victoriametrics-logs-datasource",
+          "uid": "${datasource}"
+        },
+        "definition": "COMM:=\"om\" | field values NODE",
+        "includeAll": true,
+        "label": "node",
+        "multi": true,
+        "name": "node",
+        "options": [],
+        "query": {
+          "type": "fieldValue",
+          "field": "NODE",
+          "query": "COMM:=\"om\"",
+          "limit": 1000,
+          "refId": "VictoriaLogsVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "victoriametrics-logs-datasource",
+          "uid": "${datasource}"
+        },
+        "definition": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" | field values OBJ_PATH",
+        "includeAll": true,
+        "label": "object",
+        "multi": true,
+        "name": "object",
+        "options": [],
+        "query": {
+          "type": "fieldValue",
+          "field": "OBJ_PATH",
+          "query": "COMM:=\"om\" NODE:~\"^(${node:regex})$\"",
+          "limit": 1000,
+          "refId": "VictoriaLogsVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "victoriametrics-logs-datasource",
+          "uid": "${datasource}"
+        },
+        "definition": "COMM:=\"om\" NODE:~\"^(${node:regex})$\" | field values PKG",
+        "includeAll": true,
+        "label": "package",
+        "multi": true,
+        "name": "pkg",
+        "options": [],
+        "query": {
+          "type": "fieldValue",
+          "field": "PKG",
+          "query": "COMM:=\"om\" NODE:~\"^(${node:regex})$\"",
+          "limit": 1000,
+          "refId": "VictoriaLogsVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "baseFilters": [],
+        "datasource": {
+          "type": "victoriametrics-logs-datasource",
+          "uid": "${datasource}"
+        },
+        "filters": [],
+        "name": "Filters",
+        "type": "adhoc"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "om3 logs",
+  "uid": "om3-logs",
+  "version": 1,
+  "weekStart": ""
+}
