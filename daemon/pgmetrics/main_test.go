@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -169,21 +170,26 @@ func withFakeCgroupTree(t testing.TB, paths []string, withCgroup []string) *Mana
 	for _, ps := range withCgroup {
 		p, err := naming.ParsePath(ps)
 		require.NoError(t, err)
-		dir := forgeCgroupPath(p)
-		require.NoError(t, os.MkdirAll(dir, 0755))
-		for name, content := range map[string]string{
-			"memory.current": "16384\n",
-			"memory.max":     "65536\n",
-			"cpu.max":        "max 100000\n",
-			"cpu.weight":     "100\n",
-			"io.weight":      "default 100\n",
-			"cpu.stat":       "usage_usec 1000\nuser_usec 600\nsystem_usec 400\nnr_periods 3\n",
-			"memory.stat":    "anon 4096\nfile 8192\npgfault 12\n",
-		} {
-			require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0644))
-		}
+		writeCgroupFiles(t, forgeCgroupPath(p))
 	}
 	return New()
+}
+
+// writeCgroupFiles makes the cgroup dir, with the files the walk reads.
+func writeCgroupFiles(t testing.TB, dir string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	for name, content := range map[string]string{
+		"memory.current": "16384\n",
+		"memory.max":     "65536\n",
+		"cpu.max":        "max 100000\n",
+		"cpu.weight":     "100\n",
+		"io.weight":      "default 100\n",
+		"cpu.stat":       "usage_usec 1000\nuser_usec 600\nsystem_usec 400\nnr_periods 3\n",
+		"memory.stat":    "anon 4096\nfile 8192\npgfault 12\n",
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0644))
+	}
 }
 
 func isRegistered(reg prometheus.Registerer, name string) bool {
@@ -230,9 +236,9 @@ func TestAVanishedCgroupLeavesNoSeries(t *testing.T) {
 	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "ns1/svc/b"}, []string{"ns1/svc/a"})
 
 	s := m.snapshot(true)
-	assert.Equal(t, 1, s.cgroups)
+	assert.Equal(t, 3, s.cgroups, "the opensvc slice, the ns1 slice and ns1/svc/a")
 	assert.Equal(t, 1, s.withoutCgroup)
-	assert.Contains(t, metricNames(s.detail), "opensvc_pg_cgroup_memory_current_bytes")
+	assert.Contains(t, seriesOf(s.detail, "opensvc_pg_cgroup_memory_current_bytes"), `object,ns1,ns1/svc/a`)
 
 	p, err := naming.ParsePath("ns1/svc/a")
 	require.NoError(t, err)
@@ -240,12 +246,86 @@ func TestAVanishedCgroupLeavesNoSeries(t *testing.T) {
 
 	m.snap = nil // the cache would otherwise still hold the walk above
 	s = m.snapshot(true)
-	assert.Equal(t, 0, s.cgroups)
+	assert.Equal(t, 2, s.cgroups)
 	assert.Equal(t, 2, s.withoutCgroup)
-	assert.NotContains(t, metricNames(s.detail), "opensvc_pg_cgroup_memory_current_bytes",
+	assert.NotContains(t, seriesOf(s.detail, "opensvc_pg_cgroup_memory_current_bytes"), `object,ns1,ns1/svc/a`,
 		"the usage series must go with the cgroup")
-	assert.Contains(t, metricNames(s.detail), "opensvc_pg_cgroup_exists",
+	assert.Contains(t, valuesOf(s.detail, "opensvc_pg_cgroup_exists"), `object,ns1,ns1/svc/a=0`,
 		"and exists must stay, to report it is gone")
+}
+
+// The opensvc slice and the slice of each namespace are reported as the
+// objects are, told apart by the scope label: what runs in a namespace
+// slice outside of its objects, and the total of the node, are read from
+// them. The root namespace has no slice, its objects are in the opensvc one.
+func TestTheSlicesAreReportedByScope(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "svc/b", "ns2/vol/c"}, []string{"ns1/svc/a", "svc/b"})
+	writeCgroupFiles(t, CgroupRoot)
+	writeCgroupFiles(t, forgeNamespaceCgroupPath("ns1"))
+
+	s := m.snapshot(true)
+	assert.ElementsMatch(t, []string{
+		"opensvc,,=1",
+		"namespace,ns1,=1",
+		"namespace,ns2,=0",
+		"object,ns1,ns1/svc/a=1",
+		"object,root,b=1",
+		"object,ns2,ns2/vol/c=0",
+	}, valuesOf(s.detail, "opensvc_pg_cgroup_exists"))
+	assert.ElementsMatch(t, []string{
+		"opensvc,,",
+		"namespace,ns1,",
+		"object,ns1,ns1/svc/a",
+		"object,root,b",
+	}, seriesOf(s.detail, "opensvc_pg_cgroup_memory_current_bytes"))
+}
+
+// The objects with no process group, the namespace configurations, the
+// secrets, the configmaps and the users, have no cgroup to report: they
+// are not reported missing either.
+func TestTheObjectsWithNoProcessGroupAreNotReported(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "ns1/", "/", "ns1/sec/s", "ns1/cfg/c", "system/usr/u"}, []string{"ns1/svc/a"})
+
+	s := m.snapshot(true)
+	assert.Equal(t, 0, s.withoutCgroup)
+	for _, v := range valuesOf(s.detail, "opensvc_pg_cgroup_exists") {
+		assert.True(t, strings.HasPrefix(v, "opensvc,") || strings.HasPrefix(v, "namespace,ns1,") || strings.HasPrefix(v, "object,ns1,ns1/svc/a="), v)
+	}
+}
+
+// seriesOf returns the label values, joined by commas, of the series named
+// name in metrics.
+func seriesOf(metrics []prometheus.Metric, name string) []string {
+	l := make([]string, 0)
+	for _, v := range valuesOf(metrics, name) {
+		l = append(l, v[:strings.LastIndex(v, "=")])
+	}
+	return l
+}
+
+// valuesOf returns the label values, joined by commas, and the value of the
+// series named name in metrics, as "<labels>=<value>".
+func valuesOf(metrics []prometheus.Metric, name string) []string {
+	l := make([]string, 0)
+	for _, metric := range metrics {
+		if !strings.Contains(metric.Desc().String(), `fqName: "`+name+`"`) {
+			continue
+		}
+		var pb dto.Metric
+		if err := metric.Write(&pb); err != nil {
+			continue
+		}
+		values := make([]string, 0, len(pb.Label))
+		for _, label := range []string{"scope", "namespace", "path", "stat"} {
+			for _, lp := range pb.Label {
+				if lp.GetName() == label {
+					values = append(values, lp.GetValue())
+				}
+			}
+		}
+		l = append(l, fmt.Sprintf("%s=%g", strings.Join(values, ","), pb.GetGauge().GetValue()))
+	}
+	return l
 }
 
 func metricNames(metrics []prometheus.Metric) []string {
@@ -271,7 +351,7 @@ func TestTheHintWalkDoesNotPayForTheDetail(t *testing.T) {
 
 	s := m.snapshot(false)
 	assert.Empty(t, s.detail, "the cheap walk emits no detail")
-	assert.Equal(t, 1, s.cgroups, "but still counts the cgroups")
+	assert.Equal(t, 3, s.cgroups, "but still counts the cgroups, the slices included")
 	assert.Equal(t, 1, s.withoutCgroup)
 	assert.InDelta(t, 16384.0/65536.0, s.utilizationMax, 1e-9, "and still reads the two files the ratio needs")
 }

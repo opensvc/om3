@@ -1,8 +1,9 @@
 // Package pgmetrics provides Prometheus metrics for cgroup resource usage
 // under the opensvc.slice hierarchy.
 //
-// It exposes cgroup metrics (CPU, memory, etc.) for all cgroups created by
-// the pg_* object keywords.
+// It exposes cgroup metrics (CPU, memory, etc.) for the cgroups of the
+// process groups: the opensvc slice itself, the slice of each namespace, and
+// the slice of each object, told apart by the scope label.
 package pgmetrics
 
 import (
@@ -29,6 +30,34 @@ var (
 	// a const so the tests can point collect() at a tree they built.
 	CgroupRoot = "/sys/fs/cgroup/opensvc.slice"
 )
+
+// The scope label values: the cgroup a series is of.
+const (
+	// scopeOpensvc is the opensvc slice, which holds every group of the
+	// node and the daemon: its namespace and path labels are empty.
+	scopeOpensvc = "opensvc"
+
+	// scopeNamespace is the slice of a namespace, which holds the groups
+	// of its objects: its path label is empty. The objects of the root
+	// namespace have no namespace slice, they are in the opensvc slice.
+	scopeNamespace = "namespace"
+
+	// scopeObject is the slice of an object.
+	scopeObject = "object"
+)
+
+// hasCgroup says the objects of kind k have a process group: the kinds with
+// resources. The objects of the other kinds, the namespace configurations
+// among them, whose group is the namespace slice, have none to report.
+func hasCgroup(k naming.Kind) bool {
+	return k == naming.KindSvc || k == naming.KindVol
+}
+
+// forgeNamespaceCgroupPath returns the cgroup path of the slice of the
+// namespace ns, which is not the root one.
+func forgeNamespaceCgroupPath(ns string) string {
+	return filepath.Join(CgroupRoot, "opensvc-"+systemd.Escape("ns."+ns)+".slice")
+}
 
 // forgeCgroupPath creates the expected cgroup filesystem path from an object path
 // This mimics the structure created by the pg system
@@ -109,8 +138,8 @@ var (
 	}
 )
 
-var cgroupLabels = []string{"namespace", "path"}
-var cgroupStatLabels = []string{"namespace", "path", "stat"}
+var cgroupLabels = []string{"scope", "namespace", "path"}
+var cgroupStatLabels = []string{"scope", "namespace", "path", "stat"}
 
 // The hints, on the default registry. Every metric above carries a path
 // label and so grows with the cluster, which is why they are served
@@ -120,7 +149,7 @@ var (
 	cgroupsDesc = prometheus.NewDesc("opensvc_pg_cgroups",
 		"The number of cgroups reported at /metrics/pg", nil, nil)
 	objectsWithoutCgroupDesc = prometheus.NewDesc("opensvc_pg_objects_without_cgroup",
-		"The number of objects with no cgroup (the cgroups that do exist are at /metrics/pg)", nil, nil)
+		"The number of svc and vol objects with no cgroup (the cgroups that do exist are at /metrics/pg)", nil, nil)
 	memoryUtilizationMaxDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_utilization_max_ratio",
 		"The highest memory usage over memory limit ratio among the limited cgroups (per cgroup at /metrics/pg)", nil, nil)
 )
@@ -222,23 +251,37 @@ func (m *Manager) walk(full bool) *snapshot {
 		return s
 	}
 	var e emitter
-	for _, objPath := range object.StatusData.GetPaths() {
-		namespace, path := objPath.Namespace, objPath.String()
-		cgroupPath := forgeCgroupPath(objPath)
+	visit := func(cgroupPath string, labels ...string) bool {
 		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-			s.withoutCgroup++
 			if full {
-				e.gauge(cgroupExistsDesc, 0, namespace, path)
+				e.gauge(cgroupExistsDesc, 0, labels...)
 			}
-			continue
+			return false
 		}
 		s.cgroups++
 		if full {
-			e.gauge(cgroupExistsDesc, 1, namespace, path)
+			e.gauge(cgroupExistsDesc, 1, labels...)
 		}
-		if utilization := m.collectCgroupMetrics(&e, full, cgroupPath, namespace, path); utilization > s.utilizationMax {
+		if utilization := m.collectCgroupMetrics(&e, full, cgroupPath, labels...); utilization > s.utilizationMax {
 			s.utilizationMax = utilization
 		}
+		return true
+	}
+	visit(CgroupRoot, scopeOpensvc, "", "")
+	namespaces := make(map[string]struct{})
+	for _, objPath := range object.StatusData.GetPaths() {
+		if !hasCgroup(objPath.Kind) {
+			continue
+		}
+		if objPath.Namespace != naming.NsRoot {
+			namespaces[objPath.Namespace] = struct{}{}
+		}
+		if !visit(forgeCgroupPath(objPath), scopeObject, objPath.Namespace, objPath.String()) {
+			s.withoutCgroup++
+		}
+	}
+	for ns := range namespaces {
+		visit(forgeNamespaceCgroupPath(ns), scopeNamespace, ns, "")
 	}
 	s.detail = e.out
 	return s
@@ -294,7 +337,7 @@ func (m *Manager) unregisterMetrics() {
 // With full false it reads only the two files that ratio needs and emits
 // nothing. That is the walk a scrape of /metrics wants: the hint tells
 // you whether to go and look, and it should not cost what looking costs.
-func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namespace, objPath string) (memoryUtilization float64) {
+func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath string, labels ...string) (memoryUtilization float64) {
 	// Read memory.current and memory.max first: they are the only files
 	// the hint walk opens, and the ratio is computed from them.
 	var memCurrentVal, memMaxVal float64
@@ -302,7 +345,7 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namesp
 	if memCurrent, err := readFile(cgroupPath, "memory.current"); err == nil {
 		if val, err := parseUint(memCurrent); err == nil {
 			if full {
-				e.gauge(memoryCurrentDesc, float64(val), namespace, objPath)
+				e.gauge(memoryCurrentDesc, float64(val), labels...)
 			}
 			memCurrentVal, haveCurrent = float64(val), true
 		}
@@ -312,7 +355,7 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namesp
 	if memMax, err := readFile(cgroupPath, "memory.max"); err == nil {
 		if val, err := parseLimit(memMax); err == nil {
 			if full {
-				e.gauge(memoryMaxDesc, val, namespace, objPath)
+				e.gauge(memoryMaxDesc, val, labels...)
 			}
 			memMaxVal, haveMax = val, true
 		}
@@ -326,24 +369,24 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namesp
 
 	// Read cpu.stat
 	if cpuStat, err := readFile(cgroupPath, "cpu.stat"); err == nil {
-		parseCPUStat(e, cpuStat, namespace, objPath)
+		parseCPUStat(e, cpuStat, labels...)
 	}
 
 	// Read memory.stat
 	if memStat, err := readFile(cgroupPath, "memory.stat"); err == nil {
-		parseMemoryStat(e, memStat, namespace, objPath)
+		parseMemoryStat(e, memStat, labels...)
 	}
 
 	// Read cpu.weight (cgroup v2) or cpu.shares (cgroup v1), into their
 	// own metrics, the two not being the same scale.
 	if cpuWeight, err := readFile(cgroupPath, "cpu.weight"); err == nil {
 		if val, err := parseUint(cpuWeight); err == nil {
-			e.gauge(cpuWeightDesc, float64(val), namespace, objPath)
+			e.gauge(cpuWeightDesc, float64(val), labels...)
 		}
 	}
 	if cpuShares, err := readFile(cgroupPath, "cpu.shares"); err == nil {
 		if val, err := parseUint(cpuShares); err == nil {
-			e.gauge(cpuSharesDesc, float64(val), namespace, objPath)
+			e.gauge(cpuSharesDesc, float64(val), labels...)
 		}
 	}
 
@@ -352,18 +395,18 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namesp
 	// Both are microseconds, so they feed the same two metrics.
 	if cpuMax, err := readFile(cgroupPath, "cpu.max"); err == nil {
 		if quota, period, err := parseCPUMax(cpuMax); err == nil {
-			e.gauge(cpuQuotaDesc, quota, namespace, objPath)
-			e.gauge(cpuPeriodDesc, period, namespace, objPath)
+			e.gauge(cpuQuotaDesc, quota, labels...)
+			e.gauge(cpuPeriodDesc, period, labels...)
 		}
 	} else {
 		if cpuQuota, err := readFile(cgroupPath, "cpu.cfs_quota_us"); err == nil {
 			if val, err := parseInt(cpuQuota); err == nil {
-				e.gauge(cpuQuotaDesc, cfsQuota(val), namespace, objPath)
+				e.gauge(cpuQuotaDesc, cfsQuota(val), labels...)
 			}
 		}
 		if cpuPeriod, err := readFile(cgroupPath, "cpu.cfs_period_us"); err == nil {
 			if val, err := parseUint(cpuPeriod); err == nil {
-				e.gauge(cpuPeriodDesc, float64(val), namespace, objPath)
+				e.gauge(cpuPeriodDesc, float64(val), labels...)
 			}
 		}
 	}
@@ -372,24 +415,24 @@ func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namesp
 	if cpusetCPUs, err := readFile(cgroupPath, "cpuset.cpus"); err == nil {
 		cpus := strings.TrimSpace(cpusetCPUs)
 		count := countCPUs(cpus)
-		e.gauge(cpuCpusDesc, float64(count), namespace, objPath)
+		e.gauge(cpuCpusDesc, float64(count), labels...)
 	}
 
 	// Read io.weight (for cgroup v2) or blkio.weight (for cgroup v1)
 	if ioWeight, err := readFile(cgroupPath, "io.weight"); err == nil {
 		if val, err := parseIOWeight(ioWeight); err == nil {
-			e.gauge(blkioWeightDesc, float64(val), namespace, objPath)
+			e.gauge(blkioWeightDesc, float64(val), labels...)
 		}
 	} else if blkioWeight, err := readFile(cgroupPath, "blkio.weight"); err == nil {
 		if val, err := parseUint(blkioWeight); err == nil {
-			e.gauge(blkioWeightDesc, float64(val), namespace, objPath)
+			e.gauge(blkioWeightDesc, float64(val), labels...)
 		}
 	}
 
 	return memoryUtilization
 }
 
-func parseCPUStat(e *emitter, content, namespace, objPath string) {
+func parseCPUStat(e *emitter, content string, labels ...string) {
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -409,19 +452,19 @@ func parseCPUStat(e *emitter, content, namespace, objPath string) {
 		// Set the specific metric based on stat name
 		switch statName {
 		case "usage_usec":
-			e.gauge(cpuUsageDesc, float64(statValue), namespace, objPath)
+			e.gauge(cpuUsageDesc, float64(statValue), labels...)
 		case "user_usec":
-			e.gauge(cpuUserUsageDesc, float64(statValue), namespace, objPath)
+			e.gauge(cpuUserUsageDesc, float64(statValue), labels...)
 		case "system_usec":
-			e.gauge(cpuSystemUsageDesc, float64(statValue), namespace, objPath)
+			e.gauge(cpuSystemUsageDesc, float64(statValue), labels...)
 		default:
 			// Other CPU stats
-			e.gauge(cpuStatDesc, float64(statValue), namespace, objPath, statName)
+			e.gauge(cpuStatDesc, float64(statValue), append(labels, statName)...)
 		}
 	}
 }
 
-func parseMemoryStat(e *emitter, content, namespace, objPath string) {
+func parseMemoryStat(e *emitter, content string, labels ...string) {
 	// Page-based memory statistics (in pages, not bytes)
 	// These are page counters that should have the _pages suffix
 	pageStats := map[string]bool{
@@ -474,9 +517,9 @@ func parseMemoryStat(e *emitter, content, namespace, objPath string) {
 
 		// Route to appropriate metric based on whether it's page-based or byte-based
 		if pageStats[statName] {
-			e.gauge(memoryStatPagesDesc, float64(statValue), namespace, objPath, statName)
+			e.gauge(memoryStatPagesDesc, float64(statValue), append(labels, statName)...)
 		} else {
-			e.gauge(memoryStatDesc, float64(statValue), namespace, objPath, statName)
+			e.gauge(memoryStatDesc, float64(statValue), append(labels, statName)...)
 		}
 	}
 }
