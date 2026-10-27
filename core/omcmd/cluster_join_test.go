@@ -7,7 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/testhelper"
@@ -42,16 +45,38 @@ func TestNotInstalledObjects(t *testing.T) {
 		require.NoError(t, err)
 		return p
 	}
-	objects := map[string]object.Status{
-		"svc1":         {Scope: []string{"node1", "node2"}},
-		"ns1/svc/svc2": {Scope: []string{"node2"}},
-		"ns1/vol/vol1": {Scope: []string{"node1", "node2"}},
-		"ns1/vol/vol2": {Scope: []string{"node1"}},
-		"ns1/cfg/cfg1": {Scope: []string{"node2"}},
-		"ns1/svc/svc3": {Scope: []string{"node1"}},
+	scopes := map[string][]string{
+		"svc1":         {"node1", "node2"},
+		"ns1/svc/svc2": {"node2"},
+		"ns1/vol/vol1": {"node1", "node2"},
+		"ns1/vol/vol2": {"node1"},
+		"ns1/cfg/cfg1": {"node2"},
+		"ns1/svc/svc3": {"node1"},
 	}
 	installed := naming.Paths{mustParse("svc1"), mustParse("ns1/vol/vol1")}
-	assert.Equal(t, []string{"ns1/svc/svc2"}, notInstalledObjects(objects, installed, "node2"))
-	assert.Equal(t, []string{"ns1/svc/svc3", "ns1/vol/vol2"}, notInstalledObjects(objects, installed, "node1"))
-	assert.Empty(t, notInstalledObjects(objects, installed, "node3"))
+	assert.Equal(t, []string{"ns1/svc/svc2"}, notInstalledObjects(scopes, installed, "node2"))
+	assert.Equal(t, []string{"ns1/svc/svc3", "ns1/vol/vol2"}, notInstalledObjects(scopes, installed, "node1"))
+	assert.Empty(t, notInstalledObjects(scopes, installed, "node3"))
+}
+
+// TestObjectScopes pins that an object a peer has the instance configuration
+// of is waited for before the object monitors gave it a status.
+func TestObjectScopes(t *testing.T) {
+	var data clusterdump.Data
+	data.Cluster.Object = map[string]object.Status{
+		"svc1": {Scope: []string{"node1", "node2"}},
+	}
+	var peer node.Node
+	peer.Instance = map[string]instance.Instance{
+		"svc1":         {Config: &instance.Config{Scope: []string{"node1", "node2"}}},
+		"ns1/svc/svc2": {Config: &instance.Config{Scope: []string{"node1", "node2"}}},
+		"ns1/svc/svc3": {},
+	}
+	data.Cluster.Node = map[string]node.Node{"node1": peer}
+
+	scopes := objectScopes(data)
+	assert.Contains(t, scopes["svc1"], "node2")
+	assert.Equal(t, []string{"node1", "node2"}, scopes["ns1/svc/svc2"], "no status yet")
+	assert.Empty(t, scopes["ns1/svc/svc3"], "no config")
+	assert.Equal(t, []string{"ns1/svc/svc2", "svc1"}, notInstalledObjects(scopes, nil, "node2"))
 }

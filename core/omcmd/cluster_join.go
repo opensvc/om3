@@ -496,6 +496,11 @@ func waitObjectsDiscovered(ctx context.Context) error {
 // The daemon knows the objects of the cluster from the data of its peers, so
 // the answer only holds once it has left the rejoin state: it has the data of
 // every peer, or has stopped waiting for the ones that did not answer.
+//
+// The object statuses are built from that data by the object monitors,
+// a moment after the daemon leaves the rejoin state, so the instance
+// configurations of the peers are read too: an object is not taken for
+// discovered for not having a status yet.
 func objectsNotDiscovered(c *client.T) ([]string, error) {
 	b, err := c.NewGetClusterStatus().Get()
 	if err != nil {
@@ -514,20 +519,38 @@ func objectsNotDiscovered(c *client.T) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return notInstalledObjects(data.Cluster.Object, installed, localhost), nil
+	return notInstalledObjects(objectScopes(data), installed, localhost), nil
 }
 
-// notInstalledObjects returns the svc and vol objects of objects scoped on
-// nodename, that are not in installed.
-func notInstalledObjects(objects map[string]object.Status, installed naming.Paths, nodename string) []string {
+// objectScopes returns the scope of each object of the cluster status, from
+// the object statuses and from the instance configurations of every node.
+func objectScopes(data clusterdump.Data) map[string][]string {
+	m := make(map[string][]string)
+	for s, o := range data.Cluster.Object {
+		m[s] = append(m[s], o.Scope...)
+	}
+	for _, n := range data.Cluster.Node {
+		for s, i := range n.Instance {
+			if i.Config != nil {
+				m[s] = append(m[s], i.Config.Scope...)
+			}
+		}
+	}
+	return m
+}
+
+// notInstalledObjects returns the svc and vol objects of scopes, the objects
+// by path and the nodes they are scoped on, that are scoped on nodename and
+// not in installed.
+func notInstalledObjects(scopes map[string][]string, installed naming.Paths, nodename string) []string {
 	installedMap := installed.StrMap()
 	l := make([]string, 0)
-	for s, o := range objects {
+	for s, scope := range scopes {
 		p, err := naming.ParsePath(s)
 		if err != nil || (p.Kind != naming.KindSvc && p.Kind != naming.KindVol) {
 			continue
 		}
-		if !slices.Contains(o.Scope, nodename) || installedMap.Has(s) {
+		if !slices.Contains(scope, nodename) || installedMap.Has(s) {
 			continue
 		}
 		l = append(l, s)
