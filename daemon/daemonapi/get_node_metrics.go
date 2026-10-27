@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/naming"
 	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -61,7 +63,10 @@ func (a *DaemonAPI) GetNodeMetrics(ctx echo.Context, nodename api.InPathNodeName
 // Access rules:
 //   - Guest role on the namespace or all namespaces or better is sufficient to access
 //     the metrics of the objects of the namespace.
-func (a *DaemonAPI) GetNodeMetricsPG(ctx echo.Context, nodename api.InPathNodeName) error {
+//
+// The subsets and the resources of the objects named by params.Path are
+// reported too.
+func (a *DaemonAPI) GetNodeMetricsPG(ctx echo.Context, nodename api.InPathNodeName, params api.GetNodeMetricsPGParams) error {
 	nodename = a.parseNodename(nodename)
 	userGrants := grantsFromContext(ctx)
 
@@ -72,14 +77,24 @@ func (a *DaemonAPI) GetNodeMetricsPG(ctx echo.Context, nodename api.InPathNodeNa
 		return JSONForbiddenMissingRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot)
 	}
 
+	if params.Path != nil {
+		if _, err := naming.ParsePaths(*params.Path...); err != nil {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "path: %s", err)
+		}
+	}
+
 	if a.localhost == nodename {
-		return a.serveLocalMetrics(ctx, userGrants, "/metrics/pg")
+		page := "/metrics/pg"
+		if params.Path != nil && len(*params.Path) > 0 {
+			page += "?" + url.Values{"path": *params.Path}.Encode()
+		}
+		return a.serveLocalMetrics(ctx, userGrants, page)
 	}
 
 	// For remote nodes, proxy to the remote node's GetNodeMetricsPG endpoint
 	// which will do the filtering on the remote side
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.GetNodeMetricsPG(ctx.Request().Context(), nodename)
+		return c.GetNodeMetricsPG(ctx.Request().Context(), nodename, &params)
 	})
 }
 

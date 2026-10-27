@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonapi"
+	"github.com/opensvc/om3/v3/daemon/pgmetrics"
 	"github.com/opensvc/om3/v3/util/metricsreg"
 )
 
@@ -59,9 +60,15 @@ func New(ctx context.Context, enableUI bool) *T {
 	// left on /metrics for each is a few aggregates, enough to tell that
 	// coming here is worth it. See util/metricsreg.
 	for name, registry := range metricsreg.Detail {
+		handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+		if registry == metricsreg.PG {
+			// It also reports the subsets and the resources of the
+			// objects named by the path query parameters.
+			handler = pgmetrics.Handler()
+		}
 		// They name the objects, and the pg one the usage of the
 		// node: root's, where /metrics is public.
-		e.GET(detailMetricsURL+name, echo.WrapHandler(promhttp.HandlerFor(registry, promhttp.HandlerOpts{})), daemonapi.RequireRoot)
+		e.GET(detailMetricsURL+name, echo.WrapHandler(handler), daemonapi.RequireRoot)
 	}
 	if enableUI {
 		e.Group(docPrefixURL).Use(daemonapi.UIMiddleware(ctx, docPrefixURL, docSpecURL))

@@ -4754,6 +4754,13 @@ type GetNodeLogsParams struct {
 	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
 }
 
+// GetNodeMetricsPGParams defines parameters for GetNodeMetricsPG.
+type GetNodeMetricsPGParams struct {
+	// Path The path of an object whose subsets and resources are reported too.
+	// Repeat it for several objects.
+	Path *[]string `form:"path,omitempty" json:"path,omitempty"`
+}
+
 // GetNodeNetworkReservationsParams defines parameters for GetNodeNetworkReservations.
 type GetNodeNetworkReservationsParams struct {
 	// Name the name of a cluster backend network
