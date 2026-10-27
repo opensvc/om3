@@ -172,8 +172,10 @@ func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
 
 	// Also check for global namespace grants (empty string means all namespaces)
 	if userGrants.HasRoleOn("", rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin) {
-		// User has access to all namespaces
-		return metricsText // If user has global guest/admin/operator, show all object metrics
+		// User has access to all namespaces, so to the opensvc slice,
+		// which holds them all, but not to the host and the other
+		// slices, which hold what runs out of opensvc.
+		return dropHostScopes(metricsText)
 	}
 
 	// If user has no namespace access, only daemon metrics would be shown (but they don't have root)
@@ -250,7 +252,7 @@ func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
 			// Extract namespace from labels
 			namespace := extractNamespaceFromLine(line, namespaceLabelPattern)
 
-			if strings.Contains(line, `scope="opensvc"`) || strings.Contains(line, `scope="host"`) || strings.Contains(line, `scope="slice"`) {
+			if strings.Contains(line, `scope="opensvc"`) || isHostScope(line) {
 				// The opensvc slice holds the groups of every
 				// namespace, and the host and the other top level
 				// slices are the node's: a user granted some
@@ -276,6 +278,28 @@ func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
 		}
 	}
 
+	return result.String()
+}
+
+// isHostScope says the sample line is of the host or of a top level slice
+// other than the opensvc one, which hold what runs out of opensvc: root
+// alone is shown them.
+func isHostScope(line string) bool {
+	return strings.HasPrefix(line, "opensvc_pg_") && (strings.Contains(line, `scope="host"`) || strings.Contains(line, `scope="slice"`))
+}
+
+// dropHostScopes returns metricsText without its host and slice scope
+// samples.
+func dropHostScopes(metricsText string) string {
+	var result strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(metricsText))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if isHostScope(line) {
+			continue
+		}
+		result.WriteString(line + "\n")
+	}
 	return result.String()
 }
 

@@ -28,7 +28,7 @@ func TestFilterMetricsTextKeepsTheNamespacesOfTheGrants(t *testing.T) {
 	}{
 		{"guest of prod", rbac.NewGrants("guest:prod"), []string{`path="prod/svc/web"`, `namespace="prod",path="",scope="namespace"`}, []string{`path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="host"`, `scope="slice"`}},
 		{"admin of dev", rbac.NewGrants("admin:dev"), []string{`path="dev/svc/web"`}, []string{`path="prod/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="namespace"`}},
-		{"guest of all namespaces", rbac.NewGrants("guest"), []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="host"`, `scope="slice"`}, nil},
+		{"guest of all namespaces", rbac.NewGrants("guest"), []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`}, []string{`scope="host"`, `scope="slice"`}},
 		{"root", rbac.NewGrants("root"), []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="host"`, `scope="slice"`}, nil},
 		{"no grant", rbac.NewGrants(), nil, []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`}},
 	}
