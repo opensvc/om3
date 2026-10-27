@@ -325,6 +325,10 @@ func (t *Manager) Start(parent context.Context) error {
 		t.clusterConfig = *clusterConfig
 	}
 
+	// The configuration was loaded before the cluster config was known,
+	// with no node to elect the speaker from.
+	t.updateSpeakerAndPublish()
+
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
@@ -963,7 +967,9 @@ func (t *Manager) loadConfigAndPublish() error {
 		t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: *localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
 	}
 
-	t.updateSpeaker()
+	// A configuration change may change the speaker, as the nodes of the
+	// cluster config.
+	t.updateSpeakerAndPublish()
 
 	select {
 	case t.poolC <- nil:

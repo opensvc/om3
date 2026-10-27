@@ -25,6 +25,16 @@ func (t *Manager) updateSpeaker() bool {
 	return false
 }
 
+// updateSpeakerAndPublish updates the speaker, and publishes the node status
+// when it changed: the subscribers, as the collector choosing its speaker from
+// it, see the change then, rather than on the next node status published for
+// another reason.
+func (t *Manager) updateSpeakerAndPublish() {
+	if t.updateSpeaker() {
+		t.publishNodeStatus()
+	}
+}
+
 // isSpeakerNode return true if we are the speaker node
 func (t *Manager) isSpeakerNode() bool {
 	return t.speakerNode() == t.localhost

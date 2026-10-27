@@ -383,9 +383,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 		t.log.Warnf("forget %s peer %s => new live peers: %v", forgetType, c.Node, t.livePeers)
 	}
 
-	if t.updateSpeaker() {
-		t.publishNodeStatus()
-	}
+	t.updateSpeakerAndPublish()
 
 	if len(t.livePeers) > len(t.clusterConfig.Nodes)/2 {
 		t.log.Infof("forget %s peer %s, we still have nodes quorum %d > %d", forgetType, c.Node, len(t.livePeers), len(t.clusterConfig.Nodes)/2)
@@ -472,9 +470,7 @@ func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	if _, ok := t.livePeers[c.Node]; !ok {
 		t.livePeers[c.Node] = true
 		t.log.Infof("new peer %s: new live peers: %v", c.Node, t.livePeers)
-		if t.updateSpeaker() {
-			t.publishNodeStatus()
-		}
+		t.updateSpeakerAndPublish()
 	}
 	t.convergeGlobalExpectFromRemote()
 	t.updateIfChange()
