@@ -1,0 +1,11 @@
+The grants of the processes of the container connected to the user socket
+of the node, `/run/opensvc-ux/http.sock`, bind mounted into the container:
+the same grants as the `grant` keyword of a `usr` object.
+
+The daemon tells a process of the container by its cgroup, which the
+container runtime places under the process group of the resource, and a
+process of the container can not leave: neither its uid nor a token is
+looked at. A sidecar can so act on the cluster with the grants given here,
+with no credential to hand it.
+
+Setting it requires the root grant.

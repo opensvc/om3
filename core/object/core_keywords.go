@@ -734,6 +734,15 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/grant"),
 	},
 	{
+		Converter: converters.List,
+		Example:   "alice 1001",
+		Kind:      naming.NewKinds(naming.KindUsr),
+		Option:    "uxuser",
+		Scopable:  true,
+		Section:   "DEFAULT",
+		Text:      keywords.NewText(fs, "text/kw/core/uxuser"),
+	},
+	{
 		Converter: converters.Bool,
 		Default:   "true",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),

@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/homedir"
 )
 
 type (
@@ -188,8 +190,9 @@ The rules:
 ` + rules.Doc(78) + `
 The changes land as a configuration update, so they are weighed like any other
 write. The configuration as it was is kept under the backup directory of the
-node this runs on, and where it was kept is printed. --dry-run prints the
-changes and writes nothing.`
+node this runs on, or under ~/.config/opensvc/backup for a caller reaching the
+cluster through a context or the user socket, and where it was kept is printed.
+--dry-run prints the changes and writes nothing.`
 }
 
 // objectBackupName is where the configuration of an object is kept under the
@@ -207,10 +210,19 @@ func objectBackupName(p naming.Path) string {
 //
 // It is written where this command runs, which is where whoever runs it will
 // look for it, and under the backup directory of the node, beside what every
-// other command that replaces a configuration leaves there. The time it was
-// taken ends the name: a migration asked twice keeps both.
+// other command that replaces a configuration leaves there. A remote caller,
+// which may not write the node directories, keeps it under its own
+// configuration directory instead. The time it was taken ends the name: a
+// migration asked twice keeps both.
 func backupConfig(name string, b []byte) (string, error) {
-	name = filepath.Join(rawconfig.Paths.Backup, name) + "." + time.Now().Format("2006-01-02T15:04:05")
+	dir := rawconfig.Paths.Backup
+	if clientcontext.IsRemote() {
+		var err error
+		if dir, err = homedir.Expand(clientcontext.ConfigFolder + "backup"); err != nil {
+			return "", err
+		}
+	}
+	name = filepath.Join(dir, name) + "." + time.Now().Format("2006-01-02T15:04:05")
 	if err := os.MkdirAll(filepath.Dir(name), 0700); err != nil {
 		return "", err
 	}

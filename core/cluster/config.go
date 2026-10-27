@@ -26,6 +26,11 @@ type (
 		Listener   ConfigListener `json:"listener"`
 		Quorum     bool           `json:"quorum"`
 
+		// UXGroups are the grants of the members of a unix group
+		// connected to the user socket, by group name, as the
+		// [uxgroup#<group>] sections say them for this node.
+		UXGroups map[string][]string `json:"ux_groups"`
+
 		// fields private, no exposed in daemon data
 		// json nor events
 		secret string
@@ -56,6 +61,11 @@ type (
 		// ACMEPort is the port the listener answers the http-01 ACME
 		// challenges on, none when zero.
 		ACMEPort int `json:"acme_port"`
+
+		// UXOwnerGroup is the group owning the user socket, whose
+		// members reach the api as themselves. Empty, the node serves
+		// no user socket.
+		UXOwnerGroup string `json:"ux_owner_group"`
 	}
 )
 
@@ -87,6 +97,12 @@ func (t *Config) DeepCopy() *Config {
 	n.DNS = deepcopy.Slice(t.DNS)
 	n.CASecPaths = deepcopy.Slice(t.CASecPaths)
 	n.Listener.TLSSecs = deepcopy.Slice(t.Listener.TLSSecs)
+	if t.UXGroups != nil {
+		n.UXGroups = make(map[string][]string, len(t.UXGroups))
+		for group, grants := range t.UXGroups {
+			n.UXGroups[group] = deepcopy.Slice(grants)
+		}
+	}
 	return &n
 }
 

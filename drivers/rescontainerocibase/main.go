@@ -98,6 +98,7 @@ type (
 		QuiesceTimeout  *time.Duration `json:"quiesce_timeout"`
 		Sysctl          []string       `json:"sysctl"`
 		LogOutputs      bool           `json:"log_outputs"`
+		UXGrant         []string       `json:"uxgrant"`
 
 		// QuietRunOutput leaves the output of the commands running the
 		// container unlogged as it comes: a task reads it after the run,

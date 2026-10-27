@@ -253,6 +253,14 @@ var (
 			Default:   "5s",
 		},
 		{
+			Option:    "uxgrant",
+			Attr:      "UXGrant",
+			Converter: converters.ListLowercase,
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/uxgrant"),
+			Example:   "operator:ns1",
+		},
+		{
 			Option:   "quiesce",
 			Attr:     "QuiesceCmd",
 			Scopable: true,

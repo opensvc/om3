@@ -229,6 +229,14 @@ var (
 		Section: "store",
 		Text:    keywords.NewText(fs, "text/kw/node/store.keep"),
 	}
+	kwNodeUXGroupGrant = keywords.Keyword{
+		Converter: converters.ListLowercase,
+		Example:   "operator:ns1 guest:ns2",
+		Option:    "grant",
+		Scopable:  true,
+		Section:   "uxgroup",
+		Text:      keywords.NewText(fs, "text/kw/node/uxgroup.grant"),
+	}
 	kwNodeSwitchSchedule = keywords.Keyword{
 		Option:  "schedule",
 		Section: "switch",
@@ -691,6 +699,13 @@ var (
 		Option:  "dns_sock_gid",
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.dns_sock_gid"),
+	}
+	kwNodeListenerUXOwnerGroup = keywords.Keyword{
+		Default: "opensvc",
+		Example: "osvc-users",
+		Option:  "ux_owner_group",
+		Section: "listener",
+		Text:    keywords.NewText(fs, "text/kw/node/listener.ux_owner_group"),
 	}
 	kwNodeListenerAddr = keywords.Keyword{
 		Aliases:  []string{"tls_addr"},
@@ -2045,6 +2060,7 @@ var (
 		&kwNodeStoreSSHPrivateKey,
 		&kwNodeStoreShared,
 		&kwNodeStoreKeep,
+		&kwNodeUXGroupGrant,
 		&kwNodeArrayXtremioName,
 		&kwNodeComplianceAutoUpdate,
 		&kwNodeChecksSchedule,
@@ -2056,6 +2072,7 @@ var (
 		&kwNodeListenerCRL,
 		&kwNodeListenerDNSSockUID,
 		&kwNodeListenerDNSSockGID,
+		&kwNodeListenerUXOwnerGroup,
 		&kwNodeListenerAddr,
 		&kwNodeListenerPort,
 		&kwNodeListenerOpenIDIssuer,

@@ -2,18 +2,26 @@ package lsnrhttpux
 
 import (
 	"bufio"
+	"context"
+	"crypto/tls"
+	"fmt"
 	"io"
 	golog "log"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
 
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // A client stalling the headers of its request is dropped once the header
@@ -51,4 +59,178 @@ func TestAClientStallingItsHeadersIsDropped(t *testing.T) {
 	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+// A request of a listener reading the peers carries the credentials of the
+// process connected, as the kernel recorded them.
+func TestARequestCarriesItsPeer(t *testing.T) {
+	sock := filepath.Join(t.TempDir(), "http.sock")
+	lsnr, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	lsnrT := &T{log: plog.NewDefaultLogger(), peerCred: true}
+	server := newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		peer := daemonctx.Peer(r.Context())
+		if peer == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = fmt.Fprintf(w, "%d %d", peer.UID, peer.PID)
+	}), golog.New(io.Discard, "", 0))
+	server.ConnContext = lsnrT.withPeer
+	go func() { _ = server.Serve(lsnr) }()
+	t.Cleanup(func() { _ = server.Close() })
+
+	client := &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}}
+	resp, err := client.Get("http://localhost/")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%d %d", os.Getuid(), os.Getpid()), string(b))
+}
+
+// An update emptying the owner group closes the socket, and the connections
+// open through it, http/1.1 and http/2 alike: the members of the former group lose the api
+// at once. The connections are tracked, and their peer read through the
+// tracking.
+func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
+	sock := filepath.Join(t.TempDir(), "http.sock")
+	raw, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	lsnrT := &T{log: plog.NewDefaultLogger(), addr: sock, peerCred: true, tracked: newTrackListener(raw, os.Getgid())}
+	var lsnr net.Listener = lsnrT.tracked
+	lsnrT.listener = &lsnr
+	lsnrT.server = newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		peer := daemonctx.Peer(r.Context())
+		if peer == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = fmt.Fprintf(w, "%d", peer.UID)
+	}), golog.New(io.Discard, "", 0))
+	lsnrT.server.ConnContext = lsnrT.withPeer
+	served := make(chan struct{})
+	go func() {
+		defer close(served)
+		_ = lsnrT.server.Serve(lsnr)
+	}()
+
+	conn, err := net.Dial("unix", sock)
+	require.NoError(t, err)
+	defer conn.Close()
+	_, err = conn.Write([]byte("GET / HTTP/1.1\r\nHost: x\r\n\r\n"))
+	require.NoError(t, err)
+	r := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(r, nil)
+	require.NoError(t, err)
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	assert.Equal(t, fmt.Sprint(os.Getuid()), string(b), "the peer read through the tracking")
+
+	h2 := &http.Client{Transport: &http2.Transport{
+		AllowHTTP: true,
+		DialTLSContext: func(ctx context.Context, _, _ string, _ *tls.Config) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}}
+	resp, err = h2.Get("http://localhost/")
+	require.NoError(t, err)
+	_, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	assert.Equal(t, 2, resp.ProtoMajor)
+	lsnrT.tracked.mu.Lock()
+	open := len(lsnrT.tracked.conns)
+	lsnrT.tracked.mu.Unlock()
+	assert.Equal(t, 2, open, "the http/1.1 and the http/2 connections")
+
+	// The configuration read now names another group: the update emptying
+	// it closes the socket all the same.
+	lsnrT.ownerGroup = func() string { return "other" }
+	lsnrT.onOwnerGroup(context.Background(), "")
+	<-served
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, err = conn.Write([]byte("GET / HTTP/1.1\r\nHost: x\r\n\r\n"))
+	if err == nil {
+		_, err = http.ReadResponse(r, nil)
+	}
+	assert.Error(t, err, "the http/1.1 connection is closed")
+	lsnrT.tracked.mu.Lock()
+	open = len(lsnrT.tracked.conns)
+	lsnrT.tracked.mu.Unlock()
+	assert.Equal(t, 0, open, "the http/2 connection is closed")
+	_, err = os.Stat(sock)
+	assert.ErrorIs(t, err, os.ErrNotExist, "the socket is removed")
+	_, err = net.Dial("unix", sock)
+	assert.Error(t, err)
+	assert.NoError(t, lsnrT.Stop(), "stopping a closed listener")
+
+	lsnrT.onOwnerGroup(context.Background(), "other")
+	assert.Equal(t, "", lsnrT.group, "a closed socket is not owned again")
+}
+
+// An update setting the owner group is applied with the group of the latest
+// configuration, not the one it carries: an update still queued does not give
+// the socket back to a group the latest one replaced. A group changed closes
+// the connections open through the socket, and a group the node does not know
+// closes the socket.
+func TestOwnerGroupUpdates(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("chown needs root")
+	}
+	sock := filepath.Join(t.TempDir(), "uxuser", "http.sock")
+	latest := "4343"
+	lsnrT := &T{log: plog.NewDefaultLogger(), addr: sock, ownerGroup: func() string { return latest }}
+	require.NoError(t, lsnrT.applyOwnerGroup(context.Background(), "4242"))
+	raw, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	lsnrT.tracked = newTrackListener(raw, os.Getgid())
+	var lsnr net.Listener = lsnrT.tracked
+	lsnrT.listener = &lsnr
+	require.NoError(t, ownSocket(sock, 4242))
+	lsnrT.server = newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}), golog.New(io.Discard, "", 0))
+	served := make(chan struct{})
+	go func() {
+		defer close(served)
+		_ = lsnrT.server.Serve(lsnr)
+	}()
+	t.Cleanup(func() { _ = lsnrT.server.Close() })
+
+	h2 := &http.Client{Transport: &http2.Transport{
+		AllowHTTP: true,
+		DialTLSContext: func(ctx context.Context, _, _ string, _ *tls.Config) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}}
+	resp, err := h2.Get("http://localhost/")
+	require.NoError(t, err)
+	_, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	open := func() int {
+		lsnrT.tracked.mu.Lock()
+		defer lsnrT.tracked.mu.Unlock()
+		return len(lsnrT.tracked.conns)
+	}
+	require.Equal(t, 1, open())
+
+	// The update queued names 4141, the latest configuration 4343.
+	lsnrT.onOwnerGroup(context.Background(), "4141")
+	info, err := os.Stat(sock)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(4343), info.Sys().(*syscall.Stat_t).Gid, "the group of the latest configuration")
+	assert.Equal(t, 0, open(), "the connections of the former group are closed")
+	assert.False(t, lsnrT.closed.Load())
+
+	latest = "omtest-no-such-group"
+	lsnrT.onOwnerGroup(context.Background(), "omtest-no-such-group")
+	<-served
+	assert.True(t, lsnrT.closed.Load(), "a group the node does not know serves no socket")
+	_, err = os.Stat(sock)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }

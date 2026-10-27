@@ -159,7 +159,7 @@ func Do(t Actioner) error {
 		errs = t.DoLocal()
 	case o.Target != "":
 		errs = t.DoAsync()
-	case !clientcontext.IsSet() && t.HasLocal():
+	case !clientcontext.IsRemote() && t.HasLocal():
 		errs = t.DoLocal()
 	default:
 		// post action on context endpoint

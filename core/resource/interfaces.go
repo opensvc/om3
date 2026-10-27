@@ -377,6 +377,16 @@ type (
 		HostGID(id uint32) (uint32, error)
 	}
 
+	// PGPather is implemented by a resource whose processes are placed
+	// elsewhere than its process group id says, as a rootless container
+	// is placed under the cgroup subtree systemd delegates to its user.
+	//
+	// PGPath answers the cgroup its processes run in, relative to the
+	// cgroup root, or an empty string when it is not known.
+	PGPather interface {
+		PGPath() string
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"

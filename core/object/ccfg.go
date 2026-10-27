@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/time/rate"
 
@@ -100,6 +101,7 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerOpenIDClientID = key.New("listener", "openid_client_id")
 		keyListenerDNSSockUID     = key.New("listener", "dns_sock_uid")
 		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
+		keyListenerUXOwnerGroup   = key.New("listener", "ux_owner_group")
 
 		keyListenerRateLimiterRate    = key.New("listener", "rate_limiter_rate")
 		keyListenerRateLimiterBurst   = key.New("listener", "rate_limiter_burst")
@@ -140,6 +142,15 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Listener.OpenIDClientID = c.GetString(keyListenerOpenIDClientID)
 	cfg.Listener.DNSSockGID = c.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)
+	cfg.Listener.UXOwnerGroup = c.GetString(keyListenerUXOwnerGroup)
+	cfg.UXGroups = make(map[string][]string)
+	for _, section := range c.SectionStrings() {
+		group, ok := strings.CutPrefix(section, "uxgroup#")
+		if !ok || group == "" {
+			continue
+		}
+		cfg.UXGroups[group] = c.GetStrings(key.New(section, "grant"))
+	}
 
 	cfg.Listener.RateLimiter = cluster.RateLimiterConfig{
 		Rate:  rate.Limit(c.GetInt(keyListenerRateLimiterRate)),

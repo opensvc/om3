@@ -92,7 +92,7 @@ func (t *CmdObjectInstanceStatus) getNodenames(c *client.T) ([]string, error) {
 			return nodes, nil
 		}
 	}
-	if clientcontext.IsSet() {
+	if clientcontext.IsRemote() {
 		if nodes, err := nodeselector.New("*", nodeselector.WithClient(c)).Expand(); err != nil {
 			return nil, fmt.Errorf("expand node selection: %w", err)
 		} else {

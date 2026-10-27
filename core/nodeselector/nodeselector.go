@@ -2,6 +2,7 @@ package nodeselector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -12,7 +13,6 @@ import (
 	"github.com/goombaio/orderedset"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/errgo.v2/fmt/errors"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clientcontext"
@@ -196,7 +196,7 @@ func (t *T) exactExpand(s string) (*orderedset.OrderedSet, error) {
 	s = strings.ToLower(s)
 	matching := orderedset.NewOrderedSet()
 	if !hostname.IsValid(s) {
-		return matching, errors.Newf("invalid hostname %s", s)
+		return matching, fmt.Errorf("invalid hostname %s", s)
 	}
 	known, err := t.getKnownNodesSet()
 	if err != nil {
@@ -245,7 +245,7 @@ func (t *T) labelExpand(s string) (*orderedset.OrderedSet, error) {
 }
 
 func (t T) KnownNodes() ([]string, error) {
-	if clientcontext.IsSet() || !cluster.ConfigData.IsSet() {
+	if clientcontext.IsRemote() || !cluster.ConfigData.IsSet() {
 		return t.KnownRemoteNodes()
 	} else {
 		return t.KnownLocalNodes()
@@ -299,22 +299,34 @@ func (t *T) getNodesInfoFromAPI() (nodesinfo.M, error) {
 	}
 }
 
+// getNodesInfo returns the nodes info the daemon publishes: asked to the api
+// by a remote caller, read from the node cache file otherwise. A cache file
+// the caller can not read, or a host with no cache file, falls back to the
+// api when the selector has a client.
 func (t *T) getNodesInfo() (nodesinfo.M, error) {
 	if t.info != nil {
 		return t.info, nil
 	}
-	if clientcontext.IsSet() {
+	if clientcontext.IsRemote() {
 		if info, err := t.getNodesInfoFromAPI(); err != nil {
 			return nil, err
 		} else {
 			t.info = info
 		}
-	} else {
-		if info, err := nodesinfo.Load(); err != nil {
-			return nil, err
+		return t.info, nil
+	}
+	info, err := nodesinfo.Load()
+	if err != nil && t.client != nil {
+		var apiErr error
+		if info, apiErr = t.getNodesInfoFromAPI(); apiErr == nil {
+			err = nil
 		} else {
-			t.info = info
+			err = errors.Join(err, apiErr)
 		}
 	}
+	if err != nil {
+		return nil, err
+	}
+	t.info = info
 	return t.info, nil
 }

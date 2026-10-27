@@ -202,7 +202,7 @@ func (t *Selection) expand() error {
 	} else {
 		usedExpand = "daemon"
 		err = t.daemonExpand()
-		if err != nil && !clientcontext.IsSet() {
+		if err != nil && !clientcontext.IsRemote() {
 			usedExpand = fmt.Sprintf("local (fallback caused by: %s)", err)
 			err = t.localExpand()
 		}

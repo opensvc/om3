@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrouter"
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -725,7 +726,14 @@ func (t T) DoRemote() error {
 		return fmt.Errorf("no remote function defined")
 	}
 	if t.NodeSelector == "" {
-		return fmt.Errorf("remote execution requires a node selector expression")
+		// With no context, the daemon reached is the one of the node
+		// this runs on, through the root or the user socket: the node
+		// the action is for unless told otherwise. A context names a
+		// cluster, with no node of its own.
+		if clientcontext.IsSet() {
+			return fmt.Errorf("remote execution requires a node selector expression")
+		}
+		t.NodeSelector = hostname.Hostname()
 	}
 
 	c, err := client.New(client.WithTimeout(0))

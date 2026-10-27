@@ -3,11 +3,13 @@ package lsnrhttpux
 import (
 	"context"
 	"errors"
+	"fmt"
 	golog "log"
 	"net"
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -17,6 +19,8 @@ import (
 	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/peercred"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -28,6 +32,21 @@ type (
 		addr     string
 		wg       sync.WaitGroup
 		server   *http.Server
+		peerCred bool
+
+		// ownerGroup returns the group owning the socket, nil for the
+		// root socket, and group is the one applied.
+		ownerGroup func() string
+		group      string
+		gid        int
+
+		// closed says the socket was closed by the janitor, the owner
+		// group emptied.
+		closed atomic.Bool
+
+		// tracked holds the connections of a listener owned by a group,
+		// closed with its socket.
+		tracked *trackListener
 	}
 )
 
@@ -53,13 +72,36 @@ func (t *T) Start(ctx context.Context) error {
 		t.log.Errorf("remove file: %s", err)
 		return err
 	}
+	if t.ownerGroup != nil {
+		if err := t.applyOwnerGroup(ctx, t.ownerGroup()); err != nil {
+			t.log.Errorf("own the socket directory: %s", err)
+			return err
+		}
+	}
 	if listener, err := net.Listen("unix", t.addr); err != nil {
 		t.log.Errorf("listen failed: %s", err)
 		return err
 	} else {
+		if t.ownerGroup != nil {
+			t.tracked = newTrackListener(listener, t.gid)
+			listener = t.tracked
+		}
 		t.listener = &listener
 	}
+	if t.ownerGroup != nil {
+		if err := ownSocket(t.addr, t.gid); err != nil {
+			t.log.Errorf("own the socket: %s", err)
+			_ = (*t.listener).Close()
+			t.listener = nil
+			return err
+		}
+		t.log.Infof("socket owned by the group %s (%d)", t.group, t.gid)
+	}
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
+	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
+	if t.peerCred {
+		t.server.ConnContext = t.withPeer
+	}
 
 	t.wg.Add(1)
 	go t.serve(ctx, errC)
@@ -73,8 +115,9 @@ func (t *T) Start(ctx context.Context) error {
 func (t *T) Stop() error {
 	t.log.Infof("stopping")
 	defer t.log.Infof("stopped")
-	if t.listener == nil {
+	if t.listener == nil || t.closed.Load() {
 		t.log.Infof("listener already closed")
+		t.wg.Wait()
 		return nil
 	}
 	err := (*t.listener).Close()
@@ -88,13 +131,83 @@ func (t *T) Stop() error {
 func (t *T) serve(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 
-	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
 	t.log.Infof("started")
 	errC <- nil
 	if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 		t.log.Tracef("serve ends with unexpected error: %s", err)
 	}
 	t.log.Infof("stopped")
+}
+
+// withPeer adds the peer of the connection c to its context. The credentials
+// are the kernel's, recorded at connect: a connection whose peer can not be
+// read carries none, and is authenticated as nobody.
+func (t *T) withPeer(ctx context.Context, c net.Conn) context.Context {
+	if u, ok := c.(interface{ NetConn() net.Conn }); ok {
+		c = u.NetConn()
+	}
+	peer, err := peercred.FromConn(c)
+	if err != nil {
+		t.log.Warnf("read the peer of a connection: %s", err)
+		return ctx
+	}
+	return daemonctx.WithPeer(ctx, peer)
+}
+
+// onOwnerGroup applies the owner group of a cluster configuration update.
+//
+// An update emptying the group is applied with the group it carries, rather
+// than the one of the latest configuration, so a group emptied then set again
+// before the update is read is a group emptied all the same: the socket is
+// closed, and served again from the next daemon start only. An update setting
+// a group is applied with the group of the latest configuration instead, so
+// the updates still queued do not give the socket back to a group the latest
+// one replaced.
+//
+// The connections open through the socket are closed when its group changes:
+// the members of the former group lose the api at once, as the ownership of
+// the socket only bars the new connections. A group the node does not know
+// serves no socket, as at start: the socket is closed rather than left to the
+// former group.
+func (t *T) onOwnerGroup(ctx context.Context, group string) {
+	if t.closed.Load() {
+		return
+	}
+	if group != "" {
+		group = t.ownerGroup()
+	}
+	if group == "" {
+		t.closeSocket("listener.ux_owner_group is empty")
+		return
+	}
+	former := t.group
+	if err := t.applyOwnerGroup(ctx, group); err != nil {
+		t.closeSocket(fmt.Sprintf("own it by the group %s: %s", group, err))
+		return
+	}
+	if former != "" && former != group && t.tracked != nil {
+		t.tracked.regroup(t.gid)
+		t.log.Infof("connections of the socket closed: its group changed from %s to %s", former, group)
+	}
+}
+
+// closeSocket stops serving the socket, and the connections open through it,
+// and removes it: the owner group was emptied, or is not known, which serves
+// no socket. The members of the former group lose the api at once, rather
+// than at the next daemon start. A group set again is served from the next
+// daemon start.
+func (t *T) closeSocket(reason string) {
+	t.closed.Store(true)
+	if err := t.server.Close(); err != nil {
+		t.log.Warnf("close the socket: %s", err)
+	}
+	if t.tracked != nil {
+		t.tracked.closeConns()
+	}
+	if err := os.Remove(t.addr); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.log.Warnf("remove the socket: %s", err)
+	}
+	t.log.Infof("socket closed: %s", reason)
 }
 
 // newServer returns the server of the ux listener, serving handler over
@@ -123,9 +236,16 @@ func newServer(handler http.Handler, errorLog *golog.Logger) *http.Server {
 // receive and ignore.
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
-	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
+	name := "daemon.lsnr.http.ux"
+	if t.ownerGroup != nil {
+		name = "daemon.lsnr.http.uxuser"
+	}
+	sub := pubsub.SubFromContext(ctx, name)
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
+	if t.ownerGroup != nil {
+		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
+	}
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -143,6 +263,8 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				t.log.HandleAuditStart(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
+			case *msgbus.ClusterConfigUpdated:
+				t.onOwnerGroup(ctx, m.Value.Listener.UXOwnerGroup)
 			}
 		}
 	}

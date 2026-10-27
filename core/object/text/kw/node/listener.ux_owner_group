@@ -1,0 +1,17 @@
+The group owning the user socket, `/run/opensvc-ux/http.sock`, which its
+members connect to the api through as themselves, with no token: the
+daemon reads who they are from the connection, and grants them what the
+`[uxgroup#<group>]` sections and the `uxuser` keyword of the `usr` objects
+say.
+
+The socket is mode 0660 and its directory 0750, both owned by root and
+this group. A group the node does not know serves no socket, and the
+daemon logs why. Set it empty to serve none: a socket served is closed at
+once, with the connections open through it, as it is when set to a group
+the node does not know. Changed to another group, the socket is given to it
+and the connections open through it are closed, so the members of the former
+group lose the api at once. A group set on a node serving no socket is
+served from the next daemon start.
+
+The root user of the node is not root through this socket: it uses the
+root socket.

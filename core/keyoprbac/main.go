@@ -306,6 +306,12 @@ var rules = map[string]Group{
 		},
 		"name":  containerNameRule,
 		"image": containerImageRule,
+		// The grants a process of the container gets on the user
+		// socket are what this grants: root, for a sidecar.
+		"uxgrant": {
+			Grant:  rbac.GrantRoot,
+			Reason: reasonRoot,
+		},
 		"dns": {
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,

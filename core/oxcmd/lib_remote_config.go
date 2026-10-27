@@ -8,7 +8,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -29,7 +28,9 @@ func createTempRemoteObjectConfig(p naming.Path, c *client.T) (string, error) {
 }
 
 func createTempRemoteConfig(buff []byte) (string, error) {
-	f, err := os.CreateTemp(rawconfig.Paths.Tmp, "remote.*.conf.tmp")
+	// The temporary directory of the caller: ox reads nothing of the node,
+	// whose own one only root writes.
+	f, err := os.CreateTemp("", "remote.*.conf.tmp")
 	if err != nil {
 		return "", err
 	}

@@ -2,12 +2,20 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"os/user"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/client/api"
 	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
@@ -202,6 +210,43 @@ func (t *T) URL() string {
 	return t.url
 }
 
+// userSocketURL returns the url of the user socket, or why the caller can
+// not reach it.
+func userSocketURL() (string, error) {
+	p := daemonenv.HTTPUserUnixFile()
+	_, err := os.Stat(p)
+	if err == nil {
+		err = unix.Access(p, unix.R_OK|unix.W_OK)
+	}
+	switch {
+	case err == nil:
+		return daemonenv.HTTPUserUnixURL(), nil
+	case errors.Is(err, os.ErrNotExist):
+		return "", fmt.Errorf("%s: no user socket: the daemon is not running, or serves none, listener.ux_owner_group being empty or naming a group the node does not know; set a context to reach a cluster remotely", p)
+	case errors.Is(err, os.ErrPermission):
+		return "", fmt.Errorf("%s: permission denied: the user socket is reached by the members of the group %s", p, ownerGroup(filepath.Dir(p)))
+	default:
+		return "", err
+	}
+}
+
+// ownerGroup returns the name of the group owning the file p, or its id.
+func ownerGroup(p string) string {
+	info, err := os.Stat(p)
+	if err != nil {
+		return "listener.ux_owner_group names"
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return "listener.ux_owner_group names"
+	}
+	gid := strconv.FormatUint(uint64(st.Gid), 10)
+	if g, err := user.LookupGroupId(gid); err == nil {
+		return g.Name
+	}
+	return gid
+}
+
 // configure allocates a new requester with a requester for the server found in Config,
 // or for the server found in Context.
 func (t *T) configure() error {
@@ -210,6 +255,13 @@ func (t *T) configure() error {
 			return err
 		}
 	} else {
+		if t.url == "" && clientcontext.UsesUserSocket() {
+			u, err := userSocketURL()
+			if err != nil {
+				return err
+			}
+			t.url = u
+		}
 		if t.url == "" {
 			t.url = daemonenv.HTTPUnixURL()
 		}
