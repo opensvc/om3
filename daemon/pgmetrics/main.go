@@ -33,6 +33,14 @@ var (
 	// BlockRoot holds a directory per block device, named by its
 	// major:minor, as io.stat names them. A var for the tests.
 	BlockRoot = "/sys/dev/block"
+
+	// HostCgroupRoot is the root of the cgroup hierarchy, which holds the
+	// opensvc slice and the other top level slices. ProcRoot and
+	// CPUOnlineFile are where the host totals are read. Vars for the
+	// tests.
+	HostCgroupRoot = "/sys/fs/cgroup"
+	ProcRoot       = "/proc"
+	CPUOnlineFile  = "/sys/devices/system/cpu/online"
 )
 
 // The scope label values: the cgroup a series is of.
@@ -48,6 +56,15 @@ const (
 
 	// scopeObject is the slice of an object.
 	scopeObject = "object"
+
+	// scopeHost is the whole node, which the opensvc slice is a share
+	// of: its namespace and path labels are empty.
+	scopeHost = "host"
+
+	// scopeSlice is a top level slice other than the opensvc one, as
+	// system.slice, user.slice, machine.slice or init.scope: its path label
+	// is its name, its namespace label empty.
+	scopeSlice = "slice"
 )
 
 // hasCgroup says the objects of kind k have a process group: the kinds with
@@ -305,8 +322,130 @@ func (m *Manager) walk(full bool) *snapshot {
 	for ns := range namespaces {
 		visit(forgeNamespaceCgroupPath(ns), scopeNamespace, ns, "")
 	}
+	if full {
+		for _, name := range otherSlices() {
+			visit(filepath.Join(HostCgroupRoot, name), scopeSlice, "", name)
+		}
+		collectHost(&e)
+	}
 	s.detail = e.out
 	return s
+}
+
+// otherSlices returns the names of the top level slices and scopes other
+// than the opensvc slice, as systemd-cgtop shows them: the virtual machines
+// and containers started by libvirt or podman may be in machine.slice
+// rather than in the opensvc one.
+func otherSlices() []string {
+	entries, err := os.ReadDir(HostCgroupRoot)
+	if err != nil {
+		return nil
+	}
+	l := make([]string, 0)
+	for _, entry := range entries {
+		name := entry.Name()
+		if !entry.IsDir() || name == filepath.Base(CgroupRoot) {
+			continue
+		}
+		if strings.HasSuffix(name, ".slice") || strings.HasSuffix(name, ".scope") {
+			l = append(l, name)
+		}
+	}
+	return l
+}
+
+// collectHost emits the totals of the node, the host scope, with the names
+// of the cgroup series where they mean the same: the root cgroup has no
+// memory.current nor pids.current, so the memory and the task count are the
+// ones of the kernel.
+//
+//   - cpu usage: the cpu.stat of the root cgroup, which counts the whole node
+//     on cgroup v2, or /proc/stat.
+//   - cpu cpus: the online cpus.
+//   - memory current: MemTotal minus MemAvailable, and memory max MemTotal.
+//   - io: the io.stat of the root cgroup, the devices stacked on left out.
+//   - tasks: the tasks of the node, the total of /proc/loadavg.
+func collectHost(e *emitter) {
+	labels := []string{scopeHost, "", ""}
+	if cpuStat, err := readFile(HostCgroupRoot, "cpu.stat"); err == nil {
+		parseCPUStat(e, cpuStat, labels...)
+	} else if usec, err := procStatUsageUsec(); err == nil {
+		e.gauge(cpuUsageDesc, usec, labels...)
+	}
+	if online, err := os.ReadFile(CPUOnlineFile); err == nil {
+		e.gauge(cpuCpusDesc, float64(countCPUs(strings.TrimSpace(string(online)))), labels...)
+	}
+	if total, available, err := memInfo(); err == nil {
+		e.gauge(memoryCurrentDesc, total-available, labels...)
+		e.gauge(memoryMaxDesc, total, labels...)
+	}
+	if ioStat, err := readFile(HostCgroupRoot, "io.stat"); err == nil {
+		parseIOStat(e, ioStat, labels...)
+	}
+	if loadavg, err := readFile(ProcRoot, "loadavg"); err == nil {
+		// "0.10 0.20 0.30 <running>/<total> <last pid>"
+		if fields := strings.Fields(loadavg); len(fields) >= 4 {
+			if _, total, ok := strings.Cut(fields[3], "/"); ok {
+				if val, err := parseUint(total); err == nil {
+					e.gauge(tasksDesc, float64(val), labels...)
+				}
+			}
+		}
+	}
+}
+
+// procStatUsageUsec returns the cpu time the node spent out of idle and
+// iowait, in microseconds, from the "cpu" line of /proc/stat, which counts
+// in USER_HZ, 100 a second on Linux.
+func procStatUsageUsec() (float64, error) {
+	b, err := readFile(ProcRoot, "stat")
+	if err != nil {
+		return 0, err
+	}
+	line, _, _ := strings.Cut(b, "\n")
+	fields := strings.Fields(line)
+	if len(fields) < 9 || fields[0] != "cpu" {
+		return 0, fmt.Errorf("stat: no cpu line in %q", line)
+	}
+	var ticks uint64
+	// user nice system idle iowait irq softirq steal
+	for _, i := range []int{1, 2, 3, 6, 7, 8} {
+		v, err := parseUint(fields[i])
+		if err != nil {
+			return 0, err
+		}
+		ticks += v
+	}
+	return float64(ticks) * 1e6 / 100, nil
+}
+
+// memInfo returns MemTotal and MemAvailable, in bytes, from /proc/meminfo.
+func memInfo() (total, available float64, err error) {
+	b, err := readFile(ProcRoot, "meminfo")
+	if err != nil {
+		return 0, 0, err
+	}
+	var haveTotal, haveAvailable bool
+	for _, line := range strings.Split(b, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		v, err := parseUint(fields[1])
+		if err != nil {
+			continue
+		}
+		switch fields[0] {
+		case "MemTotal:":
+			total, haveTotal = float64(v)*1024, true
+		case "MemAvailable:":
+			available, haveAvailable = float64(v)*1024, true
+		}
+	}
+	if !haveTotal || !haveAvailable {
+		return 0, 0, fmt.Errorf("meminfo: no MemTotal or MemAvailable")
+	}
+	return total, available, nil
 }
 
 // New creates a new pgmetrics manager.
