@@ -1902,6 +1902,865 @@
         "x": 0,
         "y": 67
       },
+      "id": 52,
+      "panels": [],
+      "title": "host and slices",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 53,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}[$__rate_interval])) / 1e6",
+          "legendFormat": "{{instance}} host",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6",
+          "legendFormat": "{{instance}} opensvc",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_cpu_cpus{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"})",
+          "legendFormat": "{{instance}} host cpus",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_cpu_cpus{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"})",
+          "legendFormat": "{{instance}} opensvc cpus",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "host and opensvc cpu",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 68
+      },
+      "description": "The cpus the node and the opensvc slice use, in cores, from /metrics/pg. cpus: the online cpus of the node, and the ones opensvc.slice may run on."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 54,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"})",
+          "legendFormat": "{{instance}} host",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_memory_max_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"})",
+          "legendFormat": "{{instance}} host total",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"})",
+          "legendFormat": "{{instance}} opensvc",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "host and opensvc memory",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 68
+      },
+      "description": "The memory the node uses (MemTotal minus MemAvailable) and its total, and the memory of the opensvc slice, from /metrics/pg."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "percentunit",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 55,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6 / sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}[$__rate_interval])) / 1e6",
+          "legendFormat": "{{instance}} cpu",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}) / sum by (instance) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"})",
+          "legendFormat": "{{instance}} memory",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6 / sum by (instance) (opensvc_pg_cgroup_cpu_cpus{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"})",
+          "legendFormat": "{{instance}} cpu of its cpus",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "opensvc share of the host",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 68
+      },
+      "description": "The share of the cpu and of the memory the node uses that the opensvc slice uses, and the share of the cpus opensvc.slice may run on that it uses. The rest runs out of opensvc: the other slices, the kernel."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 40,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 56,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (instance, path) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])) / 1e6, \"path\", \"opensvc.slice\", \"path\", \"\")",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, path) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"slice\"}[$__rate_interval])) / 1e6",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "cpu by slice",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 76
+      },
+      "description": "The cpu used by each top level slice, in cores: opensvc.slice, and the others, as system.slice, user.slice, machine.slice, where the guests libvirt or podman start may land."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 40,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 57,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (instance, path) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}), \"path\", \"opensvc.slice\", \"path\", \"\")",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, path) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"slice\"})",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "memory by slice",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 76
+      },
+      "description": "The memory used by each top level slice."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 58,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (rate(opensvc_pg_cgroup_io_read_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}[$__rate_interval]) + rate(opensvc_pg_cgroup_io_write_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} host",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (instance, path) (rate(opensvc_pg_cgroup_io_read_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval]) + rate(opensvc_pg_cgroup_io_write_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}[$__rate_interval])), \"path\", \"opensvc.slice\", \"path\", \"\")",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, path) (rate(opensvc_pg_cgroup_io_read_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"slice\"}[$__rate_interval]) + rate(opensvc_pg_cgroup_io_write_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"slice\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "io by slice",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 76
+      },
+      "description": "The bytes read and written by each top level slice, and by the node, summed over the block devices no other device is stacked on."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 59,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance) (opensvc_pg_cgroup_tasks{job=\"om3_pg\", instance=~\"$instance\", scope=\"host\"})",
+          "legendFormat": "{{instance}} host",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (instance, path) (opensvc_pg_cgroup_tasks{job=\"om3_pg\", instance=~\"$instance\", scope=\"opensvc\"}), \"path\", \"opensvc.slice\", \"path\", \"\")",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, path) (opensvc_pg_cgroup_tasks{job=\"om3_pg\", instance=~\"$instance\", scope=\"slice\"})",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "tasks by slice",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 84
+      },
+      "description": "The tasks of the node, and of each top level slice."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      },
+      "id": 60,
+      "panels": [],
+      "title": "namespaces",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 61,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, namespace) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"namespace\", namespace=~\"$namespace\"}[$__rate_interval])) / 1e6 or sum by (instance, namespace) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", namespace=\"root\", namespace=~\"$namespace\"}[$__rate_interval])) / 1e6",
+          "legendFormat": "{{instance}} {{namespace}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "cpu by namespace",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 93
+      },
+      "description": "The cpu used by each namespace slice, in cores. The root namespace has no slice, its objects being in opensvc.slice: it is the sum of its objects."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 62,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, namespace) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"namespace\", namespace=~\"$namespace\"}) or sum by (instance, namespace) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", namespace=\"root\", namespace=~\"$namespace\"})",
+          "legendFormat": "{{instance}} {{namespace}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "memory by namespace",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 93
+      },
+      "description": "The memory used by each namespace slice, the root namespace being the sum of its objects."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 63,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (instance, namespace) (rate(opensvc_pg_cgroup_io_read_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"namespace\", namespace=~\"$namespace\"}[$__rate_interval]) + rate(opensvc_pg_cgroup_io_write_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"namespace\", namespace=~\"$namespace\"}[$__rate_interval])) or sum by (instance, namespace) (rate(opensvc_pg_cgroup_io_read_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", namespace=\"root\", namespace=~\"$namespace\"}[$__rate_interval]) + rate(opensvc_pg_cgroup_io_write_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", namespace=\"root\", namespace=~\"$namespace\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} {{namespace}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "io by namespace",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 93
+      },
+      "description": "The bytes read and written by each namespace slice, the root namespace being the sum of its objects."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 101
+      },
       "id": 33,
       "panels": [],
       "title": "object resources",
@@ -1960,7 +2819,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\"}[$__rate_interval])) / 1e6)",
+          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_cpu_usage_usec{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\"}[$__rate_interval])) / 1e6)",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -1972,7 +2831,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 68
+        "y": 102
       },
       "description": "The 10 objects using the most CPU, in cores, from their cgroup at /metrics/pg."
     },
@@ -2029,7 +2888,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (instance, path) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\"}))",
+          "expr": "topk(10, sum by (instance, path) (opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\"}))",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -2041,7 +2900,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 68
+        "y": 102
       },
       "description": "The 10 objects using the most memory, from their cgroup at /metrics/pg."
     },
@@ -2098,7 +2957,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\"} / (opensvc_pg_cgroup_memory_max_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\"} != +Inf))",
+          "expr": "topk(10, opensvc_pg_cgroup_memory_current_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\"} / (opensvc_pg_cgroup_memory_max_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\"} != +Inf))",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -2121,7 +2980,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 68
+        "y": 102
       },
       "description": "Memory used over the cgroup memory limit, for the objects that have one, from /metrics/pg. max: the highest ratio on the node. Close to 100% the object processes get reclaimed or killed."
     },
@@ -2190,7 +3049,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 76
+        "y": 110
       },
       "description": "Objects the daemon found no cgroup for, so they have no CPU or memory data at /metrics/pg."
     },
@@ -2259,7 +3118,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 76
+        "y": 110
       },
       "description": "Data received from the peers over the heartbeats. patch: changes applied. full: a whole copy, after a peer restart or a missed patch. ping: nothing changed. A rise of full means peers keep resending all their data."
     },
@@ -2328,7 +3187,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 76
+        "y": 110
       },
       "description": "Requests to the cluster DNS backend."
     },
@@ -2338,7 +3197,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 84
+        "y": 118
       },
       "id": 40,
       "panels": [],
@@ -2398,7 +3257,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (instance, path) (opensvc_pg_cgroup_memory_stat_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", stat=~\"file_dirty|file_writeback\"}))",
+          "expr": "topk(10, sum by (instance, path) (opensvc_pg_cgroup_memory_stat_bytes{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\", stat=~\"file_dirty|file_writeback\"}))",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -2410,7 +3269,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 85
+        "y": 119
       },
       "description": "Data the object wrote that is not on disk yet (dirty and writeback page cache), from /metrics/pg. Steadily high: the object writes faster than its disks take it."
     },
@@ -2467,7 +3326,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_memory_stat_pages{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", stat=\"pgmajfault\"}[$__rate_interval])) > 0)",
+          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_memory_stat_pages{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\", stat=\"pgmajfault\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -2479,7 +3338,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 85
+        "y": 119
       },
       "description": "Pages the object had to read back from disk, per second, from /metrics/pg. High: its memory is too small for what it works on, or it was swapped out. Empty when no object faults."
     },
@@ -2536,7 +3395,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_cpu_stat{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", stat=\"throttled_usec\"}[$__rate_interval])) / 1e6 > 0)",
+          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_cpu_stat{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\", stat=\"throttled_usec\"}[$__rate_interval])) / 1e6 > 0)",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -2548,7 +3407,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 93
+        "y": 127
       },
       "description": "Time per second the object processes were held back by the cgroup cpu quota, from /metrics/pg. Shown: the object wants more cpu than its quota. Empty when no object is throttled."
     },
@@ -2605,7 +3464,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_memory_stat_pages{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", stat=\"pgscan_direct\"}[$__rate_interval])) > 0)",
+          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_memory_stat_pages{job=\"om3_pg\", instance=~\"$instance\", path=~\"$object\", scope=\"object\", stat=\"pgscan_direct\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{instance}} {{path}}",
           "range": true,
           "refId": "A"
@@ -2617,9 +3476,147 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 93
+        "y": 127
       },
       "description": "Pages scanned per second by the object processes themselves to free memory, from /metrics/pg. Each scan stalls the process: the object is short of memory, against its limit or the node. Empty when no object reclaims."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 64,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (instance, path) (rate(opensvc_pg_cgroup_io_read_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", path=~\"$object\"}[$__rate_interval]) + rate(opensvc_pg_cgroup_io_write_bytes{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", path=~\"$object\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "top objects by io",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 135
+      },
+      "description": "The 10 objects reading and writing the most bytes, from their cgroup io.stat."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 65,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (instance, path) (opensvc_pg_cgroup_tasks{job=\"om3_pg\", instance=~\"$instance\", scope=\"object\", path=~\"$object\"}))",
+          "legendFormat": "{{instance}} {{path}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "top objects by tasks",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 135
+      },
+      "description": "The 10 objects running the most tasks, from their cgroup pids.current."
     },
     {
       "collapsed": true,
@@ -2627,7 +3624,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 101
+        "y": 143
       },
       "id": 45,
       "panels": [
@@ -2696,7 +3693,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 102
+            "y": 144
           },
           "description": "CPU used by the daemon, in cores."
         },
@@ -2765,7 +3762,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 102
+            "y": 144
           },
           "description": "Memory the daemon process holds in RAM."
         },
@@ -2834,7 +3831,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 102
+            "y": 144
           },
           "description": "Memory the Go heap uses. A steady rise across GCs is a leak."
         },
@@ -2903,7 +3900,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 110
+            "y": 152
           },
           "description": "Goroutines running in the daemon. A steady rise is a leak."
         },
@@ -2972,7 +3969,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 110
+            "y": 152
           },
           "description": "Open file descriptors over the process limit."
         },
@@ -3041,7 +4038,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 110
+            "y": 152
           },
           "description": "The longest Go garbage collection pause."
         }
@@ -3175,7 +4172,38 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values({__name__=~\"opensvc_scheduler_object_runs_total|opensvc_pg_cgroup_exists\", instance=~\"$instance\"}, path)",
+        "definition": "label_values(opensvc_pg_cgroup_exists{job=\"om3_pg\", instance=~\"$instance\", scope=~\"namespace|object\"}, namespace)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "label": "namespace",
+        "multi": true,
+        "name": "namespace",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(opensvc_pg_cgroup_exists{job=\"om3_pg\", instance=~\"$instance\", scope=~\"namespace|object\"}, namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values({__name__=~\"opensvc_scheduler_object_runs_total|opensvc_pg_cgroup_exists\", instance=~\"$instance\", scope=~\"object|\"}, path)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -3185,7 +4213,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values({__name__=~\"opensvc_scheduler_object_runs_total|opensvc_pg_cgroup_exists\", instance=~\"$instance\"}, path)",
+          "query": "label_values({__name__=~\"opensvc_scheduler_object_runs_total|opensvc_pg_cgroup_exists\", instance=~\"$instance\", scope=~\"object|\"}, path)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
