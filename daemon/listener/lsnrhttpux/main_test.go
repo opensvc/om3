@@ -93,8 +93,8 @@ func TestARequestCarriesItsPeer(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("%d %d", os.Getuid(), os.Getpid()), string(b))
 }
 
-// The owner group emptied closes the socket, and the connections open through
-// it, http/1.1 and http/2 alike: the members of the former group lose the api
+// An update emptying the owner group closes the socket, and the connections
+// open through it, http/1.1 and http/2 alike: the members of the former group lose the api
 // at once. The connections are tracked, and their peer read through the
 // tracking.
 func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
@@ -147,7 +147,10 @@ func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
 	lsnrT.tracked.mu.Unlock()
 	assert.Equal(t, 2, open, "the http/1.1 and the http/2 connections")
 
-	lsnrT.closeSocket()
+	// The configuration read now names another group: the update emptying
+	// it closes the socket all the same.
+	lsnrT.ownerGroup = func() string { return "other" }
+	lsnrT.onOwnerGroup(context.Background(), "")
 	<-served
 	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, err = conn.Write([]byte("GET / HTTP/1.1\r\nHost: x\r\n\r\n"))
@@ -164,4 +167,7 @@ func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
 	_, err = net.Dial("unix", sock)
 	assert.Error(t, err)
 	assert.NoError(t, lsnrT.Stop(), "stopping a closed listener")
+
+	lsnrT.onOwnerGroup(context.Background(), "other")
+	assert.Equal(t, "", lsnrT.group, "a closed socket is not owned again")
 }

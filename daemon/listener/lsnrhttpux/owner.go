@@ -76,10 +76,9 @@ func ownSocket(addr string, gid int) error {
 	return os.Chmod(addr, ownedSockMode)
 }
 
-// applyOwnerGroup owns the directory and the socket of the listener by the
-// group the owner group function says, when it changed.
-func (t *T) applyOwnerGroup(ctx context.Context) error {
-	group := t.ownerGroup()
+// applyOwnerGroup owns the directory and the socket of the listener by group,
+// when it changed.
+func (t *T) applyOwnerGroup(ctx context.Context, group string) error {
 	if group == t.group {
 		return nil
 	}

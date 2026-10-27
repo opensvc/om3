@@ -72,7 +72,7 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	}
 	if t.ownerGroup != nil {
-		if err := t.applyOwnerGroup(ctx); err != nil {
+		if err := t.applyOwnerGroup(ctx, t.ownerGroup()); err != nil {
 			t.log.Errorf("own the socket directory: %s", err)
 			return err
 		}
@@ -153,6 +153,24 @@ func (t *T) withPeer(ctx context.Context, c net.Conn) context.Context {
 	return daemonctx.WithPeer(ctx, peer)
 }
 
+// onOwnerGroup applies the owner group of a cluster configuration update:
+// the group of the configuration the message carries, rather than the one of
+// the latest, so a group emptied then set again before the message is read
+// is a group emptied all the same. A group emptied closes the socket, which
+// is served again from the next daemon start only.
+func (t *T) onOwnerGroup(ctx context.Context, group string) {
+	if t.closed.Load() {
+		return
+	}
+	if group == "" {
+		t.closeSocket()
+		return
+	}
+	if err := t.applyOwnerGroup(ctx, group); err != nil {
+		t.log.Errorf("own the socket: %s", err)
+	}
+}
+
 // closeSocket stops serving the socket, and the connections open through it,
 // and removes it: the owner group was emptied, which serves no socket. The
 // members of the former group lose the api at once, rather than at the next
@@ -225,16 +243,7 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.ClusterConfigUpdated:
-				if t.closed.Load() {
-					continue
-				}
-				if t.ownerGroup() == "" {
-					t.closeSocket()
-					continue
-				}
-				if err := t.applyOwnerGroup(ctx); err != nil {
-					t.log.Errorf("own the socket: %s", err)
-				}
+				t.onOwnerGroup(ctx, m.Value.Listener.UXOwnerGroup)
 			}
 		}
 	}
