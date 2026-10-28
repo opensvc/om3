@@ -4,3 +4,6 @@ Applies to both:
 
 * `om <selector> <action>` commands.
 * commands executed by the daemon for orchestrations
+
+The minimum is 2, and 0 sets it to the number of cpus. A lower value is
+refused, and the daemon raises one written before to 2.
