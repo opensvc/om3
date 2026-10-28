@@ -343,6 +343,9 @@ type ClientInterface interface {
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteNodeDRBDConfig request
+	DeleteNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *DeleteNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeDRBDConfig request
 	GetNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1757,6 +1760,18 @@ func (c *Client) GetDaemonOrchestration(ctx context.Context, nodename InPathNode
 
 func (c *Client) GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeDRBDAllocationRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *DeleteNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteNodeDRBDConfigRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -7448,6 +7463,79 @@ func NewGetNodeDRBDAllocationRequest(server string, nodename InPathNodeName) (*h
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteNodeDRBDConfigRequest generates requests for DeleteNodeDRBDConfig
+func NewDeleteNodeDRBDConfigRequest(server string, nodename InPathNodeName, params *DeleteNodeDRBDConfigParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/drbd/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -17597,6 +17685,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
 
+	// DeleteNodeDRBDConfigWithResponse request
+	DeleteNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*DeleteNodeDRBDConfigResponse, error)
+
 	// GetNodeDRBDConfigWithResponse request
 	GetNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*GetNodeDRBDConfigResponse, error)
 
@@ -20530,6 +20621,40 @@ func (r GetNodeDRBDAllocationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNodeDRBDAllocationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteNodeDRBDConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteNodeDRBDConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteNodeDRBDConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteNodeDRBDConfigResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -25221,6 +25346,15 @@ func (c *ClientWithResponses) GetNodeDRBDAllocationWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetNodeDRBDAllocationResponse(rsp)
+}
+
+// DeleteNodeDRBDConfigWithResponse request returning *DeleteNodeDRBDConfigResponse
+func (c *ClientWithResponses) DeleteNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteNodeDRBDConfigParams, reqEditors ...RequestEditorFn) (*DeleteNodeDRBDConfigResponse, error) {
+	rsp, err := c.DeleteNodeDRBDConfig(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteNodeDRBDConfigResponse(rsp)
 }
 
 // GetNodeDRBDConfigWithResponse request returning *GetNodeDRBDConfigResponse
@@ -30388,6 +30522,60 @@ func ParseGetNodeDRBDAllocationResponse(rsp *http.Response) (*GetNodeDRBDAllocat
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteNodeDRBDConfigResponse parses an HTTP response from a DeleteNodeDRBDConfigWithResponse call
+func ParseDeleteNodeDRBDConfigResponse(rsp *http.Response) (*DeleteNodeDRBDConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteNodeDRBDConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
