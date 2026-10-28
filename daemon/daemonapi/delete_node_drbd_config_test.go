@@ -42,3 +42,14 @@ func TestIsResourceProvisioned(t *testing.T) {
 	_, err = isResourceProvisioned(p, "disk#2")
 	assert.Error(t, err, "a state that can not be read keeps the file")
 }
+
+// The rid of the request names a directory of the var directory of the
+// object: only the id of a disk resource is taken.
+func TestIsDiskRID(t *testing.T) {
+	for _, s := range []string{"disk#1", "disk#drbd"} {
+		assert.True(t, isDiskRID(s), s)
+	}
+	for _, s := range []string{"", "disk", "fs#1", "../disk#1", "disk#1/../..", "disk#1/x", "DEFAULT", "env"} {
+		assert.False(t, isDiskRID(s), s)
+	}
+}
