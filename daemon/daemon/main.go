@@ -347,7 +347,15 @@ func (t *T) stopWatcher() {
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"node", hostname.Hostname()}, pubsub.Label{"id", "daemon"})
 	sub.Start()
 
-	signal.Ignore(syscall.SIGHUP)
+	// A hangup is no reason for the daemon to stop: it outlives the session
+	// it was started from. The signal is caught and dropped rather than
+	// ignored, because an ignored signal stays ignored in the processes
+	// the daemon starts, the applications among them, through every exec:
+	// a server could not be reloaded with a hangup, as the signal of an
+	// install line asks, and a shell could not even trap one. A caught
+	// signal is reset to its default on exec. The channel is never read:
+	// a signal finding it full is dropped.
+	signal.Notify(make(chan os.Signal, 1), syscall.SIGHUP)
 	signalCtx, signalCancel := signal.NotifyContext(t.ctx, os.Interrupt, syscall.SIGTERM)
 
 	started := make(chan bool)
