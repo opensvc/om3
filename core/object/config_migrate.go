@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -307,6 +308,13 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 		// made it: the volume is that resource's, and making another
 		// would declare it twice, the second failing to create it.
 		if lvRID := lvRIDOf(cfg, name, vgName); lvRID != "" {
+			// A name, a group or a device a node names otherwise is a
+			// volume the unscoped values do not say: matched on them,
+			// the filesystem could mount another volume on that node.
+			if hasScoped(cfg, lvRID, "name", "vg") || hasScoped(cfg, section, "dev", "vg") {
+				m.Refusals = append(m.Refusals, fmt.Sprintf("%s makes the %s volume of the %s group, which %s declares, and one of them names it otherwise on some nodes: point %s.dev to the volume by hand, and drop the keywords making it", section, name, vgName, lvRID, section))
+				continue
+			}
 			for _, option := range moved {
 				m.Unsets = append(m.Unsets, key.T{Section: section, Option: option})
 			}
@@ -393,6 +401,18 @@ func lvRIDOf(cfg *xconfig.T, name, vgName string) string {
 		}
 	}
 	return ""
+}
+
+// hasScoped says a section has one of the options scoped to some nodes, as
+// name@n1.
+func hasScoped(cfg *xconfig.T, section string, options ...string) bool {
+	for _, option := range cfg.Keys(section) {
+		base, scope := cutScope(option)
+		if scope != "" && slices.Contains(options, base) {
+			return true
+		}
+	}
+	return false
 }
 
 // sameSize says two sizes are the same, as numbers when both are, or as
