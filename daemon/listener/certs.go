@@ -114,7 +114,7 @@ func (t *T) installCaFiles(clusterName string) error {
 			return err
 		} else if !ok {
 			t.log.Infof("install ca files bootstrap initial %s", caPath)
-			if err := t.bootStrapCaPath(); err != nil {
+			if err := t.bootStrapCaPath(clusterName); err != nil {
 				return fmt.Errorf("install ca files can't bootstrap initial %s: %w", caPath, err)
 			}
 		}
@@ -237,16 +237,26 @@ func (t *T) installCertFiles(clusterName string) error {
 	return nil
 }
 
-func (t *T) bootStrapCaPath() error {
+// bootStrapCaPath makes the ca of the cluster, named after it, so a client
+// inspecting it, or a trust store holding it, tells it apart from the ca of
+// another cluster. A ca made before keeps its subject, which is the issuer
+// of the certificates it signed.
+func (t *T) bootStrapCaPath(clusterName string) error {
 	p := caPath
 	t.log.Infof("bootstrapping ca %s", p)
 	caSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
 		return err
 	}
-	op := keyop.New(key.New("DEFAULT", "validity"), keyop.Set, caValidity, 0)
-	if err := caSec.Config().PrepareSet(*op); err != nil {
-		return err
+	ops := []*keyop.T{
+		keyop.New(key.New("DEFAULT", "validity"), keyop.Set, caValidity, 0),
+		keyop.New(key.New("DEFAULT", "cn"), keyop.Set, clusterName+" CA", 0),
+		keyop.New(key.New("DEFAULT", "o"), keyop.Set, "OpenSVC", 0),
+	}
+	for _, op := range ops {
+		if err := caSec.Config().PrepareSet(*op); err != nil {
+			return err
+		}
 	}
 	t.log.Infof("bootstrap ca generating cert %s", p)
 	return caSec.GenCert()

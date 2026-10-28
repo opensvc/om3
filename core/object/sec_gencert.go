@@ -1,10 +1,12 @@
 package object
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -258,7 +260,33 @@ func getBaseKeyUsage(priv interface{}) x509.KeyUsage {
 	return keyUsage
 }
 
+// subject is the subject of the certificates the sec issues, as its c, st,
+// l, o, ou and cn keywords say it. An attribute is at least a character long
+// (X.520): a keyword not set leaves its attribute out, rather than empty.
 func (t *sec) subject() pkix.Name {
+	var name pkix.Name
+	for _, attr := range []struct {
+		option string
+		to     *[]string
+	}{
+		{"c", &name.Country},
+		{"st", &name.Province},
+		{"l", &name.Locality},
+		{"o", &name.Organization},
+		{"ou", &name.OrganizationalUnit},
+	} {
+		if s := t.CertInfo(attr.option); s != "" {
+			*attr.to = []string{s}
+		}
+	}
+	name.CommonName = t.CertInfo("cn")
+	return name
+}
+
+// legacySubject is the subject the sec issued its certificates with before
+// the keywords not set were left out: each of the c, st, l, o and ou
+// attributes, empty when not set.
+func (t *sec) legacySubject() pkix.Name {
 	return pkix.Name{
 		Country:            []string{t.CertInfo("c")},
 		Organization:       []string{t.CertInfo("o")},
@@ -267,6 +295,32 @@ func (t *sec) subject() pkix.Name {
 		Province:           []string{t.CertInfo("st")},
 		CommonName:         t.CertInfo("cn"),
 	}
+}
+
+// keptRawSubject returns the subject of the certificate the sec holds when
+// it is the legacy one of its keywords, as they are: the next certificate is
+// issued with it, so a renewal changes no name. The subject of a ca is the
+// issuer of the certificates it signed, which a client matching the issuer
+// by name, as openssl does, would no longer chain to it. A keyword changed
+// since gives the certificate the subject it says.
+func (t *sec) keptRawSubject() []byte {
+	b, err := t.decode("certificate")
+	if err != nil || len(b) == 0 {
+		return nil
+	}
+	block, _ := pem.Decode(b)
+	if block == nil {
+		return nil
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil
+	}
+	legacy, err := asn1.Marshal(t.legacySubject().ToRDNSequence())
+	if err != nil || !bytes.Equal(cert.RawSubject, legacy) {
+		return nil
+	}
+	return cert.RawSubject
 }
 
 // "cn", "c", "st", "l", "o", "ou", "email", "alt_names", "bits", "validity", "ca"
@@ -283,6 +337,7 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 	template := x509.Certificate{
 		SerialNumber:          serial,
 		Subject:               t.subject(),
+		RawSubject:            t.keptRawSubject(),
 		NotBefore:             time.Now().Add(-10 * time.Second),
 		NotAfter:              notAfter,
 		KeyUsage:              keyUsage,
