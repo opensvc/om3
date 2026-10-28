@@ -52,8 +52,10 @@ func (t *Manager) getNodeConfig() node.Config {
 	if cfg.MaxParallel == 0 {
 		cfg.MaxParallel = runtime.NumCPU()
 	}
-	if cfg.MaxParallel < MinMaxParallel {
-		cfg.MaxParallel = MinMaxParallel
+	if cfg.MaxParallel < object.MinNodeMaxParallel {
+		// A configuration written before the keyword refused it.
+		t.log.Warnf("node.max_parallel = %d is raised to %d, the minimum of actions in parallel", cfg.MaxParallel, object.MinNodeMaxParallel)
+		cfg.MaxParallel = object.MinNodeMaxParallel
 	}
 
 	for _, s := range t.config.SectionStrings() {

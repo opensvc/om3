@@ -24,10 +24,6 @@ import (
 )
 
 var (
-	// MinMaxParallel is the minimum value of the setting of maximum number of CRM
-	// actions allowed to run in parallel.
-	MinMaxParallel = 2
-
 	splitActions = map[string]func() error{
 		"crash":    toc.Crash,
 		"reboot":   toc.Reboot,

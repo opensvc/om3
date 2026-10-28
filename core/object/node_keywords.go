@@ -2,6 +2,8 @@ package object
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/kwoption"
@@ -15,6 +17,11 @@ import (
 
 const (
 	DefaultNodeMaxParallel = 10
+
+	// MinNodeMaxParallel is the least number of CRM actions the daemon lets
+	// run in parallel, whatever node.max_parallel says: a lower one is too
+	// dangerous to honor.
+	MinNodeMaxParallel = 2
 )
 
 var (
@@ -335,6 +342,7 @@ var (
 		Option:    "max_parallel",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_parallel"),
+		Validate:  validMaxParallel,
 	}
 	kwNodeMaxKeySize = keywords.Keyword{
 		Converter: converters.Size,
@@ -2260,6 +2268,19 @@ var NodeKeywordStore = keywords.Store(append(nodePrivateKeywords, nodeCommonKeyw
 
 // validShare refuses a value that is neither a percentage nor a size, which
 // would set no minimum where one was asked for.
+// validMaxParallel refuses a node.max_parallel the daemon would not honor:
+// below the minimum, but for 0, which is the number of cpus.
+func validMaxParallel(value string) error {
+	i, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		return err
+	}
+	if i != 0 && i < MinNodeMaxParallel {
+		return fmt.Errorf("%d is below the minimum of %d actions in parallel, 0 being the number of cpus", i, MinNodeMaxParallel)
+	}
+	return nil
+}
+
 func validShare(value string) error {
 	_, err := sizeconv.ParseShare(value)
 	return err
