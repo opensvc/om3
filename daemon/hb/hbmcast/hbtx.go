@@ -22,7 +22,7 @@ type (
 		ctx      context.Context
 		id       string
 		nodes    []string
-		laddr    *net.UDPAddr
+		intf     *net.Interface
 		udpAddr  *net.UDPAddr
 		interval time.Duration
 		timeout  time.Duration
@@ -62,10 +62,10 @@ func (t *tx) Ctx() context.Context {
 }
 
 func (t *tx) streamPeerDesc() string {
-	if t.laddr == nil {
+	if t.intf == nil {
 		return fmt.Sprintf("→ %s", t.udpAddr)
 	} else {
-		return fmt.Sprintf("%s → %s", t.laddr, t.udpAddr)
+		return fmt.Sprintf("%s → %s", t.intf.Name, t.udpAddr)
 	}
 }
 
@@ -126,7 +126,7 @@ func (t *tx) send(b []byte) {
 	//fmt.Println("xx >>>\n", hex.Dump(b))
 	t.log.Tracef("send to udp %s", t.udpAddr)
 
-	c, err := net.DialUDP("udp", t.laddr, t.udpAddr)
+	c, err := dialMulticast(t.intf, t.udpAddr)
 	if err != nil {
 		t.log.Tracef("dial udp %s: %s", t.udpAddr, err)
 		return
@@ -153,7 +153,7 @@ func (t *tx) send(b []byte) {
 			chunk = b[:MaxChunkSize]
 			b = b[MaxChunkSize:]
 		}
-		if _, err := c.Write(encodeFragment(msgID, i, total, chunk)); err != nil {
+		if _, err := c.WriteToUDP(encodeFragment(msgID, i, total, chunk), t.udpAddr); err != nil {
 			// Not Tracef. A write that fails here abandons the whole
 			// message, and the framing this replaces made that the
 			// normal outcome for any message over MaxChunkSize while
@@ -171,7 +171,7 @@ func (t *tx) send(b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net.UDPAddr, timeout, interval time.Duration, sent *selfIDs) *tx {
+func newTx(ctx context.Context, name string, nodes []string, intf *net.Interface, udpAddr *net.UDPAddr, timeout, interval time.Duration, sent *selfIDs) *tx {
 	id := name + ".tx"
 	return &tx{
 		sent:     sent,
@@ -179,7 +179,7 @@ func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net
 		id:       id,
 		nodes:    nodes,
 		udpAddr:  udpAddr,
-		laddr:    laddr,
+		intf:     intf,
 		interval: interval,
 		timeout:  timeout,
 		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbmcast").

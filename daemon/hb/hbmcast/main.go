@@ -236,7 +236,6 @@ func (t *T) Configure(ctx context.Context) {
 	}
 
 	var ifi *net.Interface
-	var laddr *net.UDPAddr
 
 	if intf != "" {
 		ifi, err = net.InterfaceByName(intf)
@@ -244,31 +243,19 @@ func (t *T) Configure(ctx context.Context) {
 			log.Errorf("can't get interface by name: %s", err)
 			return
 		}
-		log.Tracef("set rx interface %s", ifi.Name)
-
-		addrs, err := ifi.Addrs()
-		if err != nil {
-			log.Warnf("intf %s addrs: %s", ifi.Name, err)
-			return
+		// The sockets name the interface by its index, so the heartbeat
+		// works once the interface gets its address, but until then
+		// the peers are unlikely to be reached on it.
+		if !hasAddrOf(ifi, udpAddr) {
+			log.Warnf("intf %s has no address of the family of %s yet: the heartbeat is up on it, and beats once its network is", ifi.Name, udpAddr.IP)
 		}
-		for _, addr := range addrs {
-			addrStr := addr.String()
-			l := strings.Split(addrStr, "/")
-			laddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", l[0], 0))
-			if err != nil {
-				log.Tracef("intf %s make tx laddr from addr %s: %s", ifi.Name, addr, err)
-			} else {
-				break
-			}
-		}
-		log.Tracef("set tx interface %s laddr %s", ifi.Name, laddr)
 	}
 
 	// Shared so the receiver can drop this node's own datagrams on their
 	// header. The pair is per heartbeat, which is what it has to be: a
 	// datagram only comes back on the group its tx sent it to.
 	sent := newSelfIDs()
-	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout, interval, sent)
+	tx := newTx(ctx, name, oNodes, ifi, udpAddr, timeout, interval, sent)
 	t.SetTx(tx)
 	rx := newRx(ctx, name, oNodes, udpAddr, ifi, timeout, sent)
 	t.SetRx(rx)
