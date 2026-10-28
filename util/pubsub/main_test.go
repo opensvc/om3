@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,6 +64,41 @@ func TestPub(t *testing.T) {
 	pub.Pub(&msgT{v: "foo"}, Label{"op", "delete"})
 	pub.Pub(&msgT{v: "bar"})
 	pub.Pub(&msgT{v: "foobar"})
+}
+
+// The commands sent to a stopped bus return: none is taken by a receiver
+// that never answers it, which would block its sender forever, as a
+// subscription stopped along the bus.
+func TestCmdAfterStopReturns(t *testing.T) {
+	bus := newRun(t.Name())
+	subs := make([]*Subscription, 100)
+	for i := range subs {
+		subs[i] = bus.Sub(fmt.Sprintf("sub%d", i))
+		subs[i].Start()
+	}
+	bus.Stop()
+	done := make(chan bool)
+	go func() {
+		var wg sync.WaitGroup
+		for _, sub := range subs {
+			wg.Add(2)
+			go func() {
+				defer wg.Done()
+				_ = sub.Stop()
+			}()
+			go func() {
+				defer wg.Done()
+				bus.Pub(&msgT{v: "foo"})
+			}()
+		}
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("a command sent to the stopped bus is blocked")
+	}
 }
 
 func TestGenerateCombinations(t *testing.T) {
