@@ -43,7 +43,10 @@ func (t *Manager) purgedFromIdle() {
 	if t.setWaitChildren() {
 		return
 	}
-	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+	// A mixed instance, as one whose provision failed half way, holds
+	// what its provisioned resources took: deleting it unprovisioned
+	// would leave that behind, a drbd resource up on a volume among them.
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.Mixed, provisioned.NotApplicable) {
 		t.purgedFromIdleProvisioned()
 		return
 	}
