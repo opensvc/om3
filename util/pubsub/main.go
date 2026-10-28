@@ -812,22 +812,10 @@ func (b *Bus) onSubDelFilter(c cmdSubDelFilter) {
 	c.resp <- nil
 }
 
-func (b *Bus) drain() {
-	b.log.Infof("draining the message bus")
-	defer b.log.Infof("drained")
-	i := 0
-	tC := time.After(b.drainChanDuration)
-	for {
-		select {
-		case <-b.cmdC:
-			i++
-		case <-tC:
-			b.log.Infof("drained dropped %d pending messages from the bus on stop", i)
-			return
-		}
-	}
-}
-
+// Stop cancels the bus and waits for its goroutines. A command sent to the
+// stopped bus returns by the done context of the bus, its sender never
+// waiting for an answer: no receiver is left to take the commands, as one
+// taking them without answering would block their senders forever.
 func (b *Bus) Stop() {
 	if b == nil {
 		return
@@ -837,7 +825,6 @@ func (b *Bus) Stop() {
 		b.cancel = nil
 		f()
 		b.Wait()
-		go b.drain()
 		b.log.Infof("stopped")
 	}
 }
