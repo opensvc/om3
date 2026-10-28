@@ -48,3 +48,39 @@ func TestInstallFilePerm(t *testing.T) {
 		})
 	}
 }
+
+// The mode of an install line is read as chmod reads it: the leading digit
+// of a 4 digit mode sets the setuid, setgid and sticky bits, which a shared
+// directory needs for its files to keep its group.
+func TestInstallModeKeepsTheSpecialBits(t *testing.T) {
+	path, err := naming.ParsePath("ns1/svc/s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := converters.Shlex.Convert(`/srv/shared/ mode 2775
+/tmp/spool/ mode 1777
+/bin/tool from ./cfg/c key tool mode 4755
+/etc/a.conf from ./cfg/c key a.conf mode 0640`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recv := &DataRecv{Install: v.([]string)}
+	dirs, files := recv.parseInstall("/head", path)
+	if len(dirs) != 2 || len(files) != 2 {
+		t.Fatalf("got %d dirs and %d files, want 2 and 2", len(dirs), len(files))
+	}
+	for _, tc := range []struct {
+		name string
+		got  os.FileMode
+		want os.FileMode
+	}{
+		{"setgid dir", dirs[0].Perm, os.ModeSetgid | 0o775},
+		{"sticky dir", dirs[1].Perm, os.ModeSticky | 0o777},
+		{"setuid file", files[0].AccessControl.Perm, os.ModeSetuid | 0o755},
+		{"plain file", files[1].AccessControl.Perm, 0o640},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: mode %s, want %s", tc.name, tc.got, tc.want)
+		}
+	}
+}

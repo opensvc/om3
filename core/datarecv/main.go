@@ -967,13 +967,16 @@ func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefini
 		return dirs, files, patterns
 	}
 
+	// The mode is read as the perm keyword is, as chmod does: the leading
+	// digit of a 4 digit mode sets the setuid, setgid and sticky bits,
+	// which os.FileMode keeps apart from the permission bits.
 	parseFileMode := func(s string) (*os.FileMode, error) {
-		mode, err := strconv.ParseUint(s, 8, 32)
+		v, err := converters.FileMode.Convert(s)
 		if err != nil {
 			return nil, err
 		}
-		fileMode := os.FileMode(mode)
-		return &fileMode, nil
+		mode, _ := v.(*os.FileMode)
+		return mode, nil
 	}
 
 	parseDir := func(line []string) {
