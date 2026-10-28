@@ -804,6 +804,19 @@ func (t T) DoRemote() error {
 				followNodes[n] = nil
 			}
 		}
+		// A node of the object whose instance this daemon has not heard
+		// of yet, as right after the object is created on another node,
+		// is asked all the same: its daemon has the configuration, and
+		// skipping it did nothing and said nothing.
+		for _, n := range core.Scope {
+			if _, ok := nodenames[n]; !ok {
+				continue
+			}
+			if _, ok := selectedInstances[n]; !ok {
+				selectedInstances[n] = api.Instance{}
+				followNodes[n] = nil
+			}
+		}
 		if t.Target == "started" {
 			actor, err := item.Data.AsObjectActor()
 			if err != nil {
@@ -857,6 +870,7 @@ func (t T) DoRemote() error {
 	}
 	if todo == 0 {
 		sessionLogs.Stop()
+		fmt.Fprintf(os.Stderr, "no instance of %s on %s\n", t.ObjectSelector, t.NodeSelector)
 		return nil
 	}
 	for {
