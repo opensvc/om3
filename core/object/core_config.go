@@ -45,15 +45,17 @@ func (t *core) loadConfig(referrer xconfig.Referrer) error {
 		// The bytes loaded are the ones checksummed, so the status says
 		// the configuration it was computed from, whatever writes the
 		// file in between.
+		// A file gone loads as an empty configuration, which the status
+		// says it was computed from: not the one the file held before,
+		// which a reload of the object would otherwise keep saying.
 		b, err := os.ReadFile(t.configFile)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			b = []byte{}
 		case err != nil:
 			return err
-		default:
-			t.configCsum = fmt.Sprintf("%x", md5.Sum(b))
 		}
+		t.configCsum = fmt.Sprintf("%x", md5.Sum(b))
 		sources = []any{b}
 	} else {
 		sources = []any{}
