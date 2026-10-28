@@ -161,9 +161,10 @@ func (t *T) stop(ctx context.Context, afterStopCmd bool) error {
 	if afterStopCmd {
 		t.Log().Infof("the stop command left %d processes running", procs.Len())
 	}
+	same := t.isOwnProcess()
 	for _, p := range procs.Procs() {
 		t.loggerWithProc(p).Infof("send termination signal to process %d", p.PID())
-		p.Signal(syscall.SIGTERM)
+		_, _ = p.SignalIf(syscall.SIGTERM, same)
 	}
 	prev := procs
 	for i := 0; i < 5; i++ {
@@ -203,13 +204,38 @@ func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 		return nil
 	}
 	var errs error
+	same := t.isOwnProcess()
 	for _, p := range targets.Procs() {
-		t.loggerWithProc(p).Infof("send signal %s to process %d", unix.SignalName(sig), p.PID())
-		if err := p.Signal(sig); err != nil {
+		if sent, err := p.SignalIf(sig, same); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("signal %s to process %d: %w", unix.SignalName(sig), p.PID(), err))
+		} else if sent {
+			t.loggerWithProc(p).Infof("sent signal %s to process %d", unix.SignalName(sig), p.PID())
 		}
 	}
 	return errs
+}
+
+// isOwnProcess returns the check a process found by the stop or the signal
+// is still one of the resource when it is held, just before a signal: it
+// carries the identity of the resource, or it is the process the start
+// command launched, by its pid and its start time, which the record keeps
+// for a launcher clearing its environment. A pid the process left, and
+// another took, between the scan and the signal fails it.
+func (t *T) isOwnProcess() func(proc.T) bool {
+	id := t.ObjectID.String()
+	startedPID, startedTime, _, err := t.readStarted()
+	if err != nil {
+		startedPID = 0
+	}
+	return func(p proc.T) bool {
+		if startedPID != 0 && p.PID() == startedPID {
+			if st, err := p.StartTime(); err == nil && st == startedTime {
+				return true
+			}
+		}
+		env := p.Env()
+		return env["OPENSVC_RID"] == t.RID() && (env["OPENSVC_ID"] == id || env["OPENSVC_SVC_ID"] == id)
+	}
 }
 
 func (t *T) Status(ctx context.Context) status.T {
