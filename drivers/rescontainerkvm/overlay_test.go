@@ -44,16 +44,19 @@ func TestOverlayCreateCmdline(t *testing.T) {
 		overlayCreateCmdline(o))
 }
 
-// A disk whose source is the overlay of a move is one a previous move left
-// unmerged. Another qcow2 of the image directory, or a device, is not.
+// A disk whose source is the overlay a move puts over it is one a previous
+// move left unmerged. Another qcow2 of the image directory is not, even named
+// like the overlay of another domain or disk, nor is a device.
 func TestLeftOverlays(t *testing.T) {
-	assert.Equal(t, []string{"vda"}, leftOverlays([]moveDisk{
+	assert.Equal(t, []string{"vda"}, leftOverlays("vm1", []moveDisk{
 		{Target: "vda", Source: "/var/lib/libvirt/images/vm1.vda.osvc-move.qcow2", IsFile: true},
 		{Target: "vdb", Source: "/var/lib/libvirt/images/vm1.qcow2", IsFile: true},
 		{Target: "vdc", Source: "/srv/vm1/vm1.vdc.osvc-move.qcow2", IsFile: true},
 		{Target: "vdd", Source: "/dev/zvol/tank/vm1"},
+		{Target: "vde", Source: "/var/lib/libvirt/images/vm2.vde.osvc-move.qcow2", IsFile: true},
+		{Target: "vdf", Source: "/var/lib/libvirt/images/vm1.vda.osvc-move.qcow2", IsFile: true},
 	}))
-	assert.Empty(t, leftOverlays([]moveDisk{{Target: "vda", Source: "/dev/drbd1"}}))
+	assert.Empty(t, leftOverlays("vm1", []moveDisk{{Target: "vda", Source: "/dev/drbd1"}}))
 }
 
 func TestBlockcommitArgs(t *testing.T) {

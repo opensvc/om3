@@ -48,19 +48,26 @@ func newMoveOverlays(domain string, disks []moveDisk) []moveOverlay {
 			Target: d.Target,
 			Base:   d.Source,
 			Format: format,
-			Path:   filepath.Join(overlayDir, domain+"."+d.Target+overlaySuffix),
+			Path:   overlayPath(domain, d.Target),
 		})
 	}
 	return l
 }
 
-// leftOverlays returns the targets of the disks whose source is the overlay
-// of a move. A move whose destination failed to merge the overlays leaves
-// the guest running on them there, and the definition naming them.
-func leftOverlays(disks []moveDisk) []string {
+// overlayPath returns the path of the overlay a move puts over the disk
+// target of the domain.
+func overlayPath(domain, target string) string {
+	return filepath.Join(overlayDir, domain+"."+target+overlaySuffix)
+}
+
+// leftOverlays returns the targets of the disks of the domain whose source is
+// the overlay a move puts over them. A move whose destination failed to merge
+// the overlays leaves the guest running on them there, and the definition
+// naming them.
+func leftOverlays(domain string, disks []moveDisk) []string {
 	var l []string
 	for _, d := range disks {
-		if d.IsFile && filepath.Dir(d.Source) == overlayDir && strings.HasSuffix(d.Source, overlaySuffix) {
+		if d.IsFile && d.Source == overlayPath(domain, d.Target) {
 			l = append(l, d.Target)
 		}
 	}
@@ -174,11 +181,11 @@ func (t *T) checkNoLeftOverlays(ctx context.Context, defined []moveDisk) error {
 	if err != nil {
 		return fmt.Errorf("read the disks of the running %s: %w", t.Name, err)
 	}
-	if l := leftOverlays(running); len(l) > 0 {
+	if l := leftOverlays(t.Name, running); len(l) > 0 {
 		return fmt.Errorf("the guest runs on overlays a previous move left over its disks %s: merge them with 'virsh blockcommit %s <disk> --active --pivot' for each before a move",
 			strings.Join(l, ", "), t.Name)
 	}
-	if l := leftOverlays(defined); len(l) > 0 {
+	if l := leftOverlays(t.Name, defined); len(l) > 0 {
 		return fmt.Errorf("the definition of %s names overlays a previous move left as the sources of its disks %s: define it with its disks before a move",
 			t.Name, strings.Join(l, ", "))
 	}
