@@ -103,6 +103,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs an LXC system container.")
 }
 
 func (t *T) DriverID() driver.ID {

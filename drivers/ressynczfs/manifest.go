@@ -89,6 +89,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Replicates ZFS datasets to the peer nodes with send and receive.")
 }
 
 func (t *T) DriverID() driver.ID {

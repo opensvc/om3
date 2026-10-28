@@ -41,6 +41,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Adds a policy routing rule.")
 }
 
 func (t *T) DriverID() driver.ID {

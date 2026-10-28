@@ -55,6 +55,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs an application whose start command forks into the background, with its stop and check commands.")
 }
 
 func (t *T) DriverID() driver.ID {

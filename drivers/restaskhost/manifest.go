@@ -43,6 +43,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs a command on the node, as a task.")
 }
 
 func (t *T) DriverID() driver.ID {

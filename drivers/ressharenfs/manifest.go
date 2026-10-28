@@ -37,6 +37,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Exports a directory with NFS.")
 }
 
 func (t *T) DriverID() driver.ID {

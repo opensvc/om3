@@ -83,6 +83,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Allocates a disk from a storage array, and maps it to the nodes.")
 }
 
 func (t *T) DriverID() driver.ID {

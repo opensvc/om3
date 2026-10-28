@@ -44,6 +44,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Exposes a file as a block device with a loop device.")
 }
 
 func (t *T) DriverID() driver.ID {

@@ -47,6 +47,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Fails over Dell PowerMax SRDF/S replication.")
 }
 
 func (t *T) DriverID() driver.ID {

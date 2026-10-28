@@ -63,6 +63,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Fails over an sgcp consistency group of NFS filesystems.")
 }
 
 func (t *T) DriverID() driver.ID {

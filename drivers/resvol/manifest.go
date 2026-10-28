@@ -111,6 +111,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Uses a volume object, made from a pool, as storage of the object.")
 }
 
 func (t *T) DriverID() driver.ID {

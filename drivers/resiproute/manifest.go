@@ -58,6 +58,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Adds a route, in the node or in a container network namespace.")
 }
 
 func (t *T) DriverID() driver.ID {

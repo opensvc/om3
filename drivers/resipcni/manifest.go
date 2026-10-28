@@ -67,6 +67,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Plugs an address into a container network namespace with a CNI network.")
 }
 
 func (t *T) DriverID() driver.ID {

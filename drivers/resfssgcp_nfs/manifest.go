@@ -81,6 +81,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Grants the node access to an sgcp NFS filesystem.")
 }
 
 func (t *T) DriverID() driver.ID {

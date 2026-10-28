@@ -75,6 +75,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Takes Dell PowerMax SnapVX snapshots.")
 }
 
 func (t *T) DriverID() driver.ID {

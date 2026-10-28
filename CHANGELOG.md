@@ -42,6 +42,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Object status board**: `om <path> status`, `ox <path> status`, and the enter key on an object path in the terminal UI show the object cluster-wide: its resources by node in the order the actions run them, grouped by subset, the instance states, what differs from a node to another, as a node-scoped address, and the notes saying what needs attention, the resource logs included.
 
+* **Driver catalog**: `om node drivers`, `ox node drivers` and `GET /api/node/name/{nodename}/drivers` describe each driver: a line saying what it does, its features in a documented vocabulary (`provision`, `unprovision`, `start`, `stop`, `run`, `sync`, `snapshot`, `resize`, `signal`, `abort`, `move`, `encap`), the drivers a virtual one selects among, as `container.oci` selects `container.docker` then `container.podman`, the driver an alias names, and whether the node has what it needs.
+
 * **Enhanced logging with journald**: All agent logs now integrate with systemd-journald, enabling fast filtering with `journalctl _COMM=om` and adding indexed attributes like `OBJ_PATH` for precise log queries.
 
 ### Orchestration & Management

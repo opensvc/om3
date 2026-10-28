@@ -82,6 +82,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Replicates a block device to the peer nodes with DRBD.")
 }
 
 func (t *T) DriverID() driver.ID {

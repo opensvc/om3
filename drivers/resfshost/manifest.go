@@ -2,6 +2,7 @@ package resfshost
 
 import (
 	"embed"
+	"fmt"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
@@ -156,8 +157,61 @@ var (
 
 func init() {
 	for _, t := range filesystems.Types() {
-		driver.Register(driver.NewID(driver.GroupFS, t), NewF(t))
+		id := driver.NewID(driver.GroupFS, t)
+		driver.Register(id, NewF(t))
+		driver.SetDoc(id, fsDoc(t))
 	}
+}
+
+// fsDoc is the line saying what the driver of the filesystem type t does.
+func fsDoc(t string) string {
+	fs := filesystems.FromType(t)
+	switch {
+	case t == "bind" || t == "none" || t == "lofs":
+		return "Mounts a directory at another place."
+	case t == "tmpfs":
+		return "Mounts a tmpfs filesystem, held in memory."
+	case fs.IsNetworked():
+		return fmt.Sprintf("Mounts a network filesystem of type %s.", t)
+	case fs.IsVirtual():
+		return fmt.Sprintf("Mounts a virtual filesystem of type %s.", t)
+	case makesFS(t):
+		return fmt.Sprintf("Mounts a filesystem of type %s, which the provision makes on its device.", t)
+	default:
+		return fmt.Sprintf("Mounts a filesystem of type %s.", t)
+	}
+}
+
+// makesFS says om knows how to make a filesystem of the type t: to tell
+// whether a device holds one, and to make one on it.
+func makesFS(t string) bool {
+	fs := filesystems.FromType(t)
+	_, canTell := fs.(IsFormateder)
+	_, canMake := fs.(filesystems.MKFSer)
+	return canTell && canMake
+}
+
+// Provisions says the provision of the resource makes something: the
+// filesystem, for a type om knows how to make. The provision of the others
+// checks the mount point only.
+func (t *T) Provisions() bool {
+	return makesFS(t.Type)
+}
+
+// Resizes says a resize changes the size of the filesystem: one om knows how
+// to grow, or one holding its own size, as a tmpfs.
+func (t *T) Resizes() bool {
+	fs := filesystems.FromType(t.Type)
+	_, grows := fs.(filesystems.Grower)
+	_, sizesItself := fs.(filesystems.SelfSizer)
+	return grows || sizesItself
+}
+
+// TakesSnapshots says the storage of the filesystem may take snapshots: a
+// btrfs takes them of its subvolumes, and a filesystem om makes on a device
+// has them taken by the device, when it is a thin logical volume.
+func (t *T) TakesSnapshots() bool {
+	return t.Type == "btrfs" || makesFS(t.Type)
 }
 
 func (t *T) DriverID() driver.ID {

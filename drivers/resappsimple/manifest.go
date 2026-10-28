@@ -53,6 +53,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs an application as a process om starts, watches and stops.")
 }
 
 func (t *T) DriverID() driver.ID {

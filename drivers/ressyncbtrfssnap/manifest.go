@@ -56,6 +56,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Takes and rotates btrfs subvolume snapshots.")
 }
 
 func (t *T) DriverID() driver.ID {

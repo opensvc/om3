@@ -64,6 +64,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Backs the object up to a store, and restores it.")
 }
 
 func (t *T) DriverID() driver.ID {

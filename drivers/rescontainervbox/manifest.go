@@ -39,6 +39,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs a VirtualBox virtual machine.")
 }
 
 func (t *T) DriverID() driver.ID {

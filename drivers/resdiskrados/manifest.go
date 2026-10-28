@@ -76,6 +76,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Maps a Ceph RBD image as a block device.")
 }
 
 func (t *T) DriverID() driver.ID {

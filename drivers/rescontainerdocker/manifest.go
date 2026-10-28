@@ -29,6 +29,7 @@ var (
 
 func init() {
 	driver.Register(DrvID, New)
+	driver.SetDoc(DrvID, "Runs a container with docker.")
 }
 
 func (t *T) DriverID() driver.ID {

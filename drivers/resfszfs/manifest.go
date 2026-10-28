@@ -77,6 +77,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Mounts a ZFS dataset.")
 }
 
 func (t *T) DriverID() driver.ID {

@@ -85,6 +85,11 @@ func NewGroup(s string) Group {
 	return GroupUnknown
 }
 
+// IsResource says the group is one of resource drivers.
+func (t Group) IsResource() bool {
+	return t != GroupUnknown && (t&resourceGroups) == t
+}
+
 // IsValid returns true if not GroupUnknown
 func (t Group) IsValid() bool {
 	return t != GroupUnknown

@@ -21,4 +21,6 @@ func New() resource.Driver {
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs a command in an OCI container, with the first container runtime the node has, as a task.")
+	driver.SetSelects(drvID, restaskdocker.DrvID, restaskpodman.DrvID)
 }

@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -40,6 +42,10 @@ func (t *CmdNodeDrivers) Run() error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
+	var (
+		vocabulary     []api.DriverFeature
+		vocabularyOnce sync.Once
+	)
 	l := make(api.DriverItems, 0)
 	q := make(chan api.DriverItems)
 	errC := make(chan error)
@@ -56,6 +62,9 @@ func (t *CmdNodeDrivers) Run() error {
 			}
 			switch {
 			case response.JSON200 != nil:
+				// The vocabulary is the one of the agent, the same
+				// from every node of a cluster of one release.
+				vocabularyOnce.Do(func() { vocabulary = response.JSON200.Features })
 				q <- response.JSON200.Items
 			case response.JSON400 != nil:
 				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON400)
@@ -95,13 +104,12 @@ func (t *CmdNodeDrivers) Run() error {
 
 out:
 
-	defaultOutput := "tab=NODE:meta.node,NAME:data.name"
 	errs = errors.Join(errs, output.Renderer{
-		DefaultOutput: defaultOutput,
+		DefaultOutput: commoncmd.NodeDriversDefaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          api.DriverList{Items: l, Kind: "DriverList"},
+		Data:          api.DriverList{Items: l, Kind: "DriverList", Features: vocabulary},
 		Colorize:      rawconfig.Colorize,
 	}.Print())
 
