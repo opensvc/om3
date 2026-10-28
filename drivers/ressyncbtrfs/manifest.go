@@ -72,6 +72,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Replicates btrfs subvolumes to the peer nodes with send and receive.")
 }
 
 func (t *T) DriverID() driver.ID {

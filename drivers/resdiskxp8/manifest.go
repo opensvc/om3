@@ -81,4 +81,5 @@ func (t *T) BeforeGroup() driver.Group {
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Fails over the replication of Hitachi/HPE XP8 LDEV pairs.")
 }

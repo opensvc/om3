@@ -87,6 +87,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Copies files to the peer nodes with rsync.")
 }
 
 func (t *T) DriverID() driver.ID {

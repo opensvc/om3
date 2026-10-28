@@ -89,6 +89,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Assembles a Linux software RAID (md) array.")
 }
 
 func (t *T) DriverID() driver.ID {

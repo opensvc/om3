@@ -51,6 +51,7 @@ var (
 
 func init() {
 	driver.Register(DrvID, New)
+	driver.SetDoc(DrvID, "Runs a command in a podman container, as a task.")
 }
 
 func (t *T) DriverID() driver.ID {

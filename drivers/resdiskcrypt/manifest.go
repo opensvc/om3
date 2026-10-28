@@ -67,6 +67,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Opens a LUKS encrypted device, with a passphrase kept in a secret.")
 }
 
 func (t *T) DriverID() driver.ID {

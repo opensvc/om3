@@ -97,6 +97,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Plumbs an address on a network interface of the node.")
 }
 
 func (t *T) DriverID() driver.ID {

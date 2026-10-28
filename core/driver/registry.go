@@ -13,6 +13,18 @@ type (
 	Driver struct {
 		Allocator any
 		Plugin    string
+
+		// Doc is a line saying what the driver does, as a catalog of
+		// the drivers shows it.
+		Doc string
+
+		// AliasOf is the driver this one is another name of, kept for
+		// the configurations written with it.
+		AliasOf ID
+
+		// Selects are the drivers a virtual driver picks among on a
+		// node, in the order it prefers them.
+		Selects IDs
 	}
 	Registry map[ID]Driver
 )
@@ -78,6 +90,38 @@ func NamesByGroup() map[Group][]string {
 func Register(id ID, allocator any) {
 	All[id] = Driver{
 		Allocator: allocator,
+	}
+}
+
+// SetDoc sets the line saying what the registered driver id does.
+func SetDoc(id ID, doc string) {
+	if drv, ok := All[id]; ok {
+		drv.Doc = doc
+		All[id] = drv
+	}
+}
+
+// RegisterAlias registers id as another name of the driver of, which is
+// registered already: it takes the allocator and the doc of of.
+func RegisterAlias(id, of ID) {
+	drv, ok := All[of]
+	if !ok {
+		return
+	}
+	All[id] = Driver{
+		Allocator: drv.Allocator,
+		Plugin:    drv.Plugin,
+		Doc:       drv.Doc,
+		AliasOf:   of,
+	}
+}
+
+// SetSelects says the registered virtual driver id picks among the drivers
+// ids on a node, in the order it prefers them.
+func SetSelects(id ID, ids ...ID) {
+	if drv, ok := All[id]; ok {
+		drv.Selects = append(IDs{}, ids...)
+		All[id] = drv
 	}
 }
 

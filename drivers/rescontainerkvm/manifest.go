@@ -62,6 +62,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Runs a KVM virtual machine with libvirt, and moves it live to another node.")
 }
 
 func (t *T) DriverID() driver.ID {

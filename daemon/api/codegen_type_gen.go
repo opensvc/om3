@@ -1554,6 +1554,30 @@ type DiskListKind string
 
 // Driver defines model for Driver.
 type Driver struct {
+	// AliasOf The driver this one is another name of, kept for the configurations written with it, and not to be offered for new ones. Empty for a driver that is no alias.
+	AliasOf string `json:"aliasOf"`
+
+	// Available True when the node has what the driver needs, as its capabilities say. A virtual driver is available when one of the drivers it selects is.
+	Available bool `json:"available"`
+
+	// Doc A line saying what the driver does.
+	Doc string `json:"doc"`
+
+	// Features What a resource driver does, as words of the features vocabulary the list carries with their meaning. A virtual driver has the features of the driver it selects on the node. Empty for the drivers of other groups.
+	Features []string `json:"features"`
+	Group    string   `json:"group"`
+
+	// Name The driver id, <group>.<type>, or <group> for a driver of no type, as volume.
+	Name string `json:"name"`
+
+	// Selects The drivers a virtual driver selects among on a node, in the order it prefers them, as container.oci selects container.docker, then container.podman. Empty for a driver that is no virtual one.
+	Selects []string `json:"selects"`
+	Type    string   `json:"type"`
+}
+
+// DriverFeature defines model for DriverFeature.
+type DriverFeature struct {
+	Doc  string `json:"doc"`
 	Name string `json:"name"`
 }
 
@@ -1572,8 +1596,10 @@ type DriverItems = []DriverItem
 
 // DriverList defines model for DriverList.
 type DriverList struct {
-	Items DriverItems    `json:"items"`
-	Kind  DriverListKind `json:"kind"`
+	// Features The vocabulary of the features of the drivers, each with its meaning, in the order a driver lists its features.
+	Features []DriverFeature `json:"features"`
+	Items    DriverItems     `json:"items"`
+	Kind     DriverListKind  `json:"kind"`
 }
 
 // DriverListKind defines model for DriverList.Kind.

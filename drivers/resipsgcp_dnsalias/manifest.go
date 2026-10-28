@@ -65,6 +65,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Points an sgcp DNS alias to the node.")
 }
 
 func (t *T) DriverID() driver.ID {

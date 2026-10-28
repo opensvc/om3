@@ -7827,8 +7827,66 @@ components:
       type: object
       required:
         - name
+        - group
+        - type
+        - doc
+        - features
+        - selects
+        - aliasOf
+        - available
       properties:
         name:
+          type: string
+          description: The driver id, <group>.<type>, or <group> for a driver of no type, as volume.
+        group:
+          type: string
+          example: fs
+        type:
+          type: string
+          example: ext4
+        doc:
+          type: string
+          description: A line saying what the driver does.
+        features:
+          type: array
+          description: >
+            What a resource driver does, as words of the features vocabulary
+            the list carries with their meaning. A virtual driver has the
+            features of the driver it selects on the node. Empty for the
+            drivers of other groups.
+          items:
+            type: string
+        selects:
+          type: array
+          description: >
+            The drivers a virtual driver selects among on a node, in the order
+            it prefers them, as container.oci selects container.docker, then
+            container.podman. Empty for a driver that is no virtual one.
+          items:
+            type: string
+        aliasOf:
+          type: string
+          description: >
+            The driver this one is another name of, kept for the
+            configurations written with it, and not to be offered for new
+            ones. Empty for a driver that is no alias.
+        available:
+          type: boolean
+          description: >
+            True when the node has what the driver needs, as its capabilities
+            say. A virtual driver is available when one of the drivers it
+            selects is.
+
+    DriverFeature:
+      type: object
+      required:
+        - name
+        - doc
+      properties:
+        name:
+          type: string
+          example: provision
+        doc:
           type: string
 
     DriverItem:
@@ -7857,6 +7915,7 @@ components:
       required:
         - kind
         - items
+        - features
       properties:
           kind:
             type: string
@@ -7864,6 +7923,13 @@ components:
               - DriversList
           items:
             $ref: '#/components/schemas/DriverItems'
+          features:
+            type: array
+            description: >
+              The vocabulary of the features of the drivers, each with its
+              meaning, in the order a driver lists its features.
+            items:
+              $ref: '#/components/schemas/DriverFeature'
 
     EventList:
       description: responseEventList is a list of sse

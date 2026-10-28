@@ -66,6 +66,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Imports a ZFS pool.")
 }
 
 func (t *T) DriverID() driver.ID {

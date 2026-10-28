@@ -73,6 +73,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Sets the owner and the mode of block devices, and can make character devices of them.")
 }
 
 func (t *T) DriverID() driver.ID {

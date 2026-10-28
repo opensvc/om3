@@ -81,6 +81,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Activates an LVM logical volume, thick or thin.")
 }
 
 func (t *T) DriverID() driver.ID {

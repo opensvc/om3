@@ -184,7 +184,8 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
-	driver.Register(altDrvID, New)
+	driver.SetDoc(drvID, "Plumbs an address in the network namespace of a container.")
+	driver.RegisterAlias(altDrvID, drvID)
 }
 
 func (t *T) DriverID() driver.ID {

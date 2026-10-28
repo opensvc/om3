@@ -1,8 +1,11 @@
 package omcmd
 
 import (
-	"github.com/opensvc/om3/v3/core/nodeaction"
-	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/drivercatalog"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -14,17 +17,12 @@ type (
 )
 
 func (t *CmdNodeDrivers) Run() error {
-	return nodeaction.New(
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			return n.Drivers()
-		}),
-	).Do()
+	return output.Renderer{
+		DefaultOutput: commoncmd.NodeDriversDefaultOutput,
+		Output:        t.Output,
+		Sort:          t.Sort,
+		Color:         t.Color,
+		Data:          drivercatalog.APIList(hostname.Hostname()),
+		Colorize:      rawconfig.Colorize,
+	}.Print()
 }

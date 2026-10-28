@@ -69,6 +69,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Renews the ACME certificates of the object, as a scheduled task.")
 }
 
 func (t *T) DriverID() driver.ID {

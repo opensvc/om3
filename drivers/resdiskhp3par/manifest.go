@@ -99,6 +99,7 @@ var kws = []*keywords.Keyword{
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Fails over the replication of HPE 3PAR remote copy groups.")
 }
 
 func (t *T) DriverID() driver.ID {

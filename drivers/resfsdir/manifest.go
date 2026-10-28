@@ -58,6 +58,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Creates a directory, with its owner and mode.")
 }
 
 func (t *T) DriverID() driver.ID {

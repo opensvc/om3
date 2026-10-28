@@ -12,6 +12,7 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
+	driver.SetDoc(drvID, "Holds a flag file in memory saying the object runs on the node, for objects with nothing else to run.")
 }
 
 func (t *T) DriverID() driver.ID {
