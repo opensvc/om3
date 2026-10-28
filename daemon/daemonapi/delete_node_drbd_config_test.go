@@ -53,3 +53,23 @@ func TestIsDiskRID(t *testing.T) {
 		assert.False(t, isDiskRID(s), s)
 	}
 }
+
+// An object with no lock directory never ran an action on the node: nothing
+// is locked, and nothing is created. One that has takes the lock its actions
+// take.
+func TestLockObjectAction(t *testing.T) {
+	testhelper.Setup(t)
+	p := naming.Path{Namespace: "ns1", Kind: naming.KindVol, Name: "v1"}
+
+	unlock, err := lockObjectAction(p)
+	require.NoError(t, err)
+	unlock()
+	_, err = os.Stat(p.VarDir())
+	assert.True(t, os.IsNotExist(err), "the var directory of the object is not created")
+
+	require.NoError(t, os.MkdirAll(filepath.Join(p.VarDir(), "lock"), 0755))
+	unlock, err = lockObjectAction(p)
+	require.NoError(t, err)
+	assert.FileExists(t, filepath.Join(p.VarDir(), "lock", "generic"))
+	unlock()
+}
