@@ -168,6 +168,9 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
+		if err := t.checkThinPool(ctx); err != nil {
+			return err
+		}
 		t.Log().Infof("%s is already provisioned", lv.FQN())
 		return nil
 	}
