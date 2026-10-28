@@ -278,20 +278,43 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 		if !madeItsVolume(moved) {
 			continue
 		}
-		vg := cfg.Get(key.T{Section: section, Option: "vg"})
+		vgValue := cfg.Get(key.T{Section: section, Option: "vg"})
 		dev := cfg.Get(key.T{Section: section, Option: "dev"})
 		name := filepath.Base(dev)
+		// vg is what the disk.lv made is given, and vgName the name the
+		// group has in the configuration, which the resources of the
+		// object are matched with.
+		vg, vgName, ok := resolveVG(cfg, vgValue)
+		if !ok {
+			m.Refusals = append(m.Refusals, fmt.Sprintf("%s.vg is %s, a reference to a resource holding no volume group: write the disk.lv resource by hand", section, vgValue))
+			continue
+		}
 		if vg == "" && strings.HasPrefix(dev, "/dev/") {
 			// "/dev/<vg>/<lv>", which is where the volume group is named
 			// when the keyword does not name it. Every other path under
 			// /dev has two elements too, and says nothing about a volume
 			// group: a device mapper name is not one.
 			if l := strings.Split(strings.TrimPrefix(dev, "/dev/"), "/"); len(l) == 2 && l[0] != "mapper" {
-				vg = l[0]
+				vg, vgName = l[0], l[0]
 			}
 		}
 		if vg == "" || name == "" || name == dev {
 			m.Refusals = append(m.Refusals, fmt.Sprintf("%s makes the volume it mounts, and neither %s.vg nor %s.dev says which volume group and volume: write them, or the disk.lv resource, by hand", section, section, section))
+			continue
+		}
+		// An om2 configuration often declares the volume as a disk.lv
+		// resource too, the filesystem still carrying the keywords that
+		// made it: the volume is that resource's, and making another
+		// would declare it twice, the second failing to create it.
+		if lvRID := lvRIDOf(cfg, name, vgName); lvRID != "" {
+			for _, option := range moved {
+				m.Unsets = append(m.Unsets, key.T{Section: section, Option: option})
+			}
+			m.Sets = append(m.Sets, set(section, "dev", fmt.Sprintf("{%s.exposed_devs[0]}", lvRID)))
+			m.Notes = append(m.Notes, fmt.Sprintf("%s made the %s volume of the %s group, which %s declares: %s mounts what %s exposes, and its keywords making the volume are dropped", section, name, vgName, lvRID, section, lvRID))
+			if fsSize, lvSize := cfg.Get(key.T{Section: section, Option: "size"}), cfg.Get(key.T{Section: lvRID, Option: "size"}); fsSize != "" && !sameSize(fsSize, lvSize) {
+				m.Notes = append(m.Notes, fmt.Sprintf("%s.size was %s, and %s.size is %s: the volume is the size of %s", section, fsSize, lvRID, lvSize, lvRID))
+			}
 			continue
 		}
 		diskRID := freeDiskRID(cfg, rid.Index())
@@ -312,7 +335,7 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 			case "create_options":
 				m.Sets = append(m.Sets, set(diskRID, option, value))
 			case "size":
-				converted, note := migrateSize(cfg, vg, value)
+				converted, note := migrateSize(cfg, vgName, value)
 				m.Sets = append(m.Sets, set(diskRID, option, converted))
 				if note != "" {
 					m.Notes = append(m.Notes, note)
@@ -321,8 +344,66 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 			m.Unsets = append(m.Unsets, key.T{Section: section, Option: option})
 		}
 		m.Sets = append(m.Sets, set(section, "dev", fmt.Sprintf("{%s.exposed_devs[0]}", diskRID)))
-		m.Notes = append(m.Notes, fmt.Sprintf("%s made the %s volume of the %s group: %s makes it now, and %s mounts what it exposes", section, name, vg, diskRID, section))
+		m.Notes = append(m.Notes, fmt.Sprintf("%s made the %s volume of the %s group: %s makes it now, and %s mounts what it exposes", section, name, vgName, diskRID, section))
 	}
+}
+
+// diskRefRegexp matches a keyword value that is a reference to a keyword of
+// a disk resource of the object, as {disk#1.name}.
+var diskRefRegexp = regexp.MustCompile(`^\{(disk#[^.{}]+)\.[^{}]+\}$`)
+
+// resolveVG returns what the vg keyword of a filesystem names: the value a
+// disk.lv is given, and the name the group has in the configuration. A
+// reference to a disk.vg resource of the object, whatever keyword of it, as
+// {disk#1.exposed_devs[0]}, which is the volumes it exposes rather than a
+// group, names the group of that resource, written {disk#1.name}. A
+// reference to another disk resource names no group, and is not ok.
+func resolveVG(cfg *xconfig.T, value string) (string, string, bool) {
+	match := diskRefRegexp.FindStringSubmatch(value)
+	if match == nil {
+		if strings.Contains(value, "{disk#") {
+			return "", "", false
+		}
+		return value, value, true
+	}
+	section := match[1]
+	if cfg.Get(key.T{Section: section, Option: "type"}) != "vg" {
+		return "", "", false
+	}
+	return fmt.Sprintf("{%s.name}", section), cfg.Get(key.T{Section: section, Option: "name"}), true
+}
+
+// lvRIDOf is the disk.lv resource of the object declaring the volume of a
+// name in the group of a name, as the configuration names them, and is empty
+// when none does.
+func lvRIDOf(cfg *xconfig.T, name, vgName string) string {
+	for _, section := range cfg.SectionStrings() {
+		rid, err := resourceid.Parse(section)
+		if err != nil || rid.DriverGroup() != driver.GroupDisk {
+			continue
+		}
+		if cfg.Get(key.T{Section: section, Option: "type"}) != "lv" {
+			continue
+		}
+		if cfg.Get(key.T{Section: section, Option: "name"}) != name {
+			continue
+		}
+		if _, lvVG, ok := resolveVG(cfg, cfg.Get(key.T{Section: section, Option: "vg"})); ok && lvVG == vgName {
+			return section
+		}
+	}
+	return ""
+}
+
+// sameSize says two sizes are the same, as numbers when both are, or as
+// written.
+func sameSize(a, b string) bool {
+	x, errA := sizeconv.FromSize(a)
+	y, errB := sizeconv.FromSize(b)
+	if errA == nil && errB == nil {
+		return x == y
+	}
+	return a == b
 }
 
 // migrateSize is the size a logical volume resource is given, from the size
