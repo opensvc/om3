@@ -146,8 +146,14 @@ func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 }
 
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
+	t.applyConfig(c.Value.Collector)
+}
+
+// applyConfig sets the collector up from its configuration, and remembers
+// it as the one applied.
+func (t *T) applyConfig(cfg *collector.Config) {
 	t.log.Tracef("reconfigure")
-	cfg := c.Value.Collector
+	t.appliedConfig = cfg.DeepCopy()
 	t.setThrottle(cfg)
 	t.setActionTunables(cfg)
 	if err := t.setupRequester(cfg); err != nil {

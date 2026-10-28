@@ -122,6 +122,10 @@ type (
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
 		disable bool
 
+		// appliedConfig is the collector configuration the collector
+		// was last set up from.
+		appliedConfig *collector.Config
+
 		subQS pubsub.QueueSizer
 
 		// version is the data version
@@ -312,6 +316,7 @@ func (t *T) Start(ctx context.Context) error {
 			return
 		}
 		cfg := initialNodeConfig.Collector
+		t.appliedConfig = cfg.DeepCopy()
 
 		t.setThrottle(cfg)
 		t.setActionTunables(cfg)
@@ -373,6 +378,20 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	return sub
 }
 
+// catchUpConfig applies the collector configuration of the node when it is
+// not the one applied. The one read at start, before the delay, may have
+// changed since: a change in between came before the subscription, so no
+// event says it. It is called once subscribed, when a later change does come
+// as an event.
+func (t *T) catchUpConfig() {
+	c := node.ConfigData.GetByNode(t.localhost)
+	if c == nil || c.Collector.Equal(t.appliedConfig) {
+		return
+	}
+	t.log.Infof("the collector configuration changed since the start: apply it")
+	t.applyConfig(c.Collector)
+}
+
 func (t *T) loop() {
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
@@ -387,6 +406,8 @@ func (t *T) loop() {
 		t.seedResInfoToSend()
 	}
 	sub := t.startSubscriptions()
+
+	t.catchUpConfig()
 
 	// Announce the local actions left pending by a daemon down during the
 	// action, or by a speaker gone before acknowledging them. After the
