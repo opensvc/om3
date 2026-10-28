@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -187,6 +188,27 @@ func (t *Kept) Release(ctx context.Context, addr string, leader bool) error {
 		return nil
 	}
 	return t.Record(ctx, addr, "")
+}
+
+// Provisioned says whether the resource keeps an address on this node, which
+// its unprovision releases: the reservation of this node, or addr, the address
+// of all the instances, recorded in the configuration every node holds. An
+// instance of a failover object that never ran keeps addr all the same, and
+// the unprovision of the leader is what removes it.
+//
+// It is what a resource with no provisioned state cached yet is found in: a
+// resource upgraded from an agent that had it n/a, or one created with its
+// address. Its unprovision then clears the state on every instance, while
+// addr is still recorded until the leader is done.
+func (t *Kept) Provisioned(addr string) (provisioned.T, error) {
+	held, err := t.Alloc().Allocated()
+	if err != nil {
+		return provisioned.Undef, err
+	}
+	if held != nil || (addr != "" && !t.PerInstance) {
+		return provisioned.True, nil
+	}
+	return provisioned.False, nil
 }
 
 // Record writes the address drawn from the network in the configuration of

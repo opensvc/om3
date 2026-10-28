@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -190,6 +191,13 @@ func localReservations() ([]ipam.Reservation, error) {
 			continue
 		}
 		for rid, rstat := range status.Resources {
+			if rstat.IsProvisioned.State == provisioned.False {
+				// An address an unprovisioned resource still
+				// reports is one it released: a lan address a
+				// follower released stays in the configuration
+				// until the leader of the unprovision removes it.
+				continue
+			}
 			s, ok := rstat.Info[ipAddrInfoKey].(string)
 			if !ok || s == "" {
 				continue
