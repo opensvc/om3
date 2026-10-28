@@ -18,6 +18,9 @@ import (
 // let qemu open, and it is outside the datasets a move sends.
 const overlayDir = "/var/lib/libvirt/images"
 
+// overlaySuffix ends the name of the overlay of a disk.
+const overlaySuffix = ".osvc-move.qcow2"
+
 type (
 	// moveOverlay is the qcow2 a copied disk of the guest writes to while
 	// a move runs, over the zvol or the file that holds the disk.
@@ -45,8 +48,21 @@ func newMoveOverlays(domain string, disks []moveDisk) []moveOverlay {
 			Target: d.Target,
 			Base:   d.Source,
 			Format: format,
-			Path:   filepath.Join(overlayDir, domain+"."+d.Target+".osvc-move.qcow2"),
+			Path:   filepath.Join(overlayDir, domain+"."+d.Target+overlaySuffix),
 		})
+	}
+	return l
+}
+
+// leftOverlays returns the targets of the disks whose source is the overlay
+// of a move. A move whose destination failed to merge the overlays leaves
+// the guest running on them there, and the definition naming them.
+func leftOverlays(disks []moveDisk) []string {
+	var l []string
+	for _, d := range disks {
+		if d.IsFile && filepath.Dir(d.Source) == overlayDir && strings.HasSuffix(d.Source, overlaySuffix) {
+			l = append(l, d.Target)
+		}
 	}
 	return l
 }
@@ -125,14 +141,48 @@ func (t *T) virsh(ctx context.Context, args ...string) error {
 
 // inactiveDefinition returns the persistent definition of the domain.
 func (t *T) inactiveDefinition(ctx context.Context) ([]byte, error) {
+	return t.dumpxml(ctx, "--inactive")
+}
+
+// liveDefinition returns the definition of the running domain.
+func (t *T) liveDefinition(ctx context.Context) ([]byte, error) {
+	return t.dumpxml(ctx)
+}
+
+func (t *T) dumpxml(ctx context.Context, opts ...string) ([]byte, error) {
+	args := append([]string{"dumpxml"}, opts...)
+	args = append(args, t.Name)
 	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, "virsh", "dumpxml", "--inactive", t.Name)
+	cmd := exec.CommandContext(ctx, "virsh", args...)
 	cmd.Stderr = &stderr
 	b, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("virsh dumpxml --inactive %s: %w: %s", t.Name, err, strings.TrimSpace(stderr.String()))
+		return nil, fmt.Errorf("virsh %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
 	}
 	return b, nil
+}
+
+// checkNoLeftOverlays refuses a move of a guest running on the overlays a
+// previous move left, or defined with them: the move would see disks on no
+// resource, copy none, and libvirt refuse the migration as unsafe.
+func (t *T) checkNoLeftOverlays(ctx context.Context, defined []moveDisk) error {
+	b, err := t.liveDefinition(ctx)
+	if err != nil {
+		return err
+	}
+	running, err := parseMoveDisks(bytes.NewReader(b))
+	if err != nil {
+		return fmt.Errorf("read the disks of the running %s: %w", t.Name, err)
+	}
+	if l := leftOverlays(running); len(l) > 0 {
+		return fmt.Errorf("the guest runs on overlays a previous move left over its disks %s: merge them with 'virsh blockcommit %s <disk> --active --pivot' for each before a move",
+			strings.Join(l, ", "), t.Name)
+	}
+	if l := leftOverlays(defined); len(l) > 0 {
+		return fmt.Errorf("the definition of %s names overlays a previous move left as the sources of its disks %s: define it with its disks before a move",
+			t.Name, strings.Join(l, ", "))
+	}
+	return nil
 }
 
 // defineFrom makes definition the persistent definition of the domain on

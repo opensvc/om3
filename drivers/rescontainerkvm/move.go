@@ -98,6 +98,9 @@ func (t *T) moveResources(ctx context.Context) ([]resource.Driver, []moveDisk, e
 	if err != nil {
 		return nil, nil, fmt.Errorf("read the disks of %s: %w", t.Name, err)
 	}
+	if err := t.checkNoLeftOverlays(ctx, disks); err != nil {
+		return nil, nil, err
+	}
 	obj, err := t.obj()
 	if err != nil {
 		return nil, nil, err

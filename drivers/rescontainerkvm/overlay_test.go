@@ -44,6 +44,18 @@ func TestOverlayCreateCmdline(t *testing.T) {
 		overlayCreateCmdline(o))
 }
 
+// A disk whose source is the overlay of a move is one a previous move left
+// unmerged. Another qcow2 of the image directory, or a device, is not.
+func TestLeftOverlays(t *testing.T) {
+	assert.Equal(t, []string{"vda"}, leftOverlays([]moveDisk{
+		{Target: "vda", Source: "/var/lib/libvirt/images/vm1.vda.osvc-move.qcow2", IsFile: true},
+		{Target: "vdb", Source: "/var/lib/libvirt/images/vm1.qcow2", IsFile: true},
+		{Target: "vdc", Source: "/srv/vm1/vm1.vdc.osvc-move.qcow2", IsFile: true},
+		{Target: "vdd", Source: "/dev/zvol/tank/vm1"},
+	}))
+	assert.Empty(t, leftOverlays([]moveDisk{{Target: "vda", Source: "/dev/drbd1"}}))
+}
+
 func TestBlockcommitArgs(t *testing.T) {
 	assert.Equal(t, []string{"blockcommit", "vm1", "vda", "--active", "--pivot", "--wait"}, blockcommitArgs("vm1", "vda"))
 }
