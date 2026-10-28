@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,13 +11,29 @@ import (
 	"github.com/opensvc/om3/v3/core/ipam"
 )
 
-// fakePooled is a network handing out the pools of its segment only.
+// fakePooled is a network handing out the pools of its segment only, which
+// must be in the segment, as the ones of a lan network.
 type fakePooled struct {
 	*T
 	pools []string
 }
 
-func (t *fakePooled) Pools() ([]ipam.Pool, error) { return ipam.ParsePools(t.pools) }
+func (t *fakePooled) Pools() ([]ipam.Pool, error) {
+	segment, err := t.IPNet()
+	if err != nil {
+		return nil, err
+	}
+	pools, err := ipam.ParsePools(t.pools)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range pools {
+		if !p.In(segment) {
+			return nil, fmt.Errorf("%s is not in the segment %s", p, segment)
+		}
+	}
+	return pools, nil
+}
 
 func newFakePooled(name, network string, pools ...string) *fakePooled {
 	t := &T{}
@@ -38,13 +55,26 @@ func TestCheckOverlapByPools(t *testing.T) {
 	a := newFakePooled("a", "192.168.10.0/24", "192.168.10.100-192.168.10.149")
 	b := newFakePooled("b", "192.168.10.0/24", "192.168.10.150-192.168.10.199")
 	c := newFakePooled("c", "192.168.10.0/24", "192.168.10.128/26")
-	assert.NoError(t, checkOverlap(a, []Networker{a, b}))
-	assert.ErrorContains(t, checkOverlap(a, []Networker{a, c}), "overlaps")
+	assert.Empty(t, Check([]Networker{a, b}))
+	errs := Check([]Networker{a, c})
+	assert.NoError(t, errs["a"], "the network declared first keeps working")
+	assert.ErrorContains(t, errs["c"], "overlaps")
 
 	inside := newFakeSubnet("inside", "192.168.10.64/27")
-	assert.NoError(t, checkOverlap(a, []Networker{a, inside}), "the subnet holds none of the pool")
+	assert.Empty(t, Check([]Networker{a, inside}), "the subnet holds none of the pool")
 	over := newFakeSubnet("over", "192.168.10.96/27")
-	assert.ErrorContains(t, checkOverlap(a, []Networker{a, over}), "overlaps")
+	assert.ErrorContains(t, Check([]Networker{a, over})["over"], "overlaps")
+}
+
+// A network whose ranges leave its segment is refused for that, not taken
+// for its whole segment, which would say it overlaps the networks of the
+// segment, and would refuse them too.
+func TestCheckSaysTheRangesLeavingTheSegment(t *testing.T) {
+	lan := newFakePooled("lan", "10.32.0.0/24", "10.32.0.200-10.32.0.239")
+	bad := newFakePooled("bad", "10.32.0.0/24", "10.33.0.200-10.33.0.210")
+	errs := Check([]Networker{lan, bad})
+	assert.NoError(t, errs["lan"])
+	assert.ErrorContains(t, errs["bad"], "is not in the segment")
 }
 
 // The size of a network handing out pools of its segment is the one of its

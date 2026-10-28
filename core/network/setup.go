@@ -49,10 +49,11 @@ func Setup(n *object.Node, names ...string) error {
 	}
 	all := Networks(n)
 	nws := named(all, names)
+	invalid := Check(all)
 	needCommit := make([]string, 0)
 	kops := make(keyop.L, 0)
 	for _, nw := range nws {
-		if err := checkOverlap(nw, all); err != nil {
+		if err := invalid[nw.Name()]; err != nil {
 			nw.Log().Errorf("network setup: %s", err)
 			errs = append(errs, err)
 			continue
@@ -100,50 +101,73 @@ func intersect(n1, n2 *net.IPNet) bool {
 	return n2.Contains(n1.IP) || n1.Contains(n2.IP)
 }
 
-func checkOverlap(nw Networker, nws []Networker) error {
-	_, refIPNet, err := net.ParseCIDR(nw.Network())
-	if err != nil {
-		return nil
-	}
-	if prefix, err := netip.ParsePrefix(nw.Network()); err != nil {
-		return err
-	} else if prefix.Addr().String() != refIPNet.IP.String() {
-		// ex: 172.10.10.0/22 prefix addr 172.10.10.0 does not match the prefix length (expected 172.10.8.0)
-		return fmt.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), refIPNet.IP)
-	}
-	refPools := overlapPools(nw, refIPNet)
-	for _, other := range nws {
-		if nw == other {
-			continue
-		}
-		_, otherIPNet, err := net.ParseCIDR(other.Network())
+// Check returns, by name, the error of each network of the list that cannot
+// be used: its ranges do not parse or leave its segment, or they overlap the
+// addresses of a network before it in the list, which is the order of the
+// configuration. The network declared first keeps working, and the one
+// declared after it is the one refused, so a network added overlapping
+// another does not take the other down with it.
+//
+// A network whose segment does not parse is left to IsValid, which the setup
+// skips it on.
+func Check(nws []Networker) map[string]error {
+	errs := make(map[string]error)
+	var usables []usableNetwork
+	for _, nw := range nws {
+		_, ipnet, err := net.ParseCIDR(nw.Network())
 		if err != nil {
 			continue
 		}
-		if !intersect(refIPNet, otherIPNet) {
+		if prefix, err := netip.ParsePrefix(nw.Network()); err != nil {
+			errs[nw.Name()] = err
+			continue
+		} else if prefix.Addr().String() != ipnet.IP.String() {
+			// ex: 172.10.10.0/22 prefix addr 172.10.10.0 does not match the prefix length (expected 172.10.8.0)
+			errs[nw.Name()] = fmt.Errorf("%s prefix addr %s does not match the prefix length (expected %s)", prefix, prefix.Addr(), ipnet.IP)
 			continue
 		}
-		for _, p := range refPools {
-			for _, o := range overlapPools(other, otherIPNet) {
+		pools := []ipam.Pool{ipam.PoolOf(ipnet)}
+		if i, ok := nw.(Pooler); ok {
+			if pools, err = i.Pools(); err != nil {
+				errs[nw.Name()] = err
+				continue
+			}
+		}
+		this := usableNetwork{nw: nw, ipnet: ipnet, pools: pools}
+		if err := this.overlap(usables); err != nil {
+			errs[nw.Name()] = err
+			continue
+		}
+		usables = append(usables, this)
+	}
+	return errs
+}
+
+// usableNetwork is a network Check found usable, with the addresses it hands
+// out: the ranges of a network handing out some of its segment only, as two
+// lan networks of the same segment do, else the whole of it.
+type usableNetwork struct {
+	nw    Networker
+	ipnet *net.IPNet
+	pools []ipam.Pool
+}
+
+// overlap says which addresses of the networks found usable before the
+// addresses of t overlap, nil when none do.
+func (t usableNetwork) overlap(usables []usableNetwork) error {
+	for _, other := range usables {
+		if !intersect(t.ipnet, other.ipnet) {
+			continue
+		}
+		for _, p := range t.pools {
+			for _, o := range other.pools {
 				if p.Overlaps(o) {
-					return fmt.Errorf("%s overlaps %s (%s)", p, o, other.Name())
+					return fmt.Errorf("%s overlaps %s (%s)", p, o, other.nw.Name())
 				}
 			}
 		}
 	}
 	return nil
-}
-
-// overlapPools returns the addresses of a network another must not hand out:
-// the ranges of a network handing out some of its segment only, as two lan
-// networks of the same segment do, else the whole of it.
-func overlapPools(nw Networker, ipnet *net.IPNet) []ipam.Pool {
-	if i, ok := nw.(Pooler); ok {
-		if pools, err := i.Pools(); err == nil {
-			return pools
-		}
-	}
-	return []ipam.Pool{ipam.PoolOf(ipnet)}
 }
 
 func setupNetwork(n *object.Node, nw Networker, dir string) error {

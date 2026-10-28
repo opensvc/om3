@@ -486,7 +486,17 @@ func (t T) Validate() (Alerts, error) {
 			}
 		}
 	}
+	if i, ok := t.Referrer.(sectionsValidator); ok {
+		alerts = append(alerts, i.ValidateSections(&t)...)
+	}
 	return alerts, nil
+}
+
+// sectionsValidator is a referrer checking the sections of its configuration
+// against one another, which no keyword can do of its value alone: two
+// networks of the cluster handing out the same addresses.
+type sectionsValidator interface {
+	ValidateSections(*T) Alerts
 }
 
 // hasResourceSections reports whether the sections of the configuration are
