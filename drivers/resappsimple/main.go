@@ -161,7 +161,7 @@ func (t *T) stop(ctx context.Context, afterStopCmd bool) error {
 	if afterStopCmd {
 		t.Log().Infof("the stop command left %d processes running", procs.Len())
 	}
-	same := t.isOwnProcess()
+	same := sameStartAs(procs)
 	for _, p := range procs.Procs() {
 		t.loggerWithProc(p).Infof("send termination signal to process %d", p.PID())
 		_, _ = p.SignalIf(syscall.SIGTERM, same)
@@ -204,7 +204,7 @@ func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 		return nil
 	}
 	var errs error
-	same := t.isOwnProcess()
+	same := sameStartAs(targets)
 	for _, p := range targets.Procs() {
 		if sent, err := p.SignalIf(sig, same); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("signal %s to process %d: %w", unix.SignalName(sig), p.PID(), err))
@@ -215,26 +215,25 @@ func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 	return errs
 }
 
-// isOwnProcess returns the check a process found by the stop or the signal
-// is still one of the resource when it is held, just before a signal: it
-// carries the identity of the resource, or it is the process the start
-// command launched, by its pid and its start time, which the record keeps
-// for a launcher clearing its environment. A pid the process left, and
-// another took, between the scan and the signal fails it.
-func (t *T) isOwnProcess() func(proc.T) bool {
-	id := t.ObjectID.String()
-	startedPID, startedTime, _, err := t.readStarted()
-	if err != nil {
-		startedPID = 0
+// sameStartAs returns the check a process of l is still the one found when
+// it is held, just before a signal: it started when it did then. A start time
+// does not change, whatever the process does of its environment, and a pid
+// another process took since started later. A process whose start time can
+// not be read right after it was found is gone, and is not signaled.
+func sameStartAs(l proc.L) func(proc.T) bool {
+	started := make(map[int]uint64, l.Len())
+	for _, p := range l.Procs() {
+		if st, err := p.StartTime(); err == nil {
+			started[p.PID()] = st
+		}
 	}
 	return func(p proc.T) bool {
-		if startedPID != 0 && p.PID() == startedPID {
-			if st, err := p.StartTime(); err == nil && st == startedTime {
-				return true
-			}
+		want, ok := started[p.PID()]
+		if !ok {
+			return false
 		}
-		env := p.Env()
-		return env["OPENSVC_RID"] == t.RID() && (env["OPENSVC_ID"] == id || env["OPENSVC_SVC_ID"] == id)
+		st, err := p.StartTime()
+		return err == nil && st == want
 	}
 }
 
