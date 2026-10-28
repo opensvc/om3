@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/x509"
 	"math/big"
@@ -86,4 +87,42 @@ func TestRenewKeepsALegacySubject(t *testing.T) {
 	require.NoError(t, s.config.Set(*keyop.Parse("cn=cluster1 CA")))
 	require.NoError(t, o.GenCert())
 	assert.Equal(t, "CN=cluster1 CA", certOf(t, o).Subject.String(), "a keyword changed gives the subject it says")
+}
+
+// A self-signed ca issued before the sec recorded its serial numbers, as a
+// ca migrated from v2, with the empty attributes of the subject then, is the
+// sec's own: its renewal, due within the window, renews it, and keeps its
+// subject, which the certificates it signed name as their issuer.
+func TestRenewALegacyCAWithNoSerialNumber(t *testing.T) {
+	setupSubjectTest(t)
+	o, err := NewSec(naming.Path{Name: "ca", Kind: naming.KindSec, Namespace: "ns1"}, WithConfigData([]byte("[DEFAULT]\nbits = 2048\n")))
+	require.NoError(t, err)
+	priv, err := o.getPriv()
+	require.NoError(t, err)
+	tmpl := x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               o.legacySubject(),
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &priv.PublicKey, priv)
+	require.NoError(t, err)
+	require.NoError(t, o.setCert(der))
+	_, err = o.DecodeKey("serial_number")
+	require.Error(t, err, "no serial number recorded")
+	legacy := certOf(t, o).RawSubject
+
+	b, err := o.DecodeKey("certificate")
+	require.NoError(t, err)
+	issued, err := o.issuedCertificate(b)
+	require.NoError(t, err)
+	assert.True(t, issued, "the legacy subject is the sec's own")
+
+	r, err := o.RenewCertificate(context.Background(), CertificateRenewOptions{RenewBefore: 48 * time.Hour})
+	require.NoError(t, err)
+	assert.True(t, r.Renewed, r.Reason)
+	assert.Equal(t, legacy, certOf(t, o).RawSubject, "and keeps its subject")
 }

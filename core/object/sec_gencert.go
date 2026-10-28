@@ -297,6 +297,20 @@ func (t *sec) legacySubject() pkix.Name {
 	}
 }
 
+// isSubjectOf says cert has the subject the keywords of the sec say, in
+// either encoding the sec issued with: with the attributes not set left out,
+// or with them empty, as before. A self-signed certificate issued before the
+// sec recorded its serial numbers, as a ca migrated from v2, is told its own
+// by its subject, and one of them is the legacy one.
+func (t *sec) isSubjectOf(cert *x509.Certificate) bool {
+	for _, name := range []pkix.Name{t.subject(), t.legacySubject()} {
+		if b, err := asn1.Marshal(name.ToRDNSequence()); err == nil && bytes.Equal(b, cert.RawSubject) {
+			return true
+		}
+	}
+	return false
+}
+
 // keptRawSubject returns the subject of the certificate the sec holds when
 // it is the legacy one of its keywords, as they are: the next certificate is
 // issued with it, so a renewal changes no name. The subject of a ca is the
