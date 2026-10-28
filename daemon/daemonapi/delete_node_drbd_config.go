@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/driver"
@@ -50,6 +54,15 @@ func (a *DaemonAPI) deleteLocalDRBDConfig(ctx echo.Context, params api.DeleteNod
 	if _, err := os.Stat(cf); errors.Is(err, os.ErrNotExist) {
 		return ctx.JSON(http.StatusOK, nil)
 	}
+	// A provision of the object running on this node may have fetched the
+	// file, and not defined the resource nor recorded its provisioned
+	// state yet: the action lock it holds keeps the file from being taken
+	// from under it.
+	unlock, err := lockObjectAction(p)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusConflict, "Kept", "an action of %s runs on %s: %s", p, a.localhost, err)
+	}
+	defer unlock()
 	if v, err := drbd.New(params.Name).IsDefined(ctx.Request().Context()); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Error reading the drbd resource state", "%s", err)
 	} else if v {
@@ -65,6 +78,25 @@ func (a *DaemonAPI) deleteLocalDRBDConfig(ctx echo.Context, params api.DeleteNod
 	}
 	LogHandler(ctx, "DeleteNodeDRBDConfig").Infof("removed %s, sent for %s %s which never provisioned on this node", cf, p, params.Rid)
 	return ctx.JSON(http.StatusOK, nil)
+}
+
+// drbdConfigLockTimeout is how long the removal of a drbd configuration file
+// waits for an action of the object holding its lock.
+var drbdConfigLockTimeout = 2 * time.Second
+
+// lockObjectAction takes the lock the provision and the unprovision of the
+// object take on this node, when the object has a lock directory: one it has
+// not means no action of it ever ran here.
+func lockObjectAction(p naming.Path) (func(), error) {
+	dir := filepath.Join(p.VarDir(), "lock")
+	if _, err := os.Stat(dir); err != nil {
+		return func() {}, nil
+	}
+	lock := flock.New(filepath.Join(dir, "generic"), uuid.NewString(), fcntllock.New)
+	if err := lock.Lock(drbdConfigLockTimeout, "drbd config delete"); err != nil {
+		return func() {}, err
+	}
+	return func() { _ = lock.UnLock() }, nil
 }
 
 // isDiskRID says s is the id of a disk resource, as disk#1. It names a
