@@ -48,7 +48,7 @@ func (t *Manager) UnprovisionedFromIdle() {
 	if t.unprovisionedClearIfReached() {
 		return
 	}
-	if t.setWaitChildren() {
+	if t.setWaitChildren() || !t.isLocalStatusCurrent() {
 		return
 	}
 	if t.isUnprovisionLeader() {
@@ -76,7 +76,7 @@ func (t *Manager) UnprovisionedFromWaitNonLeader() {
 		t.transitionTo(instance.MonitorStateUnprovisionFailure)
 		return
 	}
-	if t.hasNonLeaderProvisioned() {
+	if t.hasNonLeaderProvisioned() || !t.isLocalStatusCurrent() {
 		return
 	}
 	t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateUnprovisionSuccess, instance.MonitorStateUnprovisionFailure)
