@@ -68,8 +68,8 @@ require (
 	github.com/ssrathi/go-attr v1.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/subosito/gotenv v1.6.0
-	github.com/vishvananda/netlink v1.3.0
-	github.com/vishvananda/netns v0.0.4
+	github.com/vishvananda/netlink v1.3.1
+	github.com/vishvananda/netns v0.0.5
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	github.com/yookoala/realpath v1.0.0
 	github.com/zalando/go-keyring v0.2.8

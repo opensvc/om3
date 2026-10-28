@@ -184,7 +184,7 @@ func (t *Manager) watchMounts() {
 
 	mountinfoPath := "/proc/self/mountinfo"
 
-	fd, err := unix.Open(mountinfoPath, unix.O_RDONLY, 0)
+	fd, err := unix.Open(mountinfoPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		t.log.Errorf("open %s: %s", mountinfoPath, err)
 		return
