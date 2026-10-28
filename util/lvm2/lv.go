@@ -40,6 +40,10 @@ type (
 		// SegType is the type of the volume, as thin, which is not
 		// snapshotted as a linear one is.
 		SegType string `json:"segtype"`
+
+		// PoolLV is the thin pool a thin volume is in, empty for
+		// another volume.
+		PoolLV string `json:"pool_lv"`
 	}
 	LV struct {
 		driver
@@ -148,7 +152,7 @@ func (t *LV) Show(ctx context.Context) (*LVInfo, error) {
 		// --units b --nosuffix because the default display rounds, and
 		// prefixes a "<" when it rounded up: a 5364514816 bytes volume
 		// reports "<5.00g", which is neither parsable nor its size.
-		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", "-o", "+segtype", fqn),
+		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", "-o", "+segtype,pool_lv", fqn),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
