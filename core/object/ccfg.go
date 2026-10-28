@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -168,4 +169,27 @@ func getClusterConfig() (*cluster.Config, error) {
 		cfg.SetSSHKeyFile(filepath.Join(homedir, ".ssh", c.GetString(keyNodeSSHKey)))
 	}
 	return cfg, nil
+}
+
+// clusterConfigChecks are the checks of the sections of the cluster
+// configuration against one another, which the packages knowing what the
+// sections are register: the networks one another's addresses, by the
+// network package, which imports this one.
+var clusterConfigChecks []func(*xconfig.T) xconfig.Alerts
+
+// RegisterClusterConfigCheck adds a check of the sections of the cluster
+// configuration against one another, which its validation runs, so that a
+// write making it fail is refused.
+func RegisterClusterConfigCheck(f func(*xconfig.T) xconfig.Alerts) {
+	clusterConfigChecks = append(clusterConfigChecks, f)
+}
+
+// ValidateSections runs the checks of the sections of the cluster
+// configuration against one another.
+func (t *Ccfg) ValidateSections(cfg *xconfig.T) xconfig.Alerts {
+	var alerts xconfig.Alerts
+	for _, f := range clusterConfigChecks {
+		alerts = append(alerts, f(cfg)...)
+	}
+	return alerts
 }

@@ -34,7 +34,7 @@ func (t *CmdNetworkList) Run() error {
 	switch resp.StatusCode() {
 	case 200:
 		return output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
+			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free,ERRORS:errors[*]",
 			Output:        t.Output,
 			Sort:          t.Sort,
 			Color:         t.Color,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
@@ -36,7 +37,7 @@ func (t *CmdNetworkList) Run() error {
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		cols := "NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free"
+		cols := "NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free,ERRORS:errors"
 		convertToFloat64 := func(bi big.Int) float64 {
 			f, _ := bi.Float64()
 			return f
@@ -50,6 +51,9 @@ func (t *CmdNetworkList) Run() error {
 				"size":    sizeconv.BSizeCompact(convertToFloat64(network.Size)),
 				"used":    sizeconv.BSizeCompact(convertToFloat64(network.Used)),
 				"free":    sizeconv.BSizeCompact(convertToFloat64(network.Free)),
+				// Why a network is not set up, as its ranges
+				// overlapping another's.
+				"errors": joinErrors(network.Errors),
 			}
 			lines[i] = u
 		}
@@ -69,4 +73,12 @@ func (t *CmdNetworkList) Run() error {
 		pb = *resp.JSON500
 	}
 	return fmt.Errorf("%s", pb)
+}
+
+// joinErrors is the errors of a network, as a column says them.
+func joinErrors(l *[]string) string {
+	if l == nil {
+		return ""
+	}
+	return strings.Join(*l, "; ")
 }

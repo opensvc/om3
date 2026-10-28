@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"math/big"
+	"slices"
 
 	"github.com/opensvc/om3/v3/core/clusterip"
 	"github.com/opensvc/om3/v3/core/ipam"
@@ -113,11 +114,21 @@ func (t StatusList) Add(p Networker, ips clusterip.L) StatusList {
 
 func ShowNetworksByName(noder Noder, name string, ips clusterip.L) StatusList {
 	l := NewStatusList()
-	for _, p := range Networks(noder) {
+	all := Networks(noder)
+	invalid := Check(all)
+	for _, p := range all {
 		if name != "" && name != p.Name() {
 			continue
 		}
 		l = l.Add(p, ips)
+		// A network overlapping another is not set up: its status says
+		// why, as the one of a network whose ranges leave its segment.
+		if err := invalid[p.Name()]; err != nil {
+			st := &l[len(l)-1]
+			if !slices.Contains(st.Errors, err.Error()) {
+				st.Errors = append(st.Errors, err.Error())
+			}
+		}
 	}
 	return l
 }
