@@ -36,6 +36,33 @@ func TestCollectorRegistrationSurvivesTheJoin(t *testing.T) {
 	assert.Equal(t, "uuid-new", n.Config().GetString(key.Parse("node.uuid")))
 }
 
+// TestPrKeySurvivesTheJoin pins that the join keeps the node.prkey of the
+// node config, not the one of the cluster config, along with the collector
+// registration id stored after it, and nothing else of the node config.
+func TestPrKeySurvivesTheJoin(t *testing.T) {
+	env := testhelper.Setup(t)
+	t.Cleanup(func() { rawconfig.Load(map[string]string{}) })
+	ccfg := "[cluster]\nname = alone\n\n[node]\nprkey = 0x0000000000000001\n"
+	require.NoError(t, os.WriteFile(rawconfig.ClusterConfigFile(), []byte(ccfg), 0600))
+	ncfg := "[node]\nuuid = uuid-old\nprkey = 0x00000000000000ab\napp = app1\n"
+	require.NoError(t, os.WriteFile(rawconfig.NodeConfigFile(), []byte(ncfg), 0600))
+
+	kept := keptConfig{node: readNodeKeys(joinKeptKeys)}
+	assert.Equal(t, map[string]string{"prkey": "0x00000000000000ab"}, kept.node)
+
+	// The join moves the config aside, and installs the one of the cluster.
+	require.NoError(t, os.Rename(rawconfig.Paths.Etc, env.Root+"/etc.joined"))
+	require.NoError(t, rawconfig.CreateMandatoryDirectories())
+	require.NoError(t, os.WriteFile(rawconfig.ClusterConfigFile(), []byte("[cluster]\nname = joined\n"), 0600))
+
+	require.NoError(t, kept.write())
+	require.NoError(t, storeCollectorRegistration("uuid-new"))
+
+	n, err := object.NewNode()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"uuid": "uuid-new", "prkey": "0x00000000000000ab"}, n.Config().SectionMap("node"))
+}
+
 // TestNotInstalledObjects pins the objects the join waits for before the
 // checks and disks pushes: the svc and vol scoped on the node, not
 // installed yet.

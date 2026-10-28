@@ -150,6 +150,9 @@ func (t *CmdClusterLeave) run() (err error) {
 		return err
 	}
 
+	// The config is moved aside: read what the node keeps of it before.
+	kept := readKeptConfig()
+
 	if err := t.backupLocalConfig(".pre-cluster-leave-etc"); err != nil {
 		return err
 	}
@@ -159,6 +162,13 @@ func (t *CmdClusterLeave) run() (err error) {
 	cleanupErr := t.cleanupVarDir()
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return err
+	}
+
+	// Before the daemon start, so it speaks to the collector, and its pr
+	// resources use their key, as soon as it starts. The node is out of the
+	// cluster already: a failure is warned.
+	if err := kept.write(); err != nil {
+		t.logger().Warnf("%s", err)
 	}
 
 	t.logger().Infof("Start daemon")
@@ -175,6 +185,27 @@ func (t *CmdClusterLeave) run() (err error) {
 		}
 	}
 	return nil
+}
+
+// leaveKeptKeys are the options of the [node] section of the node config the
+// node keeps when it leaves its cluster: the collector registration id, for
+// the node to stay registered, and the scsi3 persistent reservation key, for
+// the node to keep the reservations it holds.
+var leaveKeptKeys = []string{"uuid", "prkey"}
+
+// readKeptConfig returns what the node keeps of its config when it leaves its
+// cluster: the [collector] section of the cluster config, and the
+// leaveKeptKeys of the node config.
+//
+// The node alone keeps its collector registration id as it is: it is not
+// registered again, the collector learning the cluster id of its new cluster
+// from the node status.
+func readKeptConfig() keptConfig {
+	kept := keptConfig{collector: map[string]string{}, node: readNodeKeys(leaveKeptKeys)}
+	if ccfg, err := object.NewCluster(object.WithVolatile(true)); err == nil {
+		kept.collector = ccfg.Config().SectionMap("collector")
+	}
+	return kept
 }
 
 // credential returns the username and password of the user to create once we

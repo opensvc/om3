@@ -91,8 +91,10 @@ func (t *CmdClusterJoin) run() error {
 		return err
 	}
 	// The join moves the node config aside: read the collector registration
-	// id before, for the api node to register this node with it.
+	// id before, for the api node to register this node with it, and the
+	// node keys the node keeps.
 	prevUUID := localNodeUUID()
+	kept := keptConfig{node: readNodeKeys(joinKeptKeys)}
 	certChain, err := t.extractCaClaim()
 	if err != nil {
 		return err
@@ -178,7 +180,7 @@ func (t *CmdClusterJoin) run() error {
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
 		return fmt.Errorf("wait join result: %w", err)
 	}
-	err = t.onJoined(ctx, cli, prevUUID)
+	err = t.onJoined(ctx, cli, prevUUID, kept)
 	if err != nil {
 		return fmt.Errorf("on joined: %w", err)
 	}
@@ -260,7 +262,7 @@ func (t *CmdClusterJoin) createTmpCertFile(b []byte) (certFile string, err error
 	return
 }
 
-func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID string) (err error) {
+func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID string, kept keptConfig) (err error) {
 	filePaths := make(map[string]naming.Path)
 	fileTimestamps := make(map[string]time.Time)
 	toFetch := []naming.Path{
@@ -335,6 +337,12 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 		}
 	}
 
+	// Before the daemon start, so its pr resources use their key as soon as
+	// it starts. The node is in the cluster already: a failure is warned.
+	if err := kept.write(); err != nil {
+		t.logger().Warnf("%s", err)
+	}
+
 	// Not bound to the join timeout, which a long drain may have used up:
 	// the client timeout bounds the request.
 	registered := t.collectorRegister(context.Background(), cli, prevUUID)
@@ -388,6 +396,12 @@ func (t *CmdClusterJoin) waitJoinResult(ctx context.Context, evReader event.Read
 		}
 	}
 }
+
+// joinKeptKeys are the options of the [node] section of the node config the
+// node keeps when it joins a cluster: the scsi3 persistent reservation key,
+// for the node to keep the reservations it holds. The collector registration
+// id is not kept as is, the api node registering the node again.
+var joinKeptKeys = []string{"prkey"}
 
 // localNodeUUID returns the collector registration id of the node, empty when
 // it has none.
