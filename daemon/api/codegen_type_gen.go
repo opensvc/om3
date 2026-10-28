@@ -1565,10 +1565,16 @@ type Driver struct {
 
 	// Features What a resource driver does, as words of the features vocabulary the list carries with their meaning. A virtual driver has the features of the driver it selects on the node. Empty for the drivers of other groups.
 	Features []string `json:"features"`
-	Group    string   `json:"group"`
+
+	// Grant The grant a service needs to use the driver at all, as "root", empty when any user granted on the namespace may: the one choosing the driver needs, or the one a required keyword of the driver needs whatever its value. A keyword needing the grant for some values only counts for none. A virtual driver needs it when every driver it selects does, and an alias as the driver it names.
+	Grant string `json:"grant"`
+	Group string `json:"group"`
 
 	// Name The driver id, <group>.<type>, or <group> for a driver of no type, as volume.
 	Name string `json:"name"`
+
+	// ProvisionGrant The grant only the provision of the resource needs, beyond grant: the one a keyword the provision fails without (provisioningRequired) needs whatever its value. A user not holding it may still use the driver on what a sysadmin provisioned, with provision = false. Empty when the provision needs no more than grant.
+	ProvisionGrant string `json:"provisionGrant"`
 
 	// Selects The drivers a virtual driver selects among on a node, in the order it prefers them, as container.oci selects container.docker, then container.podman. Empty for a driver that is no virtual one.
 	Selects []string `json:"selects"`

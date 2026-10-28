@@ -38,6 +38,32 @@ func KeywordGrantDoc(kind naming.Kind, section, option string, types []string) s
 	return doc
 }
 
+// KeywordGrant returns the grant setting a keyword of an object of kind
+// needs through the api, empty when any user granted on the namespace may set
+// it, and whether it is needed whatever the value. types are the drivers the
+// keyword belongs to.
+func KeywordGrant(kind naming.Kind, section, option string, types []string) (string, bool) {
+	grant, _, always := keywordGrant(kind, section, option, types)
+	return grant, always
+}
+
+// DriverGrant returns the grant choosing the driver typ of the group section
+// of an object of kind needs, empty when any user may choose it, or when
+// whether one may depends on the rest of the section, as the ip ones.
+func DriverGrant(kind naming.Kind, section, typ string) string {
+	if typ == "" {
+		return ""
+	}
+	rule, ok := keyoprbac.Lookup(kind, section, "type")
+	if !ok || rule.Denies != nil {
+		return ""
+	}
+	if keyoprbac.Denied(rbac.Grants{}, kind, section, "type", typ, nil) == nil {
+		return ""
+	}
+	return string(rule.Grant)
+}
+
 func keywordGrant(kind naming.Kind, section, option string, types []string) (string, string, bool) {
 	var (
 		grant  string

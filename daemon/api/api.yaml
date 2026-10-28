@@ -7834,6 +7834,8 @@ components:
         - selects
         - aliasOf
         - available
+        - grant
+        - provisionGrant
       properties:
         name:
           type: string
@@ -7876,6 +7878,23 @@ components:
             True when the node has what the driver needs, as its capabilities
             say. A virtual driver is available when one of the drivers it
             selects is.
+        grant:
+          type: string
+          description: >
+            The grant a service needs to use the driver at all, as "root",
+            empty when any user granted on the namespace may: the one choosing
+            the driver needs, or the one a required keyword of the driver needs
+            whatever its value. A keyword needing the grant for some values
+            only counts for none. A virtual driver needs it when every driver
+            it selects does, and an alias as the driver it names.
+        provisionGrant:
+          type: string
+          description: >
+            The grant only the provision of the resource needs, beyond grant:
+            the one a keyword the provision fails without (provisioningRequired)
+            needs whatever its value. A user not holding it may still use the
+            driver on what a sysadmin provisioned, with provision = false.
+            Empty when the provision needs no more than grant.
 
     DriverFeature:
       type: object
