@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/placement"
@@ -1230,6 +1231,26 @@ func (t *Manager) IsNodeMonitorStatusRankable(node string) (bool, bool) {
 	return nodeMonitor.State.IsRankable(), true
 }
 
+// isPeerNodeThawing says a peer node still frozen is being thawed: its node
+// monitor carries the unfrozen global expect, and its thaw did not fail. It
+// is a candidate already. A cluster thaw thaws each node when they all carry
+// it, and a node thawed before it sees a peer thawed would otherwise take the
+// leadership of the instances that peer leads, and ready them, for the
+// moment it takes: the peer, seeing a peer ready, clears its own ready state
+// and waits its ready period again, which delays its restarts behind the
+// ones of lower priority it did not have to clear. The local node is a
+// candidate once thawed only: it takes no initiative while frozen.
+func (t *Manager) isPeerNodeThawing(nodename string) bool {
+	if nodename == t.localhost {
+		return false
+	}
+	nodeMonitor, ok := t.nodeMonitor[nodename]
+	if !ok {
+		return false
+	}
+	return nodeMonitor.GlobalExpect == node.MonitorGlobalExpectUnfrozen && nodeMonitor.State != node.MonitorStateUnfreezeFailure
+}
+
 func (t *Manager) newIsHALeader() bool {
 	return t.isStartCandidateLeader(true)
 }
@@ -1261,7 +1282,7 @@ func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 			continue
 		}
 		if isDaemonDecision {
-			if t.nodeStatus[node].IsFrozen() || t.instStatus[node].IsFrozen() {
+			if t.nodeStatus[node].IsFrozen() && !t.isPeerNodeThawing(node) || t.instStatus[node].IsFrozen() {
 				continue
 			}
 			if t.instStatus[node].IsStopped() || len(t.instStatus[node].StoppedResources()) > 0 {
