@@ -293,3 +293,87 @@ mnt_opt@n2 = size=2g
 	assert.True(t, unset(m, "fs#1.mnt_opt"))
 	assert.True(t, unset(m, "fs#1.mnt_opt@n2"))
 }
+
+// An om2 configuration often declares the volume as a disk.lv resource too,
+// the filesystem still carrying the keywords that made it. The volume is that
+// resource's: no other is made, which would declare it twice and fail to
+// create it, and the filesystem mounts what that resource exposes.
+func TestAFilesystemMakingAVolumeDeclaredAlreadyUsesIt(t *testing.T) {
+	m := migrationOf(t, `
+[disk#0]
+type = loop
+file = /opt/{name}.img
+size = 512m
+
+[disk#1]
+type = vg
+name = {name}
+pvs = {disk#0.exposed_devs[0]}
+
+[disk#2]
+type = lv
+name = root
+vg = {disk#1.name}
+size = 128m
+
+[fs#0]
+type = ext4
+mnt = /opt/{name}
+dev = /dev/{name}/root
+size = 128M
+vg = {disk#1.exposed_devs[0]}
+`)
+	for _, op := range m.Sets {
+		assert.NotContains(t, op.Key.Section, "disk#fs", "no other volume is made: %s", op.Key)
+	}
+	assert.Equal(t, "{disk#2.exposed_devs[0]}", must(t, m, "fs#0.dev"))
+	for _, k := range []string{"fs#0.vg", "fs#0.size"} {
+		assert.Truef(t, unset(m, k), "%s is left behind", k)
+	}
+	assert.Empty(t, m.Refusals)
+}
+
+// The vg keyword of a filesystem naming a disk.vg resource by reference, any
+// keyword of it, names the group of that resource: the volume made is in
+// {disk#N.name}, not in what the reference evaluates to, as the volumes the
+// group exposes.
+func TestAVolumeGroupNamedByReferenceIsTheGroupOfTheResource(t *testing.T) {
+	m := migrationOf(t, `
+[disk#1]
+type = vg
+name = datavg
+pvs = /dev/sdb
+
+[fs#3]
+type = ext4
+mnt = /srv/data
+dev = /dev/datavg/data
+size = 1g
+vg = {disk#1.exposed_devs[0]}
+`)
+	assert.Equal(t, "lv", must(t, m, "disk#3.type"))
+	assert.Equal(t, "{disk#1.name}", must(t, m, "disk#3.vg"))
+	assert.Equal(t, "{disk#3.exposed_devs[0]}", must(t, m, "fs#3.dev"))
+}
+
+// A reference to a disk resource holding no volume group names no group:
+// the filesystem is left as it is, and the migration says why.
+func TestAVolumeGroupNamedByReferenceToAnotherResourceIsRefused(t *testing.T) {
+	m := migrationOf(t, `
+[disk#0]
+type = loop
+file = /opt/x.img
+size = 512m
+
+[fs#3]
+type = ext4
+mnt = /srv/data
+dev = /dev/datavg/data
+size = 1g
+vg = {disk#0.exposed_devs[0]}
+`)
+	_, made := setOf(m, "disk#3.type")
+	assert.False(t, made)
+	require.Len(t, m.Refusals, 1)
+	assert.Contains(t, m.Refusals[0], "fs#3.vg")
+}
