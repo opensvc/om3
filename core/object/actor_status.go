@@ -122,6 +122,7 @@ func (t *actor) setLastStartedAt(data *instance.Status) error {
 func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Status) (instance.Status, error) {
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
+	data.ConfigCsum = t.configCsum
 	data.FrozenAt = t.Frozen()
 	data.FrozenScope = t.FrozenScope()
 	data.StoppedAt = t.StoppedAt()
@@ -150,6 +151,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
 	var data instance.Status
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
+	data.ConfigCsum = t.configCsum
 	data.FrozenAt = t.Frozen()
 	data.FrozenScope = t.FrozenScope()
 	data.StoppedAt = t.StoppedAt()

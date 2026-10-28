@@ -56,6 +56,7 @@ func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
 
 func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.UpdatedAt = time.Now()
+	data.ConfigCsum = t.configCsum
 	data.Avail = status.NotApplicable
 	data.Overall = status.NotApplicable
 	data.Optional = status.NotApplicable

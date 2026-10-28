@@ -363,3 +363,19 @@ func (t *Manager) clearStoppedFlagOnRequest() {
 		t.log.Errorf("clear the stopped flag: %s", err)
 	}
 }
+
+// isLocalStatusCurrent says the status of the local instance was computed
+// from the configuration the daemon has of the instance, as their checksums
+// say. A status computed from a former configuration, as right after a peer
+// sent a new one, says what that one had: n/a for an instance with no
+// resource yet, not provisioned for one with others. A decision on it waits
+// for the status the configuration change refreshes. A status saying no
+// checksum, as one from an agent that does not, is taken as current.
+func (t *Manager) isLocalStatusCurrent() bool {
+	csum := t.instStatus[t.localhost].ConfigCsum
+	if csum == "" || t.instConfig.Checksum == "" || csum == t.instConfig.Checksum {
+		return true
+	}
+	t.log.Debugf("wait for the status of the local instance computed from the current configuration")
+	return false
+}

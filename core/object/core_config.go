@@ -2,9 +2,11 @@ package object
 
 import (
 	"context"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -40,7 +42,19 @@ func (t *core) loadConfig(referrer xconfig.Referrer) error {
 	if t.configData != nil {
 		sources = []any{t.configData}
 	} else if t.configFile != "" {
-		sources = []any{t.configFile}
+		// The bytes loaded are the ones checksummed, so the status says
+		// the configuration it was computed from, whatever writes the
+		// file in between.
+		b, err := os.ReadFile(t.configFile)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			b = []byte{}
+		case err != nil:
+			return err
+		default:
+			t.configCsum = fmt.Sprintf("%x", md5.Sum(b))
+		}
+		sources = []any{b}
 	} else {
 		sources = []any{}
 	}
