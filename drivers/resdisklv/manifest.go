@@ -67,6 +67,15 @@ var (
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_options"),
 		},
+		{
+			Attr:         "ThinPool",
+			Example:      "pool1",
+			Option:       "thin_pool",
+			Provisioning: true,
+			Scopable:     true,
+			Since:        "v3.0.0-rc54",
+			Text:         keywords.NewText(fs, "text/kw/thin_pool"),
+		},
 	}
 )
 

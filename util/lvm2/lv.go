@@ -288,6 +288,33 @@ func (t *LV) Create(ctx context.Context, size string, args []string) error {
 	return nil
 }
 
+// CreateThin makes the logical volume a thin volume of the thin pool named
+// pool, in the same volume group, of the size it is seen with. A share of the
+// volume group is no size a thin volume is made with.
+func (t *LV) CreateThin(ctx context.Context, size string, pool string, args []string) error {
+	i, err := sizeconv.FromSize(size)
+	if err != nil {
+		return fmt.Errorf("thin volume size %s: %w", size, err)
+	}
+	args = append(args, "-V", fmt.Sprintf("%dB", i), "--thinpool", pool)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvcreate"),
+		command.WithArgs(append(args, "--yes", "-n", t.LVName, t.VGName)),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		// lvm warns on stderr of a pool the volumes overcommit, which the
+		// sysadmin chose, and a failure is the error returned.
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
 // CreateSnapshot creates the snapshot name of the volume, and returns it. A
 // thin volume is snapshotted in its pool, and size is ignored. A thick one is
 // given size bytes to hold what is written to the volume while the snapshot

@@ -24,6 +24,7 @@ type (
 		VGName        string   `json:"vg"`
 		Size          string   `json:"size"`
 		CreateOptions []string `json:"create_options"`
+		ThinPool      string   `json:"thin_pool"`
 	}
 	LVDriver interface {
 		Activate(context.Context) error
@@ -43,6 +44,11 @@ type (
 	}
 	LVDriverProvisioner interface {
 		Create(context.Context, string, []string) error
+	}
+	// LVDriverThinProvisioner is implemented by the lv implementations
+	// that make thin volumes, in a thin pool of the volume group.
+	LVDriverThinProvisioner interface {
+		CreateThin(ctx context.Context, size, pool string, args []string) error
 	}
 	LVDriverUnprovisioner interface {
 		Remove(context.Context, []string) error
@@ -74,7 +80,9 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 // PoolCharge implements resource.PoolCharger. A logical volume takes its
-// size of the volume group it is carved from.
+// size of the volume group it is carved from, and a thin volume of the thin
+// pool it is in, named as a pool of thin volumes names its head: the size
+// it is seen with being the most it can take.
 //
 // A size that is a share of the group, "100%FREE" and the like, is not a
 // number the group can be rationed by, and is answered as none.
@@ -83,6 +91,9 @@ func (t *T) PoolCharge() (string, int64) {
 	if err != nil {
 		return "", 0
 	}
+	if t.ThinPool != "" {
+		return t.VGName + "/" + t.ThinPool, size
+	}
 	return t.VGName, size
 }
 
@@ -90,6 +101,9 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "name", Value: t.LVName},
 		{Key: "vg", Value: t.VGName},
+	}
+	if t.ThinPool != "" {
+		m = append(m, resource.InfoKey{Key: "thin_pool", Value: t.ThinPool})
 	}
 	return m, nil
 }
@@ -125,6 +139,9 @@ func (t *T) fqn() string {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	if t.ThinPool != "" {
+		t.warnThinPoolUsage(ctx)
+	}
 	if v, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
@@ -157,7 +174,15 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if t.Size == "" {
 		return fmt.Errorf("a logical volume is created with a size, and none is configured")
 	}
-	if err := lvi.Create(ctx, t.Size, t.CreateOptions); err != nil {
+	if t.ThinPool != "" {
+		lvti, ok := lv.(LVDriverThinProvisioner)
+		if !ok {
+			return fmt.Errorf("lv %s %s driver does not implement thin volumes", lv.FQN(), lv.DriverName())
+		}
+		if err := lvti.CreateThin(ctx, t.Size, t.ThinPool, t.CreateOptions); err != nil {
+			return err
+		}
+	} else if err := lvi.Create(ctx, t.Size, t.CreateOptions); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {

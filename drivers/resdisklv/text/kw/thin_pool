@@ -1,0 +1,11 @@
+The name of the thin pool, a logical volume of the volume group `vg`, the
+volume is provisioned in. The volume is then a thin volume: its `size` is the
+size it is seen with, and it takes from the pool only the blocks written to it,
+so the volumes of a pool may add up to more than the pool holds.
+
+A thin volume is snapshotted in its pool, with no size of its own, which a
+`sync.store` resource copies from. The pool is made by the sysadmin, as the
+volume group is: `lvcreate --type thin-pool -L <size> -n <pool> <vg>`.
+
+The resource warns when the data or the metadata of the pool is 80% used: a
+full pool fails the writes of all its volumes.
