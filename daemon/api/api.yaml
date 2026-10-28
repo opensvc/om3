@@ -8357,6 +8357,7 @@ components:
         - depends
         - kind
         - provisioning
+        - provisioningRequired
         - types
         - aliases
         - inherit
@@ -8424,6 +8425,14 @@ components:
             type: string
         provisioning:
           type: boolean
+        provisioningRequired:
+          type: boolean
+          description: >
+            True when the provision of the resource fails without a value, as
+            the size of a logical volume or the devices of a md. Only set on a
+            provisioning keyword with no default the provision works with.
+            Unlike required, a resource configured on what a sysadmin
+            provisioned runs without it.
         types:
           type: array
           items:

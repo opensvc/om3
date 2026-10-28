@@ -74,6 +74,13 @@ type (
 		// Provisioning is set to true for keywords only used for resource provisioning
 		Provisioning bool
 
+		// ProvisioningRequired means the provision of the resource fails
+		// without a value: the size of a logical volume, the devices of a
+		// md. It is set on Provisioning keywords only, and not on one with
+		// a default the provision works with. Unlike Required, a resource
+		// configured on what a sysadmin provisioned runs without it.
+		ProvisioningRequired bool
+
 		// StopToChange means the value says what the resource holds on a
 		// node once started, as the mount point of a filesystem or the
 		// address of an ip: a change is refused while the resource is
@@ -662,7 +669,11 @@ func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of stri
 		// Said as what it means for the writer of a configuration: the
 		// value is read by the provision alone, and setting it on a
 		// container has the provision create what the resource names.
-		fprintProp("provision", "used only by the provision of the resource")
+		if t.ProvisioningRequired {
+			fprintProp("provision", "used only by the provision of the resource, which fails without it")
+		} else {
+			fprintProp("provision", "used only by the provision of the resource")
+		}
 	}
 	if t.StopToChange {
 		// Said as what it means for the writer of a change: when it is
