@@ -622,8 +622,25 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
+// HasProvisionedState says the resource has a provisioned state when it keeps
+// its address on a lan network until unprovisioned: the orchestration of an
+// unprovision then runs on every instance, each releasing its reservation,
+// and the leader removing the address from the configuration. A resource set
+// to keep what it was given at unprovision keeps its address, and has no
+// provisioned state.
+func (t *T) HasProvisionedState() bool {
+	return t.keeps() && !t.IsUnprovisionDisabled()
+}
+
+// Provisioned says whether the resource keeps an address on this node, when
+// it keeps one from a start to the next, read when the resource has no
+// provisioned state cached yet. An address drawn at each start is released at
+// each stop, and has nothing to unprovision.
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+	if !t.keeps() {
+		return provisioned.NotApplicable, nil
+	}
+	return t.kept().Provisioned(t.Addr)
 }
 
 func (t *T) Abort(ctx context.Context) bool {

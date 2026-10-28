@@ -62,6 +62,16 @@ type (
 	UnprovisionStoper interface {
 		UnprovisionStop(ctx context.Context, leader bool) error
 	}
+
+	// ProvisionedStater is implemented by the drivers with nothing to
+	// provision whose resource has a provisioned state all the same, when
+	// HasProvisionedState says so: something its unprovision releases, as
+	// an address kept on a lan network. The state is the one of a resource
+	// with a provisioner: cached, read from the driver at the first status,
+	// set by a provision and cleared by an unprovision.
+	ProvisionedStater interface {
+		HasProvisionedState() bool
+	}
 )
 
 // VarDir is the full path of the directory where the resource can write its private variable data.
@@ -323,7 +333,7 @@ func Provisioned(ctx context.Context, t Driver) (provisioned.T, error) {
 	if t.IsDisabled() {
 		return provisioned.NotApplicable, nil
 	}
-	if !hasAnyProvInterface(t) {
+	if !hasProvisionedState(t) {
 		return provisioned.NotApplicable, nil
 	}
 	if v, err := getProvisionedValue(t); err == nil {
@@ -336,6 +346,15 @@ func Provisioned(ctx context.Context, t Driver) (provisioned.T, error) {
 	} else {
 		return v, nil
 	}
+}
+
+// hasProvisionedState says whether the resource has a provisioned state: it
+// has a provisioner, or says it has one.
+func hasProvisionedState(r Driver) bool {
+	if i, ok := r.(ProvisionedStater); ok {
+		return i.HasProvisionedState()
+	}
+	return hasAnyProvInterface(r)
 }
 
 func hasAnyProvInterface(r Driver) bool {

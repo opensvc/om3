@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/provisioned"
 )
 
 // leaderOnlyDriver is a driver that unprovisions with the leader method only,
@@ -41,4 +43,43 @@ func TestUnprovisionAsFollower(t *testing.T) {
 	r = &leaderOnlyDriver{shared: true}
 	require.NoError(t, unprovisionAsFollower(ctx, r))
 	assert.Equal(t, 0, r.unprovisioned, "shared: the leader's alone")
+}
+
+// statedDriver is a driver with nothing to provision whose resource has a
+// provisioned state, when it says so.
+type statedDriver struct {
+	Driver
+	stated bool
+	state  provisioned.T
+	varDir string
+}
+
+func (t *statedDriver) IsDisabled() bool          { return false }
+func (t *statedDriver) HasProvisionedState() bool { return t.stated }
+func (t *statedDriver) VarDir() string            { return t.varDir }
+func (t *statedDriver) Provisioned(context.Context) (provisioned.T, error) {
+	return t.state, nil
+}
+
+// A driver with nothing to provision has the provisioned state of a resource
+// with a provisioner when it says so: read from the driver at first, then
+// cached, and cleared by an unprovision, whatever the driver still finds,
+// as an address its leader has yet to remove from the configuration. Not
+// saying so, it is n/a.
+func TestProvisionedState(t *testing.T) {
+	ctx := context.Background()
+	r := &statedDriver{stated: true, state: provisioned.True, varDir: t.TempDir()}
+	v, err := Provisioned(ctx, r)
+	require.NoError(t, err)
+	assert.Equal(t, provisioned.True, v, "read from the driver at first")
+
+	require.NoError(t, setProvisionedValue(false, r))
+	v, err = Provisioned(ctx, r)
+	require.NoError(t, err)
+	assert.Equal(t, provisioned.False, v, "cleared, the driver still finding it")
+
+	r.stated = false
+	v, err = Provisioned(ctx, r)
+	require.NoError(t, err)
+	assert.Equal(t, provisioned.NotApplicable, v)
 }
