@@ -377,3 +377,37 @@ vg = {disk#0.exposed_devs[0]}
 	require.Len(t, m.Refusals, 1)
 	assert.Contains(t, m.Refusals[0], "fs#3.vg")
 }
+
+// A disk.lv naming its volume otherwise on some nodes declares a volume the
+// unscoped name does not say: the filesystem is not pointed at it, which
+// could mount another volume on those nodes, and no other volume is made
+// either. The migration says to do it by hand.
+func TestAVolumeDeclaredWithNodeScopedNamesIsLeftToTheOperator(t *testing.T) {
+	m := migrationOf(t, `
+[disk#1]
+type = vg
+name = datavg
+pvs = /dev/sdb
+
+[disk#2]
+type = lv
+name = data
+name@node2 = other
+vg = {disk#1.name}
+size = 1g
+
+[fs#0]
+type = ext4
+mnt = /srv/data
+dev = /dev/datavg/data
+size = 1g
+vg = datavg
+`)
+	_, set := setOf(m, "fs#0.dev")
+	assert.False(t, set, "the filesystem is not pointed at the volume")
+	for _, op := range m.Sets {
+		assert.NotContains(t, op.Key.Section, "disk#fs", "no other volume is made: %s", op.Key)
+	}
+	require.Len(t, m.Refusals, 1)
+	assert.Contains(t, m.Refusals[0], "otherwise on some nodes")
+}
