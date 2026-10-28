@@ -577,8 +577,14 @@ func TestStart_OperationInProgress_WaitReady(t *testing.T) {
 			Status:           "failover",
 		},
 	})
+	// The group turns ready once the start read it in failover, rather
+	// than after a delay a slow runner may spend before that first read,
+	// which would then find it ready already.
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		deadline := time.Now().Add(2 * time.Second)
+		for db.CallCounts().Get < 1 && time.Now().Before(deadline) {
+			time.Sleep(5 * time.Millisecond)
+		}
 		entry, _ := db.Search(id)
 		entry.Status = "ready"
 		_ = db.Update(entry)
