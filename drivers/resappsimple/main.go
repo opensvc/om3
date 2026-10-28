@@ -164,7 +164,11 @@ func (t *T) stop(ctx context.Context, afterStopCmd bool) error {
 	same := sameStartAs(procs)
 	for _, p := range procs.Procs() {
 		t.loggerWithProc(p).Infof("send termination signal to process %d", p.PID())
-		_, _ = p.SignalIf(syscall.SIGTERM, same)
+		if sent, err := p.SignalIf(syscall.SIGTERM, same); err != nil {
+			t.loggerWithProc(p).Warnf("send termination signal to process %d: %s", p.PID(), err)
+		} else if !sent {
+			t.loggerWithProc(p).Infof("process %d is gone since it was found, or another process took its pid: not signaled", p.PID())
+		}
 	}
 	prev := procs
 	for i := 0; i < 5; i++ {
@@ -210,6 +214,8 @@ func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 			errs = errors.Join(errs, fmt.Errorf("signal %s to process %d: %w", unix.SignalName(sig), p.PID(), err))
 		} else if sent {
 			t.loggerWithProc(p).Infof("sent signal %s to process %d", unix.SignalName(sig), p.PID())
+		} else {
+			t.loggerWithProc(p).Infof("process %d is gone since it was found, or another process took its pid: not sent signal %s", p.PID(), unix.SignalName(sig))
 		}
 	}
 	return errs
@@ -219,7 +225,9 @@ func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 // it is held, just before a signal: it started when it did then. A start time
 // does not change, whatever the process does of its environment, and a pid
 // another process took since started later. A process whose start time can
-// not be read right after it was found is gone, and is not signaled.
+// not be read right after it was found is gone, and is not signaled: the stat
+// file a start time is read from stays readable through an execve, unlike the
+// environ file the scan retries on.
 func sameStartAs(l proc.L) func(proc.T) bool {
 	started := make(map[int]uint64, l.Len())
 	for _, p := range l.Procs() {
