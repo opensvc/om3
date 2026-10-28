@@ -1234,6 +1234,14 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/node/pool.vg.name"),
 		Types:    []string{"vg"},
 	}
+	kwNodePoolVGThinPool = keywords.Keyword{
+		Example: "pool1",
+		Option:  "thin_pool",
+		Section: "pool",
+		Since:   "v3.0.0-rc54",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.vg.thin_pool"),
+		Types:   []string{"vg"},
+	}
 	kwNodePoolDRBDAddr = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/pool.drbd.addr.default"),
 		Example:     "1.2.3.4",
@@ -2146,6 +2154,7 @@ var (
 		&kwNodePoolTruenasSparse,
 		&kwNodePoolTruenasBlockSize,
 		&kwNodePoolName,
+		&kwNodePoolVGThinPool,
 		&kwNodePoolDRBDAddr,
 		&kwNodePoolDRBDMaxPeers,
 		&kwNodePoolDRBDNetwork,

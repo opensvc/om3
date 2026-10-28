@@ -153,6 +153,17 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     A namespace declaring no claim on a resource is not capped on it, and the limit is read from the namespace configuration on the node doing the allocation, so the common case asks nothing of the daemon.
 
+* **Thin logical volumes**: A `disk.lv` resource naming a `thin_pool` of its volume group is provisioned as a thin volume of that pool, its `size` being the size it is seen with. A thin volume is snapshotted in its pool, with no size of its own, so a `sync.store` resource copies a filesystem on it from a snapshot taken under the quiesce. The resource warns when the data or the metadata of its pool is 80% used, a full pool failing the writes of all its volumes. A `vg` pool naming a `thin_pool` makes its volumes thin volumes of it, has the `snap` capability, and reports the usage of the thin pool. The thin pool is made by the sysadmin, as the volume group is:
+
+    ```
+    lvcreate --type thin-pool -L 100g -n pool1 data
+
+    [pool#thin]
+    type = vg
+    name = data
+    thin_pool = pool1
+    ```
+
 ## Breaking Changes
 
 ### Cluster and Node Configuration
