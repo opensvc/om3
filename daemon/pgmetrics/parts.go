@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -34,6 +35,7 @@ func (c partsCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c partsCollector) Collect(ch chan<- prometheus.Metric) {
 	var e emitter
+	e.gauge(collectedAtDesc, epochSeconds(time.Now()), "parts")
 	for _, p := range c.paths {
 		collectParts(&e, p)
 	}

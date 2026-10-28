@@ -166,6 +166,8 @@ var (
 		"Write operations of the cgroup, over the block devices no other device is stacked on (cgroup v2)", cgroupLabels, nil)
 	tasksDesc = prometheus.NewDesc("opensvc_pg_cgroup_tasks",
 		"The number of tasks in the cgroup", cgroupLabels, nil)
+	collectedAtDesc = prometheus.NewDesc("opensvc_pg_collected_at_seconds",
+		"The time the series were read at, in seconds since the epoch: collection=walk for the node, its slices and its objects, collection=parts for the subsets and the resources of the objects asked for", []string{"collection"}, nil)
 
 	// detailDescs is what /metrics/pg answers with.
 	detailDescs = []*prometheus.Desc{
@@ -174,7 +176,7 @@ var (
 		cpuQuotaDesc, cpuPeriodDesc, cpuCpusDesc, blkioWeightDesc,
 		memoryStatDesc, memoryStatPagesDesc, cpuStatDesc,
 		ioReadBytesDesc, ioWriteBytesDesc, ioReadIOsDesc, ioWriteIOsDesc,
-		tasksDesc,
+		tasksDesc, collectedAtDesc,
 	}
 )
 
@@ -229,11 +231,16 @@ type snapshot struct {
 }
 
 // minInterval is how old a snapshot may be before a scrape walks the tree
-// again. It is the period of the ticker this replaces, so the data is no
-// less fresh than it was. What changes is that nothing walks while
-// nothing is scraping, and that a detail endpoint scraped every five
-// minutes is read every five minutes rather than every fifteen seconds.
-var minInterval = 15 * time.Second
+// again. It is short: it only lets the scrapes arriving together, the
+// tabs of a webapp or the nodes relaying the scrape of another, share a
+// walk, which costs milliseconds. The scraper sets the pace, and a scrape
+// reads the cgroups as they are, so that two scrapes a few seconds apart
+// give a rate. Nothing walks while nothing is scraping.
+//
+// A scrape may still be answered with a walk up to minInterval older than
+// itself: the time of the walk is opensvc_pg_collected_at_seconds, which a
+// client computing rates divides by rather than by the time it scraped at.
+var minInterval = time.Second
 
 // emitter accumulates the const metrics of one walk.
 type emitter struct {
@@ -301,6 +308,9 @@ func (m *Manager) walk(full bool) *snapshot {
 		return s
 	}
 	var e emitter
+	if full {
+		e.gauge(collectedAtDesc, epochSeconds(s.at), "walk")
+	}
 	visit := func(cgroupPath string, labels ...string) bool {
 		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
 			if full {
@@ -343,6 +353,11 @@ func (m *Manager) walk(full bool) *snapshot {
 	}
 	s.detail = e.out
 	return s
+}
+
+// epochSeconds returns t in seconds since the epoch, to the nanosecond.
+func epochSeconds(t time.Time) float64 {
+	return float64(t.UnixNano()) / 1e9
 }
 
 // otherSlices returns the names of the top level slices and scopes other
