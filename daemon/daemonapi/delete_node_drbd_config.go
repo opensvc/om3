@@ -89,8 +89,10 @@ var drbdConfigLockTimeout = 2 * time.Second
 // not means no action of it ever ran here.
 func lockObjectAction(p naming.Path) (func(), error) {
 	dir := filepath.Join(p.VarDir(), "lock")
-	if _, err := os.Stat(dir); err != nil {
+	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
 		return func() {}, nil
+	} else if err != nil {
+		return func() {}, err
 	}
 	lock := flock.New(filepath.Join(dir, "generic"), uuid.NewString(), fcntllock.New)
 	if err := lock.Lock(drbdConfigLockTimeout, "drbd config delete"); err != nil {
