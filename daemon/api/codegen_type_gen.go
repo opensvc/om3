@@ -3179,6 +3179,9 @@ type DRBDResourceName = string
 // DRBDResourceNodeID defines model for DRBDResourceNodeID.
 type DRBDResourceNodeID = string
 
+// DRBDResourceRID defines model for DRBDResourceRID.
+type DRBDResourceRID = string
+
 // Duration defines model for Duration.
 type Duration = string
 
@@ -3208,6 +3211,9 @@ type LogLines = int
 
 // NodeOptional defines model for NodeOptional.
 type NodeOptional = string
+
+// ObjectPath defines model for ObjectPath.
+type ObjectPath = string
 
 // Path defines model for Path.
 type Path = string
@@ -3896,6 +3902,18 @@ type GetDaemonOrchestrationParams struct {
 	// A request held until the wait expires is answered 408, which says the
 	// thing is still running, and is not an error of the request.
 	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
+// DeleteNodeDRBDConfigParams defines parameters for DeleteNodeDRBDConfig.
+type DeleteNodeDRBDConfigParams struct {
+	// Name drbd resource name
+	Name DRBDResourceName `form:"name" json:"name"`
+
+	// Path object path
+	Path ObjectPath `form:"path" json:"path"`
+
+	// Rid the rid of the drbd resource in the object
+	Rid DRBDResourceRID `form:"rid" json:"rid"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.

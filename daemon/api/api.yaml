@@ -2806,6 +2806,41 @@ paths:
         500:
           $ref: '#/components/responses/500'
       x-internal: true
+    delete:
+      operationId: DeleteNodeDRBDConfig
+      description: |
+        For internal use only.
+
+        Used by the CRM of the provisioning leader, at its unprovision, to
+        take back the drbd configuration file fragment it sent to a node
+        whose resource never provisioned, as when the provision failed
+        before reaching it. The file is kept, with a 409, while the
+        resource is up on the node or its provisioned state there says it
+        is provisioned. A file already absent is a success.
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/DRBDResourceName'
+        - $ref: '#/components/parameters/ObjectPath'
+        - $ref: '#/components/parameters/DRBDResourceRID'
+      responses:
+        200:
+          description: OK, the file is deleted or was absent
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      x-internal: true
 
   /api/node/name/{nodename}/drbd/connect:
     post:
@@ -11093,6 +11128,14 @@ components:
       name: name
       in: query
       description: drbd resource name
+      required: true
+      schema:
+        type: string
+
+    DRBDResourceRID:
+      name: rid
+      in: query
+      description: the rid of the drbd resource in the object
       required: true
       schema:
         type: string

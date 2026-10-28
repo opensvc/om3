@@ -1118,7 +1118,47 @@ func (t *T) deleteConfig() error {
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
-	return t.unprovisionCommon(ctx)
+	if err := t.unprovisionCommon(ctx); err != nil {
+		return err
+	}
+	t.takeBackConfigs(ctx)
+	return nil
+}
+
+// takeBackConfigs asks the peers to remove the configuration file the
+// provision of the leader sent them. A peer whose resource never
+// provisioned, as when the provision failed before reaching it, has nothing
+// to unprovision, so nothing else removes it there. A peer whose resource is
+// provisioned or up keeps its file and says so. The unprovision of the
+// leader does not fail on a peer it can not reach: what is left there is a
+// file the next provision overwrites.
+func (t *T) takeBackConfigs(ctx context.Context) {
+	c, err := client.New()
+	if err != nil {
+		t.Log().Warnf("take back the drbd configuration from the peers: %s", err)
+		return
+	}
+	params := api.DeleteNodeDRBDConfigParams{
+		Name: t.Res,
+		Path: t.Path.String(),
+		Rid:  t.RID(),
+	}
+	for _, nodename := range t.Nodes {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		resp, err := c.DeleteNodeDRBDConfigWithResponse(ctx, nodename, &params)
+		switch {
+		case err != nil:
+			t.Log().Warnf("take back the drbd configuration from %s: %s", nodename, err)
+		case resp.StatusCode() == 200:
+			t.Log().Debugf("%s has no drbd configuration of %s left", nodename, t.Res)
+		case resp.StatusCode() == 409 && resp.JSON409 != nil:
+			t.Log().Infof("%s keeps its drbd configuration: %s", nodename, resp.JSON409.Detail)
+		default:
+			t.Log().Warnf("take back the drbd configuration from %s: unexpected status %s", nodename, resp.Status())
+		}
+	}
 }
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
