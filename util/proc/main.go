@@ -132,6 +132,26 @@ func (t T) Signal(sig os.Signal) error {
 	return proc.Signal(sig)
 }
 
+// SignalIf sends sig to the process when same, asked once the process is
+// held, says it still is the one the caller found, and reports whether it
+// sent it. On Linux the process is held by a pidfd, which the signal goes
+// through: a pid the process left, and another process took, between the
+// check and the signal is not signaled.
+func (t T) SignalIf(sig os.Signal, same func(T) bool) (bool, error) {
+	proc, err := t.Process()
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = proc.Release() }()
+	if !same(New(t.pid)) {
+		return false, nil
+	}
+	if err := proc.Signal(sig); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (t T) CommandLine() string {
 	p := t.Head() + "/cmdline"
 	l, err := parseFile(p)
