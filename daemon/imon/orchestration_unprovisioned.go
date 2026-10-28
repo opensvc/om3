@@ -118,6 +118,9 @@ func (t *Manager) unprovisionedClearIfReached() bool {
 		t.updateIfChange()
 		return true
 	}
+	if !t.isLocalStatusCurrent() {
+		return false
+	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
 		return reached("unprovisioned orchestration: instance is not provisioned", true)
 	}

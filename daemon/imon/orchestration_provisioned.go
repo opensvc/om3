@@ -141,6 +141,9 @@ func (t *Manager) provisionedOptions() (options instance.MonitorGlobalExpectOpti
 // provisionedFromChecked has the leader provision, or start what needs no
 // provision, and the others wait for it.
 func (t *Manager) provisionedFromChecked() {
+	if !t.isLocalStatusCurrent() {
+		return
+	}
 	if t.isProvisioningLeader() {
 		if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.NotApplicable, provisioned.True) {
 			t.queueAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
@@ -158,7 +161,7 @@ func (t *Manager) provisionedFromWaitLeader() {
 		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
-	if !t.hasLeaderProvisioned() {
+	if !t.hasLeaderProvisioned() || !t.isLocalStatusCurrent() {
 		return
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.NotApplicable, provisioned.True) {
@@ -218,6 +221,9 @@ func (t *Manager) provisionedClearIfReached() bool {
 	}
 
 	if !t.isStarted() && !t.objStatus.Avail.Is(status.NotApplicable) {
+		return false
+	}
+	if !t.isLocalStatusCurrent() {
 		return false
 	}
 

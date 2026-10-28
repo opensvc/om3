@@ -36,6 +36,10 @@ type (
 		id         uuid.UUID
 		configFile string
 		configData any
+
+		// configCsum is the checksum of the configuration the object
+		// loaded, as the daemon computes it of the file.
+		configCsum string
 		config     *xconfig.T
 		node       *Node
 		cluster    *Ccfg

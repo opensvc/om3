@@ -40,7 +40,7 @@ func (t *Manager) purgedFromIdle() {
 		t.transitionTo(instance.MonitorStateUnprovisionSuccess)
 		return
 	}
-	if t.setWaitChildren() {
+	if t.setWaitChildren() || !t.isLocalStatusCurrent() {
 		return
 	}
 	// A mixed instance, as one whose provision failed half way, holds

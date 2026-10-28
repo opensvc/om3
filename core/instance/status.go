@@ -41,6 +41,13 @@ type (
 
 		UpdatedAt time.Time `json:"updated_at"`
 
+		// ConfigCsum is the checksum of the configuration the status was
+		// computed from, as the instance config says it: a status computed
+		// before the configuration last changed says what the former one
+		// has, and is not one to decide on. Empty from an agent that does
+		// not say it.
+		ConfigCsum string `json:"config_csum,omitempty"`
+
 		// OutdatedAt is the earliest OutdatedAt of the resources: when
 		// the status changes with no event to tell, for the daemon to
 		// evaluate it again then. Zero if it does not.
@@ -258,6 +265,9 @@ func (t Status) Unstructured() map[string]any {
 	}
 	if !t.FrozenAt.IsZero() {
 		m["frozen_at"] = t.FrozenAt
+	}
+	if t.ConfigCsum != "" {
+		m["config_csum"] = t.ConfigCsum
 	}
 	if t.FrozenScope != "" {
 		m["frozen_scope"] = t.FrozenScope
