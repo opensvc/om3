@@ -10,7 +10,9 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/drbd"
 )
@@ -37,8 +39,8 @@ func (a *DaemonAPI) deleteLocalDRBDConfig(ctx echo.Context, params api.DeleteNod
 	if !isDRBDResName(params.Name) {
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameter", "The 'name' parameter must be a basename.")
 	}
-	if !isDRBDResName(params.Rid) {
-		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameter", "The 'rid' parameter must be a resource id.")
+	if !isDiskRID(params.Rid) {
+		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameter", "The 'rid' parameter must be the id of a disk resource, as disk#1.")
 	}
 	p, err := naming.ParsePath(params.Path)
 	if err != nil {
@@ -63,6 +65,15 @@ func (a *DaemonAPI) deleteLocalDRBDConfig(ctx echo.Context, params api.DeleteNod
 	}
 	LogHandler(ctx, "DeleteNodeDRBDConfig").Infof("removed %s, sent for %s %s which never provisioned on this node", cf, p, params.Rid)
 	return ctx.JSON(http.StatusOK, nil)
+}
+
+// isDiskRID says s is the id of a disk resource, as disk#1. It names a
+// directory of the object var directory, which isResourceProvisioned reads
+// from: a resource id is made of letters, digits and "_-.#" only, with no
+// path separator to lead out of it.
+func isDiskRID(s string) bool {
+	rid, err := resourceid.Parse(s)
+	return err == nil && rid.IsIndexed() && rid.DriverGroup() == driver.GroupDisk
 }
 
 // isResourceProvisioned reads the provisioned state the actions of the
