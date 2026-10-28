@@ -382,6 +382,19 @@ func TestSnapshotIsReusedWithinMinInterval(t *testing.T) {
 	assert.NotEmpty(t, got.detail)
 }
 
+// A client computing a rate divides by the time the two walks it was
+// answered with were done at, which a reused walk makes earlier than the
+// scrape: the detail says when, and the hint, which has no rate, does not.
+func TestTheWalkSaysWhenItWasDone(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a"}, []string{"ns1/svc/a"})
+
+	s := m.snapshot(true)
+	assert.Equal(t, []string{fmt.Sprintf("=%g", epochSeconds(s.at))}, valuesOf(s.detail, "opensvc_pg_collected_at_seconds"))
+
+	m.snap = nil
+	assert.Empty(t, valuesOf(m.snapshot(false).detail, "opensvc_pg_collected_at_seconds"))
+}
+
 func BenchmarkWalkFull(b *testing.B) {
 	m := benchTree(b)
 	b.ResetTimer()

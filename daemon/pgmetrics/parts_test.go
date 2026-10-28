@@ -96,9 +96,11 @@ func TestHandlerReportsThePartsAskedFor(t *testing.T) {
 	code, body := get("")
 	assert.Equal(t, http.StatusOK, code)
 	assert.NotContains(t, body, `scope="resource"`)
+	assert.NotContains(t, body, `opensvc_pg_collected_at_seconds{collection="parts"}`)
 
 	code, body = get("?path=ns1/svc/s1")
 	assert.Equal(t, http.StatusOK, code)
+	assert.Contains(t, body, `opensvc_pg_collected_at_seconds{collection="parts"}`, "the parts are read at the scrape, not at the walk")
 	assert.Contains(t, body, `opensvc_pg_cgroup_exists{namespace="ns1",path="ns1/svc/s1",rid="app#b",scope="resource",subset="g1"} 1`)
 	assert.Contains(t, body, `opensvc_pg_cgroup_exists{namespace="ns1",path="ns1/svc/s1",rid="",scope="subset",subset="g1"} 1`)
 
