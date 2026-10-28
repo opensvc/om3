@@ -84,6 +84,10 @@ func SetupEnv(env Env) Env {
 // each setup.
 var setupLogOnce sync.Once
 
+// setupLog sets the zerolog globals once per test binary: a later write
+// would race with the goroutines a stopped daemon leaves logging, as the
+// drain of its pubsub bus, and a caller skip frame added on each call would
+// make the logs name the wrong caller.
 func setupLog() {
 	setupLogOnce.Do(doSetupLog)
 }
