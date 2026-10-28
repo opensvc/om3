@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
@@ -183,6 +184,32 @@ func (t *T) stop(ctx context.Context, afterStopCmd bool) error {
 		time.Sleep(1 * time.Second)
 	}
 	return fmt.Errorf("waited too long for process %s to disappear", procs)
+}
+
+// Signal implements the signal action, as the signal of an install line
+// asks a reload of the application whose configuration file changed. It
+// sends sig to the processes the stop terminates, as the kill keyword says:
+// every process of the resource by default, which reaches the application
+// under the shell running its start command, and the process the start
+// command launched with kill = parent, for a server passing a signal on to
+// its workers as it chooses.
+func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
+	targets, err := t.getTargets(nil)
+	if err != nil {
+		return err
+	}
+	if targets.Len() == 0 {
+		t.Log().Infof("skip signal %s: not running", unix.SignalName(sig))
+		return nil
+	}
+	var errs error
+	for _, p := range targets.Procs() {
+		t.loggerWithProc(p).Infof("send signal %s to process %d", unix.SignalName(sig), p.PID())
+		if err := p.Signal(sig); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("signal %s to process %d: %w", unix.SignalName(sig), p.PID(), err))
+		}
+	}
+	return errs
 }
 
 func (t *T) Status(ctx context.Context) status.T {
