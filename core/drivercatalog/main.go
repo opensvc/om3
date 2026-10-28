@@ -12,7 +12,10 @@ import (
 	"context"
 	"syscall"
 
+	"github.com/opensvc/om3/v3/core/doc"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -51,6 +54,19 @@ type (
 		// Available says the node has what the driver needs, as its
 		// capabilities say.
 		Available bool
+
+		// Grant is the grant a service needs to use the driver at all,
+		// empty when any user granted on the namespace may: the one
+		// choosing the driver needs, or the one a keyword the driver
+		// requires needs whatever its value.
+		Grant string
+
+		// ProvisionGrant is the grant only the provision of the
+		// resource needs, beyond Grant: the one a keyword the
+		// provision fails without needs whatever its value. A user not
+		// holding it may still use the driver on what a sysadmin
+		// provisioned, with provision = false.
+		ProvisionGrant string
 	}
 )
 
@@ -177,9 +193,81 @@ func List() []Entry {
 		if allocator, ok := drv.Allocator.(func() resource.Driver); ok && id.Group.IsResource() {
 			e.Features = FeaturesOf(allocator())
 		}
+		e.Grant, e.ProvisionGrant = grants(id)
 		l = append(l, e)
 	}
 	return l
+}
+
+// grantKind is the kind of the objects the grants of the catalog are the ones
+// of: a service is what a user designs, a volume being made from a pool.
+const grantKind = naming.KindSvc
+
+// grants returns the grant using the driver id in a service needs, and the
+// one only its provision needs beyond it. A keyword needing a grant for some
+// values only, as the network of a netns address, needs none here: a value
+// without it exists. A virtual driver needs a grant when every driver it
+// selects does, and an alias the one of the driver it names.
+func grants(id driver.ID) (string, string) {
+	drv, ok := driver.GetStrict(id)
+	if !ok || !id.Group.IsResource() {
+		return "", ""
+	}
+	if !drv.AliasOf.IsZero() {
+		return grants(drv.AliasOf)
+	}
+	if len(drv.Selects) > 0 {
+		var use, provision string
+		for i, selected := range drv.Selects {
+			g, p := grants(selected)
+			if i == 0 {
+				use, provision = g, p
+				continue
+			}
+			if g != use {
+				use = ""
+			}
+			if p != provision {
+				provision = ""
+			}
+		}
+		return use, provision
+	}
+	allocator, ok := drv.Allocator.(func() resource.Driver)
+	if !ok {
+		return "", ""
+	}
+	m := manifest.Get(allocator())
+	if m == nil || !m.Kinds.Has(grantKind) {
+		return "", ""
+	}
+	section := id.Group.String()
+	if g := doc.DriverGrant(grantKind, section, id.Name); g != "" {
+		return g, ""
+	}
+	var types []string
+	if id.Name != "" {
+		types = []string{id.Name}
+	}
+	var use, provision string
+	for _, kw := range m.Keywords() {
+		if !kw.Required && !kw.ProvisioningRequired {
+			continue
+		}
+		g, always := doc.KeywordGrant(grantKind, section, kw.Option, types)
+		if g == "" || !always {
+			continue
+		}
+		if kw.Required {
+			use = g
+		} else if provision == "" {
+			provision = g
+		}
+	}
+	if use != "" {
+		return use, ""
+	}
+	return "", provision
 }
 
 // available says the node has what the driver id needs, as its capabilities
@@ -225,14 +313,16 @@ func APIList(nodename string) api.DriverList {
 		items[i] = api.DriverItem{
 			Kind: "DriverItem",
 			Data: api.Driver{
-				Name:      e.ID.String(),
-				Group:     e.ID.Group.String(),
-				Type:      e.ID.Name,
-				Doc:       e.Doc,
-				Features:  features,
-				Selects:   selects,
-				AliasOf:   aliasOf,
-				Available: e.Available,
+				Name:           e.ID.String(),
+				Group:          e.ID.Group.String(),
+				Type:           e.ID.Name,
+				Doc:            e.Doc,
+				Features:       features,
+				Selects:        selects,
+				AliasOf:        aliasOf,
+				Available:      e.Available,
+				Grant:          e.Grant,
+				ProvisionGrant: e.ProvisionGrant,
 			},
 			Meta: api.NodeMeta{
 				Node: nodename,

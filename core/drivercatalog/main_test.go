@@ -74,3 +74,27 @@ func TestFeaturesOfTheTypesOfAMultiTypeDriver(t *testing.T) {
 	assert.Contains(t, m["container.kvm"].Features, drivercatalog.FeatureMove)
 	assert.Contains(t, m["sync.zfs"].Features, drivercatalog.FeatureSync)
 }
+
+// The grant using a driver in a service needs is the one choosing it needs, or
+// the one a required keyword needs whatever its value: a driver whose choice
+// depends on the rest of the section, as a netns address, needs none, a
+// virtual driver needs one only when every driver it selects does, and an
+// alias the one of the driver it names.
+func TestDriverGrants(t *testing.T) {
+	m := entries(t)
+	for name, want := range map[string]string{
+		"disk.lv":          "root",
+		"task.host":        "root",
+		"app.simple":       "root",
+		"container.docker": "",
+		"container.podman": "",
+		"container.oci":    "",
+		"ip.netns":         "",
+		"ip.docker":        "",
+		"volume":           "",
+	} {
+		assert.Equal(t, want, m[name].Grant, "%s grant", name)
+		assert.Empty(t, m[name].ProvisionGrant, "%s provision grant", name)
+	}
+	assert.Equal(t, m["disk.vg"].Grant, m["disk.lvm"].Grant, "an alias needs the grant of the driver it names")
+}
