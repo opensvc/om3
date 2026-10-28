@@ -247,3 +247,13 @@ func (t *T) Setup() error {
 	}
 	return nil
 }
+
+// Teardown deletes the bridge of the network, when om named it: a bridge the
+// dev keyword names may be one of the node the network only uses.
+func (t *T) Teardown() error {
+	if t.GetString("dev") != "" {
+		t.Log().Infof("leave the bridge %s the dev keyword names", t.brName())
+		return nil
+	}
+	return network.DelLink(t, t.brName())
+}

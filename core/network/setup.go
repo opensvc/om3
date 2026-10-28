@@ -31,7 +31,8 @@ var (
 var setupFirewall = setupFW
 
 // Setup sets up the networks named, all of them when none is named, and the
-// firewall rules of every network.
+// firewall rules of every network, and tears down the networks whose
+// configuration was removed since the last setup.
 //
 // The firewall rules of the networks are one ruleset, rewritten whole: rendered
 // from the networks named only, as the daemon sets up the one whose
@@ -50,6 +51,10 @@ func Setup(n *object.Node, names ...string) error {
 	all := Networks(n)
 	nws := named(all, names)
 	invalid := Check(all)
+	if err := teardownRemoved(n, all); err != nil {
+		n.Log().Errorf("network %s", err)
+		errs = append(errs, err)
+	}
 	needCommit := make([]string, 0)
 	kops := make(keyop.L, 0)
 	for _, nw := range nws {

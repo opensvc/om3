@@ -1,6 +1,7 @@
 package ccfg
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -65,18 +66,37 @@ func (t *Manager) networkConfigChanged() (names []string) {
 		t.log.Errorf("%s", err)
 		return
 	}
+	cfg := clu.Config()
+	names = networkSectionsChanged(t.networkSigs, cfg.SectionStrings(), cfg.SectionSig)
+	if len(names) > 0 {
+		t.log.Infof("network %v configuration changed", names)
+	}
+	return
+}
 
-	for _, name := range clu.Config().SectionStrings() {
-		if strings.HasPrefix(name, "network#") || name == "cni" {
-			lastSig, _ := t.networkSigs[name]
-			sig := clu.Config().SectionSig(name)
-			if sig != lastSig {
-				names = append(names, name)
-				t.log.Tracef("network %s sig %s => %s", name, lastSig, sig)
-				t.networkSigs[name] = sig
-			}
+// networkSectionsChanged returns the network sections whose signature is not
+// the one recorded in sigs, and records it, those added and those removed
+// included: a section removed, its signature kept, would be taken for
+// unchanged when added back, and its network never set up again.
+func networkSectionsChanged(sigs map[string]string, sections []string, sigOf func(string) string) (names []string) {
+	present := make(map[string]bool)
+	for _, name := range sections {
+		if !strings.HasPrefix(name, "network#") && name != "cni" {
+			continue
+		}
+		present[name] = true
+		sig := sigOf(name)
+		if sig != sigs[name] {
+			names = append(names, name)
+			sigs[name] = sig
 		}
 	}
-	t.log.Infof("network %v configuration changed", names)
+	for name := range sigs {
+		if !present[name] {
+			names = append(names, name)
+			delete(sigs, name)
+		}
+	}
+	slices.Sort(names)
 	return
 }

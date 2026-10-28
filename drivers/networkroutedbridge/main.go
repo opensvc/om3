@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/rttables"
 )
 
 type (
@@ -947,6 +948,110 @@ func (t *T) setupNodeRoutes(route network.Route) error {
 		if err := route.Add(); err != nil {
 			return fmt.Errorf("route add %s: %w", route, err)
 		}
+	}
+	return nil
+}
+
+// Teardown undoes the setup of the network on this node: it deletes the
+// routes to the subnets of the nodes, then the tunnels no route goes through
+// anymore, as another network between the same nodes may still route through
+// one, then the bridge, when om named it.
+func (t *T) Teardown() error {
+	links, err := t.teardownRoutes()
+	if err != nil {
+		return err
+	}
+	for index := range links {
+		if err := t.teardownTunnel(index); err != nil {
+			return err
+		}
+	}
+	if t.GetString("dev") != "" {
+		t.Log().Infof("leave the bridge %s the dev keyword names", t.brName())
+		return nil
+	}
+	return network.DelLink(t, t.brName())
+}
+
+// teardownRoutes deletes the routes to the subnets of the nodes, in the
+// tables of the network, and returns the index of the links they went
+// through.
+func (t *T) teardownRoutes() (map[int]bool, error) {
+	links := make(map[int]bool)
+	// The subnets are the ones the setup allocated, written in the
+	// configuration after it, or computed as it did.
+	if err := t.allocateSubnets(); err != nil {
+		t.Log().Warnf("leave the routes to the subnets of the nodes, unknown: %s", err)
+		return links, nil
+	}
+	subnets, err := t.subnets()
+	if err != nil {
+		return nil, err
+	}
+	for nodename, subnet := range subnets {
+		if subnet == "" {
+			continue
+		}
+		_, dst, err := net.ParseCIDR(subnet)
+		if err != nil {
+			return nil, fmt.Errorf("parse the subnet %s of node %s: %w", subnet, nodename, err)
+		}
+		for _, table := range t.Tables() {
+			index, err := rttables.Index(table)
+			if err != nil {
+				return nil, fmt.Errorf("table '%s' lookup: %w", table, err)
+			}
+			filter := &netlink.Route{Dst: dst, Table: index}
+			routes, err := netlink.RouteListFiltered(netlink.FAMILY_ALL, filter, netlink.RT_FILTER_DST|netlink.RT_FILTER_TABLE)
+			if err != nil {
+				return nil, fmt.Errorf("list the routes to %s: %w", dst, err)
+			}
+			for _, route := range routes {
+				t.Log().Infof("route del %s table %s", dst, table)
+				if err := netlink.RouteDel(&route); err != nil {
+					return nil, fmt.Errorf("route del %s table %s: %w", dst, table, err)
+				}
+				if route.LinkIndex > 0 {
+					links[route.LinkIndex] = true
+				}
+			}
+		}
+	}
+	return links, nil
+}
+
+// teardownTunnel deletes the link of index, when it is a tunnel no route
+// added goes through anymore, in any table.
+func (t *T) teardownTunnel(index int) error {
+	link, err := netlink.LinkByIndex(index)
+	if err != nil {
+		if _, ok := err.(netlink.LinkNotFoundError); ok {
+			return nil
+		}
+		return err
+	}
+	switch link.(type) {
+	case *netlink.Iptun, *netlink.Ip6tnl, *netlink.Gretun:
+	default:
+		return nil
+	}
+	name := link.Attrs().Name
+	filter := &netlink.Route{LinkIndex: index, Table: unix.RT_TABLE_UNSPEC}
+	routes, err := netlink.RouteListFiltered(netlink.FAMILY_ALL, filter, netlink.RT_FILTER_OIF|netlink.RT_FILTER_TABLE)
+	if err != nil {
+		return fmt.Errorf("list the routes through %s: %w", name, err)
+	}
+	for _, route := range routes {
+		// The kernel adds the routes of the addresses of the link, which
+		// go away with it.
+		if route.Protocol != unix.RTPROT_KERNEL {
+			t.Log().Infof("leave the tunnel %s, still routing to %s", name, route.Dst)
+			return nil
+		}
+	}
+	t.Log().Infof("delete the tunnel %s", name)
+	if err := netlink.LinkDel(link); err != nil {
+		return fmt.Errorf("delete the tunnel %s: %w", name, err)
 	}
 	return nil
 }
