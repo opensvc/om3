@@ -1814,6 +1814,9 @@ type KeywordDefinitionItem struct {
 	Option       string   `json:"option"`
 	Provisioning bool     `json:"provisioning"`
 
+	// ProvisioningRequired True when the provision of the resource fails without a value, as the size of a logical volume or the devices of a md. Only set on a provisioning keyword with no default the provision works with. Unlike required, a resource configured on what a sysadmin provisioned runs without it.
+	ProvisioningRequired bool `json:"provisioningRequired"`
+
 	// Recorded True when the value names a thing that now exists, and was written into the configuration when that thing was made: the id an object was created with, the uuid an md array was created with. A configuration copied to make another thing must not carry it, so these are reset when an object is cloned.
 	Recorded bool `json:"recorded"`
 
