@@ -8,7 +8,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/asn1"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -528,11 +527,8 @@ func (t *sec) issuedCertificate(certPEM []byte) (bool, error) {
 		// its key, is one the sec issued all the same.
 		serial, ok := parseSerialText(string(b))
 		return ok && serial.Cmp(cert.SerialNumber) == 0, nil
-	} else if ca == "" {
-		subject, err := asn1.Marshal(t.subject().ToRDNSequence())
-		if err != nil || !bytes.Equal(subject, cert.RawSubject) {
-			return false, nil
-		}
+	} else if ca == "" && !t.isSubjectOf(cert) {
+		return false, nil
 	}
 	if ca == "" {
 		return cert.CheckSignatureFrom(cert) == nil, nil
