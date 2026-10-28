@@ -463,23 +463,17 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("dstates: %s", err)
 		return status.Undef
 	}
-	resourceStatus := status.Undef
-	for i, state := range states {
-		if i == 0 {
-			switch state {
-			case "Diskless", "DUnknown", "Unconfigured":
-				resourceStatus = status.Down
-			}
-		} else {
-			switch state {
-			case "UpToDate":
-			default:
-				t.StatusLog().Warn("unexpected drbd resource %s/%d state: %s", t.Res, i, state)
-			}
-		}
+	switch states[0] {
+	case "Diskless", "DUnknown", "Unconfigured":
+		return status.Down
 	}
-	if resourceStatus != status.Undef {
-		return resourceStatus
+
+	if st, err := dev.Status(ctx); err != nil {
+		t.StatusLog().Error("status: %s", err)
+	} else {
+		for _, s := range statusWarnings(t.Res, st) {
+			t.StatusLog().Warn("%s", s)
+		}
 	}
 
 	switch role {
@@ -491,6 +485,32 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("unexpected drbd resource %s role: %s", t.Res, role)
 		return status.Warn
 	}
+}
+
+// statusWarnings says which disks do not hold the latest data. The local disk
+// of a secondary first: a start can not promote it before a resync from a
+// peer ends, as on a standby whose initial sync, begun by the provision, still
+// runs, the instance then being no failover target yet. The disks of the
+// peers then, by peer name.
+func statusWarnings(res string, st drbd.Status) []string {
+	var l []string
+	if st.Role != "Primary" && !st.IsUpToDate() {
+		if st.HasUpToDatePeer() {
+			l = append(l, fmt.Sprintf("drbd %s local disk %s, not promotable before the resync ends: %d KiB out of sync (peers: %s)",
+				res, st.DiskStates(), st.OutOfSync(), st.Peers()))
+		} else {
+			l = append(l, fmt.Sprintf("drbd %s local disk %s, not promotable: no connected peer holds up to date data to resync from (peers: %s)",
+				res, st.DiskStates(), st.Peers()))
+		}
+	}
+	for _, c := range st.Connections {
+		for _, pd := range c.PeerDevices {
+			if pd.PeerDiskState != drbd.DiskStateUpToDate {
+				l = append(l, fmt.Sprintf("drbd %s peer %s volume %d disk %s", res, c.Name, pd.Volume, pd.PeerDiskState))
+			}
+		}
+	}
+	return l
 }
 
 // Label implements Label from resource.Driver interface,
