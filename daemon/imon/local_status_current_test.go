@@ -51,3 +51,16 @@ func TestAStatusWithNoChecksumIsCurrent(t *testing.T) {
 	m.instStatus[m.localhost] = instance.Status{Avail: status.Down}
 	assert.True(t, m.isLocalStatusCurrent())
 }
+
+// An unprovision waits for the status of the current configuration before it
+// queues an action, as it does before it tells the state reached.
+func TestAnUnprovisionWaitsForTheStatusOfTheCurrentConfig(t *testing.T) {
+	m := newUnprovisionedTestManager(instance.MonitorStateIdle)
+	m.instConfig.Checksum = "current"
+	st := m.instStatus[m.localhost]
+	st.ConfigCsum = "former"
+	m.instStatus[m.localhost] = st
+
+	m.UnprovisionedFromIdle()
+	assert.Equal(t, instance.MonitorStateIdle, m.state.State, "no action is queued on a status of the former configuration")
+}
