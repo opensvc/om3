@@ -46,3 +46,31 @@ func TestScheduleEventRefreshCoalesces(t *testing.T) {
 	}
 	require.True(t, m.eventRefreshScheduled, "the timer handler clears it, not run here")
 }
+
+// A refresh the events asked for while a peer runs an action is deferred,
+// not dropped: the end of the action on the peer refreshes nothing, and the
+// refresh a volume up asked while the peers still provisioned was lost. It is
+// replayed once no instance runs an action.
+func TestEventRefreshDeferredWhileAPeerActs(t *testing.T) {
+	m := &Manager{
+		localhost:         "n1",
+		log:               plog.NewDefaultLogger(),
+		instStatus:        map[string]instance.Status{"n1": {}},
+		instMonitor:       map[string]instance.Monitor{"n2": {State: instance.MonitorStateProvisionProgress}},
+		eventRefreshTimer: time.NewTimer(time.Hour),
+	}
+	m.eventRefreshTimer.Stop()
+
+	m.onEventRefreshTimer()
+	require.True(t, m.eventRefreshDeferred, "a peer provisions: deferred")
+	require.False(t, m.eventRefreshScheduled)
+
+	m.replayDeferredEventRefresh()
+	require.True(t, m.eventRefreshDeferred, "the peer still provisions")
+	require.False(t, m.eventRefreshScheduled)
+
+	m.instMonitor["n2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	m.replayDeferredEventRefresh()
+	require.False(t, m.eventRefreshDeferred, "replayed")
+	require.True(t, m.eventRefreshScheduled, "the refresh is scheduled again")
+}

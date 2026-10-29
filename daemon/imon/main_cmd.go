@@ -845,6 +845,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	t.instMonitor[remote] = instMon
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
+	t.replayDeferredEventRefresh()
 }
 
 func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
@@ -857,6 +858,7 @@ func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
 	delete(t.instMonitor, node)
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
+	t.replayDeferredEventRefresh()
 }
 
 func (t *Manager) GetInstanceMonitor(node string) (instance.Monitor, bool) {
