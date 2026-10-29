@@ -899,6 +899,17 @@ func (t *T) unsetPartitions() error {
 	return nil
 }
 
+// ConfigError implements resource.ConfigErrorer: a kvm container defined
+// for a node not kvm capable is an error of the configuration, which a
+// change of its nodes fixes. The node has no virsh, which the start, and
+// every action on the guest, run: om set nothing up there.
+func (t *T) ConfigError(ctx context.Context) error {
+	if !capabilities.Has(drvID.Cap()) {
+		return fmt.Errorf("this node is not kvm capable")
+	}
+	return nil
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	/* TODO
 	if pg := t.GetPG(); pg != nil && pg.IsFrozen() {
