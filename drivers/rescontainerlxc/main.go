@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -49,6 +50,8 @@ var (
 		"/usr",
 		"/usr/local",
 	}
+
+	errConfigFileNotFound = errors.New("unable to find the container configuration file")
 )
 
 var _ resource.Encaper = (*T)(nil)
@@ -233,22 +236,31 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
+// unprovision removes the lxc directory of the container, then its
+// configuration file.
+//
+// The configuration file is resolved first: with no config nor
+// container_data_dir set, it is found by its existence, and the default one
+// is in the lxc directory of the container. Not found, as when a purge
+// interrupted after that removal is retried, it has nothing to purge.
 func (t *T) unprovision(ctx context.Context) error {
+	cf, err := t.configFile(ctx)
+	if errors.Is(err, errConfigFileNotFound) {
+		cf = ""
+	} else if err != nil {
+		return err
+	}
 	if err := t.purgeLxcVar(ctx); err != nil {
 		return err
 	}
-	if err := t.purgeConfigFile(ctx); err != nil {
+	if err := t.purgeConfigFile(cf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) purgeConfigFile(ctx context.Context) error {
-	p, err := t.configFile(ctx)
-	if err != nil {
-		return err
-	}
-	if !file.Exists(p) {
+func (t *T) purgeConfigFile(p string) error {
+	if p == "" || !file.Exists(p) {
 		return nil
 	}
 	t.Log().Infof("remove %s", p)
@@ -611,7 +623,7 @@ func (t *T) getConfigFile(ctx context.Context) (string, error) {
 		return p, nil
 	}
 
-	return "", fmt.Errorf("unable to find the container configuration file")
+	return "", errConfigFileNotFound
 }
 
 func (t *T) getConfigValue(ctx context.Context, key string) (string, error) {
