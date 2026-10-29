@@ -182,6 +182,17 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
+// ConfigError implements resource.ConfigErrorer: a vbox container defined
+// for a node not vbox capable is an error of the configuration, which a
+// change of its nodes fixes. The node has no VBoxManage, which the start, and
+// every action on the guest, run: om set nothing up there.
+func (t *T) ConfigError(ctx context.Context) error {
+	if !capabilities.Has(drvID.Cap()) {
+		return fmt.Errorf("this node is not vbox capable")
+	}
+	return nil
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	/* TODO
 	if pg := t.GetPG(); pg != nil && pg.IsFrozen() {

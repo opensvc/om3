@@ -288,6 +288,13 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 			log := resource.NewStatusLog()
 			log.Error("%s", err)
 			resourceStatus.Log = log.Entries()
+			// The driver of a resource it could not configure may
+			// still tell it holds nothing on the node, as a network
+			// it can not plug into, removed, while its namespace is
+			// not running: the error is its ConfigError then.
+			if i, ok := r.(resource.ConfigErrorer); ok && !r.IsDisabled() && i.ConfigError(ctx) != nil {
+				resourceStatus.ConfigError = err.Error()
+			}
 			data.Resources[r.RID()] = resourceStatus
 			return nil
 		}

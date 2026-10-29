@@ -495,18 +495,23 @@ func (t *T) devMTU() (int, error) {
 }
 
 // ConfigError implements resource.ConfigErrorer: the configuration refused
-// by the network the address is drawn from, when the namespace holds no
-// address of the resource. Its start refuses that configuration before it
-// sets anything up, so only a start made with a former configuration could
-// have, and its address would be in the namespace.
+// by the network the address is drawn from, or the network not found, as one
+// removed, when the namespace holds no address of the resource. Its start
+// refuses that configuration before it sets anything up, so only a start made
+// with a former configuration could have, and its address would be in the
+// namespace.
 func (t *T) ConfigError(ctx context.Context) error {
-	if t.netErr == nil {
+	err := t.netErr
+	if err == nil {
+		_, err = t.resolveNetwork()
+	}
+	if err == nil {
 		return nil
 	}
-	if held, err := t.holdsAddr(ctx); err != nil || held {
+	if held, herr := t.holdsAddr(ctx); herr != nil || held {
 		return nil
 	}
-	return t.netErr
+	return err
 }
 
 // holdsAddr says whether the namespace holds the address of the resource,

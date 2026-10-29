@@ -343,6 +343,34 @@ func (t *T) Stop(ctx context.Context) error {
 	return t.freeIP()
 }
 
+// ConfigError implements resource.ConfigErrorer: the cni configuration of the
+// network not read, its name refused or its file gone, as the one of a
+// network removed, when the namespace the address is set up in is not
+// running. Its start reads that configuration before it sets anything up,
+// and the address of a former start went with the namespace. A namespace
+// running may hold one, which the subnet of the configuration not read does
+// not tell.
+func (t *T) ConfigError(ctx context.Context) error {
+	_, err := t.netConf()
+	if err == nil || t.nsRunning(ctx) {
+		return nil
+	}
+	return err
+}
+
+// nsRunning says whether the namespace the address is set up in runs, and
+// true when it can not tell.
+func (t *T) nsRunning(ctx context.Context) bool {
+	if t.NetNS == "" {
+		return t.hasNetNS()
+	}
+	path, err := t.getResourceNSPathCtx(ctx)
+	if err != nil {
+		return true
+	}
+	return path != ""
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	netConf, err := t.netConf()
 	if err != nil {
