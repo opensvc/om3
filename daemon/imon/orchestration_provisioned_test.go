@@ -127,3 +127,31 @@ func TestTheLeaderCountsAPeerDoneWithTheOrchestrationAsPreflighted(t *testing.T)
 	peer(instance.MonitorStateIdle, m.state.OrchestrationID, false)
 	require.False(t, m.arePeersPreflighted(), "not started yet")
 }
+
+// The leader of a provision of an object whose instance is n/a once
+// provisioned, as one of a directory, is no leader candidate once done, and a
+// node waiting for it may become the leader: it provisions as a follower,
+// its leader done, rather than wait for itself.
+func TestANodeWaitingForTheLeaderProvisionsWhenTheLeadershipMovedToIt(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateWaitLeader)
+	m.state.IsLeader = true
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	m.instStatus["node2"] = instance.Status{Avail: status.NotApplicable, Provisioned: provisioned.False}
+	require.False(t, m.hasLeaderProvisioned(), "the former leader not done yet")
+
+	m.instMonitor["node2"] = instance.Monitor{
+		State:               instance.MonitorStateIdle,
+		OrchestrationID:     m.state.OrchestrationID,
+		OrchestrationIsDone: true,
+	}
+	m.instStatus["node2"] = instance.Status{Avail: status.NotApplicable, Provisioned: provisioned.True}
+	require.True(t, m.hasLeaderProvisioned(), "the former leader done, provisioned")
+
+	m.instMonitor["node2"] = instance.Monitor{
+		State:               instance.MonitorStateIdle,
+		OrchestrationID:     uuid.New(),
+		OrchestrationIsDone: true,
+	}
+	require.False(t, m.hasLeaderProvisioned(), "done with another orchestration")
+}
