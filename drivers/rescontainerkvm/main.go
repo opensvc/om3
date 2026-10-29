@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -903,11 +904,27 @@ func (t *T) unsetPartitions() error {
 // for a node not kvm capable is an error of the configuration, which a
 // change of its nodes fixes. The node has no virsh, which the start, and
 // every action on the guest, run: om set nothing up there.
+//
+// A guest running all the same, started before the node lost virsh, holds
+// what a change would leave behind: libvirt keeps the pid file of a running
+// guest, and the error is not reported then.
 func (t *T) ConfigError(ctx context.Context) error {
-	if !capabilities.Has(drvID.Cap()) {
-		return fmt.Errorf("this node is not kvm capable")
+	if capabilities.Has(drvID.Cap()) || t.hasGuestPIDFile() {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("this node is not kvm capable")
+}
+
+// hasGuestPIDFile says whether libvirt holds a pid file for the guest, which it
+// does while the guest runs, and true when it can not tell.
+func (t *T) hasGuestPIDFile() bool {
+	for _, dir := range []string{"/run/libvirt/qemu", "/var/run/libvirt/qemu"} {
+		_, err := os.Stat(filepath.Join(dir, t.Name+".pid"))
+		if !errors.Is(err, os.ErrNotExist) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *T) Status(ctx context.Context) status.T {
