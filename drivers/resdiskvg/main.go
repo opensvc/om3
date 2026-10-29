@@ -5,6 +5,7 @@ package resdiskvg
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -56,6 +57,9 @@ type (
 	}
 	VGDriverUnprovisioner interface {
 		Remove(context.Context, []string) error
+	}
+	VGDriverPVRemover interface {
+		RemovePVs(context.Context, device.L) error
 	}
 	VGDriverWiper interface {
 		Wipe(context.Context) error
@@ -338,8 +342,36 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("vg %s %s driver does not implement unprovisioning", vg.FQN(), vg.DriverName())
 	}
+	// The physical volumes are read before the group goes, which is what
+	// lists them.
+	pvs, err := vg.PVs(ctx)
+	if err != nil {
+		return fmt.Errorf("list the physical volumes of %s: %w", vg.FQN(), err)
+	}
 	args := []string{"-f"}
-	return vgi.Remove(ctx, args)
+	if err := vgi.Remove(ctx, args); err != nil {
+		return err
+	}
+	return t.removePVs(ctx, vg, pvs)
+}
+
+// removePVs removes the lvm label of the physical volumes pvs of the group
+// just removed, so the unprovision leaves the devices as the provision found
+// them: its vgcreate labeled them. A physical volume lvm misses is listed as
+// "[unknown]", with no device to unlabel.
+func (t *T) removePVs(ctx context.Context, vg VGDriver, pvs device.L) error {
+	vgi, ok := vg.(VGDriverPVRemover)
+	if !ok {
+		t.Log().Infof("Volume group %s physical volumes removal skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
+		return nil
+	}
+	l := make(device.L, 0, len(pvs))
+	for _, pv := range pvs {
+		if strings.HasPrefix(pv.Path(), "/") {
+			l = append(l, pv)
+		}
+	}
+	return vgi.RemovePVs(ctx, l)
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
