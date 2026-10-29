@@ -154,13 +154,18 @@ func (t resourceUps) texts() []string {
 // A task is up on a node while it runs there, which is what its stop ends.
 // Its status says how its last run went, as a last_run check does: a task
 // whose last run succeeded holds nothing on the node.
+//
+// A sync is too: its status says how fresh the copy it keeps is, up for a
+// copy in time, whatever the instance, and no stop makes it down. Counted up
+// for it, its section was refused a removal "stop it before", which no stop
+// fulfilled.
 func resourceUpOn(section string, group driver.Group, statuses map[string]*instance.Status) resourceUps {
 	l := make(resourceUps, 0)
 	for nodename, st := range statuses {
 		if st == nil {
 			continue
 		}
-		if group == driver.GroupTask {
+		if group == driver.GroupTask || group == driver.GroupSync {
 			if st.Running.Has(section) {
 				l = append(l, resourceUp{node: nodename, running: true})
 			}
