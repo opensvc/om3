@@ -198,20 +198,25 @@ func (t T) Delete(ctx context.Context, devPath string) error {
 	// A device still open when deleted is only flagged for autoclear, and the
 	// kernel detaches it at its last close. Each poll reads losetup afresh:
 	// the session cache keeps an output until cleared, so a cached one would
-	// list the device for as long as the wait.
+	// list the device for as long as the wait. A listing failing tells
+	// nothing of the device: the wait goes on, and its error is the one
+	// returned if it still fails at the end.
 	limit := time.Now().Add(5 * time.Second)
 	for {
 		sessioncache.Clear("losetup")
-		info, _ := t.Get(ctx, devPath)
-		if info == nil {
+		info, err := t.Get(ctx, devPath)
+		switch {
+		case err == nil && info == nil:
 			return nil
-		}
-		if time.Now().After(limit) {
-			break
+		case ctx.Err() != nil:
+			return ctx.Err()
+		case time.Now().After(limit) && err != nil:
+			return fmt.Errorf("list the loop devices to check %s is deleted: %w", devPath, err)
+		case time.Now().After(limit):
+			return fmt.Errorf("losetup silently failed to delete %s", devPath)
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return fmt.Errorf("losetup silently failed to delete %s", devPath)
 }
 
 func (t InfoEntries) Name(s string) *InfoEntry {

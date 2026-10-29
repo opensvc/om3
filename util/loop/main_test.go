@@ -44,3 +44,20 @@ fi
 
 	require.NoError(t, New().Delete(context.Background(), "/dev/loop3"))
 }
+
+// TestDeleteTakesNoListingFailureForTheDeviceGone checks a listing failing
+// after the delete is not taken for the device detached.
+func TestDeleteTakesNoListingFailureForTheDeviceGone(t *testing.T) {
+	td := t.TempDir()
+	rawconfig.Load(map[string]string{"OSVC_ROOT_PATH": td})
+	defer rawconfig.Load(map[string]string{})
+
+	bin := filepath.Join(td, "bin")
+	require.NoError(t, os.MkdirAll(bin, 0o755))
+	script := "#!/bin/sh\ncase \"$1\" in\n-d) exit 0 ;;\nesac\nexit 1\n"
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "losetup"), []byte(script), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "udevadm"), []byte("#!/bin/sh\nexit 0\n"), 0o755))
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+
+	require.ErrorContains(t, New().Delete(context.Background(), "/dev/loop3"), "list the loop devices")
+}
