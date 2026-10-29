@@ -186,7 +186,10 @@ func (t *T) StatusLastSync(nodenames []string, receiving bool) status.T {
 	state := status.NotApplicable
 
 	if len(nodenames) == 0 {
-		t.StatusLog().Info("no target nodes")
+		if !receiving {
+			// A passive node said already why it receives no copy.
+			t.StatusLog().Info("no target nodes")
+		}
 		return status.NotApplicable
 	}
 
@@ -424,6 +427,24 @@ func (t *T) GetTargetPeernames(target, nodes, drpNodes []string) []string {
 		}
 	}
 	return nodenames
+}
+
+// ReceivingNodenames returns the node a passive instance judges the copy of:
+// this node, when the target makes it a destination, one of nodes with the
+// nodes target, or one of drpNodes with the drpnodes target, and none else. A
+// local target copies on the source alone, and a node the target does not
+// include receives nothing: judged, its copy never synced breached its
+// recovery point objective forever.
+func (t *T) ReceivingNodenames(target, nodes, drpNodes []string) []string {
+	localhost := hostname.Hostname()
+	if slices.Contains(target, "nodes") && slices.Contains(nodes, localhost) {
+		return []string{localhost}
+	}
+	if slices.Contains(target, "drpnodes") && slices.Contains(drpNodes, localhost) {
+		return []string{localhost}
+	}
+	t.StatusLog().Info("this node receives no copy, the target being %s", strings.Join(target, " "))
+	return nil
 }
 
 func (t *T) GetTargetNodenames(target, nodes, drpNodes []string) []string {

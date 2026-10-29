@@ -238,7 +238,7 @@ func (t *T) getTargetNodenames(isSourceNode bool) []string {
 		return t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
 	} else {
 		// if the instance is passive, check last sync timestamp for the local node (received from the source node)
-		return []string{hostname.Hostname()}
+		return t.ReceivingNodenames(t.Target, t.Nodes, t.DRPNodes)
 	}
 }
 

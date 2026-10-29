@@ -294,7 +294,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if isSourceNode {
 		nodenames = t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
 	} else {
-		nodenames = []string{hostname.Hostname()}
+		nodenames = t.ReceivingNodenames(t.Target, t.Nodes, t.DRPNodes)
 	}
 	state := t.StatusLastSync(nodenames, !isSourceNode)
 	if isSourceNode {
