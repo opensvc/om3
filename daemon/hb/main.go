@@ -332,7 +332,11 @@ func (t *T) rescanHb(ctx context.Context) error {
 	for rid, newSig := range stoppedRids {
 		t.log.Infof("heartbeat config changed %s => starting (from stopped)", rid)
 		if err := t.startHb(ridHb[rid]); err != nil {
+			// Not recorded, as a new heartbeat failing its start:
+			// retryFailedHb starts it again.
+			delete(t.ridSignature, rid)
 			errs = errors.Join(errs, err)
+			continue
 		}
 		t.ridSignature[rid] = newSig
 	}
