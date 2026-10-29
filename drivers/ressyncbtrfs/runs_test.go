@@ -51,6 +51,10 @@ type fakeCluster struct {
 	uuid  int
 	sends []string
 
+	// peers are the peers of the configuration, the ones a sync keeps the
+	// base of, those of the sync when nil.
+	peers []string
+
 	// state is the state the local node saved, which the var dir of a
 	// resource would hold. It moves with the local node on a failover.
 	state  syncState
@@ -269,14 +273,27 @@ func (c *fakeCluster) sync(mode modeT, now time.Time, peers ...string) error {
 		return err
 	}
 	local := append(previous, r)
+	cfgPeers := c.peers
+	if cfgPeers == nil {
+		cfgPeers = peers
+	}
+	t.seedReceivedBase(local, cfgPeers, states)
 	var errs error
+	synced := map[string]bool{}
 	for _, nodename := range peers {
 		st := states[nodename]
-		errs = errors.Join(errs, t.syncPeer(context.Background(), mode, nodename, local, r, &st, now))
+		err := t.syncPeer(context.Background(), mode, nodename, local, r, &st, now)
+		errs = errors.Join(errs, err)
+		synced[nodename] = err == nil
 		states[nodename] = st
 	}
+	for _, nodename := range peers {
+		if synced[nodename] {
+			errs = errors.Join(errs, t.prunePeer(nodename, local, r, otherBases(states, nodename)))
+		}
+	}
 	c.state = syncState{LastRunID: r.headID(), Peers: states}
-	return errors.Join(errs, t.pruneLocal(local, peers, states))
+	return errors.Join(errs, t.pruneLocal(local, cfgPeers, states))
 }
 
 func TestInitialThenIncremental(t *testing.T) {
@@ -335,6 +352,48 @@ func TestFailoverAndFailbackWithWritesInBetween(t *testing.T) {
 	assert.Equal(t, "a3", c.head("b"))
 	require.Len(t, c.sends, sends+1)
 	assert.False(t, strings.HasSuffix(c.sends[sends], "parent="), "the failback sync is incremental")
+}
+
+// A switch of an object of 3 nodes, its final sync to the destination alone,
+// keeps on the destination the run that is the base of the third node: the
+// destination, source then, sends the third node the delta from it, rather
+// than strand it. The same when its first send to the third node fails: the
+// runs it received are kept as candidate bases.
+func TestASwitchToOnePeerKeepsTheBaseOfTheOthers(t *testing.T) {
+	for _, cFailsFirst := range []bool{false, true} {
+		o := newTestT(t)
+		c := newFakeCluster(o)
+		now := time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+		c.peers = []string{"b", "c"}
+
+		c.write("", "a1")
+		require.NoError(t, c.sync(modeIncr, now, "b", "c"))
+		runA := newRunName(now)
+
+		// The final sync of a switch to b: the run B to b alone.
+		c.write("", "a2")
+		require.NoError(t, c.sync(modeIncr, now.Add(time.Minute), "b"))
+		assert.Equal(t, []string{runA, newRunName(now.Add(time.Minute))}, c.runNames("b"), "b keeps A, the base of c")
+
+		// b is the source now, knowing nothing of its peers.
+		c.failover("b", "a")
+		c.peers = []string{"a", "c"}
+		c.write("", "b1")
+		if cFailsFirst {
+			c.down["c"] = true
+			require.Error(t, c.sync(modeIncr, now.Add(2*time.Minute), "a", "c"))
+			assert.Contains(t, c.runNames(""), runA, "A, a candidate base of c, is kept through the failed sync")
+			c.down["c"] = false
+		}
+		sends := len(c.sends)
+		require.NoError(t, c.sync(modeIncr, now.Add(3*time.Minute), "a", "c"), "c failed first: %v", cFailsFirst)
+		assert.Equal(t, "b1", c.head("c"), "c holds the writes of the new source")
+		for _, s := range c.sends[sends:] {
+			assert.False(t, strings.HasSuffix(s, "parent="), "incremental, not stranded: %s", s)
+		}
+		assert.Equal(t, []string{newRunName(now.Add(3 * time.Minute))}, c.runNames(""), "every peer synced: the candidates go")
+		assert.Equal(t, []string{newRunName(now.Add(3 * time.Minute))}, c.runNames("c"))
+	}
 }
 
 // TestAFailedSendKeepsTheBaseOfThePeer pins that a peer missing runs is sent
