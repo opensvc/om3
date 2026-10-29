@@ -46,6 +46,9 @@ db_min_ping_interval = 30s
 
 [listener]
 tls_port = 1215
+rate_limiter_rate = 30
+rate_limiter_burst@n2 = 200
+rate_limiter_expires = 2m
 
 [arbitrator#1]
 name = arb1.example.com
@@ -54,12 +57,15 @@ name = arb1.example.com
 cmd = /bin/true
 `)
 	for from, to := range map[string]string{
-		"node.min_avail_mem_pct":     "node.min_avail_mem",
-		"node.min_avail_swap_pct@n2": "node.min_avail_swap@n2",
-		"node.db_min_ping_interval":  "node.collector_ping_interval",
-		"listener.tls_port":          "listener.port",
-		"arbitrator#1.name":          "arbitrator#1.uri",
-		"stonith#n2.cmd":             "stonith#n2.command",
+		"node.min_avail_mem_pct":         "node.min_avail_mem",
+		"node.min_avail_swap_pct@n2":     "node.min_avail_swap@n2",
+		"node.db_min_ping_interval":      "node.collector_ping_interval",
+		"listener.tls_port":              "listener.port",
+		"listener.rate_limiter_rate":     "listener.throttle_rate",
+		"listener.rate_limiter_burst@n2": "listener.throttle_burst@n2",
+		"listener.rate_limiter_expires":  "listener.throttle_expires",
+		"arbitrator#1.name":              "arbitrator#1.uri",
+		"stonith#n2.cmd":                 "stonith#n2.command",
 	} {
 		_, ok := setOf(m, to)
 		assert.True(t, ok, "%s is set", to)
