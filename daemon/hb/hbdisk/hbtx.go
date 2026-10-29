@@ -126,8 +126,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		var b []byte
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
-		tickerChecSignature := time.NewTicker(120 * t.interval)
-		defer tickerChecSignature.Stop()
+		tickerCheckSignature := time.NewTicker(signatureCheckPeriod(t.interval, false))
+		defer tickerCheckSignature.Stop()
 		var reason string
 		for {
 			select {
@@ -140,10 +140,17 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				ticker.Reset(t.interval)
 			case <-ticker.C:
 				reason = reasonTick
-			case <-tickerChecSignature.C:
-				t.base.checkSignature()
+			case <-tickerCheckSignature.C:
+				if t.base.checkSignature() {
+					tickerCheckSignature.Reset(signatureCheckPeriod(t.interval, t.base.invalidSig))
+					t.onSignatureChange()
+				}
+				continue
 			}
-			if len(b) == 0 {
+			if len(b) == 0 || t.base.invalidSig {
+				// A disk wiped is not written: a slot found
+				// reset would be allocated again, on a disk
+				// another cluster may be signed for.
 				continue
 			}
 			t.log.Tracef(reason)
@@ -233,6 +240,19 @@ func (t *tx) send(b []byte) {
 
 func (t *tx) updateAlertWithSlot() {
 	t.alert = append(t.alert, getSlotAlert(t.base.localhost, t.slot))
+}
+
+// onSignatureChange reports the stream suspended or resumed.
+func (t *tx) onSignatureChange() {
+	if t.base.invalidSig {
+		t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
+		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+	} else {
+		t.alert = make([]daemonsubsystem.Alert, 0)
+		t.updateAlertWithSlot()
+		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
+	}
+	t.sendAlert()
 }
 
 func (t *tx) sendAlert() {

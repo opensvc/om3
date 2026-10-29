@@ -44,6 +44,10 @@ type (
 
 		ridSignature map[string]string
 
+		// retryErr is the error of the last start of the heartbeats
+		// whose start failed, by rid, logged when it changes.
+		retryErr map[string]string
+
 		// ctx is the main context for the controller, and started hb drivers
 		ctx context.Context
 
@@ -70,6 +74,7 @@ func New(_ context.Context, opts ...funcopt.O) *T {
 	t.rxs = make(map[string]hbtype.Receiver)
 	t.readMsgQueue = make(chan *hbtype.Msg)
 	t.ridSignature = make(map[string]string)
+	t.retryErr = make(map[string]string)
 	return t
 }
 
@@ -353,6 +358,50 @@ func (t *T) rescanHb(ctx context.Context) error {
 	return errs
 }
 
+// retryFailedHb starts again the heartbeats whose start failed, which the
+// rescans only did, on a change of the cluster configuration: a disk signed
+// changes none, and its streams stayed failed until restarted by hand on every
+// node. A failure is logged when it is not the one of the last try.
+//
+// A heartbeat started meanwhile by a restart is recorded as it runs, and one
+// half started, its tx or its rx alone, is started again whole.
+func (t *T) retryFailedHb(ctx context.Context) {
+	ridHb, err := t.getHbConfigured(ctx)
+	if err != nil {
+		t.log.Warnf("retry the failed heartbeats: %s", err)
+		return
+	}
+	for rid, hb := range ridHb {
+		if _, ok := t.ridSignature[rid]; ok {
+			delete(t.retryErr, rid)
+			continue
+		}
+		_, tx := t.txs[rid]
+		_, rx := t.rxs[rid]
+		if tx && rx {
+			t.ridSignature[rid] = hb.Signature()
+			delete(t.retryErr, rid)
+			continue
+		}
+		if tx || rx {
+			if err := t.stopHbRid(rid); err != nil {
+				t.log.Warnf("retry %s: %s", rid, err)
+				continue
+			}
+		}
+		if err := t.startHb(hb); err != nil {
+			if msg := err.Error(); msg != t.retryErr[rid] {
+				t.log.Warnf("heartbeat %s start failed, retried every %s: %s", rid, retryFailedInterval, err)
+				t.retryErr[rid] = msg
+			}
+			continue
+		}
+		t.log.Infof("heartbeat %s started on retry", rid)
+		t.ridSignature[rid] = hb.Signature()
+		delete(t.retryErr, rid)
+	}
+}
+
 // msgToTx starts the goroutine to multiplex data messages to hb tx drivers
 //
 // It ends when ctx is done
@@ -509,6 +558,10 @@ func (t *T) msgFromRx(ctx context.Context) {
 // clock stepped back costs at most this long of dropped messages.
 const staleMsgMaxAge = 2 * time.Minute
 
+// retryFailedInterval is the period of the retry of the heartbeats whose start
+// failed, as a disk heartbeat on a disk not signed yet.
+const retryFailedInterval = 30 * time.Second
+
 // isStaleMsg tells whether a peer message stamped updated is older than the
 // last message processed from that peer, stamped last, by less than
 // staleMsgMaxAge.
@@ -549,10 +602,14 @@ func (t *T) janitor(ctx context.Context) {
 				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
+		retryTicker := time.NewTicker(retryFailedInterval)
+		defer retryTicker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
+			case <-retryTicker.C:
+				t.retryFailedHb(t.ctx)
 			case i := <-sub.C:
 				switch msg := i.(type) {
 				case *msgbus.DaemonCtl:

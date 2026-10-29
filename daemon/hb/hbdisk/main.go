@@ -55,6 +55,11 @@ const (
 
 	// DefaultInterval is the interval of a disk heartbeat not setting one.
 	DefaultInterval = 4 * time.Second
+
+	// signatureCheckTicks is the number of intervals between two checks of
+	// the signature of the disk by a stream: a disk wiped suspends it within
+	// a minute at the default interval.
+	signatureCheckTicks = 15
 )
 
 // MinTimeout is the shortest timeout of a disk heartbeat writing every
@@ -204,21 +209,49 @@ func getSlotAlert(nodename string, slot int) daemonsubsystem.Alert {
 	return daemonsubsystem.Alert{Severity: level, Message: msg}
 }
 
-func (t *base) checkSignature() {
-	if err := t.device.ensureHBSignature(); err != nil {
-		if errors.Is(err, sign.ErrLegacySignature) {
-			t.invalidSig = false
-			return
-		}
-		t.log.Warnf("signature check failed: %s", err)
-		if !t.invalidSig {
-			t.log.Warnf("signature is now invalid")
-		}
-		t.invalidSig = true
-	} else {
-		if t.invalidSig {
-			t.log.Infof("signature is now valid")
-		}
+// checkSignature reads the signature of the disk, and sets invalidSig when the
+// disk does not carry the one of a heartbeat disk: wiped, or signed for
+// something else. The stream suspends its writes and reads then, rather than
+// write on a disk another cluster may be signed for, and resumes once the
+// disk is signed again. It returns whether invalidSig changed.
+//
+// A read failing says nothing of the signature, and leaves invalidSig as it
+// was.
+func (t *base) checkSignature() bool {
+	was := t.invalidSig
+	err := t.device.ensureHBSignature()
+	switch {
+	case err == nil, errors.Is(err, sign.ErrLegacySignature):
 		t.invalidSig = false
+	case errors.Is(err, sign.ErrWrongSignature), errors.Is(err, sign.ErrChecksumMismatch):
+		t.invalidSig = true
+	default:
+		t.log.Warnf("signature check failed: %s", err)
 	}
+	switch {
+	case t.invalidSig && !was:
+		t.log.Warnf("signature is now invalid (%s): suspended until the disk is signed", err)
+	case !t.invalidSig && was:
+		t.log.Infof("signature is now valid: resumed")
+	}
+	return t.invalidSig != was
+}
+
+// invalidSigAlert says why a stream suspended, and how to resume it.
+func (t *base) invalidSigAlert() daemonsubsystem.Alert {
+	return daemonsubsystem.Alert{
+		Severity: "error",
+		Message:  fmt.Sprintf("%s has not the signature of a heartbeat disk, wiped or signed for something else: suspended until signed (om daemon hb sign)", t.path),
+	}
+}
+
+// signatureCheckPeriod is the period of the check of the signature of the
+// disk by a stream of interval: every interval while suspended, so it
+// resumes as soon as the disk is signed again, and every signatureCheckTicks
+// intervals else.
+func signatureCheckPeriod(interval time.Duration, invalidSig bool) time.Duration {
+	if invalidSig {
+		return interval
+	}
+	return signatureCheckTicks * interval
 }

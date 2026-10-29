@@ -151,15 +151,23 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.dedup = hbdedup.CacheFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
-		tickerCheckSignature := time.NewTicker(120 * t.interval)
+		tickerCheckSignature := time.NewTicker(signatureCheckPeriod(t.interval, false))
 		defer tickerCheckSignature.Stop()
 		for {
 			select {
 			case <-ticker.C:
+				if t.base.invalidSig {
+					// A disk wiped is not read: what it holds
+					// is no peer's.
+					continue
+				}
 				t.crypto = crypto.Load()
 				t.onTick()
 			case <-tickerCheckSignature.C:
-				t.base.checkSignature()
+				if t.base.checkSignature() {
+					tickerCheckSignature.Reset(signatureCheckPeriod(t.interval, t.base.invalidSig))
+					t.onSignatureChange()
+				}
 			case <-ctx.Done():
 				t.cancel()
 				return
@@ -290,6 +298,19 @@ func (t *rx) updateAlertWithSlots() {
 	for _, nodename := range nodes {
 		t.alert = append(t.alert, getSlotAlert(nodename, t.base.nodeSlot[nodename]))
 	}
+}
+
+// onSignatureChange reports the stream suspended or resumed. Resumed, it reads
+// the metadata again: a disk signed again holds no slot.
+func (t *rx) onSignatureChange() {
+	if t.base.invalidSig {
+		t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
+		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+		t.sendAlert()
+		return
+	}
+	t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
+	t.rescanMetadata("signature valid again")
 }
 
 func (t *rx) sendAlert() {
