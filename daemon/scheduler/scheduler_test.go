@@ -170,6 +170,73 @@ func TestJobIsHeldDuringAnActionOfItsInstance(t *testing.T) {
 	require.Equal(t, 1, s.ranCount(), "runs once the action is over")
 }
 
+// The node runs max_parallel jobs at most at once: a job due beyond it is
+// held, and tried again a moment later rather than at its next period, and
+// so is an event run. Each job is an om process, and a node with many
+// objects whose jobs came due together ran them all at once, starving its
+// daemon.
+func TestJobIsHeldWhileTheNodeRunsMaxParallelJobs(t *testing.T) {
+	s := newTestScheduler(t)
+	s.maxRunning = 2
+	release := make(chan struct{})
+	s.exec = func(e schedule.Entry) error {
+		s.runs <- e
+		<-release
+		return nil
+	}
+	var l []schedule.Entry
+	for _, name := range []string{"a", "b", "c"} {
+		e := s.entry(naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: name}, "status.schedule", "@10m")
+		s.planJob(e, s.clock)
+		l = append(l, e)
+	}
+	due := s.job(t, l[0]).entry.NextRunAt
+	s.clock = due
+	s.onTick()
+
+	for range 2 {
+		<-s.runs
+	}
+	var held schedule.Entry
+	for _, e := range l {
+		if j := s.job(t, e); j.entry.NextRunAt.Equal(due.Add(holdRetryDelay)) {
+			held = j.entry
+		}
+	}
+	require.NotZero(t, held.Path, "a job is held, tried again in a moment, not at its next period")
+	assert.Equal(t, 2, int(s.active.Load()))
+
+	config := schedule.Config{
+		Action:       "run",
+		Key:          "task#1.schedule",
+		Schedule:     "@1h",
+		StatefileKey: "task#1.schedule",
+		On:           []string{"NetworkPeersUpdated"},
+	}
+	s.scheduleEntries(testPath, []schedule.Config{config})
+	// Never run, its scheduled run is due at once: only its event run is
+	// looked at.
+	s.jobs.del(testPath, config.Key)
+	e, ok := s.schedules.Get(testPath, config.Key)
+	require.True(t, ok)
+	g, err := s.getTrigger(e)
+	require.NoError(t, err)
+	s.runTrigger(testPath, e, g, s.clock, false)
+	assert.Equal(t, s.clock.Add(holdRetryDelay), g.dueAt, "an event run is held as well")
+
+	close(release)
+	s.running.Wait()
+	assert.Len(t, s.runs, 0, "no third job ran")
+	s.clock = due.Add(holdRetryDelay)
+	s.onTick()
+	require.Equal(t, 2, s.ranCount(), "the held job and the event run run once slots are free")
+	ran := map[naming.Path]bool{}
+	for range 2 {
+		ran[(<-s.runs).Path] = true
+	}
+	assert.Equal(t, map[naming.Path]bool{held.Path: true, testPath: true}, ran)
+}
+
 // A job reading nothing of the instance status is not held by its actions.
 func TestJobWithoutRequirementIsNotHeld(t *testing.T) {
 	s := newTestScheduler(t)

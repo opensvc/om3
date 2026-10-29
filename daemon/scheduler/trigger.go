@@ -178,6 +178,11 @@ func (t *T) runTrigger(path naming.Path, e schedule.Entry, g *trigger, now time.
 		g.dueAt = now.Add(holdRetryDelay)
 		return
 	}
+	if reason := t.fullReason(); reason != "" {
+		logger.Debugf("hold event run (%s)", reason)
+		g.dueAt = now.Add(holdRetryDelay)
+		return
+	}
 	if n, err := t.runningCount(e); err != nil {
 		logger.Warnf("skip event run (%s)", err)
 		g.ran(now, late)
