@@ -7070,6 +7070,13 @@ components:
         - node
         - token
       properties:
+        drop_backup:
+          type: boolean
+          description: |
+            Remove the backup of the enrolled node config once it has joined.
+            The backup holds the secrets of the cluster the node left. It is
+            kept when the join fails.
+          default: false
         node:
           type: string
           description: |
@@ -7150,6 +7157,13 @@ components:
       required:
         - nodename
       properties:
+        drop_backup:
+          type: boolean
+          description: |
+            Remove the backup of the evicted node config once it has left.
+            The backup holds the secrets of this cluster. It is kept when the
+            leave fails.
+          default: false
         nodename:
           type: string
           description: |
@@ -7537,6 +7551,13 @@ components:
         - node
         - token
       properties:
+        drop_backup:
+          type: boolean
+          description: |
+            Remove the backup of this node config once it has joined. The
+            backup holds the secrets of the cluster this node left. It is
+            kept when the join fails.
+          default: false
         node:
           type: string
           description: the nodename of the target cluster node to join
@@ -7564,6 +7585,13 @@ components:
     DaemonLeaveBody:
       type: object
       properties:
+        drop_backup:
+          type: boolean
+          description: |
+            Remove the backup of this node config once it has left. The
+            backup holds the secrets of the cluster left. It is kept when the
+            leave fails.
+          default: false
         credential:
           type: string
           description: |

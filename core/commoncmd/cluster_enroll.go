@@ -42,6 +42,10 @@ type (
 		// Wait blocks until the enrolled node heartbeat is beating.
 		Wait bool
 
+		// DropBackup removes the config backup of the enrolled node once it
+		// has joined.
+		DropBackup bool
+
 		// collectorState returns the collector state of a node, as the
 		// cluster status of the api node holds it, empty when not known
 		// yet.
@@ -98,6 +102,7 @@ func NewCmdClusterEnroll() *cobra.Command {
 	flags.DurationVar(&options.Timeout, "timeout", time.Hour, "maximum duration to wait for the enrolled node to join."+
 		" It is also the lifetime of the join token, so it must outlive the node drain")
 	flags.BoolVar(&options.Wait, "wait", false, "wait for the enrolled node heartbeat to beat in this cluster")
+	FlagDropBackup(flags, &options.DropBackup)
 	return cmd
 }
 
@@ -156,6 +161,9 @@ func (t *CmdClusterEnroll) run() error {
 	}
 	if t.JoinAddr != "" {
 		body.JoinAddr = &t.JoinAddr
+	}
+	if t.DropBackup {
+		body.DropBackup = &t.DropBackup
 	}
 	resp, err := c.PostClusterEnrollWithResponse(ctx, body)
 	if err != nil {

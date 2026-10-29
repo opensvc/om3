@@ -97,6 +97,9 @@ func (a *DaemonAPI) localPostDaemonLeave(ctx echo.Context, payload api.DaemonLea
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "can't detect om execname: %s", err)
 	}
 	args := []string{"cluster", "leave", "--timeout", timeout.String()}
+	if payload.DropBackup != nil && *payload.DropBackup {
+		args = append(args, "--drop-backup")
+	}
 
 	// The credential goes through the environment, never through the command
 	// line: /proc/<pid>/cmdline is world readable, /proc/<pid>/environ is not.

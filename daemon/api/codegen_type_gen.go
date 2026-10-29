@@ -1239,6 +1239,11 @@ type ClusterEnrollAccepted struct {
 
 // ClusterEnrollBody defines model for ClusterEnrollBody.
 type ClusterEnrollBody struct {
+	// DropBackup Remove the backup of the enrolled node config once it has joined.
+	// The backup holds the secrets of the cluster the node left. It is
+	// kept when the join fails.
+	DropBackup *bool `json:"drop_backup,omitempty"`
+
 	// JoinAddr The location the enrolled node must use to reach this cluster, in
 	// the [<scheme>://]<addr>[:<port>] format. It is refused when the
 	// certificate of this cluster is not valid for its host, because the
@@ -1268,6 +1273,11 @@ type ClusterEvictBody struct {
 	// user is created in the 'system' namespace with the 'root' grant.
 	// Without this parameter, no user is created.
 	Credential *string `json:"credential,omitempty"`
+
+	// DropBackup Remove the backup of the evicted node config once it has left.
+	// The backup holds the secrets of this cluster. It is kept when the
+	// leave fails.
+	DropBackup *bool `json:"drop_backup,omitempty"`
 
 	// Nodename The name of the cluster node to remove from the cluster nodes. It
 	// must be drained, and it can not be the api node.
@@ -1429,6 +1439,11 @@ type DaemonJoinBody struct {
 	// value. Set it when this node can not resolve the target nodename.
 	Addr *string `json:"addr,omitempty"`
 
+	// DropBackup Remove the backup of this node config once it has joined. The
+	// backup holds the secrets of the cluster this node left. It is
+	// kept when the join fails.
+	DropBackup *bool `json:"drop_backup,omitempty"`
+
 	// Node the nodename of the target cluster node to join
 	Node string `json:"node"`
 
@@ -1448,6 +1463,11 @@ type DaemonLeaveBody struct {
 	// the 'system' namespace with the 'root' grant. Without this
 	// parameter, no user is created.
 	Credential *string `json:"credential,omitempty"`
+
+	// DropBackup Remove the backup of this node config once it has left. The
+	// backup holds the secrets of the cluster left. It is kept when the
+	// leave fails.
+	DropBackup *bool `json:"drop_backup,omitempty"`
 
 	// Timeout the maximum duration of the forked leave
 	Timeout *string `json:"timeout,omitempty"`

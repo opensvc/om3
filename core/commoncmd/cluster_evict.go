@@ -34,6 +34,10 @@ type (
 
 		// Wait blocks until the cluster has dropped the evicted node.
 		Wait bool
+
+		// DropBackup removes the config backup of the evicted node once it
+		// has left.
+		DropBackup bool
 	}
 )
 
@@ -66,6 +70,7 @@ func NewCmdClusterEvict() *cobra.Command {
 	flags.DurationVar(&options.Timeout, "timeout", time.Hour, "maximum duration of the leave forked on the evicted node."+
 		" It is also the maximum duration to wait for it when --wait is set")
 	flags.BoolVar(&options.Wait, "wait", false, "wait for the cluster nodes to be updated")
+	FlagDropBackup(flags, &options.DropBackup)
 	return cmd
 }
 
@@ -126,6 +131,9 @@ func (t *CmdClusterEvict) run() error {
 	}
 	if cred != "" {
 		body.Credential = &cred
+	}
+	if t.DropBackup {
+		body.DropBackup = &t.DropBackup
 	}
 	resp, err := c.PostClusterEvictWithResponse(ctx, body)
 	if err != nil {
