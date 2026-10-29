@@ -99,3 +99,45 @@ func TestSetupTearsDownTheNetworksRemoved(t *testing.T) {
 	setup()
 	assert.FileExists(t, filepath.Join(dir, "br2.conf"), "the network added back is not torn down")
 }
+
+// A network the setup skipped, refused for overlapping another, is not torn
+// down when removed: it never was set up, and has the subnets of the other,
+// whose routes its teardown would delete.
+func TestSetupTearsDownNoNetworkNeverSetUp(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+	c, err := object.NewCluster()
+	require.NoError(t, err)
+	base, err := os.ReadFile(c.ConfigFile())
+	require.NoError(t, err)
+	br1 := []byte("\n[network#br1]\ntype = bridge\nnetwork = 10.50.0.0/16\n")
+	over := []byte("\n[network#over]\ntype = bridge\nnetwork = 10.50.0.0/16\n")
+	writeConfig := func(sections ...[]byte) {
+		b := append([]byte{}, base...)
+		for _, s := range sections {
+			b = append(b, s...)
+		}
+		require.NoError(t, os.WriteFile(c.ConfigFile(), b, 0o600))
+	}
+	defer network.CaptureFirewall(func([]network.Networker) {})()
+
+	setup := func() string {
+		n, err := object.NewNode()
+		require.NoError(t, err)
+		_ = network.Setup(n, "nope")
+		dir, err := n.CNIConfig()
+		require.NoError(t, err)
+		return dir
+	}
+	writeConfig(br1, over)
+	dir := setup()
+	p := filepath.Join(dir, "over.conf")
+	require.NoError(t, os.WriteFile(p, []byte("{}"), 0o600))
+
+	writeConfig(br1)
+	setup()
+	assert.FileExists(t, p, "the network refused is not torn down")
+}
