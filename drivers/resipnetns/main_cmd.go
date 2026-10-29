@@ -328,11 +328,18 @@ func (t *T) routeDelDevIn(dest, dev, path string) error {
 // listDefaultRoutesIn returns the default routes of the network namespace at
 // path, of the ipv6 family with v6, one per line.
 func (t *T) listDefaultRoutesIn(path string, v6 bool) (string, error) {
+	return t.listRoutesIn(path, v6, "default")
+}
+
+// listRoutesIn lists the routes to the prefix to of the network namespace at
+// path, of the ipv6 family with v6: the ones to that very prefix, not the
+// ones covering it.
+func (t *T) listRoutesIn(path string, v6 bool, to string) (string, error) {
 	args := []string{"nsenter", "--net=" + path, "ip"}
 	if v6 {
 		args = append(args, "-6")
 	}
-	args = append(args, "route", "list", "default")
+	args = append(args, "route", "list", "exact", to)
 	cmd := command.New(
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),

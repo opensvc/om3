@@ -344,6 +344,10 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 // gateway of this one. A resource not setting the default route of the
 // namespace, as the one of a backend network beside a public address, had
 // them follow the default route out of another interface.
+//
+// A route to the network the namespace has already is kept, as the default
+// route is: another resource of the namespace on the network, as an ip.cni
+// one of the same container, set it through its own interface.
 func (t *T) startNetworkRoute(netns ns.NetNS, guestDev string) error {
 	nw, err := t.resolveNetwork()
 	if err != nil || nw == nil {
@@ -355,6 +359,14 @@ func (t *T) startNetworkRoute(netns ns.NetNS, guestDev string) error {
 	}
 	route := networkRoute(segment, t.ipnet(), t.Gateway, guestDev)
 	if route == nil {
+		return nil
+	}
+	existing, err := t.listRoutesIn(netns.Path(), t.isIPv6(), segment.String())
+	if err != nil {
+		return err
+	}
+	if line := firstLine(existing); line != "" {
+		t.Log().Infof("keep the route to the network: %s", line)
 		return nil
 	}
 	t.Log().Infof("route the network %s through %s", segment, t.Gateway)
