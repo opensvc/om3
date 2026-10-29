@@ -551,7 +551,11 @@ func InstalledPaths() (Paths, error) {
 	for _, ps := range matches {
 		p, err := ConfigFilePath(ps)
 		if err != nil {
-			l = append(l, p)
+			// A file of the configuration directory no object owns,
+			// as node.conf. It used to be listed, twice, as the zero
+			// path, which a selector matching all, as "**", selected,
+			// and no object of no kind could be made of.
+			continue
 		}
 		if envKind != KindInvalid && envKind != p.Kind {
 			continue

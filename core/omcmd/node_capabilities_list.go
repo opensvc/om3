@@ -51,7 +51,7 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 	var data api.CapabilityList
 	for i, nodename := range nodenames {
 		if d, err := t.extract(c, nodename); err != nil {
-			errs = errors.Join(err)
+			errs = errors.Join(errs, err)
 		} else if i == 0 {
 			data = d
 		} else {
