@@ -406,7 +406,7 @@ func (t *FS) Keywords() []string {
 		data = append(data, []string{
 			fmt.Sprintf("disk#%d.type=zpool", t.DiskIndex),
 			fmt.Sprintf("disk#%d.name=%s", t.DiskIndex, t.Name),
-			fmt.Sprintf("disk#%d.vdev={%s.exposed_devs[0]}", t.DiskIndex, t.OnDisk),
+			fmt.Sprintf("disk#%d.vdev=%s", t.DiskIndex, t.OnDisk),
 			fmt.Sprintf("disk#%d.shared=%t", t.DiskIndex, t.Shared),
 			fmt.Sprintf("fs#%d.type=zfs", t.FsIndex),
 			fmt.Sprintf("fs#%d.dev=%s/root", t.FsIndex, t.Name),
@@ -418,7 +418,7 @@ func (t *FS) Keywords() []string {
 	default:
 		data = append(data, []string{
 			fmt.Sprintf("fs#%d.type=%s", t.FsIndex, fsType),
-			fmt.Sprintf("fs#%d.dev={%s.exposed_devs[0]}", t.FsIndex, t.OnDisk),
+			fmt.Sprintf("fs#%d.dev=%s", t.FsIndex, t.OnDisk),
 			fmt.Sprintf("fs#%d.mnt=%s", t.FsIndex, MountPointFromName(t.Name)),
 			fmt.Sprintf("fs#%d.shared=%t", t.FsIndex, t.Shared),
 		}...)

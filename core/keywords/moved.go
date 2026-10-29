@@ -23,7 +23,7 @@ var moved = map[string]map[string]string{
 	},
 }
 
-const fsVolumeText = "a filesystem no longer makes the volume it mounts: describe the volume as a disk.lv resource, and point fs.dev at it with {disk#<n>.exposed_devs[0]}. \"om <path> config migrate\" writes that for you."
+const fsVolumeText = "a filesystem no longer makes the volume it mounts: describe the volume as a disk.lv resource, and point fs.dev at it with its resource id, disk#<n>. \"om <path> config migrate\" writes that for you."
 
 // Moved is what to write instead of a keyword a driver no longer reads, and
 // says whether the keyword is one of those: a keyword nothing knows about is

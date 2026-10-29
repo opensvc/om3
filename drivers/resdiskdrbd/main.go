@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -556,6 +557,17 @@ func (t *T) getDRBDAllocations(ctx context.Context) (map[string]api.DRBDAllocati
 	return allocations, nil
 }
 
+// diskDevpath returns the device the disk keyword names on a node: a path,
+// as written, the device of that node, or the id of a resource of the
+// service, the device it exposes, as a logical volume, which is the one of
+// this node, of the same name on the others.
+func (t *T) diskDevpath(ctx context.Context, s string) (string, error) {
+	if !vpath.IsResourceRef(s) && !strings.HasPrefix(s, "{") {
+		return s, nil
+	}
+	return vpath.Devpath(ctx, t.RID(), s, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
+}
+
 func (t *T) formatConfig(wr io.Writer, text string, data ResTemplateData) error {
 	if text == "" {
 		return fmt.Errorf("empty template")
@@ -567,7 +579,7 @@ func (t *T) formatConfig(wr io.Writer, text string, data ResTemplateData) error 
 	return templ.Execute(wr, data)
 }
 
-func (t *T) getTemplateData(allocations map[string]api.DRBDAllocation) (ResTemplateData, error) {
+func (t *T) getTemplateData(ctx context.Context, allocations map[string]api.DRBDAllocation) (ResTemplateData, error) {
 	nodesData := make([]NodeTemplateData, 0)
 	obj := t.GetObject().(object.Configurer)
 	for nodeID, nodename := range t.Nodes {
@@ -586,8 +598,8 @@ func (t *T) getTemplateData(allocations map[string]api.DRBDAllocation) (ResTempl
 		dev := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
 		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "disk"}, nodename); err != nil {
 			return ResTemplateData{}, err
-		} else {
-			disk = s.(string)
+		} else if disk, err = t.diskDevpath(ctx, s.(string)); err != nil {
+			return ResTemplateData{}, fmt.Errorf("disk of node %s: %w", nodename, err)
 		}
 
 		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); (err != nil) || (s == "") {
@@ -761,7 +773,7 @@ func (t *T) writeConfig(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	templateData, err := t.getTemplateData(allocations)
+	templateData, err := t.getTemplateData(ctx, allocations)
 	if err != nil {
 		return err
 	}

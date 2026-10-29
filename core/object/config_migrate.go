@@ -318,7 +318,7 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 			for _, option := range moved {
 				m.Unsets = append(m.Unsets, key.T{Section: section, Option: option})
 			}
-			m.Sets = append(m.Sets, set(section, "dev", fmt.Sprintf("{%s.exposed_devs[0]}", lvRID)))
+			m.Sets = append(m.Sets, set(section, "dev", lvRID))
 			m.Notes = append(m.Notes, fmt.Sprintf("%s made the %s volume of the %s group, which %s declares: %s mounts what %s exposes, and its keywords making the volume are dropped", section, name, vgName, lvRID, section, lvRID))
 			if fsSize, lvSize := cfg.Get(key.T{Section: section, Option: "size"}), cfg.Get(key.T{Section: lvRID, Option: "size"}); fsSize != "" && !sameSize(fsSize, lvSize) {
 				m.Notes = append(m.Notes, fmt.Sprintf("%s.size was %s, and %s.size is %s: the volume is the size of %s", section, fsSize, lvRID, lvSize, lvRID))
@@ -351,7 +351,7 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 			}
 			m.Unsets = append(m.Unsets, key.T{Section: section, Option: option})
 		}
-		m.Sets = append(m.Sets, set(section, "dev", fmt.Sprintf("{%s.exposed_devs[0]}", diskRID)))
+		m.Sets = append(m.Sets, set(section, "dev", diskRID))
 		m.Notes = append(m.Notes, fmt.Sprintf("%s made the %s volume of the %s group: %s makes it now, and %s mounts what it exposes", section, name, vgName, diskRID, section))
 	}
 }
