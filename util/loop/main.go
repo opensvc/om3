@@ -195,8 +195,13 @@ func (t T) Delete(ctx context.Context, devPath string) error {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
 	udevadm.Settle()
+	// A device still open when deleted is only flagged for autoclear, and the
+	// kernel detaches it at its last close. Each poll reads losetup afresh:
+	// the session cache keeps an output until cleared, so a cached one would
+	// list the device for as long as the wait.
 	limit := time.Now().Add(5 * time.Second)
 	for {
+		sessioncache.Clear("losetup")
 		info, _ := t.Get(ctx, devPath)
 		if info == nil {
 			return nil
