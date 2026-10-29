@@ -1,9 +1,11 @@
 Allow a maximum of `max_parallel` CRM commands to run simultaneously.
 
-Applies to both:
+Applies to:
 
 * `om <selector> <action>` commands.
 * commands executed by the daemon for orchestrations
+* jobs executed by the daemon scheduler, a job due beyond the limit being
+  held until one ends
 
 The minimum is 2, and 0 sets it to the number of cpus. A lower value is
 refused, and the daemon raises one written before to 2.
