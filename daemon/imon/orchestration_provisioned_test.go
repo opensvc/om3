@@ -183,4 +183,12 @@ func TestANodeWaitingForTheLeaderWaitsForALeaderProvisioning(t *testing.T) {
 		IsLeader:        true,
 	}
 	require.True(t, m.hasLeaderProvisioned(), "the leader waiting for a leader, a peer done")
+
+	// The former leader lost the leadership while provisioning.
+	m.instMonitor["node4"] = instance.Monitor{
+		State:           instance.MonitorStateProvisionProgress,
+		OrchestrationID: m.state.OrchestrationID,
+	}
+	m.instStatus["node4"] = instance.Status{Avail: status.Undef, Provisioned: provisioned.False}
+	require.False(t, m.hasLeaderProvisioned(), "the leader waiting for a leader, a peer provisioning")
 }
