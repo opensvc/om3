@@ -48,12 +48,29 @@ func (t *Manager) scheduleEventRefresh(reason string) {
 }
 
 // onEventRefreshTimer refreshes the local instance status for the events
-// that asked for it. An action in progress refreshes it when done.
+// that asked for it. With an action running on an instance, the refresh is
+// deferred until none runs one: a local action refreshes the status when
+// done, but the end of an action on a peer does not, and a refresh dropped,
+// as the one a volume up asked while the peers still provisioned, left the
+// status stale until the next scheduled status.
 func (t *Manager) onEventRefreshTimer() {
 	t.eventRefreshScheduled = false
 	if !t.canRefreshOnEvent() {
-		t.log.Tracef("skip the refresh asked by events: state %s", t.state.State)
+		t.log.Tracef("defer the refresh asked by events: an action runs")
+		t.eventRefreshDeferred = true
 		return
 	}
+	t.eventRefreshDeferred = false
 	t.requestStatusRefresh(t.instConfig.Priority)
+}
+
+// replayDeferredEventRefresh schedules the refresh deferred while an action
+// ran on an instance, once none runs one. It is called on a change of the
+// state of the local or a peer instance.
+func (t *Manager) replayDeferredEventRefresh() {
+	if !t.eventRefreshDeferred || !t.canRefreshOnEvent() {
+		return
+	}
+	t.eventRefreshDeferred = false
+	t.scheduleEventRefresh("deferred while an action ran")
 }

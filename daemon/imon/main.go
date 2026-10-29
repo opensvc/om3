@@ -122,6 +122,11 @@ type (
 		eventRefreshTimer     *time.Timer
 		eventRefreshScheduled bool
 
+		// eventRefreshDeferred says a refresh the events asked for was
+		// refused, an action running on an instance, to be replayed once
+		// no instance runs one: see replayDeferredEventRefresh.
+		eventRefreshDeferred bool
+
 		// waitSyncsTimer fires when a stop has waited long enough for
 		// the syncs running, waiting since waitSyncsSince.
 		waitSyncsTimer *time.Timer
@@ -699,6 +704,7 @@ func (t *Manager) transitionTo(newState instance.MonitorState) {
 
 // updateIfChange log updates and publish new state value when changed
 func (t *Manager) updateIfChange() {
+	t.replayDeferredEventRefresh()
 	select {
 	case <-t.ctx.Done():
 		return
