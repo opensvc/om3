@@ -181,3 +181,38 @@ func TestChangeFromEmptyIsNotRefused(t *testing.T) {
 	assert.NoError(t, CheckLocalUpdateStopToChange(p, nil, nil, []keyop.T{*keyop.Parse("disk#1.file=/srv/foo.img")}))
 	assert.ErrorIs(t, CheckLocalUpdateStopToChange(p, []string{"disk#1"}, nil, nil), ErrStopToChange, "the removal of a resource not known to be stopped")
 }
+
+// A sync holds nothing a stop ends: its status says how fresh its copy is,
+// up whatever the instance. Its section is removed, but not while it runs.
+func TestCheckStopToChangeSync(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := SetClusterConfig()
+	require.NoError(t, err)
+
+	p, err := naming.ParsePath("test/svc/foo")
+	require.NoError(t, err)
+	cfgOf := func(s string) *xconfig.T {
+		t.Helper()
+		o, err := NewSvc(p, WithConfigData([]byte(s)), WithVolatile(true))
+		require.NoError(t, err)
+		return o.Config()
+	}
+	from := cfgOf("[DEFAULT]\nnodes = node1\n[sync#0]\ntype = rsync\nsrc = /srv/\ndst = /srv/\ntarget = nodes\n")
+	removed := cfgOf("[DEFAULT]\nnodes = node1\n")
+	inTime := map[string]*instance.Status{
+		"node1": {Resources: instance.ResourceStatuses{"sync#0": resource.Status{Status: status.Up}}},
+	}
+	assert.NoError(t, CheckStopToChange(p.Kind, from, removed, inTime), "a copy in time, no sync running")
+
+	running := map[string]*instance.Status{
+		"node1": {
+			Resources: instance.ResourceStatuses{"sync#0": resource.Status{Status: status.Up}},
+			Running:   resource.RunningInfoList{{RID: "sync#0"}},
+		},
+	}
+	err = CheckStopToChange(p.Kind, from, removed, running)
+	assert.ErrorIs(t, err, ErrStopToChange)
+	assert.ErrorContains(t, err, "delete sync#0: running on node1")
+}
