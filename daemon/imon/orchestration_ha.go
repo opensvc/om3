@@ -281,7 +281,10 @@ func (t *Manager) clearStoppedFlagWhenUp() {
 // stoppedFlagLoweredBy says what lowers the stopped flag of an instance, and
 // "" when nothing does.
 //
-// An instance that is up was started by someone, who wants it up.
+// An instance that is up was started by someone, who wants it up. An
+// instance standby up is not: it is what a stop leaves of an instance whose
+// standby resources stay up, and lowered on it, the flag the stop raised was
+// lowered at the next status, and the daemon started the instance back.
 //
 // An object that runs all it should, up for a failover object and as many up
 // instances as its target for a flex one, is wanted up, and no longer needs
@@ -311,7 +314,7 @@ func stoppedFlagLoweredBy(state instance.MonitorState, local instance.Status, is
 		return ""
 	case !local.UpdatedAt.After(local.StoppedAt):
 		return ""
-	case local.Avail.Is(status.Up, status.StandbyUp):
+	case local.Avail.Is(status.Up):
 		return "the instance is up"
 	case isObjectStarted:
 		return "the object runs all it should"

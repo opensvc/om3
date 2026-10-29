@@ -59,7 +59,8 @@ func TestStoppedFlagLoweredBy(t *testing.T) {
 		wantLowered     bool
 	}{
 		{"the instance is up", instance.MonitorStateIdle, status.Up, after, false, true},
-		{"the instance is standby up", instance.MonitorStateIdle, status.StandbyUp, after, false, true},
+		{"the instance is standby up, as a stop leaves its standby resources", instance.MonitorStateIdle, status.StandbyUp, after, false, false},
+		{"the instance is standby up, the object runs all it should", instance.MonitorStateIdle, status.StandbyUp, after, true, true},
 		{"the instance is down, the object runs all it should", instance.MonitorStateIdle, status.Down, after, true, true},
 		{"the instance is down, the object is short of what it should run", instance.MonitorStateIdle, status.Down, after, false, false},
 		{"the instance is standby down, the object is short of what it should run", instance.MonitorStateIdle, status.StandbyDown, after, false, false},
