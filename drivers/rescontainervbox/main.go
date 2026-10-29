@@ -206,9 +206,12 @@ func hasGuestProcess() bool {
 	}
 	for _, p := range l {
 		b, err := os.ReadFile(p)
-		if err != nil {
+		switch {
+		case errors.Is(err, os.ErrNotExist), errors.Is(err, syscall.ESRCH):
 			// A process gone since the listing.
 			continue
+		case err != nil:
+			return true
 		}
 		switch strings.TrimSpace(string(b)) {
 		case "VBoxHeadless", "VirtualBoxVM", "VirtualBox":
