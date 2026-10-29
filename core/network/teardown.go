@@ -41,7 +41,13 @@ func teardownRemoved(n *object.Node, nws []Networker) error {
 	}
 	if applied != nil {
 		errs := make([]error, 0)
-		for _, nw := range removed(Networks(applied), nws) {
+		former := Networks(applied)
+		invalid := Check(former)
+		for _, nw := range removed(former, nws) {
+			if skip := teardownSkip(nw, invalid[nw.Name()]); skip != "" {
+				nw.Log().Infof("network teardown: skip, %s", skip)
+				continue
+			}
 			if err := teardownNetwork(applied, nw); err != nil {
 				nw.Log().Errorf("network teardown: %s", err)
 				errs = append(errs, fmt.Errorf("%s: %w", nw.Name(), err))
@@ -52,6 +58,23 @@ func teardownRemoved(n *object.Node, nws []Networker) error {
 		}
 	}
 	return n.SaveApplied(appliedConsumer)
+}
+
+// teardownSkip says why the network nw is not torn down, empty when it is: the
+// setup skipped it, as the configuration recorded made it, so what the node
+// has of its names is not its own. A network refused for overlapping another,
+// invalid, has the subnets of the other, whose routes its teardown would
+// delete.
+func teardownSkip(nw Networker, invalid error) string {
+	switch {
+	case invalid != nil:
+		return fmt.Sprintf("never set up: %s", invalid)
+	case IsDisabled(nw):
+		return "never set up: disabled"
+	case !IsValid(nw):
+		return "never set up: invalid"
+	}
+	return ""
 }
 
 // removed returns the networks of former the networks of current do not name.
