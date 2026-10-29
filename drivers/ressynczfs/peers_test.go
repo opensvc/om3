@@ -148,11 +148,18 @@ func (c *fakeCluster) run(mode modeT, now time.Time, states peerStates, peers, t
 	c.t.seedLegacyStates(local, peers, states)
 	c.t.seedReceivedBase(local, peers, states)
 	var errs error
+	helds := map[string][]snapshot{}
 	for _, nodename := range targets {
 		st := states[nodename]
-		err := c.t.syncPeer(context.Background(), mode, nodename, local, snap, &st, now)
+		held, err := c.t.syncPeer(context.Background(), mode, nodename, local, snap, &st, now)
 		states[nodename] = st
+		helds[nodename] = held
 		errs = errors.Join(errs, err)
+	}
+	for _, nodename := range targets {
+		if len(helds[nodename]) > 0 {
+			errs = errors.Join(errs, c.t.prunePeer(nodename, helds[nodename], snap, otherBases(states, nodename)))
+		}
 	}
 	return errors.Join(errs, c.t.pruneLocal(local, peers, states))
 }
@@ -196,14 +203,14 @@ func TestSyncPeers(t *testing.T) {
 		err := c.run(modeIncr, t0.Add(time.Hour), states, peers, peers)
 		require.ErrorContains(t, err, "n3 is down")
 		require.Equal(t, []string{snapAt(0), snapAt(1)}, c.names(""), "the base of n3 is kept")
-		require.Equal(t, []string{snapAt(1)}, c.names("n2"), "n2 went on")
+		require.Equal(t, []string{snapAt(0), snapAt(1)}, c.names("n2"), "n2 went on, keeping the base of n3 for the day it is the source")
 		require.Equal(t, t0.Add(time.Hour), states["n3"].FailedAt)
 
 		c.down["n3"] = false
 		require.NoError(t, c.run(modeIncr, t0.Add(2*time.Hour), states, peers, peers))
 		require.Equal(t, "incr "+snapAt(0)+" "+snapAt(2), c.sent["n3"][1], "n3 sent the delta from its base")
 		require.Equal(t, []string{snapAt(2)}, c.names(""))
-		require.Equal(t, []string{snapAt(2)}, c.names("n2"))
+		require.Equal(t, []string{snapAt(2)}, c.names("n2"), "n3 synced too: its former base goes")
 		require.Equal(t, []string{snapAt(2)}, c.names("n3"))
 		require.True(t, states["n3"].FailedAt.IsZero())
 	})
@@ -224,6 +231,42 @@ func TestSyncPeers(t *testing.T) {
 		c.down["n2"] = false
 		require.NoError(t, c.run(modeIncr, t0.Add(2*time.Hour), states, []string{"n2"}, []string{"n2"}))
 		require.Equal(t, []string{"incr " + snapAt(0) + " " + snapAt(2)}, c.sent["n2"], "n2 sent the delta from its base, not stranded")
+	})
+
+	t.Run("a switch to one peer keeps the base of the others on it", func(t *testing.T) {
+		for _, n3FailsFirst := range []bool{false, true} {
+			d := newTestT(t)
+			c := newFakeCluster(d)
+			states := peerStates{}
+			// A, in common to the three nodes.
+			require.NoError(t, c.run(modeIncr, t0, states, peers, peers))
+
+			// The final sync of a switch to n2: B to n2 alone.
+			require.NoError(t, c.run(modeIncr, t0.Add(time.Hour), states, peers, []string{"n2"}))
+			require.Equal(t, []string{snapAt(0), snapAt(1)}, c.names("n2"), "n2 keeps A, the base of n3")
+
+			// n2 is the source now, knowing nothing of its peers: n1, the
+			// former source, holds A and B, n3 holds A.
+			d2 := newTestT(t)
+			c2 := newFakeCluster(d2)
+			c2.txg, c2.guid = c.txg, c.guid
+			c2.snaps[""] = append([]snapshot{}, c.snaps["n2"]...)
+			c2.snaps["n1"] = append([]snapshot{}, c.snaps[""]...)
+			c2.snaps["n3"] = append([]snapshot{}, c.snaps["n3"]...)
+			peers2 := []string{"n1", "n3"}
+			states2 := peerStates{}
+			if n3FailsFirst {
+				c2.down["n3"] = true
+				require.Error(t, c2.run(modeIncr, t0.Add(2*time.Hour), states2, peers2, peers2))
+				require.Contains(t, c2.names(""), snapAt(0), "A, a candidate base of n3, is kept through the failed run")
+				c2.down["n3"] = false
+			}
+			when := t0.Add(3 * time.Hour)
+			require.NoError(t, c2.run(modeIncr, when, states2, peers2, peers2), "n3 failed first: %v", n3FailsFirst)
+			require.Equal(t, "incr "+snapAt(0)+" "+snapAt(3), c2.sent["n3"][len(c2.sent["n3"])-1], "n3 sent the delta from A, not stranded")
+			require.Equal(t, []string{snapAt(3)}, c2.names("n3"))
+			require.Equal(t, []string{snapAt(3)}, c2.names(""), "every peer synced: the candidates go")
+		}
 	})
 
 	t.Run("a long outage strands the peer until a full", func(t *testing.T) {
@@ -247,12 +290,14 @@ func TestSyncPeers(t *testing.T) {
 
 		d.Recursive = true
 		require.NoError(t, c.run(modeFull, t0.Add(28*time.Hour), states, peers, []string{"n3"}))
-		require.Equal(t, []string{snapAt(28)}, c.names("n3"), "the older snapshots a recursive full brought are gone")
+		require.Equal(t, []string{snapAt(27), snapAt(28)}, c.names("n3"), "the older snapshots a recursive full brought are gone, but the base of n2, not synced by the full")
 		require.True(t, states["n3"].StrandedAt.IsZero())
 		require.Equal(t, []string{snapAt(27), snapAt(28)}, c.names(""), "n2 keeps its base, not synced by the full")
 
 		require.NoError(t, c.run(modeIncr, t0.Add(29*time.Hour), states, peers, peers))
 		require.Equal(t, []string{snapAt(29)}, c.names(""))
+		require.Equal(t, []string{snapAt(29)}, c.names("n2"))
+		require.Equal(t, []string{snapAt(29)}, c.names("n3"), "both peers synced: the former base of n2 goes")
 	})
 
 	t.Run("a peer holding too much space is stranded", func(t *testing.T) {
@@ -305,7 +350,8 @@ func TestSyncPeers(t *testing.T) {
 		c.snaps["n2"] = append(c.snaps["n2"], c.received(c.find(name)))
 		local := d.ownSnapshots(c.snaps[""])
 		st := states["n2"]
-		require.NoError(t, d.syncPeer(context.Background(), modeIncr, "n2", local, local[len(local)-1], &st, t0.Add(time.Hour)))
+		_, err := d.syncPeer(context.Background(), modeIncr, "n2", local, local[len(local)-1], &st, t0.Add(time.Hour))
+		require.NoError(t, err)
 		require.Len(t, c.sent["n2"], 1)
 		require.Equal(t, local[len(local)-1].GUID, st.BaseGUID)
 	})

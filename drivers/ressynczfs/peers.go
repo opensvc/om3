@@ -51,6 +51,12 @@ type (
 		// which the source keeps for the next incremental send.
 		BaseGUID string `json:"base_guid,omitempty"`
 
+		// CandidateGUIDs are the guids of the snapshots the peer may
+		// hold in common with a new source, the ones it received when
+		// another node was the source: kept by the source until a send to
+		// the peer succeeds, the base found among them.
+		CandidateGUIDs []string `json:"candidate_guids,omitempty"`
+
 		// FailedAt is when a send to the peer first failed since the last
 		// one that succeeded. The peer is lagging since.
 		FailedAt time.Time `json:"failed_at,omitzero"`
@@ -229,6 +235,7 @@ func (st *peerState) failed(now time.Time) {
 
 func (st *peerState) strand(now time.Time, reason string) {
 	st.BaseGUID = ""
+	st.CandidateGUIDs = nil
 	st.StrandedAt = now
 	st.StrandedReason = reason
 }
@@ -334,24 +341,25 @@ func (t *T) lagExcess(now time.Time, st peerState, local []snapshot) (string, er
 }
 
 // syncPeer sends snap, the snapshot this run took, to nodename, and updates
-// its state.
-func (t *T) syncPeer(ctx context.Context, mode modeT, nodename string, local []snapshot, snap snapshot, st *peerState, now time.Time) error {
+// its state. It returns the snapshots nodename holds besides snap once sent,
+// which prunePeer destroys once every peer is synced.
+func (t *T) syncPeer(ctx context.Context, mode modeT, nodename string, local []snapshot, snap snapshot, st *peerState, now time.Time) ([]snapshot, error) {
 	if mode == modeFull {
 		return t.syncPeerFull(ctx, nodename, local, snap, st, now)
 	}
 	if !st.StrandedAt.IsZero() {
-		return t.strandedError(nodename, *st)
+		return nil, t.strandedError(nodename, *st)
 	}
 	if reason, err := t.lagExcess(now, *st, local); err != nil {
-		return fmt.Errorf("%s: lag: %w", nodename, err)
+		return nil, fmt.Errorf("%s: lag: %w", nodename, err)
 	} else if reason != "" {
 		st.strand(now, reason)
-		return t.strandedError(nodename, *st)
+		return nil, t.strandedError(nodename, *st)
 	}
 	l, err := t.ops.listSnapshots(nodename, t.Dst)
 	if err != nil {
 		st.failed(now)
-		return fmt.Errorf("%s: list snapshots: %w", nodename, err)
+		return nil, fmt.Errorf("%s: list snapshots: %w", nodename, err)
 	}
 	peer := t.ownSnapshots(l)
 	if len(peer) == 0 {
@@ -363,37 +371,48 @@ func (t *T) syncPeer(ctx context.Context, mode modeT, nodename string, local []s
 	if _, ok := findGUID(peer, snap.GUID); ok {
 		// Sent by a run that stopped before it saved the state.
 		st.succeeded(snap.GUID)
-		return nil
+		return nil, nil
 	}
 	previous := local[:len(local)-1]
 	base, ok := newestCommon(previous, peer)
 	if !ok {
 		st.strand(now, "no snapshot in common with the source")
-		return t.strandedError(nodename, *st)
+		return nil, t.strandedError(nodename, *st)
 	}
 	if err := t.ops.sendIncremental(ctx, nodename, base.Name, snap.Name); err != nil {
 		st.failed(now)
-		return err
+		return nil, err
 	}
 	st.succeeded(snap.GUID)
 
 	// The peer holds its older snapshots, and the ones of the source
-	// between its base and snap that an intermediary send brought: all
-	// but snap go.
-	var errs error
-	for _, s := range peer {
-		if s.GUID != snap.GUID {
-			errs = errors.Join(errs, t.ops.destroySnapshot(nodename, t.Dst+"@"+snapShortName(s.Name)))
-		}
-	}
+	// between its base and snap that an intermediary send brought.
+	held := append([]snapshot{}, peer...)
 	if t.Intermediary {
 		for _, s := range previous {
 			if s.CreateTxg > base.CreateTxg {
 				if _, ok := findGUID(peer, s.GUID); !ok {
-					errs = errors.Join(errs, t.ops.destroySnapshot(nodename, t.Dst+"@"+snapShortName(s.Name)))
+					held = append(held, s)
 				}
 			}
 		}
+	}
+	return held, nil
+}
+
+// prunePeer destroys on nodename the snapshots held, but snap, which the peer
+// was just sent, and the ones of keep, the base of another peer as the run
+// leaves them: the peer needs them the day a switch makes it the source, a
+// peer having no snapshot in common with it stranded. A peer synced keeps
+// snap alone once every peer is up to date, the bases of the others having
+// moved to snap too.
+func (t *T) prunePeer(nodename string, held []snapshot, snap snapshot, keep map[string]bool) error {
+	var errs error
+	for _, s := range held {
+		if s.GUID == snap.GUID || keep[s.GUID] {
+			continue
+		}
+		errs = errors.Join(errs, t.ops.destroySnapshot(nodename, t.Dst+"@"+snapShortName(s.Name)))
 	}
 	if errs != nil {
 		return fmt.Errorf("%s: destroy older snapshots: %w", nodename, errs)
@@ -432,41 +451,62 @@ func (t *T) seedLegacyStates(local []snapshot, peers []string, states peerStates
 // Without it, a sync failing on the first run of a new source pruned the base
 // of the former source, its snapshots in common with it all gone, and the
 // former source was stranded, a full copy needed to sync it again.
+//
+// The other peers of the former source may hold another of the snapshots this
+// node received, which the former source kept on it as their base: all of them
+// are kept as candidates, until a send to the peer succeeds. Kept the newest
+// only, a first send failing pruned the base of a third node, stranded.
 func (t *T) seedReceivedBase(local []snapshot, peers []string, states peerStates) {
 	if len(local) < 2 {
 		return
 	}
 	previous := local[len(local)-2]
+	candidates := make([]string, 0, len(local)-1)
+	for _, s := range local[:len(local)-1] {
+		candidates = append(candidates, s.GUID)
+	}
 	for _, nodename := range peers {
 		if _, ok := states[nodename]; !ok {
-			states[nodename] = peerState{BaseGUID: previous.GUID}
+			states[nodename] = peerState{BaseGUID: previous.GUID, CandidateGUIDs: candidates}
 		}
 	}
 }
 
-// syncPeerFull sends snap to nodename whole, replacing its dataset.
+// otherBases returns the guids of the snapshots that are the base, or a
+// candidate base, of a peer other than nodename. A switch makes nodename the
+// source, and it needs them in common with those peers: destroyed on it, the
+// peers had no snapshot in common with it, stranded.
+func otherBases(states peerStates, nodename string) map[string]bool {
+	m := make(map[string]bool)
+	for peer, st := range states {
+		if peer == nodename {
+			continue
+		}
+		if st.BaseGUID != "" {
+			m[st.BaseGUID] = true
+		}
+		for _, guid := range st.CandidateGUIDs {
+			m[guid] = true
+		}
+	}
+	return m
+}
+
+// syncPeerFull sends snap to nodename whole, replacing its dataset, and
+// returns the snapshots it holds besides snap, which prunePeer destroys.
 //
 // A recursive send carries the older snapshots of the source too, which the
-// peer needs none of.
-func (t *T) syncPeerFull(ctx context.Context, nodename string, local []snapshot, snap snapshot, st *peerState, now time.Time) error {
+// peer needs none of but the bases of the other peers.
+func (t *T) syncPeerFull(ctx context.Context, nodename string, local []snapshot, snap snapshot, st *peerState, now time.Time) ([]snapshot, error) {
 	if err := t.ops.sendFull(ctx, nodename, snap.Name); err != nil {
 		st.failed(now)
-		return err
+		return nil, err
 	}
 	st.succeeded(snap.GUID)
 	if !t.Recursive {
-		return nil
+		return nil, nil
 	}
-	var errs error
-	for _, s := range local {
-		if s.GUID != snap.GUID {
-			errs = errors.Join(errs, t.ops.destroySnapshot(nodename, t.Dst+"@"+snapShortName(s.Name)))
-		}
-	}
-	if errs != nil {
-		return fmt.Errorf("%s: destroy older snapshots: %w", nodename, errs)
-	}
-	return nil
+	return append([]snapshot{}, local...), nil
 }
 
 // pruneLocal destroys the snapshots of the source no peer needs: the newest
@@ -480,8 +520,12 @@ func (t *T) pruneLocal(local []snapshot, peers []string, states peerStates) erro
 	}
 	keep := map[string]bool{local[len(local)-1].GUID: true}
 	for _, nodename := range peers {
-		if st := states[nodename]; st.BaseGUID != "" {
+		st := states[nodename]
+		if st.BaseGUID != "" {
 			keep[st.BaseGUID] = true
+		}
+		for _, guid := range st.CandidateGUIDs {
+			keep[guid] = true
 		}
 	}
 	keepLegacy := false

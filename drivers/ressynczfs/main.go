@@ -168,6 +168,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		wg       sync.WaitGroup
 		peerErrs = make([]error, len(nodenames))
 		results  = make([]*peerState, len(nodenames))
+		helds    = make([][]snapshot, len(nodenames))
 	)
 	for i, nodename := range nodenames {
 		if err := t.PeerEnvRefusal(nodename); err != nil {
@@ -183,10 +184,12 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := t.syncPeer(ctx, mode, nodename, local, snap, &st, now); err != nil {
+			held, err := t.syncPeer(ctx, mode, nodename, local, snap, &st, now)
+			if err != nil {
 				peerErrs[i] = err
 				return
 			}
+			helds[i] = held
 			if err := t.WritePeerLastSync(ctx, nodename); err != nil {
 				peerErrs[i] = fmt.Errorf("%s: write last sync: %w", nodename, err)
 			}
@@ -196,6 +199,14 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	for i, nodename := range nodenames {
 		if results[i] != nil {
 			states[nodename] = *results[i]
+		}
+	}
+	// The snapshots the peers synced hold besides the one sent go once
+	// every peer is synced, but the bases of the others as the run leaves
+	// them.
+	for i, nodename := range nodenames {
+		if peerErrs[i] == nil && len(helds[i]) > 0 {
+			peerErrs[i] = t.prunePeer(nodename, helds[i], snap, otherBases(states, nodename))
 		}
 	}
 	errs := errors.Join(peerErrs...)
