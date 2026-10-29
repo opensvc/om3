@@ -55,7 +55,7 @@ create_options = -m 1
 	assert.Equal(t, "20g", must(t, m, "disk#2.size"))
 	assert.Equal(t, "-m 1", must(t, m, "disk#2.create_options"),
 		"om2 passed these to the volume create command, not to mkfs")
-	assert.Equal(t, "{disk#2.exposed_devs[0]}", must(t, m, "fs#2.dev"))
+	assert.Equal(t, "disk#2", must(t, m, "fs#2.dev"))
 
 	for _, k := range []string{"fs#2.vg", "fs#2.size", "fs#2.create_options"} {
 		assert.Truef(t, unset(m, k), "%s is left behind", k)
@@ -191,7 +191,7 @@ size = 20g
 `)
 	_, ok := setOf(m, "disk#fs2.type")
 	assert.True(t, ok, "the index is taken, so the volume is named after the filesystem")
-	assert.Equal(t, "{disk#fs2.exposed_devs[0]}", must(t, m, "fs#2.dev"))
+	assert.Equal(t, "disk#fs2", must(t, m, "fs#2.dev"))
 }
 
 func must(t *testing.T, m Migration, k string) string {
@@ -326,7 +326,7 @@ vg = {disk#1.exposed_devs[0]}
 	for _, op := range m.Sets {
 		assert.NotContains(t, op.Key.Section, "disk#fs", "no other volume is made: %s", op.Key)
 	}
-	assert.Equal(t, "{disk#2.exposed_devs[0]}", must(t, m, "fs#0.dev"))
+	assert.Equal(t, "disk#2", must(t, m, "fs#0.dev"))
 	for _, k := range []string{"fs#0.vg", "fs#0.size"} {
 		assert.Truef(t, unset(m, k), "%s is left behind", k)
 	}
@@ -353,7 +353,7 @@ vg = {disk#1.exposed_devs[0]}
 `)
 	assert.Equal(t, "lv", must(t, m, "disk#3.type"))
 	assert.Equal(t, "{disk#1.name}", must(t, m, "disk#3.vg"))
-	assert.Equal(t, "{disk#3.exposed_devs[0]}", must(t, m, "fs#3.dev"))
+	assert.Equal(t, "disk#3", must(t, m, "fs#3.dev"))
 }
 
 // A reference to a disk resource holding no volume group names no group:

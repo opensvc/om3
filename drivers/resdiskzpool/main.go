@@ -14,10 +14,12 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/command"
@@ -30,12 +32,13 @@ import (
 type (
 	T struct {
 		resdisk.T
-		Name          string   `json:"name"`
-		Size          string   `json:"size"`
-		CreateOptions []string `json:"create_options"`
-		VDev          []string `json:"vdev"`
-		Multihost     string   `json:"multihost"`
-		Zone          string   `json:"zone"`
+		Name          string      `json:"name"`
+		Size          string      `json:"size"`
+		CreateOptions []string    `json:"create_options"`
+		VDev          []string    `json:"vdev"`
+		Path          naming.Path `json:"path"`
+		Multihost     string      `json:"multihost"`
+		Zone          string      `json:"zone"`
 	}
 )
 
@@ -339,7 +342,31 @@ func (t *T) poolExport() error {
 	return pool.Export(zfs.PoolExportWithForce())
 }
 
-func (t *T) poolCreate() error {
+// vdevs returns the vdev list to create the pool with: the ids of resources
+// of the service, as a logical volume or a md, replaced by the devices they
+// expose, the devices and the parity keywords as written. A vol name is not
+// told apart from a keyword, so a vol is named by its device.
+func (t *T) vdevs(ctx context.Context) ([]string, error) {
+	l := make([]string, 0, len(t.VDev))
+	for _, s := range t.VDev {
+		if !vpath.IsResourceRef(s) && !strings.HasPrefix(s, "{") {
+			l = append(l, s)
+			continue
+		}
+		devs, err := vpath.Devpaths(ctx, t.RID(), s, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
+		if err != nil {
+			return nil, err
+		}
+		l = append(l, devs...)
+	}
+	return l, nil
+}
+
+func (t *T) poolCreate(ctx context.Context) error {
+	vdevs, err := t.vdevs(ctx)
+	if err != nil {
+		return err
+	}
 	a := args.New()
 	a.Append(t.CreateOptions...)
 	a.DropOptionAndAnyValue("-m")
@@ -354,7 +381,7 @@ func (t *T) poolCreate() error {
 		}
 	}
 	return t.pool().Create(
-		zfs.PoolCreateWithVDevs(t.VDev),
+		zfs.PoolCreateWithVDevs(vdevs),
 		zfs.PoolCreateWithArgs(a.Get()),
 	)
 }
@@ -387,7 +414,7 @@ func (t *T) provision(ctx context.Context) error {
 		t.Log().Infof("%s is already provisioned", t.Name)
 		return nil
 	}
-	return t.poolCreate()
+	return t.poolCreate(ctx)
 }
 
 func (t *T) unprovision(ctx context.Context) error {
