@@ -8,13 +8,17 @@ import (
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
 func (t *Manager) convergeGlobalExpectFromRemote() {
-	var mostRecentNode string
-	var mostRecentUpdated time.Time
+	var mostRecentNode, mostRecentEndedNode string
+	var mostRecentUpdated, mostRecentEndedUpdated time.Time
 	for nodename, data := range t.nodeMonitor {
 		if data.GlobalExpect == node.MonitorGlobalExpectInit {
 			continue
 		}
 		if data.GlobalExpect == node.MonitorGlobalExpectNone {
+			if mostRecentEndedUpdated.Before(data.GlobalExpectUpdatedAt) {
+				mostRecentEndedNode = nodename
+				mostRecentEndedUpdated = data.GlobalExpectUpdatedAt
+			}
 			continue
 		}
 		// A global expect of a later version is one this agent can not
@@ -29,6 +33,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		}
 	}
 	if mostRecentUpdated.IsZero() {
+		t.alignEndedGlobalExpect(mostRecentEndedNode, mostRecentEndedUpdated)
 		return
 	}
 	if mostRecentUpdated.After(t.state.GlobalExpectUpdatedAt) {
@@ -58,6 +63,27 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			t.state.State = node.MonitorStateIdle
 		}
 	}
+}
+
+// alignEndedGlobalExpect adopts the time of the global expect a peer ended,
+// updated, when no global expect is pending here: an orchestration this
+// daemon did not see, as one ended while it was down. A daemon restarted
+// reports the zero time, and the peers, waiting for it to have the time of
+// the global expect they ended, as a cluster thaw, never handled their local
+// expect again, as a drain. The time alone is adopted, there being no global
+// expect to orchestrate.
+func (t *Manager) alignEndedGlobalExpect(nodename string, updated time.Time) {
+	switch t.state.GlobalExpect {
+	case node.MonitorGlobalExpectNone, node.MonitorGlobalExpectInit:
+	default:
+		return
+	}
+	if !updated.After(t.state.GlobalExpectUpdatedAt) {
+		return
+	}
+	t.log.Infof("align the global expect time on node %s: %s, of a global expect ended", nodename, updated)
+	t.change = true
+	t.state.GlobalExpectUpdatedAt = updated
 }
 
 func (t *Manager) isConvergedGlobalExpect() bool {
