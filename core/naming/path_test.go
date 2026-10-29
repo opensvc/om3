@@ -2,11 +2,14 @@ package naming
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/testhelper"
 )
 
@@ -682,4 +685,19 @@ func TestConfigFilePath(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The configuration directory holds files no object owns, as node.conf: they
+// are not installed objects, rather than the zero path, which a selector
+// matching all selected, and no object could be made of.
+func TestInstalledPathsSkipsTheFilesNoObjectOwns(t *testing.T) {
+	testhelper.Setup(t)
+	for _, f := range []string{"node.conf", "cluster.conf", "web.conf", "sec/s1.conf", "namespaces/ns1/svc/db.conf"} {
+		p := filepath.Join(rawconfig.Paths.Etc, f)
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o700))
+		require.NoError(t, os.WriteFile(p, []byte{}, 0o600))
+	}
+	l, err := InstalledPaths()
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"cluster", "web", "sec/s1", "ns1/svc/db"}, l.StrSlice())
 }

@@ -55,7 +55,7 @@ func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList,
 	for _, p := range paths {
 		obj, err := object.New(p)
 		if err != nil {
-			errs = errors.Join(errs, err)
+			errs = errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 			continue
 		}
 		i, ok := obj.(scheduler)
@@ -109,7 +109,7 @@ func (t *CmdObjectScheduleList) extractFromDaemons(selector string, c *client.T)
 	for _, nodename := range nodenames {
 		for _, path := range paths {
 			if d, err := t.extractFromDaemon(nodename, path, c); err != nil {
-				errs = errors.Join(err)
+				errs = errors.Join(errs, err)
 			} else {
 				data.Items = append(data.Items, d.Items...)
 			}
@@ -126,12 +126,16 @@ func (t *CmdObjectScheduleList) extractFromDaemon(nodename string, path naming.P
 	switch resp.StatusCode() {
 	case 200:
 		return *resp.JSON200, nil
+	case 404:
+		// No schedule table on the node: an object with no instance
+		// there, or none of schedules, as the cluster configuration.
+		return api.ScheduleList{}, nil
 	case 401:
-		return api.ScheduleList{}, fmt.Errorf("%s: %s", nodename, *resp.JSON401)
+		return api.ScheduleList{}, fmt.Errorf("%s: %s: %s", path, nodename, *resp.JSON401)
 	case 403:
-		return api.ScheduleList{}, fmt.Errorf("%s: %s", nodename, *resp.JSON403)
+		return api.ScheduleList{}, fmt.Errorf("%s: %s: %s", path, nodename, *resp.JSON403)
 	default:
-		return api.ScheduleList{}, fmt.Errorf("%s: unexpected statuscode: %s", nodename, resp.Status())
+		return api.ScheduleList{}, fmt.Errorf("%s: %s: unexpected statuscode: %s", path, nodename, resp.Status())
 	}
 }
 
