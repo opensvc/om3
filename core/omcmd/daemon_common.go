@@ -8,14 +8,19 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/mountinfo"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -152,4 +157,66 @@ func removeTree(log *plog.Logger, dir string, keep []string) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// keptConfig is what the node keeps of its config when it joins or leaves a
+// cluster, read before the config is moved aside and written back after: the
+// options of the [collector] section of the cluster config, and of the [node]
+// section of the node config, as written.
+type keptConfig struct {
+	collector map[string]string
+	node      map[string]string
+}
+
+// readNodeKeys returns the options of the [node] section of the node config
+// the node has among options, as written.
+func readNodeKeys(options []string) map[string]string {
+	kv := make(map[string]string)
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return kv
+	}
+	section := n.Config().SectionMap("node")
+	for _, option := range options {
+		if v, ok := section[option]; ok {
+			kv[option] = v
+		}
+	}
+	return kv
+}
+
+// write writes the [collector] section in the cluster config, which the
+// daemon bootstraps keeping the keys it does not set, and the kept node keys
+// in the node config. Each is written whether the other fails or not.
+func (t keptConfig) write() error {
+	var errs []error
+	if len(t.collector) > 0 {
+		if ccfg, err := object.NewCluster(object.WithVolatile(false)); err != nil {
+			errs = append(errs, fmt.Errorf("keep the collector settings: %w", err))
+		} else if err := setKeys(ccfg.Config(), "collector", t.collector); err != nil {
+			errs = append(errs, fmt.Errorf("keep the collector settings: %w", err))
+		}
+	}
+	if len(t.node) > 0 {
+		if n, err := object.NewNode(object.WithVolatile(false)); err != nil {
+			errs = append(errs, fmt.Errorf("keep the node keys: %w", err))
+		} else if err := setKeys(n.Config(), "node", t.node); err != nil {
+			errs = append(errs, fmt.Errorf("keep the node keys: %w", err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// setKeys sets the options of kv in section of cfg.
+func setKeys(cfg *xconfig.T, section string, kv map[string]string) error {
+	options := make([]string, 0, len(kv))
+	for option := range kv {
+		options = append(options, option)
+	}
+	sort.Strings(options)
+	ops := make([]keyop.T, 0, len(options))
+	for _, option := range options {
+		ops = append(ops, *keyop.New(key.New(section, option), keyop.Set, kv[option], 0))
+	}
+	return cfg.Set(ops...)
 }
