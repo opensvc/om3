@@ -446,11 +446,32 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 	return nil
 }
 
+// arpAnnounces is the number of gratuitous arp a start sends, every
+// arpAnnounceInterval, as "arping -U -c 3" does: a neighbor missing the one a
+// start used to send kept the address on the mac of the namespace it left,
+// until its probe of the entry failed.
+const (
+	arpAnnounces        = 3
+	arpAnnounceInterval = time.Second
+)
+
 func (t *T) startARP(netns ns.NetNS, guestDev string) error {
-	if err := netns.Do(func(_ ns.NetNS) error {
-		return t.arpAnnounce(guestDev)
-	}); err != nil {
-		return err
+	return announce(arpAnnounces, arpAnnounceInterval, func(i int) error {
+		return netns.Do(func(_ ns.NetNS) error {
+			return t.arpAnnounce(guestDev)
+		})
+	})
+}
+
+// announce calls send n times, interval apart, and stops on its first error.
+func announce(n int, interval time.Duration, send func(int) error) error {
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			time.Sleep(interval)
+		}
+		if err := send(i); err != nil {
+			return err
+		}
 	}
 	return nil
 }
