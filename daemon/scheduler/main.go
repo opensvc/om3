@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -74,10 +75,18 @@ type (
 		// running counts the jobs running in the background.
 		running sync.WaitGroup
 
+		// active is the number of jobs running in the background, which
+		// maxRunning bounds.
+		active atomic.Int32
+
 		subQS pubsub.QueueSizer
 
 		status daemonsubsystem.Scheduler
 
+		// maxRunning is the number of jobs the node runs at most at once,
+		// the node max_parallel. A job due beyond it is held, not started:
+		// each job is an om process, and the node runs them all at once
+		// otherwise, when many objects have one due together.
 		maxRunning int
 
 		// lastRunOnAllPeers stores the schedule most recent run time
@@ -231,6 +240,7 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
 			MaxRunning: 5,
 		},
+		maxRunning: 5,
 	}
 	t.exec = t.action
 	if err := funcopt.Apply(t, opts...); err != nil {
@@ -385,10 +395,15 @@ func (t *T) onJobDue(j *job, now time.Time) {
 		// again then, not at its next period, which for a daily job
 		// due during a start would skip a day.
 		logger.Infof("hold (%s)", reason)
-		e.LastRunAt = due.LastRunAt
-		e.NextRunAt = now.Add(holdRetryDelay)
-		t.jobs.set(e, now)
-		t.updateExposedSchedules(e.Path)
+		t.holdJob(due, e, now)
+		return
+	}
+	if reason := t.fullReason(); reason != "" {
+		// As above, a job ends in moments. Many jobs are held together
+		// then, and tried again every holdRetryDelay: not logged above
+		// the debug level.
+		logger.Debugf("hold (%s)", reason)
+		t.holdJob(due, e, now)
 		return
 	}
 
@@ -418,6 +433,24 @@ func (t *T) onJobDue(j *job, now time.Time) {
 	t.run(e, last, logger)
 }
 
+// holdJob plans the job e, due as due, to be tried again in holdRetryDelay,
+// its last run left as it was.
+func (t *T) holdJob(due, e schedule.Entry, now time.Time) {
+	e.LastRunAt = due.LastRunAt
+	e.NextRunAt = now.Add(holdRetryDelay)
+	t.jobs.set(e, now)
+	t.updateExposedSchedules(e.Path)
+}
+
+// fullReason says why the node runs no more job for now, "" when it can run
+// one: it runs maxRunning at most at once.
+func (t *T) fullReason() string {
+	if n := int(t.active.Load()); n >= t.maxRunning {
+		return fmt.Sprintf("%d/%d node jobs running", n, t.maxRunning)
+	}
+	return ""
+}
+
 // run runs the job in the background.
 //
 // The last run is recorded before the run starts, so a daemon restarted
@@ -431,8 +464,10 @@ func (t *T) run(e schedule.Entry, last time.Time, logger *plog.Logger) {
 	jobRunByPathCount.WithLabelValues(e.Action, e.Path.String()).Inc()
 	jobRunByPathKeyCount.WithLabelValues(e.Action, e.Path.String(), e.Key).Inc()
 	t.running.Add(1)
+	t.active.Add(1)
 	go func() {
 		defer t.running.Done()
+		defer t.active.Add(-1)
 		if err := t.exec(e); err != nil {
 			logger.Errorf("on exec: %s", err)
 		} else if err := e.SetLastSuccess(last); err != nil {
