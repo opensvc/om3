@@ -317,6 +317,9 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 // gateway. The default route of the family of the address is the one looked
 // at, and set.
 func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
+	if err := t.startNetworkRoute(netns, guestDev); err != nil {
+		return err
+	}
 	if owner := t.routeOwner(ctx); owner != t {
 		t.Log().Infof("leave the default route of the namespace to %s", owner.RID())
 		return nil
@@ -332,6 +335,56 @@ func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) er
 		return nil
 	}
 	return t.routeReplaceIn(netns.Path(), v6, route...)
+}
+
+// startNetworkRoute routes the whole network the address is drawn from
+// through the gateway, when the route the kernel adds along with the address
+// covers a part of it only: a routed_bridge network gives each node a range
+// of its own, and the ranges of the other nodes are reached through the
+// gateway of this one. A resource not setting the default route of the
+// namespace, as the one of a backend network beside a public address, had
+// them follow the default route out of another interface.
+func (t *T) startNetworkRoute(netns ns.NetNS, guestDev string) error {
+	nw, err := t.resolveNetwork()
+	if err != nil || nw == nil {
+		return nil
+	}
+	segment, err := nw.IPNet()
+	if err != nil || segment == nil {
+		return nil
+	}
+	route := networkRoute(segment, t.ipnet(), t.Gateway, guestDev)
+	if route == nil {
+		return nil
+	}
+	t.Log().Infof("route the network %s through %s", segment, t.Gateway)
+	return t.routeReplaceIn(netns.Path(), t.isIPv6(), route...)
+}
+
+// networkRoute returns the route to the segment of the network, as the
+// arguments of "ip route replace", or nil when the namespace needs none: the
+// connected route of the address covers the segment, as on a bridge or a lan
+// network, or no gateway in that connected route forwards to the rest of it.
+// A route through the interface alone would have the namespace look for the
+// addresses of the other nodes on the link, where nothing answers for them.
+func networkRoute(segment, connected *net.IPNet, gateway, dev string) []string {
+	if segment == nil || connected == nil || connected.IP == nil || connected.Mask == nil {
+		return nil
+	}
+	gw := net.ParseIP(gateway)
+	if gw == nil {
+		return nil
+	}
+	base := &net.IPNet{IP: connected.IP.Mask(connected.Mask), Mask: connected.Mask}
+	segOnes, segBits := segment.Mask.Size()
+	conOnes, conBits := base.Mask.Size()
+	if segBits != conBits || conOnes <= segOnes || !segment.Contains(base.IP) {
+		return nil
+	}
+	if !base.Contains(gw) {
+		return nil
+	}
+	return []string{segment.String(), "via", gw.String(), "dev", dev}
 }
 
 // defaultRouteToSet returns the default route to set, as the arguments of

@@ -3,6 +3,7 @@
 package resipnetns
 
 import (
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,4 +59,30 @@ func TestDefaultRouteToSet(t *testing.T) {
 			assert.Equal(t, tc.want, defaultRouteToSet(tc.defaults, tc.gateway, "eth7"))
 		})
 	}
+}
+
+// A routed_bridge network gives each node a range of its own: the namespace
+// routes the whole network through the gateway of its range. A bridge or a lan
+// network, whose connected route covers the segment, needs no route, and a
+// gateway out of the connected route can not be routed through.
+func TestNetworkRoute(t *testing.T) {
+	_, backend, _ := net.ParseCIDR("10.132.0.0/16")
+	addr := &net.IPNet{IP: net.ParseIP("10.132.1.114"), Mask: net.CIDRMask(22, 32)}
+	assert.Equal(t,
+		[]string{"10.132.0.0/16", "via", "10.132.0.1", "dev", "eth0"},
+		networkRoute(backend, addr, "10.132.0.1", "eth0"))
+
+	assert.Nil(t, networkRoute(backend, addr, "", "eth0"), "no gateway")
+	assert.Nil(t, networkRoute(backend, addr, "10.132.8.1", "eth0"), "a gateway out of the connected route")
+
+	_, lan, _ := net.ParseCIDR("10.32.0.0/24")
+	public := &net.IPNet{IP: net.ParseIP("10.32.0.23"), Mask: net.CIDRMask(24, 32)}
+	assert.Nil(t, networkRoute(lan, public, "10.32.0.1", "eth1"), "the connected route covers the segment")
+	assert.Nil(t, networkRoute(backend, public, "10.32.0.1", "eth1"), "an address out of the segment")
+
+	_, v6, _ := net.ParseCIDR("fd01::/112")
+	addr6 := &net.IPNet{IP: net.ParseIP("fd01::4005"), Mask: net.CIDRMask(114, 128)}
+	assert.Equal(t,
+		[]string{"fd01::/112", "via", "fd01::4001", "dev", "eth0"},
+		networkRoute(v6, addr6, "fd01::4001", "eth0"))
 }
