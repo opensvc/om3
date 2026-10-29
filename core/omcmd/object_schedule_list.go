@@ -127,9 +127,14 @@ func (t *CmdObjectScheduleList) extractFromDaemon(nodename string, path naming.P
 	case 200:
 		return *resp.JSON200, nil
 	case 404:
-		// No schedule table on the node: an object with no instance
-		// there, or none of schedules, as the cluster configuration.
-		return api.ScheduleList{}, nil
+		// No instance on the node is no schedule there. No schedule
+		// table cached is an object with no schedule, as the cluster
+		// configuration, or one the scheduler has not loaded yet, as
+		// after the daemon started: the local listing answers.
+		if resp.JSON404 != nil && resp.JSON404.Title == "No local instance" {
+			return api.ScheduleList{}, nil
+		}
+		return api.ScheduleList{}, fmt.Errorf("%s: %s: %s", path, nodename, resp.Status())
 	case 401:
 		return api.ScheduleList{}, fmt.Errorf("%s: %s: %s", path, nodename, *resp.JSON401)
 	case 403:
