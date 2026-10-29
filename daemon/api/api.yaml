@@ -10471,6 +10471,14 @@ components:
             path:
               type: string
               description: the object whose standby start starts the resync, empty for the object of the resource
+        config_error:
+          type: string
+          description: |
+            the error of the configuration of the resource its undef status
+            is due to, set when the resource holds nothing on the node: its
+            start refuses that configuration before it sets anything up, and
+            nothing a former start set up is found, so a change of the
+            keywords a resource up is stopped to change is not refused
         disable:
           type: boolean
           description: hints the resource ignores all state transition actions

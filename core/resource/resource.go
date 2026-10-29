@@ -195,6 +195,17 @@ type (
 		StatusDependsOnPeers() bool
 	}
 
+	// ConfigErrorer is a resource able to say its configuration is wrong
+	// while it holds nothing on the node: its start refuses that
+	// configuration before it sets anything up, and nothing a former start
+	// set up is found. Its status is undef, and the error is its
+	// ConfigError, which tells the change of that configuration is not one
+	// a resource up would leak by. A resource holding something, or not
+	// able to tell, returns nil, and its status says the error.
+	ConfigErrorer interface {
+		ConfigError(ctx context.Context) error
+	}
+
 	// StartBlockerer is a resource able to say what would refuse a start of
 	// the instance on this node now, as a replicated disk left behind while
 	// its peer ran, which a promotion refuses until a resync brings it up to
@@ -292,6 +303,14 @@ type (
 		// StartBlocker says what would refuse a start of the resource on
 		// this node now, nil when nothing would.
 		StartBlocker *StartBlocker `json:"start_blocker,omitempty"`
+
+		// ConfigError is the error of the configuration of the resource
+		// its undef status is due to, set when the resource holds
+		// nothing on the node: its start refuses that configuration
+		// before it sets anything up, and nothing a former start set up
+		// is found. A change of that configuration is what fixes it, and
+		// is not refused as the one of a resource up.
+		ConfigError string `json:"config_error,omitempty"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
@@ -1342,11 +1361,19 @@ func stop(ctx context.Context, r Driver) error {
 
 // EvalStatus evaluates the status of a resource interfacer
 func EvalStatus(ctx context.Context, r Driver) status.T {
+	s, _ := evalStatus(ctx, r)
+	return s
+}
+
+// evalStatus evaluates the status of the resource, and returns the error of
+// its configuration it is undef for, holding nothing: see ConfigErrorer.
+func evalStatus(ctx context.Context, r Driver) (status.T, error) {
+	var configErr error
 	r.StatusLog().Reset()
 	s := status.NotApplicable
 	if err := r.GetConfigurationError(); err != nil {
 		r.StatusLog().Error("%s", err)
-		return s
+		return s, nil
 	}
 	var tags []string
 	if r.IsActionDisabled() {
@@ -1356,24 +1383,32 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 		tags = append(tags, "status disabled")
 	} else if !r.IsDisabled() {
 		Setenv(r)
-		s = r.Status(ctx)
-		prStatus := SCSIPersistentReservationStatus(ctx, r, s)
-		if s == status.NotApplicable {
-			s.Add(prStatus)
+		if i, ok := r.(ConfigErrorer); ok {
+			configErr = i.ConfigError(ctx)
 		}
-		if s == status.Up {
-			if isStopped, err := IsStopped(r); err != nil {
-				r.StatusLog().Error("%s", err)
-			} else if isStopped {
-				r.StatusLog().Warn("unmanaged start")
+		if configErr != nil {
+			r.StatusLog().Error("%s", configErr)
+			s = status.Undef
+		} else {
+			s = r.Status(ctx)
+			prStatus := SCSIPersistentReservationStatus(ctx, r, s)
+			if s == status.NotApplicable {
+				s.Add(prStatus)
 			}
-		}
-		if r.IsStandby() {
-			switch {
-			case s == status.Up:
-				s = status.StandbyUp
-			case s == status.Down:
-				s = status.StandbyDown
+			if s == status.Up {
+				if isStopped, err := IsStopped(r); err != nil {
+					r.StatusLog().Error("%s", err)
+				} else if isStopped {
+					r.StatusLog().Warn("unmanaged start")
+				}
+			}
+			if r.IsStandby() {
+				switch {
+				case s == status.Up:
+					s = status.StandbyUp
+				case s == status.Down:
+					s = status.StandbyDown
+				}
 			}
 		}
 	}
@@ -1382,7 +1417,7 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 	}
 	sb := statusbus.FromContext(ctx)
 	sb.Post(r.RID(), s, false)
-	return s
+	return s, configErr
 }
 
 func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.PersistentReservationHandle {
@@ -1490,7 +1525,11 @@ func getStartBlocker(ctx context.Context, r Driver) *StartBlocker {
 func GetStatus(ctx context.Context, r Driver) Status {
 	// EvalStatus must be called before formatResourceLabel (it uses context,
 	// on containers it will set the initial inspect.
-	resStatus := EvalStatus(ctx, r)
+	resStatus, configErr := evalStatus(ctx, r)
+	var configError string
+	if configErr != nil {
+		configError = configErr.Error()
+	}
 	return Status{
 		Label:      formatResourceLabel(ctx, r),
 		Type:       r.DriverID().String(),
@@ -1511,6 +1550,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		DependsOnPeers: StatusDependsOnPeers(r),
 
 		StartBlocker: getStartBlocker(ctx, r),
+		ConfigError:  configError,
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),

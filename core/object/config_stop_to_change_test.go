@@ -79,7 +79,18 @@ func TestCheckStopToChange(t *testing.T) {
 	for _, st := range []status.T{status.Down, status.StandbyDown, status.NotApplicable} {
 		assert.NoError(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": st})), st.String())
 	}
-	assert.Error(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Undef})), "a status not known to be stopped is not stopped")
+	err = CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Undef}))
+	assert.ErrorIs(t, err, ErrStopToChange, "a status not known to be stopped is not stopped")
+	assert.ErrorContains(t, err, "status not known (undef) on node1")
+	assert.ErrorContains(t, err, "force the change once sure it holds nothing")
+
+	// Undef for an error of its configuration, holding nothing, the
+	// resource is stopped: the change is what fixes it.
+	misconfigured := map[string]*instance.Status{"node1": {Resources: instance.ResourceStatuses{
+		"fs#1": resource.Status{Status: status.Undef, ConfigError: "mode is not one of the modes of the network"},
+	}}}
+	assert.NoError(t, CheckStopToChange(p.Kind, from, removed, misconfigured))
+	assert.NotContains(t, CheckStopToChange(p.Kind, from, removed, up).Error(), "force", "a resource up is stopped first")
 	assert.ErrorContains(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Down, "node2": status.StandbyUp})), "stdby up on node2")
 }
 
