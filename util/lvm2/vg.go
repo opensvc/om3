@@ -500,6 +500,35 @@ func (t *VG) Remove(ctx context.Context, args []string) error {
 	return nil
 }
 
+// RemovePVs removes the lvm label of the physical volumes pvs, freed by the
+// removal of their group. A vgcreate labels the devices it is given, so the
+// group removed, the label is all that is left of it on them.
+func (t *VG) RemovePVs(ctx context.Context, pvs device.L) error {
+	if len(pvs) == 0 {
+		return nil
+	}
+	args := []string{"--yes"}
+	for _, pv := range pvs {
+		args = append(args, pv.Path())
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("pvremove"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
 func (t *VG) PVs(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
 	vgL, err := t.CachedNormalShow(ctx)
