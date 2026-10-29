@@ -104,3 +104,7 @@ func (t RelayStatusList) GetItems() any {
 func (t ResourceInfoList) GetItems() any {
 	return t.Items
 }
+
+func (t ConfigAlertList) GetItems() any {
+	return t.Items
+}
