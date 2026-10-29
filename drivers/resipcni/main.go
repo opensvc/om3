@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -208,9 +209,11 @@ func (t *T) hasNetNS() bool {
 	if t.NetNS != "" {
 		return true
 	}
-	if _, err := netns.GetFromPath(t.objectNSPIDFile()); err != nil {
+	h, err := netns.GetFromPath(t.objectNSPIDFile())
+	if err != nil {
 		return false
 	}
+	_ = h.Close()
 	return true
 }
 
@@ -359,10 +362,12 @@ func (t *T) ConfigError(ctx context.Context) error {
 }
 
 // nsRunning says whether the namespace the address is set up in runs, and
-// true when it can not tell.
+// true when it can not tell. The namespace of the object runs while its file
+// exists: it is looked for, not opened, every status.
 func (t *T) nsRunning(ctx context.Context) bool {
 	if t.NetNS == "" {
-		return t.hasNetNS()
+		_, err := os.Stat(t.objectNSPIDFile())
+		return !errors.Is(err, os.ErrNotExist)
 	}
 	path, err := t.getResourceNSPathCtx(ctx)
 	if err != nil {
