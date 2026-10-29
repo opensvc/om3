@@ -494,8 +494,70 @@ func (t *T) devMTU() (int, error) {
 	return iface.MTU, nil
 }
 
+// ConfigError implements resource.ConfigErrorer: the configuration refused
+// by the network the address is drawn from, when the namespace holds no
+// address of the resource. Its start refuses that configuration before it
+// sets anything up, so only a start made with a former configuration could
+// have, and its address would be in the namespace.
+func (t *T) ConfigError(ctx context.Context) error {
+	if t.netErr == nil {
+		return nil
+	}
+	if held, err := t.holdsAddr(ctx); err != nil || held {
+		return nil
+	}
+	return t.netErr
+}
+
+// holdsAddr says whether the namespace holds the address of the resource,
+// and true when it can not tell: an address not known, as one drawn at a
+// start and released at the stop, may be any the namespace holds. A
+// namespace not running holds none.
+func (t *T) holdsAddr(ctx context.Context) (bool, error) {
+	netns, err := t.getNS(ctx)
+	if err != nil {
+		return true, err
+	}
+	if netns == nil {
+		return false, nil
+	}
+	defer netns.Close()
+	ip := t.ipaddr()
+	if ip == nil {
+		return true, nil
+	}
+	held := false
+	err = netns.Do(func(_ ns.NetNS) error {
+		ifaces, err := net.Interfaces()
+		if err != nil {
+			return err
+		}
+		for _, iface := range ifaces {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				return err
+			}
+			for _, addr := range addrs {
+				// The address alone: its mask is the
+				// configuration's, which may be the one in error.
+				if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.Equal(ip) {
+					held = true
+					return nil
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return true, err
+	}
+	return held, nil
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	if t.netErr != nil {
+		// The namespace holds the address, set up with a former
+		// configuration, or the resource can not tell.
 		t.StatusLog().Error("%s", t.netErr)
 		return status.Undef
 	}

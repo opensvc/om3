@@ -24,7 +24,7 @@ import (
 // ErrStopToChange is the refusal of a configuration change a resource up
 // on a node would leak by: a change of a keyword saying what it holds there,
 // of its type, or the removal of its section.
-var ErrStopToChange = errors.New("the resource is up")
+var ErrStopToChange = errors.New("the resource is not known to be stopped")
 
 // CheckStopToChange refuses a change from the configuration from to the
 // configuration to of an object of kind, for a resource up on a node, as
@@ -47,12 +47,18 @@ var ErrStopToChange = errors.New("the resource is up")
 // filesystem still mounted, an address still configured.
 //
 // A resource is up on a node unless its status there is known to be
-// stopped: down, standby down, or n/a. An object created changes nothing.
+// stopped: down, standby down, or n/a, or undef for an error of its
+// configuration while it holds nothing there, its ConfigError, which a
+// change of the configuration fixes. Any other undef status is not known,
+// and the refusal says so, and that a change forced is the operator's to
+// make once sure the resource holds nothing. An object created changes
+// nothing.
 func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[string]*instance.Status) error {
 	if from == nil || to == nil {
 		return nil
 	}
 	refusals := make([]string, 0)
+	unknown := false
 	toSections := to.SectionStrings()
 	for _, section := range from.SectionStrings() {
 		rid, err := resourceid.Parse(section)
@@ -62,6 +68,9 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 		up := resourceUpOn(section, rid.DriverGroup(), statuses)
 		if len(up) == 0 {
 			continue
+		}
+		if up.hasUnknown() {
+			unknown = true
 		}
 		if !slices.Contains(toSections, section) {
 			refusals = append(refusals, fmt.Sprintf("delete %s: %s", section, strings.Join(up.texts(), ", ")))
@@ -95,7 +104,11 @@ func CheckStopToChange(kind naming.Kind, from, to *xconfig.T, statuses map[strin
 	if len(refusals) == 0 {
 		return nil
 	}
-	return fmt.Errorf("%w: %s: stop it before", ErrStopToChange, strings.Join(refusals, "; "))
+	advice := "stop it before"
+	if unknown {
+		advice += ", or force the change once sure it holds nothing on the node where its status is not known"
+	}
+	return fmt.Errorf("%w: %s: %s", ErrStopToChange, strings.Join(refusals, "; "), advice)
 }
 
 type (
@@ -108,10 +121,24 @@ type (
 )
 
 func (t resourceUp) text() string {
-	if t.running {
+	switch {
+	case t.running:
 		return fmt.Sprintf("running on %s", t.node)
+	case t.status == status.Undef:
+		return fmt.Sprintf("status not known (undef) on %s", t.node)
 	}
 	return fmt.Sprintf("%s on %s", t.status, t.node)
+}
+
+// hasUnknown says whether the status of the resource is not known on one
+// of the nodes.
+func (t resourceUps) hasUnknown() bool {
+	for _, u := range t {
+		if !u.running && u.status == status.Undef {
+			return true
+		}
+	}
+	return false
 }
 
 func (t resourceUps) texts() []string {
@@ -144,6 +171,11 @@ func resourceUpOn(section string, group driver.Group, statuses map[string]*insta
 			continue
 		}
 		if rstat.Status.Is(status.Down, status.StandbyDown, status.NotApplicable) {
+			continue
+		}
+		if rstat.Status == status.Undef && rstat.ConfigError != "" {
+			// Undef for an error of its configuration, holding
+			// nothing: the change is what fixes it.
 			continue
 		}
 		l = append(l, resourceUp{node: nodename, status: rstat.Status})
