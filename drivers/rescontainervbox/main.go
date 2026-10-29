@@ -186,11 +186,36 @@ func (t *T) Start(ctx context.Context) error {
 // for a node not vbox capable is an error of the configuration, which a
 // change of its nodes fixes. The node has no VBoxManage, which the start, and
 // every action on the guest, run: om set nothing up there.
+//
+// A guest running all the same, started before the node lost VBoxManage,
+// holds what a change would leave behind. VirtualBox keeps no file telling a
+// guest runs, so the error is not reported while any guest process runs.
 func (t *T) ConfigError(ctx context.Context) error {
-	if !capabilities.Has(drvID.Cap()) {
-		return fmt.Errorf("this node is not vbox capable")
+	if capabilities.Has(drvID.Cap()) || hasGuestProcess() {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("this node is not vbox capable")
+}
+
+// hasGuestProcess says whether a VirtualBox guest process runs on the node,
+// and true when it can not tell.
+func hasGuestProcess() bool {
+	l, err := filepath.Glob("/proc/[0-9]*/comm")
+	if err != nil {
+		return true
+	}
+	for _, p := range l {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			// A process gone since the listing.
+			continue
+		}
+		switch strings.TrimSpace(string(b)) {
+		case "VBoxHeadless", "VirtualBoxVM", "VirtualBox":
+			return true
+		}
+	}
+	return false
 }
 
 func (t *T) Status(ctx context.Context) status.T {
