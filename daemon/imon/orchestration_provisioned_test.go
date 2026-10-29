@@ -155,3 +155,32 @@ func TestANodeWaitingForTheLeaderProvisionsWhenTheLeadershipMovedToIt(t *testing
 	}
 	require.False(t, m.hasLeaderProvisioned(), "done with another orchestration")
 }
+
+// A peer done with the orchestration, as one already provisioned when it
+// began, tells nothing of a leader doing its part: a node waiting for that
+// leader waits on.
+func TestANodeWaitingForTheLeaderWaitsForALeaderProvisioning(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateWaitLeader)
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instMonitor["node2"] = instance.Monitor{
+		State:               instance.MonitorStateIdle,
+		OrchestrationID:     m.state.OrchestrationID,
+		OrchestrationIsDone: true,
+	}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instMonitor["node3"] = instance.Monitor{
+		State:           instance.MonitorStateProvisionProgress,
+		OrchestrationID: m.state.OrchestrationID,
+		IsLeader:        true,
+	}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	require.Equal(t, "node3", m.provisioningLeader())
+	require.False(t, m.hasLeaderProvisioned(), "the leader provisioning")
+
+	m.instMonitor["node3"] = instance.Monitor{
+		State:           instance.MonitorStateWaitLeader,
+		OrchestrationID: m.state.OrchestrationID,
+		IsLeader:        true,
+	}
+	require.True(t, m.hasLeaderProvisioned(), "the leader waiting for a leader, a peer done")
+}

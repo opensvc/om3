@@ -308,15 +308,31 @@ func (t *Manager) isProvisioningLeader() bool {
 //
 // The leader may change during the orchestration: an instance provisioned
 // n/a, as one of a directory, is no leader candidate anymore, and a node
-// waiting for the leader became the leader, waiting for itself. A peer done
-// with its part of the orchestration, provisioned, did the part of the
-// leader, or followed it: the leader provisioned.
+// waiting for the leader became the leader, waiting for itself. With the
+// leader waiting for a leader, no node does the part of the leader, so a
+// peer done with its part of the orchestration, provisioned, did it, or
+// followed it: the leader provisioned. With the leader doing its part, a peer
+// done tells nothing of it, as one already provisioned when the orchestration
+// began.
 func (t *Manager) hasLeaderProvisioned() bool {
 	leader := t.provisioningLeader()
 	if leaderInstanceStatus, ok := t.instStatus[leader]; ok && leaderInstanceStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		return true
 	}
+	if !t.isWaitingLeader(leader) {
+		return false
+	}
 	return t.hasPeerDoneProvisioned()
+}
+
+// isWaitingLeader says whether the instance of node waits for the leader of
+// the provision.
+func (t *Manager) isWaitingLeader(node string) bool {
+	if node == t.localhost {
+		return t.state.State == instance.MonitorStateWaitLeader
+	}
+	instMon, ok := t.instMonitor[node]
+	return ok && instMon.State == instance.MonitorStateWaitLeader && instMon.OrchestrationID == t.state.OrchestrationID
 }
 
 // hasPeerDoneProvisioned says whether a peer instance is done with its part
