@@ -60,6 +60,11 @@ func (t *CmdObjectConfigValidate) Run(kind string) error {
 			if moreAlerts, err := c.ValidateConfig(ctx); err != nil {
 				return nil, err
 			} else {
+				// The checks the drivers make when the object loads
+				// its resources, on this node.
+				if v, ok := o.(interface{ ValidateResources() xconfig.Alerts }); ok {
+					moreAlerts = append(moreAlerts, v.ValidateResources()...)
+				}
 				alertsQ <- moreAlerts
 			}
 			return nil, nil
@@ -73,12 +78,24 @@ func (t *CmdObjectConfigValidate) Run(kind string) error {
 	wg.Wait()
 	done <- true
 
-	return output.Renderer{
+	if err := (output.Renderer{
 		DefaultOutput: "tab=LEVEL:icon,PATH:path,DRIVER:driver,KEY:key,KIND:kind,COMMENT:comment",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          alerts,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print()); err != nil {
+		return err
+	}
+	return errorsOf(alerts)
+}
+
+// errorsOf returns an error when alerts has errors, so the validation exits
+// non-zero for a configuration that is not good.
+func errorsOf(alerts xconfig.Alerts) error {
+	if n := len(alerts.Errors()); n > 0 {
+		return fmt.Errorf("the configuration has %d error(s)", n)
+	}
+	return nil
 }

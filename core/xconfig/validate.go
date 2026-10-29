@@ -45,6 +45,7 @@ const (
 	alertKindMoved
 	alertKindCapabilities
 	alertKindInvalidSection
+	alertKindConfigure
 )
 
 var (
@@ -69,6 +70,7 @@ var (
 	alertKindMovedStr           = "moved keyword"
 	alertKindCapabilitiesStr    = "unusable driver on this node"
 	alertKindInvalidSectionStr  = "invalid section name"
+	alertKindConfigureStr       = "resource configuration error"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -81,6 +83,7 @@ var (
 		alertKindMoved:           alertKindMovedStr,
 		alertKindCapabilities:    alertKindCapabilitiesStr,
 		alertKindInvalidSection:  alertKindInvalidSectionStr,
+		alertKindConfigure:       alertKindConfigureStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -94,6 +97,7 @@ var (
 		alertKindMovedStr:           alertKindMoved,
 		alertKindCapabilitiesStr:    alertKindCapabilities,
 		alertKindInvalidSectionStr:  alertKindInvalidSection,
+		alertKindConfigureStr:       alertKindConfigure,
 	}
 )
 
@@ -150,6 +154,26 @@ func (t T) NewAlertInvalidSection(section string, err error) Alert {
 		Kind:    alertKindInvalidSection,
 		Level:   alertLevelError,
 		Key:     key.T{Section: section},
+		Comment: err.Error(),
+	}
+}
+
+// NewAlertConfigure says the resource of section refused its configuration
+// when the object loaded it, by a check its driver makes beyond the keywords,
+// as a network no cni configuration and no cluster network names: the
+// resource is not configured, its status is undef, and its start is refused.
+// A disabled resource is never started, so it is a warning.
+func (t T) NewAlertConfigure(section string, did driver.ID, err error, disabled bool) Alert {
+	level := alertLevelError
+	if disabled {
+		level = alertLevelWarn
+	}
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindConfigure,
+		Level:   level,
+		Key:     key.T{Section: section},
+		Driver:  did,
 		Comment: err.Error(),
 	}
 }
