@@ -98,6 +98,7 @@ func newCmdClusterJoin() *cobra.Command {
 		" format (default: the --node value). Set it when this node can not resolve the --node name")
 	commoncmd.FlagToken(flags, &options.TokenFile)
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
+	commoncmd.FlagKeepBackup(flags, &options.KeepBackup)
 	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
@@ -117,6 +118,7 @@ func newCmdClusterLeave() *cobra.Command {
 	flags := cmd.Flags()
 	flags.DurationVar(&options.Timeout, "timeout", 0, "maximum duration to wait for local node removed from cluster")
 	commoncmd.FlagCredential(flags, &options.CredentialFile)
+	commoncmd.FlagKeepBackup(flags, &options.KeepBackup)
 	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }

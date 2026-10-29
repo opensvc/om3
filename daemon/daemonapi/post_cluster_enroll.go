@@ -146,9 +146,10 @@ func (a *DaemonAPI) PostClusterEnroll(ctx echo.Context) error {
 
 	timeoutStr := timeout.String()
 	joinBody := api.PostDaemonJoinJSONRequestBody{
-		Node:    a.localhost,
-		Token:   joinToken.AccessToken,
-		Timeout: &timeoutStr,
+		Node:       a.localhost,
+		Token:      joinToken.AccessToken,
+		Timeout:    &timeoutStr,
+		KeepBackup: payload.KeepBackup,
 	}
 
 	if joinAddr != "" {

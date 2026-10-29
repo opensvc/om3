@@ -152,6 +152,15 @@ func FlagCredential(flags *pflag.FlagSet, p *string) {
 		" Without either, no user is created")
 }
 
+// FlagKeepBackup registers the option keeping the config backup a join or a
+// leave makes, removed once the node has joined or left otherwise. The
+// backup holds the secrets of the cluster the node was a member of.
+func FlagKeepBackup(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "keep-backup", false, "keep the backup of the node config, which holds the secrets of"+
+		" the cluster the node was a member of, once the node has joined or left."+
+		" It is removed otherwise, and kept anyway when the operation fails")
+}
+
 // FlagToken registers the only way a join token reaches a command, besides
 // the OSVC_JOIN_TOKEN environment variable. It names a file rather than
 // carrying the value, for the reason FlagCredential does.

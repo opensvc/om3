@@ -101,6 +101,9 @@ func (a *DaemonAPI) localPostDaemonJoin(ctx echo.Context, payload api.DaemonJoin
 	if payload.Addr != nil && *payload.Addr != "" {
 		args = append(args, "--addr", *payload.Addr)
 	}
+	if payload.KeepBackup != nil && *payload.KeepBackup {
+		args = append(args, "--keep-backup")
+	}
 
 	// The token goes through the environment, never through the command line:
 	// /proc/<pid>/cmdline is world readable, /proc/<pid>/environ is not.

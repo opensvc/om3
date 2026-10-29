@@ -1246,6 +1246,11 @@ type ClusterEnrollBody struct {
 	// certificate is valid for.
 	JoinAddr *string `json:"join_addr,omitempty"`
 
+	// KeepBackup Keep the backup of the enrolled node config once it has joined.
+	// The backup holds the secrets of the cluster the node left. It is
+	// removed otherwise, and kept anyway when the join fails.
+	KeepBackup *bool `json:"keep_backup,omitempty"`
+
 	// Node The location of the node to enroll, in the
 	// [<scheme>://]<addr>[:<port>] format. The scheme defaults to https
 	// and the port to the daemon listener port.
@@ -1268,6 +1273,11 @@ type ClusterEvictBody struct {
 	// user is created in the 'system' namespace with the 'root' grant.
 	// Without this parameter, no user is created.
 	Credential *string `json:"credential,omitempty"`
+
+	// KeepBackup Keep the backup of the evicted node config once it has left. The
+	// backup holds the secrets of this cluster. It is removed otherwise,
+	// and kept anyway when the leave fails.
+	KeepBackup *bool `json:"keep_backup,omitempty"`
 
 	// Nodename The name of the cluster node to remove from the cluster nodes. It
 	// must be drained, and it can not be the api node.
@@ -1429,6 +1439,11 @@ type DaemonJoinBody struct {
 	// value. Set it when this node can not resolve the target nodename.
 	Addr *string `json:"addr,omitempty"`
 
+	// KeepBackup Keep the backup of this node config once it has joined. The
+	// backup holds the secrets of the cluster this node left. It is
+	// removed otherwise, and kept anyway when the join fails.
+	KeepBackup *bool `json:"keep_backup,omitempty"`
+
 	// Node the nodename of the target cluster node to join
 	Node string `json:"node"`
 
@@ -1448,6 +1463,11 @@ type DaemonLeaveBody struct {
 	// the 'system' namespace with the 'root' grant. Without this
 	// parameter, no user is created.
 	Credential *string `json:"credential,omitempty"`
+
+	// KeepBackup Keep the backup of this node config once it has left. The backup
+	// holds the secrets of the cluster left. It is removed otherwise,
+	// and kept anyway when the leave fails.
+	KeepBackup *bool `json:"keep_backup,omitempty"`
 
 	// Timeout the maximum duration of the forked leave
 	Timeout *string `json:"timeout,omitempty"`

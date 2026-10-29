@@ -88,7 +88,8 @@ func (a *DaemonAPI) PostClusterEvict(ctx echo.Context) error {
 
 	timeoutStr := timeout.String()
 	leaveBody := api.PostDaemonLeaveJSONRequestBody{
-		Timeout: &timeoutStr,
+		Timeout:    &timeoutStr,
+		KeepBackup: payload.KeepBackup,
 	}
 	if payload.Credential != nil && *payload.Credential != "" {
 		leaveBody.Credential = payload.Credential
