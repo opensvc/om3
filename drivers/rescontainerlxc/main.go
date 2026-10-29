@@ -751,12 +751,19 @@ func (t *T) nativeConfigFile(ctx context.Context) string {
 	return p
 }
 
+// lxcPath returns the directory holding the directories of the containers,
+// the one the lxc commands are given with -P: the container_data_dir when set,
+// else the default of the lxc install. A container_data_dir not resolved
+// names no directory, and the default one, which may hold a container of the
+// same name, is not used for it.
 func (t *T) lxcPath(ctx context.Context) string {
 	if p, ok := t.cache["lxcPath"]; ok {
 		return p.(string)
 	}
 	p := func() string {
 		if p, err := t.dataDir(ctx); err != nil {
+			return ""
+		} else if p != "" {
 			return p
 		}
 		p := "/var/lib/lxc"
