@@ -67,7 +67,7 @@ func TestResolvConfString(t *testing.T) {
 	assert.Equal(t, `search root.svc.cluster1 svc.cluster1
 nameserver 10.29.0.11
 nameserver 10.29.0.12
-options ndots:2 edns0 use-vc
+options ndots:2 edns0 timeout:2 attempts:2
 `, resolvConf.String())
 }
 

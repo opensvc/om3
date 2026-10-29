@@ -22,9 +22,19 @@ type (
 	}
 )
 
-// ResolvConfOptions are the resolver options a container is given, the same
-// ones the "--dns-opt" arguments used to carry.
-var ResolvConfOptions = []string{"ndots:2", "edns0", "use-vc"}
+// ResolvConfOptions are the resolver options a container is given.
+//
+// The queries go over udp, edns0 allowing large answers, and a truncated one
+// is asked again over tcp by the resolver itself. A nameserver whose process
+// is down answers udp with a port unreachable, so the next one is asked at
+// once, and a nameserver whose node is down costs the timeout. use-vc, which
+// forced tcp, made the latter wait for the connection to give up, the syn
+// retried for over a minute, glibc applying no timeout to the connect.
+//
+// The timeout is the wait for a nameserver with glibc, and for the whole
+// lookup with musl, which asks all the nameservers at once: 1s would fail a
+// recursion slower than that, a cold one to an external domain.
+var ResolvConfOptions = []string{"ndots:2", "edns0", "timeout:2", "attempts:2"}
 
 // MaxNameservers is the number of nameservers a resolver reads. glibc and musl
 // both stop at MAXNS, and the lines past it are dead weight in the file.
