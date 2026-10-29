@@ -88,7 +88,7 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) (string, error) {
 		return "", nil
 	}
 
-	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05"))
+	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05.000000000"))
 	t.logger().Infof("move all configs to %s", backup)
 	// Prefer file.Move to avoid syscall.EXDEV errors on os.Rename
 	err := file.Move(rawconfig.Paths.Etc, backup)
