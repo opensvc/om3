@@ -48,6 +48,11 @@ type (
 		// whose start failed, by rid, logged when it changes.
 		retryErr map[string]string
 
+		// janitorDone is closed when the janitor loop returned: Stop
+		// waits for it before it reads the heartbeats running, which the
+		// loop starts.
+		janitorDone chan struct{}
+
 		// ctx is the main context for the controller, and started hb drivers
 		ctx context.Context
 
@@ -129,6 +134,12 @@ func (t *T) Stop() error {
 	// this will cancel janitor, msgToTx, msgFromRx and hb drivers context
 	t.cancel()
 
+	// The janitor starts heartbeats: the ones running are read once it
+	// returned, or one it started meanwhile would run on.
+	if t.janitorDone != nil {
+		<-t.janitorDone
+	}
+
 	hbToStop := make([]hbtype.IDStopper, 0)
 	var failedIDs []string
 	for _, hb := range t.txs {
@@ -206,7 +217,12 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 
 	select {
 	case <-t.msgToTxCtx.Done():
-		// don't hang up when context is done
+		// The daemon stops: the tx is not registered, and nothing else
+		// would stop it.
+		if err := tx.Stop(); err != nil {
+			t.log.Warnf("stop %s, started while stopping: %s", tx.ID(), err)
+		}
+		return fmt.Errorf("%s: the heartbeats are stopping", tx.ID())
 	case t.msgToTxRegister <- registerTxQueue{id: tx.ID(), msgToSendQueue: msgToSendQ}:
 		t.txs[hb.Name()] = tx
 	}
@@ -593,9 +609,11 @@ func (t *T) janitor(ctx context.Context) {
 		t.log.Errorf("initial rescan on janitor hb start: %s", err)
 	}
 
+	t.janitorDone = make(chan struct{})
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
+		defer close(t.janitorDone)
 		started <- true
 		sub := pubsub.SubFromContext(ctx, "daemon.hb.janitor")
 		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
@@ -613,6 +631,10 @@ func (t *T) janitor(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-retryTicker.C:
+				// The tick and the cancel may be ready at once.
+				if ctx.Err() != nil {
+					return
+				}
 				t.retryFailedHb(t.ctx)
 			case i := <-sub.C:
 				switch msg := i.(type) {
