@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -356,6 +357,7 @@ type devpathChainKey struct{}
 // names. A resource exposing no device, as one that is not started, is an
 // ErrAccess, as a vol that is not available is.
 func Devpaths(ctx context.Context, from, s, namespace string, resolver Resolver) ([]string, error) {
+	s = exposedDevsRID(s)
 	if !IsResourceRef(s) {
 		p, err := HostDevpath(ctx, s, namespace)
 		if err != nil {
@@ -399,6 +401,24 @@ func Devpaths(ctx context.Context, from, s, namespace string, resolver Resolver)
 		l[i] = dev.Path()
 	}
 	return l, nil
+}
+
+// regexpExposedDevsRef matches a reference to the devices a resource exposes,
+// as {disk#1.exposed_devs} or {disk#1.exposed_devs[0]}.
+var regexpExposedDevsRef = regexp.MustCompile(`^\{([^{}.]+#[^{}.]+)\.exposed_devs(\[[0-9]+\])?\}$`)
+
+// exposedDevsRID returns the id of the resource a reference to its exposed
+// devices names, which the configuration left as written: the resource
+// exposed none, as a loop not attached, the reference evaluating to nothing.
+// The id names the same devices, and a resource not exposing them is not
+// accessible, as a stopped one is: the resource stacked over it is down,
+// rather than in error on a value that is no resource id. Any other value is
+// returned as is.
+func exposedDevsRID(s string) string {
+	if m := regexpExposedDevsRef.FindStringSubmatch(s); m != nil {
+		return m[1]
+	}
+	return s
 }
 
 // Devpath returns the device of the node one element of a device keyword
