@@ -265,6 +265,9 @@ type ClientInterface interface {
 	// GetNodeConfigKeywords request
 	GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNodeConfigValidate request
+	GetNodeConfigValidate(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostDaemonJoinWithBody request with any body
 	PostDaemonJoinWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -457,6 +460,9 @@ type ClientInterface interface {
 
 	// GetInstanceConfigFile request
 	GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetInstanceConfigValidate request
+	GetInstanceConfigValidate(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceResourceConsole request
 	PostInstanceResourceConsole(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1446,6 +1452,18 @@ func (c *Client) GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeN
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetNodeConfigValidate(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeConfigValidateRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostDaemonJoinWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonJoinRequestWithBody(c.Server, nodename, contentType, body)
 	if err != nil {
@@ -2228,6 +2246,18 @@ func (c *Client) PostInstanceCollectorAction(ctx context.Context, nodename InPat
 
 func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceConfigFileRequest(c.Server, nodename, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceConfigValidate(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceConfigValidateRequest(c.Server, nodename, namespace, kind, name)
 	if err != nil {
 		return nil, err
 	}
@@ -6028,6 +6058,40 @@ func NewGetNodeConfigKeywordsRequest(server string, nodename InPathNodeName, par
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNodeConfigValidateRequest generates requests for GetNodeConfigValidate
+func NewGetNodeConfigValidateRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/config/validate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -12544,6 +12608,61 @@ func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, nam
 	return req, nil
 }
 
+// NewGetInstanceConfigValidateRequest generates requests for GetInstanceConfigValidate
+func NewGetInstanceConfigValidateRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/config/validate", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInstanceResourceConsoleRequest generates requests for PostInstanceResourceConsole
 func NewPostInstanceResourceConsoleRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams) (*http.Request, error) {
 	var err error
@@ -17607,6 +17726,9 @@ type ClientWithResponsesInterface interface {
 	// GetNodeConfigKeywordsWithResponse request
 	GetNodeConfigKeywordsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetNodeConfigKeywordsResponse, error)
 
+	// GetNodeConfigValidateWithResponse request
+	GetNodeConfigValidateWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigValidateResponse, error)
+
 	// PostDaemonJoinWithBodyWithResponse request with any body
 	PostDaemonJoinWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
 
@@ -17799,6 +17921,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetInstanceConfigFileWithResponse request
 	GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error)
+
+	// GetInstanceConfigValidateWithResponse request
+	GetInstanceConfigValidateWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigValidateResponse, error)
 
 	// PostInstanceResourceConsoleWithResponse request
 	PostInstanceResourceConsoleWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*PostInstanceResourceConsoleResponse, error)
@@ -19805,6 +19930,41 @@ func (r GetNodeConfigKeywordsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNodeConfigKeywordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNodeConfigValidateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ConfigAlertList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeConfigValidateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeConfigValidateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNodeConfigValidateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21901,6 +22061,41 @@ func (r GetInstanceConfigFileResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetInstanceConfigFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetInstanceConfigValidateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ConfigAlertList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceConfigValidateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceConfigValidateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetInstanceConfigValidateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -25108,6 +25303,15 @@ func (c *ClientWithResponses) GetNodeConfigKeywordsWithResponse(ctx context.Cont
 	return ParseGetNodeConfigKeywordsResponse(rsp)
 }
 
+// GetNodeConfigValidateWithResponse request returning *GetNodeConfigValidateResponse
+func (c *ClientWithResponses) GetNodeConfigValidateWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigValidateResponse, error) {
+	rsp, err := c.GetNodeConfigValidate(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeConfigValidateResponse(rsp)
+}
+
 // PostDaemonJoinWithBodyWithResponse request with arbitrary body returning *PostDaemonJoinResponse
 func (c *ClientWithResponses) PostDaemonJoinWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error) {
 	rsp, err := c.PostDaemonJoinWithBody(ctx, nodename, contentType, body, reqEditors...)
@@ -25695,6 +25899,15 @@ func (c *ClientWithResponses) GetInstanceConfigFileWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetInstanceConfigFileResponse(rsp)
+}
+
+// GetInstanceConfigValidateWithResponse request returning *GetInstanceConfigValidateResponse
+func (c *ClientWithResponses) GetInstanceConfigValidateWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigValidateResponse, error) {
+	rsp, err := c.GetInstanceConfigValidate(ctx, nodename, namespace, kind, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceConfigValidateResponse(rsp)
 }
 
 // PostInstanceResourceConsoleWithResponse request returning *PostInstanceResourceConsoleResponse
@@ -29239,6 +29452,67 @@ func ParseGetNodeConfigKeywordsResponse(rsp *http.Response) (*GetNodeConfigKeywo
 	return response, nil
 }
 
+// ParseGetNodeConfigValidateResponse parses an HTTP response from a GetNodeConfigValidateWithResponse call
+func ParseGetNodeConfigValidateResponse(rsp *http.Response) (*GetNodeConfigValidateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeConfigValidateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigAlertList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostDaemonJoinResponse parses an HTTP response from a PostDaemonJoinWithResponse call
 func ParsePostDaemonJoinResponse(rsp *http.Response) (*PostDaemonJoinResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32674,6 +32948,67 @@ func ParseGetInstanceConfigFileResponse(rsp *http.Response) (*GetInstanceConfigF
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInstanceConfigValidateResponse parses an HTTP response from a GetInstanceConfigValidateWithResponse call
+func ParseGetInstanceConfigValidateResponse(rsp *http.Response) (*GetInstanceConfigValidateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceConfigValidateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigAlertList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

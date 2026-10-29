@@ -105,6 +105,39 @@ func (e ClusterLockListKind) Valid() bool {
 	}
 }
 
+// Defines values for ConfigAlertLevel.
+const (
+	ConfigAlertLevelError   ConfigAlertLevel = "error"
+	ConfigAlertLevelWarning ConfigAlertLevel = "warning"
+)
+
+// Valid indicates whether the value is a known member of the ConfigAlertLevel enum.
+func (e ConfigAlertLevel) Valid() bool {
+	switch e {
+	case ConfigAlertLevelError:
+		return true
+	case ConfigAlertLevelWarning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfigAlertListKind.
+const (
+	ConfigAlertListKindConfigAlertList ConfigAlertListKind = "ConfigAlertList"
+)
+
+// Valid indicates whether the value is a known member of the ConfigAlertListKind enum.
+func (e ConfigAlertListKind) Valid() bool {
+	switch e {
+	case ConfigAlertListKindConfigAlertList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DaemonListenerName.
 const (
 	ApiInet DaemonListenerName = "api.inet"
@@ -1064,25 +1097,25 @@ func (e InQueryRestoreRefs) Valid() bool {
 
 // Defines values for PostDaemonAuditParamsLevel.
 const (
-	Debug PostDaemonAuditParamsLevel = "debug"
-	Error PostDaemonAuditParamsLevel = "error"
-	Info  PostDaemonAuditParamsLevel = "info"
-	Trace PostDaemonAuditParamsLevel = "trace"
-	Warn  PostDaemonAuditParamsLevel = "warn"
+	PostDaemonAuditParamsLevelDebug PostDaemonAuditParamsLevel = "debug"
+	PostDaemonAuditParamsLevelError PostDaemonAuditParamsLevel = "error"
+	PostDaemonAuditParamsLevelInfo  PostDaemonAuditParamsLevel = "info"
+	PostDaemonAuditParamsLevelTrace PostDaemonAuditParamsLevel = "trace"
+	PostDaemonAuditParamsLevelWarn  PostDaemonAuditParamsLevel = "warn"
 )
 
 // Valid indicates whether the value is a known member of the PostDaemonAuditParamsLevel enum.
 func (e PostDaemonAuditParamsLevel) Valid() bool {
 	switch e {
-	case Debug:
+	case PostDaemonAuditParamsLevelDebug:
 		return true
-	case Error:
+	case PostDaemonAuditParamsLevelError:
 		return true
-	case Info:
+	case PostDaemonAuditParamsLevelInfo:
 		return true
-	case Trace:
+	case PostDaemonAuditParamsLevelTrace:
 		return true
-	case Warn:
+	case PostDaemonAuditParamsLevelWarn:
 		return true
 	default:
 		return false
@@ -1374,6 +1407,40 @@ type ComputeClaim struct {
 	// Reason why the namespace may not take it
 	Reason *string `json:"reason,omitempty"`
 }
+
+// ConfigAlert an alert of the validation of a configuration
+type ConfigAlert struct {
+	Comment string `json:"comment"`
+	Driver  string `json:"driver"`
+
+	// Key the keyword, or the section ended by a dot for an alert of a section
+	Key string `json:"key"`
+
+	// Kind what is wrong, as "unknown keyword" or "resource configuration error"
+	Kind  string           `json:"kind"`
+	Level ConfigAlertLevel `json:"level"`
+
+	// Node the node the configuration was validated on
+	Node string `json:"node"`
+
+	// Path the object, empty for the node configuration
+	Path string `json:"path"`
+}
+
+// ConfigAlertLevel defines model for ConfigAlert.Level.
+type ConfigAlertLevel string
+
+// ConfigAlertItems defines model for ConfigAlertItems.
+type ConfigAlertItems = []ConfigAlert
+
+// ConfigAlertList defines model for ConfigAlertList.
+type ConfigAlertList struct {
+	Items ConfigAlertItems    `json:"items"`
+	Kind  ConfigAlertListKind `json:"kind"`
+}
+
+// ConfigAlertListKind defines model for ConfigAlertList.Kind.
+type ConfigAlertListKind string
 
 // ConsoleTicket defines model for ConsoleTicket.
 type ConsoleTicket struct {

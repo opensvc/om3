@@ -1761,6 +1761,38 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/config/validate:
+    get:
+      operationId: GetNodeConfigValidate
+      description: |
+        Validate the configuration of the node, the cluster configuration
+        merged, on the node: the alerts of the keywords, empty when the
+        configuration is good. Root only, as the configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigAlertList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /api/node/name/{nodename}/config/keywords:
     get:
       operationId: GetNodeConfigKeywords
@@ -4212,6 +4244,45 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/config/validate:
+    get:
+      operationId: GetInstanceConfigValidate
+      description: |
+        Validate the configuration of the object on the node: the alerts of
+        the keywords, and the ones of the resources refusing their
+        configuration when the object loads them, by checks their drivers
+        make on the node, as a network a node has no configuration of. Empty
+        when the configuration is good. The alerts may quote values, so the
+        administrators of the namespace and root only.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigAlertList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/console:
     post:
@@ -10302,6 +10373,58 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/ResourceInfoItem'
+
+    ConfigAlert:
+      type: object
+      description: an alert of the validation of a configuration
+      required:
+        - node
+        - path
+        - level
+        - kind
+        - key
+        - driver
+        - comment
+      properties:
+        node:
+          type: string
+          description: the node the configuration was validated on
+        path:
+          type: string
+          description: the object, empty for the node configuration
+        level:
+          type: string
+          enum:
+            - error
+            - warning
+        kind:
+          type: string
+          description: what is wrong, as "unknown keyword" or "resource configuration error"
+        key:
+          type: string
+          description: the keyword, or the section ended by a dot for an alert of a section
+        driver:
+          type: string
+        comment:
+          type: string
+
+    ConfigAlertItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ConfigAlert'
+
+    ConfigAlertList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ConfigAlertList
+        items:
+          $ref: '#/components/schemas/ConfigAlertItems'
 
     ResourceInfoList:
       type: object
