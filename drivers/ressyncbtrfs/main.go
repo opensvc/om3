@@ -224,6 +224,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) error {
 	// The peers of the configuration, not only the ones of this sync: the
 	// base of a peer not synced this time is kept too.
 	peers := t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
+	t.seedReceivedBase(local, peers, states)
 
 	// The peers are synced at once, each on its own: one failing, or slow,
 	// does not hold the others back, and all the failures are reported.
@@ -259,6 +260,13 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) error {
 	for i, nodename := range nodenames {
 		if results[i] != nil {
 			states[nodename] = *results[i]
+		}
+	}
+	// The runs of the peers synced but the one sent go once every peer is
+	// synced, but the bases of the others as the sync leaves them.
+	for i, nodename := range nodenames {
+		if results[i] != nil && peerErrs[i] == nil {
+			peerErrs[i] = t.prunePeer(nodename, local, r, otherBases(states, nodename))
 		}
 	}
 	errs := errors.Join(peerErrs...)

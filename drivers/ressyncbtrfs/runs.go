@@ -81,6 +81,12 @@ type (
 		// send.
 		BaseID string `json:"base_id,omitempty"`
 
+		// CandidateIDs are the identities of the head snapshots of the
+		// runs the peer may hold in common with a new source, the ones it
+		// received when another node was the source: kept by the source
+		// until a send to the peer succeeds, the base found among them.
+		CandidateIDs []string `json:"candidate_ids,omitempty"`
+
 		// FailedAt is when a send to the peer first failed since the last
 		// one that succeeded. The peer is lagging since.
 		FailedAt time.Time `json:"failed_at,omitzero"`
@@ -350,6 +356,7 @@ func (st *peerState) failed(now time.Time) {
 
 func (st *peerState) strand(now time.Time, reason string) {
 	st.BaseID = ""
+	st.CandidateIDs = nil
 	st.StrandedAt = now
 	st.StrandedReason = reason
 }
@@ -441,7 +448,8 @@ func (t *T) syncPeerFull(ctx context.Context, nodename string, r run, st *peerSt
 }
 
 // installPeer replaces the destination subvolume of nodename by the run it
-// received, and deletes its other runs, which the source no longer sends from.
+// received. Its other runs are deleted by prunePeer, once every peer is
+// synced.
 //
 // A failure to install leaves the peer with the run, and with the base it was
 // sent from: the next sync installs it, or sends the next run from either.
@@ -450,10 +458,67 @@ func (t *T) installPeer(nodename string, r run, st *peerState) error {
 		return fmt.Errorf("%s: install %s: %w", nodename, t.dst.subvol, err)
 	}
 	st.succeeded(r.headID())
-	if err := t.ops.deleteRuns(nodename, t.dst.label, t.runsDir(), []string{r.Name}); err != nil {
+	return nil
+}
+
+// prunePeer deletes the runs of nodename but r, which the peer was just sent,
+// and the runs of local that are the base, or a candidate base, of another
+// peer, as the sync leaves them: the peer needs them the day a switch makes it
+// the source, a peer having no run in common with it stranded. A peer synced
+// keeps r alone once every peer is up to date, the bases of the others having
+// moved to r too.
+func (t *T) prunePeer(nodename string, local []run, r run, keep map[string]bool) error {
+	names := []string{r.Name}
+	for _, l := range local {
+		if keep[l.headID()] && !slices.Contains(names, l.Name) {
+			names = append(names, l.Name)
+		}
+	}
+	if err := t.ops.deleteRuns(nodename, t.dst.label, t.runsDir(), names); err != nil {
 		return fmt.Errorf("%s: delete older runs: %w", nodename, err)
 	}
 	return nil
+}
+
+// otherBases returns the identities of the runs that are the base, or a
+// candidate base, of a peer other than nodename.
+func otherBases(states peerStates, nodename string) map[string]bool {
+	m := make(map[string]bool)
+	for peer, st := range states {
+		if peer == nodename {
+			continue
+		}
+		if st.BaseID != "" {
+			m[st.BaseID] = true
+		}
+		for _, id := range st.CandidateIDs {
+			m[id] = true
+		}
+	}
+	return m
+}
+
+// seedReceivedBase gives the peers with no state yet the runs this node held
+// before the run r took, received when another node was the source: that node,
+// the former source, holds the newest of them, a switch having moved the
+// object, and the other peers of the former source one of them, which it kept
+// on this node as their base. All of them are kept as candidates, until a send
+// to the peer succeeds: kept the newest only, a first send failing deleted the
+// base of a third node, stranded. local is the runs of this node, r the newest.
+func (t *T) seedReceivedBase(local []run, peers []string, states peerStates) {
+	if len(local) < 2 {
+		return
+	}
+	previous := local[:len(local)-1]
+	candidates := make([]string, 0, len(previous))
+	for _, l := range previous {
+		candidates = append(candidates, l.headID())
+	}
+	for _, nodename := range peers {
+		if _, ok := states[nodename]; !ok {
+			states[nodename] = peerState{BaseID: previous[len(previous)-1].headID(), CandidateIDs: candidates}
+		}
+	}
 }
 
 // pruneLocal deletes the runs of the source no peer needs: the newest is
@@ -465,11 +530,13 @@ func (t *T) pruneLocal(local []run, peers []string, states peerStates) error {
 	keep := []string{local[len(local)-1].Name}
 	for _, nodename := range peers {
 		st := states[nodename]
-		if st.BaseID == "" {
-			continue
-		}
-		if r, ok := findRun(local, st.BaseID); ok && !slices.Contains(keep, r.Name) {
-			keep = append(keep, r.Name)
+		for _, id := range append([]string{st.BaseID}, st.CandidateIDs...) {
+			if id == "" {
+				continue
+			}
+			if r, ok := findRun(local, id); ok && !slices.Contains(keep, r.Name) {
+				keep = append(keep, r.Name)
+			}
 		}
 	}
 	return t.ops.deleteRuns("", t.src.label, t.runsDir(), keep)
