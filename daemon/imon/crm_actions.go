@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -75,9 +76,16 @@ func (t *Manager) queueFreeze() error {
 // runStatus updates the CRM status for the manager based on the provided priority.
 // If the manager is stateless, it publishes the instance status directly.
 // Otherwise, it executes the status update through a priority-specific runner.
+//
+// An instance deleted has no status to evaluate: a refresh queued before the
+// delete, run after it, would only find the object gone.
 func (t *Manager) runStatus(prio priority.T) error {
 	if t.instConfig.ActorConfig == nil {
 		t.pubStatelessInstanceStatus()
+		return nil
+	}
+	if !file.Exists(t.path.ConfigFile()) {
+		t.log.Tracef("skip the status evaluation: the configuration file is deleted")
 		return nil
 	}
 	return runner.Run(prio, t.runnerLabel("status"), func() error {
@@ -99,9 +107,15 @@ func (t *Manager) pubStatelessInstanceStatus() {
 
 // requestStatusRefresh requests the current status for a specific priority queue in a thread-safe manner.
 // If the manager is stateless, it publishes the instance status directly.
+// An instance being deleted, or deleted, is not refreshed: its configuration
+// is going, and the status command would find no object.
 func (t *Manager) requestStatusRefresh(prio priority.T) {
 	if t.instConfig.ActorConfig == nil {
 		t.pubStatelessInstanceStatus()
+		return
+	}
+	if t.state.State.IsOneOf(instance.MonitorStateDeleteProgress, instance.MonitorStateDeleteSuccess) {
+		t.log.Tracef("skip the status refresh: the instance is %s", t.state.State)
 		return
 	}
 
@@ -221,8 +235,16 @@ func (t *Manager) crmStart() error {
 	return t.crmAction("start", t.path.String(), "instance", "start")
 }
 
+// crmStatus evaluates the status of the local instance. The object found
+// deleted, its configuration removed while the command ran, is an answer: no
+// status to post, and no failure.
 func (t *Manager) crmStatus() error {
-	return t.crmAction("status", t.path.String(), "instance", "status", "-r")
+	args := []string{t.path.String(), "instance", "status", "-r"}
+	if testCRMAction != nil {
+		return testCRMAction("status", args...)
+	}
+	_, err := t.crmDefaultAction(t.state.OrchestrationID, "status", []int{xerrors.ExitCodeObjectNotFound}, args...)
+	return err
 }
 
 func (t *Manager) crmStonith(nodename string) error {
