@@ -75,23 +75,42 @@ func (t *CmdDaemonCommon) nodeDrain(ctx context.Context) (err error) {
 	return nil
 }
 
-func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
+// backupLocalConfig moves the config directory aside, under the backup
+// directory, in a directory named after name and the time. It returns the
+// path of the backup, empty when the backup directory is missing and the
+// config is left as it is.
+func (t *CmdDaemonCommon) backupLocalConfig(name string) (string, error) {
 	backupDir := rawconfig.Paths.Backup
 	if v, err := file.ExistsAndDir(backupDir); err != nil {
-		return err
+		return "", err
 	} else if !v {
 		t.logger().Infof("Missing directory %s, skip backup", backupDir)
-		return nil
+		return "", nil
 	}
 
-	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05"))
+	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05.000000000"))
 	t.logger().Infof("move all configs to %s", backup)
 	// Prefer file.Move to avoid syscall.EXDEV errors on os.Rename
 	err := file.Move(rawconfig.Paths.Etc, backup)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return backup, nil
+}
+
+// dropBackup removes the config backup made by backupLocalConfig, once the
+// command it was the rollback point of has succeeded, unless asked to keep
+// it. It holds the secrets
+// of the cluster the node was a member of, which the node has no use of
+// anymore. The command has succeeded: a failure is warned.
+func (t *CmdDaemonCommon) dropBackup(backup string) {
+	if backup == "" {
+		return
+	}
+	t.logger().Infof("Drop the config backup %s", backup)
+	if err := os.RemoveAll(backup); err != nil {
+		t.logger().Warnf("drop the config backup: %s", err)
+	}
 }
 
 // cleanupVarDir removes the entries of the opensvc var directory, but the

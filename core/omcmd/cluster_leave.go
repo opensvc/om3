@@ -42,6 +42,11 @@ type (
 		// variable is used. Without either, no user is created.
 		CredentialFile string
 
+		// KeepBackup keeps the config backup once the node has left. It is
+		// removed otherwise, and kept anyway when the leave fails, as its
+		// rollback point.
+		KeepBackup bool
+
 		peerClient *client.T
 		peerToken  string
 		localhost  string
@@ -153,7 +158,8 @@ func (t *CmdClusterLeave) run() (err error) {
 	// The config is moved aside: read what the node keeps of it before.
 	kept := readKeptConfig()
 
-	if err := t.backupLocalConfig(".pre-cluster-leave-etc"); err != nil {
+	backup, err := t.backupLocalConfig(".pre-cluster-leave-etc")
+	if err != nil {
 		return err
 	}
 
@@ -183,6 +189,9 @@ func (t *CmdClusterLeave) run() (err error) {
 		if err := t.createUser(ctx, username, password); err != nil {
 			return fmt.Errorf("create user %s: %w", username, err)
 		}
+	}
+	if !t.KeepBackup {
+		t.dropBackup(backup)
 	}
 	return nil
 }

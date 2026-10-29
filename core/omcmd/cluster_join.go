@@ -56,6 +56,11 @@ type (
 
 		// Timeout is the maximum duration for join
 		Timeout time.Duration
+
+		// KeepBackup keeps the config backup once the node has joined. It
+		// is removed otherwise, and kept anyway when the join fails, as its
+		// rollback point.
+		KeepBackup bool
 	}
 )
 
@@ -308,7 +313,8 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 		}
 	}
 
-	if err := t.backupLocalConfig(".pre-cluster-join-etc"); err != nil {
+	backup, err := t.backupLocalConfig(".pre-cluster-join-etc")
+	if err != nil {
 		return err
 	}
 
@@ -359,6 +365,9 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 	t.logger().Infof("Joined")
 	if cleanupErr != nil {
 		return fmt.Errorf("cleanup opensvc var dir: %w", cleanupErr)
+	}
+	if !t.KeepBackup {
+		t.dropBackup(backup)
 	}
 	return nil
 }
