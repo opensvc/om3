@@ -19,14 +19,31 @@ func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) 
 	return a.proxyOr(ctx, nodename, fn, nil)
 }
 
+// proxyWaiting is proxy for a request the peer holds for wait, when set: the
+// peer answers once the wait ends, later than a client allows an answer by
+// default, and an orchestration or an exec waited for longer than that was
+// answered a 500 while it ran on. The request of the caller bounds it instead.
+func (a *DaemonAPI) proxyWaiting(ctx echo.Context, nodename string, wait *string, fn func(*client.T) (*http.Response, error)) error {
+	var opts []funcopt.O
+	if wait != nil && *wait != "" {
+		opts = append(opts, client.WithTimeout(0))
+	}
+	return a.proxyWith(ctx, nodename, fn, nil, opts...)
+}
+
 // proxyOr is proxy, with onErr answering a request the peer did not answer,
 // in place of the internal error proxy answers.
 func (a *DaemonAPI) proxyOr(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error), onErr func(error) error) error {
+	return a.proxyWith(ctx, nodename, fn, onErr)
+}
+
+// proxyWith is proxyOr, with options of the client of the peer.
+func (a *DaemonAPI) proxyWith(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error), onErr func(error) error, opts ...funcopt.O) error {
 	if data := node.StatusData.GetByNode(nodename); data == nil {
 		return JSONProblemf(ctx, http.StatusNotFound, "node status data not found", "%s", nodename)
 	}
 	GetLogger(ctx).Tracef("create proxy client for %s", nodename)
-	c, err := a.newProxyClient(ctx, nodename)
+	c, err := a.newProxyClient(ctx, nodename, opts...)
 	if err != nil {
 		GetLogger(ctx).Errorf("create proxy client for %s: %s", nodename, err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
