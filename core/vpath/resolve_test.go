@@ -229,3 +229,27 @@ func TestDevpathsRefusesALoop(t *testing.T) {
 	_, err = Devpaths(ctx, "disk#1", "disk#2", "ns1", o)
 	require.Error(t, err)
 }
+
+// A reference to the devices a resource exposes, left as written by the
+// configuration when the resource exposes none, as a loop not attached,
+// names the resource: not started, it is not accessible, rather than a value
+// that is no resource id.
+func TestDevpathsOfAnExposedDevsReferenceLeftAsWritten(t *testing.T) {
+	ctx := context.Background()
+	o := fakeObject{
+		"disk#0": fakeDisk{avail: status.Down},
+		"disk#1": fakeDisk{devs: []string{"/dev/loop3"}, avail: status.Up},
+	}
+	for _, s := range []string{"{disk#0.exposed_devs[0]}", "{disk#0.exposed_devs}"} {
+		_, err := Devpaths(ctx, "disk#9", s, "ns1", o)
+		var accessErr ErrAccess
+		require.ErrorAs(t, err, &accessErr, s)
+		assert.Equal(t, "disk#0", accessErr.RID)
+	}
+	p, err := Devpath(ctx, "disk#9", "{disk#1.exposed_devs[0]}", "ns1", o)
+	require.NoError(t, err)
+	assert.Equal(t, "/dev/loop3", p)
+
+	_, err = Devpaths(ctx, "disk#9", "{disk#0.other}", "ns1", o)
+	assert.ErrorContains(t, err, "is not a resource id", "another reference is not taken for a resource")
+}
