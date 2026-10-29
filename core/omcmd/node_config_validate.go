@@ -60,12 +60,15 @@ func (t *CmdNodeConfigValidate) Run() error {
 	wg.Wait()
 	done <- true
 
-	return output.Renderer{
+	if err := (output.Renderer{
 		DefaultOutput: "tab=LEVEL:icon,DRIVER:driver,KEY:key,KIND:kind,COMMENT:comment",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          alerts,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print()); err != nil {
+		return err
+	}
+	return errorsOf(alerts)
 }
