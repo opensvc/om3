@@ -192,9 +192,21 @@ func (t *device) open() error {
 		if errors.Is(err, sign.ErrLegacySignature) {
 			return err
 		}
+		// The start fails, and is retried: an open file left behind at
+		// each try was a descriptor leaked until collected.
+		t.close()
 		return fmt.Errorf("heartbeat disk signature verify: %w", err)
 	}
 	return nil
+}
+
+// close closes the device file, if open.
+func (t *device) close() {
+	if t.file == nil {
+		return
+	}
+	_ = t.file.Close()
+	t.file = nil
 }
 
 // ensureBlockDevice checks if the specified device path refers to a valid

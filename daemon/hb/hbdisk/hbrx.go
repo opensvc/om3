@@ -84,6 +84,7 @@ func (t *rx) Stop() error {
 	}
 	t.Wait()
 	t.log.Tracef("wait done")
+	t.base.device.close()
 	return nil
 }
 
@@ -122,6 +123,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	}
 	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
 		cancel()
+		t.base.device.close()
 		return err
 	}
 

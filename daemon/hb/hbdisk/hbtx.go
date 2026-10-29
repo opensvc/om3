@@ -55,6 +55,7 @@ func (t *tx) Stop() error {
 	}
 	t.Wait()
 	t.log.Tracef("wait done")
+	t.base.device.close()
 	return nil
 }
 
