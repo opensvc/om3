@@ -127,6 +127,10 @@ type (
 		// no instance runs one: see replayDeferredEventRefresh.
 		eventRefreshDeferred bool
 
+		// leaderWaited is the leader of a provision the local instance
+		// waits for, as it was when it began to: see hasLeaderProvisioned.
+		leaderWaited leaderWaited
+
 		// waitSyncsTimer fires when a stop has waited long enough for
 		// the syncs running, waiting since waitSyncsSince.
 		waitSyncsTimer *time.Timer

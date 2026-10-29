@@ -131,12 +131,13 @@ func TestTheLeaderCountsAPeerDoneWithTheOrchestrationAsPreflighted(t *testing.T)
 // The leader of a provision of an object whose instance is n/a once
 // provisioned, as one of a directory, is no leader candidate once done, and a
 // node waiting for it may become the leader: it provisions as a follower,
-// its leader done, rather than wait for itself.
+// the leader it waited for done, rather than wait for itself.
 func TestANodeWaitingForTheLeaderProvisionsWhenTheLeadershipMovedToIt(t *testing.T) {
 	m := newProvisionedTestManager(instance.MonitorStateWaitLeader)
 	m.state.IsLeader = true
+	m.leaderWaited = leaderWaited{node: "node2", orchestrationID: m.state.OrchestrationID}
 	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
-	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateStartProgress, OrchestrationID: m.state.OrchestrationID}
 	m.instStatus["node2"] = instance.Status{Avail: status.NotApplicable, Provisioned: provisioned.False}
 	require.False(t, m.hasLeaderProvisioned(), "the former leader not done yet")
 
@@ -154,13 +155,23 @@ func TestANodeWaitingForTheLeaderProvisionsWhenTheLeadershipMovedToIt(t *testing
 		OrchestrationIsDone: true,
 	}
 	require.False(t, m.hasLeaderProvisioned(), "done with another orchestration")
+
+	m.leaderWaited = leaderWaited{node: "node2", orchestrationID: uuid.New()}
+	m.instMonitor["node2"] = instance.Monitor{
+		State:               instance.MonitorStateIdle,
+		OrchestrationID:     m.state.OrchestrationID,
+		OrchestrationIsDone: true,
+	}
+	require.False(t, m.hasLeaderProvisioned(), "waited for in another orchestration")
 }
 
-// A peer done with the orchestration, as one already provisioned when it
-// began, tells nothing of a leader doing its part: a node waiting for that
-// leader waits on.
-func TestANodeWaitingForTheLeaderWaitsForALeaderProvisioning(t *testing.T) {
+// A peer done with the orchestration other than the leader waited for, as one
+// already provisioned when it began, tells nothing of the leader: a node
+// waiting for it waits on, whether the leader provisions, lost the leadership
+// while provisioning, or failed.
+func TestANodeWaitingForTheLeaderWaitsForTheLeaderItWaitedFor(t *testing.T) {
 	m := newProvisionedTestManager(instance.MonitorStateWaitLeader)
+	m.leaderWaited = leaderWaited{node: "node3", orchestrationID: m.state.OrchestrationID}
 	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
 	m.instMonitor["node2"] = instance.Monitor{
 		State:               instance.MonitorStateIdle,
@@ -177,18 +188,20 @@ func TestANodeWaitingForTheLeaderWaitsForALeaderProvisioning(t *testing.T) {
 	require.Equal(t, "node3", m.provisioningLeader())
 	require.False(t, m.hasLeaderProvisioned(), "the leader provisioning")
 
+	// The leader lost the leadership while provisioning, to the local node.
 	m.instMonitor["node3"] = instance.Monitor{
-		State:           instance.MonitorStateWaitLeader,
-		OrchestrationID: m.state.OrchestrationID,
-		IsLeader:        true,
-	}
-	require.True(t, m.hasLeaderProvisioned(), "the leader waiting for a leader, a peer done")
-
-	// The former leader lost the leadership while provisioning.
-	m.instMonitor["node4"] = instance.Monitor{
 		State:           instance.MonitorStateProvisionProgress,
 		OrchestrationID: m.state.OrchestrationID,
 	}
-	m.instStatus["node4"] = instance.Status{Avail: status.Undef, Provisioned: provisioned.False}
-	require.False(t, m.hasLeaderProvisioned(), "the leader waiting for a leader, a peer provisioning")
+	m.state.IsLeader = true
+	require.Equal(t, m.localhost, m.provisioningLeader())
+	require.False(t, m.hasLeaderProvisioned(), "the former leader provisioning")
+	require.False(t, m.hasLeaderProvisionedFailed(), "the former leader provisioning")
+
+	m.instMonitor["node3"] = instance.Monitor{
+		State:           instance.MonitorStateProvisionFailure,
+		OrchestrationID: m.state.OrchestrationID,
+	}
+	require.False(t, m.hasLeaderProvisioned(), "the former leader failed")
+	require.True(t, m.hasLeaderProvisionedFailed(), "the former leader failed")
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
@@ -152,6 +154,7 @@ func (t *Manager) provisionedFromChecked() {
 		}
 		return
 	} else {
+		t.leaderWaited = leaderWaited{node: t.provisioningLeader(), orchestrationID: t.state.OrchestrationID}
 		t.transitionTo(instance.MonitorStateWaitLeader)
 	}
 }
@@ -303,74 +306,60 @@ func (t *Manager) isProvisioningLeader() bool {
 	}
 }
 
+// leaderWaited is the leader of a provision a node waits for, in the
+// orchestration of orchestrationID.
+type leaderWaited struct {
+	node            string
+	orchestrationID uuid.UUID
+}
+
+// waitedLeader returns the leader the local instance began to wait for in
+// the orchestration running, empty when it waits for none.
+func (t *Manager) waitedLeader() string {
+	if t.leaderWaited.orchestrationID != t.state.OrchestrationID {
+		return ""
+	}
+	return t.leaderWaited.node
+}
+
 // hasLeaderProvisioned says whether the instance leading the provision
 // provisioned, so a node waiting for it provisions as a follower.
 //
 // The leader may change during the orchestration: an instance provisioned
 // n/a, as one of a directory, is no leader candidate anymore, and a node
-// waiting for the leader became the leader, waiting for itself. With the
-// leader waiting for a leader and no peer provisioning or starting, no node
-// does the part of the leader, so a peer done with its part of the
-// orchestration, provisioned, did it, or followed it: the leader provisioned.
-// With a node doing the part of the leader, as one that lost the leadership
-// while provisioning, a peer done tells nothing of it, as one already
-// provisioned when the orchestration began.
+// waiting for the leader became the leader, waiting for itself. The leader
+// the node began to wait for did the part of the leader then: it provisioned
+// once done with the orchestration, provisioned. A peer done otherwise tells
+// nothing of the leader, as one already provisioned when the orchestration
+// began.
 func (t *Manager) hasLeaderProvisioned() bool {
 	leader := t.provisioningLeader()
 	if leaderInstanceStatus, ok := t.instStatus[leader]; ok && leaderInstanceStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 		return true
 	}
-	if !t.isWaitingLeader(leader) || t.hasPeerProvisioning() {
+	waited := t.waitedLeader()
+	if waited == "" || waited == leader || waited == t.localhost {
 		return false
 	}
-	return t.hasPeerDoneProvisioned()
-}
-
-// hasPeerProvisioning says whether a peer instance provisions or starts in
-// the orchestration.
-func (t *Manager) hasPeerProvisioning() bool {
-	for node, instMon := range t.instMonitor {
-		if node == t.localhost || instMon.OrchestrationID != t.state.OrchestrationID {
-			continue
-		}
-		if instMon.State.IsOneOf(instance.MonitorStateProvisionProgress, instance.MonitorStateStartProgress) {
-			return true
-		}
+	instMon, ok := t.instMonitor[waited]
+	if !ok || !instMon.OrchestrationIsDone || instMon.OrchestrationID != t.state.OrchestrationID {
+		return false
 	}
-	return false
+	return t.instStatus[waited].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 }
 
-// isWaitingLeader says whether the instance of node waits for the leader of
-// the provision.
-func (t *Manager) isWaitingLeader(node string) bool {
-	if node == t.localhost {
-		return t.state.State == instance.MonitorStateWaitLeader
-	}
-	instMon, ok := t.instMonitor[node]
-	return ok && instMon.State == instance.MonitorStateWaitLeader && instMon.OrchestrationID == t.state.OrchestrationID
-}
-
-// hasPeerDoneProvisioned says whether a peer instance is done with its part
-// of the orchestration, provisioned.
-func (t *Manager) hasPeerDoneProvisioned() bool {
-	for node, instMon := range t.instMonitor {
-		if node == t.localhost {
-			continue
-		}
-		if !instMon.OrchestrationIsDone || instMon.OrchestrationID != t.state.OrchestrationID {
-			continue
-		}
-		if t.instStatus[node].Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
-			return true
-		}
-	}
-	return false
-}
-
+// hasLeaderProvisionedFailed says whether the instance leading the provision
+// failed it, or the leader the local instance began to wait for did, the
+// leadership having moved from it since.
 func (t *Manager) hasLeaderProvisionedFailed() bool {
 	leader := t.provisioningLeader()
 	if t.instMonitor[leader].State.IsOneOf(provisionedFailureStates...) {
 		return true
 	}
-	return false
+	waited := t.waitedLeader()
+	if waited == "" || waited == leader || waited == t.localhost {
+		return false
+	}
+	instMon, ok := t.instMonitor[waited]
+	return ok && instMon.OrchestrationID == t.state.OrchestrationID && instMon.State.IsOneOf(provisionedFailureStates...)
 }
