@@ -44,7 +44,7 @@ func (a *DaemonAPI) GetDaemonOrchestration(ctx echo.Context, nodename string, or
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
-		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return a.proxyWaiting(ctx, nodename, params.Wait, func(c *client.T) (*http.Response, error) {
 			return c.GetDaemonOrchestration(ctx.Request().Context(), nodename, orchestrationID, &params)
 		})
 	}

@@ -18,7 +18,7 @@ func (a *DaemonAPI) GetDaemonExecs(ctx echo.Context, nodename string, params api
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
-		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return a.proxyWaiting(ctx, nodename, params.Wait, func(c *client.T) (*http.Response, error) {
 			return c.GetDaemonExecs(ctx.Request().Context(), nodename, &params)
 		})
 	}
@@ -85,7 +85,7 @@ func (a *DaemonAPI) GetDaemonExec(ctx echo.Context, nodename string, execID uuid
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
-		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+		return a.proxyWaiting(ctx, nodename, params.Wait, func(c *client.T) (*http.Response, error) {
 			return c.GetDaemonExec(ctx.Request().Context(), nodename, execID, &params)
 		})
 	}
