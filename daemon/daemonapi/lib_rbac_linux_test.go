@@ -97,7 +97,7 @@ volume_mounts = {env.mounts}
 
 	assert.Error(t, rbacOf(t, `
 [env]
-typ = kvm
+typ = lxc
 [container#0]
 type = {env.typ}
 `))

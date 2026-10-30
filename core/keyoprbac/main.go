@@ -12,6 +12,7 @@ package keyoprbac
 import (
 	"fmt"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -124,6 +125,78 @@ const (
 // what the object can reach. The other types, the ones that run on the node
 // itself, do not.
 var containerTypes = []string{"oci", "docker", "podman"}
+
+// guestTypes is containerTypes, and the kvm type: qemu confines a guest as an
+// engine does a container, and the keywords of the section say what it takes
+// of the node, which kvmKeywords weighs one by one.
+var guestTypes = append(slices.Clone(containerTypes), "kvm")
+
+// kvmKeywords is the keywords of a section running the kvm driver a user
+// holding no root grant may set, each with the check of its value, nil for a
+// keyword whose value decides nothing the object does not own.
+//
+// The other ones are refused, as the keywords of a type of the group is
+// refused: the driver runs virt-install as root, so a keyword added to it later
+// is not one to open by not having weighed it. What is out of the list is
+// what reaches past the guest: virtinst and virtinst_args say any device of
+// the node, the bridge a segment no filter guards, network_filter the guard
+// itself, and rcmd and osvc_root_path run commands.
+var kvmKeywords = map[string]func(string) bool{
+	"cloud_init":    nil,
+	"start_timeout": nil,
+	"stop_timeout":  nil,
+	"vcpus":         nil,
+	"memory":        nil,
+	"disk":          deniesGuestDisk,
+	"image":         deniesGuestImage,
+	"network":       deniesGuestNetwork,
+	"osinfo":        deniesGuestOSInfo,
+}
+
+// guestOSInfo is what a name of the osinfo database is. virt-install reads the
+// keyword as a list of options, so anything else is an option.
+var guestOSInfo = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+func deniesGuestOSInfo(value string) bool {
+	return value != "" && !guestOSInfo.MatchString(value)
+}
+
+// deniesGuestDisk reports whether a disk value names something else than the
+// volumes of the object, a device of the node first of all.
+func deniesGuestDisk(value string) bool {
+	for _, e := range strings.Fields(value) {
+		group, index, ok := strings.Cut(e, "#")
+		if !ok || group != "volume" || index == "" || strings.ContainsAny(index, "/:") {
+			return true
+		}
+	}
+	return false
+}
+
+// deniesGuestImage reports whether an image value is no url. A path is read by
+// root and written to the disk of the guest, whichever file of the node it
+// names. A url is fetched as the node policy on urls says.
+func deniesGuestImage(value string) bool {
+	value = strings.TrimSpace(value)
+	return value != "" && !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://")
+}
+
+// deniesGuestNetwork reports whether a network value names something else than
+// networks, by name: what a namespace may draw from is its claims' to say,
+// when an address is drawn.
+func deniesGuestNetwork(value string) bool {
+	return slices.ContainsFunc(strings.Fields(value), isNoName)
+}
+
+// deniesKVMKeyword reports whether a keyword of a section running the kvm
+// driver needs the root grant.
+func deniesKVMKeyword(option, value string) bool {
+	check, ok := kvmKeywords[option]
+	if !ok {
+		return true
+	}
+	return check != nil && check(value)
+}
 
 // taskTypes is the task types a user holding no root grant may ask for: the
 // container ones, and acme, whose action is om's own, renewing the
@@ -298,7 +371,7 @@ var rules = map[string]Group{
 		"type": {
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
-			Values: containerTypes,
+			Values: guestTypes,
 		},
 		"run_args": {
 			Grant:  rbac.GrantRoot,
@@ -924,15 +997,22 @@ func Denied(grants rbac.Grants, kind naming.Kind, section, option, value string,
 // common keywords, which are about the lifecycle of the object and not what
 // the resource takes from the node.
 //
+// A kvm section is opened by its type, and answers keyword by keyword: see
+// kvmKeywords.
+//
 // typ is the driver the section runs where the keyword changed, the one its
-// group falls back to when it names none, and "" when it runs none.
-func DeniedByDriver(grants rbac.Grants, kind naming.Kind, section, option, typ string, set Section) error {
+// group falls back to when it names none, and "" when it runs none. value is
+// what the keyword takes there.
+func DeniedByDriver(grants rbac.Grants, kind naming.Kind, section, option, value, typ string, set Section) error {
 	option, _, _ = strings.Cut(option, "@")
 	if typ == "" || option == "type" || commonKeywords[option] {
 		return nil
 	}
 	if err := Denied(grants, kind, section, "type", typ, set); err != nil {
 		return fmt.Errorf("a keyword of a section running the %s driver: %w", typ, err)
+	}
+	if typ == "kvm" && deniesKVMKeyword(option, value) && !grants.HasGrant(rbac.GrantRoot) {
+		return fmt.Errorf("this keyword of a kvm section, or this value of it, %s", reasonRoot)
 	}
 	return nil
 }

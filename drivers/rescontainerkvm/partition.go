@@ -117,10 +117,23 @@ func (t *T) guestMemory() int64 {
 	return 0
 }
 
+// uncappableError says a namespace counts on caps this node can not put on a
+// guest: libvirt places it in a partition of its own, out of them all.
+func (t *T) uncappableError() error {
+	for _, claimType := range claim.ComputeTypes {
+		if _, capped, err := claim.Limit(t.Path.Namespace, claimType, ""); err != nil {
+			return err
+		} else if capped {
+			return fmt.Errorf("the %s namespace claims the %s, and this node can not cap a guest: it needs systemd and a libvirt with partitions", t.Path.Namespace, claimType)
+		}
+	}
+	return nil
+}
+
 // memCapError says the process group of the resource can not hold the guest.
 func (t *T) memCapError() error {
 	if t.partition() == "" {
-		return nil
+		return t.uncappableError()
 	}
 	o, ok := t.GetObject().(interface {
 		MemCap(rid string) (int64, error)

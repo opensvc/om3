@@ -378,6 +378,22 @@ func (t *T) containerStart(ctx context.Context) error {
 	return nil
 }
 
+// Configure names the guest after its resource when the configuration does
+// not: the name of a domain is unique on a node, as this one is in a cluster.
+func (t *T) Configure() error {
+	if t.Name == "" {
+		t.Name = defaultName(t.Path, t.RID())
+	}
+	return nil
+}
+
+// defaultName is the name of the domain of a resource, in the words of the
+// container engines: ns..name.container.1 for a service. The two dots tell
+// the namespace from the name, which neither holds.
+func defaultName(p naming.Path, rid string) string {
+	return p.Namespace + ".." + p.Name + "." + strings.ReplaceAll(rid, "#", ".")
+}
+
 // doPartitions has the domain run in the process group of the resource.
 //
 // libvirt places a guest in a partition of its own whatever the group of the
@@ -987,6 +1003,11 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	}
 	if !isProvisioned {
 		t.Log().Infof("skip kvm unprovision: container is not provisioned")
+		// A definition another node sent is a file libvirt did not load. Left
+		// behind, it says the domain is defined to the next provision.
+		if err := os.Remove(t.configFile()); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 		return nil
 	}
 	if t.hasConfigFile() {
@@ -1002,6 +1023,19 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+// ProvisionAsFollower leaves a guest the keywords describe to the leader: the
+// image would be written over a disk the nodes may share, or hold a copy of, and
+// a second guest started on it. The definition reaches this node as the one of
+// any guest does. A guest made by a command stays that command's: it runs on
+// the nodes the resource is not shared by.
+func (t *T) ProvisionAsFollower(ctx context.Context) error {
+	if t.hasSpec() || t.IsShared() {
+		t.Log().Infof("skip kvm provision: the placement leader makes the guest")
+		return nil
+	}
+	return t.ProvisionAsLeader(ctx)
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
@@ -1040,7 +1074,9 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		// virt-install tells its advice there, of a provision going well: its
+		// failure is told by its exit code.
+		command.WithStderrLogLevel(zerolog.WarnLevel),
 		//command.WithTimeout(*t.ProvisionTimeout),
 	)
 	return cmd.Run()

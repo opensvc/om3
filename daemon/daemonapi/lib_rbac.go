@@ -318,6 +318,16 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			k := key.New(section, option)
 			nodename, changed := keyChangedOn(from, to, k, scopes)
 			if !changed {
+				// The keywords of a section mean what its driver makes of
+				// them: one written under a type reading nothing of it
+				// says something the day the type changes, which is
+				// the write that decides it.
+				for _, nodename := range typeChangedOn(from, to, section, scopes) {
+					value := evaluatedOrWrittenAs(to, k, nodename)
+					if err := driverRbacOn(grants, kind, to, k, value, set, nodename); err != nil {
+						return err
+					}
+				}
 				continue
 			}
 			if followsObjectSize(kind, from, to, k) {
@@ -334,13 +344,16 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			if err := keyopRbacOn(grants, kind, kop, set, nodename); err != nil {
 				return err
 			}
-			if err := driverRbacOn(grants, kind, to, k, set, nodename); err != nil {
+			if err := driverRbacOn(grants, kind, to, k, kop.Value, set, nodename); err != nil {
 				return err
 			}
 		}
 		if err := sectionDriverRbac(grants, kind, from, to, section, set, scopes); err != nil {
 			return err
 		}
+	}
+	if err := encapRbac(grants, from, to, scopes); err != nil {
+		return err
 	}
 	if from == nil {
 		return nil
@@ -359,9 +372,57 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			if err := keyUnsetRbac(grants, kind, k, evaluatedOrWritten(from, k), set); err != nil {
 				return err
 			}
-			if err := driverRbacOn(grants, kind, from, k, set, ""); err != nil {
+			if err := driverRbacOn(grants, kind, from, k, "", set, ""); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// typeChangedOn returns the nodes a write changes the type of a section on, as
+// driverRbacOn reads it: a type written for one node changes nothing of the
+// keyword as the other ones read it.
+func typeChangedOn(from, to *xconfig.T, section string, scopes []string) []string {
+	if from == nil {
+		return nil
+	}
+	k := key.New(section, "type")
+	l := make([]string, 0)
+	for _, nodename := range scopes {
+		if from.GetStringAs(k, nodename) != to.GetStringAs(k, nodename) {
+			l = append(l, nodename)
+		}
+	}
+	return l
+}
+
+// encapRbac refuses a kvm guest with encapsulated nodes to a user holding no
+// root grant.
+//
+// The node reaches a guest by name, as root, to run the actions of what the
+// guest is said to host: a name of the object could be the one of another
+// host, and what answers there would be run commands the user chose. A
+// container is reached through its engine, which only reaches the container.
+func encapRbac(grants rbac.Grants, from, to *xconfig.T, scopes []string) error {
+	if grants.HasGrant(rbac.GrantRoot) {
+		return nil
+	}
+	encapNodes := key.New("DEFAULT", "encapnodes")
+	for _, section := range to.SectionStrings() {
+		if !strings.HasPrefix(section, "container#") {
+			continue
+		}
+		k := key.New(section, "type")
+		for _, nodename := range scopes {
+			if to.GetStringAs(encapNodes, nodename) == "" || to.GetStringAs(k, nodename) != "kvm" {
+				continue
+			}
+			if from != nil && from.GetStringAs(encapNodes, nodename) == to.GetStringAs(encapNodes, nodename) && from.GetStringAs(k, nodename) == "kvm" {
+				// Root set it up: the write is about something else.
+				continue
+			}
+			return fmt.Errorf("%w: %s with encapnodes on %s: requires the root grant", ErrDenied, section, nodename)
 		}
 	}
 	return nil
@@ -627,13 +688,13 @@ func keyopRbacOn(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac
 // the one the group falls back to when it names none. cfg is the
 // configuration the section runs that driver in, the one written for a
 // keyword set, the one before the write for a keyword taken away.
-func driverRbacOn(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T, k key.T, set keyoprbac.Section, nodename string) error {
+func driverRbacOn(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T, k key.T, value string, set keyoprbac.Section, nodename string) error {
 	typ := cfg.GetStringAs(key.New(k.Section, "type"), nodename)
 	if typ == "" {
 		group, _, _ := strings.Cut(k.Section, "#")
 		typ = driver.DefaultDriver[driver.NewGroup(group)]
 	}
-	err := keyoprbac.DeniedByDriver(grants, kind, k.Section, k.Option, typ, set)
+	err := keyoprbac.DeniedByDriver(grants, kind, k.Section, k.Option, value, typ, set)
 	switch {
 	case err == nil:
 		return nil
