@@ -762,29 +762,32 @@ var (
 		Since:     "v3.0.0-rc44",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.acme_port"),
 	}
-	kwNodeListenerRateLimiterRate = keywords.Keyword{
+	kwNodeListenerThrottleRate = keywords.Keyword{
+		Aliases:   []string{"rate_limiter_rate"},
 		Default:   "20",
 		Converter: converters.Int,
-		Option:    "rate_limiter_rate",
+		Option:    "throttle_rate",
 		Section:   "listener",
 		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/node/listener.rate_limiter_rate"),
+		Text:      keywords.NewText(fs, "text/kw/node/listener.throttle_rate"),
 	}
-	kwNodeListenerRateLimiterBurst = keywords.Keyword{
+	kwNodeListenerThrottleBurst = keywords.Keyword{
+		Aliases:   []string{"rate_limiter_burst"},
 		Default:   "100",
 		Converter: converters.Int,
-		Option:    "rate_limiter_burst",
+		Option:    "throttle_burst",
 		Section:   "listener",
 		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/node/listener.rate_limiter_burst"),
+		Text:      keywords.NewText(fs, "text/kw/node/listener.throttle_burst"),
 	}
-	kwNodeListenerRateLimiterExpires = keywords.Keyword{
+	kwNodeListenerThrottleExpires = keywords.Keyword{
+		Aliases:   []string{"rate_limiter_expires"},
 		Default:   "60s",
 		Converter: converters.Duration,
-		Option:    "rate_limiter_expires",
+		Option:    "throttle_expires",
 		Section:   "listener",
 		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/node/listener.rate_limiter_expires"),
+		Text:      keywords.NewText(fs, "text/kw/node/listener.throttle_expires"),
 	}
 	kwNodeSyslogFacility = keywords.Keyword{
 		Default: "daemon",
@@ -2093,9 +2096,9 @@ var (
 		&kwNodeListenerPort,
 		&kwNodeListenerOpenIDIssuer,
 		&kwNodeListenerOpenIDClientID,
-		&kwNodeListenerRateLimiterRate,
-		&kwNodeListenerRateLimiterBurst,
-		&kwNodeListenerRateLimiterExpires,
+		&kwNodeListenerThrottleRate,
+		&kwNodeListenerThrottleBurst,
+		&kwNodeListenerThrottleExpires,
 		&kwNodeListenerTLSSecs,
 		&kwNodeListenerACMEPort,
 		&kwNodeSyslogFacility,

@@ -104,11 +104,11 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
 		keyListenerUXOwnerGroup   = key.New("listener", "ux_owner_group")
 
-		keyListenerRateLimiterRate    = key.New("listener", "rate_limiter_rate")
-		keyListenerRateLimiterBurst   = key.New("listener", "rate_limiter_burst")
-		keyListenerRateLimiterExpires = key.New("listener", "rate_limiter_expires")
-		keyListenerTLSSecs            = key.New("listener", "tls_secs")
-		keyListenerACMEPort           = key.New("listener", "acme_port")
+		keyListenerThrottleRate    = key.New("listener", "throttle_rate")
+		keyListenerThrottleBurst   = key.New("listener", "throttle_burst")
+		keyListenerThrottleExpires = key.New("listener", "throttle_expires")
+		keyListenerTLSSecs         = key.New("listener", "tls_secs")
+		keyListenerACMEPort        = key.New("listener", "acme_port")
 
 		keyNodeSSHKey = key.New("node", "sshkey")
 	)
@@ -154,10 +154,10 @@ func getClusterConfig() (*cluster.Config, error) {
 	}
 
 	cfg.Listener.RateLimiter = cluster.RateLimiterConfig{
-		Rate:  rate.Limit(c.GetInt(keyListenerRateLimiterRate)),
-		Burst: c.GetInt(keyListenerRateLimiterBurst),
+		Rate:  rate.Limit(c.GetInt(keyListenerThrottleRate)),
+		Burst: c.GetInt(keyListenerThrottleBurst),
 	}
-	if expires := c.GetDuration(keyListenerRateLimiterExpires); expires != nil {
+	if expires := c.GetDuration(keyListenerThrottleExpires); expires != nil {
 		cfg.Listener.RateLimiter.Expires = *expires
 	}
 	cfg.Listener.TLSSecs = c.GetStrings(keyListenerTLSSecs)
