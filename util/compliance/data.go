@@ -191,8 +191,10 @@ func (t Data) ExpandModules(modsetNames, modNames []string) Modules {
 		}
 	}
 	for _, modsetName := range modsetNames {
-		for childModsetName, childModName := range t.CascadingModulesetModules(modsetName) {
-			m[childModName] = NewModule(childModName).SetModulesetName(childModsetName)
+		for childModName, childModsetName := range t.CascadingModulesetModules(modsetName) {
+			if mod, ok := all[childModName]; ok {
+				m[childModName] = mod.SetModulesetName(childModsetName)
+			}
 		}
 	}
 	l := make(Modules, 0)
