@@ -74,6 +74,21 @@ var (
 			Example:      "br-prd",
 		},
 		{
+			Option:    "network",
+			Attr:      "Network",
+			Converter: converters.List,
+			Text:      keywords.NewText(fs, "text/kw/network"),
+			Example:   "backend3 backend5",
+		},
+		{
+			Option:    "network_filter",
+			Attr:      "NetworkFilter",
+			Converter: converters.Bool,
+			Default:   "true",
+			Text:      keywords.NewText(fs, "text/kw/network_filter"),
+			Example:   "false",
+		},
+		{
 			Option:       "osinfo",
 			Attr:         "OSInfo",
 			Provisioning: true,

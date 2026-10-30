@@ -37,7 +37,9 @@ type (
 		osValue  string
 		disks    []string
 		bridges  []string
+		nics     []guestNIC
 		userData string
+		netData  string
 		extra    []string
 	}
 )
@@ -59,8 +61,20 @@ func (t vmSpec) args() []string {
 	for _, bridge := range t.bridges {
 		l = append(l, "--network", "bridge="+bridge+",model=virtio")
 	}
+	for i, n := range t.nics {
+		// The tap is om's, filtered before the guest runs: libvirt is to use
+		// it rather than make one, which virt-install has no option to say.
+		l = append(l,
+			"--network", fmt.Sprintf("type=ethernet,target.dev=%s,mac=%s,model=virtio", n.dev, n.mac),
+			"--xml", fmt.Sprintf("./devices/interface[%d]/target/@managed=no", len(t.bridges)+i+1),
+		)
+	}
 	if t.userData != "" {
-		l = append(l, "--cloud-init", "user-data="+t.userData)
+		seed := "user-data=" + t.userData
+		if t.netData != "" {
+			seed += ",network-config=" + t.netData
+		}
+		l = append(l, "--cloud-init", seed)
 	}
 	l = append(l, "--noautoconsole")
 	return append(l, t.extra...)
@@ -69,7 +83,7 @@ func (t vmSpec) args() []string {
 // hasSpec says the keywords describe the guest to make, rather than virtinst
 // saying how to make it, or nothing, a domain defined by a sysadmin.
 func (t *T) hasSpec() bool {
-	return t.VCPUs > 0 || t.Memory != nil || len(t.Disk) > 0 || len(t.Bridge) > 0 || t.OSInfo != "" ||
+	return t.VCPUs > 0 || t.Memory != nil || len(t.Disk) > 0 || len(t.Bridge) > 0 || len(t.Network) > 0 || t.OSInfo != "" ||
 		t.Image != "" || t.CloudInit != "" || len(t.VirtInstArgs) > 0
 }
 
@@ -81,7 +95,7 @@ func (t *T) specError() error {
 		return nil
 	}
 	if len(t.VirtInst) > 0 {
-		return errors.New("virtinst says all of the command: it excludes vcpus, memory, disk, bridge, osinfo, image, cloud_init and virtinst_args")
+		return errors.New("virtinst says all of the command: it excludes vcpus, memory, disk, bridge, network, osinfo, image, cloud_init and virtinst_args")
 	}
 	missing := make([]string, 0)
 	if t.VCPUs <= 0 {
@@ -96,7 +110,7 @@ func (t *T) specError() error {
 	if len(missing) > 0 {
 		return fmt.Errorf("a guest needs %s", strings.Join(missing, ", "))
 	}
-	return nil
+	return t.specNetworkError()
 }
 
 // virtInstHelp returns what the virt-install of the node says of its options:
@@ -152,7 +166,7 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 		extra:    t.VirtInstArgs,
 	}
 	spec.osFlag, spec.osValue = osOption(help, t.OSInfo)
-	if t.CloudInit != "" {
+	if t.CloudInit != "" || (t.Image != "" && len(t.Network) > 0) {
 		if !bytes.Contains(help, []byte("--cloud-init")) {
 			return nil, cleanup, fmt.Errorf("the %s of this node has no --cloud-init option", virtInstall)
 		}
@@ -163,6 +177,19 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 		cleanup = func() { _ = os.Remove(p) }
 		spec.userData = p
 	}
+	spec.nics, err = t.networkUp(ctx)
+	if err != nil {
+		return nil, cleanup, err
+	}
+	if spec.userData != "" && len(spec.nics) > 0 {
+		p, err := writeSeedFile(t.Name, "network-config", []byte(networkConfig(spec.nics)))
+		if err != nil {
+			return nil, cleanup, err
+		}
+		removeUserData := cleanup
+		cleanup = func() { removeUserData(); _ = os.Remove(p) }
+		spec.netData = p
+	}
 	// Last, for what can refuse the provision not to cost a disk written.
 	if t.Image != "" {
 		if err := t.writeImage(ctx, disks[0]); err != nil {
@@ -172,9 +199,12 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 	return spec.args(), cleanup, nil
 }
 
-// userDataFile writes the key the cloud_init keyword names to a file only
-// root reads, as it may hold secrets, and returns its path.
+// userDataFile writes the key the cloud_init keyword names, or nothing to do
+// for a guest needing cloud-init for its network only, and returns its path.
 func (t *T) userDataFile() (string, error) {
+	if t.CloudInit == "" {
+		return writeSeedFile(t.Name, "user-data", []byte("#cloud-config\n"))
+	}
 	km, err := datarecv.ParseKeyMetaRelObj(t.CloudInit, t.GetObject())
 	if err != nil {
 		return "", fmt.Errorf("cloud_init: %w", err)
@@ -183,7 +213,13 @@ func (t *T) userDataFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cloud_init: %w", err)
 	}
-	f, err := os.CreateTemp("", t.Name+".*.user-data")
+	return writeSeedFile(t.Name, "user-data", b)
+}
+
+// writeSeedFile writes a file only root reads, as it may hold secrets, and
+// returns its path.
+func writeSeedFile(name, kind string, b []byte) (string, error) {
+	f, err := os.CreateTemp("", name+".*."+kind)
 	if err != nil {
 		return "", err
 	}
