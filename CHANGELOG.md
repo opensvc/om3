@@ -690,6 +690,34 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     and answered the password and the certificate private key of the user,
     which authenticate as that user.
 
+### Metrics
+
+* **`/metrics` needs a credential:**
+    `/metrics` was served with no authentication, and the detail pages,
+    `/metrics/<subsystem>`, to root alone. They all now need the new
+    `scraper` role, or `root`. A prometheus scraping with no credential is
+    answered `401`: give it a user with the `scraper` grant, or set
+    `listener.public_metrics = true` to serve `/metrics` with no
+    authentication as before. The detail pages stay protected either way.
+
+    ```
+    om system/usr/prometheus create --kw grant=scraper
+    om system/usr/prometheus key add --name password --value <password>
+    ```
+
+    ```yaml
+    scrape_configs:
+      - job_name: opensvc
+        scheme: https
+        tls_config:
+          ca_file: /etc/prometheus/opensvc-ca.pem
+        basic_auth:
+          username: prometheus
+          password_file: /etc/prometheus/opensvc.password
+        static_configs:
+          - targets: ['n1:1215', 'n2:1215']
+    ```
+
 ### Core
 
 * **Object Names policy change:**

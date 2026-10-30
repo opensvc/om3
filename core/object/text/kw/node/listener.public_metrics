@@ -1,0 +1,10 @@
+Serve `/metrics` with no authentication, for a prometheus scraping with no
+credential. The page holds the aggregates of the node: the counts of its
+objects and the state of its daemon, not the names of the objects.
+
+By default a scrape needs the `scraper` or `root` grant. The detail pages,
+`/metrics/<subsystem>`, need it whatever this keyword says, as they name the
+objects. The `/api/node/name/<node>/metrics` routes are not concerned: they
+always authenticate, and filter what they serve by the grants of the caller.
+
+Takes effect at once, with no daemon restart.

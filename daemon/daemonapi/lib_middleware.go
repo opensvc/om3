@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/time/rate"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -173,11 +174,12 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 }
 
 // isPublic says the request of the route path is served with no
-// authentication: the gets of the webapp, of the api documentation, and of
-// /metrics, which a prometheus scrapes and which holds the aggregates alone.
+// authentication: the gets of the webapp and of the api documentation.
 //
-// The detail pages, /metrics/<subsystem>, are not: they name the objects,
-// and the pg one the usage of the node, so they are root's.
+// The metrics pages are not: /metrics tells the state of the node, unless
+// listener.public_metrics says otherwise, and the detail pages,
+// /metrics/<subsystem>, name the objects, and the pg one the usage of the
+// node, whatever it says. See RequireScraper.
 func isPublic(method, path string) bool {
 	if method != http.MethodGet {
 		return false
@@ -187,17 +189,23 @@ func isPublic(method, path string) bool {
 		return true
 	case strings.HasPrefix(path, "/api/"):
 		return path == "/api/auth/info" || path == "/api/openapi"
+	case path == "/metrics":
+		return cluster.ConfigData.Get().Listener.PublicMetrics
 	case strings.HasPrefix(path, "/metrics/"):
 		return false
 	}
 	return true
 }
 
-// RequireRoot answers a caller without the root grant with a 403, as the
-// detail metrics pages do, which are served out of the api.
-func RequireRoot(next echo.HandlerFunc) echo.HandlerFunc {
+// RequireScraper answers a caller without the scraper or the root grant with
+// a 403, as the metrics pages do, which are served out of the api, unfiltered.
+// A page isPublic let through needs no grant.
+func RequireScraper(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if v, err := assertRoot(c); !v {
+		if strategyFromContext(c) == daemonauth.StrategyPublic {
+			return next(c)
+		}
+		if v, err := assertScraper(c); !v {
 			return err
 		}
 		return next(c)
@@ -210,8 +218,9 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if isPublic(c.Request().Method, c.Path()) {
-				c.Set("user", &daemonauth.Info{Username: "nobody", Strategy: "public"})
+				c.Set("user", &daemonauth.Info{Username: "nobody", Strategy: daemonauth.StrategyPublic})
 				c.Set("grants", rbac.Grants{})
+				c.Set("strategy", daemonauth.StrategyPublic)
 				return next(c)
 			}
 			log := LogHandler(c, "auth")

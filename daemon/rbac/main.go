@@ -28,6 +28,7 @@ const (
 	RoleHeartbeat      Role = "heartbeat"
 	RoleJoin           Role = "join"
 	RoleLeave          Role = "leave"
+	RoleScraper        Role = "scraper"
 )
 
 var (
@@ -46,6 +47,7 @@ var (
 		"heartbeat":      RoleHeartbeat,
 		"join":           RoleJoin,
 		"leave":          RoleLeave,
+		"scraper":        RoleScraper,
 	}
 
 	GrantRoot           = NewGrant("root", "")
@@ -55,6 +57,7 @@ var (
 	GrantJoin           = NewGrant("join", "")
 	GrantLeave          = NewGrant("leave", "")
 	GrantPrioritizer    = NewGrant("prioritizer", "")
+	GrantScraper        = NewGrant("scraper", "")
 )
 
 func NewGrants(l ...string) Grants {

@@ -25,23 +25,21 @@ import (
 //
 // Access rules:
 // - Guest role on the namespace or all namespaces or better is sufficient to access object metrics.
-// - Root role is necessary to access daemon metrics.
+// - Scraper or root role is necessary to access daemon metrics.
 func (a *DaemonAPI) GetNodeMetrics(ctx echo.Context, nodename api.InPathNodeName) error {
 	// Parse and validate nodename
 	nodename = a.parseNodename(nodename)
 
 	// Check if we can access any metrics on this node
 	// At minimum, we need guest role on any namespace to access object metrics
-	// OR root role to access daemon metrics
+	// OR scraper or root role to access daemon metrics
 	userGrants := grantsFromContext(ctx)
 
 	hasObjectAccess := userGrants.HasRoleOn("", rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin) ||
 		len(userGrants.Namespaces(rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)) > 0
 
-	hasDaemonAccess := userGrants.HasRole(rbac.RoleRoot)
-
-	if !hasObjectAccess && !hasDaemonAccess {
-		return JSONForbiddenMissingRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot)
+	if !hasObjectAccess && !seesAllMetrics(userGrants) {
+		return JSONForbiddenMissingRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleScraper, rbac.RoleRoot)
 	}
 
 	// For local node, shortcut to the raw /metrics endpoint with filtering
@@ -73,8 +71,8 @@ func (a *DaemonAPI) GetNodeMetricsPG(ctx echo.Context, nodename api.InPathNodeNa
 	hasObjectAccess := userGrants.HasRoleOn("", rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin) ||
 		len(userGrants.Namespaces(rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)) > 0
 
-	if !hasObjectAccess && !userGrants.HasRole(rbac.RoleRoot) {
-		return JSONForbiddenMissingRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot)
+	if !hasObjectAccess && !seesAllMetrics(userGrants) {
+		return JSONForbiddenMissingRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleScraper, rbac.RoleRoot)
 	}
 
 	if params.Path != nil {
@@ -98,6 +96,11 @@ func (a *DaemonAPI) GetNodeMetricsPG(ctx echo.Context, nodename api.InPathNodeNa
 	})
 }
 
+// seesAllMetrics says the grants read every metric of a node, unfiltered.
+func seesAllMetrics(userGrants rbac.Grants) bool {
+	return userGrants.HasRole(rbac.RoleScraper, rbac.RoleRoot)
+}
+
 // serveLocalMetrics serves the metrics page at path of the local node with RBAC filtering
 func (a *DaemonAPI) serveLocalMetrics(ctx echo.Context, userGrants rbac.Grants, path string) error {
 	// For local node, use newProxyClient to get a client with UDS configured
@@ -117,8 +120,8 @@ func (a *DaemonAPI) serveLocalMetrics(ctx echo.Context, userGrants rbac.Grants, 
 	}
 	defer resp.Body.Close()
 
-	// If user has root role, return all metrics without filtering
-	if userGrants.HasRole(rbac.RoleRoot) {
+	// If user has scraper or root role, return all metrics without filtering
+	if seesAllMetrics(userGrants) {
 		// Copy headers and stream the response
 		for key, values := range resp.Header {
 			for _, v := range values {
@@ -176,8 +179,8 @@ func filterMetricsResponse(resp *http.Response, userGrants rbac.Grants) (*http.R
 
 // filterMetricsText filters Prometheus metrics text based on user grants
 func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
-	// If user has root role, return all metrics
-	if userGrants.HasRole(rbac.RoleRoot) {
+	// If user has scraper or root role, return all metrics
+	if seesAllMetrics(userGrants) {
 		return metricsText
 	}
 

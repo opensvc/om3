@@ -31,8 +31,9 @@ func NewCmdNodeMetrics() *cobra.Command {
 			"prometheus scrape of this cluster collects.\n\n" +
 			"The metrics of the high cardinality subsystems are served apart, at\n" +
 			"/metrics/<subsystem>, and are not printed here.\n\n" +
-			"A user without the root grant is served the metrics of the objects of\n" +
-			"the namespaces they have a grant on, and none of the daemon's own.",
+			"A user without the scraper or root grant is served the metrics of the\n" +
+			"objects of the namespaces they have a grant on, and none of the daemon's\n" +
+			"own.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

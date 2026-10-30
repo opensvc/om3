@@ -30,6 +30,7 @@ func TestFilterMetricsTextKeepsTheNamespacesOfTheGrants(t *testing.T) {
 		{"admin of dev", rbac.NewGrants("admin:dev"), []string{`path="dev/svc/web"`}, []string{`path="prod/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="namespace"`}},
 		{"guest of all namespaces", rbac.NewGrants("guest"), []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`}, []string{`scope="host"`, `scope="slice"`}},
 		{"root", rbac.NewGrants("root"), []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="host"`, `scope="slice"`}, nil},
+		{"scraper", rbac.NewGrants("scraper"), []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`, `scope="opensvc"`, `scope="host"`, `scope="slice"`}, nil},
 		{"no grant", rbac.NewGrants(), nil, []string{`path="prod/svc/web"`, `path="dev/svc/web"`, `path="svc/dns"`}},
 	}
 	for _, tc := range cases {
