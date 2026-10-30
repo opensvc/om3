@@ -110,6 +110,8 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerTLSSecs         = key.New("listener", "tls_secs")
 		keyListenerACMEPort        = key.New("listener", "acme_port")
 
+		keyAIAgentURL = key.New("ai", "agent_url")
+
 		keyNodeSSHKey = key.New("node", "sshkey")
 	)
 
@@ -162,6 +164,15 @@ func getClusterConfig() (*cluster.Config, error) {
 	}
 	cfg.Listener.TLSSecs = c.GetStrings(keyListenerTLSSecs)
 	cfg.Listener.ACMEPort = c.GetInt(keyListenerACMEPort)
+	cfg.AI.AgentURL = c.GetString(keyAIAgentURL)
+	if cfg.AI.AgentURL != "" {
+		// A file changed by hand is not validated as written: an invalid
+		// url is reported, and no agent published.
+		if _, err := cluster.ParseAIAgentURL(cfg.AI.AgentURL); err != nil {
+			cfg.Issues = append(cfg.Issues, fmt.Sprintf("ai agent_url: %s", err))
+			cfg.AI.AgentURL = ""
+		}
+	}
 
 	if homedir, err := os.UserHomeDir(); err != nil {
 		cfg.Issues = append(cfg.Issues, fmt.Sprintf("user home dir: %s", err))
