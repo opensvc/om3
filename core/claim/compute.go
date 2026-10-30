@@ -25,6 +25,11 @@ const (
 	Unbounded = int64(-1)
 )
 
+// GuestMemoryMargin is what a virtual machine takes on the node over the
+// memory it is given: qemu, its devices and its page tables. A guest of 1g
+// peaked at 1.3g on a node, all its memory touched.
+const GuestMemoryMargin = int64(384 * 1024 * 1024)
+
 // ComputeTypes are the claims counted from the caps of the objects.
 var ComputeTypes = []string{TypeCPU, TypeMemory}
 

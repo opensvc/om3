@@ -42,6 +42,7 @@ import (
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/ping"
+	"github.com/opensvc/om3/v3/util/systemd"
 	"github.com/opensvc/om3/v3/util/versioncmp"
 	"github.com/opensvc/om3/v3/util/waitfor"
 )
@@ -377,17 +378,37 @@ func (t *T) containerStart(ctx context.Context) error {
 	return nil
 }
 
+// doPartitions has the domain run in the process group of the resource.
+//
+// libvirt places a guest in a partition of its own whatever the group of the
+// command starting it, so the capping of the object would bound nothing of
+// the guest, nor would the one of its namespace, without this.
 func (t *T) doPartitions() error {
-	if t.GetPG() != nil && !capabilities.Has("node.x.machinectl") && capabilities.Has(drvID.Cap()+".partitions") {
-		if err := t.setPartitions(); err != nil {
-			return err
-		}
-	} else {
-		if err := t.unsetPartitions(); err != nil {
-			return err
-		}
+	partition := t.partition()
+	if partition == "" {
+		return nil
 	}
-	return nil
+	return setPartition(t.configFile(), partition)
+}
+
+// partition returns the libvirt partition of the process group of the
+// resource, empty when the node can not place the guest in it.
+func (t *T) partition() string {
+	pg := t.GetPG()
+	if pg == nil || pg.ID == "" || !systemd.HasSystemd() || !capabilities.Has(drvID.Cap()+".partitions") {
+		return ""
+	}
+	return partitionOf(pg.ID)
+}
+
+// withPartition returns the virt-install command placing the guest in the
+// process group of the resource from its first start.
+func (t *T) withPartition(args []string) []string {
+	partition := t.partition()
+	if partition == "" || !isVirtInstall(args) {
+		return args
+	}
+	return append(slices.Clone(args), "--xml", "./resource/partition="+partition)
 }
 
 var _ resource.ProvisionStarter = (*T)(nil)
@@ -875,93 +896,6 @@ func (t *T) SubDevices(ctx context.Context) device.L {
 	return l
 }
 
-func (t *T) setPartitions() error {
-	cf := t.configFile()
-	cgroupDir := t.cgroupDir()
-	f, err := os.Open(cf)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	doc, err := xmlquery.Parse(f)
-	if err != nil {
-		return err
-	}
-	root, err := xmlquery.Query(doc, "//domain")
-	if err != nil {
-		return err
-	}
-	if root == nil {
-		return fmt.Errorf("no <domain> node in %s", cf)
-	}
-	if n := root.SelectElement("//resource/partition"); n != nil {
-		p := n.InnerText()
-		if p != cgroupDir {
-			t.Log().Infof("set text of //domain/resource/partition: %s", cgroupDir)
-			partitionText := &xmlquery.Node{
-				Data: cgroupDir,
-				Type: xmlquery.TextNode,
-			}
-			n.FirstChild = partitionText
-		}
-	} else if resourceElem := root.SelectElement("//resource"); resourceElem != nil {
-		t.Log().Infof("add to //domain/resource: <partition>%s</partition>", cgroupDir)
-		partitionElem := &xmlquery.Node{
-			Data: "partition",
-			Type: xmlquery.ElementNode,
-		}
-		partitionText := &xmlquery.Node{
-			Data: cgroupDir,
-			Type: xmlquery.TextNode,
-		}
-		partitionElem.FirstChild = partitionText
-		xmlquery.AddChild(resourceElem, partitionElem)
-	} else {
-		t.Log().Infof("add to //domain: <resource><partition>%s</partition></resource>", cgroupDir)
-		resourceElem := &xmlquery.Node{
-			Data: "resource",
-			Type: xmlquery.ElementNode,
-		}
-		partitionElem := &xmlquery.Node{
-			Data: "partition",
-			Type: xmlquery.ElementNode,
-		}
-		partitionText := &xmlquery.Node{
-			Data: cgroupDir,
-			Type: xmlquery.TextNode,
-		}
-		partitionElem.FirstChild = partitionText
-		resourceElem.FirstChild = partitionElem
-		xmlquery.AddChild(root, resourceElem)
-
-	}
-	fmt.Println(doc.OutputXML(true))
-
-	return nil
-}
-
-func (t *T) unsetPartitions() error {
-	cf := t.configFile()
-	f, err := os.Open(cf)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	doc, err := xmlquery.Parse(f)
-	if err != nil {
-		return err
-	}
-	e, err := xmlquery.Query(doc, "//domain/resource/partition")
-	if err != nil {
-		return err
-	}
-	if e != nil {
-		t.Log().Infof("remove //domain/resource/partition")
-		xmlquery.RemoveFromTree(e)
-	}
-	return nil
-}
-
 // ConfigError implements resource.ConfigErrorer: a kvm container defined
 // for a node not kvm capable is an error of the configuration, which a
 // change of its nodes fixes. The node has no virsh, which the start, and
@@ -970,11 +904,18 @@ func (t *T) unsetPartitions() error {
 // A guest running all the same, started before the node lost virsh, holds
 // what a change would leave behind: libvirt keeps the pid file of a running
 // guest, and the error is not reported then.
+//
+// A memory cap below what the guest is defined with is one too: the guest
+// would be killed the moment it touches enough of its memory, which it does
+// by booting, and running looks like a crash of the guest.
 func (t *T) ConfigError(ctx context.Context) error {
-	if capabilities.Has(drvID.Cap()) || t.hasGuestPIDFile() {
+	if t.hasGuestPIDFile() {
 		return nil
 	}
-	return fmt.Errorf("this node is not kvm capable")
+	if !capabilities.Has(drvID.Cap()) {
+		return fmt.Errorf("this node is not kvm capable")
+	}
+	return t.memCapError()
 }
 
 // hasGuestPIDFile says whether libvirt holds a pid file for the guest, which it
@@ -1010,6 +951,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	switch {
 	case isUpFromState(state):
+		t.statusNetwork(ctx)
 		return status.Up
 	case isDownFromState(state):
 		return status.Down
@@ -1071,6 +1013,9 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("skip kvm provision: container is provisioned")
 		return nil
 	}
+	if err := t.memCapError(); err != nil {
+		return err
+	}
 	base := t.VirtInst
 	if t.hasSpec() {
 		l, cleanup, err := t.specCommand(ctx)
@@ -1083,7 +1028,11 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if len(base) == 0 {
 		return fmt.Errorf("the 'virtinst' parameter must be set, or the keywords describing the guest")
 	}
-	virtInst := t.virtInstWithVsock(ctx, base)
+	// virt-install starts the guest, which is to run capped from then on.
+	if err := t.ApplyPG(ctx); err != nil {
+		return err
+	}
+	virtInst := t.withPartition(t.virtInstWithVsock(ctx, base))
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName(virtInst[0]),

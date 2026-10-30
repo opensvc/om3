@@ -2,10 +2,10 @@ package rescontainerkvm
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"net"
 	"os"
 	"os/exec"
@@ -32,10 +32,6 @@ const (
 	// filterTable holds a chain per network interface of a guest.
 	filterTable = "osvc_guests"
 
-	// guestNetDir holds what dnsmasq reads, as nobody: under the run
-	// directory of om, only root would.
-	guestNetDir = "/run/opensvc-guests"
-
 	guestNetLock = "/var/lock/opensvc.guestnet.lock"
 
 	// routerLinkLocal is the address every om bridge has, which the route to
@@ -43,10 +39,17 @@ const (
 	routerLinkLocal = "fe80::1"
 )
 
+// guestNetDir holds what dnsmasq reads, as nobody: under the run directory of
+// om, only root would.
+var guestNetDir = "/run/opensvc-guests"
+
 type (
 	// guestNIC is a network interface of a guest, on an om network.
 	guestNIC struct {
 		network string
+
+		// owner is the resource the interface is of.
+		owner string
 
 		// dev and mac are the same on every node, as the definition of the
 		// domain the nodes share says them.
@@ -78,16 +81,67 @@ type (
 )
 
 // nicNames returns the name and the mac of the network interface of rank i of
-// a resource.
+// a resource. A digest rather than a mere hash, as the name of an object is
+// what its user chooses, though they fit too few bits to tell objects apart
+// for sure: claimNIC refuses what they collide with.
 func nicNames(resourceKey string, i int) (string, string) {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(resourceKey))
-	sum := h.Sum32()
-	dev := fmt.Sprintf("kv%08xn%d", sum, i)
-	h.Reset()
-	_, _ = fmt.Fprintf(h, "%s!%d", resourceKey, i)
-	b := h.Sum(nil)
-	return dev, fmt.Sprintf("52:54:%02x:%02x:%02x:%02x", b[0], b[1], b[2], b[3])
+	dev := sha256.Sum256([]byte(resourceKey))
+	mac := sha256.Sum256([]byte(fmt.Sprintf("%s!%d", resourceKey, i)))
+	return fmt.Sprintf("kv%sn%d", hex.EncodeToString(dev[:5]), i),
+		fmt.Sprintf("52:54:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3])
+}
+
+// nicRecord is what claimNIC records of an interface of this node.
+func nicRecord(n guestNIC) string {
+	return n.owner + "\n" + n.mac + "\n"
+}
+
+// claimNIC records the interface as the guest's, refusing what is another
+// guest's: unplugging an interface of the name would cut that guest, and
+// sharing its mac would have the bridge send its traffic here.
+func claimNIC(n guestNIC) error {
+	dir := filepath.Join(guestNetDir, "nics")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	l, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range l {
+		b, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return err
+		}
+		owner, mac, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
+		switch {
+		case owner == n.owner:
+		case e.Name() == n.dev:
+			return fmt.Errorf("interface %s is held by %s", n.dev, owner)
+		case mac == n.mac:
+			return fmt.Errorf("mac %s is held by %s", n.mac, owner)
+		}
+	}
+	return os.WriteFile(filepath.Join(dir, n.dev), []byte(nicRecord(n)), 0o600)
+}
+
+// ownsNIC says the interface is the guest's. One no record says anything of
+// is: only a guest of this resource names it, the record being of the guests
+// started with it.
+func ownsNIC(n guestNIC) bool {
+	b, err := os.ReadFile(filepath.Join(guestNetDir, "nics", n.dev))
+	if err != nil {
+		return true
+	}
+	owner, _, _ := strings.Cut(string(b), "\n")
+	return owner == n.owner
+}
+
+// releaseNIC forgets the interface, once unplugged.
+func releaseNIC(n guestNIC) {
+	if ownsNIC(n) {
+		_ = os.Remove(filepath.Join(guestNetDir, "nics", n.dev))
+	}
 }
 
 // isIP6 says the interface carries ipv6, a network being of one family.
@@ -249,7 +303,7 @@ func (t *T) guestNICs(ctx context.Context, draw bool) ([]guestNIC, error) {
 	nics := make([]guestNIC, 0, len(t.Network))
 	key := ipam.Key(t.Path, t.RID())
 	for i, name := range t.Network {
-		n := guestNIC{network: name}
+		n := guestNIC{network: name, owner: key}
 		n.dev, n.mac = nicNames(key, i)
 		alloc := t.allocationOf(name)
 		nw, err := alloc.Resolve()
@@ -395,6 +449,9 @@ func (t *T) networkUp(ctx context.Context) ([]guestNIC, error) {
 	}
 	defer unlock()
 	for _, n := range nics {
+		if err := claimNIC(n); err != nil {
+			return nil, fmt.Errorf("network %s: %w", n.network, err)
+		}
 		t.unplug(ctx, n)
 		if err := t.plug(ctx, n); err != nil {
 			return nil, fmt.Errorf("network %s: %w", n.network, err)
@@ -448,6 +505,9 @@ func (t *T) plug(ctx context.Context, n guestNIC) error {
 
 // unplug removes what plug made, what is not there being nothing to remove.
 func (t *T) unplug(ctx context.Context, n guestNIC) {
+	if !ownsNIC(n) {
+		return
+	}
 	if _, err := net.InterfaceByName(n.dev); err != nil {
 		return
 	}
@@ -558,12 +618,39 @@ func (t *T) networkDown(ctx context.Context) error {
 	var errs error
 	for _, n := range nics {
 		t.unplug(ctx, n)
+		releaseNIC(n)
 		if n.static {
 			continue
 		}
 		errs = errors.Join(errs, t.stopDHCP(n), t.allocationOf(n.network).Free())
 	}
 	return errs
+}
+
+// statusNetwork warns of what the start of a running guest set up and that is
+// gone: the guest runs on, its neighbours no longer protected from it, and
+// nothing else would tell.
+func (t *T) statusNetwork(ctx context.Context) {
+	if len(t.Network) == 0 {
+		return
+	}
+	nics, err := t.guestNICs(ctx, false)
+	if err != nil {
+		t.StatusLog().Warn("network: %s", err)
+		return
+	}
+	for _, n := range nics {
+		if t.NetworkFilter && !filterLoaded(ctx, n.dev) {
+			t.StatusLog().Warn("interface %s on network %s is not filtered: the guest can take any address", n.dev, n.network)
+		}
+		if !n.static && dnsmasqPID(bridgeDir(n.master)) == 0 {
+			t.StatusLog().Warn("no dnsmasq on bridge %s: the guest gets no address at its next boot", n.master)
+		}
+	}
+}
+
+func filterLoaded(ctx context.Context, dev string) bool {
+	return exec.CommandContext(ctx, "nft", "list", "chain", "netdev", filterTable, dev).Run() == nil
 }
 
 // releaseAddrs gives up the addresses the guest holds on this node.
