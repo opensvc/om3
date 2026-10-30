@@ -328,7 +328,7 @@ var (
 		Example:  "https://ai.example.com:8090",
 		Option:   "agent_url",
 		Section:  "ai",
-		Since:    "v3.0.0-rc55",
+		Since:    "v3.0.0-rc56",
 		Text:     keywords.NewText(fs, "text/kw/node/ai.agent_url"),
 		Validate: validAIAgentURL,
 	}

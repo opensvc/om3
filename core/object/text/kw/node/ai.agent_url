@@ -1,14 +1,1 @@
-The origin of the OpenSVC AI agent, such as https://ai.example.com:8090,
-which om3-webapp calls for its assistant. Set it in the cluster
-configuration. It is an https origin only, the scheme, the host and the port:
-another value is refused when written.
-
-om3-webapp reads it from the cluster status, once signed in, and calls the
-agent directly from the browser. The agent is therefore reached by the
-browsers of the users, and allows the origin of the webapp of this cluster
-in its CORS configuration. The browsers verify its certificate: one a
-private CA signed requires that CA to be trusted on the workstations of the
-users, as no om3 setting turns the verification off.
-
-The assistant is offered to the users signed in with OpenID, the only
-tokens the agent takes. Empty, om3-webapp offers no assistant.
+The url of the OpenSVC AI agent om3-webapp calls.
