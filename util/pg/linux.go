@@ -279,6 +279,11 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
 			return
 		}
+		if names := c.valueControllers(); len(names) > 0 {
+			if err := control.ToggleControllers(names, cgroup2.Enable); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("enable %s for pg %s: %w", strings.Join(names, " "), c.ID, err))
+			}
+		}
 		if len(writes) > 0 {
 			errs = errors.Join(errs, applyUnifiedWrites(c.ID, writes))
 		}
@@ -360,6 +365,20 @@ func delegatedControllers() *cgroup2.Resources {
 		IO:     &cgroup2.IO{},
 		Pids:   &cgroup2.Pids{},
 	}
+}
+
+// valueControllers are the controllers the manager delegates only when it is
+// handed a value of theirs, which delegatedControllers does not do.
+//
+// The cpuset of a group whose cpus nobody capped yet has none of its files, and
+// a write to one that is not there is refused as a permission denied. systemd
+// delegates the controller too, once given AllowedCPUs, but that comes after
+// the writes: the first apply failed, and the next one found it done.
+func (c Config) valueControllers() []string {
+	if c.CPUs != "" || c.Mems != "" {
+		return []string{"cpuset"}
+	}
+	return nil
 }
 
 // delegationFiles are the files of a group its owner has to be given for the
