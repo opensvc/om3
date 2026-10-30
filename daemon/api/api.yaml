@@ -4682,7 +4682,7 @@ paths:
       description: |
         Proxy to node's /metrics endpoint, filtering metrics based on requester's RBAC grants.
         Guest role on the namespace or all namespaces or better is sufficient to access object metrics.
-        Root role is necessary to access daemon metrics.
+        Scraper or root role is necessary to access daemon metrics.
       operationId: GetNodeMetrics
       tags:
         - node
@@ -4714,6 +4714,8 @@ paths:
         that node, filtering metrics based on requester's RBAC grants.
         Guest role on the namespace or all namespaces or better is sufficient to
         access the metrics of the objects of the namespace.
+        Scraper or root role is necessary to access the metrics of the host and
+        of the slices out of opensvc.
 
         The series of the subsets and the resources of an object, the subset and
         resource scopes, are reported for the objects named by the path
@@ -10668,6 +10670,7 @@ components:
         - operator
         - prioritizer
         - root
+        - scraper
         - squatter
 
     RunningInfo:

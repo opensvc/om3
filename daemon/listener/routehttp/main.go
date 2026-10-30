@@ -53,7 +53,7 @@ func New(ctx context.Context, enableUI bool) *T {
 	pprof.Register(e)
 	e.Use(mwPromHint)
 	e.Use(mwProm)
-	e.GET(metricsURL, echoprometheus.NewHandler())
+	e.GET(metricsURL, echoprometheus.NewHandler(), daemonapi.RequireScraper)
 	// The subsystems whose series carry a label per object are served
 	// apart, so the endpoint scraped at the cluster's interval stays
 	// small and they can be scraped on their own, longer one. What is
@@ -66,9 +66,7 @@ func New(ctx context.Context, enableUI bool) *T {
 			// objects named by the path query parameters.
 			handler = pgmetrics.Handler()
 		}
-		// They name the objects, and the pg one the usage of the
-		// node: root's, where /metrics is public.
-		e.GET(detailMetricsURL+name, echo.WrapHandler(handler), daemonapi.RequireRoot)
+		e.GET(detailMetricsURL+name, echo.WrapHandler(handler), daemonapi.RequireScraper)
 	}
 	if enableUI {
 		e.Group(docPrefixURL).Use(daemonapi.UIMiddleware(ctx, docPrefixURL, docSpecURL))

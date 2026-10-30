@@ -129,6 +129,7 @@ var (
 )
 
 const (
+	StrategyPublic    = "public"
 	StrategyUX        = "ux"
 	StrategyUXUser    = "uxuser"
 	StrategyJWT       = "jwt"

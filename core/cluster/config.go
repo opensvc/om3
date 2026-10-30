@@ -74,6 +74,10 @@ type (
 		// members reach the api as themselves. Empty, the node serves
 		// no user socket.
 		UXOwnerGroup string `json:"ux_owner_group"`
+
+		// PublicMetrics serves /metrics with no authentication. The
+		// detail pages, /metrics/<subsystem>, stay protected.
+		PublicMetrics bool `json:"public_metrics"`
 	}
 )
 

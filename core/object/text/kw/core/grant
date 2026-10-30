@@ -21,6 +21,11 @@ Pervasive roles:
 
   Clear the blacklist of daemon listeners clients.
 
+* `scraper`
+
+  Read every metric of the nodes, at `/metrics`, `/metrics/<subsystem>` and
+  through the api, and nothing else of the api. The role of a prometheus.
+
 * `<per-namespace role>:<namespace selector>`
  
 Per-namespace roles:

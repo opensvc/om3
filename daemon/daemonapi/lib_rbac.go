@@ -567,6 +567,13 @@ func assertRoot(ctx echo.Context) (bool, error) {
 	return assertGrant(ctx, rbac.GrantRoot)
 }
 
+// assertScraper asserts that the authenticated user can read every metric of
+// the node, which the "scraper" role allows with nothing else of the api, and
+// "root" along with the rest.
+func assertScraper(ctx echo.Context) (bool, error) {
+	return assertGrant(ctx, rbac.GrantScraper, rbac.GrantRoot)
+}
+
 func assertStrategy(ctx echo.Context, expected string) (bool, error) {
 	if strategy := strategyFromContext(ctx); strategy != expected {
 		return false, JSONForbiddenStrategy(ctx, strategy, expected)
