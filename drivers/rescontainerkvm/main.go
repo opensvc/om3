@@ -84,6 +84,14 @@ type (
 		QGA                 bool           `json:"qga"`
 		QGAOperationalDelay *time.Duration `json:"qga_operational_delay"`
 		VsockPort           int            `json:"vsock_port"`
+		VCPUs               int            `json:"vcpus"`
+		Memory              *int64         `json:"memory"`
+		Disk                []string       `json:"disk"`
+		Bridge              []string       `json:"bridge"`
+		OSInfo              string         `json:"osinfo"`
+		Image               string         `json:"image"`
+		CloudInit           string         `json:"cloud_init"`
+		VirtInstArgs        []string       `json:"virtinst_args"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 
@@ -1052,10 +1060,19 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("skip kvm provision: container is provisioned")
 		return nil
 	}
-	if len(t.VirtInst) == 0 {
-		return fmt.Errorf("the 'virtinst' parameter must be set")
+	base := t.VirtInst
+	if t.hasSpec() {
+		l, cleanup, err := t.specCommand(ctx)
+		defer cleanup()
+		if err != nil {
+			return err
+		}
+		base = l
 	}
-	virtInst := t.virtInstWithVsock(ctx)
+	if len(base) == 0 {
+		return fmt.Errorf("the 'virtinst' parameter must be set, or the keywords describing the guest")
+	}
+	virtInst := t.virtInstWithVsock(ctx, base)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName(virtInst[0]),
@@ -1380,20 +1397,20 @@ func (t *T) StatusInfo(ctx context.Context) map[string]any {
 // master prefers to reach the guest through, when the command can add it. A
 // custom script, or a virt-install too old for the option, is run as it is:
 // the guest is reached the other ways.
-func (t *T) virtInstWithVsock(ctx context.Context) []string {
-	if t.VsockPort <= 0 || !isVirtInstall(t.VirtInst) || slices.Contains(t.VirtInst, "--vsock") {
-		return t.VirtInst
+func (t *T) virtInstWithVsock(ctx context.Context, args []string) []string {
+	if t.VsockPort <= 0 || !isVirtInstall(args) || slices.Contains(args, "--vsock") {
+		return args
 	}
 	if !hasHostVsock() {
 		t.Log().Infof("this hypervisor has no %s: the guest has no vsock device", hostVsockDevice)
-		return t.VirtInst
+		return args
 	}
-	b, err := exec.CommandContext(ctx, t.VirtInst[0], "--help").CombinedOutput()
+	b, err := exec.CommandContext(ctx, args[0], "--help").CombinedOutput()
 	if err != nil || !bytes.Contains(b, []byte("--vsock")) {
-		t.Log().Infof("%s has no --vsock option: the guest has no vsock device", t.VirtInst[0])
-		return t.VirtInst
+		t.Log().Infof("%s has no --vsock option: the guest has no vsock device", args[0])
+		return args
 	}
-	return withVsockDevice(t.VirtInst)
+	return withVsockDevice(args)
 }
 
 func isVirtInstall(args []string) bool {

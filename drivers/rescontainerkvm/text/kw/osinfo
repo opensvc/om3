@@ -1,0 +1,4 @@
+The os of the guest, as `ubuntu24.04`, which sets the devices libvirt defaults
+to for it. `virt-install --osinfo list` lists the names.
+
+By default, it is detected from the image, or generic.

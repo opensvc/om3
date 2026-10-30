@@ -1,0 +1,2 @@
+The host bridges the network interfaces of the guest are plugged into, one
+interface per bridge, as `br-prd`. Read by the provision only.

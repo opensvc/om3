@@ -1,0 +1,4 @@
+The memory of the guest, as `2g`.
+
+Read by the provision only: the definition of the domain is what holds it from
+then on, and changing this keyword changes nothing of a provisioned guest.

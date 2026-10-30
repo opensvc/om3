@@ -1,0 +1,2 @@
+More options of the `virt-install` command the other keywords make, for what
+they do not cover, as `--tpm none --boot uefi`.
