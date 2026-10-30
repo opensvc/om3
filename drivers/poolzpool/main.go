@@ -98,7 +98,7 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	poolName := t.poolName()
 	data := []string{
 		"disk#0.type=zvol",
-		"disk#0.dev=" + poolName + "/" + name,
+		"disk#0.name=" + poolName + "/" + name,
 		"disk#0.size={DEFAULT.size}",
 	}
 	if mkblkOpt := t.GetString("create_options"); mkblkOpt != "" {
