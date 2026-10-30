@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/actionlogs"
 	"github.com/opensvc/om3/v3/core/actionrouter"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clientcontext"
@@ -684,7 +685,7 @@ func (t T) DoAsync() error {
 			}
 		}
 		if len(ids) > 0 {
-			orchestrationLogs, err := actionrouter.StartOrchestrationLogs(c, ids, t.Output)
+			orchestrationLogs, err := actionlogs.StartOrchestrationLogs(c, ids, t.Output)
 			if err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 			}
@@ -835,7 +836,7 @@ func (t T) DoRemote() error {
 		waitC = make(chan error, count)
 	}
 
-	var sessionLogs *actionrouter.ActionLogs
+	var sessionLogs *actionlogs.ActionLogs
 	if t.Follow && len(followNodes) > 0 {
 		// Opened before the action is asked, so the stream has its first
 		// entries.
@@ -844,7 +845,7 @@ func (t T) DoRemote() error {
 			l = append(l, n)
 		}
 		slices.Sort(l)
-		if sessionLogs, err = actionrouter.StartSessionLogs(c, l, requesterSessionID, t.Output); err != nil {
+		if sessionLogs, err = actionlogs.StartSessionLogs(c, l, requesterSessionID, t.Output); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 	}

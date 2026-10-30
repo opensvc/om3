@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
+	"github.com/opensvc/om3/v3/core/actionlogs"
 	"github.com/opensvc/om3/v3/core/actionrouter"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/event"
@@ -409,7 +410,7 @@ func (t T) DoAsync() error {
 	// waits for its end.
 	if (t.Wait || t.Follow) && err == nil {
 		if t.Follow {
-			orchestrationLogs, e := actionrouter.StartOrchestrationLogs(c, []uuid.UUID{orchestrationID}, t.Output)
+			orchestrationLogs, e := actionlogs.StartOrchestrationLogs(c, []uuid.UUID{orchestrationID}, t.Output)
 			if e != nil {
 				_, _ = fmt.Fprintln(os.Stderr, e)
 			}
@@ -464,11 +465,11 @@ func (t T) DoRemote() error {
 		waitC = make(chan error, count)
 	}
 
-	var sessionLogs *actionrouter.ActionLogs
+	var sessionLogs *actionlogs.ActionLogs
 	if t.Follow && len(nodenames) > 0 {
 		// Opened before the action is asked, so the stream has its first
 		// entries.
-		if sessionLogs, err = actionrouter.StartSessionLogs(c, nodenames, requesterSessionID, t.Output); err != nil {
+		if sessionLogs, err = actionlogs.StartSessionLogs(c, nodenames, requesterSessionID, t.Output); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 	}

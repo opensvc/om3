@@ -1,4 +1,7 @@
-package actionrouter
+// Package actionlogs streams the logs of an action asked of daemons, for what
+// follows it, as they are logged. It is apart from the rest of the action
+// routing so the objects can use it too.
+package actionlogs
 
 import (
 	"fmt"
@@ -36,6 +39,13 @@ const (
 	// ended, for its last entries to reach it.
 	actionLogsTail = time.Second
 )
+
+// StartSessionLogsTo opens the log streams of a session on nodes, as
+// StartSessionLogs does, and writes the entries to w rather than the standard
+// output.
+func StartSessionLogsTo(c *client.T, nodes []string, sessionID uuid.UUID, format string, w io.Writer) (*ActionLogs, error) {
+	return startActionLogs(c, nodes, []string{fmt.Sprintf("SESSION_ID=%s", sessionID)}, format, w)
+}
 
 // StartSessionLogs opens the log streams of a session on nodes, as
 // StartActionLogs does.
