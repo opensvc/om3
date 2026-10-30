@@ -139,6 +139,11 @@ func (t *T) Gateway() (net.IP, error) {
 	return ip, nil
 }
 
+// NamedDev returns the dev keyword, empty when it is not set.
+func (t *T) NamedDev() string {
+	return t.GetString("dev")
+}
+
 // HostDev returns the interface of this node on the segment: the dev keyword,
 // or else the interface holding an address of the segment.
 func (t *T) HostDev() (string, error) {

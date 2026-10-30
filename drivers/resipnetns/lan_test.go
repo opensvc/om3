@@ -173,3 +173,44 @@ func TestConfigureVLAN(t *testing.T) {
 	r.VLANTag = ""
 	assert.Equal(t, []string{"--may-exist", "add-port", "ovsbr0", "veth1", "vlan_mode=access"}, r.ovsAddPortArgs("veth1"))
 }
+
+// fakeLanNamingDev is a lan network whose configuration names its interface.
+type fakeLanNamingDev struct {
+	fakeLan
+	dev string
+}
+
+func (t fakeLanNamingDev) NamedDev() string { return t.dev }
+
+// The bridge of a mode ovs is the dev the network names, the resource not
+// having to repeat it. The interface found on the segment is still no answer.
+func TestConfigureLanOVSTakesTheDevOfTheNetwork(t *testing.T) {
+	for name, tc := range map[string]struct {
+		nw      fakeLanNamingDev
+		dev     string
+		wantDev string
+		wantErr bool
+	}{
+		"the network names the bridge": {nw: fakeLanNamingDev{dev: "ovs0"}, wantDev: "ovs0"},
+		"the resource wins":            {nw: fakeLanNamingDev{dev: "ovs0"}, dev: "ovs1", wantDev: "ovs1"},
+		"no name is a refusal":         {nw: fakeLanNamingDev{}, wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := &T{Mode: "ovs", Dev: tc.dev}
+			r.Tags = set.New()
+			r.configureLan(tc.nw, tc.nw)
+			if tc.wantErr {
+				if r.netErr == nil {
+					t.Fatal("expected a refusal")
+				}
+				return
+			}
+			if r.netErr != nil {
+				t.Fatal(r.netErr)
+			}
+			if r.Dev != tc.wantDev {
+				t.Errorf("got %s, want %s", r.Dev, tc.wantDev)
+			}
+		})
+	}
+}

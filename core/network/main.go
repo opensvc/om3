@@ -183,6 +183,12 @@ type (
 	HostDever interface {
 		HostDev() (string, error)
 	}
+	// DevNamer is implemented by the network drivers naming the interface
+	// of the node in their configuration. Unlike HostDev, it returns
+	// nothing found on the node, empty when the configuration names none.
+	DevNamer interface {
+		NamedDev() string
+	}
 	// NodeAddresser is implemented by the network drivers giving each node
 	// a subnet of its own, whose first address is the node's: what reaches
 	// a node in the network, as the drbd traffic a disk.drbd sends there.
