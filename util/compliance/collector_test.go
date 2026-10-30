@@ -95,3 +95,21 @@ func TestPush(t *testing.T) {
 	assert.Equal(t, "check", body[0]["action"])
 	assert.Equal(t, "abc", body[0]["rset_md5"])
 }
+
+func TestExpandModulesOfModuleset(t *testing.T) {
+	data := Data{
+		Modsets: Modulesets{
+			"parent": {{Name: "mod1", AutoFix: true}},
+			"child":  {{Name: "mod2"}},
+		},
+		ModsetRelations: ModulesetRelations{"parent": {"child"}},
+	}
+	mods := data.ExpandModules([]string{"parent"}, nil)
+	byName := make(map[string]*Module)
+	for _, mod := range mods {
+		byName[mod.Name()] = mod
+	}
+	require.Len(t, byName, 2)
+	assert.True(t, byName["mod1"].autofix)
+	assert.Equal(t, "child", byName["mod2"].modset)
+}
