@@ -2,10 +2,8 @@ package compliance
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
-
-	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -61,27 +59,13 @@ func (t T) GetAllData(modsets []string) (Data, error) {
 	return t.GetData([]string{})
 }
 
-func (t T) GetObjectData(p naming.Path, modsets []string) (Data, error) {
-	data := Data{}
-	err := t.collectorClient.CallFor(&data, "comp_get_svc_data_v2", hostname.Hostname(), p.String(), modsets)
-	if err != nil {
-		return data, err
-	}
-	return data, nil
-}
-
 func (t T) GetData(modsets []string) (Data, error) {
-	if t.objectPath.IsZero() {
-		return t.GetNodeData(modsets)
-	} else {
-		return t.GetObjectData(t.objectPath, modsets)
-	}
-}
-
-func (t T) GetNodeData(modsets []string) (Data, error) {
 	data := Data{}
-	err := t.collectorClient.CallFor(&data, "comp_get_data_v2", hostname.Hostname(), modsets)
-	if err != nil {
+	query := t.objectQuery()
+	for _, modset := range modsets {
+		query.Add("moduleset", modset)
+	}
+	if err := t.collectorDo(http.MethodGet, collectorAgentPath+"/data", query, nil, &data); err != nil {
 		return data, err
 	}
 	return data, nil
