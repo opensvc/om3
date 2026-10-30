@@ -32,7 +32,7 @@ func TestVirtInstWithVsockLeavesTheCommand(t *testing.T) {
 		"custom script":  {VsockPort: 1215, VirtInst: []string{"/opt/create-guest.sh"}},
 		"device already": {VsockPort: 1215, VirtInst: []string{"virt-install", "--vsock", "cid.address=5"}},
 	} {
-		assert.Equal(t, r.VirtInst, r.virtInstWithVsock(context.Background()), name)
+		assert.Equal(t, r.VirtInst, r.virtInstWithVsock(context.Background(), r.VirtInst), name)
 	}
 }
 
@@ -64,7 +64,7 @@ func TestVirtInstWithVsockOnAHostWithNoVsock(t *testing.T) {
 	assert.False(t, hasHostVsock())
 	r := &T{VsockPort: 1215, VirtInst: []string{"virt-install", "--name", "vm1"}}
 	r.SetLoggerForTest(plog.NewDefaultLogger())
-	assert.Equal(t, r.VirtInst, r.virtInstWithVsock(context.Background()))
+	assert.Equal(t, r.VirtInst, r.virtInstWithVsock(context.Background(), r.VirtInst))
 }
 
 func TestVsockCID(t *testing.T) {
@@ -113,4 +113,67 @@ func TestDefinitionWithoutVsock(t *testing.T) {
 	path, err = r.definitionWithoutVsock()
 	require.NoError(t, err)
 	assert.Empty(t, path, "no device to drop")
+}
+
+func TestVMSpecArgs(t *testing.T) {
+	s := vmSpec{
+		name:     "vm1",
+		vcpus:    2,
+		memoryMB: 2048,
+		osFlag:   "--osinfo",
+		osValue:  "ubuntu24.04",
+		disks:    []string{"/dev/zvol/tank/vm1", "/dev/sdb"},
+		bridges:  []string{"br-prd"},
+		userData: "/tmp/ud",
+		extra:    []string{"--boot", "uefi"},
+	}
+	assert.Equal(t, []string{
+		"virt-install", "--name", "vm1", "--memory", "2048", "--vcpus", "2", "--osinfo", "ubuntu24.04", "--import",
+		"--disk", "/dev/zvol/tank/vm1,format=raw,cache=none", "--disk", "/dev/sdb,format=raw,cache=none",
+		"--network", "bridge=br-prd,model=virtio",
+		"--cloud-init", "user-data=/tmp/ud",
+		"--noautoconsole",
+		"--boot", "uefi",
+	}, s.args())
+}
+
+// A virt-install older than the --osinfo name takes --os-variant, and a guest
+// naming no os does not stop a virt-install requiring one.
+func TestOSOption(t *testing.T) {
+	for _, tc := range []struct {
+		name, help, osinfo, flag, value string
+	}{
+		{"recent, detected", "  --osinfo OSINFO", "", "--osinfo", "detect=on,require=off"},
+		{"recent, named", "  --osinfo OSINFO", "rhel9.0", "--osinfo", "rhel9.0"},
+		{"older, generic", "  --os-variant", "", "--os-variant", "generic"},
+		{"older, named", "  --os-variant", "rhel9.0", "--os-variant", "rhel9.0"},
+	} {
+		flag, value := osOption([]byte(tc.help), tc.osinfo)
+		assert.Equal(t, tc.flag, flag, tc.name)
+		assert.Equal(t, tc.value, value, tc.name)
+	}
+}
+
+func TestSpecError(t *testing.T) {
+	size := int64(1 << 30)
+	assert.NoError(t, (&T{}).specError(), "a domain defined by a sysadmin")
+	assert.NoError(t, (&T{VirtInst: []string{"virt-install"}}).specError(), "virtinst alone")
+	assert.NoError(t, (&T{VCPUs: 2, Memory: &size, Disk: []string{"disk#1"}}).specError())
+	assert.Error(t, (&T{VCPUs: 2, Memory: &size, Disk: []string{"disk#1"}, VirtInst: []string{"x"}}).specError(), "virtinst says all of it")
+	assert.ErrorContains(t, (&T{VCPUs: 2}).specError(), "memory, disk")
+	assert.ErrorContains(t, (&T{Image: "/a"}).specError(), "vcpus, memory, disk")
+	small := int64(512)
+	assert.ErrorContains(t, (&T{VCPUs: 2, Memory: &small, Disk: []string{"disk#1"}}).specError(), "memory")
+}
+
+func TestParseImageInfo(t *testing.T) {
+	format, err := parseImageInfo([]byte(`{"format": "qcow2", "virtual-size": 1024}`))
+	assert.NoError(t, err)
+	assert.Equal(t, "qcow2", format)
+	_, err = parseImageInfo([]byte(`{"format": "qcow2", "backing-filename": "/etc/shadow"}`))
+	assert.ErrorContains(t, err, "backing file")
+	_, err = parseImageInfo([]byte(`{"format": "qcow2", "format-specific": {"data": {"data-file": "/dev/sda"}}}`))
+	assert.ErrorContains(t, err, "data file")
+	_, err = parseImageInfo([]byte(`{"format": "vmdk"}`))
+	assert.ErrorContains(t, err, "qcow2 or raw")
 }

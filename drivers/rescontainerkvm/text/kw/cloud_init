@@ -1,0 +1,5 @@
+The cloud-init user data of the guest, a key of a cfg or sec object, as
+`from ./cfg/vm1 key user-data`, so a value may be kept secret and shared between
+objects. It is used at the first boot.
+
+Needs a `virt-install` with the `--cloud-init` option.

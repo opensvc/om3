@@ -1,0 +1,5 @@
+The disks of the guest, the first one being the one it boots: resource ids, as
+`disk#1`, or device paths.
+
+The resources make and move the storage: its size, its pool and its snapshots
+are theirs. Read by the provision only.
