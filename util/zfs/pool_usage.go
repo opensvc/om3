@@ -21,6 +21,12 @@ type (
 	}
 )
 
+// Usable is what the datasets of the pool can hold, the size less what zfs
+// keeps for itself: what the used and free of the pool are parts of.
+func (t PoolUsage) Usable() int64 {
+	return t.Alloc + t.Free
+}
+
 // parsePoolUsage reads the output of zfs get -Hp used,available.
 func parsePoolUsage(b []byte) (PoolUsage, error) {
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
