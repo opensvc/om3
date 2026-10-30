@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -205,5 +206,65 @@ func TestListenerBoundsTheUnauthenticated(t *testing.T) {
 	waitFor(t, "the closed connections to make room", func() bool { return l.unauthenticated.Load() == 0 })
 	if _, _, err := n.attach(context.Background(), n.ticket("n1"), "a\nb\n"); err != nil {
 		t.Errorf("a session after the bound was reached: %s", err)
+	}
+}
+
+type noFileConn struct{ net.Conn }
+
+// A connection with no descriptor a session can inherit is refused.
+func TestConnFileRefusesAConnectionWithNoDescriptor(t *testing.T) {
+	c, _ := net.Pipe()
+	defer c.Close()
+	if _, err := connFile(noFileConn{c}); err == nil {
+		t.Error("expected a refusal")
+	}
+}
+
+// A connection known only by its descriptor, as a vsock one is, is duplicated
+// for the session, and the copy serves as the original does.
+func TestConnFileOfASyscallConn(t *testing.T) {
+	listener, err := net.Listen("unix", filepath.Join(t.TempDir(), "s"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	client, err := net.Dial("unix", listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	server, err := listener.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := connFile(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = server.Close()
+	conn, err := inheritedConn(f)
+	_ = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if _, err := client.Write([]byte("hi")); err != nil {
+		t.Fatal(err)
+	}
+	b := make([]byte, 2)
+	if _, err := io.ReadFull(conn, b); err != nil || string(b) != "hi" {
+		t.Errorf("got %q, %v", b, err)
+	}
+}
+
+// A listener given is the one accepted on.
+func TestNewListenerOn(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	if l := NewListenerOn(listener); l.listener != listener {
+		t.Error("the listener given is not kept")
 	}
 }

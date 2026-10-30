@@ -65,6 +65,21 @@ func TestAcceptServesTheHypervisorAlone(t *testing.T) {
 	assert.True(t, errors.Is(err, net.ErrClosed))
 }
 
+// A forward accepts no more than a privileged process of the hypervisor.
+func TestAcceptReservedOnly(t *testing.T) {
+	user := &fakeConn{addr: &vsock.Addr{ContextID: vsock.Host, Port: 1024}}
+	root := &fakeConn{addr: &vsock.Addr{ContextID: vsock.Host, Port: 1023}}
+	l := &hostListener{
+		Listener:     &fakeListener{conns: []*fakeConn{user, root}},
+		log:          plog.NewDefaultLogger(),
+		reservedOnly: true,
+	}
+	c, err := l.Accept()
+	require.NoError(t, err)
+	assert.Same(t, root, c)
+	assert.True(t, user.closed)
+}
+
 func TestWithPeer(t *testing.T) {
 	ctx := withPeer(context.Background(), &fakeConn{addr: &vsock.Addr{ContextID: 2, Port: 1023}})
 	cid, port, ok := daemonctx.VsockPeer(ctx)

@@ -25,8 +25,8 @@ const (
 	vsockIdleConnTimeout = 5 * time.Second
 )
 
-// parseVsockURL returns the context id and the port of a vsock url.
-func parseVsockURL(s string) (cid, port uint32, err error) {
+// ParseVsockURL returns the context id and the port of a vsock url.
+func ParseVsockURL(s string) (cid, port uint32, err error) {
 	host, portS, ok := strings.Cut(strings.TrimPrefix(s, VsockPrefix), ":")
 	if !ok {
 		return 0, 0, fmt.Errorf("%s: expect %s<context id>:<port>", s, VsockPrefix)
@@ -46,7 +46,7 @@ func parseVsockURL(s string) (cid, port uint32, err error) {
 // is an error at the first request, with no retry: the caller has other ways
 // to reach the guest.
 func NewVsock(config Config) (*api.ClientWithResponses, error) {
-	cid, port, err := parseVsockURL(config.URL)
+	cid, port, err := ParseVsockURL(config.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func NewVsock(config Config) (*api.ClientWithResponses, error) {
 			AllowHTTP:       true,
 			IdleConnTimeout: vsockIdleConnTimeout,
 			DialTLSContext: func(ctx context.Context, _, _ string, _ *tls.Config) (net.Conn, error) {
-				return dialVsock(ctx, cid, port)
+				return DialVsock(ctx, cid, port)
 			},
 		},
 	}

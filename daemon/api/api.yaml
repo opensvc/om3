@@ -4284,6 +4284,40 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/console:
+    post:
+      operationId: PostNodeConsole
+      description: |
+        Issue the ticket a console session of a shell of the node is opened
+        with, for the hypervisor of a guest, through vsock. No other client
+        may ask for it.
+
+        The session is the one of an instance resource console. The hypervisor
+        opens it on the vsock port following the one of the api, which the
+        guest serves its console endpoint on.
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleTicket'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/console:
     post:
       operationId: PostInstanceResourceConsole

@@ -107,3 +107,32 @@ func TestTicketRefused(t *testing.T) {
 		}
 	}
 }
+
+// A shell targets no object, and the other kinds still have to name one.
+func TestParseTicketTargetOfAShell(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parse := func(target Target) error {
+		ticket, err := NewTicket("hypervisor", "vm1", target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		signed, err := ticket.Sign(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = ParseTicket(signed, &key.PublicKey)
+		return err
+	}
+	if err := parse(Target{Node: "vm1", Kind: KindShell}); err != nil {
+		t.Errorf("a shell: %s", err)
+	}
+	if parse(Target{Node: "vm1", Kind: KindTTY}) == nil {
+		t.Error("a tty names an object")
+	}
+	if parse(Target{Kind: KindShell}) == nil {
+		t.Error("a shell names its node")
+	}
+}

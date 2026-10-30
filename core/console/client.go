@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -23,6 +24,10 @@ type (
 
 		// TLSConfig is how the endpoint is verified.
 		TLSConfig *tls.Config
+
+		// DialContext is how the endpoint is connected to, the network
+		// when nil.
+		DialContext func(ctx context.Context, network, addr string) (net.Conn, error)
 
 		// Stdin is where the keystrokes are read from, and Stdout where
 		// the output of the session is written. A Stdin that is a
@@ -51,6 +56,9 @@ type (
 	}
 )
 
+// ErrNoSession says Attach opened no session: nothing ran on the node.
+var ErrNoSession = errors.New("no console session")
+
 const (
 	handshakeTimeout = 10 * time.Second
 	writeTimeout     = 10 * time.Second
@@ -74,10 +82,11 @@ func Attach(ctx context.Context, o AttachOptions) (Result, error) {
 	dialer := websocket.Dialer{
 		TLSClientConfig:  o.TLSConfig,
 		HandshakeTimeout: handshakeTimeout,
+		NetDialContext:   o.DialContext,
 	}
 	conn, resp, err := dialer.DialContext(ctx, o.URL, nil)
 	if err != nil {
-		return result, dialError(err, resp)
+		return result, fmt.Errorf("%w: %w", ErrNoSession, dialError(err, resp))
 	}
 	defer conn.Close()
 	w := &wsWriter{conn: conn}

@@ -8,6 +8,6 @@ import (
 	"net"
 )
 
-func dialVsock(_ context.Context, _, _ uint32) (net.Conn, error) {
+func DialVsock(_ context.Context, _, _ uint32) (net.Conn, error) {
 	return nil, errors.New("vsock is not supported on this system")
 }

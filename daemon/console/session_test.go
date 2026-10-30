@@ -440,3 +440,28 @@ func TestSessionRefusesTLS12(t *testing.T) {
 		t.Fatal("a tls 1.2 client is served")
 	}
 }
+
+func TestShellOf(t *testing.T) {
+	const passwd = "root:x:0:0:root:/root:/bin/bash\nnoshell:x:1:1::/:\nshort:x\nzsh:x:2:2::/home/zsh:/bin/zsh\n"
+	for name, want := range map[string]string{
+		"root":    "/bin/bash",
+		"zsh":     "/bin/zsh",
+		"noshell": "/bin/sh",
+		"short":   "/bin/sh",
+		"missing": "/bin/sh",
+	} {
+		if got := shellOf(passwd, name, "/bin/sh"); got != want {
+			t.Errorf("%s: got %s, want %s", name, got, want)
+		}
+	}
+}
+
+func TestEnterCommandOfAShell(t *testing.T) {
+	args, err := enterCommand(console.Target{Node: "vm1", Kind: console.KindShell})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(args) != 2 || args[1] != "-l" {
+		t.Errorf("got %v", args)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -67,7 +68,7 @@ func serveInherited(log *plog.Logger) error {
 	if connFile == nil {
 		return errors.New("no console connection inherited")
 	}
-	conn, err := net.FileConn(connFile)
+	conn, err := inheritedConn(connFile)
 	_ = connFile.Close()
 	if err != nil {
 		return fmt.Errorf("console connection: %w", err)
@@ -124,6 +125,9 @@ func serveInherited(log *plog.Logger) error {
 // The target comes from a ticket this cluster signed, and is checked anyway:
 // it becomes the arguments of a command.
 func enterCommand(target console.Target) ([]string, error) {
+	if target.Kind == console.KindShell {
+		return []string{loginShell(), "-l"}, nil
+	}
 	path, err := naming.ParsePath(target.Path)
 	if err != nil {
 		return nil, fmt.Errorf("console target: %w", err)
@@ -136,6 +140,33 @@ func enterCommand(target console.Target) ([]string, error) {
 		args = append(args, "--rid", target.RID)
 	}
 	return args, nil
+}
+
+// loginShell returns the shell of the user running the session, /bin/sh when
+// it can not tell.
+func loginShell() string {
+	const fallback = "/bin/sh"
+	u, err := user.Current()
+	if err != nil {
+		return fallback
+	}
+	b, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return fallback
+	}
+	return shellOf(string(b), u.Username, fallback)
+}
+
+// shellOf returns the shell of username in the passwd file s, fallback when it
+// has none.
+func shellOf(s, username, fallback string) string {
+	for line := range strings.Lines(s) {
+		fields := strings.Split(strings.TrimSpace(line), ":")
+		if len(fields) >= 7 && fields[0] == username && fields[6] != "" {
+			return fields[6]
+		}
+	}
+	return fallback
 }
 
 // peerURL is the url of the console endpoint of a peer node: the address its

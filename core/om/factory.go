@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/console"
 	commands "github.com/opensvc/om3/v3/core/omcmd"
 	daemonconsole "github.com/opensvc/om3/v3/daemon/console"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -2405,8 +2406,11 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 // not the status of the shell, as a container that is not running, is
 // reported as any other.
 func quietExitStatus(cmd *cobra.Command, err error) error {
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	var (
+		exitErr    *exec.ExitError
+		exitStatus console.ExitStatus
+	)
+	if errors.As(err, &exitErr) || errors.As(err, &exitStatus) {
 		cmd.SilenceErrors = true
 	}
 	return err

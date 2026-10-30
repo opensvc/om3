@@ -49,6 +49,11 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 	if params.Rid != nil {
 		target.RID = *params.Rid
 	}
+	return a.issueConsoleTicket(ctx, target)
+}
+
+// issueConsoleTicket answers the signed ticket of a console session of target.
+func (a *DaemonAPI) issueConsoleTicket(ctx echo.Context, target console.Target) error {
 	ticket, err := console.NewTicket(userFromContext(ctx).Username, a.localhost, target)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New console ticket", "%s", err)

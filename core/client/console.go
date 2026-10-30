@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
 	"github.com/opensvc/om3/v3/core/console"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodesinfo"
@@ -85,6 +86,39 @@ func (t *T) consoleURL(nodename string, ticket *oapi.ConsoleTicket) (consoleURL 
 	q.Set("ticket", ticket.Ticket)
 	u.RawQuery = q.Encode()
 	return u.String(), serverName, nil
+}
+
+// VsockShell opens a shell on the node of a guest, and connects stdin and
+// stdout to it until it ends. The client has to be one of a vsock url. It
+// returns console.ErrNoSession when nothing ran on the guest.
+//
+// The guest serves its console endpoint on the vsock port following the one of
+// its api. The connection is the kernel's between a hypervisor and its guest,
+// which nothing can stand in the middle of, and the cluster of the guest is not
+// the one of the hypervisor: its certificate proves nothing here, and is not
+// verified.
+func (t *T) VsockShell(ctx context.Context, nodename string, stdin *os.File, stdout io.Writer) (console.Result, error) {
+	var result console.Result
+	cid, port, err := reqh2.ParseVsockURL(t.url)
+	if err != nil {
+		return result, err
+	}
+	resp, err := t.PostNodeConsoleWithResponse(ctx, nodename)
+	if err != nil {
+		return result, fmt.Errorf("%w: %w", console.ErrNoSession, err)
+	}
+	if resp.JSON201 == nil {
+		return result, fmt.Errorf("%w: %s: %s", console.ErrNoSession, resp.Status(), resp.Body)
+	}
+	return console.Attach(ctx, console.AttachOptions{
+		URL:       "wss://" + nodename + "/?" + url.Values{"ticket": {resp.JSON201.Ticket}}.Encode(),
+		TLSConfig: &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}, // #nosec G402
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return reqh2.DialVsock(ctx, cid, port+1)
+		},
+		Stdin:  stdin,
+		Stdout: stdout,
+	})
 }
 
 // Console opens a console session on the resource of the instance, and

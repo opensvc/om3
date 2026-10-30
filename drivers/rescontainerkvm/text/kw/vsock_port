@@ -1,6 +1,6 @@
 The vsock port the master reaches the guest daemon on, for the status, the
-config and the actions of the encap instances, with no network and no
-credential. Set to `0` to not use it.
+config and the actions of the encap instances, and the next port for
+`container enter`, with no network and no credential. Set to `0` to not use it.
 
 The guest needs a vsock device, as `<vsock model='virtio'><cid auto='yes'/></vsock>`
 in the domain definition, and to serve the port with its `listener.vsock_port`

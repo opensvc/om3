@@ -8,13 +8,13 @@ import (
 )
 
 func TestParseVsockURL(t *testing.T) {
-	cid, port, err := parseVsockURL("vsock://3:1215")
+	cid, port, err := ParseVsockURL("vsock://3:1215")
 	require.NoError(t, err)
 	assert.Equal(t, uint32(3), cid)
 	assert.Equal(t, uint32(1215), port)
 
 	for _, s := range []string{"vsock://3", "vsock://a:1215", "vsock://3:b", "vsock://:1215", "vsock://3:"} {
-		_, _, err := parseVsockURL(s)
+		_, _, err := ParseVsockURL(s)
 		assert.Error(t, err, s)
 	}
 }

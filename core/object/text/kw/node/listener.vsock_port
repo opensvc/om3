@@ -7,4 +7,7 @@ privileged process of the hypervisor can bind, is granted `root`, as the
 hypervisor is root on its guests anyway. Any other connection of the hypervisor
 has to authenticate, and the other guests are dropped.
 
+The next port serves the console endpoint the same way, for `container enter`
+from the hypervisor, to a privileged process of the hypervisor alone.
+
 Takes effect at the next daemon start.
