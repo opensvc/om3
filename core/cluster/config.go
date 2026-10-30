@@ -24,6 +24,7 @@ type (
 		DNSReverse bool           `json:"dns_reverse"`
 		CASecPaths []string       `json:"ca_sec_paths"`
 		Listener   ConfigListener `json:"listener"`
+		AI         ConfigAI       `json:"ai"`
 		Quorum     bool           `json:"quorum"`
 
 		// UXGroups are the grants of the members of a unix group
@@ -42,6 +43,13 @@ type (
 		Rate    rate.Limit    `json:"rate"`
 		Burst   int           `json:"burst"`
 		Expires time.Duration `json:"expires"`
+	}
+
+	// ConfigAI is the [ai] section of the cluster configuration.
+	ConfigAI struct {
+		// AgentURL is the origin of the OpenSVC AI agent om3-webapp
+		// calls, none when empty.
+		AgentURL string `json:"agent_url"`
 	}
 
 	ConfigListener struct {

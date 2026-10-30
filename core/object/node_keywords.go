@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/kwoption"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -322,6 +323,14 @@ var (
 		Option:    "allow_envs",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.allow_envs"),
+	}
+	kwNodeAIAgentURL = keywords.Keyword{
+		Example:  "https://ai.example.com:8090",
+		Option:   "agent_url",
+		Section:  "ai",
+		Since:    "v3.0.0-rc55",
+		Text:     keywords.NewText(fs, "text/kw/node/ai.agent_url"),
+		Validate: validAIAgentURL,
 	}
 	kwNodeConsolePort = keywords.Keyword{
 		Converter: converters.Int,
@@ -2026,6 +2035,7 @@ var (
 		&kwNodeMinAvailSwap,
 		&kwNodeEnv,
 		&kwNodeAllowEnvs,
+		&kwNodeAIAgentURL,
 		&kwNodeConsolePort,
 		&kwNodeConsoleURL,
 		&kwNodeMaxParallel,
@@ -2282,6 +2292,13 @@ func validMaxParallel(value string) error {
 		return fmt.Errorf("%d is below the minimum of %d actions in parallel, 0 being the number of cpus", i, MinNodeMaxParallel)
 	}
 	return nil
+}
+
+// validAIAgentURL refuses an ai.agent_url om3-webapp could not call: no https
+// origin.
+func validAIAgentURL(value string) error {
+	_, err := cluster.ParseAIAgentURL(value)
+	return err
 }
 
 func validShare(value string) error {
