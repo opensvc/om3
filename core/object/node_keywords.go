@@ -731,6 +731,14 @@ var (
 		Section:   "listener",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.public_metrics"),
 	}
+	kwNodeListenerVsockPort = keywords.Keyword{
+		Converter: converters.Int,
+		Example:   "1215",
+		Option:    "vsock_port",
+		Section:   "listener",
+		Since:     "v3.0.0-rc56",
+		Text:      keywords.NewText(fs, "text/kw/node/listener.vsock_port"),
+	}
 	kwNodeListenerAddr = keywords.Keyword{
 		Aliases:  []string{"tls_addr"},
 		Default:  "",
@@ -2110,6 +2118,7 @@ var (
 		&kwNodeListenerDNSSockGID,
 		&kwNodeListenerUXOwnerGroup,
 		&kwNodeListenerPublicMetrics,
+		&kwNodeListenerVsockPort,
 		&kwNodeListenerAddr,
 		&kwNodeListenerPort,
 		&kwNodeListenerOpenIDIssuer,

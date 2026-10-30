@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/listener/lsnracme"
 	"github.com/opensvc/om3/v3/daemon/listener/lsnrhttpinet"
 	"github.com/opensvc/om3/v3/daemon/listener/lsnrhttpux"
+	"github.com/opensvc/om3/v3/daemon/listener/lsnrhttpvsock"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -121,6 +122,18 @@ func (t *T) Start(ctx context.Context) error {
 		}
 	} else {
 		t.log.Infof("serve no user socket: listener.ux_owner_group is empty")
+	}
+
+	// The vsock listener, on listener.vsock_port when set, is not one the
+	// daemon depends on either: a guest with no vsock device loses the way
+	// its hypervisor prefers to reach it, not the api.
+	if port := clusterConfig.Listener.VsockPort; port > 0 {
+		vsockListener := lsnrhttpvsock.New(uint32(port))
+		if err := vsockListener.Start(ctx); err != nil {
+			t.log.Errorf("start the vsock listener: %s", err)
+		} else {
+			t.stopFunc = append(t.stopFunc, vsockListener.Stop)
+		}
 	}
 
 	// The ACME challenge listener, on listener.acme_port when set, is not

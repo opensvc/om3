@@ -78,6 +78,10 @@ type (
 		// PublicMetrics serves /metrics with no authentication. The
 		// detail pages, /metrics/<subsystem>, stay protected.
 		PublicMetrics bool `json:"public_metrics"`
+
+		// VsockPort is the vsock port the api is served on, for the
+		// hypervisor of the node, none when zero.
+		VsockPort int `json:"vsock_port"`
 	}
 )
 

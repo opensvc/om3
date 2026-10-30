@@ -288,6 +288,11 @@ func (t *T) newRequester() (err error) {
 	}
 	switch {
 	case t.url == "":
+	case strings.HasPrefix(t.url, reqh2.VsockPrefix):
+		t.ClientWithResponses, err = reqh2.NewVsock(reqh2.Config{
+			URL:     t.url,
+			Timeout: t.timeout,
+		})
 	case strings.HasPrefix(t.url, reqh2.UDSPrefix):
 		t.url = t.url[7:]
 		t.ClientWithResponses, err = reqh2.NewUDS(reqh2.Config{

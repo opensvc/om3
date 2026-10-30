@@ -98,7 +98,7 @@ func (t *T) Start(ctx context.Context) error {
 		t.log.Infof("socket owned by the group %s (%d)", t.group, t.gid)
 	}
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
-	t.server = newServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
+	t.server = NewServer(routehttp.New(ctx, false), golog.New(t.log.Logger(), "", 0))
 	if t.peerCred {
 		t.server.ConnContext = t.withPeer
 	}
@@ -210,14 +210,14 @@ func (t *T) closeSocket(reason string) {
 	t.log.Infof("socket closed: %s", reason)
 }
 
-// newServer returns the server of the ux listener, serving handler over
-// http/1.1 and cleartext http/2.
+// NewServer returns the server of a listener of a local socket, serving
+// handler over http/1.1 and cleartext http/2.
 //
 // The socket is root's, but a client stalling its headers, or keeping an idle
 // connection, holds a goroutine of the daemon all the same: both are timed.
 // The http/2 connections are read by the http/2 server once the http/1.1
 // server read their preface, so it is timed too.
-func newServer(handler http.Handler, errorLog *golog.Logger) *http.Server {
+func NewServer(handler http.Handler, errorLog *golog.Logger) *http.Server {
 	s := &http2.Server{IdleTimeout: daemonenv.HTTPIdleTimeout}
 	return &http.Server{
 		Handler:           h2c.NewHandler(handler, s),
