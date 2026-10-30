@@ -98,14 +98,14 @@ func (t L) Load(clusterStatus clusterdump.Data) L {
 				continue
 			}
 			for rid, rstat := range inst.Status.Resources {
-				if ipIntf, ok := rstat.Info["ipaddr"]; ok {
+				for _, addr := range rstat.IPAddrs() {
 					p, err := naming.ParsePath(ps)
 					if err != nil {
 						log.Debug().Err(err).Str("path", ps).Send()
 						continue
 					}
 					ip := T{
-						IP:   net.ParseIP(ipIntf.(string)),
+						IP:   net.ParseIP(addr),
 						Path: p,
 						Node: nodename,
 						RID:  rid,

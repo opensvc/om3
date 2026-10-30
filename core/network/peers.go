@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/opensvc/om3/v3/core/instance"
@@ -34,17 +33,15 @@ func InstanceAddrs(allocators []*ipam.T, p naming.Path, st instance.Status) map[
 		m[i.Name] = make(map[string]string)
 	}
 	for rid, rstat := range st.Resources {
-		v, ok := rstat.Info[ipAddrInfoKey]
-		if !ok || v == nil {
-			continue
-		}
-		ip := net.ParseIP(fmt.Sprint(v))
-		if ip == nil {
-			continue
-		}
-		for _, i := range allocators {
-			if i.Contains(ip) {
-				m[i.Name][ip.String()] = ipam.Key(p, rid)
+		for _, s := range rstat.IPAddrs() {
+			ip := net.ParseIP(s)
+			if ip == nil {
+				continue
+			}
+			for _, i := range allocators {
+				if i.Contains(ip) {
+					m[i.Name][ip.String()] = ipam.Key(p, rid)
+				}
 			}
 		}
 	}

@@ -25,7 +25,6 @@ const hexDigit = "0123456789abcdef"
 var (
 	hostnameInfoKey = "hostname"
 	exposeInfoKey   = "expose"
-	ipAddrInfoKey   = "ipaddr"
 
 	// SOA records properties
 	contact = "contact@opensvc.com"
@@ -158,6 +157,15 @@ type objectAddr struct {
 	owner string
 }
 
+// addrKey names the address of a rank of a resource, one of the guest of a
+// container on several networks.
+func addrKey(rid string, rank int) string {
+	if rank == 0 {
+		return rid
+	}
+	return fmt.Sprintf("%s!%d", rid, rank)
+}
+
 // objectAddrs reports, per resource, whether every instance of the object
 // names the same address.
 //
@@ -172,18 +180,13 @@ func (t *Manager) objectAddrs(p naming.Path, node string, value *instance.Status
 	byRID := make(map[string]map[string]string)
 	note := func(nodename string, st instance.Status) {
 		for rid, rstat := range st.Resources {
-			i, ok := rstat.Info[ipAddrInfoKey]
-			if !ok {
-				continue
+			for rank, addr := range rstat.IPAddrs() {
+				key := addrKey(rid, rank)
+				if byRID[key] == nil {
+					byRID[key] = make(map[string]string)
+				}
+				byRID[key][nodename] = addr
 			}
-			addr, ok := i.(string)
-			if !ok || addr == "" {
-				continue
-			}
-			if byRID[rid] == nil {
-				byRID[rid] = make(map[string]string)
-			}
-			byRID[rid][nodename] = addr
 		}
 	}
 	for peer, st := range instance.StatusData.GetByPath(p) {
@@ -305,145 +308,144 @@ func (t *Manager) stageInstance(path naming.Path, node string, value instance.St
 		answersForObject := rstat.Status.Is(status.Up, status.StandbyUp, status.Warn) &&
 			(!rstat.IsStandby || isInstanceServing)
 
-		// An address every instance names is the object's own. There is no
-		// question of which instance it belongs to, so the object answers
-		// with it whatever the instances are doing - a stopped object keeps
-		// resolving, and a client is told the connection is refused rather
-		// than that the name does not exist. One instance stages it, so the
-		// zone holds the address once and not once per instance.
-		if shared, ok := objectAddrs[rid]; ok && shared.addr != "" {
-			answersForObject = shared.owner == node
-		}
+		resourceAnswers := answersForObject
+		addrs := rstat.IPAddrs()
+		for rank, ipAddr := range addrs {
+			// An address every instance names is the object's own. There is no
+			// question of which instance it belongs to, so the object answers
+			// with it whatever the instances are doing - a stopped object keeps
+			// resolving, and a client is told the connection is refused rather
+			// than that the name does not exist. One instance stages it, so the
+			// zone holds the address once and not once per instance.
+			answersForObject := resourceAnswers
+			if shared, ok := objectAddrs[addrKey(rid, rank)]; ok && shared.addr != "" {
+				answersForObject = shared.owner == node
+			}
 
-		i, ok := rstat.Info[ipAddrInfoKey]
-		if !ok {
-			continue
-		}
-		ipAddr, ok := i.(string)
-		if !ok || ipAddr == "" {
-			continue
-		}
-		ip := net.ParseIP(ipAddr)
-		if ip == nil {
-			continue
-		}
-		isIPV4 := ip.To4() != nil
-		var aType, ptrType string
-		if isIPV4 {
-			aType = "A"
-			ptrType = "PTR"
-		} else {
-			aType = "AAAA"
-			ptrType = "PTR"
-		}
-		getResNames := func() (string, string) {
-			if i, ok := rstat.Info[hostnameInfoKey]; ok {
-				hostname, _ := i.(string)
-				if isNameUnder(hostname, name) {
-					// A hostname naming the object already, or a name
-					// under it, is the name of the address: appending the
-					// object name doubled it. Any other hostname is put
-					// under the object name, as the object's to name: one
-					// in the cluster domain, as the cluster apex, a
-					// nameserver or the name of another object, would
-					// publish the address under a name the object does
-					// not own.
-					return strings.TrimSuffix(hostname, ".") + ".", ""
+			ip := net.ParseIP(ipAddr)
+			if ip == nil {
+				continue
+			}
+			isIPV4 := ip.To4() != nil
+			var aType, ptrType string
+			if isIPV4 {
+				aType = "A"
+				ptrType = "PTR"
+			} else {
+				aType = "AAAA"
+				ptrType = "PTR"
+			}
+			getResNames := func() (string, string) {
+				if i, ok := rstat.Info[hostnameInfoKey]; ok {
+					hostname, _ := i.(string)
+					if isNameUnder(hostname, name) {
+						// A hostname naming the object already, or a name
+						// under it, is the name of the address: appending the
+						// object name doubled it. Any other hostname is put
+						// under the object name, as the object's to name: one
+						// in the cluster domain, as the cluster apex, a
+						// nameserver or the name of another object, would
+						// publish the address under a name the object does
+						// not own.
+						return strings.TrimSuffix(hostname, ".") + ".", ""
+					}
+					if hostname != "" {
+						resName := hostname + "." + name
+						resNameOnNode := hostname + "." + nameOnNode
+						return resName, resNameOnNode
+					}
 				}
-				if hostname != "" {
-					resName := hostname + "." + name
-					resNameOnNode := hostname + "." + nameOnNode
+				if id, err := resourceid.Parse(rid); err == nil {
+					resName := id.Index() + "." + name
+					resNameOnNode := id.Index() + "." + nameOnNode
 					return resName, resNameOnNode
 				}
+				return "", ""
 			}
-			if id, err := resourceid.Parse(rid); err == nil {
-				resName := id.Index() + "." + name
-				resNameOnNode := id.Index() + "." + nameOnNode
-				return resName, resNameOnNode
-			}
-			return "", ""
-		}
-		resName, resNameOnNode := getResNames()
+			resName, resNameOnNode := getResNames()
 
-		// The node agnostic names answer for the object, so they answer with
-		// the addresses serving it and no others.
-		if answersForObject {
-			// Add a direct record (node agnostic)
-			stage(Record{
-				Name:     name,
-				DomainID: -1,
-				Type:     aType,
-				TTL:      60,
-				Content:  ipAddr,
-			})
-			if resName != "" {
+			// The node agnostic names answer for the object, so they answer with
+			// the addresses serving it and no others.
+			if answersForObject {
+				// Add a direct record (node agnostic)
 				stage(Record{
-					Name:     resName,
+					Name:     name,
 					DomainID: -1,
 					Type:     aType,
 					TTL:      60,
 					Content:  ipAddr,
 				})
-				// Add a reverse record (node agnostic)
-				stage(Record{
-					Name:     reverseAddr(ip),
-					DomainID: -1,
-					Type:     ptrType,
-					TTL:      60,
-					Content:  resName,
-				})
-			} else {
-				// Add a reverse record (node agnostic)
-				stage(Record{
-					Name:     reverseAddr(ip),
-					DomainID: -1,
-					Type:     ptrType,
-					TTL:      60,
-					Content:  name,
-				})
+				if resName != "" {
+					stage(Record{
+						Name:     resName,
+						DomainID: -1,
+						Type:     aType,
+						TTL:      60,
+						Content:  ipAddr,
+					})
+					// Add a reverse record (node agnostic)
+					stage(Record{
+						Name:     reverseAddr(ip),
+						DomainID: -1,
+						Type:     ptrType,
+						TTL:      60,
+						Content:  resName,
+					})
+				} else {
+					// Add a reverse record (node agnostic)
+					stage(Record{
+						Name:     reverseAddr(ip),
+						DomainID: -1,
+						Type:     ptrType,
+						TTL:      60,
+						Content:  name,
+					})
+				}
 			}
-		}
 
-		// The node affine names answer for the instance on one node, which is
-		// the address that node would serve. They are published whatever the
-		// instance is doing, as they were before the availability was read
-		// here at all.
-		// Add a direct record (node affine)
-		stage(Record{
-			Name:     nameOnNode,
-			DomainID: -1,
-			Type:     aType,
-			TTL:      60,
-			Content:  ipAddr,
-		})
-		if resNameOnNode != "" {
+			// The node affine names answer for the instance on one node, which is
+			// the address that node would serve. They are published whatever the
+			// instance is doing, as they were before the availability was read
+			// here at all.
+			// Add a direct record (node affine)
 			stage(Record{
-				Name:     resNameOnNode,
+				Name:     nameOnNode,
 				DomainID: -1,
 				Type:     aType,
 				TTL:      60,
 				Content:  ipAddr,
 			})
-			// Add a reverse record (node affine)
-			stage(Record{
-				Name:     reverseAddr(ip),
-				DomainID: -1,
-				Type:     ptrType,
-				TTL:      60,
-				Content:  resNameOnNode,
-			})
-		} else {
-			// Add a reverse record (node affine)
-			stage(Record{
-				Name:     reverseAddr(ip),
-				DomainID: -1,
-				Type:     ptrType,
-				TTL:      60,
-				Content:  nameOnNode,
-			})
+			if resNameOnNode != "" {
+				stage(Record{
+					Name:     resNameOnNode,
+					DomainID: -1,
+					Type:     aType,
+					TTL:      60,
+					Content:  ipAddr,
+				})
+				// Add a reverse record (node affine)
+				stage(Record{
+					Name:     reverseAddr(ip),
+					DomainID: -1,
+					Type:     ptrType,
+					TTL:      60,
+					Content:  resNameOnNode,
+				})
+			} else {
+				// Add a reverse record (node affine)
+				stage(Record{
+					Name:     reverseAddr(ip),
+					DomainID: -1,
+					Type:     ptrType,
+					TTL:      60,
+					Content:  nameOnNode,
+				})
+			}
 		}
 
-		stageSRVs(rid, rstat)
+		if len(addrs) > 0 {
+			stageSRVs(rid, rstat)
+		}
 	}
 
 	// Delete records that no longer exist

@@ -25,10 +25,6 @@ import (
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
-// ipAddrInfoKey is the resource status info an ip resource publishes its
-// address under.
-const ipAddrInfoKey = "ipaddr"
-
 // NewAllocator returns the allocator of a network on a node, or nil when the
 // network is one om allocates no address in.
 func NewAllocator(nw Networker, nodename string) (*ipam.T, error) {
@@ -198,15 +194,13 @@ func localReservations() ([]ipam.Reservation, error) {
 				// until the leader of the unprovision removes it.
 				continue
 			}
-			s, ok := rstat.Info[ipAddrInfoKey].(string)
-			if !ok || s == "" {
-				continue
+			for _, s := range rstat.IPAddrs() {
+				ip := net.ParseIP(s)
+				if ip == nil {
+					continue
+				}
+				l = append(l, ipam.Reservation{IP: ip, Key: ipam.Key(p, rid)})
 			}
-			ip := net.ParseIP(s)
-			if ip == nil {
-				continue
-			}
-			l = append(l, ipam.Reservation{IP: ip, Key: ipam.Key(p, rid)})
 		}
 	}
 	return l, nil

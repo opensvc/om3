@@ -32,7 +32,7 @@ func TestLocalReservationsSkipUnprovisioned(t *testing.T) {
 
 	withAddr := func(addr string, state provisioned.T) resource.Status {
 		return resource.Status{
-			Info:          map[string]any{ipAddrInfoKey: addr},
+			Info:          map[string]any{resource.IPAddrInfoKey: addr},
 			IsProvisioned: resource.ProvisionStatus{State: state},
 		}
 	}

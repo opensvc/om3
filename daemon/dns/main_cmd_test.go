@@ -175,7 +175,7 @@ func scopedStandbyIP(avail status.T, addr string) *msgbus.InstanceStatusUpdated 
 				"ip#0": resource.Status{
 					Status:    status.StandbyUp,
 					IsStandby: true,
-					Info:      map[string]any{ipAddrInfoKey: addr},
+					Info:      map[string]any{resource.IPAddrInfoKey: addr},
 				},
 			},
 		},
@@ -265,7 +265,7 @@ func TestADeadResourceDoesNotUnpublishTheAddress(t *testing.T) {
 				Value: instance.Status{
 					Avail: avail,
 					Resources: instance.ResourceStatuses{
-						"ip#0":        resource.Status{Status: status.Up, Info: map[string]any{ipAddrInfoKey: "10.100.0.240"}},
+						"ip#0":        resource.Status{Status: status.Up, Info: map[string]any{resource.IPAddrInfoKey: "10.100.0.240"}},
 						"container#0": resource.Status{Status: status.Up},
 						"container#1": resource.Status{Status: status.Up},
 						"container#2": resource.Status{Status: status.Down},
@@ -289,7 +289,7 @@ func scopedIP(node, addr string, avail status.T) *msgbus.InstanceStatusUpdated {
 			Resources: instance.ResourceStatuses{
 				"ip#0": resource.Status{
 					Status: avail,
-					Info:   map[string]any{ipAddrInfoKey: addr},
+					Info:   map[string]any{resource.IPAddrInfoKey: addr},
 				},
 			},
 		},
@@ -407,7 +407,7 @@ func TestAHostnameInTheClusterDomainIsNotDoubled(t *testing.T) {
 			Resources: instance.ResourceStatuses{
 				"ip#1": resource.Status{
 					Status: status.Up,
-					Info:   map[string]any{ipAddrInfoKey: "10.100.0.7", hostnameInfoKey: "um1.cstry.svc.cluster1"},
+					Info:   map[string]any{resource.IPAddrInfoKey: "10.100.0.7", hostnameInfoKey: "um1.cstry.svc.cluster1"},
 				},
 			},
 		},
@@ -444,7 +444,7 @@ func TestAHostnameIsPublishedUnderTheObjectName(t *testing.T) {
 				Resources: instance.ResourceStatuses{
 					"ip#1": resource.Status{
 						Status: status.Up,
-						Info:   map[string]any{ipAddrInfoKey: "10.100.0.7", hostnameInfoKey: hostname},
+						Info:   map[string]any{resource.IPAddrInfoKey: "10.100.0.7", hostnameInfoKey: hostname},
 					},
 				},
 			},
@@ -478,4 +478,39 @@ func TestAReverseNameOutsideTheZonesIsNotAnswered(t *testing.T) {
 	zones = []string{"1.100.10.in-addr.arpa"}
 	m.reverseZones.Store(&zones)
 	require.Empty(t, get(ptr.Name), "another zone served")
+}
+
+// aaaaRecords is the ipv6 recordset a name answers with.
+func aaaaRecords(m *Manager, name string) []string {
+	contents := make([]string, 0)
+	for _, record := range m.nameIndex[name] {
+		if record.Type == "AAAA" {
+			contents = append(contents, record.Content)
+		}
+	}
+	sort.Strings(contents)
+	return contents
+}
+
+// A guest on an ipv4 and an ipv6 network publishes both addresses, and its
+// name answers with both.
+func TestAResourceHoldingSeveralAddresses(t *testing.T) {
+	m := dnsManager(t)
+	update(m, &msgbus.InstanceStatusUpdated{
+		Path: naming.Path{Name: "vm1", Namespace: "root", Kind: naming.KindSvc},
+		Node: "node1",
+		Value: instance.Status{
+			Avail: status.Up,
+			Resources: instance.ResourceStatuses{
+				"container#1": resource.Status{Status: status.Up, Info: map[string]any{
+					resource.IPAddrInfoKey:  "10.100.0.19",
+					resource.IPAddrsInfoKey: []any{"10.100.0.19", "fd01::213"},
+				}},
+			},
+		},
+	})
+	require.Equal(t, []string{"10.100.0.19"}, aRecords(m, "vm1.root.svc.cluster1."))
+	require.Equal(t, []string{"fd01::213"}, aaaaRecords(m, "vm1.root.svc.cluster1."))
+	require.Equal(t, []string{"10.100.0.19"}, aRecords(m, "1.vm1.root.svc.cluster1."))
+	require.Equal(t, []string{"fd01::213"}, aaaaRecords(m, "1.vm1.root.svc.cluster1."))
 }
