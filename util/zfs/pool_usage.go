@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	// PoolUsage represents a parsed line of the df unix command
+	// PoolUsage is the space of a pool, as what is stored in it is told.
 	PoolUsage struct {
 		Size  int64
 		Alloc int64
@@ -21,46 +21,44 @@ type (
 	}
 )
 
+// parsePoolUsage reads the output of zfs get -Hp used,available.
 func parsePoolUsage(b []byte) (PoolUsage, error) {
-	data := PoolUsage{}
-	lines := strings.Split(string(b), "\n")
-	if len(lines) != 4 {
-		return data, fmt.Errorf("unexpected 'zpool get -H size,alloc,free' output: %s", string(b))
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	if len(lines) != 2 {
+		return PoolUsage{}, fmt.Errorf("unexpected 'zfs get -Hp used,available' output: %s", string(b))
 	}
-	parseLine := func(line string) (int64, error) {
+	values := make([]int64, len(lines))
+	for i, line := range lines {
 		l := strings.Fields(line)
 		if len(l) < 3 {
-			return 0, fmt.Errorf("unexpected number of elements in line: %s", line)
+			return PoolUsage{}, fmt.Errorf("unexpected number of elements in line: %s", line)
 		}
-		return strconv.ParseInt(l[2], 10, 64)
+		v, err := strconv.ParseInt(l[2], 10, 64)
+		if err != nil {
+			return PoolUsage{}, err
+		}
+		values[i] = v
 	}
-
-	if i, err := parseLine(lines[0]); err == nil {
-		data.Size = i
-	} else {
-		return PoolUsage{}, err
-	}
-	if i, err := parseLine(lines[1]); err == nil {
-		data.Alloc = i
-	} else {
-		return PoolUsage{}, err
-	}
-	if i, err := parseLine(lines[2]); err == nil {
-		data.Free = i
-	} else {
-		return PoolUsage{}, err
-	}
-
-	return data, nil
+	return PoolUsage{Alloc: values[0], Free: values[1]}, nil
 }
 
+// Usage returns the size of the pool, and what is used and free of it as its
+// datasets see it, which is the question its callers ask: can a volume of a
+// size be created there.
+//
+// What zpool get tells of them is another thing, the blocks written. A zvol
+// reserves its whole size when created, and that reservation is no block of
+// the pool until it is written: zpool says free the space no zfs create can
+// have. The used of the root dataset counts the reservations, and available is
+// what is left of them. Their sum is the size less what zfs keeps for itself,
+// which is why Size stays what zpool says: a resize compares it to a device.
 func (t *Pool) Usage(ctx context.Context, fopts ...funcopt.O) (PoolUsage, error) {
 	opts := &poolStatusOpts{}
 	funcopt.Apply(opts, fopts...)
 	cmd := command.New(
 		command.WithContext(ctx),
-		command.WithName("zpool"),
-		command.WithVarArgs("get", "-H", "size,alloc,free", "-p", t.Name),
+		command.WithName("zfs"),
+		command.WithVarArgs("get", "-Hp", "used,available", t.Name),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
@@ -71,7 +69,18 @@ func (t *Pool) Usage(ctx context.Context, fopts ...funcopt.O) (PoolUsage, error)
 	if err != nil {
 		return PoolUsage{}, err
 	}
-	return parsePoolUsage(b)
+	usage, err := parsePoolUsage(b)
+	if err != nil {
+		return PoolUsage{}, err
+	}
+	size, err := t.GetProperty("size")
+	if err != nil {
+		return PoolUsage{}, err
+	}
+	if usage.Size, err = strconv.ParseInt(size, 10, 64); err != nil {
+		return PoolUsage{}, fmt.Errorf("zpool size %q: %w", size, err)
+	}
+	return usage, nil
 }
 
 // ExpandDevice makes the pool take the space a device of it has gained.
