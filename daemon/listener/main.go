@@ -130,7 +130,7 @@ func (t *T) Start(ctx context.Context) error {
 	if port := clusterConfig.Listener.VsockPort; port > 0 {
 		vsockListener := lsnrhttpvsock.New(uint32(port))
 		if err := vsockListener.Start(ctx); err != nil {
-			t.log.Errorf("start the vsock listener: %s", err)
+			t.log.Warnf("serve no vsock listener: %s", err)
 		} else {
 			t.stopFunc = append(t.stopFunc, vsockListener.Stop)
 		}

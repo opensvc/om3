@@ -1,1 +1,3 @@
 The command to use to create the container. Usually a `virt-install` command or a custom script.
+
+With a `vsock_port`, a `virt-install` knowing the option is given `--vsock cid.auto=yes` unless it names a vsock device already.

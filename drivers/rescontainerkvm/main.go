@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -105,6 +106,16 @@ var (
 	// vsockCIDRegexp reads the context id of a vsock device, allocated or
 	// fixed: <cid auto='yes' address='3'/>.
 	vsockCIDRegexp = regexp.MustCompile(`<cid\b[^>]*\baddress=['"](\d+)['"]`)
+
+	// vsockDeviceRegexp matches a vsock device in a domain definition, with
+	// the indent of its first line.
+	vsockDeviceRegexp = regexp.MustCompile(`(?s)[ \t]*<vsock\b(?:[^>]*/>|.*?</vsock>)\n?`)
+
+	// configDir holds the definitions of the domains, which libvirt keeps.
+	configDir = "/etc/libvirt/qemu"
+
+	// hostVsockDevice is the device qemu opens for a vsock device of a guest.
+	hostVsockDevice = "/dev/vhost-vsock"
 )
 
 func isPartitionsCapable(ctx context.Context) bool {
@@ -147,7 +158,7 @@ func New() resource.Driver {
 }
 
 func (t *T) configFile() string {
-	return filepath.Join("/etc/libvirt/qemu", t.Name+".xml")
+	return filepath.Join(configDir, t.Name+".xml")
 }
 
 func (t *T) autostartFile() string {
@@ -277,11 +288,30 @@ func (t *T) migrate(ctx context.Context, to string, copied []moveDisk, overlaid 
 	return cmd.Run()
 }
 
+// start starts the domain.
+//
+// The configuration file is synced between the nodes, so a hypervisor with no
+// vsock support may get one holding a vsock device, and qemu would refuse to
+// start it. The domain is then created from a copy without the device: its
+// definition stays as it is, or this hypervisor would sync the loss of the
+// device to the ones having it. The guest is reached through qga or rcmd here.
 func (t *T) start(ctx context.Context) error {
+	args := []string{"start", t.Name}
+	if !hasHostVsock() {
+		f, err := t.definitionWithoutVsock()
+		if err != nil {
+			return err
+		}
+		if f != "" {
+			defer func() { _ = os.Remove(f) }()
+			t.Log().Warnf("this hypervisor has no %s: start the domain without its vsock device", hostVsockDevice)
+			args = []string{"create", f}
+		}
+	}
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("virsh"),
-		command.WithVarArgs("start", t.Name),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -416,6 +446,10 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 		definition  []byte
 		migrated    bool
 	)
+
+	if err := t.checkPeerVsock(ctx, to); err != nil {
+		return err
+	}
 
 	defer func() {
 		if err == nil || migrated {
@@ -1019,10 +1053,11 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if len(t.VirtInst) == 0 {
 		return fmt.Errorf("the 'virtinst' parameter must be set")
 	}
+	virtInst := t.virtInstWithVsock(ctx)
 	cmd := command.New(
 		command.WithContext(ctx),
-		command.WithName(t.VirtInst[0]),
-		command.WithArgs(t.VirtInst[1:]),
+		command.WithName(virtInst[0]),
+		command.WithArgs(virtInst[1:]),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -1282,16 +1317,137 @@ func (t *T) EncapAPIURL(ctx context.Context) (string, error) {
 	if !ok {
 		return "", nil
 	}
-	return fmt.Sprintf("%s%s:%d", reqh2.VsockPrefix, cid, t.VsockPort), nil
+	return fmt.Sprintf("%s%d:%d", reqh2.VsockPrefix, cid, t.VsockPort), nil
+}
+
+// StatusInfo implements resource.StatusInfoer: the name of the domain, and the
+// context id of its vsock device while it runs. It tells what the guest is
+// reached at now, for an operator: a user of it reads the running domain,
+// a status being stale after a live migration.
+func (t *T) StatusInfo(ctx context.Context) map[string]any {
+	m := map[string]any{"name": t.Name}
+	if t.VsockPort <= 0 {
+		return m
+	}
+	if b, err := t.liveDefinition(ctx); err == nil {
+		if cid, ok := vsockCID(b); ok {
+			m["vsock_cid"] = cid
+		}
+	}
+	return m
+}
+
+// virtInstWithVsock returns the virtinst command, with the vsock device the
+// master prefers to reach the guest through, when the command can add it. A
+// custom script, or a virt-install too old for the option, is run as it is:
+// the guest is reached the other ways.
+func (t *T) virtInstWithVsock(ctx context.Context) []string {
+	if t.VsockPort <= 0 || !isVirtInstall(t.VirtInst) || slices.Contains(t.VirtInst, "--vsock") {
+		return t.VirtInst
+	}
+	if !hasHostVsock() {
+		t.Log().Infof("this hypervisor has no %s: the guest has no vsock device", hostVsockDevice)
+		return t.VirtInst
+	}
+	b, err := exec.CommandContext(ctx, t.VirtInst[0], "--help").CombinedOutput()
+	if err != nil || !bytes.Contains(b, []byte("--vsock")) {
+		t.Log().Infof("%s has no --vsock option: the guest has no vsock device", t.VirtInst[0])
+		return t.VirtInst
+	}
+	return withVsockDevice(t.VirtInst)
+}
+
+func isVirtInstall(args []string) bool {
+	return len(args) > 0 && filepath.Base(args[0]) == "virt-install"
+}
+
+func withVsockDevice(args []string) []string {
+	return append(slices.Clone(args), "--vsock", "cid.auto=yes")
 }
 
 // vsockCID returns the context id of the domain definition b.
-func vsockCID(b []byte) (string, bool) {
+func vsockCID(b []byte) (int, bool) {
 	m := vsockCIDRegexp.FindSubmatch(b)
 	if m == nil {
-		return "", false
+		return 0, false
 	}
-	return string(m[1]), true
+	cid, err := strconv.Atoi(string(m[1]))
+	if err != nil {
+		return 0, false
+	}
+	return cid, true
+}
+
+// hasHostVsock says whether this hypervisor can give a guest a vsock device.
+// libvirt has no capability telling, and this is what qemu opens: the kernel
+// creates the node when it has the vhost_vsock module, and loads it at open.
+func hasHostVsock() bool {
+	return file.Exists(hostVsockDevice)
+}
+
+// checkPeerVsock refuses a move of a guest running with a vsock device to a
+// hypervisor with no vsock support, which libvirt refuses only once the move
+// has released the resources of the guest. A device can not be dropped from a
+// running guest: it moves once stopped. A peer that can not be asked is left
+// for libvirt to judge.
+func (t *T) checkPeerVsock(ctx context.Context, to string) error {
+	b, err := t.liveDefinition(ctx)
+	if err != nil || !vsockDeviceRegexp.Match(b) {
+		return nil
+	}
+	client, err := t.NewSSHClient(to)
+	if err != nil {
+		t.Log().Debugf("check %s on %s: %s", hostVsockDevice, to, err)
+		return nil
+	}
+	defer func() { _ = client.Close() }()
+	session, err := client.NewSession()
+	if err != nil {
+		t.Log().Debugf("check %s on %s: %s", hostVsockDevice, to, err)
+		return nil
+	}
+	defer func() { _ = session.Close() }()
+	var exitErr *ssh.ExitError
+	if err := session.Run("test -e " + hostVsockDevice); errors.As(err, &exitErr) {
+		return fmt.Errorf("the guest runs with a vsock device and %s has no %s: stop it to move it there", to, hostVsockDevice)
+	}
+	return nil
+}
+
+// definitionWithoutVsock writes the configuration file without its vsock
+// device to a temporary file, and returns its path, empty when it has no such
+// device.
+func (t *T) definitionWithoutVsock() (string, error) {
+	b, err := os.ReadFile(t.configFile())
+	if err != nil {
+		return "", err
+	}
+	stripped, ok := dropVsockDevice(b)
+	if !ok {
+		return "", nil
+	}
+	f, err := os.CreateTemp("", t.Name+".*.xml")
+	if err != nil {
+		return "", err
+	}
+	_, err = f.Write(stripped)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+// dropVsockDevice returns the domain definition b without its vsock device,
+// and whether it had one.
+func dropVsockDevice(b []byte) ([]byte, bool) {
+	if !vsockDeviceRegexp.Match(b) {
+		return b, false
+	}
+	return vsockDeviceRegexp.ReplaceAll(b, nil), true
 }
 
 func (t *T) GetOsvcRootPath() string {
