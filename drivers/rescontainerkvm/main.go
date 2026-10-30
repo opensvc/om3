@@ -25,7 +25,9 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/client"
 	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
+	"github.com/opensvc/om3/v3/core/console"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -1097,12 +1099,49 @@ func (t *T) rcmd() ([]string, error) {
 	return a.Get(), nil
 }
 
+// Enter opens a shell in the guest: through vsock when the guest serves it,
+// through the rcmd otherwise. What the session started failing is not a
+// reason to enter the other way.
 func (t *T) Enter(ctx context.Context) error {
+	err := t.enterViaVsock(ctx)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, console.ErrNoSession) {
+		return err
+	}
+	t.Log().Debugf("enter through vsock: %s", err)
 	rcmd, err := t.rcmd()
 	if err != nil {
 		return err
 	}
 	return t.enterViaRCmd(rcmd)
+}
+
+// enterViaVsock runs a shell of the guest on this terminal, and returns
+// console.ErrNoSession when nothing ran in the guest.
+func (t *T) enterViaVsock(ctx context.Context) error {
+	url, err := t.EncapAPIURL(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %w", console.ErrNoSession, err)
+	}
+	if url == "" {
+		return fmt.Errorf("%w: no vsock", console.ErrNoSession)
+	}
+	c, err := client.New(client.WithURL(url), client.WithTimeout(0))
+	if err != nil {
+		return fmt.Errorf("%w: %w", console.ErrNoSession, err)
+	}
+	result, err := c.VsockShell(ctx, t.GetHostname(), os.Stdin, os.Stdout)
+	switch {
+	case err != nil:
+		return err
+	case result.Reason == console.ReasonError:
+		return errors.New(result.Text)
+	case result.Code != 0:
+		return console.ExitStatus(result.Code)
+	}
+	return nil
 }
 
 func (t *T) execViaRCmd(ctx context.Context, args []string) error {

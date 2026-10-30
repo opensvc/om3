@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/user"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -287,7 +288,7 @@ func (cfg Config) run(ws *websocket.Conn, ticket *console.Ticket, remote string)
 		w.end(console.Message{Code: 1, Reason: console.ReasonError, Text: err.Error()})
 		return 1, err
 	}
-	if ticket.Target.Kind != console.KindTTY {
+	if ticket.Target.Kind != console.KindTTY && ticket.Target.Kind != console.KindShell {
 		return fail(fmt.Errorf("unsupported console kind: %s", ticket.Target.Kind))
 	}
 	args, err := cfg.Command(ticket.Target)
@@ -296,6 +297,14 @@ func (cfg Config) run(ws *websocket.Conn, ticket *console.Ticket, remote string)
 	}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
+	if ticket.Target.Kind == console.KindShell {
+		// A login shell of the user, not one of the environment of the
+		// daemon, which systemd gives no home.
+		if u, err := user.Current(); err == nil {
+			cmd.Dir = u.HomeDir
+			cmd.Env = append(cmd.Env, "HOME="+u.HomeDir, "USER="+u.Username, "LOGNAME="+u.Username)
+		}
+	}
 	master, err := startInPTY(cmd)
 	if err != nil {
 		return fail(fmt.Errorf("start console command: %w", err))

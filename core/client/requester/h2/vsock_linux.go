@@ -30,9 +30,9 @@ func (t vsockAddr) String() string  { return string(t) }
 func (t vsockConn) LocalAddr() net.Addr  { return vsockAddr("local") }
 func (t vsockConn) RemoteAddr() net.Addr { return vsockAddr("remote") }
 
-// dialVsock connects to the port of the context id from a reserved source
+// DialVsock connects to the port of the context id from a reserved source
 // port. The bind needs CAP_NET_BIND_SERVICE, and a port in use the next one.
-func dialVsock(ctx context.Context, cid, port uint32) (net.Conn, error) {
+func DialVsock(ctx context.Context, cid, port uint32) (net.Conn, error) {
 	c, err := socket.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0, "vsock", nil)
 	if err != nil {
 		return nil, err

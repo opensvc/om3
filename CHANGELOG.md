@@ -76,6 +76,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     hypervisor with none starts a guest whose synced definition has the
     device without it, and refuses to take one running with it in a live move.
 
+    `om <path> container enter` opens a shell in such a guest the same way,
+    with no network and no key, and `rcmd` otherwise. The session is a process
+    of its own in the guest, so restarting the agent from it does not end it.
+
 ### Configuration & Operations
 
 * **Unified configuration update**: The new `update` command with `--set`, `--unset`, and `--delete` flags allows atomic commits for different types of configuration changes.

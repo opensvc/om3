@@ -39,12 +39,34 @@ type (
 		stopping atomic.Bool
 	}
 
-	// hostListener accepts the connections of the hypervisor alone.
+	// hostListener accepts the connections of the hypervisor alone, the
+	// ones from a reserved source port with reservedOnly.
 	hostListener struct {
 		net.Listener
-		log *plog.Logger
+		log          *plog.Logger
+		reservedOnly bool
 	}
 )
+
+// reservedPorts bounds the source ports only a process with
+// CAP_NET_BIND_SERVICE can bind.
+const reservedPorts = 1024
+
+// ListenHypervisor returns a listener of the vsock port accepting the
+// connections of a privileged process of the hypervisor alone, for what has no
+// other check of its caller at accept, as the console endpoint.
+func ListenHypervisor(port uint32) (net.Listener, error) {
+	listener, err := vsock.ListenContextID(cidAny, port, nil)
+	if err != nil {
+		return nil, fmt.Errorf("listen on the vsock port %d: %w", port, err)
+	}
+	log := plog.NewDefaultLogger().
+		Attr("pkg", "daemon/listener/lsnrhttpvsock").
+		Attr("lsnr_type", "vsock").
+		Attr("lsnr_addr", addr(port)).
+		WithPrefix("daemon: listener: vsock: ")
+	return &hostListener{Listener: listener, log: log, reservedOnly: true}, nil
+}
 
 // New returns a listener of the vsock port.
 func New(port uint32) *T {
@@ -108,10 +130,15 @@ func (t *hostListener) Accept() (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
-		if a, ok := c.RemoteAddr().(*vsock.Addr); ok && a.ContextID == vsock.Host {
+		a, ok := c.RemoteAddr().(*vsock.Addr)
+		switch {
+		case !ok || a.ContextID != vsock.Host:
+			t.log.Warnf("drop a connection from %s: not the hypervisor", c.RemoteAddr())
+		case t.reservedOnly && a.Port >= reservedPorts:
+			t.log.Warnf("drop a connection from %s: not a reserved source port", c.RemoteAddr())
+		default:
 			return c, nil
 		}
-		t.log.Warnf("drop a connection from %s: not the hypervisor", c.RemoteAddr())
 		_ = c.Close()
 	}
 }

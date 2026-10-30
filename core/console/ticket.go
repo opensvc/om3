@@ -27,16 +27,20 @@ const (
 
 	// KindTTY is the kind of a console running a command in a terminal.
 	KindTTY = "tty"
+
+	// KindShell is the kind of a console running a shell of the node in a
+	// terminal, for the hypervisor of a guest. It targets no object.
+	KindShell = "shell"
 )
 
 type (
 	// Target is what a console session attaches to: a resource of an
-	// instance, on the node running it.
+	// instance, on the node running it, or a shell of the node.
 	Target struct {
 		// Node is the node the session is served on.
 		Node string `json:"node"`
 
-		// Path is the object path.
+		// Path is the object path, empty for a shell.
 		Path string `json:"path"`
 
 		// RID is the resource id, empty for the only resource of the
@@ -123,7 +127,9 @@ func ParseTicket(s string, key *rsa.PublicKey) (*Ticket, error) {
 		return nil, errors.New("console ticket: no id")
 	case t.Subject == "":
 		return nil, errors.New("console ticket: no user")
-	case t.Target.Node == "" || t.Target.Path == "" || t.Target.Kind == "":
+	case t.Target.Node == "" || t.Target.Kind == "":
+		return nil, errors.New("console ticket: incomplete target")
+	case t.Target.Path == "" && t.Target.Kind != KindShell:
 		return nil, errors.New("console ticket: incomplete target")
 	}
 	return t, nil

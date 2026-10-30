@@ -57,13 +57,23 @@ func NewListener(addr string) *Listener {
 	}
 }
 
+// NewListenerOn returns the console listener accepting on listener, a kind of
+// connection a session process can inherit.
+func NewListenerOn(listener net.Listener) *Listener {
+	t := NewListener(listener.Addr().String())
+	t.listener = listener
+	return t
+}
+
 // Start listens and accepts until Stop.
 func (t *Listener) Start(ctx context.Context) error {
-	listener, err := net.Listen("tcp", t.addr)
-	if err != nil {
-		return err
+	if t.listener == nil {
+		listener, err := net.Listen("tcp", t.addr)
+		if err != nil {
+			return err
+		}
+		t.listener = listener
 	}
-	t.listener = listener
 	ctx, t.cancel = context.WithCancel(ctx)
 	t.wg.Add(1)
 	go func() {
@@ -106,16 +116,41 @@ func (t *Listener) accept(ctx context.Context) {
 	}
 }
 
+// connFile returns a file of the descriptor of the connection, for a session
+// process to inherit.
+func connFile(conn net.Conn) (*os.File, error) {
+	if c, ok := conn.(*net.TCPConn); ok {
+		return c.File()
+	}
+	i, ok := conn.(syscall.Conn)
+	if !ok {
+		return nil, errors.New("refused: not a connection a session can inherit")
+	}
+	raw, err := i.SyscallConn()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		fd     int
+		dupErr error
+	)
+	if err := raw.Control(func(s uintptr) {
+		fd, dupErr = syscall.Dup(int(s))
+	}); err != nil {
+		return nil, err
+	}
+	if dupErr != nil {
+		return nil, dupErr
+	}
+	return os.NewFile(uintptr(fd), "console connection"), nil
+}
+
 // handOver starts a session process on the connection.
 func (t *Listener) handOver(conn net.Conn) error {
 	if n := t.unauthenticated.Load(); n >= maxUnauthenticated {
 		return errors.New("refused: too many sessions waiting for their ticket")
 	}
-	tcpConn, ok := conn.(*net.TCPConn)
-	if !ok {
-		return errors.New("refused: not a tcp connection")
-	}
-	connFile, err := tcpConn.File()
+	connFile, err := connFile(conn)
 	if err != nil {
 		return err
 	}

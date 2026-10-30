@@ -154,6 +154,21 @@ func (t *T) Start(ctx context.Context) error {
 	} else {
 		t.stopFunc = append(t.stopFunc, consoleListener.Stop)
 	}
+	// The hypervisor of a guest has no network to the console endpoint of
+	// the guest: it reaches it on the vsock port following the one of the
+	// api.
+	if port := clusterConfig.Listener.VsockPort; port > 0 {
+		if l, err := lsnrhttpvsock.ListenHypervisor(uint32(port) + 1); err != nil {
+			t.log.Warnf("serve no vsock console: %s", err)
+		} else {
+			vsockConsole := daemonconsole.NewListenerOn(l)
+			if err := vsockConsole.Start(ctx); err != nil {
+				t.log.Warnf("serve no vsock console: %s", err)
+			} else {
+				t.stopFunc = append(t.stopFunc, vsockConsole.Stop)
+			}
+		}
+	}
 
 	t.log.Infof("listeners started")
 	return nil
