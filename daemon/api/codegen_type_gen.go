@@ -4828,6 +4828,11 @@ type PostInstanceActionUpdateParams struct {
 type PostInstanceResourceConsoleParams struct {
 	// Rid a resource selector expression
 	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
+
+	// Graphics attach to the display of the guest rather than to a terminal: the
+	// binary messages of the session are the bytes of the RFB protocol
+	// then, and a failure is said by the reason of the close message
+	Graphics *bool `form:"graphics,omitempty" json:"graphics,omitempty"`
 }
 
 // GetInstanceContainerLogParams defines parameters for GetInstanceContainerLog.

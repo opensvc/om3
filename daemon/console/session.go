@@ -56,6 +56,9 @@ type (
 		// Command returns the command a session runs in its terminal.
 		Command func(console.Target) ([]string, error)
 
+		// Graphics returns a connection to the display of a target.
+		Graphics func(console.Target) (net.Conn, error)
+
 		// PeerURL returns the url of the console endpoint of a peer
 		// node, and PeerTLSConfig how to verify it. A PeerTLSConfig
 		// naming no server verifies the certificate of the peer for its
@@ -283,6 +286,9 @@ func keepAlive(ws *websocket.Conn, w *wsWriter, done <-chan struct{}) {
 // run runs the command of the session in a terminal, connected to the
 // client, until one of them ends. It returns the exit code of the command.
 func (cfg Config) run(ws *websocket.Conn, ticket *console.Ticket, remote string) (int, error) {
+	if ticket.Target.Kind == console.KindGraphics {
+		return cfg.runGraphics(ws, ticket, remote)
+	}
 	w := &wsWriter{conn: ws}
 	fail := func(err error) (int, error) {
 		w.end(console.Message{Code: 1, Reason: console.ReasonError, Text: err.Error()})
@@ -401,6 +407,81 @@ func (cfg Config) run(ws *websocket.Conn, ticket *console.Ticket, remote string)
 			return exitCode(werr), fmt.Errorf("client gone, command killed: %w", err)
 		}
 	}
+}
+
+// runGraphics relays the bytes of a display and of its client. Nothing but
+// them goes through the session: the client of the display protocol takes no
+// control message, so an end is said by the close message of the websocket.
+func (cfg Config) runGraphics(ws *websocket.Conn, ticket *console.Ticket, remote string) (int, error) {
+	closeWith := func(code int, reason string) {
+		// The reason of a control message is limited to 123 bytes.
+		_ = ws.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, reason[:min(len(reason), 123)]), time.Now().Add(writeTimeout))
+	}
+	if cfg.Graphics == nil {
+		closeWith(websocket.CloseInternalServerErr, "no display on this node")
+		return 1, errors.New("no display on this node")
+	}
+	display, err := cfg.Graphics(ticket.Target)
+	if err != nil {
+		closeWith(websocket.CloseInternalServerErr, err.Error())
+		return 1, err
+	}
+	defer display.Close()
+
+	if unregister, err := register(cfg.SessionDir, Session{
+		PID:       os.Getpid(),
+		User:      ticket.User(),
+		Remote:    remote,
+		Target:    ticket.Target,
+		StartedAt: time.Now(),
+	}); err != nil {
+		cfg.Log.Warnf("record the session: %s", err)
+	} else {
+		defer unregister()
+	}
+
+	w := &wsWriter{conn: ws}
+	done := make(chan struct{})
+	defer close(done)
+	keepAlive(ws, w, done)
+
+	ended := make(chan error, 2)
+	go func() {
+		buf := make([]byte, 64*1024)
+		for {
+			n, err := display.Read(buf)
+			if n > 0 {
+				if err := w.write(websocket.BinaryMessage, buf[:n]); err != nil {
+					ended <- err
+					return
+				}
+			}
+			if err != nil {
+				ended <- fmt.Errorf("display: %w", err)
+				return
+			}
+		}
+	}()
+	go func() {
+		for {
+			messageType, b, err := ws.ReadMessage()
+			if err != nil {
+				ended <- fmt.Errorf("client gone: %w", err)
+				return
+			}
+			_ = ws.SetReadDeadline(time.Now().Add(pongTimeout))
+			if messageType != websocket.BinaryMessage {
+				continue
+			}
+			if _, err := display.Write(b); err != nil {
+				ended <- fmt.Errorf("display: %w", err)
+				return
+			}
+		}
+	}()
+	err = <-ended
+	closeWith(websocket.CloseNormalClosure, "")
+	return 0, err
 }
 
 func exitCode(err error) int {

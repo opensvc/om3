@@ -49,6 +49,9 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 	if params.Rid != nil {
 		target.RID = *params.Rid
 	}
+	if params.Graphics != nil && *params.Graphics {
+		target.Kind = console.KindGraphics
+	}
 	return a.issueConsoleTicket(ctx, target)
 }
 

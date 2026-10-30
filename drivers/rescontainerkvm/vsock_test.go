@@ -132,6 +132,7 @@ func TestVMSpecArgs(t *testing.T) {
 		"--disk", "/dev/zvol/tank/vm1,format=raw,cache=none", "--disk", "/dev/sdb,format=raw,cache=none",
 		"--network", "bridge=br-prd,model=virtio",
 		"--cloud-init", "user-data=/tmp/ud",
+		"--graphics", "vnc,listen=socket",
 		"--noautoconsole",
 		"--boot", "uefi",
 	}, s.args())

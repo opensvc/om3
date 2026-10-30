@@ -12780,6 +12780,18 @@ func NewPostInstanceResourceConsoleRequest(server string, nodename InPathNodeNam
 
 		}
 
+		if params.Graphics != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "graphics", *params.Graphics, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
