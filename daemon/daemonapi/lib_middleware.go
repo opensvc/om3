@@ -174,10 +174,13 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 }
 
 // isPublic says the request of the route path is served with no
-// authentication: the gets of the webapp and of the api documentation.
+// authentication: the gets of the webapp and of the api documentation, and
+// of what a client needs to authenticate. A route named nowhere here is not
+// public, so a new one is not until it says so. A path with no route, empty
+// here, is answered 404, and has nothing to protect.
 //
-// The metrics pages are not: /metrics tells the state of the node, unless
-// listener.public_metrics says otherwise, and the detail pages,
+// The metrics pages are not public: /metrics tells the state of the node,
+// unless listener.public_metrics says otherwise, and the detail pages,
 // /metrics/<subsystem>, name the objects, and the pg one the usage of the
 // node, whatever it says. See RequireScraper.
 func isPublic(method, path string) bool {
@@ -185,16 +188,18 @@ func isPublic(method, path string) bool {
 		return false
 	}
 	switch {
-	case strings.HasPrefix(path, "/api/docs"):
+	case path == "":
 		return true
-	case strings.HasPrefix(path, "/api/"):
-		return path == "/api/auth/info" || path == "/api/openapi"
+	case path == "/ui", strings.HasPrefix(path, "/ui/"):
+		return true
+	case path == "/api/docs", strings.HasPrefix(path, "/api/docs/"):
+		return true
+	case path == "/api/auth/info", path == "/api/openapi":
+		return true
 	case path == "/metrics":
 		return cluster.ConfigData.Get().Listener.PublicMetrics
-	case strings.HasPrefix(path, "/metrics/"):
-		return false
 	}
-	return true
+	return false
 }
 
 // RequireScraper answers a caller without the scraper or the root grant with
@@ -209,6 +214,22 @@ func RequireScraper(next echo.HandlerFunc) echo.HandlerFunc {
 			return err
 		}
 		return next(c)
+	}
+}
+
+// RequireRootOn answers a caller without the root grant with a 403 on the
+// routes under prefix, whatever their method: for the routes a library
+// registers, which take no middleware of their own.
+func RequireRootOn(prefix string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if strings.HasPrefix(c.Path(), prefix) {
+				if v, err := assertRoot(c); !v {
+					return err
+				}
+			}
+			return next(c)
+		}
 	}
 }
 
