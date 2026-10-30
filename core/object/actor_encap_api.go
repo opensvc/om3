@@ -15,7 +15,9 @@ import (
 
 // encapAPIPingTimeout bounds the check that a guest daemon answers. It runs
 // on the hypervisor of the guest: what does not answer at once is not there.
-const encapAPIPingTimeout = 2 * time.Second
+// A guest with a vsock device and no driver for it does not refuse: a connect
+// to it runs out this time, and every operation on the guest pays it.
+const encapAPIPingTimeout = 500 * time.Millisecond
 
 // errEncapNoConfig says the encap instance has no config yet.
 var errEncapNoConfig = errors.New("no encap instance config")

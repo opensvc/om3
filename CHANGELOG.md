@@ -62,6 +62,20 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Resource group commands**: New per-driver-group command sets for more targeted resource management.
 
+* **The master reaches a kvm guest through vsock**:
+
+    With a vsock device on the guest, and `listener.vsock_port` set in it, the
+    master reads the status, installs the config and runs the actions of the
+    encap instances through the api of the guest daemon, with no network in
+    the guest and no key. The context id is read from the running domain, so
+    no registry is needed, and a live migration may change it. A guest daemon
+    that does not answer is reached through `qga` or `rcmd`, as before. The
+    `container.kvm` `vsock_port` keyword sets the port, `1215` by default, and
+    `0` turns this off. A provision adds the device to a `virt-install`
+    command knowing `--vsock`, on a hypervisor having `/dev/vhost-vsock`. A
+    hypervisor with none starts a guest whose synced definition has the
+    device without it, and refuses to take one running with it in a live move.
+
 ### Configuration & Operations
 
 * **Unified configuration update**: The new `update` command with `--set`, `--unset`, and `--delete` flags allows atomic commits for different types of configuration changes.

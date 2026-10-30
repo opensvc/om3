@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	"github.com/mdlayher/vsock"
 
@@ -31,6 +32,11 @@ type (
 		port     uint32
 		wg       sync.WaitGroup
 		server   *http.Server
+
+		// stopping says Stop closed the listener: the error the serve
+		// loop ends on then is the expected one, which the vsock library
+		// does not wrap as net.ErrClosed.
+		stopping atomic.Bool
 	}
 
 	// hostListener accepts the connections of the hypervisor alone.
@@ -72,7 +78,7 @@ func (t *T) Start(ctx context.Context) error {
 	go func() {
 		defer t.wg.Done()
 		t.log.Infof("started")
-		if err := t.server.Serve(t.listener); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+		if err := t.server.Serve(t.listener); err != nil && !errors.Is(err, http.ErrServerClosed) && !t.stopping.Load() {
 			t.log.Errorf("serve: %s", err)
 		}
 		t.log.Infof("stopped")
@@ -84,6 +90,7 @@ func (t *T) Stop() error {
 	if t.listener == nil {
 		return nil
 	}
+	t.stopping.Store(true)
 	err := t.listener.Close()
 	if err != nil && !errors.Is(err, net.ErrClosed) {
 		t.log.Errorf("listener Close failure: %s", err)
