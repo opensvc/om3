@@ -12,6 +12,7 @@ func TestParsePoolUsage(t *testing.T) {
 	u, err := parsePoolUsage([]byte("tank\tused\t3161056768\t-\ntank\tavailable\t731257344\t-\n"))
 	require.NoError(t, err)
 	require.Equal(t, PoolUsage{Alloc: 3161056768, Free: 731257344}, u)
+	require.Equal(t, int64(3892314112), u.Usable())
 }
 
 func TestParsePoolUsageRefusesWhatItDoesNotKnow(t *testing.T) {

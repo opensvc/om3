@@ -64,7 +64,7 @@ func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	}
 	var size, free, used int64
 	if e.Size > 0 {
-		size = e.Size
+		size = e.Usable()
 		free = e.Free
 		used = e.Alloc
 	}
