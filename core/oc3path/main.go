@@ -28,5 +28,6 @@ const (
 const (
 	ServerAgentTags         = "/api/agent/tags"
 	ServerAgentTagsAttached = "/api/agent/tags/attached"
+	ServerComplianceModules = "/api/compliance/modules_repo/current"
 	ServerRegister          = "/api/auth/node"
 )
