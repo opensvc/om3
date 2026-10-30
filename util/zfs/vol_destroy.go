@@ -14,6 +14,7 @@ type (
 	volDestroyOpts struct {
 		Force       bool
 		BusyRetries int
+		Recursive   bool
 	}
 )
 
@@ -24,6 +25,17 @@ func VolDestroyWithForce() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*volDestroyOpts)
 		t.Force = true
+		return nil
+	})
+}
+
+// VolDestroyWithRecursive destroys the snapshots of the volume too, which zfs
+// refuses to destroy it from under. The clones of one still refuse it, those
+// being other volumes.
+func VolDestroyWithRecursive() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*volDestroyOpts)
+		t.Recursive = true
 		return nil
 	})
 }
@@ -46,6 +58,9 @@ func volDestroyOptsToArgs(t volDestroyOpts) []string {
 	l := []string{"destroy"}
 	if t.Force {
 		l = append(l, "-f")
+	}
+	if t.Recursive {
+		l = append(l, "-r")
 	}
 	return l
 }

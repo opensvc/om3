@@ -166,6 +166,9 @@ func (t *T) zvolCreate() error {
 func (t *T) zvolDestroy() error {
 	return t.zvol().Destroy(
 		zfs.VolDestroyWithForce(),
+		// A move leaves a snapshot on the volume, on both nodes, for the
+		// next one to send from.
+		zfs.VolDestroyWithRecursive(),
 		zfs.VolDestroyWithBusyRetries(10),
 	)
 }

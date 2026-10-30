@@ -78,3 +78,8 @@ func TestVolDestroy(t *testing.T) {
 	assert.NoError(t, vol.Destroy(), "a volume already gone is destroyed")
 	assert.Equal(t, 1, runs(t, count))
 }
+
+func TestVolDestroyRecursiveTakesTheSnapshots(t *testing.T) {
+	require.Equal(t, []string{"destroy", "-f", "-r"}, volDestroyOptsToArgs(volDestroyOpts{Force: true, Recursive: true}))
+	require.Equal(t, []string{"destroy", "-f"}, volDestroyOptsToArgs(volDestroyOpts{Force: true}))
+}
