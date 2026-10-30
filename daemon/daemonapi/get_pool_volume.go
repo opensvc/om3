@@ -2,12 +2,14 @@ package daemonapi
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -55,6 +57,7 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 		item := api.PoolVolume{
 			Path:     p,
 			Children: instConfig.Value.Children.Strings(),
+			Nodes:    volumeNodes(instConfig.Path),
 			IsOrphan: !poolOk,
 			Pool:     poolName,
 			Size:     size,
@@ -68,5 +71,18 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 		}
 		l = append(l, item)
 	}
+	return l
+}
+
+// volumeNodes returns the nodes holding a volume: those where its instance is
+// provisioned, or partly so, which a provision that failed halfway leaves.
+func volumeNodes(p naming.Path) []string {
+	l := make([]string, 0)
+	for nodename, st := range instance.StatusData.GetByPath(p) {
+		if st != nil && st.Provisioned != provisioned.False {
+			l = append(l, nodename)
+		}
+	}
+	slices.Sort(l)
 	return l
 }

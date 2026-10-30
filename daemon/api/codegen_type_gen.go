@@ -2564,8 +2564,12 @@ type PoolVolume struct {
 	Charges  *map[string]int64 `json:"charges,omitempty"`
 	Children []string          `json:"children"`
 	IsOrphan bool              `json:"is_orphan"`
-	Path     string            `json:"path"`
-	Pool     string            `json:"pool"`
+
+	// Nodes the nodes holding the volume, a copy of it on each for a
+	// replicated pool, whichever of them its consumers run on
+	Nodes []string `json:"nodes"`
+	Path  string   `json:"path"`
+	Pool  string   `json:"pool"`
 
 	// Size the size the volume was served with by its pool
 	Size int64 `json:"size"`

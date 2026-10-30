@@ -9815,12 +9815,20 @@ components:
         - children
         - is_orphan
         - size
+        - nodes
       properties:
         pool:
           type: string
         path:
           type: string
         children:
+          type: array
+          items:
+            type: string
+        nodes:
+          description: |
+            the nodes holding the volume, a copy of it on each for a
+            replicated pool, whichever of them its consumers run on
           type: array
           items:
             type: string
