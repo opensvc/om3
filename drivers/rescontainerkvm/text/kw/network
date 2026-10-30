@@ -1,0 +1,10 @@
+The om networks the guest is on, one network interface per network, as
+`backend3 backend5`. A network being of one family, a guest of both is on two.
+
+The guest holds an address of each, drawn by om and in the dns of the cluster:
+on a routed_bridge or a bridge network, a dnsmasq of om hands it out by mac at
+each boot, and a new start on another node gets one of that node. On a lan
+network, the address follows the guest, which is told it by cloud-init at its
+first boot, so a lan needs the `image` keyword.
+
+A guest on an om network can not be moved live.

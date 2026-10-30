@@ -1,0 +1,5 @@
+Keep the guest to the mac and the addresses om gave it, whatever it configures:
+without this filter, a guest can take the address of any other on its network.
+The start of a guest is refused on a node with no `nft`.
+
+A guest needs an eui-64 link-local address, which a cloud image is told to use.

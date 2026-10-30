@@ -92,6 +92,8 @@ type (
 		Image               string         `json:"image"`
 		CloudInit           string         `json:"cloud_init"`
 		VirtInstArgs        []string       `json:"virtinst_args"`
+		Network             []string       `json:"network"`
+		NetworkFilter       bool           `json:"network_filter"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 
@@ -409,6 +411,9 @@ func (t *T) Start(ctx context.Context) error {
 		t.Log().Infof("container %s is already up", t.Name)
 		return nil
 	}
+	if _, err := t.networkUp(ctx); err != nil {
+		return err
+	}
 	if err := t.containerStart(ctx); err != nil {
 		return err
 	}
@@ -449,6 +454,9 @@ func (t *T) Start(ctx context.Context) error {
 // destination, and undoing the steps that brought it there would take its
 // storage from under it.
 func (t *T) Move(ctx context.Context, to string) (err error) {
+	if len(t.Network) > 0 {
+		return fmt.Errorf("a guest on an om network can not be moved live: its tap and filter are this node's, and the address of a per-node network too")
+	}
 	var (
 		postMovers  []resource.PostMover
 		rollbackers []resource.PreMoveRollbacker
@@ -597,7 +605,7 @@ func (t *T) Stop(ctx context.Context) error {
 		return err
 	} else if v {
 		t.Log().Infof("container %s is already down", t.Name)
-		return nil
+		return t.networkDown(ctx)
 	}
 	if to := actioncontext.MoveTo(ctx); to != "" {
 		return t.Move(ctx, to)
@@ -605,7 +613,7 @@ func (t *T) Stop(ctx context.Context) error {
 	if err := t.containerStop(ctx); err != nil {
 		return err
 	}
-	return nil
+	return t.networkDown(ctx)
 }
 
 func (t *T) waitForDown(ctx context.Context, timeout, interval time.Duration) bool {
@@ -1028,6 +1036,9 @@ func (t *T) provisioned(ctx context.Context) (bool, error) {
 }
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
+	if err := t.releaseAddrs(); err != nil {
+		return err
+	}
 	isProvisioned, err := t.provisioned(ctx)
 	if err != nil {
 		return err
@@ -1382,6 +1393,12 @@ func (t *T) EncapAPIURL(ctx context.Context) (string, error) {
 // a status being stale after a live migration.
 func (t *T) StatusInfo(ctx context.Context) map[string]any {
 	m := map[string]any{"name": t.Name}
+	if addrs := t.guestAddrs(); len(addrs) > 0 {
+		m[resource.IPAddrInfoKey] = addrs[0]
+		if len(addrs) > 1 {
+			m[resource.IPAddrsInfoKey] = addrs
+		}
+	}
 	if t.VsockPort <= 0 {
 		return m
 	}

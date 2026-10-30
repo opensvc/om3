@@ -194,6 +194,23 @@ func (t *T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 	return nil
 }
 
+// setupRouterLinkLocal adds to the bridge the link-local address the guests
+// route the whole of an ipv6 network through. The one the kernel makes follows
+// the mac, which is not a stable thing to tell a guest at its first boot. A
+// bridge with no ipv6 only misses what a guest on an ipv6 network needs.
+func (t *T) setupRouterLinkLocal(br netlink.Link) {
+	if br == nil {
+		return
+	}
+	addr, err := netlink.ParseAddr("fe80::1/64")
+	if err != nil {
+		return
+	}
+	if err := netlink.AddrReplace(br, addr); err != nil {
+		t.Log().Warnf("add %s to bridge %s: %s", addr.IPNet, br.Attrs().Name, err)
+	}
+}
+
 func (t *T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 	var (
 		mac net.HardwareAddr
@@ -242,6 +259,7 @@ func (t *T) Setup() error {
 	if err := t.setupBridgeMAC(link, brIP); err != nil {
 		return fmt.Errorf("setup mac: %w", err)
 	}
+	t.setupRouterLinkLocal(link)
 	if err := netlink.LinkSetUp(link); err != nil {
 		return fmt.Errorf("link up: %w", err)
 	}
