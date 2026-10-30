@@ -436,4 +436,11 @@ type (
 		EncapCp(context.Context, string, string) error
 		EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (Commander, error)
 	}
+
+	// EncapAPIer is the Encaper whose guest daemon may be reached directly.
+	EncapAPIer interface {
+		// EncapAPIURL returns the url of the guest daemon, empty when the
+		// container offers none. A url does not say the daemon answers.
+		EncapAPIURL(ctx context.Context) (string, error)
+	}
 )

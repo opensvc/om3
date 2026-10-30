@@ -34,6 +34,14 @@ var (
 			Scopable:  true,
 		},
 		{
+			Option:    "vsock_port",
+			Attr:      "VsockPort",
+			Converter: converters.Int,
+			Default:   "1215",
+			Text:      keywords.NewText(fs, "text/kw/vsock_port"),
+			Scopable:  true,
+		},
+		{
 			Option:       "virtinst",
 			Attr:         "VirtInst",
 			Provisioning: true,

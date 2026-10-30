@@ -1,0 +1,8 @@
+The vsock port the master reaches the guest daemon on, for the status, the
+config and the actions of the encap instances, with no network and no
+credential. Set to `0` to not use it.
+
+The guest needs a vsock device, as `<vsock model='virtio'><cid auto='yes'/></vsock>`
+in the domain definition, and to serve the port with its `listener.vsock_port`
+keyword. When the guest daemon does not answer on it, the master uses the `qga`
+or the `rcmd` way, so this keyword needs no change when a guest has no device.

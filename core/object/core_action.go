@@ -1,11 +1,9 @@
 package object
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -22,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/encapapi"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -571,6 +570,18 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 			return nil
 		}
 
+		if e := t.encapAPI(ctx, encapContainer); e != nil && e.Supports(action.Name) {
+			opts := encapapi.ActionOptions{
+				Leader:          actioncontext.IsLeader(ctx),
+				DisableRollback: actioncontext.IsRollbackDisabled(ctx),
+				Force:           actioncontext.IsForce(ctx),
+			}
+			if actioncontext.RID(ctx) != "" || actioncontext.Tag(ctx) != "" || actioncontext.Subset(ctx) != "" || actioncontext.To(ctx) != "" {
+				opts.RID = strings.Join(selectedEncapRIDs, ",")
+			}
+			return t.doEncapAPI(ctx, e, encapContainer, action.Name, rid, opts)
+		}
+
 		args := append([]string{encapContainer.GetOsvcRootPath(), t.path.String()}, "config", "mtime")
 		envs := []string{
 			xsession.SessionID().Var(),
@@ -640,28 +651,7 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			scanner := bufio.NewScanner(stderrPipe)
-			for scanner.Scan() {
-				line := scanner.Text()
-				l := strings.Fields(line)
-				if len(l) > 2 {
-					switch {
-					case strings.Contains(l[1], "DBG"):
-						t.log.Tracef("%s: %s", rid, line)
-					case strings.Contains(l[1], "INF"):
-						t.log.Infof("%s: %s", rid, line)
-					case strings.Contains(l[1], "WRN"):
-						t.log.Warnf("%s: %s", rid, line)
-					case strings.Contains(l[1], "ERR"):
-						t.log.Errorf("%s: %s", rid, line)
-					}
-				} else {
-					t.log.Errorf("%s: %s", rid, line)
-				}
-			}
-			if err := scanner.Err(); err != nil && err != io.EOF {
-				t.log.Errorf("error reading stderr: %v", err)
-			}
+			t.relayEncapLog(stderrPipe, rid)
 		}()
 
 		wg.Wait()

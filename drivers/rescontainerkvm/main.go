@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"syscall"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -78,6 +80,7 @@ type (
 		VirtInst            []string       `json:"virtinst"`
 		QGA                 bool           `json:"qga"`
 		QGAOperationalDelay *time.Duration `json:"qga_operational_delay"`
+		VsockPort           int            `json:"vsock_port"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 
@@ -95,7 +98,14 @@ type (
 	}
 )
 
-var _ resource.Encaper = (*T)(nil)
+var (
+	_ resource.Encaper    = (*T)(nil)
+	_ resource.EncapAPIer = (*T)(nil)
+
+	// vsockCIDRegexp reads the context id of a vsock device, allocated or
+	// fixed: <cid auto='yes' address='3'/>.
+	vsockCIDRegexp = regexp.MustCompile(`<cid\b[^>]*\baddress=['"](\d+)['"]`)
+)
 
 func isPartitionsCapable(ctx context.Context) bool {
 	cmd := command.New(
@@ -1252,6 +1262,36 @@ func (t *T) EncapCp(ctx context.Context, src, dst string) error {
 		return qgaCp(ctx, t.Name, src, dst)
 	}
 	return t.rcmdCp(ctx, src, dst)
+}
+
+// EncapAPIURL implements resource.EncapAPIer: the vsock address of the guest
+// daemon, empty with no port configured or no vsock device.
+//
+// The context id is read from the running domain at each call, never stored:
+// libvirt allocates it per hypervisor, and a start or a live migration may
+// change it.
+func (t *T) EncapAPIURL(ctx context.Context) (string, error) {
+	if t.VsockPort <= 0 {
+		return "", nil
+	}
+	b, err := t.liveDefinition(ctx)
+	if err != nil {
+		return "", err
+	}
+	cid, ok := vsockCID(b)
+	if !ok {
+		return "", nil
+	}
+	return fmt.Sprintf("%s%s:%d", reqh2.VsockPrefix, cid, t.VsockPort), nil
+}
+
+// vsockCID returns the context id of the domain definition b.
+func vsockCID(b []byte) (string, bool) {
+	m := vsockCIDRegexp.FindSubmatch(b)
+	if m == nil {
+		return "", false
+	}
+	return string(m[1]), true
 }
 
 func (t *T) GetOsvcRootPath() string {
