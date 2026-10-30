@@ -128,6 +128,12 @@ func (t *T) startOVS(ctx context.Context) error {
 		if err := t.startOVSPort(ctx, hostDev); err != nil {
 			return err
 		}
+		// A port of an openvswitch bridge is not brought up by the bridge,
+		// where a port of a linux bridge is by linkSetMaster: down, the
+		// namespace has no carrier.
+		if err := t.linkSetUp(hostDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err

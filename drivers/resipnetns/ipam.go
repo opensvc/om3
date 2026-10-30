@@ -260,8 +260,14 @@ func (t *T) configureLan(nw network.Networker, i network.HostDever) {
 		}
 	case t.Mode == "ovs" && t.Dev == "":
 		// The veth of the namespace is a port of the openvswitch bridge
-		// dev names, which the interface of this node on the segment
-		// says nothing of.
+		// dev names, which the interface found on the segment says
+		// nothing of: only a dev the network names is taken.
+		if d, ok := nw.(network.DevNamer); ok {
+			t.Dev = d.NamedDev()
+		}
+		if t.Dev != "" {
+			break
+		}
 		t.netErr = fmt.Errorf("mode ovs plugs the namespace into an openvswitch bridge on the segment of network %s: set dev to that bridge", nw.Name())
 		return
 	case t.Dev == "":
