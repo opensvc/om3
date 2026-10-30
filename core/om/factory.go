@@ -759,6 +759,20 @@ func newCmdNodeComplianceFix() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeComplianceUpdate() *cobra.Command {
+	var options commands.CmdNodeComplianceUpdate
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "install the compliance modules of the collector",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdNodeComplianceFixable() *cobra.Command {
 	var options commands.CmdNodeComplianceFixable
 	cmd := &cobra.Command{

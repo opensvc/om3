@@ -139,6 +139,7 @@ func init() {
 		newCmdNodeComplianceCheck(),
 		newCmdNodeComplianceFix(),
 		newCmdNodeComplianceFixable(),
+		newCmdNodeComplianceUpdate(),
 	)
 	cmdNodeComplianceAttach.AddCommand(
 		newCmdNodeComplianceAttachModuleset(),

@@ -27,5 +27,6 @@ const (
 )
 
 const (
-	ServerRegister = "/api/auth/node"
+	ServerComplianceModules = "/api/compliance/modules_repo/current"
+	ServerRegister          = "/api/auth/node"
 )
