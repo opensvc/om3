@@ -13,8 +13,8 @@ import (
 // complianceModulesTimeout bounds the download of the compliance modules.
 const complianceModulesTimeout = 5 * time.Minute
 
-func (t Node) NewCompliance() (*compliance.T, error) {
-	client, err := t.CollectorComplianceClient()
+func (t *Node) NewCompliance() (*compliance.T, error) {
+	client, err := t.CollectorServer()
 	if err != nil {
 		return nil, err
 	}

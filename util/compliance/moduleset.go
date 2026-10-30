@@ -3,12 +3,8 @@ package compliance
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
-
-	"github.com/ybbus/jsonrpc"
-
-	"github.com/opensvc/om3/v3/core/collector"
-	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -121,16 +117,7 @@ func (t ModulesetRulesetRelations) Render() string {
 }
 
 func (t T) ListModulesets(filter string) ([]string, error) {
-	var err error
-	data := make([]string, 0)
-	if filter == "" {
-		filter = "%"
-	}
-	err = t.collectorClient.CallFor(&data, "comp_list_modulesets", filter)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return t.listNames("moduleset", filter)
 }
 
 func (t T) AttachModulesets(l []string) error {
@@ -143,35 +130,9 @@ func (t T) AttachModulesets(l []string) error {
 }
 
 func (t T) AttachModuleset(s string) error {
-	var (
-		response *jsonrpc.RPCResponse
-		err      error
-	)
-	if t.objectPath.IsZero() {
-		response, err = t.collectorClient.Call("comp_attach_moduleset", hostname.Hostname(), s)
-	} else {
-		response, err = t.collectorClient.Call("comp_attach_svc_moduleset", t.objectPath.String(), s)
-	}
-	if err != nil {
-		return err
-	}
-	collector.LogSimpleResponse(response, t.log)
-	return nil
+	return t.attachment(http.MethodPost, "moduleset", s)
 }
 
 func (t T) DetachModuleset(s string) error {
-	var (
-		response *jsonrpc.RPCResponse
-		err      error
-	)
-	if t.objectPath.IsZero() {
-		response, err = t.collectorClient.Call("comp_detach_moduleset", hostname.Hostname(), s)
-	} else {
-		response, err = t.collectorClient.Call("comp_detach_svc_moduleset", t.objectPath.String(), s)
-	}
-	if err != nil {
-		return err
-	}
-	collector.LogSimpleResponse(response, t.log)
-	return nil
+	return t.attachment(http.MethodDelete, "moduleset", s)
 }
