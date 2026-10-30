@@ -1,1 +1,5 @@
 The url of the OpenSVC AI agent om3-webapp calls.
+
+It is an https origin, the scheme, the host and the port only: another value
+is refused when written, and an invalid one found in the file is reported
+and left out of the cluster status.
