@@ -207,3 +207,32 @@ func TestDefinedMemory(t *testing.T) {
 	assert.Equal(t, int64(1024), definedMemory([]byte("<memory>1</memory>")), "KiB by default")
 	assert.Equal(t, int64(0), definedMemory([]byte("<domain/>")))
 }
+
+func TestDisplayAddress(t *testing.T) {
+	for _, tc := range []struct {
+		name, xml, network, address, err string
+	}{
+		{"socket", `<domain><devices><graphics type='vnc' socket='/var/lib/libvirt/qemu/d/vnc.sock'><listen type='socket' socket='/var/lib/libvirt/qemu/d/vnc.sock'/></graphics></devices></domain>`, "unix", "/var/lib/libvirt/qemu/d/vnc.sock", ""},
+		{"port", `<domain><devices><graphics type='vnc' port='5901' autoport='yes' listen='0.0.0.0'/></devices></domain>`, "tcp", "127.0.0.1:5901", ""},
+		{"vnc beside spice", `<domain><devices><graphics type='spice' port='5900'/><graphics type='vnc' port='5901'/></devices></domain>`, "tcp", "127.0.0.1:5901", ""},
+		{"spice", `<domain><devices><graphics type='spice' port='5900'/></devices></domain>`, "", "", "a spice display"},
+		{"none", `<domain><devices/></domain>`, "", "", "no display"},
+		{"not started", `<domain><devices><graphics type='vnc' port='-1' autoport='yes'/></devices></domain>`, "", "", "no port"},
+	} {
+		network, address, err := displayAddress([]byte(tc.xml))
+		if tc.err != "" {
+			assert.ErrorContains(t, err, tc.err, tc.name)
+			continue
+		}
+		assert.NoError(t, err, tc.name)
+		assert.Equal(t, tc.network, network, tc.name)
+		assert.Equal(t, tc.address, address, tc.name)
+	}
+}
+
+func TestVMSpecGraphics(t *testing.T) {
+	s := vmSpec{name: "vm1", vcpus: 1, memoryMB: 512, osFlag: "--osinfo", osValue: "x"}
+	assert.Contains(t, strings.Join(s.args(), " "), "--graphics vnc,listen=socket", "no port of the node")
+	s.extra = []string{"--graphics", "none"}
+	assert.Equal(t, 1, strings.Count(strings.Join(s.args(), " "), "--graphics"), "root said otherwise")
+}

@@ -13,9 +13,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,6 +26,9 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gorilla/websocket"
 
@@ -464,4 +469,58 @@ func TestEnterCommandOfAShell(t *testing.T) {
 	if len(args) != 2 || args[1] != "-l" {
 		t.Errorf("got %v", args)
 	}
+}
+
+// graphicsSession opens a session of the display the dial function connects to.
+func graphicsSession(t *testing.T, dial func(console.Target) (net.Conn, error)) *websocket.Conn {
+	t.Helper()
+	key := testRSAKey(t)
+	n := startTestNode(t, "node1", key, "true")
+	n.cfg.Graphics = dial
+	ticket, err := console.NewTicket("alice", "node1", console.Target{Node: "node1", Path: "ns1/svc/web", RID: "container#1", Kind: console.KindGraphics})
+	require.NoError(t, err)
+	signed, err := ticket.Sign(key)
+	require.NoError(t, err)
+	dialer := websocket.Dialer{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	ws, _, err := dialer.Dial(n.url+"?ticket="+url.QueryEscape(signed), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ws.Close() })
+	return ws
+}
+
+// The bytes of a display go through the session both ways, untouched.
+func TestSessionGraphics(t *testing.T) {
+	display, session := net.Pipe()
+	defer display.Close()
+	ws := graphicsSession(t, func(console.Target) (net.Conn, error) { return session, nil })
+
+	_, err := display.Write([]byte("RFB 003.008\n"))
+	require.NoError(t, err)
+	messageType, b, err := ws.ReadMessage()
+	require.NoError(t, err)
+	assert.Equal(t, websocket.BinaryMessage, messageType)
+	assert.Equal(t, "RFB 003.008\n", string(b))
+
+	require.NoError(t, ws.WriteMessage(websocket.BinaryMessage, []byte("RFB 003.008\n")))
+	buf := make([]byte, 32)
+	n, err := display.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, "RFB 003.008\n", string(buf[:n]))
+
+	// The display ending ends the session.
+	_ = display.Close()
+	_, _, err = ws.ReadMessage()
+	assert.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+}
+
+// A client of the display protocol takes no control message: a failure is the
+// reason of the close message.
+func TestSessionGraphicsRefused(t *testing.T) {
+	ws := graphicsSession(t, func(console.Target) (net.Conn, error) {
+		return nil, errors.New("the guest has a spice display, and a vnc one is needed")
+	})
+	_, _, err := ws.ReadMessage()
+	var closeErr *websocket.CloseError
+	require.ErrorAs(t, err, &closeErr)
+	assert.Equal(t, "the guest has a spice display, and a vnc one is needed", closeErr.Text)
 }

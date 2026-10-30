@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -80,6 +81,11 @@ func (t vmSpec) args() []string {
 			seed += ",network-config=" + t.netData
 		}
 		l = append(l, "--cloud-init", seed)
+	}
+	// A display on a socket opens no port of the node: the console session,
+	// which a ticket authorizes, is the way to it.
+	if !slices.Contains(t.extra, "--graphics") {
+		l = append(l, "--graphics", "vnc,listen=socket")
 	}
 	l = append(l, "--noautoconsole")
 	return append(l, t.extra...)

@@ -31,6 +31,10 @@ const (
 	// KindShell is the kind of a console running a shell of the node in a
 	// terminal, for the hypervisor of a guest. It targets no object.
 	KindShell = "shell"
+
+	// KindGraphics is the kind of a console attached to the display of a
+	// guest: the bytes of the session are the ones of the display protocol.
+	KindGraphics = "graphics"
 )
 
 type (

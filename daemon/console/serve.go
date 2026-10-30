@@ -1,6 +1,7 @@
 package console
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -27,6 +29,9 @@ import (
 
 // DefaultPort is the port the console listener listens on.
 const DefaultPort = 1216
+
+// graphicsDialTimeout bounds the search of a display and its connection.
+const graphicsDialTimeout = 10 * time.Second
 
 // Dir is where the console sessions of the node keep what they share.
 func Dir() string {
@@ -103,6 +108,7 @@ func serveInherited(log *plog.Logger) error {
 		TicketDir:      filepath.Join(Dir(), "tickets"),
 		SessionDir:     SessionDir(),
 		Command:        enterCommand,
+		Graphics:       graphicsDial,
 		PeerURL: func(node string) (string, error) {
 			return peerURL(node, port)
 		},
@@ -140,6 +146,27 @@ func enterCommand(target console.Target) ([]string, error) {
 		args = append(args, "--rid", target.RID)
 	}
 	return args, nil
+}
+
+// graphicsDial connects to the display of the resource of a target.
+func graphicsDial(target console.Target) (net.Conn, error) {
+	path, err := naming.ParsePath(target.Path)
+	if err != nil {
+		return nil, fmt.Errorf("console target: %w", err)
+	}
+	o, err := object.NewActor(path)
+	if err != nil {
+		return nil, fmt.Errorf("console target: %w", err)
+	}
+	i, ok := o.(interface {
+		GraphicsDial(ctx context.Context, rid string) (net.Conn, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("console target: %s has no display", path)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), graphicsDialTimeout)
+	defer cancel()
+	return i.GraphicsDial(ctx, target.RID)
 }
 
 // loginShell returns the shell of the user running the session, /bin/sh when
