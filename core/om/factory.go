@@ -680,6 +680,7 @@ func newCmdNodeComplianceAttachModuleset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagModuleset(flags, &options.Moduleset)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -697,6 +698,7 @@ func newCmdNodeComplianceAttachRuleset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRuleset(flags, &options.Ruleset)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -807,6 +809,7 @@ func newCmdNodeComplianceDetachModuleset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagModuleset(flags, &options.Moduleset)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -824,6 +827,7 @@ func newCmdNodeComplianceDetachRuleset() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRuleset(flags, &options.Ruleset)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -2040,6 +2044,7 @@ func newCmdObjectComplianceAttachModuleset(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagModuleset(flags, &options.Moduleset)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -2056,6 +2061,7 @@ func newCmdObjectComplianceAttachRuleset(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRuleset(flags, &options.Ruleset)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -2151,6 +2157,7 @@ func newCmdObjectComplianceDetachModuleset(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagModuleset(flags, &options.Moduleset)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
@@ -2167,6 +2174,7 @@ func newCmdObjectComplianceDetachRuleset(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRuleset(flags, &options.Ruleset)
+	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }
 
