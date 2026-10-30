@@ -2,6 +2,7 @@ package compliance
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/command"
-	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/xsession"
 	"github.com/opensvc/om3/v3/util/xstrings"
 )
@@ -392,35 +392,25 @@ func (t Run) Push() error {
 	if len(t.ModuleActions) == 0 {
 		return nil
 	}
-	vars := []string{
-		"run_nodename",
-		"run_module",
-		"run_status",
-		"run_log",
-		"run_action",
-		"rset_md5",
-		"run_svcname",
+	type runLog struct {
+		Module  string `json:"module"`
+		Status  int    `json:"status"`
+		Log     string `json:"log"`
+		Action  string `json:"action"`
+		RsetMD5 string `json:"rset_md5"`
 	}
-	hn := hostname.Hostname()
-	vals := make([][]interface{}, 0)
 	md5sum := t.data.RulesetsMD5()
-	for _, ma := range t.ModuleActions {
-		v := []interface{}{
-			hn,
-			ma.Module,
-			ma.ExitCode,
-			ma.Log.RenderForCollector(),
-			ma.Action,
-			md5sum,
-			t.main.objectPath,
+	logs := make([]runLog, len(t.ModuleActions))
+	for i, ma := range t.ModuleActions {
+		logs[i] = runLog{
+			Module:  ma.Module,
+			Status:  ma.ExitCode,
+			Log:     ma.Log.RenderForCollector(),
+			Action:  string(ma.Action),
+			RsetMD5: md5sum,
 		}
-		vals = append(vals, v)
 	}
-	_, err := t.main.collectorClient.Call("comp_log_actions", vars, vals)
-	if err != nil {
-		return err
-	}
-	return nil
+	return t.main.collectorDo(http.MethodPost, collectorAgentPath+"/logs", t.main.objectQuery(), logs, nil)
 }
 
 func (t *Run) moduleAction(mod *Module, action Action) error {

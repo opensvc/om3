@@ -2,11 +2,7 @@ package compliance
 
 import (
 	"fmt"
-
-	"github.com/ybbus/jsonrpc"
-
-	"github.com/opensvc/om3/v3/core/collector"
-	"github.com/opensvc/om3/v3/util/hostname"
+	"net/http"
 )
 
 type (
@@ -19,12 +15,11 @@ type (
 )
 
 func (t T) GetRulesets() (Rulesets, error) {
-	rulesets := make(Rulesets)
-	err := t.collectorClient.CallFor(&rulesets, "comp_get_ruleset", hostname.Hostname())
+	data, err := t.GetData([]string{})
 	if err != nil {
 		return nil, err
 	}
-	return rulesets, nil
+	return data.Rsets, nil
 }
 
 func (t Ruleset) GetString(name string) string {
@@ -68,48 +63,13 @@ func (t Rulesets) Render() string {
 }
 
 func (t T) ListRulesets(filter string) ([]string, error) {
-	var err error
-	data := make([]string, 0)
-	if filter == "" {
-		filter = "%"
-	}
-	err = t.collectorClient.CallFor(&data, "comp_list_rulesets", filter, hostname.Hostname())
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return t.listNames("ruleset", filter)
 }
 
 func (t T) AttachRuleset(s string) error {
-	var (
-		response *jsonrpc.RPCResponse
-		err      error
-	)
-	if t.objectPath.IsZero() {
-		response, err = t.collectorClient.Call("comp_attach_ruleset", hostname.Hostname(), s)
-	} else {
-		response, err = t.collectorClient.Call("comp_attach_svc_ruleset", t.objectPath.String(), s)
-	}
-	if err != nil {
-		return err
-	}
-	collector.LogSimpleResponse(response, t.log)
-	return nil
+	return t.attachment(http.MethodPost, "ruleset", s)
 }
 
 func (t T) DetachRuleset(s string) error {
-	var (
-		response *jsonrpc.RPCResponse
-		err      error
-	)
-	if t.objectPath.IsZero() {
-		response, err = t.collectorClient.Call("comp_detach_ruleset", hostname.Hostname(), s)
-	} else {
-		response, err = t.collectorClient.Call("comp_detach_svc_ruleset", t.objectPath.String(), s)
-	}
-	if err != nil {
-		return err
-	}
-	collector.LogSimpleResponse(response, t.log)
-	return nil
+	return t.attachment(http.MethodDelete, "ruleset", s)
 }

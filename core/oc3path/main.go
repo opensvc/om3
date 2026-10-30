@@ -27,6 +27,7 @@ const (
 )
 
 const (
+	ServerComplianceAgent   = "/api/compliance/agent"
 	ServerComplianceModules = "/api/compliance/modules_repo/current"
 	ServerRegister          = "/api/auth/node"
 )

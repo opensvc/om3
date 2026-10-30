@@ -3,15 +3,18 @@ package compliance
 import (
 	"path/filepath"
 
-	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/httphelper"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
+const collectorAgentPath = oc3path.ServerComplianceAgent
+
 type (
 	T struct {
-		collectorClient *collector.Client
+		collectorClient *httphelper.T
 		objectPath      naming.Path
 		log             *plog.Logger
 		varDir          string
@@ -33,7 +36,7 @@ func (t *T) SetLogger(v *plog.Logger) {
 	t.log = v
 }
 
-func (t *T) SetCollectorClient(c *collector.Client) {
+func (t *T) SetCollectorClient(c *httphelper.T) {
 	t.collectorClient = c
 }
 

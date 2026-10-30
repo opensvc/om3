@@ -29,21 +29,6 @@ func (c *Client) String() string {
 	return c.endpoint
 }
 
-func ComplianceURL(s string) (*url.URL, error) {
-	if u, err := BaseURL(s); err != nil {
-		return nil, err
-	} else if u.Host == "" {
-		return nil, fmt.Errorf("collector compliance url host is empty")
-	} else {
-		// default path
-		if u.Path == "" {
-			u.Path = "/init/compliance/call/jsonrpc2"
-			u.RawPath = "/init/compliance/call/jsonrpc2"
-		}
-		return u, nil
-	}
-}
-
 func InitURL(s string) (*url.URL, error) {
 	if u, err := BaseURL(s); err != nil {
 		return nil, err
@@ -133,15 +118,6 @@ func (c *Config) NewFeedClient() (*Client, error) {
 		return nil, err
 	}
 	return newClient(u, c.Password)
-}
-
-// NewComplianceClient returns a Client to call the collector init app jsonrpc2 methods.
-func NewComplianceClient(endpoint, secret string) (*Client, error) {
-	u, err := ComplianceURL(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	return newClient(u, secret)
 }
 
 // NewInitClient returns a Client to call the collector init app jsonrpc2 methods.

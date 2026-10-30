@@ -161,12 +161,6 @@ func (t Node) CollectorInitClient() (*collector.Client, error) {
 	return collector.NewInitClient(s, secret)
 }
 
-func (t Node) CollectorComplianceClient() (*collector.Client, error) {
-	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
-	secret := t.config.GetString(key.Parse("node.uuid"))
-	return collector.NewComplianceClient(s, secret)
-}
-
 func (t *Node) CollectorRestAPIURL() (*url.URL, error) {
 	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
 	return collector.RestURL(s)

@@ -7,7 +7,7 @@ func (t *core) NewCompliance() (*compliance.T, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := n.CollectorComplianceClient()
+	client, err := n.CollectorServer()
 	if err != nil {
 		return nil, err
 	}
