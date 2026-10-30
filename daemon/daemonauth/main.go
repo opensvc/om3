@@ -135,6 +135,7 @@ const (
 	StrategyJWT       = "jwt"
 	StrategyJWTOpenID = "jwt-openid"
 	StrategyUser      = "user"
+	StrategyVsock     = "vsock"
 	StrategyX509      = "x509"
 )
 
@@ -232,6 +233,7 @@ func initStategies(ctx context.Context, i any) (Union, error) {
 	l := make(Union, 0)
 	for _, fn := range []func(ctx context.Context, i interface{}) (string, Strategy, error){
 		initUX,
+		initVsock,
 		initUXUser,
 		initJWT,
 		initJWTOpenID,

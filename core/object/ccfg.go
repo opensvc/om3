@@ -104,6 +104,7 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
 		keyListenerUXOwnerGroup   = key.New("listener", "ux_owner_group")
 		keyListenerPublicMetrics  = key.New("listener", "public_metrics")
+		keyListenerVsockPort      = key.New("listener", "vsock_port")
 
 		keyListenerThrottleRate    = key.New("listener", "throttle_rate")
 		keyListenerThrottleBurst   = key.New("listener", "throttle_burst")
@@ -148,6 +149,7 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)
 	cfg.Listener.UXOwnerGroup = c.GetString(keyListenerUXOwnerGroup)
 	cfg.Listener.PublicMetrics = c.GetBool(keyListenerPublicMetrics)
+	cfg.Listener.VsockPort = c.GetInt(keyListenerVsockPort)
 	cfg.UXGroups = make(map[string][]string)
 	for _, section := range c.SectionStrings() {
 		group, ok := strings.CutPrefix(section, "uxgroup#")

@@ -34,7 +34,7 @@ func TestAClientStallingItsHeadersIsDropped(t *testing.T) {
 	sock := filepath.Join(t.TempDir(), "http.sock")
 	lsnr, err := net.Listen("unix", sock)
 	require.NoError(t, err)
-	server := newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	}), golog.New(io.Discard, "", 0))
 	go func() { _ = server.Serve(lsnr) }()
@@ -68,7 +68,7 @@ func TestARequestCarriesItsPeer(t *testing.T) {
 	lsnr, err := net.Listen("unix", sock)
 	require.NoError(t, err)
 	lsnrT := &T{log: plog.NewDefaultLogger(), peerCred: true}
-	server := newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		peer := daemonctx.Peer(r.Context())
 		if peer == nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -105,7 +105,7 @@ func TestCloseSocketDropsTheOpenConnections(t *testing.T) {
 	lsnrT := &T{log: plog.NewDefaultLogger(), addr: sock, peerCred: true, tracked: newTrackListener(raw, os.Getgid())}
 	var lsnr net.Listener = lsnrT.tracked
 	lsnrT.listener = &lsnr
-	lsnrT.server = newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	lsnrT.server = NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		peer := daemonctx.Peer(r.Context())
 		if peer == nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -192,7 +192,7 @@ func TestOwnerGroupUpdates(t *testing.T) {
 	var lsnr net.Listener = lsnrT.tracked
 	lsnrT.listener = &lsnr
 	require.NoError(t, ownSocket(sock, 4242))
-	lsnrT.server = newServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	lsnrT.server = NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	}), golog.New(io.Discard, "", 0))
 	served := make(chan struct{})

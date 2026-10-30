@@ -45,6 +45,8 @@ require (
 	github.com/labstack/gommon v0.5.0
 	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-runewidth v0.0.15
+	github.com/mdlayher/socket v0.5.1
+	github.com/mdlayher/vsock v1.2.1
 	github.com/msoap/byline v1.1.1
 	github.com/ncw/directio v1.0.5
 	github.com/oapi-codegen/oapi-codegen/v2 v2.7.1
@@ -113,7 +115,6 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect
-	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect

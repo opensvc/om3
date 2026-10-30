@@ -28,6 +28,7 @@ var (
 	contextAuditRegistry         = contextKey("audit-registry")
 	contextLogger                = contextKey("logger")
 	contextPeer                  = contextKey("peer")
+	contextVsockPeer             = contextKey("vsock-peer")
 )
 
 func (c contextKey) String() string {
@@ -107,6 +108,21 @@ func WithPeer(parent context.Context, peer *peercred.T) context.Context {
 func Peer(ctx context.Context) *peercred.T {
 	peer, _ := ctx.Value(contextPeer).(*peercred.T)
 	return peer
+}
+
+// vsockPeer is the peer of a vsock connection.
+type vsockPeer struct{ cid, port uint32 }
+
+// WithVsockPeer adds the context id and the source port of a vsock connection.
+func WithVsockPeer(parent context.Context, cid, port uint32) context.Context {
+	return context.WithValue(parent, contextVsockPeer, vsockPeer{cid, port})
+}
+
+// VsockPeer returns the context id and the source port of the vsock connection
+// of a request, ok false on any other listener.
+func VsockPeer(ctx context.Context) (cid, port uint32, ok bool) {
+	p, ok := ctx.Value(contextVsockPeer).(vsockPeer)
+	return p.cid, p.port, ok
 }
 
 // WithListenAddr function returns copy of parent with listener addr.
