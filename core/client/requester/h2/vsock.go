@@ -8,15 +8,22 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/net/http2"
 
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-// VsockPrefix is the scheme of the url of the daemon of a guest, reached from
-// its hypervisor: vsock://<context id>:<port>.
-const VsockPrefix = "vsock://"
+const (
+	// VsockPrefix is the scheme of the url of the daemon of a guest, reached
+	// from its hypervisor: vsock://<context id>:<port>.
+	VsockPrefix = "vsock://"
+
+	// vsockIdleConnTimeout closes the connection of a client done with its
+	// requests: the master makes one per operation on a guest.
+	vsockIdleConnTimeout = 5 * time.Second
+)
 
 // parseVsockURL returns the context id and the port of a vsock url.
 func parseVsockURL(s string) (cid, port uint32, err error) {
@@ -46,7 +53,8 @@ func NewVsock(config Config) (*api.ClientWithResponses, error) {
 	httpClient := &http.Client{
 		Timeout: config.Timeout,
 		Transport: &http2.Transport{
-			AllowHTTP: true,
+			AllowHTTP:       true,
+			IdleConnTimeout: vsockIdleConnTimeout,
 			DialTLSContext: func(ctx context.Context, _, _ string, _ *tls.Config) (net.Conn, error) {
 				return dialVsock(ctx, cid, port)
 			},

@@ -14,6 +14,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/encapapi"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -387,6 +388,14 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 }
 
 func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.Encaper, configFile string) error {
+	if e := t.encapAPI(ctx, encapContainer); e != nil {
+		b, err := os.ReadFile(configFile)
+		if err != nil {
+			return err
+		}
+		return e.InstallConfig(ctx, b)
+	}
+
 	// Prepare a io.Reader to serve the config
 	r, err := os.Open(configFile)
 	if err != nil {
@@ -419,10 +428,7 @@ func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.
 }
 
 func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer resource.Encaper, pushed bool) (*instance.EncapStatus, error) {
-	var (
-		encapInstanceStates *instance.States
-		checksum            string
-	)
+	var checksum string
 
 	hostname := encapContainer.GetHostname()
 	configFile := t.path.ConfigFile()
@@ -433,56 +439,18 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 		return nil, nil
 	}
 
-	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", "status", "-r", "-o", "json"}
-	envs := []string{
-		xsession.SessionID().Var(),
-		env.Origin().Var(),
-	}
-	if v := xsession.OrchestrationID().Var(); v != "" {
-		envs = append(envs, v)
-	}
-	cmd, err := encapContainer.EncapCmd(ctx, args, envs, nil)
-	if err != nil {
-		return nil, err
-	}
-	b, err := cmd.CombinedOutput()
-	if err != nil {
-		if exitErr, ok := err.(exitcoder); ok {
-			if exitErr.ExitCode() == xerrors.ExitCodeObjectNotFound {
-				if pushed {
-					return nil, fmt.Errorf("no encap instance config: already pushed")
-				}
-				t.log.Tracef("%s: no encap instance config: push the config", t.path)
-				if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
-					return nil, err
-				}
-				return t.resourceStatusEvalEncap(ctx, encapContainer, true)
-			}
-		}
-		return nil, fmt.Errorf("encap instance status: %w: %s", err, strings.TrimSpace(string(b)))
-	}
-	var encapInstanceStatesList instance.StatesList
-	if err := json.Unmarshal(b, &encapInstanceStatesList); err != nil {
-		return nil, err
-	}
-	if len(encapInstanceStatesList) == 0 {
+	encapInstanceStates, err := t.encapInstanceStates(ctx, encapContainer, hostname)
+	if errors.Is(err, errEncapNoConfig) {
 		if pushed {
-			return nil, fmt.Errorf("no encap instance status: already pushed")
+			return nil, fmt.Errorf("%w: already pushed", err)
 		}
-		t.log.Tracef("%s: no encap instance status: push the config", t.path)
+		t.log.Tracef("%s: %s: push the config", t.path, err)
 		if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 			return nil, err
 		}
 		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
-	}
-	for _, e := range encapInstanceStatesList {
-		if hostname == e.Node.Name {
-			encapInstanceStates = &e
-			break
-		}
-	}
-	if encapInstanceStates == nil {
-		return nil, fmt.Errorf("no instance states found for node %s", hostname)
+	} else if err != nil {
+		return nil, err
 	}
 	if checksum == "" {
 		if b, err := file.MD5(configFile); err != nil {
@@ -507,6 +475,50 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 		Status:   encapInstanceStates.Status,
 	}
 	return &encapInstanceStatus, nil
+}
+
+// encapInstanceStates returns the refreshed states of the encap instance on
+// hostname, errEncapNoConfig when it has no config yet.
+func (t *actor) encapInstanceStates(ctx context.Context, encapContainer resource.Encaper, hostname string) (*instance.States, error) {
+	if e := t.encapAPI(ctx, encapContainer); e != nil {
+		states, err := e.Status(ctx)
+		if errors.Is(err, encapapi.ErrNotFound) {
+			return nil, errEncapNoConfig
+		}
+		return states, err
+	}
+	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", "status", "-r", "-o", "json"}
+	envs := []string{
+		xsession.SessionID().Var(),
+		env.Origin().Var(),
+	}
+	if v := xsession.OrchestrationID().Var(); v != "" {
+		envs = append(envs, v)
+	}
+	cmd, err := encapContainer.EncapCmd(ctx, args, envs, nil)
+	if err != nil {
+		return nil, err
+	}
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(exitcoder); ok && exitErr.ExitCode() == xerrors.ExitCodeObjectNotFound {
+			return nil, errEncapNoConfig
+		}
+		return nil, fmt.Errorf("encap instance status: %w: %s", err, strings.TrimSpace(string(b)))
+	}
+	var encapInstanceStatesList instance.StatesList
+	if err := json.Unmarshal(b, &encapInstanceStatesList); err != nil {
+		return nil, err
+	}
+	if len(encapInstanceStatesList) == 0 {
+		return nil, fmt.Errorf("%w: no encap instance status", errEncapNoConfig)
+	}
+	for _, e := range encapInstanceStatesList {
+		if hostname == e.Node.Name {
+			return &e, nil
+		}
+	}
+	return nil, fmt.Errorf("no instance states found for node %s", hostname)
 }
 
 // resizeShortfall says a resource holds less than the size it is configured
