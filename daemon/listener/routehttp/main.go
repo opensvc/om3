@@ -35,7 +35,7 @@ type (
 // when enableUI is true swagger-ui is served from /api/docs/
 // metrics are served from /metrics, and the high cardinality subsystems
 // from /metrics/<subsystem>
-// profiling are served from /debug/pprof/
+// profiling are served from /debug/pprof/, to root
 //
 // redirections:
 //
@@ -43,6 +43,7 @@ type (
 //	/api/docs -> /api/docs/
 func New(ctx context.Context, enableUI bool) *T {
 	indexFilename := filepath.Join(rawconfig.Paths.HTML, "index.html")
+	pprofURL := "/debug/pprof"
 	metricsURL := "/metrics"
 	detailMetricsURL := metricsURL + "/"
 	docPrefixURL := "/api/docs"
@@ -50,7 +51,7 @@ func New(ctx context.Context, enableUI bool) *T {
 	webappURL := "/ui"
 
 	e := echo.New()
-	pprof.Register(e)
+	pprof.Register(e, pprofURL)
 	e.Use(mwPromHint)
 	e.Use(mwProm)
 	e.GET(metricsURL, echoprometheus.NewHandler(), daemonapi.RequireScraper)
@@ -87,6 +88,7 @@ func New(ctx context.Context, enableUI bool) *T {
 
 	e.Use(daemonapi.LogMiddleware(ctx))
 	e.Use(daemonapi.AuthMiddleware(ctx))
+	e.Use(daemonapi.RequireRootOn(pprofURL))
 	e.Use(daemonapi.RateLimiterWithConfig(ctx))
 	e.Use(daemonapi.LogUserMiddleware(ctx))
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))

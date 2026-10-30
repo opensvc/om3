@@ -44,6 +44,15 @@ func TestIsPublic(t *testing.T) {
 		{http.MethodGet, "/api/auth/info", true},
 		{http.MethodGet, "/api/node", false},
 		{http.MethodPost, "/metrics", false},
+		{http.MethodGet, "", true},
+		{http.MethodGet, "/ui", true},
+		{http.MethodGet, "/api/docs", true},
+		{http.MethodGet, "/api/docsfoo", false},
+		{http.MethodGet, "/uifoo", false},
+		{http.MethodGet, "/debug/pprof/", false},
+		{http.MethodGet, "/debug/pprof/cmdline", false},
+		{http.MethodPost, "/debug/pprof/symbol", false},
+		{http.MethodGet, "/a/route/not/named", false},
 	} {
 		assert.Equal(t, tc.public, isPublic(tc.method, tc.path), "%s %s", tc.method, tc.path)
 	}
@@ -64,6 +73,31 @@ func TestIsPublicWithPublicMetrics(t *testing.T) {
 		{http.MethodGet, "/api/node/name/n1/metrics", false},
 	} {
 		assert.Equal(t, tc.public, isPublic(tc.method, tc.path), "%s %s", tc.method, tc.path)
+	}
+}
+
+// The routes under the prefix answer root alone, whatever their method, and
+// the others are not concerned.
+func TestRequireRootOn(t *testing.T) {
+	handler := RequireRootOn("/debug/pprof")(func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
+	for _, tc := range []struct {
+		method, path string
+		grants       rbac.Grants
+		code         int
+	}{
+		{http.MethodGet, "/debug/pprof/cmdline", rbac.NewGrants("root"), http.StatusOK},
+		{http.MethodGet, "/debug/pprof/cmdline", rbac.NewGrants("scraper", "admin"), http.StatusForbidden},
+		{http.MethodPost, "/debug/pprof/symbol", rbac.NewGrants("guest"), http.StatusForbidden},
+		{http.MethodGet, "/debug/pprof/", rbac.Grants{}, http.StatusForbidden},
+		{http.MethodGet, "/api/node", rbac.Grants{}, http.StatusOK},
+	} {
+		e := echo.New()
+		rec := httptest.NewRecorder()
+		c := e.NewContext(httptest.NewRequest(tc.method, tc.path, nil), rec)
+		c.SetPath(tc.path)
+		c.Set("grants", tc.grants)
+		assert.NoError(t, handler(c))
+		assert.Equal(t, tc.code, rec.Code, "%s %s %v", tc.method, tc.path, tc.grants)
 	}
 }
 

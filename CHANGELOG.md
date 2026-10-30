@@ -690,7 +690,13 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     and answered the password and the certificate private key of the user,
     which authenticate as that user.
 
-### Metrics
+### Metrics and profiling
+
+* **`/debug/pprof` needs the root grant:**
+    The profiling routes of the listener were served with no authentication,
+    the command line and the stacks of the daemon included. They now need the
+    `root` grant. A local root user can use `lsnr/profile.sock` with no
+    credential. Any route not declared public now needs authentication.
 
 * **`/metrics` needs a credential:**
     `/metrics` was served with no authentication, and the detail pages,
