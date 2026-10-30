@@ -10,18 +10,23 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"strconv"
 	"strings"
-
-	"github.com/rs/zerolog"
+	"syscall"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/vpath"
-	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/uri"
 )
 
-const virtInstall = "virt-install"
+const (
+	virtInstall = "virt-install"
+
+	// imageDir holds an image downloaded, for nobody to read and as large as
+	// a disk: not a place of root, nor a tmpfs.
+	imageDir = "/var/tmp"
+)
 
 type (
 	// vmSpec is what the keywords of a guest ask of virt-install.
@@ -241,40 +246,108 @@ func isURL(s string) bool {
 
 // writeImage writes the image keyword to the device, as raw. The device may
 // be larger than the image, what the guest grows into at its first boot.
+//
+// A downloaded image is anybody's, and what parses it is no place for root:
+// qemu-img runs as nobody then, handed the device for the time of the write.
 func (t *T) writeImage(ctx context.Context, dev string) error {
 	src := t.Image
+	var cred *syscall.Credential
 	if isURL(src) {
-		p, err := downloadImage(ctx, src, t.VarDir())
+		var err error
+		if cred, err = nobody(); err != nil {
+			return fmt.Errorf("image: %w", err)
+		}
+		limit, err := deviceSize(dev)
+		if err != nil {
+			return fmt.Errorf("image: %w", err)
+		}
+		p, err := downloadImage(ctx, src, imageDir, limit)
 		if err != nil {
 			return fmt.Errorf("image: %w", err)
 		}
 		defer func() { _ = os.Remove(p) }()
+		if err := os.Chown(p, int(cred.Uid), int(cred.Gid)); err != nil {
+			return fmt.Errorf("image: %w", err)
+		}
+		restore, err := lendDevice(dev, cred)
+		if err != nil {
+			return fmt.Errorf("image: %w", err)
+		}
+		defer restore()
 		src = p
 	}
-	format, err := imageFormat(ctx, src)
+	format, err := imageFormat(ctx, src, cred)
 	if err != nil {
 		return fmt.Errorf("image: %w", err)
 	}
-	cmd := command.New(
-		command.WithContext(ctx),
-		command.WithName("qemu-img"),
-		command.WithVarArgs("convert", "-n", "-f", format, "-O", "raw", src, dev),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	if err := cmd.Run(); err != nil {
+	t.Log().Infof("write the %s image to %s", format, dev)
+	if _, err := qemuImg(ctx, cred, "convert", "-n", "-f", format, "-O", "raw", src, dev); err != nil {
 		return fmt.Errorf("image: %w", err)
 	}
 	return nil
 }
 
-// imageFormat returns the format of the image.
-func imageFormat(ctx context.Context, src string) (string, error) {
-	b, err := exec.CommandContext(ctx, "qemu-img", "info", "--output=json", src).Output()
+// nobody returns the credentials what parses a downloaded image runs with.
+func nobody() (*syscall.Credential, error) {
+	u, err := user.Lookup("nobody")
 	if err != nil {
-		return "", fmt.Errorf("qemu-img info %s: %w", src, err)
+		return nil, err
+	}
+	uid, err := strconv.ParseUint(u.Uid, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	gid, err := strconv.ParseUint(u.Gid, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	return &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}, nil
+}
+
+// lendDevice gives the device to the credentials, and returns what takes it
+// back.
+func lendDevice(dev string, cred *syscall.Credential) (func(), error) {
+	var st syscall.Stat_t
+	if err := syscall.Stat(dev, &st); err != nil {
+		return nil, fmt.Errorf("stat %s: %w", dev, err)
+	}
+	if err := os.Chown(dev, int(cred.Uid), int(cred.Gid)); err != nil {
+		return nil, err
+	}
+	return func() { _ = os.Chown(dev, int(st.Uid), int(st.Gid)) }, nil
+}
+
+// deviceSize returns the size of a block device or of a file.
+func deviceSize(dev string) (int64, error) {
+	f, err := os.Open(dev)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = f.Close() }()
+	return f.Seek(0, io.SeekEnd)
+}
+
+// qemuImg runs qemu-img, as the credentials when given, and returns its output.
+func qemuImg(ctx context.Context, cred *syscall.Credential, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "qemu-img", args...)
+	cmd.Dir = "/"
+	if cred != nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: cred}
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	b, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("qemu-img %s: %w: %s", args[0], err, strings.TrimSpace(stderr.String()))
+	}
+	return b, nil
+}
+
+// imageFormat returns the format of the image.
+func imageFormat(ctx context.Context, src string, cred *syscall.Credential) (string, error) {
+	b, err := qemuImg(ctx, cred, "info", "--output=json", src)
+	if err != nil {
+		return "", err
 	}
 	return parseImageInfo(b)
 }
@@ -308,8 +381,10 @@ func parseImageInfo(b []byte) (string, error) {
 }
 
 // downloadImage downloads the url to a file of the directory, the policy of
-// the node on the urls it may fetch applying, and returns its path.
-func downloadImage(ctx context.Context, url, dir string) (string, error) {
+// the node on the urls it may fetch applying, and returns its path. An image
+// over limit fits no disk, and is refused as it arrives rather than fill the
+// directory of the node.
+func downloadImage(ctx context.Context, url, dir string, limit int64) (string, error) {
 	client, err := uri.SafeHttpClient(url)
 	if err != nil {
 		return "", err
@@ -333,7 +408,11 @@ func downloadImage(ctx context.Context, url, dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := io.Copy(f, resp.Body); err != nil {
+	n, err := io.Copy(f, io.LimitReader(resp.Body, limit+1))
+	if err == nil && n > limit {
+		err = fmt.Errorf("%s: larger than the %d bytes of the disk", url, limit)
+	}
+	if err != nil {
 		_ = f.Close()
 		_ = os.Remove(f.Name())
 		return "", err

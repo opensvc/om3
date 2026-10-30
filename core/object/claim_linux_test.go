@@ -191,3 +191,23 @@ pg_cpu_quota = 50%
 `)
 	assert.Equal(t, int64(500), m[claim.TypeCPU], "a counted cap under it still bounds the object")
 }
+
+// A guest takes what it is given, and is counted so whatever the default of
+// its namespace, which would kill it when smaller.
+func TestAGuestIsCountedForWhatItIsGiven(t *testing.T) {
+	config := `[DEFAULT]
+nodes = n1 n2
+
+[container#1]
+type = kvm
+name = vm1
+vcpus = 2
+memory = 1g
+`
+	m := computeClaims(t, "ci", nsClaims, config)
+	assert.Equal(t, int64(2000), m[claim.TypeCPU])
+	assert.Equal(t, 1024*1024*1024+claim.GuestMemoryMargin, m[claim.TypeMemory])
+
+	m = computeClaims(t, "ci", nsClaims, config+"pg_mem_limit = 2g\n")
+	assert.Equal(t, int64(2*1024*1024*1024), m[claim.TypeMemory], "a cap it says is the one counted")
+}

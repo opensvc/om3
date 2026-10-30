@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -110,7 +111,73 @@ func (t *core) defaultCapAs(rid, claimType, nodename string) (string, bool, erro
 			return "", false, nil
 		}
 	}
+	if s, ok := t.guestCapAs(rid, claimType, nodename); ok {
+		if _, capped, err := claim.Limit(t.path.Namespace, claimType, ""); err != nil {
+			return "", false, err
+		} else if capped {
+			return s, true, nil
+		}
+	}
 	return claim.Default(t.path.Namespace, claimType)
+}
+
+// guestCapAs is the cap a virtual machine asks for by being what it is, as
+// the node given evaluates it, and whether it says.
+//
+// A default smaller than what the guest was given would kill it as it boots,
+// and a larger one would count for nothing: its memory and its vcpus are what
+// it takes, whichever the namespace decided for a container, of which nobody
+// knows what it takes.
+func (t *core) guestCapAs(rid, claimType, nodename string) (string, bool) {
+	if t.config.GetString(key.New(rid, "type")) != "kvm" {
+		return "", false
+	}
+	switch claimType {
+	case claim.TypeMemory:
+		s, _ := t.config.EvalNoConvAs(key.New(rid, "memory"), nodename)
+		n, err := claim.ParseMemory(s)
+		if s == "" || err != nil {
+			return "", false
+		}
+		return strconv.FormatInt(n+claim.GuestMemoryMargin, 10), true
+	case claim.TypeCPU:
+		s, _ := t.config.EvalNoConvAs(key.New(rid, "vcpus"), nodename)
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 1 {
+			return "", false
+		}
+		return fmt.Sprintf("100%%@%d", n), true
+	}
+	return "", false
+}
+
+// MemCap is the most memory the process group of a resource may take on this
+// node, the smallest of the caps of the groups holding it, claim.Unbounded
+// when none does. What the namespace caps is what its objects add up to, and
+// says nothing of one of them.
+func (t *core) MemCap(rid string) (int64, error) {
+	id, err := resourceid.Parse(rid)
+	if err != nil {
+		return 0, err
+	}
+	nodename := hostname.Hostname()
+	limit, err := t.resourceCapAs(rid, claim.TypeMemory, nodename)
+	if err != nil {
+		return 0, err
+	}
+	for _, section := range []string{t.subsetSection(rid, id.DriverGroup()), "DEFAULT"} {
+		if section == "" {
+			continue
+		}
+		v, ok, err := t.capAs(section, claim.TypeMemory, nodename)
+		if err != nil {
+			return 0, err
+		}
+		if ok {
+			limit = capMin(limit, v)
+		}
+	}
+	return limit, nil
 }
 
 // resourceCapAs is the cap of a resource on a compute claim type, as the

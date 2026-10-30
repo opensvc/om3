@@ -19,6 +19,8 @@ func mustCIDR(t *testing.T, s string) *net.IPNet {
 func TestNicNames(t *testing.T) {
 	dev, mac := nicNames("kvm/svc/vm1!container#1", 0)
 	assert.LessOrEqual(t, len(dev), 15, "an interface name")
+	long, _ := nicNames("kvm/svc/vm1!container#1", 9)
+	assert.LessOrEqual(t, len(long), 15, "an interface name")
 	_, err := net.ParseMAC(mac)
 	assert.NoError(t, err)
 	assert.True(t, strings.HasPrefix(mac, "52:54:"))
@@ -143,4 +145,65 @@ func TestVMSpecArgsOnNetworks(t *testing.T) {
 	assert.Contains(t, args, "--network type=ethernet,target.dev=kv1n0,mac=52:54:00:00:00:01,model=virtio")
 	assert.Contains(t, args, "--xml ./devices/interface[2]/target/@managed=no", "after the bridge")
 	assert.Contains(t, args, "--cloud-init user-data=/tmp/ud,network-config=/tmp/nd")
+}
+
+func TestClaimNIC(t *testing.T) {
+	saved := guestNetDir
+	guestNetDir = t.TempDir()
+	defer func() { guestNetDir = saved }()
+
+	a := guestNIC{owner: "ns/svc/a!container#1", dev: "kv1n0", mac: "52:54:00:00:00:01"}
+	require.NoError(t, claimNIC(a))
+	require.NoError(t, claimNIC(a), "again, as a start after a crash")
+	assert.True(t, ownsNIC(a))
+
+	sameDev := guestNIC{owner: "ns/svc/b!container#1", dev: "kv1n0", mac: "52:54:00:00:00:02"}
+	assert.ErrorContains(t, claimNIC(sameDev), "interface kv1n0 is held by ns/svc/a!container#1")
+	assert.False(t, ownsNIC(sameDev), "unplugging it would cut the other guest")
+
+	sameMAC := guestNIC{owner: "ns/svc/c!container#1", dev: "kv2n0", mac: "52:54:00:00:00:01"}
+	assert.ErrorContains(t, claimNIC(sameMAC), "mac 52:54:00:00:00:01 is held by ns/svc/a!container#1")
+
+	releaseNIC(sameDev)
+	assert.True(t, ownsNIC(a), "released by who holds it only")
+	releaseNIC(a)
+	assert.NoError(t, claimNIC(sameDev))
+}
+
+func TestPartitionOf(t *testing.T) {
+	for id, want := range map[string]string{
+		"/opensvc.slice/opensvc-ns.rtqa.slice/opensvc-ns.rtqa-svc.kpg.slice":                                             "/opensvc/ns.rtqa/svc.kpg",
+		`/opensvc.slice/opensvc-ns.rtqa.slice/opensvc-ns.rtqa-svc.k\x2dpg.slice`:                                         "/opensvc/ns.rtqa/svc.k-pg",
+		`/opensvc.slice/opensvc-ns.a\x2db.slice/opensvc-ns.a\x2db-svc.c.slice/opensvc-ns.a\x2db-svc.c-container.1.slice`: "/opensvc/ns.a-b/svc.c/container.1",
+		"/opensvc.slice/opensvc-svc.c.slice":                                                                             "/opensvc/svc.c",
+	} {
+		assert.Equal(t, want, partitionOf(id), id)
+	}
+}
+
+func TestDefinitionWithPartition(t *testing.T) {
+	const p = "/opensvc/ns.a/svc.b"
+	want := "<domain>\n  <resource>\n    <partition>" + p + "</partition>\n  </resource>\n</domain>\n"
+
+	b, err := definitionWithPartition([]byte("<domain>\n  <resource>\n    <partition>/machine</partition>\n  </resource>\n</domain>\n"), p)
+	require.NoError(t, err)
+	assert.Equal(t, want, string(b), "libvirt's, replaced")
+
+	b, err = definitionWithPartition([]byte("<domain>\n</domain>\n"), p)
+	require.NoError(t, err)
+	assert.Equal(t, want, string(b), "none, added")
+
+	b, err = definitionWithPartition([]byte("<domain>\n  <resource>\n    <fibrechannel appid='x'/>\n  </resource>\n</domain>\n"), p)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "<resource>\n    <partition>"+p+"</partition>\n    <fibrechannel", "beside what the section holds")
+
+	_, err = definitionWithPartition([]byte("nothing"), p)
+	assert.Error(t, err)
+}
+
+func TestDefinedMemory(t *testing.T) {
+	assert.Equal(t, int64(1<<30), definedMemory([]byte("<memory unit='KiB'>1048576</memory>")))
+	assert.Equal(t, int64(1<<30), definedMemory([]byte("<memory unit='GiB'>1</memory>")))
+	assert.Equal(t, int64(1024), definedMemory([]byte("<memory>1</memory>")), "KiB by default")
+	assert.Equal(t, int64(0), definedMemory([]byte("<domain/>")))
 }
