@@ -87,7 +87,7 @@ func keywordGrant(kind naming.Kind, section, option string, types []string) (str
 		return grant, doc, always
 	}
 	for _, typ := range types {
-		if keyoprbac.DeniedByDriver(rbac.Grants{}, kind, section, option, typ, nil) == nil {
+		if keyoprbac.DeniedByDriver(rbac.Grants{}, kind, section, option, "", typ, nil) == nil {
 			return grant, doc, always
 		}
 	}

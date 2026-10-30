@@ -75,7 +75,7 @@ func TestDeniedByValue(t *testing.T) {
 		{"container#1", "type", "docker", false},
 		{"container#1", "type", "podman", false},
 		{"container#1", "type", "oci", false},
-		{"container#1", "type", "kvm", true},
+		{"container#1", "type", "kvm", false},
 		{"container#1", "type", "lxc", true},
 		{"task#1", "type", "docker", false},
 		{"task#1", "type", "host", true},
@@ -180,7 +180,7 @@ func TestDeniedIgnoresTheIndexAndTheScope(t *testing.T) {
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#a-name", "run_args", "x", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "run_args@node1", "x", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "dns@fr-par", "x", none))
-	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "type@node1", "kvm", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "type@node1", "lxc", none))
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "type@node1", "docker", none))
 }
 
@@ -203,7 +203,7 @@ func TestDeniedHonorsTheGrantTheRuleNames(t *testing.T) {
 func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container", "run_args"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container#1", "dns"))
-	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman.", Doc(naming.KindSvc, "container", "type"))
+	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman, kvm.", Doc(naming.KindSvc, "container", "type"))
 	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
 	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
@@ -520,8 +520,8 @@ func TestSyncIntoANamespaceStore(t *testing.T) {
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "sync#1", "store", "from ./sec/stores store#remote", none))
 	assert.ErrorContains(t, Denied(noGrant, naming.KindSvc, "sync#1", "store", "tar1", none), "a store of the cluster configuration")
 	for _, option := range []string{"rids", "exclude", "include_refs", "keep", "schedule", "max_delay", "log"} {
-		assert.NoError(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "store", none), option)
-		assert.Error(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "rsync", none), "%s of an rsync", option)
+		assert.NoError(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "", "store", none), option)
+		assert.Error(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", option, "", "rsync", none), "%s of an rsync", option)
 	}
 }
 
@@ -533,4 +533,46 @@ func TestQuiesceKeywords(t *testing.T) {
 	}
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "app#1", "quiesce", "/bin/true", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "app#1", "resume", "/bin/true", none))
+}
+
+func TestKVMKeywords(t *testing.T) {
+	root := rbac.Grants{rbac.GrantRoot}
+	for _, tc := range []struct {
+		option string
+		value  string
+		denied bool
+	}{
+		{"vcpus", "2", false},
+		{"memory", "2g", false},
+		{"cloud_init", "from ./cfg/ci key user-data", false},
+		{"disk", "volume#1 volume#2", false},
+		{"disk", "disk#1", true},
+		{"disk", "/dev/sda", true},
+		{"disk", "volume#1 /dev/sda", true},
+		{"disk", "volume#", true},
+		{"image", "https://cloud-images.ubuntu.com/noble.img", false},
+		{"image", "http://images.local/a.qcow2", false},
+		{"image", "/etc/shadow", true},
+		{"image", "file:///etc/shadow", true},
+		{"osinfo", "ubuntu24.04", false},
+		{"osinfo", "detect=on,require=off", true},
+		{"osinfo", "-x", true},
+		{"network", "backend3 backend5", false},
+		{"network", "../x", true},
+		{"virtinst", "virt-install", true},
+		{"virtinst_args", "--disk /dev/sda", true},
+		{"bridge", "br-prd", true},
+		{"network_filter", "false", true},
+		{"rcmd", "ssh", true},
+		{"osvc_root_path", "/x", true},
+		{"hostname", "dev2n2", true},
+		{"vsock_port", "1215", true},
+		{"a_keyword_added_later", "x", true},
+	} {
+		err := DeniedByDriver(rbac.Grants{}, naming.KindSvc, "container#1", tc.option, tc.value, "kvm", func(string) bool { return false })
+		assert.Equal(t, tc.denied, err != nil, "%s=%s: %v", tc.option, tc.value, err)
+		assert.NoError(t, DeniedByDriver(root, naming.KindSvc, "container#1", tc.option, tc.value, "kvm", func(string) bool { return false }), "root: %s", tc.option)
+	}
+	assert.NoError(t, DeniedByDriver(rbac.Grants{}, naming.KindSvc, "container#1", "tags", "x", "kvm", nil), "a common keyword")
+	assert.NoError(t, DeniedByDriver(rbac.Grants{}, naming.KindSvc, "container#1", "virtinst", "x", "docker", nil), "a keyword docker reads nothing of")
 }

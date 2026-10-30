@@ -134,7 +134,7 @@ var (
 			Scopable:  true,
 		},
 		&rescontainer.KWRCmd,
-		&rescontainer.KWName,
+		&kwName,
 		&rescontainer.KWHostname,
 		&rescontainer.KWStartTimeout,
 		&rescontainer.KWStopTimeout,
@@ -154,6 +154,15 @@ func (t *T) DriverID() driver.ID {
 }
 
 // Manifest exposes to the core the input expected by the driver.
+// kwName is the name of a container, which a guest may leave out: its default
+// is the object's, as a container's, so no user has to choose one, which
+// libvirt would know whichever object it belongs to.
+var kwName = func() keywords.Keyword {
+	kw := rescontainer.KWName
+	kw.Required = false
+	return kw
+}()
+
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc)

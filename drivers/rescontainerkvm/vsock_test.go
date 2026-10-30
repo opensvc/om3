@@ -177,3 +177,11 @@ func TestParseImageInfo(t *testing.T) {
 	_, err = parseImageInfo([]byte(`{"format": "vmdk"}`))
 	assert.ErrorContains(t, err, "qcow2 or raw")
 }
+
+// A follower runs no command of the keywords: it would write the image over a
+// disk it may share with the leader, and start a second guest on it.
+func TestProvisionAsFollowerLeavesAGuestToTheLeader(t *testing.T) {
+	r := &T{Image: "/does/not/exist", VCPUs: 1}
+	r.SetLoggerForTest(plog.NewDefaultLogger())
+	assert.NoError(t, r.ProvisionAsFollower(context.Background()))
+}
