@@ -1726,23 +1726,10 @@ func (t *Manager) checkResourceForIPMatch(ip string, linkName string, eventType 
 
 	// Check if any resource has a matching IP address
 	for rid, rstat := range instStatus.Resources {
-		if ipaddr, ok := rstat.Info["ipaddr"]; ok {
-			// ipaddr can be a string or net.IP, convert to string for comparison
-			var ipaddrStr string
-			switch v := ipaddr.(type) {
-			case string:
-				ipaddrStr = v
-			case net.IP:
-				ipaddrStr = v.String()
-			default:
-				ipaddrStr = fmt.Sprintf("%v", v)
-			}
-
-			if ipaddrStr == ip {
-				t.log.Infof("IP address %s on link %s, matching resource %s - schedule a status refresh", ip, linkName, rid)
-				t.scheduleEventRefresh(fmt.Sprintf("ip address %s %s", ip, eventType))
-				return
-			}
+		if slices.Contains(rstat.IPAddrs(), ip) {
+			t.log.Infof("IP address %s on link %s, matching resource %s - schedule a status refresh", ip, linkName, rid)
+			t.scheduleEventRefresh(fmt.Sprintf("ip address %s %s", ip, eventType))
+			return
 		}
 	}
 

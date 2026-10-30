@@ -17,21 +17,15 @@ func GetClusterIPs() clusterip.L {
 	clusterIPs := make(clusterip.L, 0)
 	for _, instStatusData := range instance.StatusData.GetAll() {
 		for rid, resStatus := range instStatusData.Value.Resources {
-			i, ok := resStatus.Info["ipaddr"]
-			if !ok {
-				continue
+			for _, ipaddr := range resStatus.IPAddrs() {
+				clusterIP := clusterip.T{
+					Path: instStatusData.Path,
+					Node: instStatusData.Node,
+					RID:  rid,
+					IP:   net.ParseIP(ipaddr),
+				}
+				clusterIPs = append(clusterIPs, clusterIP)
 			}
-			ipaddr, ok := i.(string)
-			if !ok {
-				continue
-			}
-			clusterIP := clusterip.T{
-				Path: instStatusData.Path,
-				Node: instStatusData.Node,
-				RID:  rid,
-				IP:   net.ParseIP(ipaddr),
-			}
-			clusterIPs = append(clusterIPs, clusterIP)
 		}
 	}
 	return clusterIPs
