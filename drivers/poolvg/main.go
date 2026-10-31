@@ -52,6 +52,7 @@ func (t T) Head() string {
 // while the snapshot lives: that is not a capability to select a pool on.
 func (t T) Capabilities() pool.Capabilities {
 	l := pool.Capabilities{
+		pool.CapQuota,
 		pool.CapBlk,
 		pool.CapFile,
 		pool.CapROO,

@@ -1122,7 +1122,7 @@ var (
 	}
 	kwNodePoolType = keywords.Keyword{
 		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "dorado", "hoc", "drbd", "pure", "rados"},
-		Default:    "directory",
+		Default:    "loop",
 		Option:     "type",
 		Section:    "pool",
 		Text:       keywords.NewText(fs, "text/kw/node/pool.type"),
@@ -1434,7 +1434,16 @@ var (
 		Option:  "fs_type",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
-		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "loop", "vg", "pure", "truenas", "rados"},
+		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "vg", "pure", "truenas", "rados"},
+	}
+	// No minimum, for the pool a node has with no configuration: xfs refuses a
+	// device under 300m.
+	kwNodePoolLoopFSType = keywords.Keyword{
+		Default: "ext4",
+		Option:  "fs_type",
+		Section: "pool",
+		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
+		Types:   []string{"loop"},
 	}
 	kwNodePoolMkfsOpt = keywords.Keyword{
 		Example: "-O largefile",
@@ -2227,6 +2236,7 @@ var (
 		&kwNodePoolLoopPath,
 		&kwNodePoolHOCPoolID,
 		&kwNodePoolFSType,
+		&kwNodePoolLoopFSType,
 		&kwNodePoolMkfsOpt,
 		&kwNodePoolMkblkOpt,
 		&kwNodeHookEvents,

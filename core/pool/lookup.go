@@ -60,6 +60,10 @@ const (
 	CapShared   Capability = "shared"
 	CapSnap     Capability = "snap"
 	CapVolatile Capability = "volatile"
+
+	// CapQuota says the size of a volume bounds what it holds: its storage
+	// is of that size, rather than a share of something larger.
+	CapQuota Capability = "quota"
 )
 
 func (by By) Sort(l StatusList) {
@@ -135,6 +139,15 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 				cause = append(cause, why)
 				continue
 			}
+		}
+		_, claimed, err := ClaimLimit(t.Namespace, p.Name())
+		if err != nil {
+			cause = append(cause, fmt.Sprintf("[%s] claim check: %s", p.Name(), err))
+			continue
+		}
+		if why := quotaCause(HasCapability(p, CapQuota), claimed, t.Size); why != "" {
+			cause = append(cause, fmt.Sprintf("[%s] %s", p.Name(), why))
+			continue
 		}
 		// Weighed, not taken: the claim of the pool this picks is taken when
 		// the volume is written to it.
@@ -289,6 +302,19 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 //
 // It is what a pool can be asked when there is no daemon to ask about the
 // peers: the pool of a node is read from the node itself.
+// quotaCause says why a pool can not serve a volume of the size: storage of the
+// size of the volume has to be told one, and a claim counts the size of the
+// volumes, which is no limit of a pool not bounding what they hold.
+func quotaCause(bounds, claimed bool, size int64) string {
+	switch {
+	case bounds && size <= 0:
+		return "the pool makes storage of the size of the volume, which says none"
+	case claimed && !bounds:
+		return "the namespace claims it, and the pool does not bound the size of a volume"
+	}
+	return ""
+}
+
 func (t Lookup) localRoomCause(ctx context.Context, p Pooler, need int64) string {
 	usage, err := p.Usage(ctx)
 	if err != nil {

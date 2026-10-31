@@ -40,7 +40,7 @@ func (t T) Head() string {
 }
 
 func (t T) Capabilities() pool.Capabilities {
-	return pool.Capabilities{
+	l := pool.Capabilities{
 		pool.CapBlk,
 		pool.CapFile,
 		pool.CapROO,
@@ -48,6 +48,11 @@ func (t T) Capabilities() pool.Capabilities {
 		pool.CapRWO,
 		pool.CapRWX,
 	}
+	// A directory has no size of its own: the project quota is what gives it one.
+	if t.quota() {
+		l = append(l, pool.CapQuota)
+	}
+	return l
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {

@@ -51,7 +51,10 @@ func (t *Node) Pools() []pool.Pooler {
 		}
 	}
 	if !hasDefault {
-		if p := implicitPool("default", "directory", config); p != nil {
+		// A loop file is what the size of a volume is a limit of, with nothing
+		// to set up. In a directory, a volume could fill the disk of the node
+		// whatever size the namespace claimed.
+		if p := implicitPool("default", "loop", config); p != nil {
 			l = append(l, p)
 		}
 	}
