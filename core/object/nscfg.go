@@ -74,12 +74,16 @@ func (t *nscfg) PGConfig() *pg.Config {
 }
 
 func (t *nscfg) lockedPGUpdate(ctx context.Context) error {
-	// For nscfg, we control the namespace cgroup, not the object cgroup
-	return t.PGConfig().Apply()
+	// For nscfg, we control the namespace cgroup, not the object cgroup. No
+	// process belongs in it: its slices hold them, and a cgroup with children
+	// takes none.
+	_, err := t.PGConfig().ApplyProc(0)
+	return err
 }
 
 func (t *nscfg) lockedPGReset(ctx context.Context) error {
 	// For nscfg, we control the namespace cgroup, not the object cgroup
 	uncapped := t.PGConfig().Uncapped()
-	return uncapped.Apply()
+	_, err := uncapped.ApplyProc(0)
+	return err
 }
