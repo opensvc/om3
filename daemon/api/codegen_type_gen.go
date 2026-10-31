@@ -4869,8 +4869,8 @@ type DeleteInstanceFileParams struct {
 	Name InQueryFileName `form:"name" json:"name"`
 }
 
-// PutInstanceFileParams defines parameters for PutInstanceFile.
-type PutInstanceFileParams struct {
+// PostInstanceFileParams defines parameters for PostInstanceFile.
+type PostInstanceFileParams struct {
 	// Name the name of a file at the top of the volume
 	Name InQueryFileName `form:"name" json:"name"`
 }

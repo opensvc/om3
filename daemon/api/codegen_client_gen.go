@@ -479,8 +479,8 @@ type ClientInterface interface {
 	// GetInstanceFiles request
 	GetInstanceFiles(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutInstanceFileWithBody request with any body
-	PutInstanceFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutInstanceFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostInstanceFile request
+	PostInstanceFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstanceLogs request
 	GetInstanceLogs(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2340,8 +2340,8 @@ func (c *Client) GetInstanceFiles(ctx context.Context, nodename InPathNodeName, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutInstanceFileWithBody(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutInstanceFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutInstanceFileRequestWithBody(c.Server, nodename, namespace, kind, name, params, contentType, body)
+func (c *Client) PostInstanceFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceFileRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -13090,8 +13090,8 @@ func NewGetInstanceFilesRequest(server string, nodename InPathNodeName, namespac
 	return req, nil
 }
 
-// NewPutInstanceFileRequestWithBody generates requests for PutInstanceFile with any type of body
-func NewPutInstanceFileRequestWithBody(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutInstanceFileParams, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostInstanceFileRequest generates requests for PostInstanceFile
+func NewPostInstanceFileRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceFileParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13160,12 +13160,10 @@ func NewPutInstanceFileRequestWithBody(server string, nodename InPathNodeName, n
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
-	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -18259,8 +18257,8 @@ type ClientWithResponsesInterface interface {
 	// GetInstanceFilesWithResponse request
 	GetInstanceFilesWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceFilesResponse, error)
 
-	// PutInstanceFileWithBodyWithResponse request with any body
-	PutInstanceFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutInstanceFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutInstanceFileResponse, error)
+	// PostInstanceFileWithResponse request
+	PostInstanceFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceFileParams, reqEditors ...RequestEditorFn) (*PostInstanceFileResponse, error)
 
 	// GetInstanceLogsWithResponse request
 	GetInstanceLogsWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
@@ -22606,20 +22604,20 @@ func (r GetInstanceFilesResponse) ContentType() string {
 	return ""
 }
 
-type PutInstanceFileResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON400                   *N400
-	JSON401                   *N401
-	JSON403                   *N403
-	JSON404                   *N404
-	JSON409                   *N409
-	JSON500                   *N500
-	ApplicationproblemJSON507 *Problem
+type PostInstanceFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *ConsoleTicket
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON409      *N409
+	JSON500      *N500
 }
 
 // Status returns HTTPResponse.Status
-func (r PutInstanceFileResponse) Status() string {
+func (r PostInstanceFileResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -22627,7 +22625,7 @@ func (r PutInstanceFileResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutInstanceFileResponse) StatusCode() int {
+func (r PostInstanceFileResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -22635,7 +22633,7 @@ func (r PutInstanceFileResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r PutInstanceFileResponse) ContentType() string {
+func (r PostInstanceFileResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26427,13 +26425,13 @@ func (c *ClientWithResponses) GetInstanceFilesWithResponse(ctx context.Context, 
 	return ParseGetInstanceFilesResponse(rsp)
 }
 
-// PutInstanceFileWithBodyWithResponse request with arbitrary body returning *PutInstanceFileResponse
-func (c *ClientWithResponses) PutInstanceFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutInstanceFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutInstanceFileResponse, error) {
-	rsp, err := c.PutInstanceFileWithBody(ctx, nodename, namespace, kind, name, params, contentType, body, reqEditors...)
+// PostInstanceFileWithResponse request returning *PostInstanceFileResponse
+func (c *ClientWithResponses) PostInstanceFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceFileParams, reqEditors ...RequestEditorFn) (*PostInstanceFileResponse, error) {
+	rsp, err := c.PostInstanceFile(ctx, nodename, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutInstanceFileResponse(rsp)
+	return ParsePostInstanceFileResponse(rsp)
 }
 
 // GetInstanceLogsWithResponse request returning *GetInstanceLogsResponse
@@ -33821,20 +33819,27 @@ func ParseGetInstanceFilesResponse(rsp *http.Response) (*GetInstanceFilesRespons
 	return response, nil
 }
 
-// ParsePutInstanceFileResponse parses an HTTP response from a PutInstanceFileWithResponse call
-func ParsePutInstanceFileResponse(rsp *http.Response) (*PutInstanceFileResponse, error) {
+// ParsePostInstanceFileResponse parses an HTTP response from a PostInstanceFileWithResponse call
+func ParsePostInstanceFileResponse(rsp *http.Response) (*PostInstanceFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutInstanceFileResponse{
+	response := &PostInstanceFileResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConsoleTicket
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -33876,13 +33881,6 @@ func ParsePutInstanceFileResponse(rsp *http.Response) (*PutInstanceFileResponse,
 			return nil, err
 		}
 		response.JSON500 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON507 = &dest
 
 	}
 

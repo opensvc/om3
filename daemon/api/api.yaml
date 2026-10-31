@@ -4405,24 +4405,30 @@ paths:
         - bearerAuth: []
       tags:
         - node / instance / vol
-    put:
-      operationId: PutInstanceFile
+    post:
+      operationId: PostInstanceFile
       description: |
-        Write the body to a file at the top of a volume, available on the
-        node, in place of the one of that name. The file appears complete or
-        not at all: a transfer that fails leaves the former one.
+        Issue the ticket a file of a volume, available on the node, is
+        uploaded with.
+
+        The file is sent by a PUT of its bytes on the console endpoint, with
+        the ticket in the `ticket` query parameter: the `url` of the answer
+        when it has one, the `port` of the node the api is reached on
+        otherwise, in https. The name of the ticket is written, in place of the
+        file of that name, which appears complete or not at all. The PUT is
+        answered 204, 409 for a volume no longer available, and 507 for a file
+        not fitting in the size of the volume.
+
+        The ticket opens one transfer, and is refused once expired.
       parameters:
         - $ref: '#/components/parameters/inQueryFileName'
-      requestBody:
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
       responses:
-        204:
-          description: Written
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleTicket'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -4435,12 +4441,6 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-        507:
-          description: The volume has no space left for the file
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
       security:
         - basicAuth: []
         - bearerAuth: []
