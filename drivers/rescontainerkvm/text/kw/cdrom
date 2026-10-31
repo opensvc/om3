@@ -7,4 +7,10 @@ An installed system has no cloud-init, so the guest finds its address by dhcp: a
 lan network is refused, and the filter of a network expects it to use an eui-64
 link-local address on an ipv6 network.
 
+The guest stops at the first reboot of the installer, for it to boot the disk from
+then on, and the object is in warn with its volumes up: start its instance, which an
+orchestrated start refuses. An installer stopped before its end is not resumed: the
+definition of the domain no longer has the media, and the guest is to be provisioned
+again.
+
 Read by the provision only. It excludes `image` and `cloud_init`.

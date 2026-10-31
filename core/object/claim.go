@@ -151,6 +151,16 @@ func (t *core) guestCapAs(rid, claimType, nodename string) (string, bool) {
 	return "", false
 }
 
+// ObjectMemCap is the most memory the process group of the object may take on
+// this node, claim.Unbounded when nothing caps it.
+func (t *core) ObjectMemCap() (int64, error) {
+	v, ok, err := t.capAs("DEFAULT", claim.TypeMemory, hostname.Hostname())
+	if err != nil || !ok {
+		return claim.Unbounded, err
+	}
+	return v, nil
+}
+
 // MemCap is the most memory the process group of a resource may take on this
 // node, the smallest of the caps of the groups holding it, claim.Unbounded
 // when none does. What the namespace caps is what its objects add up to, and

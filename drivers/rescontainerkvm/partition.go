@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/claim"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -146,8 +147,37 @@ func (t *T) memCapError() error {
 		return err
 	}
 	need := t.guestMemory() + claim.GuestMemoryMargin
-	if limit == claim.Unbounded || t.guestMemory() == 0 || limit >= need {
+	if limit != claim.Unbounded && t.guestMemory() != 0 && limit < need {
+		return fmt.Errorf("memory cap %s: the guest needs %s, its memory and what qemu takes", sizeconv.BSizeCompact(float64(limit)), sizeconv.BSizeCompact(float64(need)))
+	}
+	return t.sharedMemCapError()
+}
+
+// sharedMemCapError says the guests of the object do not fit its cap together:
+// they share its group, each fitting it alone, and one of them is killed the
+// day they all touch their memory.
+func (t *T) sharedMemCapError() error {
+	o, ok := t.GetObject().(interface {
+		ObjectMemCap() (int64, error)
+		Resources() resource.Drivers
+	})
+	if !ok {
 		return nil
 	}
-	return fmt.Errorf("memory cap %s: the guest needs %s, its memory and what qemu takes", sizeconv.BSizeCompact(float64(limit)), sizeconv.BSizeCompact(float64(need)))
+	limit, err := o.ObjectMemCap()
+	if err != nil || limit == claim.Unbounded {
+		return err
+	}
+	need := int64(0)
+	guests := 0
+	for _, r := range o.Resources() {
+		if g, ok := r.(*T); ok && !g.IsDisabled() && g.guestMemory() > 0 {
+			need += g.guestMemory() + claim.GuestMemoryMargin
+			guests++
+		}
+	}
+	if guests < 2 || limit >= need {
+		return nil
+	}
+	return fmt.Errorf("memory cap %s: the %d guests of the object need %s together", sizeconv.BSizeCompact(float64(limit)), guests, sizeconv.BSizeCompact(float64(need)))
 }
