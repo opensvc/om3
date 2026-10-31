@@ -10,10 +10,11 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
+// GetNodeDriver lists the drivers of a node.
+//
+// Any user may read it: it says what the binary ships, as the documentation
+// does, and nothing of the node. The capabilities do, and stay root's.
 func (a *DaemonAPI) GetNodeDriver(ctx echo.Context, nodename api.InPathNodeName) error {
-	if v, err := assertRoot(ctx); !v {
-		return err
-	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
 		return a.getLocalNodeDriver(ctx)
