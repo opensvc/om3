@@ -27,7 +27,9 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/opensvc/om3/v3/core/console"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/volfile"
 )
 
 type (
@@ -58,6 +60,9 @@ type (
 
 		// Graphics returns a connection to the display of a target.
 		Graphics func(console.Target) (net.Conn, error)
+
+		// Upload writes r to the file of a target.
+		Upload func(console.Target, io.Reader) error
 
 		// PeerURL returns the url of the console endpoint of a peer
 		// node, and PeerTLSConfig how to verify it. A PeerTLSConfig
@@ -104,6 +109,10 @@ const (
 	// connections, and a client that stops answering them is gone.
 	pingInterval = 25 * time.Second
 	pongTimeout  = 3 * pingInterval
+
+	// uploadIdle is how long a transfer waits for its client to send
+	// something: this process lasts as long as the transfer does.
+	uploadIdle = time.Minute
 
 	// killGrace is how long the command is given to end after its
 	// terminal was hung up, before it is killed.
@@ -206,6 +215,15 @@ func Serve(conn net.Conn, cfg Config) error {
 }
 
 func (cfg Config) handle(w http.ResponseWriter, r *http.Request, raw net.Conn) {
+	// The ticket is what authorizes a transfer, and a page of another origin
+	// does not have it, as for a websocket: see the upgrader.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Methods", http.MethodPut)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	refuse := func(code int, err error) {
 		cfg.Log.Warnf("%s: refused: %s", r.RemoteAddr, err)
 		w.Header().Set("Connection", "close")
@@ -227,6 +245,10 @@ func (cfg Config) handle(w http.ResponseWriter, r *http.Request, raw net.Conn) {
 	}
 	if cfg.Authenticated != nil {
 		cfg.Authenticated()
+	}
+	if ticket.Target.Kind == console.KindUpload {
+		cfg.handleUpload(w, r, raw, ticket, signed)
+		return
 	}
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -407,6 +429,105 @@ func (cfg Config) run(ws *websocket.Conn, ticket *console.Ticket, remote string)
 			return exitCode(werr), fmt.Errorf("client gone, command killed: %w", err)
 		}
 	}
+}
+
+// idleReader reads a client, ending the connection of one that stops sending.
+type idleReader struct {
+	r    io.Reader
+	conn net.Conn
+}
+
+func (t idleReader) Read(p []byte) (int, error) {
+	_ = t.conn.SetReadDeadline(time.Now().Add(uploadIdle))
+	return t.r.Read(p)
+}
+
+// handleUpload receives the file of a ticket, or relays it to the node of the
+// ticket. Nothing but the bytes goes through: the answer says how it ended.
+func (cfg Config) handleUpload(w http.ResponseWriter, r *http.Request, raw net.Conn, ticket *console.Ticket, signed string) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "a file is sent by a PUT", http.StatusMethodNotAllowed)
+		return
+	}
+	// The handshake is done: the transfer lasts as long as its client sends.
+	_ = raw.SetDeadline(time.Time{})
+	body := idleReader{r: r.Body, conn: raw}
+	target := ticket.Target
+	what := fmt.Sprintf("%s %s on %s by %s from %s", target.Path, target.File, target.Node, ticket.User(), r.RemoteAddr)
+	if target.Node != cfg.Hostname {
+		cfg.Log.Infof("relay upload: %s", what)
+		if err := cfg.relayUpload(w, body, r.ContentLength, ticket, signed); err != nil {
+			cfg.Log.Warnf("relay upload ended: %s: %s", what, err)
+			http.Error(w, err.Error(), http.StatusBadGateway)
+		}
+		return
+	}
+	if cfg.Upload == nil {
+		http.Error(w, "no upload on this node", http.StatusInternalServerError)
+		return
+	}
+	if unregister, err := register(cfg.SessionDir, Session{
+		PID:       os.Getpid(),
+		User:      ticket.User(),
+		Remote:    r.RemoteAddr,
+		Target:    target,
+		StartedAt: time.Now(),
+	}); err != nil {
+		cfg.Log.Warnf("record the session: %s", err)
+	} else {
+		defer unregister()
+	}
+	cfg.Log.Infof("upload: %s", what)
+	err := cfg.Upload(target, body)
+	cfg.Log.Infof("upload ended: %s: %v", what, err)
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, volfile.ErrFull), errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EDQUOT):
+		http.Error(w, fmt.Sprintf("%s is full: grow the volume", target.Path), http.StatusInsufficientStorage)
+	case errors.As(err, &vpath.ErrAccess{}):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// relayUpload sends a transfer on to the console of the node of the ticket, and
+// answers what that node answers.
+func (cfg Config) relayUpload(w http.ResponseWriter, body io.Reader, size int64, ticket *console.Ticket, signed string) error {
+	if cfg.PeerURL == nil {
+		return fmt.Errorf("no route to the console of node %s", ticket.Target.Node)
+	}
+	peerURL, err := cfg.PeerURL(ticket.Target.Node)
+	if err != nil {
+		return err
+	}
+	u, err := url.Parse(peerURL)
+	if err != nil {
+		return err
+	}
+	u.Scheme = "https"
+	q := u.Query()
+	q.Set("ticket", signed)
+	u.RawQuery = q.Encode()
+	tlsConfig := cfg.PeerTLSConfig.Clone()
+	if tlsConfig != nil && tlsConfig.ServerName == "" {
+		tlsConfig.ServerName = ticket.Target.Node
+	}
+	req, err := http.NewRequest(http.MethodPut, u.String(), body)
+	if err != nil {
+		return err
+	}
+	req.ContentLength = size
+	client := http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4096))
+	return nil
 }
 
 // runGraphics relays the bytes of a display and of its client. Nothing but

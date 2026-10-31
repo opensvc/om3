@@ -35,6 +35,10 @@ const (
 	// KindGraphics is the kind of a console attached to the display of a
 	// guest: the bytes of the session are the ones of the display protocol.
 	KindGraphics = "graphics"
+
+	// KindUpload is the kind of a console receiving a file of a volume: no
+	// session, a http PUT of its bytes.
+	KindUpload = "upload"
 )
 
 type (
@@ -53,6 +57,9 @@ type (
 
 		// Kind is the kind of console.
 		Kind string `json:"kind"`
+
+		// File is the name of the file an upload writes.
+		File string `json:"file,omitempty"`
 	}
 
 	// Ticket is what a client presents to open a console session. It is
@@ -134,6 +141,8 @@ func ParseTicket(s string, key *rsa.PublicKey) (*Ticket, error) {
 	case t.Target.Node == "" || t.Target.Kind == "":
 		return nil, errors.New("console ticket: incomplete target")
 	case t.Target.Path == "" && t.Target.Kind != KindShell:
+		return nil, errors.New("console ticket: incomplete target")
+	case t.Target.Kind == KindUpload && t.Target.File == "":
 		return nil, errors.New("console ticket: incomplete target")
 	}
 	return t, nil

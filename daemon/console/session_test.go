@@ -15,8 +15,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -33,7 +35,10 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/opensvc/om3/v3/core/console"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/volfile"
 )
 
 // testNode is a node serving console sessions in the process of the test.
@@ -523,4 +528,102 @@ func TestSessionGraphicsRefused(t *testing.T) {
 	var closeErr *websocket.CloseError
 	require.ErrorAs(t, err, &closeErr)
 	assert.Equal(t, "the guest has a spice display, and a vnc one is needed", closeErr.Text)
+}
+
+// uploadNode starts a node storing what it is sent in a buffer.
+func uploadNode(t *testing.T, name string, key *rsa.PrivateKey, peerURL func(string) (string, error), upload func(console.Target, io.Reader) error) *testNode {
+	t.Helper()
+	n := startTestNodeWithPeers(t, name, key, "true", peerURL)
+	n.cfg.Upload = upload
+	return n
+}
+
+func uploadTicket(t *testing.T, key *rsa.PrivateKey, node string) string {
+	t.Helper()
+	ticket, err := console.NewTicket("alice", "node1", console.Target{Node: node, Path: "ns1/vol/images", Kind: console.KindUpload, File: "a.img"})
+	require.NoError(t, err)
+	signed, err := ticket.Sign(key)
+	require.NoError(t, err)
+	return signed
+}
+
+func put(t *testing.T, n *testNode, ticket, body string) (int, string) {
+	t.Helper()
+	u := strings.Replace(n.url, "wss://", "https://", 1) + "?ticket=" + url.QueryEscape(ticket)
+	req, err := http.NewRequest(http.MethodPut, u, strings.NewReader(body))
+	require.NoError(t, err)
+	c := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	resp, err := c.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"), "a page of the api reads the answer")
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(b)
+}
+
+func TestSessionUpload(t *testing.T) {
+	key := testRSAKey(t)
+	var got syncBuffer
+	var target console.Target
+	n := uploadNode(t, "node1", key, nil, func(tgt console.Target, r io.Reader) error {
+		target = tgt
+		_, err := io.Copy(&got, r)
+		return err
+	})
+	ticket := uploadTicket(t, key, "node1")
+	code, _ := put(t, n, ticket, "the bytes")
+	assert.Equal(t, http.StatusNoContent, code)
+	assert.Equal(t, "the bytes", got.String())
+	assert.Equal(t, "a.img", target.File)
+
+	code, body := put(t, n, ticket, "again")
+	assert.Equal(t, http.StatusUnauthorized, code, "a ticket opens one transfer")
+	assert.Contains(t, body, "already used")
+}
+
+func TestSessionUploadRefused(t *testing.T) {
+	key := testRSAKey(t)
+	for name, tc := range map[string]struct {
+		err  error
+		code int
+	}{
+		"full":          {volfile.ErrFull, http.StatusInsufficientStorage},
+		"no disk space": {fmt.Errorf("write: %w", syscall.ENOSPC), http.StatusInsufficientStorage},
+		"not available": {vpath.ErrAccess{Avail: status.Down}, http.StatusConflict},
+		"anything else": {errors.New("boom"), http.StatusInternalServerError},
+	} {
+		n := uploadNode(t, "node1", key, nil, func(console.Target, io.Reader) error { return tc.err })
+		code, _ := put(t, n, uploadTicket(t, key, "node1"), "x")
+		assert.Equal(t, tc.code, code, name)
+	}
+}
+
+// A page of another origin asks before it sends, with no ticket to use up.
+func TestSessionUploadPreflight(t *testing.T) {
+	key := testRSAKey(t)
+	n := uploadNode(t, "node1", key, nil, func(console.Target, io.Reader) error { return nil })
+	u := strings.Replace(n.url, "wss://", "https://", 1)
+	req, err := http.NewRequest(http.MethodOptions, u, nil)
+	require.NoError(t, err)
+	c := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	resp, err := c.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	assert.Equal(t, http.MethodPut, resp.Header.Get("Access-Control-Allow-Methods"))
+}
+
+// A transfer reaching another node than the one of the volume goes on to it,
+// whose answer the client gets.
+func TestSessionUploadRelay(t *testing.T) {
+	key := testRSAKey(t)
+	var got syncBuffer
+	node2 := uploadNode(t, "node2", key, nil, func(_ console.Target, r io.Reader) error {
+		_, err := io.Copy(&got, r)
+		return err
+	})
+	node1 := uploadNode(t, "node1", key, func(string) (string, error) { return node2.url, nil }, nil)
+	code, _ := put(t, node1, uploadTicket(t, key, "node2"), "relayed")
+	assert.Equal(t, http.StatusNoContent, code)
+	assert.Equal(t, "relayed", got.String())
 }

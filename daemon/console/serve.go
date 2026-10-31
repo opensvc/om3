@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/user"
@@ -20,11 +21,13 @@ import (
 	"github.com/opensvc/om3/v3/core/nodesinfo"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/listener/tlssecs"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/volfile"
 )
 
 // DefaultPort is the port the console listener listens on.
@@ -109,6 +112,7 @@ func serveInherited(log *plog.Logger) error {
 		SessionDir:     SessionDir(),
 		Command:        enterCommand,
 		Graphics:       graphicsDial,
+		Upload:         volumeUpload,
 		PeerURL: func(node string) (string, error) {
 			return peerURL(node, port)
 		},
@@ -167,6 +171,35 @@ func graphicsDial(target console.Target) (net.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), graphicsDialTimeout)
 	defer cancel()
 	return i.GraphicsDial(ctx, target.RID)
+}
+
+// volumeUpload writes r to the file of a target, within the size of the volume.
+func volumeUpload(target console.Target, r io.Reader) error {
+	path, err := naming.ParsePath(target.Path)
+	if err != nil {
+		return fmt.Errorf("console target: %w", err)
+	}
+	if path.Kind != naming.KindVol || !volfile.IsName(target.File) {
+		return fmt.Errorf("console target: %s %q is no file of a volume", path, target.File)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), graphicsDialTimeout)
+	defer cancel()
+	resolved, err := vpath.Resolve(ctx, path.Name+"/", path.Namespace, nil)
+	if err != nil {
+		return err
+	}
+	if resolved.Head == "" || resolved.Vol == nil {
+		return fmt.Errorf("%s holds no filesystem", path)
+	}
+	limit := int64(-1)
+	if size, err := resolved.Vol.ConfiguredSize(); err != nil {
+		return err
+	} else if size > 0 {
+		if limit, err = volfile.Room(resolved.Head, target.File, size); err != nil {
+			return err
+		}
+	}
+	return volfile.Write(resolved.Head, target.File, r, limit)
 }
 
 // loginShell returns the shell of the user running the session, /bin/sh when
