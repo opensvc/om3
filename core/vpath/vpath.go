@@ -82,6 +82,11 @@ func (t ErrAccess) Error() string {
 // standby up with up when its filesystem is mounted: it is up, and its string
 // says so. With its other resources down, the filesystem is not mounted, and
 // the paths in it are not there.
+// Accessible says what a vol holds can be read and written with this avail.
+func Accessible(avail status.T) bool {
+	return accessible(avail)
+}
+
 func accessible(avail status.T) bool {
 	switch avail {
 	case status.Up, status.NotApplicable, status.StandbyUp, status.StandbyUpWithUp:

@@ -148,8 +148,8 @@ var kvmKeywords = map[string]func(string) bool{
 	"vcpus":         nil,
 	"memory":        nil,
 	"disk":          deniesGuestDisk,
-	"image":         deniesGuestImage,
-	"cdrom":         deniesGuestImage,
+	"image":         deniesGuestFile,
+	"cdrom":         deniesGuestFile,
 	"network":       deniesGuestNetwork,
 	"osinfo":        deniesGuestOSInfo,
 }
@@ -174,12 +174,23 @@ func deniesGuestDisk(value string) bool {
 	return false
 }
 
-// deniesGuestImage reports whether an image value is no url. A path is read by
-// root and written to the disk of the guest, whichever file of the node it
-// names. A url is fetched as the node policy on urls says.
-func deniesGuestImage(value string) bool {
+// deniesGuestFile reports whether what a guest is made from is neither a url,
+// fetched as the policy on urls says, nor a file of a volume of the object. A
+// path is read by root and written to the disk of the guest, whichever file of
+// the node it names.
+func deniesGuestFile(value string) bool {
 	value = strings.TrimSpace(value)
-	return value != "" && !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://")
+	return value != "" && !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") && !isVolumeFile(value)
+}
+
+// isVolumeFile says s is written volume#<index>:/<path>, with a path leading
+// nowhere else.
+func isVolumeFile(s string) bool {
+	ref, rel, ok := strings.Cut(s, ":")
+	if !ok || !strings.HasPrefix(rel, "/") || rel == "/" || path.Clean(rel) != rel {
+		return false
+	}
+	return !deniesGuestDisk(ref)
 }
 
 // deniesGuestNetwork reports whether a network value names something else than

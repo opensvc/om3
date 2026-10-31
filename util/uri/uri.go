@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/file"
@@ -165,6 +166,23 @@ func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
 func checkHttpUrl(s string) (net.IP, string, error) {
 	policy := httppolicy.New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
 	return policy.Check(s)
+}
+
+// SafeHttpClientAllowing is SafeHttpClient, for a caller the cluster configures
+// sources of its own: the urls and the address ranges are allowed on top of
+// what the policy of the node allows, which still applies to anything else.
+func SafeHttpClientAllowing(s string, urls, cidrs []string) (*http.Client, error) {
+	policy := httppolicy.New(
+		append(slices.Clone(rawconfig.SSRFAllowedURL), urls...),
+		rawconfig.SSRFBlockedURL,
+		append(slices.Clone(rawconfig.SSRFAllowedCIDR), cidrs...),
+		rawconfig.SSRFBlockedCIDR,
+	)
+	ip, port, err := policy.Check(s)
+	if err != nil {
+		return nil, err
+	}
+	return clientForIP(ip, port, rawconfig.SSRFEnableRedirects), nil
 }
 
 func safeHttpClient(s string) (*http.Client, error) {
