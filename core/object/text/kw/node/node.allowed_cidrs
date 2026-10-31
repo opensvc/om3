@@ -1,3 +1,5 @@
-The address ranges the `image_urls` may resolve in, out of the private ranges the
-node policy on urls refuses, as `10.0.5.0/24`: the network of a mirror of the
-site.
+The address ranges the `allowed_urls` may resolve in, out of the private ranges the
+node policy on urls refuses, as `10.0.5.0/24`: the network of a mirror of the site.
+
+A url is fetched as root from the node, with what the node may reach: an address
+range opened here is opened to all the users allowed a url of it.

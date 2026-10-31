@@ -1,6 +1,6 @@
-The urls the `image` and `cdrom` keywords of a virtual machine may be downloaded
-from, on top of what the node policy on urls allows, as patterns:
-`https://cloud-images.ubuntu.com/*`.
+The urls the cluster trusts to fetch from, on top of what the node policy on urls
+allows, as patterns: `https://cloud-images.ubuntu.com/*`.
 
-These are the sources the users of the cluster may install guests from, without
-the root grant included, so they are to be sources root trusts.
+They are for all that fetches a url on a node: the image of a virtual machine, the
+source of a key. What is fetched ends up where the users of the cluster can read
+it, the ones with no root grant included, so these are to be sources root trusts.
