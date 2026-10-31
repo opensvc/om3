@@ -149,6 +149,7 @@ var kvmKeywords = map[string]func(string) bool{
 	"memory":        nil,
 	"disk":          deniesGuestDisk,
 	"image":         deniesGuestImage,
+	"cdrom":         deniesGuestImage,
 	"network":       deniesGuestNetwork,
 	"osinfo":        deniesGuestOSInfo,
 }

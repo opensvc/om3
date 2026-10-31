@@ -553,6 +553,8 @@ func TestKVMKeywords(t *testing.T) {
 		{"image", "https://cloud-images.ubuntu.com/noble.img", false},
 		{"image", "http://images.local/a.qcow2", false},
 		{"image", "/etc/shadow", true},
+		{"cdrom", "https://images.example.com/debian.iso", false},
+		{"cdrom", "/dev/sda", true},
 		{"image", "file:///etc/shadow", true},
 		{"osinfo", "ubuntu24.04", false},
 		{"osinfo", "detect=on,require=off", true},

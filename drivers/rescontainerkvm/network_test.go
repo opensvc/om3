@@ -236,3 +236,26 @@ func TestVMSpecGraphics(t *testing.T) {
 	s.extra = []string{"--graphics", "none"}
 	assert.Equal(t, 1, strings.Count(strings.Join(s.args(), " "), "--graphics"), "root said otherwise")
 }
+
+func TestVMSpecCDROM(t *testing.T) {
+	s := vmSpec{name: "vm1", vcpus: 1, memoryMB: 512, osFlag: "--osinfo", osValue: "x", cdrom: "/srv/i.iso"}
+	args := strings.Join(s.args(), " ")
+	assert.Contains(t, args, "--cdrom /srv/i.iso")
+	assert.NotContains(t, args, "--import", "the installer boots, not the disk")
+}
+
+func TestSpecErrorOfACDROM(t *testing.T) {
+	size := int64(1 << 30)
+	guest := T{VCPUs: 1, Memory: &size, Disk: []string{"disk#1"}, CDROM: "/srv/i.iso"}
+	assert.NoError(t, guest.specError())
+	withImage, withCloudInit := guest, guest
+	withImage.Image = "/srv/a.img"
+	withCloudInit.CloudInit = "from ./cfg/ci key x"
+	assert.ErrorContains(t, withImage.specError(), "excludes")
+	assert.ErrorContains(t, withCloudInit.specError(), "excludes")
+}
+
+func TestCDROMNetworkError(t *testing.T) {
+	assert.NoError(t, cdromNetworkError([]guestNIC{{network: "backend3"}}))
+	assert.ErrorContains(t, cdromNetworkError([]guestNIC{{network: "backend3"}, {network: "ovs4", static: true}}), "ovs4 is a lan")
+}
