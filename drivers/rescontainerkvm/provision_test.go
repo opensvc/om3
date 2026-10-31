@@ -117,3 +117,33 @@ func TestWriteImageDownloaded(t *testing.T) {
 	require.NoError(t, syscall.Stat(dev, &st))
 	assert.Equal(t, uint32(0), st.Uid, "the device is taken back")
 }
+
+func TestCDROMFile(t *testing.T) {
+	allowLocalURLs(t)
+	saved := cdromDir
+	cdromDir = t.TempDir()
+	defer func() { cdromDir = saved }()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("installer"))
+	}))
+	defer srv.Close()
+	dev := filepath.Join(t.TempDir(), "dev")
+	require.NoError(t, os.WriteFile(dev, make([]byte, 16), 0o600))
+
+	r := &T{Name: "vm1", CDROM: "/srv/i.iso"}
+	p, err := r.cdromFile(context.Background(), dev)
+	require.NoError(t, err)
+	assert.Equal(t, "/srv/i.iso", p, "a path is used as it is")
+
+	r.CDROM = srv.URL + "/i.iso"
+	p, err = r.cdromFile(context.Background(), dev)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(cdromDir, "vm1.iso"), p)
+	fi, err := os.Stat(p)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), fi.Mode().Perm(), "qemu reads it")
+
+	require.NoError(t, r.removeCDROM())
+	require.NoError(t, r.removeCDROM(), "what is gone is removed")
+	assert.NoFileExists(t, p)
+}

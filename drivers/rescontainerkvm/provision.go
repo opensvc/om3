@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,6 +30,9 @@ const (
 	imageDir = "/var/tmp"
 )
 
+// cdromDir holds the installers downloaded.
+var cdromDir = "/var/lib/libvirt/images"
+
 type (
 	// vmSpec is what the keywords of a guest ask of virt-install.
 	//
@@ -42,6 +46,7 @@ type (
 		osFlag   string
 		osValue  string
 		disks    []string
+		cdrom    string
 		bridges  []string
 		nics     []guestNIC
 		userData string
@@ -59,7 +64,11 @@ func (t vmSpec) args() []string {
 		"--memory", strconv.FormatInt(t.memoryMB, 10),
 		"--vcpus", strconv.Itoa(t.vcpus),
 		t.osFlag, t.osValue,
-		"--import",
+	}
+	if t.cdrom != "" {
+		l = append(l, "--cdrom", t.cdrom)
+	} else {
+		l = append(l, "--import")
 	}
 	for _, disk := range t.disks {
 		l = append(l, "--disk", disk+",format=raw,cache=none")
@@ -95,7 +104,7 @@ func (t vmSpec) args() []string {
 // saying how to make it, or nothing, a domain defined by a sysadmin.
 func (t *T) hasSpec() bool {
 	return t.VCPUs > 0 || t.Memory != nil || len(t.Disk) > 0 || len(t.Bridge) > 0 || len(t.Network) > 0 || t.OSInfo != "" ||
-		t.Image != "" || t.CloudInit != "" || len(t.VirtInstArgs) > 0
+		t.Image != "" || t.CDROM != "" || t.CloudInit != "" || len(t.VirtInstArgs) > 0
 }
 
 // specError says what the keywords describing the guest lack. It is the
@@ -106,7 +115,7 @@ func (t *T) specError() error {
 		return nil
 	}
 	if len(t.VirtInst) > 0 {
-		return errors.New("virtinst says all of the command: it excludes vcpus, memory, disk, bridge, network, osinfo, image, cloud_init and virtinst_args")
+		return errors.New("virtinst says all of the command: it excludes vcpus, memory, disk, bridge, network, osinfo, image, cdrom, cloud_init and virtinst_args")
 	}
 	missing := make([]string, 0)
 	if t.VCPUs <= 0 {
@@ -120,6 +129,9 @@ func (t *T) specError() error {
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("a guest needs %s", strings.Join(missing, ", "))
+	}
+	if t.CDROM != "" && (t.Image != "" || t.CloudInit != "") {
+		return errors.New("cdrom installs what image and cloud_init say: it excludes them")
 	}
 	return t.specNetworkError()
 }
@@ -188,9 +200,24 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 		cleanup = func() { _ = os.Remove(p) }
 		spec.userData = p
 	}
+	if t.CDROM != "" {
+		// Before anything is drawn, or plugged.
+		nics, err := t.guestNICs(ctx, false)
+		if err != nil {
+			return nil, cleanup, err
+		}
+		if err := cdromNetworkError(nics); err != nil {
+			return nil, cleanup, err
+		}
+	}
 	spec.nics, err = t.networkUp(ctx)
 	if err != nil {
 		return nil, cleanup, err
+	}
+	if t.CDROM != "" {
+		if spec.cdrom, err = t.cdromFile(ctx, disks[0]); err != nil {
+			return nil, cleanup, err
+		}
 	}
 	if spec.userData != "" && len(spec.nics) > 0 {
 		p, err := writeSeedFile(t.Name, "network-config", []byte(networkConfig(spec.nics)))
@@ -243,6 +270,56 @@ func writeSeedFile(name, kind string, b []byte) (string, error) {
 		return "", err
 	}
 	return f.Name(), nil
+}
+
+// cdromNetworkError says an installer can not get the address of a network:
+// no dhcp of om serves a lan, which a guest is told its address on by
+// cloud-init, which an installed system has not.
+func cdromNetworkError(nics []guestNIC) error {
+	for _, n := range nics {
+		if n.static {
+			return fmt.Errorf("cdrom: network %s is a lan, whose address cloud-init delivers: use a routed_bridge or a bridge network", n.network)
+		}
+	}
+	return nil
+}
+
+// cdromPath is where the installer of a guest is kept while it runs: libvirt
+// labels what a domain boots from there for qemu to read it.
+func (t *T) cdromPath() string {
+	return filepath.Join(cdromDir, t.Name+".iso")
+}
+
+// cdromFile returns the installer of the guest, downloaded when the keyword
+// says a url. An installer larger than the disk it installs on is no installer
+// of it, which is the limit of what a download writes on the node.
+func (t *T) cdromFile(ctx context.Context, dev string) (string, error) {
+	if !isURL(t.CDROM) {
+		return t.CDROM, nil
+	}
+	limit, err := deviceSize(dev)
+	if err != nil {
+		return "", fmt.Errorf("cdrom: %w", err)
+	}
+	p, err := downloadImage(ctx, t.CDROM, cdromDir, limit)
+	if err != nil {
+		return "", fmt.Errorf("cdrom: %w", err)
+	}
+	if err := os.Chmod(p, 0o644); err != nil {
+		return "", fmt.Errorf("cdrom: %w", err)
+	}
+	if err := os.Rename(p, t.cdromPath()); err != nil {
+		return "", fmt.Errorf("cdrom: %w", err)
+	}
+	return t.cdromPath(), nil
+}
+
+// removeCDROM removes the installer om downloaded.
+func (t *T) removeCDROM() error {
+	if err := os.Remove(t.cdromPath()); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 // isURL says the image keyword names something to download.

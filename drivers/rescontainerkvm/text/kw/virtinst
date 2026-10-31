@@ -1,5 +1,5 @@
 The command to use to create the container. Usually a `virt-install` command or a custom script.
 
-It says all of the command, and excludes the keywords describing the guest: `vcpus`, `memory`, `disk`, `bridge`, `network`, `osinfo`, `image`, `cloud_init` and `virtinst_args`.
+It says all of the command, and excludes the keywords describing the guest: `vcpus`, `memory`, `disk`, `bridge`, `network`, `osinfo`, `image`, `cdrom`, `cloud_init` and `virtinst_args`.
 
 With a `vsock_port`, a `virt-install` knowing the option is given `--vsock cid.auto=yes` unless it names a vsock device already.

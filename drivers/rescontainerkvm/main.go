@@ -91,6 +91,7 @@ type (
 		Bridge              []string       `json:"bridge"`
 		OSInfo              string         `json:"osinfo"`
 		Image               string         `json:"image"`
+		CDROM               string         `json:"cdrom"`
 		CloudInit           string         `json:"cloud_init"`
 		VirtInstArgs        []string       `json:"virtinst_args"`
 		Network             []string       `json:"network"`
@@ -995,6 +996,9 @@ func (t *T) provisioned(ctx context.Context) (bool, error) {
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	if err := t.releaseAddrs(); err != nil {
+		return err
+	}
+	if err := t.removeCDROM(); err != nil {
 		return err
 	}
 	isProvisioned, err := t.provisioned(ctx)

@@ -103,6 +103,13 @@ var (
 			Example:      "/srv/images/noble.qcow2",
 		},
 		{
+			Option:       "cdrom",
+			Attr:         "CDROM",
+			Provisioning: true,
+			Text:         keywords.NewText(fs, "text/kw/cdrom"),
+			Example:      "https://images.example.com/debian-13-netinst.iso",
+		},
+		{
 			Option:       "cloud_init",
 			Attr:         "CloudInit",
 			Provisioning: true,
