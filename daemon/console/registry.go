@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/console"
@@ -40,6 +43,7 @@ func register(dir string, s Session) (func(), error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
+	sweepSessions(dir)
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil, err
@@ -49,6 +53,24 @@ func register(dir string, s Session) (func(), error) {
 		return nil, err
 	}
 	return func() { _ = os.Remove(p) }, nil
+}
+
+// sweepSessions removes the records of the sessions that did not end by
+// themselves: a process killed removes nothing.
+func sweepSessions(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		pid, err := strconv.Atoi(strings.TrimSuffix(e.Name(), ".json"))
+		if err != nil {
+			continue
+		}
+		if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
+			_ = os.Remove(filepath.Join(dir, e.Name()))
+		}
+	}
 }
 
 // errTicketUsed is a ticket presented a second time.
