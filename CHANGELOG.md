@@ -120,6 +120,9 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     By default, only `https://raw.githubusercontent.com/opensvc/opensvc_templates/*` 
     URLs are allowed, while all other URLs and private/internal CIDR ranges 
     (including loopback, RFC 1918, link-local, TEST-NET, and IPv6 ULA) are blocked. 
+    The `node.allowed_urls` and `node.allowed_cidrs` keywords add to what is allowed, for
+    all the nodes of a cluster.
+
     Redirects are disabled by default. Administrators can override these defaults 
     via environment variables in `/etc/default/opensvc` or `/etc/sysconfig/opensvc`:
   ```

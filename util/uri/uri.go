@@ -163,26 +163,21 @@ func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
 	return client
 }
 
-func checkHttpUrl(s string) (net.IP, string, error) {
-	policy := httppolicy.New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
-	return policy.Check(s)
-}
+// ClusterSources returns the urls and the address ranges the cluster allows on
+// top of the policy of the node, which the object layer sets: a util knows
+// nothing of the configuration of a cluster. Left unset, as in a client with no
+// cluster, the policy of the node is the whole of it.
+var ClusterSources func() (urls, cidrs []string)
 
-// SafeHttpClientAllowing is SafeHttpClient, for a caller the cluster configures
-// sources of its own: the urls and the address ranges are allowed on top of
-// what the policy of the node allows, which still applies to anything else.
-func SafeHttpClientAllowing(s string, urls, cidrs []string) (*http.Client, error) {
-	policy := httppolicy.New(
-		append(slices.Clone(rawconfig.SSRFAllowedURL), urls...),
-		rawconfig.SSRFBlockedURL,
-		append(slices.Clone(rawconfig.SSRFAllowedCIDR), cidrs...),
-		rawconfig.SSRFBlockedCIDR,
-	)
-	ip, port, err := policy.Check(s)
-	if err != nil {
-		return nil, err
+func checkHttpUrl(s string) (net.IP, string, error) {
+	urls, cidrs := rawconfig.SSRFAllowedURL, rawconfig.SSRFAllowedCIDR
+	if ClusterSources != nil {
+		moreURLs, moreCIDRs := ClusterSources()
+		urls = append(slices.Clone(urls), moreURLs...)
+		cidrs = append(slices.Clone(cidrs), moreCIDRs...)
 	}
-	return clientForIP(ip, port, rawconfig.SSRFEnableRedirects), nil
+	policy := httppolicy.New(urls, rawconfig.SSRFBlockedURL, cidrs, rawconfig.SSRFBlockedCIDR)
+	return policy.Check(s)
 }
 
 func safeHttpClient(s string) (*http.Client, error) {

@@ -18,9 +18,7 @@ import (
 	"syscall"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/vpath"
-	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/uri"
 )
 
@@ -543,24 +541,12 @@ func parseImageInfo(b []byte) (string, error) {
 	return info.Format, nil
 }
 
-// imageSources returns what the cluster allows to download images from, on top
-// of the policy of the node. A var for the tests.
-var imageSources = func() ([]string, []string) {
-	node, err := object.NewNode(object.WithVolatile(true))
-	if err != nil {
-		return nil, nil
-	}
-	cfg := node.MergedConfig()
-	return cfg.GetStrings(key.New("node", "image_urls")), cfg.GetStrings(key.New("node", "image_cidrs"))
-}
-
 // downloadImage downloads the url to a file of the directory, the policy of
 // the node on the urls it may fetch applying, and returns its path. An image
 // over limit fits no disk, and is refused as it arrives rather than fill the
 // directory of the node.
 func downloadImage(ctx context.Context, url, dir string, limit int64) (string, error) {
-	urls, cidrs := imageSources()
-	client, err := uri.SafeHttpClientAllowing(url, urls, cidrs)
+	client, err := uri.SafeHttpClient(url)
 	if err != nil {
 		return "", err
 	}

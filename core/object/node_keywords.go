@@ -339,19 +339,19 @@ var (
 		Default:   "1216",
 		Text:      keywords.NewText(fs, "text/kw/node/console.port"),
 	}
-	kwNodeImageURLs = keywords.Keyword{
+	kwNodeAllowedURLs = keywords.Keyword{
 		Converter: converters.List,
 		Example:   "https://cloud-images.ubuntu.com/* https://images.example.com/*",
-		Option:    "image_urls",
+		Option:    "allowed_urls",
 		Section:   "node",
-		Text:      keywords.NewText(fs, "text/kw/node/node.image_urls"),
+		Text:      keywords.NewText(fs, "text/kw/node/node.allowed_urls"),
 	}
-	kwNodeImageCIDRs = keywords.Keyword{
+	kwNodeAllowedCIDRs = keywords.Keyword{
 		Converter: converters.List,
 		Example:   "10.0.5.0/24",
-		Option:    "image_cidrs",
+		Option:    "allowed_cidrs",
 		Section:   "node",
-		Text:      keywords.NewText(fs, "text/kw/node/node.image_cidrs"),
+		Text:      keywords.NewText(fs, "text/kw/node/node.allowed_cidrs"),
 	}
 	kwNodeConsoleURL = keywords.Keyword{
 		Option:  "url",
@@ -2076,8 +2076,8 @@ var (
 		&kwNodeAIAgentURL,
 		&kwNodeConsolePort,
 		&kwNodeConsoleURL,
-		&kwNodeImageURLs,
-		&kwNodeImageCIDRs,
+		&kwNodeAllowedURLs,
+		&kwNodeAllowedCIDRs,
 		&kwNodeMaxParallel,
 		&kwNodeMaxKeySize,
 		&kwNodeAllowedNetworks,

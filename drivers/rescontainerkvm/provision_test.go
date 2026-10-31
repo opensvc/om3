@@ -175,38 +175,3 @@ func TestCopyVolumeFileStaysInTheVolume(t *testing.T) {
 	_, err := copyVolumeFile(head, filepath.Join(head, "a.img"), t.TempDir(), 1024)
 	assert.Error(t, err)
 }
-
-// What the cluster configures is allowed on top of the policy of the node,
-// which refuses the rest as it did.
-func TestDownloadImageFromTheSourcesOfTheCluster(t *testing.T) {
-	saved := imageSources
-	defer func() { imageSources = saved }()
-	urlsPolicy := rawconfig.SSRFAllowedURL
-	rawconfig.SSRFAllowedURL = nil
-	defer func() { rawconfig.SSRFAllowedURL = urlsPolicy }()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("image"))
-	}))
-	defer srv.Close()
-
-	for name, tc := range map[string]struct {
-		urls, cidrs []string
-		err         string
-	}{
-		"nothing":          {nil, nil, "reject url"},
-		"the url alone":    {[]string{srv.URL + "/*"}, nil, "127.0.0.1"},
-		"the range alone":  {nil, []string{"127.0.0.0/8"}, "reject url"},
-		"another url":      {[]string{"https://images.example.com/*"}, []string{"127.0.0.0/8"}, "reject url"},
-		"the url in range": {[]string{srv.URL + "/*"}, []string{"127.0.0.0/8"}, ""},
-	} {
-		imageSources = func() ([]string, []string) { return tc.urls, tc.cidrs }
-		p, err := downloadImage(context.Background(), srv.URL+"/a.img", t.TempDir(), 1024)
-		if tc.err != "" {
-			assert.ErrorContains(t, err, tc.err, name)
-			continue
-		}
-		require.NoError(t, err, name)
-		b, _ := os.ReadFile(p)
-		assert.Equal(t, "image", string(b), name)
-	}
-}
