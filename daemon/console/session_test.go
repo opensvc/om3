@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -626,4 +627,20 @@ func TestSessionUploadRelay(t *testing.T) {
 	code, _ := put(t, node1, uploadTicket(t, key, "node2"), "relayed")
 	assert.Equal(t, http.StatusNoContent, code)
 	assert.Equal(t, "relayed", got.String())
+}
+
+// A record of a process killed goes with the next session, and one of a
+// process alive stays.
+func TestRegisterSweepsDeadSessions(t *testing.T) {
+	dir := t.TempDir()
+	cmd := exec.Command("true")
+	require.NoError(t, cmd.Run())
+	dead := filepath.Join(dir, fmt.Sprintf("%d.json", cmd.Process.Pid))
+	alive := filepath.Join(dir, fmt.Sprintf("%d.json", os.Getppid()))
+	require.NoError(t, os.WriteFile(dead, []byte("{}"), 0o600))
+	require.NoError(t, os.WriteFile(alive, []byte("{}"), 0o600))
+	_, err := register(dir, Session{PID: os.Getpid()})
+	require.NoError(t, err)
+	assert.NoFileExists(t, dead)
+	assert.FileExists(t, alive)
 }
