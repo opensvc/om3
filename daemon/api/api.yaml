@@ -4371,6 +4371,108 @@ paths:
       tags:
         - node / instance / svc
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/file:
+    parameters:
+      - $ref: '#/components/parameters/inPathNodeName'
+      - $ref: '#/components/parameters/inPathNamespace'
+      - $ref: '#/components/parameters/inPathKind'
+      - $ref: '#/components/parameters/inPathName'
+    get:
+      operationId: GetInstanceFiles
+      description: |
+        List the files at the top of a volume, available on the node.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolumeFileList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / vol
+    put:
+      operationId: PutInstanceFile
+      description: |
+        Write the body to a file at the top of a volume, available on the
+        node, in place of the one of that name. The file appears complete or
+        not at all: a transfer that fails leaves the former one.
+      parameters:
+        - $ref: '#/components/parameters/inQueryFileName'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        204:
+          description: Written
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+        507:
+          description: The volume has no space left for the file
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / vol
+    delete:
+      operationId: DeleteInstanceFile
+      description: |
+        Remove a file at the top of a volume, available on the node.
+      parameters:
+        - $ref: '#/components/parameters/inQueryFileName'
+      responses:
+        204:
+          description: Removed
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/log:
     get:
       operationId: GetInstanceLogs
@@ -9815,6 +9917,35 @@ components:
     # pool volume schemas
     # ========================================================================
 
+    VolumeFile:
+      type: object
+      required:
+        - name
+        - size
+        - modified_at
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          format: int64
+        modified_at:
+          type: string
+          format: date-time
+
+    VolumeFileList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeFile'
+
     PoolVolume:
       type: object
       required:
@@ -12258,6 +12389,14 @@ components:
       in: query
       name: snapshot
       description: The snapshot to restore, by id or a prefix of it, the latest when not set.
+      schema:
+        type: string
+
+    inQueryFileName:
+      in: query
+      name: name
+      description: the name of a file at the top of the volume
+      required: true
       schema:
         type: string
 

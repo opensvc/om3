@@ -1,6 +1,7 @@
 The installer the guest boots from at its provision, to install on its first
-disk: a path, or an http(s) url, which the node policy on the urls it fetches
-applies to. The screen of the guest, its display, is where it is answered.
+disk: a file of a volume of the object, as `volume#2:/debian.iso`, a path, or an
+http(s) url, which the node policy on the urls it fetches applies to. The screen
+of the guest, its display, is where it is answered.
 
 An installed system has no cloud-init, so the guest finds its address by dhcp: a
 lan network is refused, and the filter of a network expects it to use an eui-64

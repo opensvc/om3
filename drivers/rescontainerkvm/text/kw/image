@@ -1,6 +1,7 @@
-The cloud image the first disk of the guest is made from: a path, or an http(s)
-url, which the node policy on the urls it fetches applies to. A qcow2 or raw
-image with no backing file.
+The cloud image the first disk of the guest is made from: a file of a volume of
+the object, as `volume#2:/noble.qcow2`, a path, or an http(s) url, which the node
+policy on the urls it fetches applies to. A qcow2 or raw image with no backing
+file.
 
 The disk may be larger than the image: most cloud images grow into it at their
 first boot. Read by the provision only, which overwrites what the disk holds.

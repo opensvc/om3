@@ -147,3 +147,66 @@ func TestCDROMFile(t *testing.T) {
 	require.NoError(t, r.removeCDROM(), "what is gone is removed")
 	assert.NoFileExists(t, p)
 }
+
+func TestCopyVolumeFile(t *testing.T) {
+	head := t.TempDir()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(head, "a.img"), []byte("image"), 0o644))
+
+	p, err := copyVolumeFile(head, filepath.Join(head, "a.img"), dir, 5)
+	require.NoError(t, err)
+	b, err := os.ReadFile(p)
+	require.NoError(t, err)
+	assert.Equal(t, "image", string(b))
+
+	_, err = copyVolumeFile(head, filepath.Join(head, "a.img"), dir, 4)
+	assert.ErrorContains(t, err, "larger than")
+	_, err = copyVolumeFile(head, head, dir, 5)
+	assert.ErrorContains(t, err, "no regular file")
+}
+
+// What a volume holds is its user's: a link leading out of it is no way to the
+// files of the node, which root would copy to the disk of the guest.
+func TestCopyVolumeFileStaysInTheVolume(t *testing.T) {
+	head := t.TempDir()
+	secret := filepath.Join(t.TempDir(), "secret")
+	require.NoError(t, os.WriteFile(secret, []byte("secret"), 0o600))
+	require.NoError(t, os.Symlink(secret, filepath.Join(head, "a.img")))
+	_, err := copyVolumeFile(head, filepath.Join(head, "a.img"), t.TempDir(), 1024)
+	assert.Error(t, err)
+}
+
+// What the cluster configures is allowed on top of the policy of the node,
+// which refuses the rest as it did.
+func TestDownloadImageFromTheSourcesOfTheCluster(t *testing.T) {
+	saved := imageSources
+	defer func() { imageSources = saved }()
+	urlsPolicy := rawconfig.SSRFAllowedURL
+	rawconfig.SSRFAllowedURL = nil
+	defer func() { rawconfig.SSRFAllowedURL = urlsPolicy }()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("image"))
+	}))
+	defer srv.Close()
+
+	for name, tc := range map[string]struct {
+		urls, cidrs []string
+		err         string
+	}{
+		"nothing":          {nil, nil, "reject url"},
+		"the url alone":    {[]string{srv.URL + "/*"}, nil, "127.0.0.1"},
+		"the range alone":  {nil, []string{"127.0.0.0/8"}, "reject url"},
+		"another url":      {[]string{"https://images.example.com/*"}, []string{"127.0.0.0/8"}, "reject url"},
+		"the url in range": {[]string{srv.URL + "/*"}, []string{"127.0.0.0/8"}, ""},
+	} {
+		imageSources = func() ([]string, []string) { return tc.urls, tc.cidrs }
+		p, err := downloadImage(context.Background(), srv.URL+"/a.img", t.TempDir(), 1024)
+		if tc.err != "" {
+			assert.ErrorContains(t, err, tc.err, name)
+			continue
+		}
+		require.NoError(t, err, name)
+		b, _ := os.ReadFile(p)
+		assert.Equal(t, "image", string(b), name)
+	}
+}

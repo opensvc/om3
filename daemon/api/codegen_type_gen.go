@@ -3299,6 +3299,19 @@ type UserList struct {
 // UserListKind defines model for UserList.Kind.
 type UserListKind string
 
+// VolumeFile defines model for VolumeFile.
+type VolumeFile struct {
+	ModifiedAt time.Time `json:"modified_at"`
+	Name       string    `json:"name"`
+	Size       int64     `json:"size"`
+}
+
+// VolumeFileList defines model for VolumeFileList.
+type VolumeFileList struct {
+	Items []VolumeFile `json:"items"`
+	Kind  string       `json:"kind"`
+}
+
 // DRBDResourceName defines model for DRBDResourceName.
 type DRBDResourceName = string
 
@@ -3462,6 +3475,9 @@ type ExecID = openapi_types.UUID
 
 // States defines model for inQueryExecState.
 type States = []string
+
+// InQueryFileName defines model for inQueryFileName.
+type InQueryFileName = string
 
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
@@ -4845,6 +4861,18 @@ type GetInstanceContainerLogParams struct {
 
 	// Lines report this number of past last log entries
 	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
+// DeleteInstanceFileParams defines parameters for DeleteInstanceFile.
+type DeleteInstanceFileParams struct {
+	// Name the name of a file at the top of the volume
+	Name InQueryFileName `form:"name" json:"name"`
+}
+
+// PutInstanceFileParams defines parameters for PutInstanceFile.
+type PutInstanceFileParams struct {
+	// Name the name of a file at the top of the volume
+	Name InQueryFileName `form:"name" json:"name"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.

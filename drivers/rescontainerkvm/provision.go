@@ -18,7 +18,9 @@ import (
 	"syscall"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/vpath"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/uri"
 )
 
@@ -290,18 +292,19 @@ func (t *T) cdromPath() string {
 	return filepath.Join(cdromDir, t.Name+".iso")
 }
 
-// cdromFile returns the installer of the guest, downloaded when the keyword
-// says a url. An installer larger than the disk it installs on is no installer
-// of it, which is the limit of what a download writes on the node.
+// cdromFile returns the installer of the guest, copied here when the keyword
+// says a url or a file of a volume. An installer larger than the disk it
+// installs on is no installer of it, which is the limit of what is written on
+// the node.
 func (t *T) cdromFile(ctx context.Context, dev string) (string, error) {
-	if !isURL(t.CDROM) {
+	if strings.HasPrefix(t.CDROM, "/") {
 		return t.CDROM, nil
 	}
 	limit, err := deviceSize(dev)
 	if err != nil {
 		return "", fmt.Errorf("cdrom: %w", err)
 	}
-	p, err := downloadImage(ctx, t.CDROM, cdromDir, limit)
+	p, err := t.fetchFile(ctx, t.CDROM, cdromDir, limit)
 	if err != nil {
 		return "", fmt.Errorf("cdrom: %w", err)
 	}
@@ -330,12 +333,13 @@ func isURL(s string) bool {
 // writeImage writes the image keyword to the device, as raw. The device may
 // be larger than the image, what the guest grows into at its first boot.
 //
-// A downloaded image is anybody's, and what parses it is no place for root:
-// qemu-img runs as nobody then, handed the device for the time of the write.
+// An image downloaded, or read from a volume, is anybody's, and what parses it
+// is no place for root: qemu-img runs as nobody then, handed the device for the
+// time of the write.
 func (t *T) writeImage(ctx context.Context, dev string) error {
 	src := t.Image
 	var cred *syscall.Credential
-	if isURL(src) {
+	if !strings.HasPrefix(src, "/") {
 		var err error
 		if cred, err = nobody(); err != nil {
 			return fmt.Errorf("image: %w", err)
@@ -344,7 +348,7 @@ func (t *T) writeImage(ctx context.Context, dev string) error {
 		if err != nil {
 			return fmt.Errorf("image: %w", err)
 		}
-		p, err := downloadImage(ctx, src, imageDir, limit)
+		p, err := t.fetchFile(ctx, src, imageDir, limit)
 		if err != nil {
 			return fmt.Errorf("image: %w", err)
 		}
@@ -426,6 +430,82 @@ func qemuImg(ctx context.Context, cred *syscall.Credential, args ...string) ([]b
 	return b, nil
 }
 
+// fetchFile copies what src names, a url or a file of a volume, to a file of
+// the directory, within limit, and returns its path.
+func (t *T) fetchFile(ctx context.Context, src, dir string, limit int64) (string, error) {
+	if isURL(src) {
+		return downloadImage(ctx, src, dir, limit)
+	}
+	target, err := vpath.Resolve(ctx, src, t.Path.Namespace, vpath.ResolverOf(t.GetObject()))
+	if err != nil {
+		return "", err
+	}
+	if target.Head == "" {
+		return "", fmt.Errorf("%s is no file of a volume", src)
+	}
+	return copyVolumeFile(target.Head, target.HostPath, dir, limit)
+}
+
+// copyVolumeFile copies a file of the volume mounted on head to a file of the
+// directory, and returns its path.
+//
+// What a volume holds is its user's, a symbolic link to a file of the node
+// included, and this runs as root: the root of the volume confines what is
+// opened. The copy is what qemu reads then, which the link can not change.
+func copyVolumeFile(head, hostPath, dir string, limit int64) (string, error) {
+	rel, err := filepath.Rel(head, hostPath)
+	if err != nil {
+		return "", err
+	}
+	root, err := os.OpenRoot(head)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = root.Close() }()
+	src, err := root.Open(rel)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = src.Close() }()
+	info, err := src.Stat()
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case !info.Mode().IsRegular():
+		return "", fmt.Errorf("%s is no regular file", rel)
+	case info.Size() > limit:
+		return "", fmt.Errorf("%s: larger than the %d bytes of the disk", rel, limit)
+	}
+	return saveLimited(src, dir, rel, limit)
+}
+
+// saveLimited writes r to a new file of the directory, refusing more than
+// limit bytes as they arrive, and returns its path.
+func saveLimited(r io.Reader, dir, what string, limit int64) (string, error) {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	f, err := os.CreateTemp(dir, "image.*")
+	if err != nil {
+		return "", err
+	}
+	n, err := io.Copy(f, io.LimitReader(r, limit+1))
+	if err == nil && n > limit {
+		err = fmt.Errorf("%s: larger than the %d bytes of the disk", what, limit)
+	}
+	if err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
 // imageFormat returns the format of the image.
 func imageFormat(ctx context.Context, src string, cred *syscall.Credential) (string, error) {
 	b, err := qemuImg(ctx, cred, "info", "--output=json", src)
@@ -463,12 +543,24 @@ func parseImageInfo(b []byte) (string, error) {
 	return info.Format, nil
 }
 
+// imageSources returns what the cluster allows to download images from, on top
+// of the policy of the node. A var for the tests.
+var imageSources = func() ([]string, []string) {
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return nil, nil
+	}
+	cfg := node.MergedConfig()
+	return cfg.GetStrings(key.New("node", "image_urls")), cfg.GetStrings(key.New("node", "image_cidrs"))
+}
+
 // downloadImage downloads the url to a file of the directory, the policy of
 // the node on the urls it may fetch applying, and returns its path. An image
 // over limit fits no disk, and is refused as it arrives rather than fill the
 // directory of the node.
 func downloadImage(ctx context.Context, url, dir string, limit int64) (string, error) {
-	client, err := uri.SafeHttpClient(url)
+	urls, cidrs := imageSources()
+	client, err := uri.SafeHttpClientAllowing(url, urls, cidrs)
 	if err != nil {
 		return "", err
 	}
@@ -484,25 +576,5 @@ func downloadImage(ctx context.Context, url, dir string, limit int64) (string, e
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%s: %s", url, resp.Status)
 	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
-	}
-	f, err := os.CreateTemp(dir, "image.*")
-	if err != nil {
-		return "", err
-	}
-	n, err := io.Copy(f, io.LimitReader(resp.Body, limit+1))
-	if err == nil && n > limit {
-		err = fmt.Errorf("%s: larger than the %d bytes of the disk", url, limit)
-	}
-	if err != nil {
-		_ = f.Close()
-		_ = os.Remove(f.Name())
-		return "", err
-	}
-	if err := f.Close(); err != nil {
-		_ = os.Remove(f.Name())
-		return "", err
-	}
-	return f.Name(), nil
+	return saveLimited(resp.Body, dir, url, limit)
 }
