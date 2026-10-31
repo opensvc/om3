@@ -132,6 +132,7 @@ func (t T) arrayNodes(nodenames []string) (map[string][]string, error) {
 
 func (t T) Capabilities() pool.Capabilities {
 	return pool.Capabilities{
+		pool.CapQuota,
 		pool.CapBlk,
 		pool.CapFile,
 		pool.CapROO,

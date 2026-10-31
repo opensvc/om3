@@ -6,6 +6,21 @@
 
     * [2.1-1890] Don't purge /etc/opensvc and /var/lib/opensvc on `apt [auto]remove --purge`
 
+* Define `[pool#default]` with `type = directory` to keep the former default pool.
+
+    The `default` pool a node has with no configuration is a `loop` pool, and `loop`
+    is the default of the `type` keyword of a pool: a volume is a file holding a
+    filesystem of its size, which bounds what it holds. A directory has no size of
+    its own, so a volume could fill the disk of the node whatever a namespace
+    claimed. Volumes already provisioned keep what they were made with. A node with
+    no loop devices, a container say, needs a pool set for its volumes. The `fs_type`
+    of a `loop` pool is `ext4` by default, `xfs` refusing a device under 300m.
+
+* Bound the pools the namespaces claim.
+
+    A pool claim counts the size of the volumes, so a new volume is refused in a
+    claimed pool not bounding it: a `directory` pool with no `quota = true`.
+
 * Set a explicit unit to every `max_delay` keyword.
 
     ```

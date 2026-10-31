@@ -43,6 +43,7 @@ func New() *T {
 
 func (t T) Capabilities() pool.Capabilities {
 	return pool.Capabilities{
+		pool.CapQuota,
 		pool.CapBlk,
 		pool.CapFile,
 		pool.CapMove,
