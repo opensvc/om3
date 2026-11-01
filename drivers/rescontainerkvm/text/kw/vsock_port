@@ -7,8 +7,8 @@ in the domain definition, and to serve the port with its `listener.vsock_port`
 keyword. A provision adds the device to a `virtinst` running `virt-install`,
 when it knows `--vsock` and is not given it.
 
-A start writes the public key of the cluster in the firmware of the guest, in the
-definition, and the daemon of the guest trusts the requests signed with that
+A start writes the public key of the cluster in the firmware of a guest with such
+a device, in the definition, and the daemon of the guest trusts the requests signed with that
 key. A guest gets it at its next start: until then, or after a renewal of the
 key, its daemon refuses these requests, and the other ways are used.
 

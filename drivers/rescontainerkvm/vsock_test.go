@@ -250,3 +250,27 @@ func TestDefinitionWithHypervisorKey(t *testing.T) {
 	_, err = definitionWithHypervisorKey([]byte("<domain/>"), first)
 	assert.Error(t, err)
 }
+
+// The port has a default: a guest with no vsock device is not touched, a qemu
+// too old for vsock also refusing the OEM strings at the start.
+func TestDoHypervisorKeyLeavesAGuestWithNoDevice(t *testing.T) {
+	saved := hostVsockDevice
+	hostVsockDevice = filepath.Join(t.TempDir(), "vhost-vsock")
+	defer func() { hostVsockDevice = saved }()
+	require.NoError(t, os.WriteFile(hostVsockDevice, nil, 0o600))
+
+	dir := t.TempDir()
+	r := &T{VsockPort: 1215}
+	r.Name = "guest"
+	savedDir := configDir
+	configDir = dir
+	defer func() { configDir = savedDir }()
+	definition := "<domain>\n  <os>\n  </os>\n</domain>\n"
+	require.NoError(t, os.WriteFile(r.configFile(), []byte(definition), 0o600))
+
+	r.doHypervisorKey()
+
+	b, err := os.ReadFile(r.configFile())
+	require.NoError(t, err)
+	assert.Equal(t, definition, string(b))
+}
