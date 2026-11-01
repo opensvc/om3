@@ -161,3 +161,23 @@ func TestRemoveSerialLog(t *testing.T) {
 	require.NoError(t, r.removeSerialLog())
 	assert.NoFileExists(t, r.serialLogPath())
 }
+
+func TestCanLogSerial(t *testing.T) {
+	version := func(libvirt, qemu string) []byte {
+		return []byte("Compiled against library: libvirt " + libvirt + "\nUsing library: libvirt " + libvirt + "\nUsing API: QEMU " + libvirt + "\nRunning hypervisor: QEMU " + qemu + "\n")
+	}
+	assert.True(t, canLogSerial(version("10.0.0", "8.2.2")))
+	assert.True(t, canLogSerial(version("2.3.0", "2.6.0")))
+	assert.False(t, canLogSerial(version("4.5.0", "1.5.3")), "the qemu of a rhel7")
+	assert.False(t, canLogSerial(version("2.2.0", "8.2.2")))
+	assert.False(t, canLogSerial([]byte("Compiled against library: libvirt 10.0.0\n")), "no hypervisor said")
+	assert.False(t, canLogSerial(nil))
+}
+
+func TestDefinitionWithoutSerialLog(t *testing.T) {
+	logged := definitionWithSerialLog([]byte(serialDefinition), "/l/vm1.serial.log")
+	assert.Equal(t, serialDefinition, string(definitionWithoutSerialLog(logged, "/l/vm1.serial.log")))
+
+	theirs := definitionWithSerialLog([]byte(serialDefinition), "/elsewhere")
+	assert.Equal(t, string(theirs), string(definitionWithoutSerialLog(theirs, "/l/vm1.serial.log")), "a file of a sysadmin")
+}

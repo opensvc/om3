@@ -129,6 +129,14 @@ func domainUUID(b []byte) string {
 	return string(m[1])
 }
 
+// unsetSerialLog removes the log of the serial port from the definition file of
+// a domain.
+func unsetSerialLog(file, log string) error {
+	return rewriteDefinition(file, func(b []byte) ([]byte, error) {
+		return definitionWithoutSerialLog(b, log), nil
+	})
+}
+
 func rewriteDefinition(file string, rewrite func([]byte) ([]byte, error)) error {
 	b, err := os.ReadFile(file)
 	if err != nil {

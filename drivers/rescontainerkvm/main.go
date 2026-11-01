@@ -372,7 +372,7 @@ func (t *T) containerStart(ctx context.Context) error {
 	if err := t.doPartitions(); err != nil {
 		return err
 	}
-	if err := setSerialLog(t.configFile(), t.serialLogPath()); err != nil {
+	if err := t.doSerialLog(); err != nil {
 		return err
 	}
 	t.doHypervisorKey()

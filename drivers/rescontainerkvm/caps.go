@@ -26,5 +26,8 @@ func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	if isHVMCapable(ctx) {
 		l = append(l, drvCap+".hvm")
 	}
+	if isSerialLogCapable(ctx) {
+		l = append(l, drvCap+serialLogCap)
+	}
 	return l, nil
 }
