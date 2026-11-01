@@ -48,6 +48,7 @@ type testNode struct {
 	name string
 	url  string
 	key  *rsa.PrivateKey
+	mu   sync.Mutex
 	cfg  Config
 	wg   sync.WaitGroup
 }
@@ -128,7 +129,7 @@ func startTestNodeWithPeers(t *testing.T, name string, key *rsa.PrivateKey, scri
 			}
 			n.wg.Go(func() {
 				defer conn.Close()
-				_ = Serve(conn, n.cfg)
+				_ = Serve(conn, n.config())
 			})
 		}
 	}()
@@ -137,6 +138,20 @@ func startTestNodeWithPeers(t *testing.T, name string, key *rsa.PrivateKey, scri
 		n.wg.Wait()
 	})
 	return n
+}
+
+// config returns what a connection is served with: a test sets it while the
+// listener runs.
+func (n *testNode) config() Config {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.cfg
+}
+
+func (n *testNode) setConfig(set func(*Config)) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	set(&n.cfg)
 }
 
 // ticket returns a signed ticket for a session on the node named.
@@ -482,7 +497,7 @@ func graphicsSession(t *testing.T, dial func(console.Target) (net.Conn, error)) 
 	t.Helper()
 	key := testRSAKey(t)
 	n := startTestNode(t, "node1", key, "true")
-	n.cfg.Graphics = dial
+	n.setConfig(func(cfg *Config) { cfg.Graphics = dial })
 	ticket, err := console.NewTicket("alice", "node1", console.Target{Node: "node1", Path: "ns1/svc/web", RID: "container#1", Kind: console.KindGraphics})
 	require.NoError(t, err)
 	signed, err := ticket.Sign(key)
@@ -535,7 +550,7 @@ func TestSessionGraphicsRefused(t *testing.T) {
 func uploadNode(t *testing.T, name string, key *rsa.PrivateKey, peerURL func(string) (string, error), upload func(console.Target, io.Reader) error) *testNode {
 	t.Helper()
 	n := startTestNodeWithPeers(t, name, key, "true", peerURL)
-	n.cfg.Upload = upload
+	n.setConfig(func(cfg *Config) { cfg.Upload = upload })
 	return n
 }
 
