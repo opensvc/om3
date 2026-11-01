@@ -149,6 +149,35 @@ start = /bin/true
 	assert.Equal(t, claim.Unbounded, m[claim.TypeMemory])
 }
 
+// The cap of a resource is the smallest of the groups holding it, whichever
+// the compute claim type, for a driver unable to apply it to say so.
+func TestTheCapOfAResourceIsThatOfTheGroupsHoldingIt(t *testing.T) {
+	testhelper.Setup(t)
+	p := naming.Path{Namespace: "ci", Kind: naming.KindSvc, Name: "web"}
+	o, err := object.NewSvc(p, object.WithConfigData([]byte(`[DEFAULT]
+pg_cpu_quota = 100%@2
+
+[app#1]
+type = simple
+start = /bin/true
+pg_mem_limit = 1g
+`)))
+	require.NoError(t, err)
+	var i any = o
+	capper, ok := i.(interface {
+		ResourceCap(rid, claimType string) (int64, error)
+	})
+	require.True(t, ok)
+
+	v, err := capper.ResourceCap("app#1", claim.TypeCPU)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2000), v, "the object caps it")
+
+	v, err = capper.ResourceCap("app#1", claim.TypeMemory)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1024*1024*1024), v, "it caps itself")
+}
+
 // A container under a capped object is not given the default, which would
 // cap it below what the object admits.
 func TestTheDefaultIsNotGivenUnderACappedObject(t *testing.T) {
