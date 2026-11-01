@@ -291,6 +291,7 @@ func (t *T) newRequester() (err error) {
 	case strings.HasPrefix(t.url, reqh2.VsockPrefix):
 		t.ClientWithResponses, err = reqh2.NewVsock(reqh2.Config{
 			URL:     t.url,
+			Bearer:  t.bearer,
 			Timeout: t.timeout,
 		})
 	case strings.HasPrefix(t.url, reqh2.UDSPrefix):

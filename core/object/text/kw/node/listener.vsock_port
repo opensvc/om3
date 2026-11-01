@@ -1,11 +1,13 @@
 The vsock port the daemon of a guest serves the api on, for the daemon of its
-hypervisor to reach it with no network and no credential, none when zero.
+hypervisor to reach it with no network, none when zero.
 
 Set it on a guest only: the guest needs a vsock device, and answers the
-hypervisor alone. A connection from a reserved source port, which only a
-privileged process of the hypervisor can bind, is granted `root`, as the
-hypervisor is root on its guests anyway. Any other connection of the hypervisor
-has to authenticate, and the other guests are dropped.
+hypervisor alone. A connection from a reserved source port holding a token of
+the key the firmware of the guest names is granted `root`, as the hypervisor is
+root on its guests anyway: the `vsock_port` keyword of the `container.kvm`
+resource has the key written there, for the guest to read it from its next
+start on. Any other connection of the hypervisor has to authenticate, and the
+other guests are dropped.
 
 The next port serves the console endpoint the same way, for `container enter`
 from the hypervisor, to a privileged process of the hypervisor alone.

@@ -16,7 +16,7 @@ import (
 
 func TestWithVsockDevice(t *testing.T) {
 	args := []string{"/usr/bin/virt-install", "--name", "vm1"}
-	got := withVsockDevice(args)
+	got := withVsockDevice(args, "")
 	assert.Equal(t, []string{"/usr/bin/virt-install", "--name", "vm1", "--vsock", "cid.auto=yes"}, got)
 	assert.Len(t, args, 3, "the keyword value is left as it is")
 
@@ -185,4 +185,66 @@ func TestProvisionAsFollowerLeavesAGuestToTheLeader(t *testing.T) {
 	r := &T{Image: "/does/not/exist", VCPUs: 1}
 	r.SetLoggerForTest(plog.NewDefaultLogger())
 	assert.NoError(t, r.ProvisionAsFollower(context.Background()))
+}
+
+func TestWithVsockDeviceSaysTheKey(t *testing.T) {
+	got := withVsockDevice([]string{"virt-install"}, "opensvc-hypervisor-key=AB==")
+	assert.Equal(t, []string{"virt-install", "--vsock", "cid.auto=yes", "--sysinfo", "oemStrings.entry0=opensvc-hypervisor-key=AB=="}, got)
+
+	got = withVsockDevice([]string{"virt-install", "--sysinfo", "host"}, "opensvc-hypervisor-key=AB==")
+	assert.Equal(t, []string{"virt-install", "--sysinfo", "host", "--vsock", "cid.auto=yes"}, got, "the command says")
+}
+
+func TestDefinitionWithHypervisorKey(t *testing.T) {
+	const definition = `<domain type='kvm'>
+  <uuid>de857c8e-280f-49ba-a9e5-b488688f2c8e</uuid>
+  <os firmware='efi'>
+    <type arch='x86_64' machine='pc-q35-8.2'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+</domain>
+`
+	assert.Equal(t, "de857c8e-280f-49ba-a9e5-b488688f2c8e", domainUUID([]byte(definition)))
+	assert.Empty(t, domainUUID([]byte("<domain/>")))
+
+	first := "opensvc-hypervisor-key=AB+/cd=="
+	after, err := definitionWithHypervisorKey([]byte(definition), first)
+	require.NoError(t, err)
+	s := string(after)
+	assert.Contains(t, s, "<sysinfo type='smbios'>\n    <oemStrings>\n      <entry>"+first+"</entry>\n    </oemStrings>\n  </sysinfo>\n  <os firmware='efi'>")
+	assert.Contains(t, s, "<boot dev='hd'/>\n    <smbios mode='sysinfo'/>\n  </os>")
+
+	again, err := definitionWithHypervisorKey(after, first)
+	require.NoError(t, err)
+	assert.Equal(t, s, string(again), "it is written once")
+
+	rotated, err := definitionWithHypervisorKey(after, "opensvc-hypervisor-key=EF==")
+	require.NoError(t, err)
+	assert.Contains(t, string(rotated), "<entry>opensvc-hypervisor-key=EF==</entry>")
+	assert.NotContains(t, string(rotated), first)
+
+	theirs := `<domain>
+  <sysinfo type='smbios'>
+    <oemStrings>
+      <entry>theirs</entry>
+    </oemStrings>
+  </sysinfo>
+  <os>
+    <smbios mode='host'/>
+  </os>
+</domain>
+`
+	after, err = definitionWithHypervisorKey([]byte(theirs), first)
+	require.NoError(t, err)
+	assert.Contains(t, string(after), "<oemStrings>\n      <entry>"+first+"</entry>\n      <entry>theirs</entry>")
+	assert.Contains(t, string(after), "<smbios mode='sysinfo'/>")
+	assert.NotContains(t, string(after), "mode='host'")
+
+	sysinfo := "<domain>\n  <sysinfo type='smbios'>\n    <bios/>\n  </sysinfo>\n  <os>\n  </os>\n</domain>\n"
+	after, err = definitionWithHypervisorKey([]byte(sysinfo), first)
+	require.NoError(t, err)
+	assert.Contains(t, string(after), "<sysinfo type='smbios'>\n    <oemStrings>\n      <entry>"+first+"</entry>\n    </oemStrings>\n    <bios/>")
+
+	_, err = definitionWithHypervisorKey([]byte("<domain/>"), first)
+	assert.Error(t, err)
 }

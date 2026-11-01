@@ -1,11 +1,16 @@
 The vsock port the master reaches the guest daemon on, for the status, the
 config and the actions of the encap instances, and the next port for
-`container enter`, with no network and no credential. Set to `0` to not use it.
+`container enter`, with no network. Set to `0` to not use it.
 
 The guest needs a vsock device, as `<vsock model='virtio'><cid auto='yes'/></vsock>`
 in the domain definition, and to serve the port with its `listener.vsock_port`
 keyword. A provision adds the device to a `virtinst` running `virt-install`,
 when it knows `--vsock` and is not given it.
+
+A start writes the public key of the cluster in the firmware of the guest, in the
+definition, and the daemon of the guest trusts the requests signed with that
+key. A guest gets it at its next start: until then, or after a renewal of the
+key, its daemon refuses these requests, and the other ways are used.
 
 When the guest daemon does not answer on it, the master uses the `qga` or the
 `rcmd` way, so this keyword needs no change when a guest has no device.

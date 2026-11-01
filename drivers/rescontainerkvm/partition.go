@@ -2,6 +2,7 @@ package rescontainerkvm
 
 import (
 	"fmt"
+	"html"
 	"os"
 	"path"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/claim"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/vsockauth"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -17,6 +19,10 @@ var (
 	partitionRe  = regexp.MustCompile(`<partition>[^<]*</partition>`)
 	memoryRe     = regexp.MustCompile(`<memory(?: unit='([A-Za-z]+)')?>(\d+)</memory>`)
 	systemdHexRe = regexp.MustCompile(`\\x([0-9a-f]{2})`)
+
+	hypervisorEntryRe = regexp.MustCompile(`<entry>` + regexp.QuoteMeta(vsockauth.OEMPrefix) + `[^<]*</entry>`)
+	smbiosRe          = regexp.MustCompile(`<smbios mode='[a-z]+'/>`)
+	domainUUIDRe      = regexp.MustCompile(`<uuid>([^<]+)</uuid>`)
 )
 
 // partitionOf returns the libvirt partition of a process group.
@@ -73,6 +79,54 @@ func setSerialLog(file, log string) error {
 	return rewriteDefinition(file, func(b []byte) ([]byte, error) {
 		return definitionWithSerialLog(b, log), nil
 	})
+}
+
+// setHypervisorKey writes this OEM string in the definition file of a domain.
+func setHypervisorKey(file, oem string) error {
+	return rewriteDefinition(file, func(b []byte) ([]byte, error) {
+		return definitionWithHypervisorKey(b, oem)
+	})
+}
+
+// definitionWithHypervisorKey returns the definition of a domain whose firmware
+// holds this OEM string instead of the former one, the rest of it left as
+// libvirt wrote it.
+func definitionWithHypervisorKey(b []byte, oem string) ([]byte, error) {
+	s := string(b)
+	entry := "<entry>" + html.EscapeString(oem) + "</entry>"
+	switch {
+	case hypervisorEntryRe.MatchString(s):
+		return []byte(hypervisorEntryRe.ReplaceAllLiteralString(s, entry)), nil
+	case strings.Contains(s, "<oemStrings>"):
+		s = strings.Replace(s, "<oemStrings>", "<oemStrings>\n      "+entry, 1)
+	case strings.Contains(s, "<sysinfo type='smbios'>"):
+		s = strings.Replace(s, "<sysinfo type='smbios'>", "<sysinfo type='smbios'>\n    <oemStrings>\n      "+entry+"\n    </oemStrings>", 1)
+	default:
+		i := strings.Index(s, "<os")
+		if i < 0 {
+			return nil, fmt.Errorf("no os in the definition")
+		}
+		s = s[:i] + "<sysinfo type='smbios'>\n    <oemStrings>\n      " + entry + "\n    </oemStrings>\n  </sysinfo>\n  " + s[i:]
+	}
+	smbios := "<smbios mode='sysinfo'/>"
+	switch {
+	case smbiosRe.MatchString(s):
+		s = smbiosRe.ReplaceAllLiteralString(s, smbios)
+	case strings.Contains(s, "</os>"):
+		s = strings.Replace(s, "</os>", "  "+smbios+"\n  </os>", 1)
+	default:
+		return nil, fmt.Errorf("no os in the definition")
+	}
+	return []byte(s), nil
+}
+
+// domainUUID returns the uuid of a domain definition, empty when it has none.
+func domainUUID(b []byte) string {
+	m := domainUUIDRe.FindSubmatch(b)
+	if m == nil {
+		return ""
+	}
+	return string(m[1])
 }
 
 func rewriteDefinition(file string, rewrite func([]byte) ([]byte, error)) error {

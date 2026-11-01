@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/console"
+	"github.com/opensvc/om3/v3/core/vsockauth"
 )
 
 func testKey(t *testing.T) *rsa.PrivateKey {
@@ -193,6 +194,16 @@ func TestConsoleTicketIsNoAPICredential(t *testing.T) {
 
 	_, err = (&jwtStrategy{verifyKey: &key.PublicKey}).Authenticate(context.Background(), bearerRequest(t, tk))
 	assert.ErrorContains(t, err, "console ticket")
+}
+
+// A token of a hypervisor goes to a guest, which is not to use it on the api
+// of the cluster signing it.
+func TestHypervisorTokenIsNoAPICredential(t *testing.T) {
+	key := testKey(t)
+	tk, err := vsockauth.NewToken(key, "de857c8e-280f-49ba-a9e5-b488688f2c8e")
+	require.NoError(t, err)
+	_, err = (&jwtStrategy{verifyKey: &key.PublicKey}).Authenticate(context.Background(), bearerRequest(t, tk))
+	assert.ErrorContains(t, err, "hypervisor token")
 }
 
 // A token signed with the key of a former ca the verify file still holds,

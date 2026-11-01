@@ -17,6 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/core/console"
+	"github.com/opensvc/om3/v3/core/vsockauth"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -130,6 +131,10 @@ func (t *jwtStrategy) Authenticate(_ context.Context, r *http.Request) (*Info, e
 		// A console ticket is signed with the key the access tokens are
 		// signed with, and opens a console session, nothing else.
 		return nil, fmt.Errorf("strategies/jwt: a console ticket is no api credential")
+	}
+	if claims.TokenUse == vsockauth.TokenUse {
+		// So is the token of a hypervisor, which a guest receives.
+		return nil, fmt.Errorf("strategies/jwt: a hypervisor token is no api credential")
 	}
 	info := &Info{
 		Username: claims.Subject,
