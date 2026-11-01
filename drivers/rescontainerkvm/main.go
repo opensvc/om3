@@ -1510,11 +1510,21 @@ func hypervisorOEMString() (string, error) {
 // doHypervisorKey writes the key its daemon verifies this node with in the
 // firmware of a guest served on vsock, for a guest defined before it had one.
 // The key is a public one, as it shows on the qemu command line.
+//
+// The port having a default, most guests come here with no vsock device: they
+// are left as they are, a qemu too old for vsock also refusing the OEM strings.
 func (t *T) doHypervisorKey() {
-	if t.VsockPort <= 0 {
+	if t.VsockPort <= 0 || !hasHostVsock() {
 		return
 	}
-	oem, err := hypervisorOEMString()
+	b, err := os.ReadFile(t.configFile())
+	if err == nil && !vsockDeviceRegexp.Match(b) {
+		return
+	}
+	var oem string
+	if err == nil {
+		oem, err = hypervisorOEMString()
+	}
 	if err == nil {
 		err = setHypervisorKey(t.configFile(), oem)
 	}
