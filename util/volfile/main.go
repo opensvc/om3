@@ -20,6 +20,10 @@ const (
 	// complete.
 	uploadPrefix = ".om-upload-"
 
+	// copyBuffer is what a transfer writes between two looks at what the
+	// others take, which is what a volume may hold over its size until then.
+	copyBuffer = 1024 * 1024
+
 	// staleUpload is how long a transfer may go without writing: a client
 	// sending nothing is cut long before.
 	staleUpload = 15 * time.Minute
@@ -41,26 +45,41 @@ func IsName(s string) bool {
 	return s != "" && !strings.HasPrefix(s, ".") && !strings.ContainsAny(s, "/\\\x00") && len(s) <= 255
 }
 
-// Room returns what a file of the name may take in a volume of the size: what
-// the other files leave, the one of that name being replaced. A filesystem
-// bounds what it holds, but not the directory of a pool of that type, whose
-// volumes share the one of the node.
-func Room(head, name string, size int64) (int64, error) {
-	l, err := List(head)
+// taken returns what the files of a volume hold but the one of the name, being
+// replaced, and the transfer tmp: the other transfers, and what they will be
+// renamed to, count. A filesystem bounds what it holds, but not the directory
+// of a pool of that type, whose volumes share the one of the node.
+func taken(root *os.Root, name, tmp string) (int64, error) {
+	d, err := root.Open(".")
 	if err != nil {
 		return 0, err
 	}
-	for _, f := range l {
-		if f.Name != name {
-			size -= f.Size
+	defer func() { _ = d.Close() }()
+	entries, err := d.ReadDir(-1)
+	if err != nil {
+		return 0, err
+	}
+	var n int64
+	for _, e := range entries {
+		if e.Name() == name || e.Name() == tmp || !e.Type().IsRegular() {
+			continue
+		}
+		// One gone since the listing, a transfer ending, is under its new name.
+		if info, err := e.Info(); err == nil {
+			n += info.Size()
 		}
 	}
-	return max(size, 0), nil
+	return n, nil
 }
 
-// Write writes r to the file of the name in head, limit bytes at most, none
-// when negative. The file is written aside, to appear complete or not.
-func Write(head, name string, r io.Reader, limit int64) (err error) {
+// Write writes r to the file of the name in head, the files of head and the
+// transfers running with it holding size bytes at most, or as much as r says
+// when size is negative. The file is written aside, to appear complete or not.
+//
+// What the others take is read again as the transfer goes, not once at its
+// start: they run in processes of their own, each of which would otherwise
+// count on the same room.
+func Write(head, name string, r io.Reader, size int64) (err error) {
 	root, err := os.OpenRoot(head)
 	if err != nil {
 		return err
@@ -83,13 +102,7 @@ func Write(head, name string, r io.Reader, limit int64) (err error) {
 			_ = root.Remove(tmp)
 		}
 	}()
-	if limit >= 0 {
-		r = io.LimitReader(r, limit+1)
-	}
-	n, err := io.Copy(f, r)
-	if err == nil && limit >= 0 && n > limit {
-		err = ErrFull
-	}
+	err = copyWithin(root, f, r, name, tmp, size)
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
@@ -97,6 +110,35 @@ func Write(head, name string, r io.Reader, limit int64) (err error) {
 		return err
 	}
 	return root.Rename(tmp, name)
+}
+
+// copyWithin copies r to f, as long as the size holds what it wrote.
+func copyWithin(root *os.Root, f io.Writer, r io.Reader, name, tmp string, size int64) error {
+	buf := make([]byte, copyBuffer)
+	var written int64
+	for {
+		n, rerr := r.Read(buf)
+		if n > 0 {
+			if _, err := f.Write(buf[:n]); err != nil {
+				return err
+			}
+			written += int64(n)
+			if size >= 0 {
+				others, err := taken(root, name, tmp)
+				if err != nil {
+					return err
+				}
+				if others+written > size {
+					return ErrFull
+				}
+			}
+		}
+		if errors.Is(rerr, io.EOF) {
+			return nil
+		} else if rerr != nil {
+			return rerr
+		}
+	}
 }
 
 // sweep removes what the transfers killed left: a listing does not show it, so

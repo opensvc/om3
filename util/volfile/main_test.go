@@ -2,6 +2,7 @@ package volfile
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,13 +109,36 @@ func TestWriteWithinItsSize(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, l, 1, "nothing of what did not fit is left")
 
-	n, err := Room(head, "b", 8)
+	require.NoError(t, Write(head, "a", strings.NewReader("1234567"), 7), "a file replaced gives back its place")
+	assert.ErrorIs(t, Write(head, "b", strings.NewReader("12"), 8), ErrFull, "what the other files leave")
+	require.NoError(t, Write(head, "b", strings.NewReader("1"), 8))
+	assert.ErrorIs(t, Write(head, "c", strings.NewReader("1"), 2), ErrFull)
+}
+
+// Two transfers count what each other wrote: they run in processes of their
+// own, and each would otherwise count on the room there was when it began.
+func TestWriteSeesTheOtherTransfers(t *testing.T) {
+	head := t.TempDir()
+	pr, pw := io.Pipe()
+	first := make(chan error, 1)
+	go func() { first <- Write(head, "a", pr, 5) }()
+	_, err := pw.Write([]byte("123"))
 	require.NoError(t, err)
-	assert.Equal(t, int64(3), n, "what the other files leave")
-	n, err = Room(head, "a", 8)
+	// pw.Write returns with the bytes read, which are written before the next read.
+	require.Eventually(t, func() bool {
+		l, err := filepath.Glob(filepath.Join(head, uploadPrefix+"*"))
+		if err != nil || len(l) != 1 {
+			return false
+		}
+		info, err := os.Stat(l[0])
+		return err == nil && info.Size() == 3
+	}, 5*time.Second, time.Millisecond)
+
+	assert.ErrorIs(t, Write(head, "b", strings.NewReader("123"), 5), ErrFull, "the first took the room")
+	require.NoError(t, Write(head, "c", strings.NewReader("12"), 5), "there is room for this one")
+
+	_, err = pw.Write([]byte("4"))
 	require.NoError(t, err)
-	assert.Equal(t, int64(8), n, "a file replaced gives back its place")
-	n, err = Room(head, "b", 2)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), n)
+	assert.ErrorIs(t, <-first, ErrFull, "the last one wrote while the first was going")
+	_ = pw.Close()
 }
