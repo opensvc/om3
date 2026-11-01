@@ -190,12 +190,16 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 	for i, dev := range disks {
 		stable[i] = stableDevpath(dev)
 	}
+	serialLog := ""
+	if t.canLogSerial() {
+		serialLog = t.serialLogPath()
+	}
 	spec := vmSpec{
 		name:      t.Name,
 		vcpus:     t.VCPUs,
 		memoryMB:  *t.Memory / (1024 * 1024),
 		disks:     stable,
-		serialLog: t.serialLogPath(),
+		serialLog: serialLog,
 		bridges:   t.Bridge,
 		extra:     t.VirtInstArgs,
 	}

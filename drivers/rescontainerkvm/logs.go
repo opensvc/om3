@@ -9,15 +9,29 @@ import (
 	"io"
 	iofs "io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/versioncmp"
 )
 
 // serialLogDir is where libvirt keeps the logs of the domains, which virtlogd
 // rotates, and root alone reads. A var for the tests.
 var serialLogDir = "/var/log/libvirt/qemu"
+
+const (
+	// serialLogCap is the capability of a node able to log a serial port.
+	serialLogCap = ".serial_log"
+
+	// minSerialLogLibvirt and minSerialLogQemu are the first versions with
+	// the log of a character device.
+	minSerialLogLibvirt = "2.3.0"
+	minSerialLogQemu    = "2.6.0"
+)
 
 // maxPartialLine is what a line with no end is held for, before it is sent as
 // it is: the guest says what is written here.
@@ -28,10 +42,48 @@ var (
 	serialPtyRe = regexp.MustCompile(`<serial type='pty'>`)
 	serialLogRe = regexp.MustCompile(`<log\b[^>]*\bfile='([^']*)'`)
 
+	virshVersionRe = regexp.MustCompile(`(?s)Using library: libvirt ([0-9.]+).*Running hypervisor: QEMU ([0-9.]+)`)
+
 	// What drives a terminal: the sequences, then the controls left, a tab apart.
 	escapeRe  = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)?|[ -/]*[0-~])?`)
 	controlRe = regexp.MustCompile(`[\x00-\x08\x0a-\x1f\x7f\x{80}-\x{9f}]`)
 )
+
+// isSerialLogCapable says the node can log a serial port: libvirt refuses a
+// definition logging one on a qemu that can not, and the guest does not start.
+func isSerialLogCapable(ctx context.Context) bool {
+	b, err := exec.CommandContext(ctx, "virsh", "version").Output()
+	return err == nil && canLogSerial(b)
+}
+
+// canLogSerial says what virsh version tells of the versions of libvirt and qemu
+// is able to log a serial port.
+func canLogSerial(b []byte) bool {
+	m := virshVersionRe.FindSubmatch(b)
+	if m == nil {
+		return false
+	}
+	libvirt, err := versioncmp.AtLeast(string(m[1]), minSerialLogLibvirt)
+	if err != nil || !libvirt {
+		return false
+	}
+	qemu, err := versioncmp.AtLeast(string(m[2]), minSerialLogQemu)
+	return err == nil && qemu
+}
+
+// canLogSerial says this node can log the serial port of a guest.
+func (t *T) canLogSerial() bool {
+	return capabilities.Has(drvID.Cap() + serialLogCap)
+}
+
+// doSerialLog writes the log of the serial port in the definition file of the
+// domain, or removes the one a peer able to log it wrote there.
+func (t *T) doSerialLog() error {
+	if t.canLogSerial() {
+		return setSerialLog(t.configFile(), t.serialLogPath())
+	}
+	return unsetSerialLog(t.configFile(), t.serialLogPath())
+}
 
 // serialLogPath is the file a guest writes its serial port to. The qemu log of
 // the domain is the one of the hypervisor, next to it.
@@ -75,6 +127,13 @@ func definitionWithSerialLog(b []byte, file string) []byte {
 	after = append(after, b[:loc[1]]...)
 	after = append(after, tag...)
 	return append(after, b[loc[1]:]...)
+}
+
+// definitionWithoutSerialLog returns the definition of a domain with this file
+// no longer logging a serial port. Any other file is a sysadmin's.
+func definitionWithoutSerialLog(b []byte, file string) []byte {
+	tag := "\n      <log file='" + html.EscapeString(file) + "' append='on'/>"
+	return bytes.ReplaceAll(b, []byte(tag), nil)
 }
 
 // ContainerLogs reads what the guest writes to its serial port, the output of
