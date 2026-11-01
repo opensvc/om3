@@ -191,15 +191,14 @@ func volumeUpload(target console.Target, r io.Reader) error {
 	if resolved.Head == "" || resolved.Vol == nil {
 		return fmt.Errorf("%s holds no filesystem", path)
 	}
-	limit := int64(-1)
-	if size, err := resolved.Vol.ConfiguredSize(); err != nil {
+	size, err := resolved.Vol.ConfiguredSize()
+	if err != nil {
 		return err
-	} else if size > 0 {
-		if limit, err = volfile.Room(resolved.Head, target.File, size); err != nil {
-			return err
-		}
 	}
-	return volfile.Write(resolved.Head, target.File, r, limit)
+	if size <= 0 {
+		size = -1
+	}
+	return volfile.Write(resolved.Head, target.File, r, size)
 }
 
 // loginShell returns the shell of the user running the session, /bin/sh when
