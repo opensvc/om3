@@ -370,6 +370,9 @@ func (t *T) containerStart(ctx context.Context) error {
 	if err := t.doPartitions(); err != nil {
 		return err
 	}
+	if err := setSerialLog(t.configFile(), t.serialLogPath()); err != nil {
+		return err
+	}
 	if err := t.define(ctx); err != nil {
 		return err
 	}
@@ -999,6 +1002,9 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 		return err
 	}
 	if err := t.removeCDROM(); err != nil {
+		return err
+	}
+	if err := t.removeSerialLog(); err != nil {
 		return err
 	}
 	isProvisioned, err := t.provisioned(ctx)

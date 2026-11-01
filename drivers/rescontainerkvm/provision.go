@@ -52,6 +52,8 @@ type (
 		userData string
 		netData  string
 		extra    []string
+		// serialLog is the file the first serial port writes to.
+		serialLog string
 	}
 )
 
@@ -95,6 +97,10 @@ func (t vmSpec) args() []string {
 	// which a ticket authorizes, is the way to it.
 	if !slices.Contains(t.extra, "--graphics") {
 		l = append(l, "--graphics", "vnc,listen=socket")
+	}
+	// From the first boot, the one that tells the most.
+	if t.serialLog != "" && !slices.Contains(t.extra, "--serial") {
+		l = append(l, "--serial", "pty,log.file="+t.serialLog+",log.append=on")
 	}
 	l = append(l, "--noautoconsole")
 	return append(l, t.extra...)
@@ -185,12 +191,13 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 		stable[i] = stableDevpath(dev)
 	}
 	spec := vmSpec{
-		name:     t.Name,
-		vcpus:    t.VCPUs,
-		memoryMB: *t.Memory / (1024 * 1024),
-		disks:    stable,
-		bridges:  t.Bridge,
-		extra:    t.VirtInstArgs,
+		name:      t.Name,
+		vcpus:     t.VCPUs,
+		memoryMB:  *t.Memory / (1024 * 1024),
+		disks:     stable,
+		serialLog: t.serialLogPath(),
+		bridges:   t.Bridge,
+		extra:     t.VirtInstArgs,
 	}
 	spec.osFlag, spec.osValue = osOption(help, t.OSInfo)
 	if t.CloudInit != "" || (t.Image != "" && len(t.Network) > 0) {

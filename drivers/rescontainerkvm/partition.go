@@ -62,11 +62,25 @@ func definitionWithPartition(b []byte, partition string) ([]byte, error) {
 // setPartition writes the partition in the definition file of a domain, which
 // the start defines, and the other nodes receive.
 func setPartition(file, partition string) error {
+	return rewriteDefinition(file, func(b []byte) ([]byte, error) {
+		return definitionWithPartition(b, partition)
+	})
+}
+
+// setSerialLog writes the log of the serial port in the definition file of a
+// domain, for a guest defined before it had one, or by a sysadmin.
+func setSerialLog(file, log string) error {
+	return rewriteDefinition(file, func(b []byte) ([]byte, error) {
+		return definitionWithSerialLog(b, log), nil
+	})
+}
+
+func rewriteDefinition(file string, rewrite func([]byte) ([]byte, error)) error {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
-	after, err := definitionWithPartition(b, partition)
+	after, err := rewrite(b)
 	if err != nil {
 		return fmt.Errorf("%s: %w", file, err)
 	}
