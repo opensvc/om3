@@ -332,6 +332,10 @@ func (t *T) cdromFile(ctx context.Context, dev string) (string, error) {
 
 // removeCDROM removes the installer om downloaded.
 func (t *T) removeCDROM() error {
+	// A path is the operator's file, even one named as our copy would be.
+	if strings.HasPrefix(t.CDROM, "/") {
+		return nil
+	}
 	if err := os.Remove(t.cdromPath()); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}

@@ -196,3 +196,22 @@ func TestStableDevpath(t *testing.T) {
 	assert.Equal(t, "/dev/drbd3", stableDevpath("/dev/drbd3"))
 	assert.Equal(t, "/dev/dm-99", stableDevpath("/dev/dm-99"), "nothing better known")
 }
+
+// A cdrom keyword naming a path is the file of the operator, even at the path
+// the copy of a download would have: what removes that copy leaves it.
+func TestRemoveCDROMLeavesTheFileOfTheOperator(t *testing.T) {
+	saved := cdromDir
+	cdromDir = t.TempDir()
+	defer func() { cdromDir = saved }()
+	r := &T{}
+	r.Name = "vm1"
+	require.NoError(t, os.WriteFile(r.cdromPath(), []byte("iso"), 0o644))
+
+	r.CDROM = r.cdromPath()
+	require.NoError(t, r.removeCDROM())
+	assert.FileExists(t, r.cdromPath())
+
+	r.CDROM = "https://example.com/debian.iso"
+	require.NoError(t, r.removeCDROM())
+	assert.NoFileExists(t, r.cdromPath())
+}
