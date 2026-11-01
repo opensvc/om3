@@ -175,3 +175,24 @@ func TestCopyVolumeFileStaysInTheVolume(t *testing.T) {
 	_, err := copyVolumeFile(head, filepath.Join(head, "a.img"), t.TempDir(), 1024)
 	assert.Error(t, err)
 }
+
+// The definition of a domain is shared by the nodes: a device mapper or a loop
+// minor would name another disk on the next one, or at the next boot.
+func TestStableDevpath(t *testing.T) {
+	saved := sysBlock
+	sysBlock = t.TempDir()
+	defer func() { sysBlock = saved }()
+	write := func(p, s string) {
+		p = filepath.Join(sysBlock, p)
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte(s+"\n"), 0o644))
+	}
+	write("dm-17/dm/name", "36001405726ac48477444c949936811ee")
+	write("loop2/loop/backing_file", "/var/lib/opensvc/pool/loop/a.img")
+
+	assert.Equal(t, "/dev/mapper/36001405726ac48477444c949936811ee", stableDevpath("/dev/dm-17"))
+	assert.Equal(t, "/var/lib/opensvc/pool/loop/a.img", stableDevpath("/dev/loop2"))
+	assert.Equal(t, "/dev/zvol/tank/a", stableDevpath("/dev/zvol/tank/a"), "stable already")
+	assert.Equal(t, "/dev/drbd3", stableDevpath("/dev/drbd3"))
+	assert.Equal(t, "/dev/dm-99", stableDevpath("/dev/dm-99"), "nothing better known")
+}
