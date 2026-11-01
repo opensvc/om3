@@ -162,16 +162,22 @@ func (t *core) ObjectMemCap() (int64, error) {
 }
 
 // MemCap is the most memory the process group of a resource may take on this
-// node, the smallest of the caps of the groups holding it, claim.Unbounded
-// when none does. What the namespace caps is what its objects add up to, and
-// says nothing of one of them.
+// node, see ResourceCap.
 func (t *core) MemCap(rid string) (int64, error) {
+	return t.ResourceCap(rid, claim.TypeMemory)
+}
+
+// ResourceCap is the most of a compute claim type the process group of a
+// resource may take on this node, the smallest of the caps of the groups
+// holding it, claim.Unbounded when none does. What the namespace caps is what
+// its objects add up to, and says nothing of one of them.
+func (t *core) ResourceCap(rid, claimType string) (int64, error) {
 	id, err := resourceid.Parse(rid)
 	if err != nil {
 		return 0, err
 	}
 	nodename := hostname.Hostname()
-	limit, err := t.resourceCapAs(rid, claim.TypeMemory, nodename)
+	limit, err := t.resourceCapAs(rid, claimType, nodename)
 	if err != nil {
 		return 0, err
 	}
@@ -179,7 +185,7 @@ func (t *core) MemCap(rid string) (int64, error) {
 		if section == "" {
 			continue
 		}
-		v, ok, err := t.capAs(section, claim.TypeMemory, nodename)
+		v, ok, err := t.capAs(section, claimType, nodename)
 		if err != nil {
 			return 0, err
 		}

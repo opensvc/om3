@@ -132,15 +132,41 @@ func (t *T) guestMemory() int64 {
 	return 0
 }
 
-// uncappableError says a namespace counts on caps this node can not put on a
-// guest: libvirt places it in a partition of its own, out of them all.
+// uncappableError says a namespace, or the object, counts on caps this node
+// can not put on a guest: libvirt places it in a partition of its own, out of
+// them all.
 func (t *T) uncappableError() error {
+	o, _ := t.GetObject().(resourceCapper)
 	for _, claimType := range claim.ComputeTypes {
 		if _, capped, err := claim.Limit(t.Path.Namespace, claimType, ""); err != nil {
 			return err
 		} else if capped {
 			return fmt.Errorf("the %s namespace claims the %s, and this node can not cap a guest: it needs systemd and a libvirt with partitions", t.Path.Namespace, claimType)
 		}
+		if err := cappedError(o, t.RID(), claimType); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// resourceCapper says the cap of the groups holding a resource.
+type resourceCapper interface {
+	ResourceCap(rid, claimType string) (int64, error)
+}
+
+// cappedError says the groups holding a resource cap what this node can not
+// cap on a guest.
+func cappedError(o resourceCapper, rid, claimType string) error {
+	if o == nil {
+		return nil
+	}
+	limit, err := o.ResourceCap(rid, claimType)
+	if err != nil {
+		return err
+	}
+	if limit != claim.Unbounded {
+		return fmt.Errorf("%s is capped on the %s, and this node can not cap a guest: it needs systemd and a libvirt with partitions", rid, claimType)
 	}
 	return nil
 }
