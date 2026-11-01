@@ -43,7 +43,12 @@ func (t *actor) encapAPI(ctx context.Context, encapContainer resource.Encaper) *
 	if url == "" {
 		return nil
 	}
-	c, err := client.New(client.WithURL(url), client.WithTimeout(0))
+	bearer, err := i.EncapAPIBearer(ctx)
+	if err != nil {
+		t.log.Debugf("%s: encap api token: %s", t.path, err)
+		return nil
+	}
+	c, err := client.New(client.WithURL(url), client.WithBearer(bearer), client.WithTimeout(0))
 	if err != nil {
 		t.log.Tracef("%s: encap api client: %s", t.path, err)
 		return nil

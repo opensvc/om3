@@ -442,5 +442,9 @@ type (
 		// EncapAPIURL returns the url of the guest daemon, empty when the
 		// container offers none. A url does not say the daemon answers.
 		EncapAPIURL(ctx context.Context) (string, error)
+
+		// EncapAPIBearer returns the token proving the hypervisor to the
+		// guest daemon.
+		EncapAPIBearer(ctx context.Context) (string, error)
 	}
 )

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"golang.org/x/net/http2"
 
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -60,5 +61,13 @@ func NewVsock(config Config) (*api.ClientWithResponses, error) {
 			},
 		},
 	}
-	return api.NewClientWithResponses("http://localhost", api.WithHTTPClient(httpClient))
+	options := []api.ClientOption{api.WithHTTPClient(httpClient)}
+	if config.Bearer != "" {
+		provider, err := securityprovider.NewSecurityProviderBearerToken(config.Bearer)
+		if err != nil {
+			return nil, err
+		}
+		options = append(options, api.WithRequestEditorFn(provider.Intercept))
+	}
+	return api.NewClientWithResponses("http://localhost", options...)
 }

@@ -35,6 +35,8 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/core/vsockauth"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -373,6 +375,7 @@ func (t *T) containerStart(ctx context.Context) error {
 	if err := setSerialLog(t.configFile(), t.serialLogPath()); err != nil {
 		return err
 	}
+	t.doHypervisorKey()
 	if err := t.define(ctx); err != nil {
 		return err
 	}
@@ -1164,7 +1167,11 @@ func (t *T) enterViaVsock(ctx context.Context) error {
 	if url == "" {
 		return fmt.Errorf("%w: no vsock", console.ErrNoSession)
 	}
-	c, err := client.New(client.WithURL(url), client.WithTimeout(0))
+	bearer, err := t.EncapAPIBearer(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %w", console.ErrNoSession, err)
+	}
+	c, err := client.New(client.WithURL(url), client.WithBearer(bearer), client.WithTimeout(0))
 	if err != nil {
 		return fmt.Errorf("%w: %w", console.ErrNoSession, err)
 	}
@@ -1395,6 +1402,25 @@ func (t *T) EncapAPIURL(ctx context.Context) (string, error) {
 	return fmt.Sprintf("%s%d:%d", reqh2.VsockPrefix, cid, t.VsockPort), nil
 }
 
+// EncapAPIBearer implements resource.EncapAPIer: a token of the key of the
+// cluster, for this domain. A process of this node that can bind a reserved
+// port, but not read that key, has none.
+func (t *T) EncapAPIBearer(ctx context.Context) (string, error) {
+	b, err := t.liveDefinition(ctx)
+	if err != nil {
+		return "", err
+	}
+	guest := domainUUID(b)
+	if guest == "" {
+		return "", fmt.Errorf("the definition of %s has no uuid", t.Name)
+	}
+	key, err := vsockauth.LoadSignKey(daemonenv.CAKeyFile())
+	if err != nil {
+		return "", err
+	}
+	return vsockauth.NewToken(key, guest)
+}
+
 // StatusInfo implements resource.StatusInfoer: the name of the domain, and the
 // context id of its vsock device while it runs. It tells what the guest is
 // reached at now, for an operator: a user of it reads the running domain,
@@ -1435,15 +1461,50 @@ func (t *T) virtInstWithVsock(ctx context.Context, args []string) []string {
 		t.Log().Infof("%s has no --vsock option: the guest has no vsock device", args[0])
 		return args
 	}
-	return withVsockDevice(args)
+	oem, err := hypervisorOEMString()
+	if err != nil {
+		t.Log().Warnf("the daemon of the guest will not trust this node on vsock: %s", err)
+	}
+	return withVsockDevice(args, oem)
 }
 
 func isVirtInstall(args []string) bool {
 	return len(args) > 0 && filepath.Base(args[0]) == "virt-install"
 }
 
-func withVsockDevice(args []string) []string {
-	return append(slices.Clone(args), "--vsock", "cid.auto=yes")
+func withVsockDevice(args []string, oem string) []string {
+	l := append(slices.Clone(args), "--vsock", "cid.auto=yes")
+	if oem != "" && !slices.Contains(l, "--sysinfo") {
+		l = append(l, "--sysinfo", "oemStrings.entry0="+oem)
+	}
+	return l
+}
+
+// hypervisorOEMString returns the string of the firmware of a guest naming the
+// key of the cluster, empty when it can not tell: the daemon of the guest then
+// grants nothing, and the guest is reached the other ways.
+func hypervisorOEMString() (string, error) {
+	key, err := vsockauth.LoadSignKey(daemonenv.CAKeyFile())
+	if err != nil {
+		return "", err
+	}
+	return vsockauth.OEMString(&key.PublicKey)
+}
+
+// doHypervisorKey writes the key its daemon verifies this node with in the
+// firmware of a guest served on vsock, for a guest defined before it had one.
+// The key is a public one, as it shows on the qemu command line.
+func (t *T) doHypervisorKey() {
+	if t.VsockPort <= 0 {
+		return
+	}
+	oem, err := hypervisorOEMString()
+	if err == nil {
+		err = setHypervisorKey(t.configFile(), oem)
+	}
+	if err != nil {
+		t.Log().Warnf("the daemon of the guest will not trust this node on vsock: %s", err)
+	}
 }
 
 // vsockCID returns the context id of the domain definition b.
