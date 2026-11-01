@@ -1449,8 +1449,12 @@ func (t *T) StatusInfo(ctx context.Context) map[string]any {
 // custom script, or a virt-install too old for the option, is run as it is:
 // the guest is reached the other ways.
 func (t *T) virtInstWithVsock(ctx context.Context, args []string) []string {
-	if t.VsockPort <= 0 || !isVirtInstall(args) || slices.Contains(args, "--vsock") {
+	if t.VsockPort <= 0 || !isVirtInstall(args) {
 		return args
+	}
+	if slices.Contains(args, "--vsock") {
+		// The command says the device. The guest still has to know the key.
+		return withHypervisorKey(args, t.oemStringOrWarn())
 	}
 	if !hasHostVsock() {
 		t.Log().Infof("this hypervisor has no %s: the guest has no vsock device", hostVsockDevice)
@@ -1461,23 +1465,35 @@ func (t *T) virtInstWithVsock(ctx context.Context, args []string) []string {
 		t.Log().Infof("%s has no --vsock option: the guest has no vsock device", args[0])
 		return args
 	}
+	return withHypervisorKey(withVsockDevice(args), t.oemStringOrWarn())
+}
+
+// oemStringOrWarn returns the OEM string of the key, empty when it can not tell.
+func (t *T) oemStringOrWarn() string {
 	oem, err := hypervisorOEMString()
 	if err != nil {
 		t.Log().Warnf("the daemon of the guest will not trust this node on vsock: %s", err)
+		return ""
 	}
-	return withVsockDevice(args, oem)
+	return oem
 }
 
 func isVirtInstall(args []string) bool {
 	return len(args) > 0 && filepath.Base(args[0]) == "virt-install"
 }
 
-func withVsockDevice(args []string, oem string) []string {
-	l := append(slices.Clone(args), "--vsock", "cid.auto=yes")
-	if oem != "" && !slices.Contains(l, "--sysinfo") {
-		l = append(l, "--sysinfo", "oemStrings.entry0="+oem)
+func withVsockDevice(args []string) []string {
+	return append(slices.Clone(args), "--vsock", "cid.auto=yes")
+}
+
+// withHypervisorKey returns the virt-install command writing the OEM string in
+// the firmware of the guest. A command saying its own --sysinfo is left to the
+// start, which adds the string to what it says: virt-install does not merge two.
+func withHypervisorKey(args []string, oem string) []string {
+	if oem == "" || slices.Contains(args, "--sysinfo") {
+		return args
 	}
-	return l
+	return append(slices.Clone(args), "--sysinfo", "oemStrings.entry0="+oem)
 }
 
 // hypervisorOEMString returns the string of the firmware of a guest naming the

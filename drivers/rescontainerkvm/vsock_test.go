@@ -16,7 +16,7 @@ import (
 
 func TestWithVsockDevice(t *testing.T) {
 	args := []string{"/usr/bin/virt-install", "--name", "vm1"}
-	got := withVsockDevice(args, "")
+	got := withVsockDevice(args)
 	assert.Equal(t, []string{"/usr/bin/virt-install", "--name", "vm1", "--vsock", "cid.auto=yes"}, got)
 	assert.Len(t, args, 3, "the keyword value is left as it is")
 
@@ -28,9 +28,8 @@ func TestWithVsockDevice(t *testing.T) {
 
 func TestVirtInstWithVsockLeavesTheCommand(t *testing.T) {
 	for name, r := range map[string]*T{
-		"no port":        {VsockPort: 0, VirtInst: []string{"virt-install", "--name", "vm1"}},
-		"custom script":  {VsockPort: 1215, VirtInst: []string{"/opt/create-guest.sh"}},
-		"device already": {VsockPort: 1215, VirtInst: []string{"virt-install", "--vsock", "cid.address=5"}},
+		"no port":       {VsockPort: 0, VirtInst: []string{"virt-install", "--name", "vm1"}},
+		"custom script": {VsockPort: 1215, VirtInst: []string{"/opt/create-guest.sh"}},
 	} {
 		assert.Equal(t, r.VirtInst, r.virtInstWithVsock(context.Background(), r.VirtInst), name)
 	}
@@ -187,12 +186,15 @@ func TestProvisionAsFollowerLeavesAGuestToTheLeader(t *testing.T) {
 	assert.NoError(t, r.ProvisionAsFollower(context.Background()))
 }
 
-func TestWithVsockDeviceSaysTheKey(t *testing.T) {
-	got := withVsockDevice([]string{"virt-install"}, "opensvc-hypervisor-key=AB==")
-	assert.Equal(t, []string{"virt-install", "--vsock", "cid.auto=yes", "--sysinfo", "oemStrings.entry0=opensvc-hypervisor-key=AB=="}, got)
+func TestWithHypervisorKey(t *testing.T) {
+	key := "opensvc-hypervisor-key=AB=="
+	args := []string{"virt-install", "--vsock", "cid.auto=yes"}
+	assert.Equal(t, []string{"virt-install", "--vsock", "cid.auto=yes", "--sysinfo", "oemStrings.entry0=" + key}, withHypervisorKey(args, key))
+	assert.Len(t, args, 3, "the keyword value is left as it is")
 
-	got = withVsockDevice([]string{"virt-install", "--sysinfo", "host"}, "opensvc-hypervisor-key=AB==")
-	assert.Equal(t, []string{"virt-install", "--sysinfo", "host", "--vsock", "cid.auto=yes"}, got, "the command says")
+	theirs := []string{"virt-install", "--sysinfo", "host"}
+	assert.Equal(t, theirs, withHypervisorKey(theirs, key), "the start adds it to what the command says")
+	assert.Equal(t, args, withHypervisorKey(args, ""), "no key to say")
 }
 
 func TestDefinitionWithHypervisorKey(t *testing.T) {

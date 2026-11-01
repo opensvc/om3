@@ -321,6 +321,8 @@ func (t *T) cdromFile(ctx context.Context, dev string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cdrom: %w", err)
 	}
+	// Gone once renamed, this is for what fails before.
+	defer func() { _ = os.Remove(p) }()
 	if err := os.Chmod(p, 0o644); err != nil {
 		return "", fmt.Errorf("cdrom: %w", err)
 	}
