@@ -180,11 +180,15 @@ func (t *T) specCommand(ctx context.Context) ([]string, func(), error) {
 	if len(disks) == 0 {
 		return nil, cleanup, fmt.Errorf("disk: no device")
 	}
+	stable := make([]string, len(disks))
+	for i, dev := range disks {
+		stable[i] = stableDevpath(dev)
+	}
 	spec := vmSpec{
 		name:     t.Name,
 		vcpus:    t.VCPUs,
 		memoryMB: *t.Memory / (1024 * 1024),
-		disks:    disks,
+		disks:    stable,
 		bridges:  t.Bridge,
 		extra:    t.VirtInstArgs,
 	}
@@ -321,6 +325,36 @@ func (t *T) removeCDROM() error {
 		return err
 	}
 	return nil
+}
+
+// sysBlock is where the kernel says what a block device is. A var for the tests.
+var sysBlock = "/sys/block"
+
+// stableDevpath returns the path naming the device of dev in the definition of
+// the domain, the same on every node and at every boot: a device mapper or a
+// loop minor is neither, the definition being shared by the nodes, on which it
+// would name another disk. The name of a device mapper device is, and a loop
+// device is left out for its backing file.
+func stableDevpath(dev string) string {
+	base := filepath.Base(dev)
+	read := func(rel string) string {
+		b, err := os.ReadFile(filepath.Join(sysBlock, base, rel))
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(string(b))
+	}
+	switch {
+	case strings.HasPrefix(base, "dm-"):
+		if name := read("dm/name"); name != "" {
+			return "/dev/mapper/" + name
+		}
+	case strings.HasPrefix(base, "loop"):
+		if file := read("loop/backing_file"); file != "" {
+			return file
+		}
+	}
+	return dev
 }
 
 // isURL says the image keyword names something to download.
