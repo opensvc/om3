@@ -452,6 +452,10 @@ func (t *T) Start(ctx context.Context) error {
 		t.Log().Infof("container %s is already up", t.Name)
 		return nil
 	}
+	// A guest down is past its installer, which a start does not resume.
+	if err := t.removeCDROM(); err != nil {
+		return err
+	}
 	if _, err := t.networkUp(ctx); err != nil {
 		return err
 	}
