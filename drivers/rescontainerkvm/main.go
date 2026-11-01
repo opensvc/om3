@@ -1052,7 +1052,7 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	return t.ProvisionAsLeader(ctx)
 }
 
-func (t *T) ProvisionAsLeader(ctx context.Context) error {
+func (t *T) ProvisionAsLeader(ctx context.Context) (err error) {
 	isProvisioned, err := t.provisioned(ctx)
 	if err != nil {
 		return err
@@ -1064,6 +1064,15 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.memCapError(); err != nil {
 		return err
 	}
+	// An installer no guest went on with is not kept, as large as a disk may be.
+	defer func() {
+		if err == nil {
+			return
+		}
+		if rerr := t.removeCDROM(); rerr != nil {
+			t.Log().Warnf("%s", rerr)
+		}
+	}()
 	base := t.VirtInst
 	if t.hasSpec() {
 		l, cleanup, err := t.specCommand(ctx)
