@@ -275,6 +275,12 @@ func (t *Manager) provisioningLeader() string {
 	leaders := t.leaders()
 	switch len(leaders) {
 	case 0:
+		// A flex object of no target, as a volume its children start,
+		// has no leader: the first candidate of the placement leads the
+		// provision, or the nodes waiting for one would wait for ever.
+		if candidates := t.leaderCandidates(); len(candidates) > 0 {
+			return candidates[0]
+		}
 		return ""
 	case 1:
 		return leaders[0]
@@ -297,6 +303,9 @@ func (t *Manager) runningInstances() []string {
 
 func (t *Manager) isProvisioningLeader() bool {
 	if t.objStatus.Topology == topology.Flex {
+		if len(t.leaders()) == 0 {
+			return t.provisioningLeader() == t.localhost
+		}
 		return t.state.IsLeader
 	} else {
 		if t.provisioningLeader() == t.localhost {
