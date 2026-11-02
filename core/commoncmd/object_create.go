@@ -71,7 +71,7 @@ func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path
 	params := createParams(keywords, restore)
 	params.Store = &store
 	params.Snapshot = &snapshot
-	return postObjectConfig(ctx, c, p, nil, params, force, false)
+	return postObjectConfig(ctx, c, p, nil, params, force, restore)
 }
 
 func createParams(keywords []string, restore bool) api.PostObjectConfigFileParams {
