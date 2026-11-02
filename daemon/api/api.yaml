@@ -4431,7 +4431,8 @@ paths:
         for a directory not existing, 409 for a volume no longer available, a
         directory that is something else, a file existing, or an installed
         one, and 507 for a file not fitting in the size of the volume, which
-        is counted for a volume no filesystem of its own bounds.
+        is counted for a volume no filesystem of its own bounds, or for one
+        of too many files to count within the budget of a transfer.
 
         The ticket opens one transfer, and is refused once expired.
       parameters:

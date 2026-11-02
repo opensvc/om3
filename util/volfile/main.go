@@ -76,7 +76,11 @@ var (
 	// replace, replace or not.
 	ErrInstalled = errors.New("installed file")
 
-	errWalkBudget = errors.New("walk budget exceeded")
+	// ErrUncounted is a volume of too many files to count what it holds
+	// within the budget of a transfer, which is not to go over its size.
+	ErrUncounted = errors.New("too many files to count what the volume holds")
+
+	errWalkBudget = ErrUncounted
 )
 
 // HasFilesystem says a filesystem is mounted on head, which bounds what the
@@ -391,12 +395,10 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 	p := path.Join(dir, name)
 	var held int64
 	if size >= 0 {
-		held, err = used(root, p, time.Now().Add(walkBudget))
-		if errors.Is(err, errWalkBudget) {
-			// A tree too large to walk in the budget is not
-			// counted, rather than hold the transfer that long.
-			size = -1
-		} else if err != nil {
+		// A tree too large to walk in the budget refuses the
+		// transfer, rather than hold it that long, or let it go
+		// over the size no filesystem bounds.
+		if held, err = used(root, p, time.Now().Add(walkBudget)); err != nil {
 			return err
 		}
 	}
@@ -452,9 +454,7 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 // name or its tmp.
 func fitsAtEnd(root *os.Root, p, tmp string, size int64) error {
 	held, err := used(root, p, time.Now().Add(walkBudget))
-	if errors.Is(err, errWalkBudget) {
-		return nil
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 	others, err := transfers(root, tmp)
