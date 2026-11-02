@@ -658,34 +658,32 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		return cmd.Wait()
 	}
 
-	encapWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
+	// hostWrap does the action of the host on a resource, but on a container
+	// selected only for the encap resources it runs.
+	hostWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
-			// do host action before encap if ascending
-			if !isDesc && isActionForMaster && !slices.Contains(encaperRIDsAddedForSelectedEncapResources, r.RID()) {
-				if err := fn(ctx, r); err != nil {
-					return err
-				}
+			if !isActionForMaster || slices.Contains(encaperRIDsAddedForSelectedEncapResources, r.RID()) {
+				return nil
 			}
+			return fn(ctx, r)
+		}
+	}
 
-			sb := statusbus.FromContext(ctx)
-			if sb.Get(r.RID()).Is(status.Up, status.StandbyUp) {
-				err := doEncap(ctx, r)
-				switch {
-				case errors.Is(err, ErrEncapAgentNotInstalled):
-					r.Log().Warnf("%s: continue anyway", err)
-				case err != nil:
-					return err
-				}
-			}
-
-			// do host action after encap if descending
-			if isDesc && isActionForMaster && !slices.Contains(encaperRIDsAddedForSelectedEncapResources, r.RID()) {
-				if err := fn(ctx, r); err != nil {
-					return err
-				}
-			}
+	// encapStep does the action of the encap resources of a container up.
+	encapStep := func(ctx context.Context, r resource.Driver) error {
+		if _, ok := r.(resource.Encaper); !ok {
 			return nil
 		}
+		sb := statusbus.FromContext(ctx)
+		if !sb.Get(r.RID()).Is(status.Up, status.StandbyUp) {
+			return nil
+		}
+		err := doEncap(ctx, r)
+		if errors.Is(err, ErrEncapAgentNotInstalled) {
+			r.Log().Warnf("%s: continue anyway", err)
+			return nil
+		}
+		return err
 	}
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
@@ -811,7 +809,29 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 			t.log.Warnf("register object pg: %s", pgErr)
 		}
 	}
-	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "link-"+action.Name, progressWrap(linkWrap(encapWrap(fn)))); errors.Is(err, resource.ErrBarrier) {
+	// The encap resources run in what the host makes of the container:
+	// started once the host action is done, its resources depending on the
+	// container started with it, as the address an ip.netns gives it, and
+	// stopped before the host action takes them away. A host resource to
+	// start after an encap one says so with start_requires.
+	passes := []struct {
+		name string
+		fn   resourceset.DoFunc
+	}{
+		{"link-" + action.Name, progressWrap(linkWrap(hostWrap(fn)))},
+		{"encap-" + action.Name, progressWrap(encapStep)},
+	}
+	if isDesc {
+		passes[0], passes[1] = passes[1], passes[0]
+	}
+	var actionErr error
+	for _, pass := range passes {
+		actionErr = t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, pass.name, pass.fn)
+		if actionErr != nil && !errors.Is(actionErr, resource.ErrBarrier) {
+			break
+		}
+	}
+	if err := actionErr; errors.Is(err, resource.ErrBarrier) {
 		// pass
 	} else if err != nil {
 		if t.needRollback(ctxWithTimeout) {
