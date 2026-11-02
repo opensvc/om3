@@ -315,6 +315,21 @@ func (t *T) quota(ctx context.Context) (*xfsquota.T, uint32, error) {
 	return xfsquota.New(mnt.Target, xfsquota.WithLogger(t.Log())), t.projectID(), nil
 }
 
+// ProjectQuotaUsage implements resource.ProjectQuotaUser: what the project
+// quota of the directory counts, and bounds it to, ok false for a directory
+// with no size of its own.
+func (t *T) ProjectQuotaUsage(ctx context.Context) (used, hard int64, ok bool, err error) {
+	if !t.isQuotaBacked() {
+		return 0, 0, false, nil
+	}
+	q, id, err := t.quota(ctx)
+	if err != nil {
+		return 0, 0, false, err
+	}
+	used, hard, err = q.Get(ctx, id)
+	return used, hard, err == nil, err
+}
+
 // applyQuota stamps the directory with its project and, the first time,
 // bounds what it may hold. A directory with no size of its own is left alone.
 //

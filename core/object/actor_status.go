@@ -139,6 +139,7 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 	if len(data.Resources) == 0 {
 		data.Optional = status.NotApplicable
 	}
+	data.Usage = t.volumeUsage(ctx, data.Avail)
 	var err error
 	data.Running, err = mergedRunningInfoList(t)
 	if err != nil {
@@ -162,6 +163,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
 	if len(data.Resources) == 0 {
 		data.Optional = status.NotApplicable
 	}
+	data.Usage = t.volumeUsage(ctx, data.Avail)
 	var err error
 	data.Running, err = mergedRunningInfoList(t)
 	if err != nil {
