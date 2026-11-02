@@ -402,20 +402,32 @@ func (t *T) createMountPoint(ctx context.Context) error {
 		perm = defaultPerm
 	}
 
+	// The mount point is recorded created, with the parents created with
+	// it, for the unprovision to remove them, empty, on every node.
 	if z, err := t.zoneOf(); err != nil {
 		return err
 	} else if z != nil {
 		// A zoned mount point is made through the root of the
 		// container, never out of it.
+		parents := resfshost.MissingParentsInZone(*z)
 		if err := z.MkdirAll(perm); err != nil {
 			return fmt.Errorf("error creating mountpoint %s: %w", t.mountPoint(), err)
 		}
+		t.mountPointRecord().MarkInZone(*z, parents)
 		return nil
 	}
+	parents := resfshost.MissingParents(t.mountPoint())
 	if err := os.MkdirAll(t.mountPoint(), perm); err != nil {
 		return fmt.Errorf("error creating mountpoint %s: %s", t.mountPoint(), err)
 	}
+	t.mountPointRecord().Mark(t.mountPoint(), parents)
 	return nil
+}
+
+// mountPointRecord is the record of the mount point a start created, and of
+// the parents created with it.
+func (t *T) mountPointRecord() resfshost.MountPointRecord {
+	return resfshost.MountPointRecord{File: filepath.Join(t.VarDir(), "mnt_created"), Log: t.Log()}
 }
 
 // CurrentSize implements resource.Sizer.
@@ -801,10 +813,23 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
+// UnprovisionAsFollower removes the mount point a start created on the node,
+// and the parents created with it, empty: the dataset is the leader's to
+// destroy, the mount point every node's own.
+func (t *T) UnprovisionAsFollower(ctx context.Context) error {
+	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
+	return t.removeMountPoint()
+}
+
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
+// removeMountPoint removes the mount point a start of the resource created,
+// and the parents created with it, each when empty and still the one created:
+// a directory the resource did not make, or holding something, is left.
 func (t *T) removeMountPoint() error {
 	mnt := t.mountPoint()
 	if mnt == "" {
@@ -814,23 +839,12 @@ func (t *T) removeMountPoint() error {
 		return err
 	} else if z != nil {
 		// The mount point is removed through the root of the
-		// container, when empty, and never the root itself.
-		if z.IsRoot() {
-			return nil
-		}
-		if err := z.Remove(); err != nil {
-			t.Log().Infof("leave the mount point %s: %s", mnt, err)
-		}
+		// container, and never the root itself.
+		t.mountPointRecord().RemoveInZone(*z)
 		return nil
 	}
-	if file.IsProtected(mnt) {
-		return fmt.Errorf("dir %s is protected: refuse to remove", mnt)
-	}
-	if !file.Exists(mnt) {
-		t.Log().Infof("dir %s is already removed", mnt)
-		return nil
-	}
-	return os.RemoveAll(mnt)
+	t.mountPointRecord().Remove(mnt)
+	return nil
 }
 
 func (t *T) isLegacy() (bool, error) {
