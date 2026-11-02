@@ -437,6 +437,12 @@ type (
 		EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (Commander, error)
 	}
 
+	// ProjectQuotaUser is a resource holding a directory bounded by a
+	// project quota, which says what the directory holds and may hold.
+	ProjectQuotaUser interface {
+		ProjectQuotaUsage(ctx context.Context) (used, hard int64, ok bool, err error)
+	}
+
 	// EncapAPIer is the Encaper whose guest daemon may be reached directly.
 	EncapAPIer interface {
 		// EncapAPIURL returns the url of the guest daemon, empty when the

@@ -53,12 +53,25 @@ type (
 		// evaluate it again then. Zero if it does not.
 		OutdatedAt time.Time `json:"outdated_at,omitzero"`
 
+		// Usage is what a volume holds on this node, nil for another kind of
+		// object, a volume not up, or one with no filesystem.
+		Usage *VolumeUsage `json:"usage,omitempty"`
+
 		// RPOBreachedAt is the earliest RPOBreachedAt of the resources:
 		// past it, this node taking over would lose more data than one
 		// of the resources allows. Each resource has its own contract,
 		// so the instance breaches when any of them does. Zero when no
 		// resource keeps a copy here.
 		RPOBreachedAt time.Time `json:"rpo_breached_at,omitzero"`
+	}
+
+	// VolumeUsage is what a volume holds, and may hold, in bytes, as measured
+	// at MeasuredAt. A directory of a pool with no filesystem of its own is
+	// measured by walking it, which is done again an hour later only.
+	VolumeUsage struct {
+		Used       int64     `json:"used"`
+		Size       int64     `json:"size"`
+		MeasuredAt time.Time `json:"measured_at"`
 	}
 
 	EncapStatus struct {
@@ -148,6 +161,10 @@ func (t Status) DeepCopy() *Status {
 	n.Running = append(resource.RunningInfoList{}, t.Running...)
 	n.Resources = t.Resources.DeepCopy()
 	n.Encap = t.Encap.DeepCopy()
+	if t.Usage != nil {
+		usage := *t.Usage
+		n.Usage = &usage
+	}
 	return &n
 }
 
