@@ -686,6 +686,65 @@ func (t *board) noteOf(rid, nodename string, e resource.StatusLogEntry) *note {
 	return n
 }
 
+// mixListed is the most rids a part of a mix of resource states lists.
+const mixListed = 6
+
+// mixedStates says the mix of resource states an instance status aggregates to
+// warn: the resources up, down and in warn, and the syncs down, whose data is
+// not replicated. A sync up is n/a in the aggregation, and not listed. The
+// webapp says the same, in mixedStates of its statusboard.
+func mixedStates(st instance.Status) string {
+	all := make(map[string]status.T)
+	for rid, r := range st.Resources {
+		all[rid] = r.Status
+	}
+	for _, encap := range st.Encap {
+		for rid, r := range encap.Resources {
+			all[rid] = r.Status
+		}
+	}
+	rids := make([]string, 0, len(all))
+	for rid := range all {
+		rids = append(rids, rid)
+	}
+	sort.Strings(rids)
+	var up, down, warn, unsynced []string
+	for _, rid := range rids {
+		state := all[rid]
+		switch {
+		case strings.Split(rid, "#")[0] == "sync":
+			if state == status.Down {
+				unsynced = append(unsynced, rid)
+			}
+		case state == status.Up || state == status.StandbyUp:
+			up = append(up, rid)
+		case state == status.Down || state == status.StandbyDown:
+			down = append(down, rid)
+		case state == status.Warn:
+			warn = append(warn, rid)
+		}
+	}
+	list := func(l []string) string {
+		if len(l) > mixListed {
+			return fmt.Sprintf("%s +%d", strings.Join(l[:mixListed], " "), len(l)-mixListed)
+		}
+		return strings.Join(l, " ")
+	}
+	parts := make([]string, 0, 4)
+	for _, p := range []struct {
+		rids []string
+		says string
+	}{{up, "up"}, {down, "down"}, {warn, "warn"}, {unsynced, "down, the data not replicated"}} {
+		if len(p.rids) > 0 {
+			parts = append(parts, list(p.rids)+" "+p.says)
+		}
+	}
+	if len(parts) == 0 {
+		return "mixed resource states"
+	}
+	return "mixed resource states: " + strings.Join(parts, ", ")
+}
+
 // loadObjectNotes adds the notes about the object and its instances, which
 // no resource marker points to.
 func (t *board) loadObjectNotes() {
@@ -710,14 +769,24 @@ func (t *board) loadObjectNotes() {
 			add(resource.WarnLevel, "placement", nil, text)
 		}
 	}
-	// An overall status in warn no resource note explains, as a resource
-	// in warn logging nothing: a note says it, for the issue mark to point
-	// to one.
+	// An overall status in warn no resource note explains is so by the
+	// aggregation of the resource states: up mixed with down, or a sync
+	// down. A note says the mix, for the issue mark to point to one, the
+	// nodes whose mix reads the same sharing it.
 	// An object in warn with no instance in warn is so by the aggregation of
 	// its instances, as too many up, which a note of its own says.
 	if obj := t.digest.Object.ActorStatus; obj != nil && obj.Overall == status.Warn && !t.hasResourceIssueNote() {
-		if l := t.nodesWith(func(s instance.States) bool { return s.Status.Overall == status.Warn }); len(l) > 0 {
-			add(resource.WarnLevel, "overall", l, "resources are in warn")
+		texts := make([]string, 0)
+		byText := make(map[string][]string)
+		for _, nodename := range t.nodesWith(func(s instance.States) bool { return s.Status.Overall == status.Warn }) {
+			text := mixedStates(t.states[nodename].Status)
+			if _, ok := byText[text]; !ok {
+				texts = append(texts, text)
+			}
+			byText[text] = append(byText[text], nodename)
+		}
+		for _, text := range texts {
+			add(resource.WarnLevel, "overall", byText[text], text)
 		}
 	}
 	if !t.digest.IsCompat {

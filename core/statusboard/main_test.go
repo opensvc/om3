@@ -257,6 +257,48 @@ func TestTheHeaderSaysTheStatusesAndTheStatesOfTheObject(t *testing.T) {
 	assert.Equal(t, "O!", strings.Fields(lineOf(t, board, "instance"))[1], "the om mon overall warn mark of the instance")
 	// A resource in warn logging nothing: the overall warn gets a note.
 	assert.Contains(t, noteLines(t, board), "· warn overall n1")
+	assert.Contains(t, noteLines(t, board), "mixed resource states: fs#1 warn")
+}
+
+// An instance in warn no resource logs about is so by the mix of the states of
+// its resources, which the note says, the nodes whose mix reads the same
+// sharing it.
+func TestAnOverallWarnSaysTheMixOfResourceStates(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	mixed := func(nodename string, down string) instance.States {
+		s := newInstance(p, nodename, status.Up,
+			res{rid: "fs#1", typ: "fs.ext4", st: status.Up},
+			res{rid: "container#0", typ: "container.docker", st: status.Up},
+			res{rid: down, typ: "ip.host", st: status.Down},
+			res{rid: "sync#1", typ: "sync.rsync", st: status.Down},
+			res{rid: "sync#2", typ: "sync.rsync", st: status.Up},
+		)
+		s.Status.Overall = status.Warn
+		return s
+	}
+	d := newDigest(mixed("n1", "ip#0"), mixed("n2", "ip#0"), mixed("n3", "ip#1"))
+	d.Object.ActorStatus = &object.ActorStatus{Avail: status.Up, Overall: status.Warn, Topology: topology.Flex, UpInstancesCount: 3}
+	l := noteLines(t, Render(d, 200))
+	assert.Equal(t, []string{
+		"notes",
+		"· warn overall n1 n2",
+		"mixed resource states: container#0 fs#1 up, ip#0 down, sync#1 down, the data not replicated",
+		"· warn overall n3",
+		"mixed resource states: container#0 fs#1 up, ip#1 down, sync#1 down, the data not replicated",
+		"",
+	}, l)
+}
+
+func TestMixedStates(t *testing.T) {
+	st := instance.Status{Resources: instance.ResourceStatuses{}}
+	assert.Equal(t, "mixed resource states", mixedStates(st), "nothing to list")
+	for i := 0; i < 8; i++ {
+		st.Resources[fmt.Sprintf("app#%d", i)] = resource.Status{Status: status.StandbyUp}
+	}
+	st.Resources["fs#1"] = resource.Status{Status: status.StandbyDown}
+	st.Resources["sync#1"] = resource.Status{Status: status.Up}
+	st.Encap = instance.EncapMap{"container#1": {Status: instance.Status{Resources: instance.ResourceStatuses{"app#guest": {Status: status.Down}}}}}
+	assert.Equal(t, "mixed resource states: app#0 app#1 app#2 app#3 app#4 app#5 +2 up, app#guest fs#1 down", mixedStates(st), "a sync up is not listed")
 }
 
 // A copy older than its contract allows is an error: the instance has the om
