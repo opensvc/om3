@@ -547,7 +547,7 @@ func TestSessionGraphicsRefused(t *testing.T) {
 }
 
 // uploadNode starts a node storing what it is sent in a buffer.
-func uploadNode(t *testing.T, name string, key *rsa.PrivateKey, peerURL func(string) (string, error), upload func(console.Target, io.Reader) error) *testNode {
+func uploadNode(t *testing.T, name string, key *rsa.PrivateKey, peerURL func(string) (string, error), upload func(console.Target, string, io.Reader) error) *testNode {
 	t.Helper()
 	n := startTestNodeWithPeers(t, name, key, "true", peerURL)
 	n.setConfig(func(cfg *Config) { cfg.Upload = upload })
@@ -580,9 +580,12 @@ func put(t *testing.T, n *testNode, ticket, body string) (int, string) {
 func TestSessionUpload(t *testing.T) {
 	key := testRSAKey(t)
 	var got syncBuffer
-	var target console.Target
-	n := uploadNode(t, "node1", key, nil, func(tgt console.Target, r io.Reader) error {
-		target = tgt
+	var (
+		target console.Target
+		user   string
+	)
+	n := uploadNode(t, "node1", key, nil, func(tgt console.Target, u string, r io.Reader) error {
+		target, user = tgt, u
 		_, err := io.Copy(&got, r)
 		return err
 	})
@@ -591,6 +594,7 @@ func TestSessionUpload(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, code)
 	assert.Equal(t, "the bytes", got.String())
 	assert.Equal(t, "a.img", target.File)
+	assert.Equal(t, "alice", user, "the upload is marked as the user of the ticket")
 
 	code, body := put(t, n, ticket, "again")
 	assert.Equal(t, http.StatusUnauthorized, code, "a ticket opens one transfer")
@@ -604,11 +608,12 @@ func TestSessionUploadRefused(t *testing.T) {
 		code int
 	}{
 		"full":          {volfile.ErrFull, http.StatusInsufficientStorage},
+		"file exists":   {fmt.Errorf("%w: a.img", volfile.ErrExists), http.StatusConflict},
 		"no disk space": {fmt.Errorf("write: %w", syscall.ENOSPC), http.StatusInsufficientStorage},
 		"not available": {vpath.ErrAccess{Avail: status.Down}, http.StatusConflict},
 		"anything else": {errors.New("boom"), http.StatusInternalServerError},
 	} {
-		n := uploadNode(t, "node1", key, nil, func(console.Target, io.Reader) error { return tc.err })
+		n := uploadNode(t, "node1", key, nil, func(console.Target, string, io.Reader) error { return tc.err })
 		code, _ := put(t, n, uploadTicket(t, key, "node1"), "x")
 		assert.Equal(t, tc.code, code, name)
 	}
@@ -617,7 +622,7 @@ func TestSessionUploadRefused(t *testing.T) {
 // A page of another origin asks before it sends, with no ticket to use up.
 func TestSessionUploadPreflight(t *testing.T) {
 	key := testRSAKey(t)
-	n := uploadNode(t, "node1", key, nil, func(console.Target, io.Reader) error { return nil })
+	n := uploadNode(t, "node1", key, nil, func(console.Target, string, io.Reader) error { return nil })
 	u := strings.Replace(n.url, "wss://", "https://", 1)
 	req, err := http.NewRequest(http.MethodOptions, u, nil)
 	require.NoError(t, err)
@@ -634,7 +639,7 @@ func TestSessionUploadPreflight(t *testing.T) {
 func TestSessionUploadRelay(t *testing.T) {
 	key := testRSAKey(t)
 	var got syncBuffer
-	node2 := uploadNode(t, "node2", key, nil, func(_ console.Target, r io.Reader) error {
+	node2 := uploadNode(t, "node2", key, nil, func(_ console.Target, _ string, r io.Reader) error {
 		_, err := io.Copy(&got, r)
 		return err
 	})
