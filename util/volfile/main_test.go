@@ -1,6 +1,7 @@
 package volfile
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 )
 
 func TestIsName(t *testing.T) {
@@ -346,4 +348,42 @@ func TestOpen(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotFile, "a directory")
 	_, err = Open(head, "none", "f")
 	assert.ErrorIs(t, err, ErrNoDir)
+}
+
+// A file a datastore install writes is not replaced by an upload, replace or
+// not: the key is what to change. The listing says where it is from.
+func TestInstalledFile(t *testing.T) {
+	head := t.TempDir()
+	if err := probeXattr(head); err != nil {
+		t.Skipf("no user extended attributes here: %s", err)
+	}
+	p := filepath.Join(head, "config.yaml")
+	require.NoError(t, os.WriteFile(p, []byte("from the key"), 0o600))
+	at := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	b, err := json.Marshal(InstallMark{From: "dev/cfg/oc3", Key: "config.yaml", At: at})
+	require.NoError(t, err)
+	require.NoError(t, unix.Setxattr(p, InstallAttr, b, 0))
+
+	m, ok, err := Installed(head, ".", "config.yaml")
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "dev/cfg/oc3", m.From)
+
+	for _, replace := range []bool{false, true} {
+		err := Write(head, ".", "config.yaml", strings.NewReader("edited"), -1, Upload{Replace: replace})
+		assert.ErrorIs(t, err, ErrInstalled, "replace %v", replace)
+		assert.ErrorContains(t, err, "installed from dev/cfg/oc3 key config.yaml")
+	}
+	b, err = os.ReadFile(p)
+	require.NoError(t, err)
+	assert.Equal(t, "from the key", string(b))
+
+	l, err := List(head, ".")
+	require.NoError(t, err)
+	require.Len(t, l.Items, 1)
+	require.NotNil(t, l.Items[0].Installed)
+	assert.Equal(t, "config.yaml", l.Items[0].Installed.Key)
+	assert.True(t, at.Equal(l.Items[0].Installed.At))
+
+	require.NoError(t, Remove(head, ".", "config.yaml"), "a delete is allowed: the next install writes it again")
 }

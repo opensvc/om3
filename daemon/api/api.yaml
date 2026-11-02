@@ -4425,7 +4425,8 @@ paths:
         not at all, marked with who uploaded it and when. A file of that name
         is replaced only when `replace` is set: else the ticket is refused 409
         when the file exists, and the transfer too when it was created in the
-        meantime. The PUT is answered 204, 409 for a volume no longer available
+        meantime. A file a datastore install writes is refused 409, replace or
+        not: the key is what to change. The PUT is answered 204, 409 for a volume no longer available
         or a file existing, and 507 for a file not fitting in the size of the
         volume.
 
@@ -10051,6 +10052,16 @@ components:
           type: string
           format: date-time
           description: when the file was uploaded, absent for a file not uploaded
+        installed_from:
+          type: string
+          description: the datastore an install writes the file from, absent for a file not installed
+        installed_key:
+          type: string
+          description: the key of the datastore the file is written from, absent for a file not installed
+        installed_at:
+          type: string
+          format: date-time
+          description: when the install wrote the file, absent for a file not installed
 
     VolumeFileList:
       type: object

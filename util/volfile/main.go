@@ -67,12 +67,17 @@ var (
 	// ErrNotFile is an entry to read that is no regular file: a link is
 	// not followed.
 	ErrNotFile = errors.New("not a file")
+
+	// ErrInstalled is a file a datastore install writes, an upload not to
+	// replace, replace or not.
+	ErrInstalled = errors.New("installed file")
 )
 
 type (
 	// Info is what a listing says of an entry. UploadedBy and UploadedAt
 	// are the mark of an upload, empty for a file not uploaded, or on a
-	// filesystem not keeping it. Target is what a link says, never followed.
+	// filesystem not keeping it, and Installed the mark of a datastore
+	// install. Target is what a link says, never followed.
 	Info struct {
 		Name       string
 		Type       string
@@ -80,6 +85,7 @@ type (
 		ModifiedAt time.Time
 		UploadedBy string
 		UploadedAt time.Time
+		Installed  *InstallMark
 		Target     string
 	}
 
@@ -105,8 +111,49 @@ type (
 	}
 )
 
-// markAttr is the extended attribute marking a file uploaded.
-const markAttr = "user.opensvc.upload"
+const (
+	// UploadAttr is the extended attribute marking a file uploaded.
+	UploadAttr = "user.opensvc.upload"
+
+	// InstallAttr is the extended attribute marking a file a datastore
+	// install writes, an InstallMark.
+	InstallAttr = "user.opensvc.install"
+)
+
+// InstallMark is what a file a datastore install writes is marked with: the
+// datastore, its key, and when. An upload does not replace such a file, which
+// the next install would write again: the key is what to change.
+type InstallMark struct {
+	From string    `json:"from"`
+	Key  string    `json:"key"`
+	At   time.Time `json:"at"`
+}
+
+// installedError says why an upload does not replace an installed file.
+func installedError(name string, m InstallMark) error {
+	return fmt.Errorf("%w: %s is installed from %s key %s: change the key", ErrInstalled, name, m.From, m.Key)
+}
+
+// Installed returns the mark of the install of the entry of the name in the
+// directory, ok false when it has none.
+func Installed(head, dir, name string) (m InstallMark, ok bool, err error) {
+	root, err := openRoot(head, dir)
+	if err != nil {
+		return m, false, err
+	}
+	defer func() { _ = root.Close() }()
+	m, ok = installMarkOf(root, dir, name)
+	return m, ok, nil
+}
+
+func installMarkOf(root *os.Root, dir, name string) (InstallMark, bool) {
+	d, err := root.Open(dir)
+	if err != nil {
+		return InstallMark{}, false
+	}
+	defer func() { _ = d.Close() }()
+	return getInstallMark(d, name)
+}
 
 // IsName says a name is the one of an entry of a directory: no path, and not
 // what a listing leaves out.
@@ -309,6 +356,11 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 	if err != nil {
 		return err
 	}
+	// An install of a datastore writes the file: changing it is changing
+	// the key, which an upload does not.
+	if m, ok := installMarkOf(root, dir, name); ok {
+		return installedError(name, m)
+	}
 	if upload.Replace {
 		return root.Rename(tmp, p)
 	}
@@ -485,6 +537,9 @@ func List(head, dir string) (Listing, error) {
 			item.Type = TypeFile
 			if m, ok := getMark(d, e.Name()); ok {
 				item.UploadedBy, item.UploadedAt = m.By, m.At
+			}
+			if m, ok := getInstallMark(d, e.Name()); ok {
+				item.Installed = &m
 			}
 		}
 		listing.Items = append(listing.Items, item)

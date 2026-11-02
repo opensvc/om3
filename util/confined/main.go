@@ -39,6 +39,13 @@ type (
 		WriteFile(name string, data []byte, perm fs.FileMode) error
 		Remove(name string) error
 		RemoveAll(name string) error
+
+		// SetXattr, GetXattr and RemoveXattr set, read and remove an
+		// extended attribute of the file at name, not of what a link
+		// there leads to.
+		SetXattr(name, attr string, data []byte) error
+		GetXattr(name, attr string) ([]byte, error)
+		RemoveXattr(name, attr string) error
 	}
 
 	// Tree is FS confined to a directory: a path out of it, whether it is

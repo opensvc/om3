@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/danwakefield/fnmatch"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/volfile"
 )
 
 type (
@@ -274,7 +277,41 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err er
 	if err == nil && opt.Holds != nil {
 		opt.Holds(opt.RelativeToPath())
 	}
+	if err == nil && opt.ToHead != "" {
+		t.markInstalled(opt, vk.Key, changed)
+	}
 	return changed, err
+}
+
+// markInstalled marks the file an install of a volume writes with the
+// datastore and the key it is written from, for what lists the files of the
+// volume to say so, and an upload not to replace it, which the next install
+// would write again. A file written is marked anew, and one found up to date
+// when it has no mark of this key yet, as a file installed before marks were.
+// The mark of an upload goes: the file is no longer one.
+//
+// A filesystem keeping no extended attribute leaves the file unmarked, which
+// is no reason to fail the install.
+func (t *dataStore) markInstalled(opt KVInstall, key string, written bool) {
+	dst := opt.ToPath
+	from := t.path.String()
+	if !written {
+		if b, err := opt.fs.GetXattr(dst, volfile.InstallAttr); err == nil {
+			var m volfile.InstallMark
+			if json.Unmarshal(b, &m) == nil && m.From == from && m.Key == key {
+				return
+			}
+		}
+	}
+	b, err := json.Marshal(volfile.InstallMark{From: from, Key: key, At: time.Now()})
+	if err != nil {
+		return
+	}
+	if err := opt.fs.SetXattr(dst, volfile.InstallAttr, b); err != nil {
+		opt.ToLog.Tracef("mark %s installed from %s key %s: %s", dst, from, key, err)
+		return
+	}
+	_ = opt.fs.RemoveXattr(dst, volfile.UploadAttr)
 }
 
 // installDirKey creates a directory to host projected keys
