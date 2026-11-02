@@ -12,9 +12,10 @@ import (
 // The times of a listing are shown in the zone of the requester, whatever
 // the offset the store or the node answering wrote them with.
 func TestLocalSnapshotTimes(t *testing.T) {
-	saved := time.Local
-	t.Cleanup(func() { time.Local = saved })
-	time.Local = time.FixedZone("JST", 9*3600)
+	saved := localZone
+	t.Cleanup(func() { localZone = saved })
+	jst := time.FixedZone("JST", 9*3600)
+	localZone = func() *time.Location { return jst }
 
 	utc := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
 	cest := time.Date(2026, 10, 22, 14, 0, 0, 0, time.FixedZone("CEST", 2*3600))
