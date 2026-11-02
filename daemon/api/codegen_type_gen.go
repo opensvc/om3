@@ -4946,6 +4946,16 @@ type PostInstanceFileDirectoryParams struct {
 	Name InQueryFileName `form:"name" json:"name"`
 }
 
+// PostInstanceFileDownloadParams defines parameters for PostInstanceFileDownload.
+type PostInstanceFileDownloadParams struct {
+	// Dir a directory of the volume, relative to its top, which is the default:
+	// no component may lead up, nor be hidden
+	Dir *InQueryFileDir `form:"dir,omitempty" json:"dir,omitempty"`
+
+	// Name the name of an entry of the directory, a single component
+	Name InQueryFileName `form:"name" json:"name"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter

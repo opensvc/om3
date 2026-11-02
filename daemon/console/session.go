@@ -13,12 +13,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -63,6 +66,9 @@ type (
 
 		// Upload writes r to the file of a target, for the user named.
 		Upload func(target console.Target, user string, r io.Reader) error
+
+		// Download opens the file of a target, for reading.
+		Download func(target console.Target) (*os.File, error)
 
 		// PeerURL returns the url of the console endpoint of a peer
 		// node, and PeerTLSConfig how to verify it. A PeerTLSConfig
@@ -219,11 +225,12 @@ func (cfg Config) handle(w http.ResponseWriter, r *http.Request, raw net.Conn) {
 	// does not have it, as for a websocket: see the upgrader.
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Methods", http.MethodPut)
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Methods", http.MethodPut+", "+http.MethodGet)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Range")
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Content-Disposition, Accept-Ranges")
 	refuse := func(code int, err error) {
 		cfg.Log.Warnf("%s: refused: %s", r.RemoteAddr, err)
 		w.Header().Set("Connection", "close")
@@ -246,8 +253,12 @@ func (cfg Config) handle(w http.ResponseWriter, r *http.Request, raw net.Conn) {
 	if cfg.Authenticated != nil {
 		cfg.Authenticated()
 	}
-	if ticket.Target.Kind == console.KindUpload {
+	switch ticket.Target.Kind {
+	case console.KindUpload:
 		cfg.handleUpload(w, r, raw, ticket, signed)
+		return
+	case console.KindDownload:
+		cfg.handleDownload(w, r, raw, ticket, signed)
 		return
 	}
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -500,19 +511,134 @@ func (cfg Config) handleUpload(w http.ResponseWriter, r *http.Request, raw net.C
 	}
 }
 
-// relayUpload sends a transfer on to the console of the node of the ticket, and
+// idleWriter cuts a transfer whose client reads nothing for uploadIdle.
+type idleWriter struct {
+	http.ResponseWriter
+	conn net.Conn
+}
+
+func (t idleWriter) Write(p []byte) (int, error) {
+	_ = t.conn.SetWriteDeadline(time.Now().Add(uploadIdle))
+	return t.ResponseWriter.Write(p)
+}
+
+// handleDownload sends the file of a ticket, or relays the read to the node of
+// the ticket. A single Range is honoured, for a client to read the start of a
+// file, as a view does, rather than all of it.
+func (cfg Config) handleDownload(w http.ResponseWriter, r *http.Request, raw net.Conn, ticket *console.Ticket, signed string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "a file is read by a GET", http.StatusMethodNotAllowed)
+		return
+	}
+	// The handshake is done: the transfer lasts as long as its client reads.
+	_ = raw.SetDeadline(time.Time{})
+	target := ticket.Target
+	what := fmt.Sprintf("%s %s on %s by %s from %s", target.Path, path.Join(target.Dir, target.File), target.Node, ticket.User(), r.RemoteAddr)
+	if target.Node != cfg.Hostname {
+		cfg.Log.Infof("relay download: %s", what)
+		if err := cfg.relayDownload(w, r, ticket, signed); err != nil {
+			cfg.Log.Warnf("relay download ended: %s: %s", what, err)
+			http.Error(w, err.Error(), http.StatusBadGateway)
+		}
+		return
+	}
+	if cfg.Download == nil {
+		http.Error(w, "no download on this node", http.StatusInternalServerError)
+		return
+	}
+	f, err := cfg.Download(target)
+	switch {
+	case err == nil:
+	case errors.Is(err, fs.ErrNotExist):
+		http.Error(w, fmt.Sprintf("no such file: %s", target.File), http.StatusNotFound)
+		return
+	case errors.Is(err, volfile.ErrNotFile):
+		http.Error(w, fmt.Sprintf("not a file: %s", target.File), http.StatusConflict)
+		return
+	case errors.Is(err, volfile.ErrNoDir):
+		http.Error(w, fmt.Sprintf("no such directory: %s", target.Dir), http.StatusNotFound)
+		return
+	case errors.Is(err, volfile.ErrNotDir):
+		http.Error(w, fmt.Sprintf("not a directory: %s", target.Dir), http.StatusConflict)
+		return
+	case errors.Is(err, volfile.ErrInvalidDir):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.As(err, &vpath.ErrAccess{}):
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if unregister, err := register(cfg.SessionDir, Session{
+		PID:       os.Getpid(),
+		User:      ticket.User(),
+		Remote:    r.RemoteAddr,
+		Target:    target,
+		StartedAt: time.Now(),
+	}); err != nil {
+		cfg.Log.Warnf("record the session: %s", err)
+	} else {
+		defer unregister()
+	}
+	cfg.Log.Infof("download: %s", what)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": target.File}))
+	http.ServeContent(idleWriter{ResponseWriter: w, conn: raw}, r, "", info.ModTime(), f)
+	cfg.Log.Infof("download ended: %s", what)
+}
+
+// relayDownload reads a file from the console of the node of the ticket, and
 // answers what that node answers.
-func (cfg Config) relayUpload(w http.ResponseWriter, body io.Reader, size int64, ticket *console.Ticket, signed string) error {
+func (cfg Config) relayDownload(w http.ResponseWriter, r *http.Request, ticket *console.Ticket, signed string) error {
+	u, client, err := cfg.peerConsole(ticket, signed)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, u, nil)
+	if err != nil {
+		return err
+	}
+	for _, h := range []string{"Range", "If-Range"} {
+		if v := r.Header.Get(h); v != "" {
+			req.Header.Set(h, v)
+		}
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	for _, h := range []string{"Content-Type", "Content-Length", "Content-Range", "Content-Disposition", "Accept-Ranges", "Last-Modified"} {
+		if v := resp.Header.Get(h); v != "" {
+			w.Header().Set(h, v)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, resp.Body)
+	return nil
+}
+
+// peerConsole returns the url of the console of the node of the ticket, with
+// the ticket, and the client to reach it.
+func (cfg Config) peerConsole(ticket *console.Ticket, signed string) (string, *http.Client, error) {
 	if cfg.PeerURL == nil {
-		return fmt.Errorf("no route to the console of node %s", ticket.Target.Node)
+		return "", nil, fmt.Errorf("no route to the console of node %s", ticket.Target.Node)
 	}
 	peerURL, err := cfg.PeerURL(ticket.Target.Node)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 	u, err := url.Parse(peerURL)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 	u.Scheme = "https"
 	q := u.Query()
@@ -522,12 +648,21 @@ func (cfg Config) relayUpload(w http.ResponseWriter, body io.Reader, size int64,
 	if tlsConfig != nil && tlsConfig.ServerName == "" {
 		tlsConfig.ServerName = ticket.Target.Node
 	}
-	req, err := http.NewRequest(http.MethodPut, u.String(), body)
+	return u.String(), &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}, nil
+}
+
+// relayUpload sends a transfer on to the console of the node of the ticket, and
+// answers what that node answers.
+func (cfg Config) relayUpload(w http.ResponseWriter, body io.Reader, size int64, ticket *console.Ticket, signed string) error {
+	u, client, err := cfg.peerConsole(ticket, signed)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPut, u, body)
 	if err != nil {
 		return err
 	}
 	req.ContentLength = size
-	client := http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, err)

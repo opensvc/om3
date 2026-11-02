@@ -113,6 +113,7 @@ func serveInherited(log *plog.Logger) error {
 		Command:        enterCommand,
 		Graphics:       graphicsDial,
 		Upload:         volumeUpload,
+		Download:       volumeDownload,
 		PeerURL: func(node string) (string, error) {
 			return peerURL(node, port)
 		},
@@ -203,6 +204,40 @@ func volumeUpload(target console.Target, user string, r io.Reader) error {
 		size = -1
 	}
 	return volfile.Write(resolved.Head, dir, target.File, r, size, volfile.Upload{By: user, Replace: target.Replace})
+}
+
+// volumeDownload opens the file of a target, for reading.
+func volumeDownload(target console.Target) (*os.File, error) {
+	head, dir, err := volumeTargetDir(target)
+	if err != nil {
+		return nil, err
+	}
+	return volfile.Open(head, dir, target.File)
+}
+
+// volumeTargetDir returns the head of the volume of a target, and its directory.
+func volumeTargetDir(target console.Target) (string, string, error) {
+	path, err := naming.ParsePath(target.Path)
+	if err != nil {
+		return "", "", fmt.Errorf("console target: %w", err)
+	}
+	if path.Kind != naming.KindVol || !volfile.IsName(target.File) {
+		return "", "", fmt.Errorf("console target: %s %q is no file of a volume", path, target.File)
+	}
+	dir, err := volfile.CleanDir(target.Dir)
+	if err != nil {
+		return "", "", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), graphicsDialTimeout)
+	defer cancel()
+	resolved, err := vpath.Resolve(ctx, path.Name+"/", path.Namespace, nil)
+	if err != nil {
+		return "", "", err
+	}
+	if resolved.Head == "" {
+		return "", "", fmt.Errorf("%s holds no filesystem", path)
+	}
+	return resolved.Head, dir, nil
 }
 
 // loginShell returns the shell of the user running the session, /bin/sh when

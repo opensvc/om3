@@ -633,7 +633,8 @@ func TestSessionUploadPreflight(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-	assert.Equal(t, http.MethodPut, resp.Header.Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "PUT, GET", resp.Header.Get("Access-Control-Allow-Methods"))
+	assert.Contains(t, resp.Header.Get("Access-Control-Allow-Headers"), "Range")
 }
 
 // A transfer reaching another node than the one of the volume goes on to it,
@@ -665,4 +666,99 @@ func TestRegisterSweepsDeadSessions(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoFileExists(t, dead)
 	assert.FileExists(t, alive)
+}
+
+func downloadNode(t *testing.T, name string, key *rsa.PrivateKey, peerURL func(string) (string, error), download func(console.Target) (*os.File, error)) *testNode {
+	t.Helper()
+	n := startTestNodeWithPeers(t, name, key, "true", peerURL)
+	n.setConfig(func(cfg *Config) { cfg.Download = download })
+	return n
+}
+
+func downloadTicket(t *testing.T, key *rsa.PrivateKey, node, file string) string {
+	t.Helper()
+	ticket, err := console.NewTicket("alice", "node1", console.Target{Node: node, Path: "ns1/vol/images", Kind: console.KindDownload, Dir: "isos", File: file})
+	require.NoError(t, err)
+	signed, err := ticket.Sign(key)
+	require.NoError(t, err)
+	return signed
+}
+
+func get(t *testing.T, n *testNode, ticket, rangeHeader string) (*http.Response, string) {
+	t.Helper()
+	u := strings.Replace(n.url, "wss://", "https://", 1) + "?ticket=" + url.QueryEscape(ticket)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	require.NoError(t, err)
+	if rangeHeader != "" {
+		req.Header.Set("Range", rangeHeader)
+	}
+	c := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	resp, err := c.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp, string(b)
+}
+
+func fileOpener(t *testing.T, content string) func(console.Target) (*os.File, error) {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "f")
+	require.NoError(t, os.WriteFile(p, []byte(content), 0o600))
+	return func(console.Target) (*os.File, error) { return os.Open(p) }
+}
+
+// A file is read by a GET, as an attachment of its name, whole or a range of
+// it, and a ticket opens one read.
+func TestSessionDownload(t *testing.T) {
+	key := testRSAKey(t)
+	n := downloadNode(t, "node1", key, nil, fileOpener(t, "0123456789"))
+
+	ticket := downloadTicket(t, key, "node1", "Capture d'écran.png")
+	resp, body := get(t, n, ticket, "")
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "0123456789", body)
+	assert.Equal(t, "10", resp.Header.Get("Content-Length"))
+	assert.Equal(t, "application/octet-stream", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "attachment; filename*=utf-8''Capture%20d%27%C3%A9cran.png", resp.Header.Get("Content-Disposition"), "rfc 6266 for a name not ascii")
+	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+	assert.Contains(t, resp.Header.Get("Access-Control-Expose-Headers"), "Content-Range")
+
+	resp, _ = get(t, n, ticket, "")
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "a ticket opens one read")
+
+	resp, body = get(t, n, downloadTicket(t, key, "node1", "a.iso"), "bytes=0-3")
+	assert.Equal(t, http.StatusPartialContent, resp.StatusCode)
+	assert.Equal(t, "0123", body)
+	assert.Equal(t, "bytes 0-3/10", resp.Header.Get("Content-Range"))
+	assert.Equal(t, "attachment; filename=a.iso", resp.Header.Get("Content-Disposition"))
+}
+
+func TestSessionDownloadRefused(t *testing.T) {
+	key := testRSAKey(t)
+	for name, tc := range map[string]struct {
+		err  error
+		code int
+	}{
+		"no file":       {fmt.Errorf("open: %w", os.ErrNotExist), http.StatusNotFound},
+		"not a file":    {fmt.Errorf("%w: l", volfile.ErrNotFile), http.StatusConflict},
+		"no directory":  {fmt.Errorf("%w: isos", volfile.ErrNoDir), http.StatusNotFound},
+		"not available": {vpath.ErrAccess{Avail: status.Down}, http.StatusConflict},
+	} {
+		n := downloadNode(t, "node1", key, nil, func(console.Target) (*os.File, error) { return nil, tc.err })
+		resp, _ := get(t, n, downloadTicket(t, key, "node1", "a.iso"), "")
+		assert.Equal(t, tc.code, resp.StatusCode, name)
+	}
+}
+
+// A read reaching another node than the one of the volume goes on to it, its
+// range included.
+func TestSessionDownloadRelay(t *testing.T) {
+	key := testRSAKey(t)
+	node2 := downloadNode(t, "node2", key, nil, fileOpener(t, "0123456789"))
+	node1 := downloadNode(t, "node1", key, func(string) (string, error) { return node2.url, nil }, nil)
+	resp, body := get(t, node1, downloadTicket(t, key, "node2", "a.iso"), "bytes=2-4")
+	assert.Equal(t, http.StatusPartialContent, resp.StatusCode)
+	assert.Equal(t, "234", body)
+	assert.Equal(t, "bytes 2-4/10", resp.Header.Get("Content-Range"))
+	assert.Equal(t, "attachment; filename=a.iso", resp.Header.Get("Content-Disposition"))
 }

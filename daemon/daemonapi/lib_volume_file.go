@@ -220,3 +220,40 @@ func (a *DaemonAPI) DeleteInstanceFile(ctx echo.Context, nodename, namespace str
 	}
 	return ctx.NoContent(http.StatusNoContent)
 }
+
+// PostInstanceFileDownload issues the ticket a file of a volume is read with,
+// through the console listener, as an upload sends one: a volume holds files
+// of several GiB, which are no reason to have the daemon read them.
+func (a *DaemonAPI) PostInstanceFileDownload(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceFileDownloadParams) error {
+	if v, err := assertAdmin(ctx, namespace); !v {
+		return err
+	}
+	if !volfile.IsName(params.Name) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid file name", "%q: a name of an entry of the directory is expected", params.Name)
+	}
+	nodename = a.parseNodename(nodename)
+	if a.localhost != nodename {
+		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+			return c.PostInstanceFileDownload(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+		})
+	}
+	dir, err := volumeDir(ctx, params.Dir)
+	if ctx.Response().Committed {
+		return err
+	}
+	head, err := a.volumeHead(ctx, namespace, kind, name)
+	if noVolumeHead(ctx) {
+		return err
+	}
+	if _, err := volfile.Stat(head, dir, params.Name); err != nil {
+		if errors.Is(err, volfile.ErrNotFile) {
+			return JSONProblemf(ctx, http.StatusConflict, "Not a file", "%s", err)
+		}
+		return volfileProblem(ctx, err, "Stat file")
+	}
+	p, err := naming.NewPath(namespace, kind, name)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid path", "%s", err)
+	}
+	return a.issueConsoleTicket(ctx, console.Target{Node: a.localhost, Path: p.String(), Kind: console.KindDownload, Dir: dir, File: params.Name})
+}
