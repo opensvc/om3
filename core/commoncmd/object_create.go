@@ -54,8 +54,12 @@ func DataFromTemplate(template string) ([]byte, error) {
 // recorded of itself, unless restore, and applies the keyword operations
 // after, so a keyword they name is kept. With force, an object that exists
 // already has its configuration replaced, with the same treatment.
+//
+// A restore replaces an object that exists too, as the create does with no
+// daemon running: what a backup or a hypervisor restores is the object as it
+// was saved, whatever the node holds of it.
 func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force bool) error {
-	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore), force)
+	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore), force, restore)
 }
 
 // CreateObjectConfigFromStore creates the object at p from the snapshot of
@@ -67,7 +71,7 @@ func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path
 	params := createParams(keywords, restore)
 	params.Store = &store
 	params.Snapshot = &snapshot
-	return postObjectConfig(ctx, c, p, nil, params, force)
+	return postObjectConfig(ctx, c, p, nil, params, force, false)
 }
 
 func createParams(keywords []string, restore bool) api.PostObjectConfigFileParams {
@@ -82,7 +86,7 @@ func createParams(keywords []string, restore bool) api.PostObjectConfigFileParam
 	return params
 }
 
-func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, force bool) error {
+func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, force, replace bool) error {
 	resp, err := c.PostObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -99,7 +103,7 @@ func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte,
 		switch {
 		case !force && held:
 			return fmt.Errorf("%s: %s", p, resp.JSON409.Detail)
-		case !force:
+		case !force && !replace:
 			return fmt.Errorf("%s already exists", p)
 		case held:
 			return forceObjectConfig(ctx, c, p, b, params, "created")
