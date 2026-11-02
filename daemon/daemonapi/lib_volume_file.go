@@ -72,6 +72,12 @@ func (a *DaemonAPI) GetInstanceFiles(ctx echo.Context, nodename, namespace strin
 	items := make([]api.VolumeFile, len(l))
 	for i, f := range l {
 		items[i] = api.VolumeFile{Name: f.Name, Size: f.Size, ModifiedAt: f.ModifiedAt}
+		if f.UploadedBy != "" {
+			items[i].UploadedBy = &f.UploadedBy
+		}
+		if !f.UploadedAt.IsZero() {
+			items[i].UploadedAt = &f.UploadedAt
+		}
 	}
 	return ctx.JSON(http.StatusOK, api.VolumeFileList{Kind: "VolumeFileList", Items: items})
 }
@@ -96,15 +102,24 @@ func (a *DaemonAPI) PostInstanceFile(ctx echo.Context, nodename, namespace strin
 		})
 	}
 	// Said before a transfer is started, rather than at its end.
-	_, err := a.volumeHead(ctx, namespace, kind, name)
+	head, err := a.volumeHead(ctx, namespace, kind, name)
 	if noVolumeHead(ctx) {
 		return err
+	}
+	replace := params.Replace != nil && *params.Replace
+	if !replace {
+		// Asked again as the transfer ends, for a file created meanwhile.
+		if exists, err := volfile.Exists(head, params.Name); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Stat file", "%s", err)
+		} else if exists {
+			return JSONProblemf(ctx, http.StatusConflict, "File exists", "%s exists: set replace to replace it", params.Name)
+		}
 	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid path", "%s", err)
 	}
-	return a.issueConsoleTicket(ctx, console.Target{Node: a.localhost, Path: p.String(), Kind: console.KindUpload, File: params.Name})
+	return a.issueConsoleTicket(ctx, console.Target{Node: a.localhost, Path: p.String(), Kind: console.KindUpload, File: params.Name, Replace: replace})
 }
 
 // DeleteInstanceFile removes a file of a volume.

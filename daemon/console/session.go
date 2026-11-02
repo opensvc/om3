@@ -61,8 +61,8 @@ type (
 		// Graphics returns a connection to the display of a target.
 		Graphics func(console.Target) (net.Conn, error)
 
-		// Upload writes r to the file of a target.
-		Upload func(console.Target, io.Reader) error
+		// Upload writes r to the file of a target, for the user named.
+		Upload func(target console.Target, user string, r io.Reader) error
 
 		// PeerURL returns the url of the console endpoint of a peer
 		// node, and PeerTLSConfig how to verify it. A PeerTLSConfig
@@ -478,11 +478,13 @@ func (cfg Config) handleUpload(w http.ResponseWriter, r *http.Request, raw net.C
 		defer unregister()
 	}
 	cfg.Log.Infof("upload: %s", what)
-	err := cfg.Upload(target, body)
+	err := cfg.Upload(target, ticket.User(), body)
 	cfg.Log.Infof("upload ended: %s: %v", what, err)
 	switch {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, volfile.ErrExists):
+		http.Error(w, fmt.Sprintf("file exists: %s, not replaced", target.File), http.StatusConflict)
 	case errors.Is(err, volfile.ErrFull), errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EDQUOT):
 		http.Error(w, fmt.Sprintf("%s is full: grow the volume", target.Path), http.StatusInsufficientStorage)
 	case errors.As(err, &vpath.ErrAccess{}):

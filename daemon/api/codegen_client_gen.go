@@ -13154,6 +13154,18 @@ func NewPostInstanceFileRequest(server string, nodename InPathNodeName, namespac
 			}
 		}
 
+		if params.Replace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "replace", *params.Replace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}

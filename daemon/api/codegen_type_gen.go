@@ -3304,6 +3304,12 @@ type VolumeFile struct {
 	ModifiedAt time.Time `json:"modified_at"`
 	Name       string    `json:"name"`
 	Size       int64     `json:"size"`
+
+	// UploadedAt when the file was uploaded, absent for a file not uploaded
+	UploadedAt *time.Time `json:"uploaded_at,omitempty"`
+
+	// UploadedBy the user who uploaded the file, absent for a file not uploaded
+	UploadedBy *string `json:"uploaded_by,omitempty"`
 }
 
 // VolumeFileList defines model for VolumeFileList.
@@ -3478,6 +3484,9 @@ type States = []string
 
 // InQueryFileName defines model for inQueryFileName.
 type InQueryFileName = string
+
+// InQueryFileReplace defines model for inQueryFileReplace.
+type InQueryFileReplace = bool
 
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
@@ -4873,6 +4882,9 @@ type DeleteInstanceFileParams struct {
 type PostInstanceFileParams struct {
 	// Name the name of a file at the top of the volume
 	Name InQueryFileName `form:"name" json:"name"`
+
+	// Replace replace the file of that name, when it exists
+	Replace *InQueryFileReplace `form:"replace,omitempty" json:"replace,omitempty"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.

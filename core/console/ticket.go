@@ -60,6 +60,9 @@ type (
 
 		// File is the name of the file an upload writes.
 		File string `json:"file,omitempty"`
+
+		// Replace says an upload replaces the file of its name.
+		Replace bool `json:"replace,omitempty"`
 	}
 
 	// Ticket is what a client presents to open a console session. It is

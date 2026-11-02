@@ -174,7 +174,7 @@ func graphicsDial(target console.Target) (net.Conn, error) {
 }
 
 // volumeUpload writes r to the file of a target, within the size of the volume.
-func volumeUpload(target console.Target, r io.Reader) error {
+func volumeUpload(target console.Target, user string, r io.Reader) error {
 	path, err := naming.ParsePath(target.Path)
 	if err != nil {
 		return fmt.Errorf("console target: %w", err)
@@ -198,7 +198,7 @@ func volumeUpload(target console.Target, r io.Reader) error {
 	if size <= 0 {
 		size = -1
 	}
-	return volfile.Write(resolved.Head, target.File, r, size)
+	return volfile.Write(resolved.Head, target.File, r, size, volfile.Upload{By: user, Replace: target.Replace})
 }
 
 // loginShell returns the shell of the user running the session, /bin/sh when
