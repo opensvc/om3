@@ -407,8 +407,12 @@ func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.
 
 	pipeReader, pipeWriter := io.Pipe()
 
-	// Execute `om <path> create --config=- --restore --wait` in the encap container with the config piped in
-	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "create", "--config=-", "--restore", "--wait"}
+	// Execute `om <path> create --config=- --restore --force --wait` in the
+	// encap container with the config piped in. The object exists there
+	// when the config changed on the host: --force replaces it, which a
+	// guest agent of any version does, where --restore replaces only on the
+	// path of a guest daemon not running.
+	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "create", "--config=-", "--restore", "--force", "--wait"}
 	envs := []string{
 		xsession.SessionID().Var(),
 		env.Origin().Var(),
@@ -426,7 +430,31 @@ func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.
 		defer pipeWriter.Close() // signal EOF to the command.
 		io.Copy(pipeWriter, r)
 	}()
-	return cmd.Run()
+	// What the command says is the reason it failed, which its exit status
+	// alone does not tell.
+	if out, err := cmd.CombinedOutput(); err != nil {
+		if text := lastLines(string(out), encapErrorLines); text != "" {
+			return fmt.Errorf("%w: %s", err, text)
+		}
+		return err
+	}
+	return nil
+}
+
+// encapErrorLines is how many lines of the output of a command run in a
+// container an error says.
+const encapErrorLines = 3
+
+// lastLines returns the last n non-empty lines of s, joined.
+func lastLines(s string, n int) string {
+	l := make([]string, 0, n)
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for i := len(lines) - 1; i >= 0 && len(l) < n; i-- {
+		if line := strings.TrimSpace(lines[i]); line != "" {
+			l = append([]string{line}, l...)
+		}
+	}
+	return strings.Join(l, "; ")
 }
 
 func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer resource.Encaper, pushed bool) (*instance.EncapStatus, error) {
