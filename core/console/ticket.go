@@ -39,6 +39,10 @@ const (
 	// KindUpload is the kind of a console receiving a file of a volume: no
 	// session, a http PUT of its bytes.
 	KindUpload = "upload"
+
+	// KindDownload is the kind of a console sending a file of a volume: no
+	// session, a http GET of its bytes.
+	KindDownload = "download"
 )
 
 type (
@@ -149,7 +153,7 @@ func ParseTicket(s string, key *rsa.PublicKey) (*Ticket, error) {
 		return nil, errors.New("console ticket: incomplete target")
 	case t.Target.Path == "" && t.Target.Kind != KindShell:
 		return nil, errors.New("console ticket: incomplete target")
-	case t.Target.Kind == KindUpload && t.Target.File == "":
+	case (t.Target.Kind == KindUpload || t.Target.Kind == KindDownload) && t.Target.File == "":
 		return nil, errors.New("console ticket: incomplete target")
 	}
 	return t, nil

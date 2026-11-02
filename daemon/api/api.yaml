@@ -4488,6 +4488,53 @@ paths:
       tags:
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/file/download:
+    parameters:
+      - $ref: '#/components/parameters/inPathNodeName'
+      - $ref: '#/components/parameters/inPathNamespace'
+      - $ref: '#/components/parameters/inPathKind'
+      - $ref: '#/components/parameters/inPathName'
+    post:
+      operationId: PostInstanceFileDownload
+      description: |
+        Issue the ticket a file of a volume, available on the node, is read
+        with.
+
+        The file is read by a GET on the console endpoint, with the ticket in
+        the `ticket` query parameter, as an upload sends one: answered 200
+        with the bytes, or 206 for a single `Range`, as an attachment of the
+        name of the file. The ticket opens one read.
+
+        Answered 404 for a file not existing, and 409 for an entry that is no
+        file: a link is not followed.
+      parameters:
+        - $ref: '#/components/parameters/inQueryFileDir'
+        - $ref: '#/components/parameters/inQueryFileName'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleTicket'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/file/directory:
     parameters:
       - $ref: '#/components/parameters/inPathNodeName'

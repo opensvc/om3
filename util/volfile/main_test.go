@@ -318,3 +318,32 @@ func TestListIsCapped(t *testing.T) {
 	assert.True(t, l.Truncated)
 	assert.Equal(t, "f0000", l.Items[0].Name)
 }
+
+// A file is read as what it is: a link, a directory or nothing is no file.
+func TestOpen(t *testing.T) {
+	head := t.TempDir()
+	require.NoError(t, Mkdir(head, ".", "d"))
+	require.NoError(t, os.WriteFile(filepath.Join(head, "d", "f"), []byte("data"), 0o600))
+	require.NoError(t, os.Symlink("f", filepath.Join(head, "d", "l")))
+	outside := filepath.Join(t.TempDir(), "secret")
+	require.NoError(t, os.WriteFile(outside, []byte("secret"), 0o600))
+	require.NoError(t, os.Symlink(outside, filepath.Join(head, "d", "out")))
+
+	f, err := Open(head, "d", "f")
+	require.NoError(t, err)
+	b, err := io.ReadAll(f)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	assert.Equal(t, "data", string(b))
+
+	for name, want := range map[string]error{"l": ErrNotFile, "out": ErrNotFile, "none": os.ErrNotExist} {
+		_, err := Open(head, "d", name)
+		assert.ErrorIs(t, err, want, name)
+		_, err = Stat(head, "d", name)
+		assert.ErrorIs(t, err, want, name)
+	}
+	_, err = Open(head, ".", "d")
+	assert.ErrorIs(t, err, ErrNotFile, "a directory")
+	_, err = Open(head, "none", "f")
+	assert.ErrorIs(t, err, ErrNoDir)
+}

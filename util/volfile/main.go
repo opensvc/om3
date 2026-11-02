@@ -63,6 +63,10 @@ var (
 
 	// ErrNotEmpty is a directory to remove holding something.
 	ErrNotEmpty = errors.New("directory not empty")
+
+	// ErrNotFile is an entry to read that is no regular file: a link is
+	// not followed.
+	ErrNotFile = errors.New("not a file")
 )
 
 type (
@@ -170,6 +174,54 @@ func Exists(head, dir, name string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// Stat returns what the entry of the name in the directory is, not following
+// a link, ErrNotFile when it is no regular file.
+func Stat(head, dir, name string) (os.FileInfo, error) {
+	root, err := openRoot(head, dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	return statFile(root, path.Join(dir, name), name)
+}
+
+func statFile(root *os.Root, p, name string) (os.FileInfo, error) {
+	info, err := root.Lstat(p)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%w: %s", ErrNotFile, name)
+	}
+	return info, nil
+}
+
+// Open opens the file of the name in the directory for reading, a link not
+// followed: the file opened is the one Lstat said was a regular file.
+func Open(head, dir, name string) (*os.File, error) {
+	root, err := openRoot(head, dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	p := path.Join(dir, name)
+	before, err := statFile(root, p, name)
+	if err != nil {
+		return nil, err
+	}
+	f, err := root.Open(p)
+	if err != nil {
+		return nil, err
+	}
+	after, err := f.Stat()
+	if err != nil || !os.SameFile(before, after) {
+		_ = f.Close()
+		// Replaced between the two, by a link say.
+		return nil, fmt.Errorf("%w: %s", ErrNotFile, name)
+	}
+	return f, nil
 }
 
 // Mkdir makes the directory of the name in the directory, and no parent.
