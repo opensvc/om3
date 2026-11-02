@@ -230,37 +230,18 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 // resource's to remove: they are left, with a log.
 func (t *T) removeMountPoint() error {
 	mnt := t.mountPoint()
-	if mnt == "." || file.IsProtected(mnt) {
+	if mnt == "." {
 		return nil
 	}
-	if !t.createdMountPoint(mnt) {
-		return nil
-	}
-	fi, err := os.Lstat(mnt)
-	if errors.Is(err, os.ErrNotExist) {
-		t.forgetMountPointCreated()
-		return nil
-	} else if err != nil {
+	z, err := t.zoneOf()
+	if err != nil {
 		return err
 	}
-	if !fi.IsDir() && !(fi.Mode().IsRegular() && fi.Size() == 0) {
+	if z != nil {
+		t.mountPointRecord().RemoveInZone(*z)
 		return nil
 	}
-	remove := os.Remove
-	if z, err := t.zoneOf(); err != nil {
-		return err
-	} else if z != nil {
-		if z.IsRoot() {
-			return nil
-		}
-		remove = func(string) error { return z.Remove() }
-	}
-	if err := remove(mnt); err != nil {
-		t.Log().Infof("leave the mount point %s: %s", mnt, err)
-		return nil
-	}
-	t.forgetMountPointCreated()
-	t.Log().Infof("removed the mount point %s", mnt)
+	t.mountPointRecord().Remove(mnt)
 	return nil
 }
 
@@ -286,52 +267,10 @@ func mountPointIdentity(mnt string) (string, error) {
 	return fmt.Sprintf("%d %d", st.Dev, st.Ino), nil
 }
 
-// createdMountPoint says if what is at mnt is the mount point a start of the
-// resource created: a change of mnt, or a path replaced since, as by an
-// operator once the resource stopped, leaves it to the operator, and the
-// record is forgotten.
-func (t *T) createdMountPoint(mnt string) bool {
-	b, err := os.ReadFile(t.mountPointCreatedFile())
-	if err != nil {
-		return false
-	}
-	recorded, identity, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
-	if recorded != mnt {
-		return false
-	}
-	current, err := mountPointIdentity(mnt)
-	if errors.Is(err, os.ErrNotExist) {
-		t.forgetMountPointCreated()
-		return false
-	}
-	if err != nil || current != identity {
-		t.Log().Infof("leave the mount point %s: it is not the one the resource created", mnt)
-		t.forgetMountPointCreated()
-		return false
-	}
-	return true
-}
-
-func (t *T) markMountPointCreated(mnt string) {
-	identity, err := mountPointIdentity(mnt)
-	if err != nil {
-		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
-		return
-	}
-	p := t.mountPointCreatedFile()
-	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
-		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
-		return
-	}
-	if err := os.WriteFile(p, []byte(mnt+"\n"+identity+"\n"), 0600); err != nil {
-		t.Log().Warnf("record the mount point %s created: %s", mnt, err)
-	}
-}
-
-func (t *T) forgetMountPointCreated() {
-	if err := os.Remove(t.mountPointCreatedFile()); err != nil && !errors.Is(err, os.ErrNotExist) {
-		t.Log().Warnf("forget the mount point created: %s", err)
-	}
+// mountPointRecord is the record of the mount point a start created, and
+// of the parents created with it.
+func (t *T) mountPointRecord() MountPointRecord {
+	return MountPointRecord{File: t.mountPointCreatedFile(), Log: t.Log()}
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
@@ -617,6 +556,16 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// The parents the creation makes are recorded with the mount point,
+	// for the unprovision to remove them too, empty.
+	var parents []string
+	if !existed {
+		if z != nil {
+			parents = MissingParentsInZone(*z)
+		} else {
+			parents = MissingParents(t.mountPoint())
+		}
+	}
 	switch {
 	case z != nil && isRegular && t.isBind():
 		// A zoned mount point is made through the root of the
@@ -635,7 +584,11 @@ func (t *T) createMountPoint(ctx context.Context) error {
 		return err
 	}
 	if !existed {
-		t.markMountPointCreated(t.mountPoint())
+		if z != nil {
+			t.mountPointRecord().MarkInZone(*z, parents)
+		} else {
+			t.mountPointRecord().Mark(t.mountPoint(), parents)
+		}
 	}
 	return nil
 }

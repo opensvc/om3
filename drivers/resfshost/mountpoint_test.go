@@ -75,3 +75,95 @@ func TestUnprovisionRemovesTheMountPointItCreated(t *testing.T) {
 	require.NoError(t, r.UnprovisionAsLeader(ctx))
 	assert.DirExists(t, r.MountPoint, "a mnt changed since is not the one the start created")
 }
+
+// The parents a start created with the mount point are removed with it, each
+// empty, from the deepest: one holding something else stops the removal, and
+// one that existed before is the operator's.
+func TestUnprovisionRemovesTheParentsCreatedWithTheMountPoint(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+
+	mnt := filepath.Join(root, "a", "b", "c")
+	r := newMountPointResource(t, mnt)
+	require.NoError(t, r.createMountPoint(ctx))
+	require.NoError(t, r.UnprovisionAsLeader(ctx))
+	assert.NoDirExists(t, filepath.Join(root, "a"), "the 3 levels created are removed")
+	assert.DirExists(t, root, "what existed before stays")
+
+	// A parent holding something else stops the removal there.
+	r = newMountPointResource(t, mnt)
+	require.NoError(t, r.createMountPoint(ctx))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "a", "other"), nil, 0o600))
+	require.NoError(t, r.UnprovisionAsFollower(ctx))
+	assert.NoDirExists(t, filepath.Join(root, "a", "b"))
+	assert.DirExists(t, filepath.Join(root, "a"), "holding another file")
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "a")))
+
+	// A parent that existed before is not one the start created.
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "a"), 0o755))
+	r = newMountPointResource(t, mnt)
+	require.NoError(t, r.createMountPoint(ctx))
+	require.NoError(t, r.UnprovisionAsLeader(ctx))
+	assert.NoDirExists(t, filepath.Join(root, "a", "b"))
+	assert.DirExists(t, filepath.Join(root, "a"), "found by the start")
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "a")))
+
+	// A parent replaced since is the operator's, and so is what is above.
+	r = newMountPointResource(t, mnt)
+	require.NoError(t, r.createMountPoint(ctx))
+	require.NoError(t, os.Remove(mnt))
+	// Made while the former exists, for the inode not to be reused.
+	require.NoError(t, os.Mkdir(filepath.Join(root, "a", "b2"), 0o755))
+	require.NoError(t, os.Remove(filepath.Join(root, "a", "b")))
+	require.NoError(t, os.Rename(filepath.Join(root, "a", "b2"), filepath.Join(root, "a", "b")))
+	require.NoError(t, r.UnprovisionAsLeader(ctx))
+	assert.DirExists(t, filepath.Join(root, "a", "b"), "replaced")
+	assert.DirExists(t, filepath.Join(root, "a"))
+	assert.NoFileExists(t, r.mountPointCreatedFile(), "forgotten")
+}
+
+// The mount point recorded by an agent knowing no parent is removed, and its
+// parents left.
+func TestUnprovisionReadsARecordWithNoParent(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	mnt := filepath.Join(root, "a", "b")
+	require.NoError(t, os.MkdirAll(mnt, 0o755))
+	r := newMountPointResource(t, mnt)
+	id, err := mountPointIdentity(mnt)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(r.mountPointCreatedFile()), 0o700))
+	require.NoError(t, os.WriteFile(r.mountPointCreatedFile(), []byte(mnt+"\n"+id+"\n"), 0o600))
+	require.NoError(t, r.UnprovisionAsLeader(ctx))
+	assert.NoDirExists(t, mnt)
+	assert.DirExists(t, filepath.Join(root, "a"))
+}
+
+// In a zone, the parents created in the container are removed through its
+// root, and the root of the container is never removed.
+func TestZoneRemovesTheParentsCreatedWithTheMountPoint(t *testing.T) {
+	root := t.TempDir()
+	z := Zone{Root: root, Rel: "/srv/x/y"}
+	parents := MissingParentsInZone(z)
+	assert.Equal(t, []string{filepath.Join(root, "srv", "x"), filepath.Join(root, "srv")}, parents)
+	require.NoError(t, z.MkdirAll(0o755))
+	rec := MountPointRecord{File: filepath.Join(t.TempDir(), "mnt_created"), Log: plog.NewLogger(zerolog.Nop())}
+	rec.MarkInZone(z, parents)
+
+	// A link the container made of a parent leads nowhere out of it.
+	outside := t.TempDir()
+	require.NoError(t, os.Remove(filepath.Join(root, "srv", "x", "y")))
+	require.NoError(t, os.Remove(filepath.Join(root, "srv", "x")))
+	require.NoError(t, os.Symlink(outside, filepath.Join(root, "srv", "x")))
+	rec.RemoveInZone(z)
+	assert.DirExists(t, outside)
+	assert.FileExists(t, filepath.Join(root, "srv", "x"), "the link is not the directory created")
+	require.NoError(t, os.Remove(filepath.Join(root, "srv", "x")))
+
+	require.NoError(t, z.MkdirAll(0o755))
+	rec.MarkInZone(z, MissingParentsInZone(Zone{Root: root, Rel: "/srv/x/y"}))
+	rec.MarkInZone(z, []string{filepath.Join(root, "srv", "x")})
+	rec.RemoveInZone(z)
+	assert.NoDirExists(t, filepath.Join(root, "srv", "x"))
+	assert.DirExists(t, root)
+}
