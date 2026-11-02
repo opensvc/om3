@@ -170,7 +170,11 @@ func (t *Manager) crmFreeze() error {
 }
 
 func (t *Manager) crmProvisionNonLeader() error {
-	return t.crmAction("provision non leader", t.path.String(), "instance", "provision")
+	args := []string{t.path.String(), "instance", "provision"}
+	if t.provisionedOptions().Adopt {
+		args = append(args, "--adopt")
+	}
+	return t.crmAction("provision non leader", args...)
 }
 
 func (t *Manager) crmProvisionLeader() error {
