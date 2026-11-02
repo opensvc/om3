@@ -118,6 +118,7 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
 		manifest.ContextNodes,
+		manifest.ContextEncapNodes,
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
