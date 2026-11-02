@@ -525,7 +525,7 @@ func (t idleWriter) Write(p []byte) (int, error) {
 }
 
 // handleDownload sends the file of a ticket, or relays the read to the node of
-// the ticket. A single Range is honoured, for a client to read the start of a
+// the ticket. A Range is honoured, for a client to read the start of a
 // file, as a view does, rather than all of it.
 func (cfg Config) handleDownload(w http.ResponseWriter, r *http.Request, raw net.Conn, ticket *console.Ticket, signed string) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -615,7 +615,7 @@ func (cfg Config) relayDownload(w http.ResponseWriter, r *http.Request, ticket *
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, err)
+		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, withoutURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	for _, h := range []string{"Content-Type", "Content-Length", "Content-Range", "Content-Disposition", "Accept-Ranges", "Last-Modified"} {
@@ -626,6 +626,16 @@ func (cfg Config) relayDownload(w http.ResponseWriter, r *http.Request, ticket *
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)
 	return nil
+}
+
+// withoutURL returns the error of a request without its url, which holds the
+// signed ticket: the error is logged, and answered.
+func withoutURL(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return fmt.Errorf("%s: %w", urlErr.Op, urlErr.Err)
+	}
+	return err
 }
 
 // peerConsole returns the url of the console of the node of the ticket, with
@@ -667,7 +677,7 @@ func (cfg Config) relayUpload(w http.ResponseWriter, body io.Reader, size int64,
 	req.ContentLength = size
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, err)
+		return fmt.Errorf("console of node %s: %w", ticket.Target.Node, withoutURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	w.WriteHeader(resp.StatusCode)
