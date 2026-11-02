@@ -496,6 +496,8 @@ func (cfg Config) handleUpload(w http.ResponseWriter, r *http.Request, raw net.C
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, volfile.ErrExists):
 		http.Error(w, fmt.Sprintf("file exists: %s, not replaced", target.File), http.StatusConflict)
+	case errors.Is(err, volfile.ErrInstalled):
+		http.Error(w, fmt.Sprintf("installed file: %s, not replaced", target.File), http.StatusConflict)
 	case errors.Is(err, volfile.ErrNoDir):
 		http.Error(w, fmt.Sprintf("no such directory: %s", target.Dir), http.StatusNotFound)
 	case errors.Is(err, volfile.ErrNotDir):

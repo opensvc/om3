@@ -119,6 +119,9 @@ func (a *DaemonAPI) GetInstanceFiles(ctx echo.Context, nodename, namespace strin
 		if f.Type == volfile.TypeLink {
 			items[i].Target = &f.Target
 		}
+		if m := f.Installed; m != nil {
+			items[i].InstalledFrom, items[i].InstalledKey, items[i].InstalledAt = &m.From, &m.Key, &m.At
+		}
 	}
 	return ctx.JSON(http.StatusOK, api.VolumeFileList{Kind: "VolumeFileList", Items: items, Truncated: l.Truncated})
 }
@@ -152,6 +155,13 @@ func (a *DaemonAPI) PostInstanceFile(ctx echo.Context, nodename, namespace strin
 		return err
 	}
 	replace := params.Replace != nil && *params.Replace
+	// An install of a datastore writes the file: changing it is changing
+	// the key, which an upload does not, replace or not.
+	if m, ok, err := volfile.Installed(head, dir, params.Name); err != nil {
+		return volfileProblem(ctx, err, "Stat file")
+	} else if ok {
+		return JSONProblemf(ctx, http.StatusConflict, "Installed file", "%s is installed from %s key %s: change the key", params.Name, m.From, m.Key)
+	}
 	// Asked again as the transfer ends, for a file created meanwhile.
 	if exists, err := volfile.Exists(head, dir, params.Name); err != nil {
 		return volfileProblem(ctx, err, "Stat file")

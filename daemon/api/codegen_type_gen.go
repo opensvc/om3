@@ -3322,9 +3322,17 @@ type UserListKind string
 
 // VolumeFile defines model for VolumeFile.
 type VolumeFile struct {
-	ModifiedAt time.Time `json:"modified_at"`
-	Name       string    `json:"name"`
-	Size       int64     `json:"size"`
+	// InstalledAt when the install wrote the file, absent for a file not installed
+	InstalledAt *time.Time `json:"installed_at,omitempty"`
+
+	// InstalledFrom the datastore an install writes the file from, absent for a file not installed
+	InstalledFrom *string `json:"installed_from,omitempty"`
+
+	// InstalledKey the key of the datastore the file is written from, absent for a file not installed
+	InstalledKey *string   `json:"installed_key,omitempty"`
+	ModifiedAt   time.Time `json:"modified_at"`
+	Name         string    `json:"name"`
+	Size         int64     `json:"size"`
 
 	// Target what a link says, absent for another type
 	Target *string        `json:"target,omitempty"`
