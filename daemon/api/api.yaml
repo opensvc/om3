@@ -4426,9 +4426,12 @@ paths:
         is replaced only when `replace` is set: else the ticket is refused 409
         when the file exists, and the transfer too when it was created in the
         meantime. A file a datastore install writes is refused 409, replace or
-        not: the key is what to change. The PUT is answered 204, 409 for a volume no longer available
-        or a file existing, and 507 for a file not fitting in the size of the
-        volume.
+        not: the key is what to change. A directory is not replaced. The PUT
+        is answered 204, 400 for a directory leading out of the volume, 404
+        for a directory not existing, 409 for a volume no longer available, a
+        directory that is something else, a file existing, or an installed
+        one, and 507 for a file not fitting in the size of the volume, which
+        is counted for a volume no filesystem of its own bounds.
 
         The ticket opens one transfer, and is refused once expired.
       parameters:
@@ -4503,7 +4506,8 @@ paths:
 
         The file is read by a GET on the console endpoint, with the ticket in
         the `ticket` query parameter, as an upload sends one: answered 200
-        with the bytes, or 206 for a single `Range`, as an attachment of the
+        with the bytes, or 206 for a `Range`, multipart/byteranges for several
+        ranges, as an attachment of the
         name of the file. The ticket opens one read.
 
         Answered 404 for a file not existing, and 409 for an entry that is no

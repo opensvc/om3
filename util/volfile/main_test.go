@@ -418,3 +418,18 @@ func TestUploadWaitsForAnInstallWriting(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "from the key", string(b))
 }
+
+// A walk past its budget says so, for the transfer not to be held.
+func TestUsedWithinItsBudget(t *testing.T) {
+	head := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(head, "a"), []byte("12345"), 0o600))
+	root, err := os.OpenRoot(head)
+	require.NoError(t, err)
+	defer root.Close()
+	n, err := used(root, "b", time.Now().Add(time.Minute))
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), n)
+	_, err = used(root, "b", time.Now().Add(-time.Second))
+	assert.ErrorIs(t, err, errWalkBudget)
+	assert.False(t, HasFilesystem(head), "a directory of the filesystem of its parent")
+}

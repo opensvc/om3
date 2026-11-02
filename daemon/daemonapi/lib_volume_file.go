@@ -163,10 +163,17 @@ func (a *DaemonAPI) PostInstanceFile(ctx echo.Context, nodename, namespace strin
 		return JSONProblemf(ctx, http.StatusConflict, "Installed file", "%s is installed from %s key %s: change the key", params.Name, m.From, m.Key)
 	}
 	// Asked again as the transfer ends, for a file created meanwhile.
-	if exists, err := volfile.Exists(head, dir, params.Name); err != nil {
+	info, err := volfile.Lstat(head, dir, params.Name)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+	case err != nil:
 		return volfileProblem(ctx, err, "Stat file")
-	} else if exists && !replace {
+	case !replace:
 		return JSONProblemf(ctx, http.StatusConflict, "File exists", "%s exists: set replace to replace it", params.Name)
+	case info.IsDir():
+		// A rename does not replace a directory: refused before the
+		// transfer rather than at its end.
+		return JSONProblemf(ctx, http.StatusConflict, "Not a file", "%s is a directory: an upload replaces a file", params.Name)
 	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
