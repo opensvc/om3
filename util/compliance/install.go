@@ -24,8 +24,9 @@ const (
 // Install replaces the installed modules by those of the gzipped tarball r.
 //
 // The archive is unpacked next to the modules, which it replaces once
-// complete: a failure leaves them as they were. The previous modules are
-// left in the ".bck" sibling of the modules directory.
+// complete and holding a module a run can use (checkModules): a failure
+// leaves them as they were. The previous modules are left in the ".bck"
+// sibling of the modules directory.
 func (t *T) Install(r io.Reader) error {
 	parent := filepath.Dir(t.varDir)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
@@ -39,10 +40,31 @@ func (t *T) Install(r io.Reader) error {
 	if err := unpackModules(r, tmp); err != nil {
 		return fmt.Errorf("unpack the compliance modules: %w", err)
 	}
+	if err := t.checkModules(tmp); err != nil {
+		return err
+	}
 	if err := os.Chmod(tmp, 0o755); err != nil {
 		return err
 	}
 	return t.swapModules(tmp)
+}
+
+// checkModules fails when dir holds no module a run would find there, by the
+// rules a run finds them with (ListModules): a regular executable file owned by
+// root, named as a module or the main of a directory so named. A directory or
+// any other file is no proof the archive brings modules, and installing it
+// would leave the node without those attached to it, the update said done.
+func (t *T) checkModules(dir string) error {
+	staged := *t
+	staged.varDir = dir
+	mods, err := staged.ListModules()
+	if err != nil {
+		return err
+	}
+	if len(mods) == 0 {
+		return fmt.Errorf("no runnable module under %s/ in the archive: the installed modules are left as they are", archiveRoot)
+	}
+	return nil
 }
 
 func (t *T) swapModules(dir string) error {
