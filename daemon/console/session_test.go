@@ -763,3 +763,12 @@ func TestSessionDownloadRelay(t *testing.T) {
 	assert.Equal(t, "bytes 2-4/10", resp.Header.Get("Content-Range"))
 	assert.Equal(t, "attachment; filename=a.iso", resp.Header.Get("Content-Disposition"))
 }
+
+// The error of a relay names no url: it holds the signed ticket, and the
+// error is logged, and answered.
+func TestWithoutURL(t *testing.T) {
+	err := &url.Error{Op: "Put", URL: "https://node2:1216/?ticket=secret", Err: errors.New("connection refused")}
+	assert.NotContains(t, withoutURL(err).Error(), "secret")
+	assert.Contains(t, withoutURL(err).Error(), "connection refused")
+	assert.Equal(t, "other", withoutURL(errors.New("other")).Error())
+}
