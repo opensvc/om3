@@ -43,7 +43,17 @@ func newInstallT(t *testing.T) (*T, string) {
 	return comp, dir
 }
 
+// requireRoot skips a test installing modules, which a run, and so the
+// install, take only from root (validatePath).
+func requireRoot(t *testing.T) {
+	t.Helper()
+	if os.Getuid() != 0 {
+		t.Skip("the modules must be owned by root")
+	}
+}
+
 func TestInstall(t *testing.T) {
+	requireRoot(t)
 	comp, dir := newInstallT(t)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "S01-old"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "com.opensvc"), 0o755))
@@ -78,13 +88,23 @@ func TestInstall(t *testing.T) {
 // A refused archive leaves the installed modules alone.
 func TestInstallRefused(t *testing.T) {
 	cases := map[string][]byte{
-		"empty":      moduleArchive(t, tar.Header{Name: "compliance/", Typeflag: tar.TypeDir, Mode: 0o755}),
-		"outside":    moduleArchive(t, regular("etc/passwd", "x")),
-		"dotdot":     moduleArchive(t, regular("compliance/../../passwd", "x")),
-		"abs link":   moduleArchive(t, tar.Header{Name: "compliance/l", Typeflag: tar.TypeSymlink, Linkname: "/etc/passwd"}),
-		"up link":    moduleArchive(t, tar.Header{Name: "compliance/d/l", Typeflag: tar.TypeSymlink, Linkname: "../../x"}),
-		"device":     moduleArchive(t, tar.Header{Name: "compliance/null", Typeflag: tar.TypeChar}),
-		"not a gzip": []byte("not a gzip"),
+		"empty":    moduleArchive(t, tar.Header{Name: "compliance/", Typeflag: tar.TypeDir, Mode: 0o755}),
+		"outside":  moduleArchive(t, regular("etc/passwd", "x")),
+		"dotdot":   moduleArchive(t, regular("compliance/../../passwd", "x")),
+		"abs link": moduleArchive(t, tar.Header{Name: "compliance/l", Typeflag: tar.TypeSymlink, Linkname: "/etc/passwd"}),
+		"up link":  moduleArchive(t, tar.Header{Name: "compliance/d/l", Typeflag: tar.TypeSymlink, Linkname: "../../x"}),
+		"device":   moduleArchive(t, tar.Header{Name: "compliance/null", Typeflag: tar.TypeChar}),
+		// No module a run can use: nothing proves the archive brings modules.
+		"directory only": moduleArchive(t,
+			tar.Header{Name: "compliance/", Typeflag: tar.TypeDir, Mode: 0o755},
+			tar.Header{Name: "compliance/S10-new/", Typeflag: tar.TypeDir, Mode: 0o755},
+		),
+		"other file": moduleArchive(t, regular("compliance/README", "modules\n")),
+		"not executable": moduleArchive(t,
+			tar.Header{Name: "compliance/S10-new", Typeflag: tar.TypeReg, Mode: 0o644, Uname: "#!/bin/sh\n"},
+		),
+		"not named as a module": moduleArchive(t, regular("compliance/new", "#!/bin/sh\n")),
+		"not a gzip":            []byte("not a gzip"),
 	}
 	for name, b := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -98,4 +118,13 @@ func TestInstallRefused(t *testing.T) {
 			assert.Empty(t, leftovers)
 		})
 	}
+}
+
+// A module file at the top, as a directory with a main: either is a module.
+func TestInstallModuleFile(t *testing.T) {
+	requireRoot(t)
+	comp, dir := newInstallT(t)
+	b := moduleArchive(t, regular("compliance/S20-file", "#!/bin/sh\n"))
+	require.NoError(t, comp.Install(bytes.NewReader(b)))
+	assert.FileExists(t, filepath.Join(dir, "S20-file"))
 }
