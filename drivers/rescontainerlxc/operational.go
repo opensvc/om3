@@ -35,6 +35,10 @@ func (t *T) hasEncap() bool {
 //
 // The wait ends with the context, the start timeout of the resource.
 func (t *T) waitOperational(ctx context.Context) error {
+	// No command to run in the container is no reason to wait.
+	if _, err := t.rcmd(ctx, nil); err != nil {
+		return fmt.Errorf("container %s: %w", t.Name, err)
+	}
 	if err := t.waitAttach(ctx); err != nil {
 		return err
 	}
