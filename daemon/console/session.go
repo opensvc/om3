@@ -538,7 +538,7 @@ func (cfg Config) handleDownload(w http.ResponseWriter, r *http.Request, raw net
 	what := fmt.Sprintf("%s %s on %s by %s from %s", target.Path, path.Join(target.Dir, target.File), target.Node, ticket.User(), r.RemoteAddr)
 	if target.Node != cfg.Hostname {
 		cfg.Log.Infof("relay download: %s", what)
-		if err := cfg.relayDownload(w, r, ticket, signed); err != nil {
+		if err := cfg.relayDownload(idleWriter{ResponseWriter: w, conn: raw}, r, ticket, signed); err != nil {
 			cfg.Log.Warnf("relay download ended: %s: %s", what, err)
 			http.Error(w, err.Error(), http.StatusBadGateway)
 		}
