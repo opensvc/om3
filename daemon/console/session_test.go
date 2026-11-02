@@ -609,6 +609,8 @@ func TestSessionUploadRefused(t *testing.T) {
 	}{
 		"full":          {volfile.ErrFull, http.StatusInsufficientStorage},
 		"file exists":   {fmt.Errorf("%w: a.img", volfile.ErrExists), http.StatusConflict},
+		"no directory":  {fmt.Errorf("%w: isos", volfile.ErrNoDir), http.StatusNotFound},
+		"not directory": {fmt.Errorf("%w: isos", volfile.ErrNotDir), http.StatusConflict},
 		"no disk space": {fmt.Errorf("write: %w", syscall.ENOSPC), http.StatusInsufficientStorage},
 		"not available": {vpath.ErrAccess{Avail: status.Down}, http.StatusConflict},
 		"anything else": {errors.New("boom"), http.StatusInternalServerError},

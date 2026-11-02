@@ -485,6 +485,12 @@ func (cfg Config) handleUpload(w http.ResponseWriter, r *http.Request, raw net.C
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, volfile.ErrExists):
 		http.Error(w, fmt.Sprintf("file exists: %s, not replaced", target.File), http.StatusConflict)
+	case errors.Is(err, volfile.ErrNoDir):
+		http.Error(w, fmt.Sprintf("no such directory: %s", target.Dir), http.StatusNotFound)
+	case errors.Is(err, volfile.ErrNotDir):
+		http.Error(w, fmt.Sprintf("not a directory: %s", target.Dir), http.StatusConflict)
+	case errors.Is(err, volfile.ErrInvalidDir):
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	case errors.Is(err, volfile.ErrFull), errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EDQUOT):
 		http.Error(w, fmt.Sprintf("%s is full: grow the volume", target.Path), http.StatusInsufficientStorage)
 	case errors.As(err, &vpath.ErrAccess{}):

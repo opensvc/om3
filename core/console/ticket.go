@@ -58,6 +58,10 @@ type (
 		// Kind is the kind of console.
 		Kind string `json:"kind"`
 
+		// Dir is the directory of the volume an upload writes to, cleaned,
+		// "." or empty for the top.
+		Dir string `json:"dir,omitempty"`
+
 		// File is the name of the file an upload writes.
 		File string `json:"file,omitempty"`
 
