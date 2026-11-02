@@ -270,6 +270,13 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err er
 			return false, err
 		}
 	}
+	// An upload ending looks for the mark under the lock of the volume:
+	// the file is written and marked holding it.
+	if opt.ToHead != "" {
+		if unlock, err := volfile.Lock(opt.ToHead); err == nil {
+			defer unlock()
+		}
+	}
 	changed, err = t.writeKey(vk, b, opt)
 	if changed && opt.Wrote != nil {
 		opt.Wrote(opt.RelativeToPath())

@@ -387,3 +387,34 @@ func TestInstalledFile(t *testing.T) {
 
 	require.NoError(t, Remove(head, ".", "config.yaml"), "a delete is allowed: the next install writes it again")
 }
+
+// An upload ending waits for an install holding the lock of the volume, and
+// sees the mark it wrote: none is marked between the look and the rename.
+func TestUploadWaitsForAnInstallWriting(t *testing.T) {
+	head := t.TempDir()
+	if err := probeXattr(head); err != nil {
+		t.Skipf("no user extended attributes here: %s", err)
+	}
+	unlock, err := Lock(head)
+	require.NoError(t, err)
+	done := make(chan error, 1)
+	go func() {
+		done <- Write(head, ".", "config.yaml", strings.NewReader("edited"), -1, Upload{Replace: true})
+	}()
+	select {
+	case err := <-done:
+		require.Fail(t, "the upload did not wait", "%v", err)
+	case <-time.After(200 * time.Millisecond):
+	}
+	// The install writes and marks the file, holding the lock.
+	p := filepath.Join(head, "config.yaml")
+	require.NoError(t, os.WriteFile(p, []byte("from the key"), 0o600))
+	b, err := json.Marshal(InstallMark{From: "dev/cfg/oc3", Key: "config.yaml"})
+	require.NoError(t, err)
+	require.NoError(t, unix.Setxattr(p, InstallAttr, b, 0))
+	unlock()
+	assert.ErrorIs(t, <-done, ErrInstalled)
+	b, err = os.ReadFile(p)
+	require.NoError(t, err)
+	assert.Equal(t, "from the key", string(b))
+}
