@@ -37,8 +37,9 @@ type (
 		// not followed.
 		identity(p string) (string, error)
 		// removeEmptyDir removes the directory at the path when it is
-		// empty, and fails otherwise.
-		removeEmptyDir(p string) error
+		// empty and has the identity id, any when empty, and fails
+		// otherwise.
+		removeEmptyDir(p, id string) error
 		// top is the path no parent is looked for above.
 		top() string
 	}
@@ -187,7 +188,7 @@ func (r MountPointRecord) remove(paths mountPointPaths, mnt string) {
 		if file.IsProtected(mnt) {
 			return
 		}
-		if err := paths.removeEmptyDir(mnt); err != nil {
+		if err := paths.removeEmptyDir(mnt, ""); err != nil {
 			r.Log.Infof("leave the mount point %s: %s", mnt, err)
 			return
 		}
@@ -201,11 +202,7 @@ func (r MountPointRecord) remove(paths mountPointPaths, mnt string) {
 		if file.IsProtected(p) {
 			break
 		}
-		if current, err := paths.identity(p); err != nil || current != id {
-			r.Log.Infof("leave the directory %s: it is not the one the resource created", p)
-			break
-		}
-		if err := paths.removeEmptyDir(p); err != nil {
+		if err := paths.removeEmptyDir(p, id); err != nil {
 			r.Log.Infof("leave the directory %s: %s", p, err)
 			break
 		}
@@ -226,16 +223,33 @@ func (hostPaths) identity(p string) (string, error) {
 }
 
 // removeEmptyDir removes a directory, or the empty file of a file bind mount,
-// as rmdir and unlink do: what holds something is left.
-func (hostPaths) removeEmptyDir(p string) error {
+// as rmdir and unlink do: what holds something is left, and what has another
+// identity than id, looked at right before.
+func (hostPaths) removeEmptyDir(p, id string) error {
 	fi, err := os.Lstat(p)
 	if err != nil {
+		return err
+	}
+	if err := sameIdentity(p, fi, id); err != nil {
 		return err
 	}
 	if !fi.IsDir() && !(fi.Mode().IsRegular() && fi.Size() == 0) {
 		return fmt.Errorf("%s is no directory", p)
 	}
 	return os.Remove(p)
+}
+
+// sameIdentity says fi, the path p as looked at, has the identity id, any
+// when id is empty.
+func sameIdentity(p string, fi os.FileInfo, id string) error {
+	if id == "" {
+		return nil
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok || fmt.Sprintf("%d %d", st.Dev, st.Ino) != id {
+		return fmt.Errorf("%s is not the one the resource created", p)
+	}
+	return nil
 }
 
 func (t zonePaths) top() string { return t.z.Root }
@@ -291,12 +305,15 @@ func (t zonePaths) identity(p string) (string, error) {
 	return fmt.Sprintf("%d %d", st.Dev, st.Ino), nil
 }
 
-func (t zonePaths) removeEmptyDir(p string) error {
+func (t zonePaths) removeEmptyDir(p, id string) error {
 	fi, parent, name, err := t.lstat(p)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = parent.Close() }()
+	if err := sameIdentity(p, fi, id); err != nil {
+		return err
+	}
 	if fi.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("%s is a link", p)
 	}
