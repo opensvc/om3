@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -188,8 +189,11 @@ const (
 	// preflightAll checks the shared and the non-shared resources.
 	preflightAll preflightScope = iota
 
-	// preflightShared checks the shared resources, what the leader makes
-	// for all the nodes.
+	// preflightShared checks, before any node provisions, the shared
+	// resources, what the leader makes for all the nodes, and the
+	// non-shared ones found provisioned on a node om never started the
+	// instance on: something else made what they name, which the instance,
+	// reached, would take over with no provision of its own to check it.
 	preflightShared
 
 	// preflightLocal checks the non-shared resources, the node's own.
@@ -198,8 +202,6 @@ const (
 
 func (s preflightScope) has(r resource.Driver) bool {
 	switch s {
-	case preflightShared:
-		return r.IsShared()
 	case preflightLocal:
 		return !r.IsShared()
 	default:
@@ -217,6 +219,7 @@ func (s preflightScope) has(r resource.Driver) bool {
 // provisioned when what it names exists, whoever made it.
 func (t *actor) lockedProvisionPreflight(ctx context.Context, scope preflightScope) error {
 	conflicts := make([]string, 0)
+	startedHere := file.Exists(t.lastStartFile())
 	for _, r := range t.Resources() {
 		if !scope.has(r) {
 			continue
@@ -232,12 +235,23 @@ func (t *actor) lockedProvisionPreflight(ctx context.Context, scope preflightSco
 		if resource.ProvisionRecorded(r) {
 			continue
 		}
-		if scope == preflightLocal {
+		switch {
+		case scope == preflightLocal:
 			// Off the leader, the provision of a node checks what it
 			// makes now: a resource provisioned already, before
 			// provisions recorded what they made, is left as the
 			// provision of a node always left it.
 			if st, err := resource.Provisioned(ctx, r); err == nil && st == provisioned.True {
+				continue
+			}
+		case scope == preflightShared && !r.IsShared():
+			// A non-shared resource a node is to provision is checked
+			// by its provision, and stops that node alone. One found
+			// provisioned is checked here, unless om started the
+			// instance on the node: the start took what it names, its
+			// own then, as on a node provisioned before provisions
+			// recorded what they made.
+			if st, err := resource.Provisioned(ctx, r); err != nil || st != provisioned.True || startedHere {
 				continue
 			}
 		}
