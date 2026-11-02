@@ -251,7 +251,8 @@ func (t *actor) lockedProvisionPreflight(ctx context.Context, scope preflightSco
 			// instance on the node: the start took what it names, its
 			// own then, as on a node provisioned before provisions
 			// recorded what they made.
-			if st, err := resource.Provisioned(ctx, r); err != nil || st != provisioned.True || startedHere {
+			// A state not told is checked.
+			if st, err := resource.Provisioned(ctx, r); (err == nil && st != provisioned.True) || startedHere {
 				continue
 			}
 		}
