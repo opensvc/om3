@@ -23,14 +23,15 @@ func (o mountPointObject) ResourcesByDrivergroups([]driver.Group) resource.Drive
 	return nil
 }
 
-// A follower removes the mount point its start created, with the parents
-// created with it: the dataset is the leader's to destroy, the mount point
-// every node's own.
+// A follower of a shared dataset removes the mount point its start created,
+// with the parents created with it: the dataset is the leader's to destroy,
+// the mount point every node's own.
 func TestUnprovisionAsFollowerRemovesTheMountPointCreated(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	mnt := filepath.Join(root, "lxc", "base")
 	r := &T{MountPoint: mnt}
+	r.Shared = true
 	require.NoError(t, r.SetRID("fs#base"))
 	r.SetObject(mountPointObject{varDir: t.TempDir()})
 	require.NoError(t, r.createMountPoint(ctx))

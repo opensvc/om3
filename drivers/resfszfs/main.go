@@ -801,8 +801,9 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if v, err := fs.Exists(); err != nil {
 		return err
 	} else if !v {
+		// The mount point a start created is still removed.
 		t.Log().Infof("dataset %s is already destroyed", t.Device)
-		return nil
+		return t.removeMountPoint()
 	}
 	if err := fs.Destroy(zfs.FilesystemDestroyWithRemoveSnapshots(true)); err != nil {
 		return err
@@ -813,10 +814,15 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-// UnprovisionAsFollower removes the mount point a start created on the node,
-// and the parents created with it, empty: the dataset is the leader's to
-// destroy, the mount point every node's own.
+// UnprovisionAsFollower destroys the dataset of the node when not shared,
+// each node having provisioned its own, as the leader does. A shared dataset
+// is the leader's to destroy, and the follower removes the mount point a
+// start created on the node, and the parents created with it, empty: the
+// mount point is every node's own.
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
+	if !t.IsShared() {
+		return t.UnprovisionAsLeader(ctx)
+	}
 	if _, err := t.resolveMountPoint(); err != nil {
 		return err
 	}
