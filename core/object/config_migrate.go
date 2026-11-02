@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anmitsu/go-shlex"
+
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -70,6 +72,207 @@ var ObjectMigrationRules = MigrationRules{
 			"A size written as a share of the memory is kept in mnt_opt: om cannot say how big it is.",
 		apply: migrateTmpfsMountOptions,
 	},
+	{
+		Doc: "The secrets_environment and configs_environment keywords become lines of the environment keyword, " +
+			"and the create_secrets_environment and create_configs_environment of a lxc container lines of its " +
+			"create_environment: NAME=sec1/key becomes NAME from ./sec/sec1 key key, " +
+			"and sec1/pattern becomes * from ./sec/sec1 key pattern, the variables named after the keys.",
+		apply: migrateEnvironmentKeywords,
+	},
+}
+
+// environmentKeywords are the keywords of the variables read from the keys of
+// a datastore, by the keyword the environment lines of which they become, and
+// the kind of datastore they read, in the order the variables were set.
+var environmentKeywords = []struct {
+	target  string
+	sources []environmentSource
+}{
+	{"environment", []environmentSource{{"configs_environment", naming.KindCfg}, {"secrets_environment", naming.KindSec}}},
+	// The lxc driver set the secrets before the configs.
+	{"create_environment", []environmentSource{{"create_secrets_environment", naming.KindSec}, {"create_configs_environment", naming.KindCfg}}},
+}
+
+type environmentSource struct {
+	option string
+	kind   naming.Kind
+}
+
+// migrateEnvironmentKeywords writes the variables the secrets_environment and
+// configs_environment keywords read as lines of the environment keyword, which
+// says where each is read from: one keyword for every variable, the sec or the
+// cfg named by its path. The lines follow the ones the keyword had, in the
+// order the driver set the variables, the last of a name winning.
+//
+// A keyword written for a node or a group of nodes replaces the one of every
+// node there, for each of the three: the environment of a scope is written
+// whole, from what each keyword says for it as the configuration resolves it,
+// its own value, else the one of its group of nodes, else the one of every
+// node, so a node keeps the variables it had.
+func migrateEnvironmentKeywords(cfg *xconfig.T, m *Migration) {
+	for _, section := range cfg.SectionStrings() {
+		for _, kw := range environmentKeywords {
+			migrateEnvironmentKeyword(cfg, m, section, kw.target, kw.sources)
+		}
+	}
+}
+
+func migrateEnvironmentKeyword(cfg *xconfig.T, m *Migration, section, target string, sources []environmentSource) {
+	options := map[string]bool{target: true}
+	for _, src := range sources {
+		options[src.option] = true
+	}
+	// The scopes any of the keywords is written for, every node first.
+	scopes := []string{""}
+	present := false
+	for _, option := range cfg.Keys(section) {
+		base, scope := cutScope(option)
+		if !options[base] {
+			continue
+		}
+		if base != target {
+			present = true
+		}
+		if scope != "" && !slices.Contains(scopes, scope) {
+			scopes = append(scopes, scope)
+		}
+	}
+	if !present {
+		return
+	}
+	// The value of a keyword for a scope, as the configuration resolves it:
+	// its own, else for a node the one of a group of nodes it is in, else
+	// the one of every node.
+	groups := []struct {
+		scope string
+		in    func(string) (bool, error)
+	}{
+		{"nodes", cfg.IsInNodes},
+		{"drpnodes", cfg.IsInDRPNodes},
+		{"encapnodes", cfg.IsInEncapNodes},
+	}
+	isGroup := func(scope string) bool {
+		switch scope {
+		case "nodes", "drpnodes", "encapnodes":
+			return true
+		}
+		return false
+	}
+	valueOf := func(option, scope string) (string, key.T, bool, error) {
+		if scope != "" {
+			k := key.T{Section: section, Option: option + "@" + scope}
+			if cfg.HasKey(k) {
+				return cfg.Get(k), k, true, nil
+			}
+		}
+		if scope != "" && !isGroup(scope) {
+			for _, g := range groups {
+				k := key.T{Section: section, Option: option + "@" + g.scope}
+				if !cfg.HasKey(k) {
+					continue
+				}
+				if in, err := g.in(scope); err != nil {
+					return "", k, false, err
+				} else if in {
+					return cfg.Get(k), k, true, nil
+				}
+			}
+		}
+		k := key.T{Section: section, Option: option}
+		return cfg.Get(k), k, cfg.HasKey(k), nil
+	}
+	values := make(map[string]string)
+	for _, scope := range scopes {
+		current, k, _, err := valueOf(target, scope)
+		if err != nil {
+			m.Refusals = append(m.Refusals, fmt.Sprintf("%s: %s", k, err))
+			return
+		}
+		lines := make([]string, 0)
+		if current != "" {
+			lines = append(lines, current)
+		}
+		for _, src := range sources {
+			raw, k, ok, err := valueOf(src.option, scope)
+			if err != nil {
+				m.Refusals = append(m.Refusals, fmt.Sprintf("%s: %s", k, err))
+				return
+			}
+			if !ok {
+				continue
+			}
+			converted, err := environmentLines(raw, src.kind)
+			if err != nil {
+				m.Refusals = append(m.Refusals, fmt.Sprintf("%s: %s", k, err))
+				return
+			}
+			lines = append(lines, converted...)
+		}
+		values[scope] = strings.Join(lines, "\n")
+	}
+	for _, scope := range scopes {
+		option := target
+		if scope != "" {
+			option += "@" + scope
+		}
+		k := key.T{Section: section, Option: option}
+		if values[scope] == "" && !cfg.HasKey(k) && scope == "" {
+			continue
+		}
+		// An empty value written for a scope keeps it from the
+		// variables of a wider one, as the keywords did.
+		if !cfg.HasKey(k) || values[scope] != cfg.Get(k) {
+			m.Sets = append(m.Sets, set(section, option, values[scope]))
+		}
+	}
+	for _, option := range cfg.Keys(section) {
+		base, _ := cutScope(option)
+		if base == target || !options[base] {
+			continue
+		}
+		k := key.T{Section: section, Option: option}
+		m.Unsets = append(m.Unsets, k)
+		m.Notes = append(m.Notes, fmt.Sprintf("%s: moved to %s.%s", k, section, target))
+	}
+}
+
+// envVarNameRegexp is what the environment keyword reads as a variable name.
+var envVarNameRegexp = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// environmentLines converts the items of a secrets_environment or
+// configs_environment keyword to lines of the environment keyword:
+// NAME=store/key and store/pattern.
+func environmentLines(value string, kind naming.Kind) ([]string, error) {
+	items, err := shlex.Split(value, true)
+	if err != nil {
+		return nil, err
+	}
+	l := make([]string, 0, len(items))
+	for _, item := range items {
+		if item == "[]" {
+			continue
+		}
+		if strings.ContainsAny(item, " \t\"'") {
+			return nil, fmt.Errorf("%q: a blank or a quote in an item", item)
+		}
+		name, ref, isNamed := strings.Cut(item, "=")
+		if !isNamed {
+			name, ref = "*", item
+		}
+		store, k, ok := strings.Cut(ref, "/")
+		switch {
+		case !ok || store == "" || k == "":
+			// Read by no agent: a value is not a key reference.
+			return nil, fmt.Errorf("%q: not <name>=<store>/<key> nor <store>/<pattern>", item)
+		case isNamed && !envVarNameRegexp.MatchString(name):
+			return nil, fmt.Errorf("%q: %q is no variable name the environment keyword reads", item, name)
+		case isNamed && strings.ContainsAny(k, "*?["):
+			// Looked up as a key of that name, which none is.
+			return nil, fmt.Errorf("%q: a named variable reads a key, not a pattern", item)
+		}
+		l = append(l, fmt.Sprintf("%s from ./%s/%s key %s", name, kind, store, k))
+	}
+	return l, nil
 }
 
 // MigrationRulesOf returns the rules the configuration of a kind of object is

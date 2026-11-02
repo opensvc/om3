@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/envprovider"
@@ -46,7 +47,17 @@ func (t *T) getEnv(ctx context.Context, onIgnoreCallback func(err error)) (env [
 		"OPENSVC_NAMESPACE=" + t.Path.Namespace,
 	}
 	if len(t.Env) > 0 {
-		env = append(env, t.Env...)
+		l, _, err := datarecv.Environment(t.Env, t.Path.Namespace, func(err error) error {
+			// The status action passes no callback: it goes on silently.
+			if onIgnoreCallback != nil {
+				onIgnoreCallback(err)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, l...)
 	}
 	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg", envprovider.IgnoreExpected(onIgnoreCallback)); err != nil {
 		return nil, err

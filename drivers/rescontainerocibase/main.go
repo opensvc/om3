@@ -27,6 +27,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -409,11 +410,28 @@ func (t *BT) GenEnv(ctx context.Context) (envL []string, envM map[string]string,
 		"OPENSVC_ID=" + t.ObjectID.String(),
 		"OPENSVC_NAMESPACE=" + t.Path.Namespace,
 	}
-	if len(t.Env) > 0 {
-		envL = append(envL, t.Env...)
-	}
 	ignoreCallback := func(err error) {
 		t.Log().Infof("ignore env %s", err)
+	}
+	if len(t.Env) > 0 {
+		// The secrets are passed by name, their values out of the
+		// command line of the engine.
+		l, secrets, err := datarecv.Environment(t.Env, t.Path.Namespace, func(err error) error {
+			ignoreCallback(err)
+			return nil
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, s := range l {
+			name, value, _ := strings.Cut(s, "=")
+			if secrets[name] {
+				envM[name] = value
+				envL = append(envL, name)
+			} else {
+				envL = append(envL, s)
+			}
+		}
 	}
 	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg", envprovider.IgnoreExpected(ignoreCallback)); err != nil {
 		return nil, nil, err
