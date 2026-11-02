@@ -200,7 +200,9 @@ func volumeUpload(target console.Target, user string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if size <= 0 {
+	// A filesystem of its own bounds what the volume holds: it is counted
+	// for a directory of a pool only, which shares the one of the node.
+	if size <= 0 || volfile.HasFilesystem(resolved.Head) {
 		size = -1
 	}
 	return volfile.Write(resolved.Head, dir, target.File, r, size, volfile.Upload{By: user, Replace: target.Replace})

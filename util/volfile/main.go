@@ -37,6 +37,10 @@ const (
 	// MaxList is the most entries a listing returns, the first by name.
 	MaxList = 1000
 
+	// walkBudget bounds a walk of a volume counting what it holds, at the
+	// start and at the end of a transfer.
+	walkBudget = 5 * time.Second
+
 	// TypeFile, TypeDir and TypeLink are the types of the entries a listing
 	// returns. Sockets, fifos and devices are left out.
 	TypeFile = "file"
@@ -71,7 +75,22 @@ var (
 	// ErrInstalled is a file a datastore install writes, an upload not to
 	// replace, replace or not.
 	ErrInstalled = errors.New("installed file")
+
+	errWalkBudget = errors.New("walk budget exceeded")
 )
+
+// HasFilesystem says a filesystem is mounted on head, which bounds what the
+// volume holds: what it holds needs no count then.
+func HasFilesystem(head string) bool {
+	var self, parent syscall.Stat_t
+	if err := syscall.Stat(head, &self); err != nil {
+		return false
+	}
+	if err := syscall.Stat(path.Dir(path.Clean(head)), &parent); err != nil {
+		return false
+	}
+	return self.Dev != parent.Dev
+}
 
 type (
 	// Info is what a listing says of an entry. UploadedBy and UploadedAt
@@ -239,6 +258,17 @@ func checkDir(root *os.Root, dir string) error {
 	return nil
 }
 
+// Lstat returns what the entry of the name in the directory is, a link not
+// followed.
+func Lstat(head, dir, name string) (os.FileInfo, error) {
+	root, err := openRoot(head, dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	return root.Lstat(path.Join(dir, name))
+}
+
 // Exists says an entry of the name is in the directory, whatever it is.
 func Exists(head, dir, name string) (bool, error) {
 	root, err := openRoot(head, dir)
@@ -361,7 +391,12 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 	p := path.Join(dir, name)
 	var held int64
 	if size >= 0 {
-		if held, err = used(root, p); err != nil {
+		held, err = used(root, p, time.Now().Add(walkBudget))
+		if errors.Is(err, errWalkBudget) {
+			// A tree too large to walk in the budget is not
+			// counted, rather than hold the transfer that long.
+			size = -1
+		} else if err != nil {
 			return err
 		}
 	}
@@ -416,8 +451,10 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 // transfers ending at once, each sees what the other wrote, as a file of its
 // name or its tmp.
 func fitsAtEnd(root *os.Root, p, tmp string, size int64) error {
-	held, err := used(root, p)
-	if err != nil {
+	held, err := used(root, p, time.Now().Add(walkBudget))
+	if errors.Is(err, errWalkBudget) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	others, err := transfers(root, tmp)
@@ -436,9 +473,12 @@ func fitsAtEnd(root *os.Root, p, tmp string, size int64) error {
 
 // used returns what the files of the volume hold, but the one at p, to be
 // replaced, and the transfers running, counted as they go.
-func used(root *os.Root, p string) (int64, error) {
+func used(root *os.Root, p string, deadline time.Time) (int64, error) {
 	var n int64
 	err := fs.WalkDir(root.FS(), ".", func(name string, d fs.DirEntry, err error) error {
+		if time.Now().After(deadline) {
+			return errWalkBudget
+		}
 		switch {
 		case err != nil:
 			// What can not be read is not counted, rather than refuse
