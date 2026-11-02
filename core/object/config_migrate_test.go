@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 func migrationOf(t *testing.T, config string) Migration {
@@ -410,4 +411,107 @@ vg = datavg
 	}
 	require.Len(t, m.Refusals, 1)
 	assert.Contains(t, m.Refusals[0], "otherwise on some nodes")
+}
+
+// The variables read from datastores are lines of the environment keyword,
+// which say the sec or the cfg each is read from, after what the keyword had,
+// configs before secrets, the scope of a keyword kept.
+func TestTheEnvironmentKeywordsBecomeEnvironmentLines(t *testing.T) {
+	m := migrationOf(t, `[app#1]
+type = simple
+start = /bin/true
+environment = SLIP=slob
+configs_environment = OC3_FOO=oc3/bar
+secrets_environment = OC3_DB_PASSWORD=oc3/db_password sec1/*
+secrets_environment@n1 = TOKEN=tok/n1
+environment@n2 = SLIP=n2
+`)
+	v, ok := setOf(m, "app#1.environment")
+	require.True(t, ok)
+	assert.Equal(t, "SLIP=slob\nOC3_FOO from ./cfg/oc3 key bar\nOC3_DB_PASSWORD from ./sec/oc3 key db_password\n* from ./sec/sec1 key *", v)
+	// Each node keeps the variables of every keyword it had, its own
+	// value or the one of every node.
+	v, ok = setOf(m, "app#1.environment@n1")
+	require.True(t, ok)
+	assert.Equal(t, "SLIP=slob\nOC3_FOO from ./cfg/oc3 key bar\nTOKEN from ./sec/tok key n1", v)
+	v, ok = setOf(m, "app#1.environment@n2")
+	require.True(t, ok)
+	assert.Equal(t, "SLIP=n2\nOC3_FOO from ./cfg/oc3 key bar\nOC3_DB_PASSWORD from ./sec/oc3 key db_password\n* from ./sec/sec1 key *", v)
+	for _, k := range []string{"app#1.configs_environment", "app#1.secrets_environment", "app#1.secrets_environment@n1"} {
+		assert.True(t, unset(m, k), k)
+	}
+}
+
+// An item no agent read as a key reference is said, and its keyword kept.
+func TestAnEnvironmentItemNotAReferenceIsLeftAlone(t *testing.T) {
+	m := migrationOf(t, `[app#1]
+type = simple
+start = /bin/true
+secrets_environment = A=nokey
+`)
+	_, ok := setOf(m, "app#1.environment")
+	assert.False(t, ok)
+	assert.False(t, unset(m, "app#1.secrets_environment"))
+	require.Len(t, m.Refusals, 1)
+	assert.Contains(t, m.Refusals[0], "A=nokey")
+}
+
+// An item the environment keyword could not read is said, and its keyword
+// kept: a name no variable has, or a pattern for a named variable.
+func TestAnEnvironmentItemTheKeywordCannotReadIsLeftAlone(t *testing.T) {
+	for _, item := range []string{"A-B=oc3/x", "=oc3/x", "A=oc3/x*"} {
+		m := migrationOf(t, `[app#1]
+type = simple
+start = /bin/true
+secrets_environment = `+item+`
+`)
+		_, ok := setOf(m, "app#1.environment")
+		assert.False(t, ok, item)
+		assert.False(t, unset(m, "app#1.secrets_environment"), item)
+		require.Len(t, m.Refusals, 1, item)
+	}
+}
+
+// A node of a group of nodes keeps the variables the keyword written for the
+// group gave it, when another of the keywords is written for the node.
+func TestTheEnvironmentOfANodeFollowsItsGroupOfNodes(t *testing.T) {
+	// The nodes of the object are the cluster nodes, this one here.
+	n1 := hostname.Hostname()
+	m := migrationOf(t, `[DEFAULT]
+nodes = `+n1+`
+
+[app#1]
+type = simple
+start = /bin/true
+environment = A=0
+environment@nodes = A=1
+secrets_environment@`+n1+` = T=tok/k
+secrets_environment@n3 = T=tok/drp
+`)
+	v, ok := setOf(m, "app#1.environment@"+n1)
+	require.True(t, ok)
+	assert.Equal(t, "A=1\nT from ./sec/tok key k", v)
+	v, ok = setOf(m, "app#1.environment@n3")
+	require.True(t, ok)
+	assert.Equal(t, "A=0\nT from ./sec/tok key drp", v)
+	_, ok = setOf(m, "app#1.environment@nodes")
+	assert.False(t, ok, "unchanged")
+	assert.Empty(t, m.Refusals)
+}
+
+// A scope whose keywords say no variable is written empty, not to take the
+// ones of a wider scope.
+func TestAnEmptyScopeStaysEmpty(t *testing.T) {
+	m := migrationOf(t, `[app#1]
+type = simple
+start = /bin/true
+secrets_environment = T=tok/k
+secrets_environment@n1 =
+`)
+	v, ok := setOf(m, "app#1.environment@n1")
+	require.True(t, ok)
+	assert.Equal(t, "", v)
+	v, ok = setOf(m, "app#1.environment")
+	require.True(t, ok)
+	assert.Equal(t, "T from ./sec/tok key k", v)
 }

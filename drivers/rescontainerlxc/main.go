@@ -24,6 +24,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -370,10 +371,17 @@ func (t *T) createEnv() ([]string, error) {
 		"DEBIAN_PRIORITY=critical",
 	}
 	env = append(env, t.createEnvProxy()...)
-	env = append(env, t.CreateEnvironment...)
 	ignoreCallback := func(err error) {
 		t.Log().Infof("ignore env %s", err)
 	}
+	l, _, err := datarecv.Environment(t.CreateEnvironment, t.Path.Namespace, func(err error) error {
+		ignoreCallback(err)
+		return nil
+	})
+	if err != nil {
+		return env, err
+	}
+	env = append(env, l...)
 	more, err := envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec", envprovider.IgnoreExpected(ignoreCallback))
 	if err != nil {
 		return env, err

@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -657,8 +658,9 @@ func (t *T) update(ctx context.Context) (backup.Run, error) {
 }
 
 // referencedDatastores returns the sec and cfg the object references: the
-// ones its resources install from, and the ones the secrets_environment and
-// configs_environment keywords of its resources name, each once.
+// ones its resources install from, the ones the environment keywords of its
+// resources read from, and the ones the deprecated secrets_environment and
+// configs_environment name, each once.
 func (t *T) referencedDatastores() (naming.Paths, error) {
 	o := t.GetObjectDriver()
 	l := make(naming.Paths, 0)
@@ -681,31 +683,102 @@ func (t *T) referencedDatastores() (naming.Paths, error) {
 		return l, nil
 	}
 	cfg := c.Config()
-	for _, section := range cfg.SectionStrings() {
-		for option, kind := range map[string]naming.Kind{"secrets_environment": naming.KindSec, "configs_environment": naming.KindCfg} {
-			k := key.New(section, option)
-			if cfg.Get(k) == "" {
+	// memberOf returns a node of a group of nodes, the one the value of a
+	// keyword written for the group is resolved for, this node when in it.
+	memberOf := func(scope string) string {
+		var members []string
+		switch scope {
+		case "nodes":
+			members, _ = cfg.Referrer.Nodes()
+		case "drpnodes":
+			members, _ = cfg.Referrer.DRPNodes()
+		case "encapnodes":
+			if i, ok := cfg.Referrer.(interface{ EncapNodes() ([]string, error) }); ok {
+				members, _ = i.EncapNodes()
+			}
+		}
+		if len(members) == 0 || slices.Contains(members, hostname.Hostname()) {
+			return hostname.Hostname()
+		}
+		return members[0]
+	}
+	// evalAll returns the values of a keyword for this node and for each node
+	// or group of nodes it is written for, which the configuration resolves
+	// for that node or a node of the group.
+	evalAll := func(section, option string) ([][]string, error) {
+		nodes := make([]string, 0)
+		for _, o := range cfg.Keys(section) {
+			base, scope, _ := strings.Cut(o, "@")
+			if base != option {
 				continue
 			}
-			v, err := cfg.EvalAs(k, hostname.Hostname())
+			switch scope {
+			case "":
+				scope = hostname.Hostname()
+			case "nodes", "drpnodes", "encapnodes":
+				scope = memberOf(scope)
+			}
+			if !slices.Contains(nodes, scope) {
+				nodes = append(nodes, scope)
+			}
+		}
+		values := make([][]string, 0, len(nodes))
+		for _, node := range nodes {
+			k := key.New(section, option)
+			v, err := cfg.EvalAs(k, node)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", k, err)
 			}
 			items, _ := v.([]string)
-			for _, item := range items {
-				name := item
-				if _, after, found := strings.Cut(item, "="); found {
-					name = after
-				}
-				name, _, _ = strings.Cut(name, "/")
-				if name == "" {
+			values = append(values, items)
+		}
+		return values, nil
+	}
+	for _, section := range cfg.SectionStrings() {
+		// The references of the environment keywords, the datastores
+		// their "from" items read in the namespace of the object: the
+		// keys of another namespace are not the object's to restore.
+		for _, option := range []string{"environment", "create_environment"} {
+			values, err := evalAll(section, option)
+			if err != nil {
+				return nil, err
+			}
+			for _, items := range values {
+				paths, err := datarecv.EnvironmentDatastores(items, t.Path.Namespace)
+				if err != nil {
+					// The resource refuses it at its action.
+					t.Log().Warnf("%s.%s: %s", section, option, err)
 					continue
 				}
-				p, err := naming.NewPath(t.Path.Namespace, kind, name)
-				if err != nil {
-					return nil, fmt.Errorf("%s: %s: %w", k, item, err)
+				for _, p := range paths {
+					if p.Namespace == t.Path.Namespace {
+						add(p)
+					}
 				}
-				add(p)
+			}
+		}
+		for option, kind := range map[string]naming.Kind{"secrets_environment": naming.KindSec, "configs_environment": naming.KindCfg} {
+			values, err := evalAll(section, option)
+			if err != nil {
+				return nil, err
+			}
+			k := key.New(section, option)
+			for _, items := range values {
+				for _, item := range items {
+					name := item
+					if _, after, found := strings.Cut(item, "="); found {
+						name = after
+					}
+					name, _, _ = strings.Cut(name, "/")
+					if name == "" {
+						continue
+					}
+					p, err := naming.NewPath(t.Path.Namespace, kind, name)
+					if err != nil {
+						return nil, fmt.Errorf("%s: %s: %w", k, item, err)
+					}
+					add(p)
+				}
 			}
 		}
 	}
