@@ -129,6 +129,37 @@ type InstallMark struct {
 	At   time.Time `json:"at"`
 }
 
+// Lock takes the lock of the volume mounted on head an upload ending and an
+// install writing a file hold, and returns what releases it: the directory
+// itself is locked, nothing is written in the volume.
+func Lock(head string) (func(), error) {
+	root, err := os.OpenRoot(head)
+	if err != nil {
+		return nil, err
+	}
+	unlock, err := lockRoot(root)
+	if err != nil {
+		_ = root.Close()
+		return nil, err
+	}
+	return func() { unlock(); _ = root.Close() }, nil
+}
+
+func lockRoot(root *os.Root) (func(), error) {
+	d, err := root.Open(".")
+	if err != nil {
+		return nil, err
+	}
+	if err := syscall.Flock(int(d.Fd()), syscall.LOCK_EX); err != nil {
+		_ = d.Close()
+		return nil, err
+	}
+	return func() {
+		_ = syscall.Flock(int(d.Fd()), syscall.LOCK_UN)
+		_ = d.Close()
+	}, nil
+}
+
 // installedError says why an upload does not replace an installed file.
 func installedError(name string, m InstallMark) error {
 	return fmt.Errorf("%w: %s is installed from %s key %s: change the key", ErrInstalled, name, m.From, m.Key)
@@ -357,7 +388,14 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 		return err
 	}
 	// An install of a datastore writes the file: changing it is changing
-	// the key, which an upload does not.
+	// the key, which an upload does not. The install holds the lock of the
+	// volume as it writes and marks a file, so none is marked between the
+	// look and the rename.
+	unlock, err := lockRoot(root)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	if m, ok := installMarkOf(root, dir, name); ok {
 		return installedError(name, m)
 	}
