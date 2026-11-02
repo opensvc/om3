@@ -819,11 +819,11 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		fn   resourceset.DoFunc
 	}{
 		{"link-" + action.Name, progressWrap(linkWrap(hostWrap(fn)))},
-		// Named link- too, for the resources linked to a container to be
-		// reached with it, as in the host pass: a barrier on one of them
-		// is not hit before the container, in a resource set ordered
-		// before it.
-		{"link-encap-" + action.Name, progressWrap(encapStep)},
+		// Named link- too, and linked the same way, for the resources
+		// linked to a container to be reached with it, as in the host
+		// pass: a barrier on one of them is hit right after the
+		// container, not before it nor never.
+		{"link-encap-" + action.Name, progressWrap(linkWrap(encapStep))},
 	}
 	if isDesc {
 		passes[0], passes[1] = passes[1], passes[0]
