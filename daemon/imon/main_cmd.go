@@ -1319,7 +1319,9 @@ func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 	return i < maxLeaders
 }
 
-func (t *Manager) newIsLeader() bool {
+// leaderCandidates returns the nodes an instance may lead on, in the order of
+// the placement policy: not n/a, and not failed to start.
+func (t *Manager) leaderCandidates() []string {
 	var candidates []string
 	for _, node := range t.scopeNodes {
 		if v, ok := t.IsInstanceStatusNotApplicable(node); !ok || v {
@@ -1330,7 +1332,11 @@ func (t *Manager) newIsLeader() bool {
 		}
 		candidates = append(candidates, node)
 	}
-	candidates = t.sortCandidates(candidates)
+	return t.sortCandidates(candidates)
+}
+
+func (t *Manager) newIsLeader() bool {
+	candidates := t.leaderCandidates()
 
 	var maxLeaders int = 1
 	if t.objStatus.Topology == topology.Flex {

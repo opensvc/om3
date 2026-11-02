@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -204,4 +205,37 @@ func TestANodeWaitingForTheLeaderWaitsForTheLeaderItWaitedFor(t *testing.T) {
 	}
 	require.False(t, m.hasLeaderProvisioned(), "the former leader failed")
 	require.True(t, m.hasLeaderProvisionedFailed(), "the former leader failed")
+}
+
+// A flex object of no target, as a volume its children start, has no leader:
+// the first candidate of the placement leads its provision. A node waiting for
+// the leader used to wait for none, for ever, after the instances already
+// provisioned were done with the orchestration.
+func TestAFlexObjectWithNoLeaderIsProvisionedFromTheFirstCandidate(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateWaitLeader)
+	m.objStatus.Topology = topology.Flex
+	m.objStatus.PlacementPolicy = placement.NodesOrder
+	m.scopeNodes = []string{"node2", "node3", "node1"}
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	for _, node := range []string{"node2", "node3"} {
+		m.instMonitor[node] = instance.Monitor{
+			State:               instance.MonitorStateIdle,
+			OrchestrationID:     m.state.OrchestrationID,
+			OrchestrationIsDone: true,
+		}
+		m.instStatus[node] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	}
+	require.Empty(t, m.leaders(), "a flex target of 0")
+	require.Equal(t, "node2", m.provisioningLeader(), "the first of the placement")
+	require.False(t, m.isProvisioningLeader())
+	require.True(t, m.hasLeaderProvisioned(), "the instances provisioned before the orchestration")
+
+	// Provisioned nowhere, the first candidate leads.
+	m.scopeNodes = []string{"node1", "node2", "node3"}
+	for _, node := range []string{"node2", "node3"} {
+		m.instStatus[node] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+		m.instMonitor[node] = instance.Monitor{State: instance.MonitorStateWaitLeader, OrchestrationID: m.state.OrchestrationID}
+	}
+	require.Equal(t, m.localhost, m.provisioningLeader())
+	require.True(t, m.isProvisioningLeader())
 }
