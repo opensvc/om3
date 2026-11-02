@@ -42,15 +42,25 @@ func (t *actor) Provision(ctx context.Context) (err error) {
 	defer unlock()
 
 	// The preflight checks that nothing on the node holds what the
-	// provision would take, before anything is provisioned: alone, as the
-	// daemon has every node do before the leader provisions an object
-	// provisioned nowhere, and before a provision as leader, unless the
+	// provision would take, before anything is provisioned, unless the
 	// provision adopts what it finds.
+	//
+	// Alone, as the daemon has every node do before any provisions, it
+	// checks the shared resources: what the leader makes for all the
+	// nodes, which a conflict on any of them stops. A non-shared resource
+	// is each node's own: the provision of the node checks it, and a
+	// conflict stops that node alone. A node not to provision has nothing
+	// to check of it then, as the instances already provisioned of a node
+	// an evict unprovisioned. A provision as leader checks both.
 	if actioncontext.IsPreflight(ctx2) {
-		return t.lockedProvisionPreflight(ctx2)
+		return t.lockedProvisionPreflight(ctx2, preflightShared)
 	}
-	if actioncontext.IsLeader(ctx2) && !actioncontext.IsAdopt(ctx2) {
-		if err := t.lockedProvisionPreflight(ctx2); err != nil {
+	if !actioncontext.IsAdopt(ctx2) {
+		scope := preflightLocal
+		if actioncontext.IsLeader(ctx2) {
+			scope = preflightAll
+		}
+		if err := t.lockedProvisionPreflight(ctx2, scope); err != nil {
 			return err
 		}
 	}
@@ -171,6 +181,32 @@ func (t *actor) lockedProvision(ctx context.Context) error {
 // system resource holding what it would take.
 var ErrProvisionConflict = errors.New("the provision would take what something on the node holds")
 
+// preflightScope says which resources a provision preflight checks.
+type preflightScope int
+
+const (
+	// preflightAll checks the shared and the non-shared resources.
+	preflightAll preflightScope = iota
+
+	// preflightShared checks the shared resources, what the leader makes
+	// for all the nodes.
+	preflightShared
+
+	// preflightLocal checks the non-shared resources, the node's own.
+	preflightLocal
+)
+
+func (s preflightScope) has(r resource.Driver) bool {
+	switch s {
+	case preflightShared:
+		return r.IsShared()
+	case preflightLocal:
+		return !r.IsShared()
+	default:
+		return true
+	}
+}
+
 // lockedProvisionPreflight checks that nothing on the node holds what the
 // resources not provisioned yet would take: a filesystem mounted on the
 // mount point, a volume group of the name, a device in use. A provision would
@@ -179,9 +215,12 @@ var ErrProvisionConflict = errors.New("the provision would take what something o
 // A resource a provision made on the node already is not checked: what it
 // holds is its own. Its provisioned state does not tell: a resource is found
 // provisioned when what it names exists, whoever made it.
-func (t *actor) lockedProvisionPreflight(ctx context.Context) error {
+func (t *actor) lockedProvisionPreflight(ctx context.Context, scope preflightScope) error {
 	conflicts := make([]string, 0)
 	for _, r := range t.Resources() {
+		if !scope.has(r) {
+			continue
+		}
 		if r.IsDisabled() || r.IsActionDisabled() || r.IsProvisionDisabled() {
 			// What a sysadmin provisions is the sysadmin's to check.
 			continue
@@ -192,6 +231,15 @@ func (t *actor) lockedProvisionPreflight(ctx context.Context) error {
 		}
 		if resource.ProvisionRecorded(r) {
 			continue
+		}
+		if scope == preflightLocal {
+			// Off the leader, the provision of a node checks what it
+			// makes now: a resource provisioned already, before
+			// provisions recorded what they made, is left as the
+			// provision of a node always left it.
+			if st, err := resource.Provisioned(ctx, r); err == nil && st == provisioned.True {
+				continue
+			}
 		}
 		rctx := resource.WithProvisionCreates(ctx, setsProvisioningKeyword(t.config, r))
 		for _, msg := range p.ProvisionConflicts(rctx) {
