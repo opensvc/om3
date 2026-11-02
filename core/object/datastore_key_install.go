@@ -240,6 +240,16 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err er
 			return false, fmt.Errorf("render key %s: %w", vk.Key, err)
 		}
 	}
+	// An upload ending looks for the mark under the lock of the volume:
+	// the file is written and marked holding it, and the lock is taken
+	// before anything is removed, for a lock not taken to change nothing.
+	if opt.ToHead != "" {
+		unlock, err := volfile.Lock(opt.ToHead)
+		if err != nil {
+			return false, fmt.Errorf("lock %s to install key %s: %w", opt.ToHead, vk.Key, err)
+		}
+		defer unlock()
+	}
 	if info, err := opt.fs.Lstat(opt.ToPath); err == nil && info.IsDir() {
 		opt.ToLog.Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
 		if err := opt.fs.RemoveAll(opt.ToPath); err != nil {
@@ -269,15 +279,6 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (changed bool, err er
 		if err := t.makedir(vdir, opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 			return false, err
 		}
-	}
-	// An upload ending looks for the mark under the lock of the volume:
-	// the file is written and marked holding it.
-	if opt.ToHead != "" {
-		unlock, err := volfile.Lock(opt.ToHead)
-		if err != nil {
-			return false, fmt.Errorf("lock %s to install key %s: %w", opt.ToHead, vk.Key, err)
-		}
-		defer unlock()
 	}
 	changed, err = t.writeKey(vk, b, opt)
 	if changed && opt.Wrote != nil {
