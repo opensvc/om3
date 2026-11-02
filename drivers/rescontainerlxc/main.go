@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -82,6 +83,7 @@ type (
 		CreateEnvironment        []string       `json:"create_environment"`
 		RCmd                     []string       `json:"rcmd"`
 		StartTimeout             *time.Duration `json:"start_timeout"`
+		EncapNodes               []string       `json:"encapnodes"`
 		StopTimeout              *time.Duration `json:"stop_timeout"`
 
 		cache map[string]interface{}
@@ -159,12 +161,22 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.installCF(ctx); err != nil {
 		return err
 	}
+	started := time.Now()
 	if err := t.start(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.Stop(ctx)
 	})
+	if t.hasEncap() {
+		// lxc-start -d returns once the init runs: the encap resources
+		// are to start in a booted system, not in one booting.
+		ctx, cancel := context.WithDeadline(ctx, started.Add(*t.StartTimeout))
+		defer cancel()
+		if err := t.waitOperational(ctx); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -430,7 +442,7 @@ func (t *T) copyTo(ctx context.Context, src, dst string) error {
 func (t *T) rcmd(ctx context.Context, envs []string) ([]string, error) {
 	var args []string
 	if len(t.RCmd) > 0 {
-		args = t.RCmd
+		args = slices.Clone(t.RCmd)
 		args = append(args, t.GetHostname())
 		args = append(args, "--")
 		args = append(args, envs...)
@@ -444,6 +456,9 @@ func (t *T) rcmd(ctx context.Context, envs []string) ([]string, error) {
 		} else {
 			args = []string{exe, "-n", t.Name, "--clear-env"}
 		}
+	}
+	if len(args) == 0 {
+		return nil, errors.New("no lxc-attach, or no pid namespace: set rcmd to run a command in the container")
 	}
 	for _, e := range envs {
 		args = append(args, "-v", e)
@@ -1193,6 +1208,12 @@ func (t *T) stopOrKill(ctx context.Context) error {
 
 func (t *T) stop(ctx context.Context) error {
 	args := []string{"-n", t.Name}
+	// lxc-stop asks the init to shut down, and kills the container past
+	// its own timeout, 60s by default: past the stop_timeout of the
+	// resource, the command would be cut before.
+	if secs := int(t.StopTimeout.Seconds()) - stopKillMargin; secs > 0 {
+		args = append(args, "-t", strconv.Itoa(secs))
+	}
 	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
 		command.WithContext(ctx),
@@ -1202,7 +1223,7 @@ func (t *T) stop(ctx context.Context) error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(*t.StartTimeout),
+		command.WithTimeout(*t.StopTimeout),
 	)
 	return cmd.Run()
 }
@@ -1218,7 +1239,7 @@ func (t *T) kill(ctx context.Context) error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithTimeout(*t.StartTimeout),
+		command.WithTimeout(*t.StopTimeout),
 	)
 	return cmd.Run()
 }
