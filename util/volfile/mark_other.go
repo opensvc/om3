@@ -6,4 +6,4 @@ import "os"
 
 func setMark(*os.File, mark) {}
 
-func getMark(string) (mark, bool) { return mark{}, false }
+func getMark(*os.File, string) (mark, bool) { return mark{}, false }

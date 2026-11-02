@@ -1077,6 +1077,27 @@ func (e UserListKind) Valid() bool {
 	}
 }
 
+// Defines values for VolumeFileType.
+const (
+	VolumeFileTypeDir  VolumeFileType = "dir"
+	VolumeFileTypeFile VolumeFileType = "file"
+	VolumeFileTypeLink VolumeFileType = "link"
+)
+
+// Valid indicates whether the value is a known member of the VolumeFileType enum.
+func (e VolumeFileType) Valid() bool {
+	switch e {
+	case VolumeFileTypeDir:
+		return true
+	case VolumeFileTypeFile:
+		return true
+	case VolumeFileTypeLink:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for InQueryRestoreRefs.
 const (
 	InQueryRestoreRefsMissing   InQueryRestoreRefs = "missing"
@@ -3305,6 +3326,10 @@ type VolumeFile struct {
 	Name       string    `json:"name"`
 	Size       int64     `json:"size"`
 
+	// Target what a link says, absent for another type
+	Target *string        `json:"target,omitempty"`
+	Type   VolumeFileType `json:"type"`
+
 	// UploadedAt when the file was uploaded, absent for a file not uploaded
 	UploadedAt *time.Time `json:"uploaded_at,omitempty"`
 
@@ -3312,10 +3337,16 @@ type VolumeFile struct {
 	UploadedBy *string `json:"uploaded_by,omitempty"`
 }
 
+// VolumeFileType defines model for VolumeFile.Type.
+type VolumeFileType string
+
 // VolumeFileList defines model for VolumeFileList.
 type VolumeFileList struct {
 	Items []VolumeFile `json:"items"`
 	Kind  string       `json:"kind"`
+
+	// Truncated the directory has more entries than the items
+	Truncated bool `json:"truncated"`
 }
 
 // DRBDResourceName defines model for DRBDResourceName.
@@ -3481,6 +3512,9 @@ type ExecID = openapi_types.UUID
 
 // States defines model for inQueryExecState.
 type States = []string
+
+// InQueryFileDir defines model for inQueryFileDir.
+type InQueryFileDir = string
 
 // InQueryFileName defines model for inQueryFileName.
 type InQueryFileName = string
@@ -4874,17 +4908,42 @@ type GetInstanceContainerLogParams struct {
 
 // DeleteInstanceFileParams defines parameters for DeleteInstanceFile.
 type DeleteInstanceFileParams struct {
-	// Name the name of a file at the top of the volume
+	// Dir a directory of the volume, relative to its top, which is the default:
+	// no component may lead up, nor be hidden
+	Dir *InQueryFileDir `form:"dir,omitempty" json:"dir,omitempty"`
+
+	// Name the name of an entry of the directory, a single component
 	Name InQueryFileName `form:"name" json:"name"`
+}
+
+// GetInstanceFilesParams defines parameters for GetInstanceFiles.
+type GetInstanceFilesParams struct {
+	// Dir a directory of the volume, relative to its top, which is the default:
+	// no component may lead up, nor be hidden
+	Dir *InQueryFileDir `form:"dir,omitempty" json:"dir,omitempty"`
 }
 
 // PostInstanceFileParams defines parameters for PostInstanceFile.
 type PostInstanceFileParams struct {
-	// Name the name of a file at the top of the volume
+	// Dir a directory of the volume, relative to its top, which is the default:
+	// no component may lead up, nor be hidden
+	Dir *InQueryFileDir `form:"dir,omitempty" json:"dir,omitempty"`
+
+	// Name the name of an entry of the directory, a single component
 	Name InQueryFileName `form:"name" json:"name"`
 
 	// Replace replace the file of that name, when it exists
 	Replace *InQueryFileReplace `form:"replace,omitempty" json:"replace,omitempty"`
+}
+
+// PostInstanceFileDirectoryParams defines parameters for PostInstanceFileDirectory.
+type PostInstanceFileDirectoryParams struct {
+	// Dir a directory of the volume, relative to its top, which is the default:
+	// no component may lead up, nor be hidden
+	Dir *InQueryFileDir `form:"dir,omitempty" json:"dir,omitempty"`
+
+	// Name the name of an entry of the directory, a single component
+	Name InQueryFileName `form:"name" json:"name"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.

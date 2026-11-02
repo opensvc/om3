@@ -182,6 +182,10 @@ func volumeUpload(target console.Target, user string, r io.Reader) error {
 	if path.Kind != naming.KindVol || !volfile.IsName(target.File) {
 		return fmt.Errorf("console target: %s %q is no file of a volume", path, target.File)
 	}
+	dir, err := volfile.CleanDir(target.Dir)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), graphicsDialTimeout)
 	defer cancel()
 	resolved, err := vpath.Resolve(ctx, path.Name+"/", path.Namespace, nil)
@@ -198,7 +202,7 @@ func volumeUpload(target console.Target, user string, r io.Reader) error {
 	if size <= 0 {
 		size = -1
 	}
-	return volfile.Write(resolved.Head, target.File, r, size, volfile.Upload{By: user, Replace: target.Replace})
+	return volfile.Write(resolved.Head, dir, target.File, r, size, volfile.Upload{By: user, Replace: target.Replace})
 }
 
 // loginShell returns the shell of the user running the session, /bin/sh when

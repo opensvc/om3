@@ -4380,7 +4380,14 @@ paths:
     get:
       operationId: GetInstanceFiles
       description: |
-        List the files at the top of a volume, available on the node.
+        List the entries of a directory of a volume, available on the node:
+        its files, directories and links, the hidden ones left out, the first
+        1000 by name, with `truncated` set when there are more. A link is
+        listed as what it says, its `target`, never followed. Answered 404
+        for a directory not existing, and 409 for one that is something
+        else.
+      parameters:
+        - $ref: '#/components/parameters/inQueryFileDir'
       responses:
         200:
           description: OK
@@ -4424,6 +4431,7 @@ paths:
 
         The ticket opens one transfer, and is refused once expired.
       parameters:
+        - $ref: '#/components/parameters/inQueryFileDir'
         - $ref: '#/components/parameters/inQueryFileName'
         - $ref: '#/components/parameters/inQueryFileReplace'
       responses:
@@ -4453,12 +4461,51 @@ paths:
     delete:
       operationId: DeleteInstanceFile
       description: |
-        Remove a file at the top of a volume, available on the node.
+        Remove an entry of a directory of a volume, available on the node: a
+        file, a link but not what it leads to, or an empty directory. Answered
+        409 for a directory not empty: nothing is removed recursively.
       parameters:
+        - $ref: '#/components/parameters/inQueryFileDir'
         - $ref: '#/components/parameters/inQueryFileName'
       responses:
         204:
           description: Removed
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/file/directory:
+    parameters:
+      - $ref: '#/components/parameters/inPathNodeName'
+      - $ref: '#/components/parameters/inPathNamespace'
+      - $ref: '#/components/parameters/inPathKind'
+      - $ref: '#/components/parameters/inPathName'
+    post:
+      operationId: PostInstanceFileDirectory
+      description: |
+        Make a directory of the name in a directory of a volume, available on
+        the node, and no parent. Answered 409 when an entry of that name
+        exists.
+      parameters:
+        - $ref: '#/components/parameters/inQueryFileDir'
+        - $ref: '#/components/parameters/inQueryFileName'
+      responses:
+        201:
+          description: Created
         400:
           $ref: '#/components/responses/400'
         401:
@@ -9925,11 +9972,25 @@ components:
       type: object
       required:
         - name
+        - type
         - size
         - modified_at
       properties:
         name:
           type: string
+        type:
+          type: string
+          enum:
+            - file
+            - dir
+            - link
+          x-enum-varnames:
+            - VolumeFileTypeFile
+            - VolumeFileTypeDir
+            - VolumeFileTypeLink
+        target:
+          type: string
+          description: what a link says, absent for another type
         size:
           type: integer
           format: int64
@@ -9949,9 +10010,13 @@ components:
       required:
         - kind
         - items
+        - truncated
       properties:
         kind:
           type: string
+        truncated:
+          type: boolean
+          description: the directory has more entries than the items
         items:
           type: array
           items:
@@ -12406,8 +12471,17 @@ components:
     inQueryFileName:
       in: query
       name: name
-      description: the name of a file at the top of the volume
+      description: the name of an entry of the directory, a single component
       required: true
+      schema:
+        type: string
+
+    inQueryFileDir:
+      in: query
+      name: dir
+      description: |
+        a directory of the volume, relative to its top, which is the default:
+        no component may lead up, nor be hidden
       schema:
         type: string
 

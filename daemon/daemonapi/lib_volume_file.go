@@ -50,36 +50,77 @@ func noVolumeHead(ctx echo.Context) bool {
 	return ctx.Response().Committed
 }
 
-// GetInstanceFiles lists the files at the top of a volume.
-func (a *DaemonAPI) GetInstanceFiles(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
+// volumeDir returns the directory of the volume a request names, cleaned, or
+// answers why it is none.
+func volumeDir(ctx echo.Context, dir *string) (string, error) {
+	var s string
+	if dir != nil {
+		s = *dir
+	}
+	cleaned, err := volfile.CleanDir(s)
+	if err != nil {
+		return "", JSONProblemf(ctx, http.StatusBadRequest, "Invalid directory", "%s", err)
+	}
+	return cleaned, nil
+}
+
+// volfileProblem answers what a volfile function refused, or failed with.
+func volfileProblem(ctx echo.Context, err error, what string) error {
+	switch {
+	case errors.Is(err, volfile.ErrInvalidDir):
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid directory", "%s", err)
+	case errors.Is(err, volfile.ErrNoDir):
+		return JSONProblemf(ctx, http.StatusNotFound, "No such directory", "%s", err)
+	case errors.Is(err, volfile.ErrNotDir):
+		return JSONProblemf(ctx, http.StatusConflict, "Not a directory", "%s", err)
+	case errors.Is(err, volfile.ErrNotEmpty):
+		return JSONProblemf(ctx, http.StatusConflict, "Directory not empty", "%s", err)
+	case errors.Is(err, volfile.ErrExists):
+		return JSONProblemf(ctx, http.StatusConflict, "File exists", "%s", err)
+	case errors.Is(err, fs.ErrNotExist):
+		return JSONProblemf(ctx, http.StatusNotFound, "No such file", "%s", err)
+	default:
+		return JSONProblemf(ctx, http.StatusInternalServerError, what, "%s", err)
+	}
+}
+
+// GetInstanceFiles lists the entries of a directory of a volume.
+func (a *DaemonAPI) GetInstanceFiles(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.GetInstanceFilesParams) error {
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetInstanceFiles(ctx.Request().Context(), nodename, namespace, kind, name)
+			return c.GetInstanceFiles(ctx.Request().Context(), nodename, namespace, kind, name, &params)
 		})
+	}
+	dir, err := volumeDir(ctx, params.Dir)
+	if ctx.Response().Committed {
+		return err
 	}
 	head, err := a.volumeHead(ctx, namespace, kind, name)
 	if noVolumeHead(ctx) {
 		return err
 	}
-	l, err := volfile.List(head)
+	l, err := volfile.List(head, dir)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "List files", "%s", err)
+		return volfileProblem(ctx, err, "List files")
 	}
-	items := make([]api.VolumeFile, len(l))
-	for i, f := range l {
-		items[i] = api.VolumeFile{Name: f.Name, Size: f.Size, ModifiedAt: f.ModifiedAt}
+	items := make([]api.VolumeFile, len(l.Items))
+	for i, f := range l.Items {
+		items[i] = api.VolumeFile{Name: f.Name, Type: api.VolumeFileType(f.Type), Size: f.Size, ModifiedAt: f.ModifiedAt}
 		if f.UploadedBy != "" {
 			items[i].UploadedBy = &f.UploadedBy
 		}
 		if !f.UploadedAt.IsZero() {
 			items[i].UploadedAt = &f.UploadedAt
 		}
+		if f.Type == volfile.TypeLink {
+			items[i].Target = &f.Target
+		}
 	}
-	return ctx.JSON(http.StatusOK, api.VolumeFileList{Kind: "VolumeFileList", Items: items})
+	return ctx.JSON(http.StatusOK, api.VolumeFileList{Kind: "VolumeFileList", Items: items, Truncated: l.Truncated})
 }
 
 // PostInstanceFile issues the ticket a file of a volume is uploaded with.
@@ -93,7 +134,7 @@ func (a *DaemonAPI) PostInstanceFile(ctx echo.Context, nodename, namespace strin
 		return err
 	}
 	if !volfile.IsName(params.Name) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid file name", "%q: a name at the top of the volume is expected", params.Name)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid file name", "%q: a name of an entry of the directory is expected", params.Name)
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
@@ -101,34 +142,64 @@ func (a *DaemonAPI) PostInstanceFile(ctx echo.Context, nodename, namespace strin
 			return c.PostInstanceFile(ctx.Request().Context(), nodename, namespace, kind, name, &params)
 		})
 	}
+	dir, err := volumeDir(ctx, params.Dir)
+	if ctx.Response().Committed {
+		return err
+	}
 	// Said before a transfer is started, rather than at its end.
 	head, err := a.volumeHead(ctx, namespace, kind, name)
 	if noVolumeHead(ctx) {
 		return err
 	}
 	replace := params.Replace != nil && *params.Replace
-	if !replace {
-		// Asked again as the transfer ends, for a file created meanwhile.
-		if exists, err := volfile.Exists(head, params.Name); err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Stat file", "%s", err)
-		} else if exists {
-			return JSONProblemf(ctx, http.StatusConflict, "File exists", "%s exists: set replace to replace it", params.Name)
-		}
+	// Asked again as the transfer ends, for a file created meanwhile.
+	if exists, err := volfile.Exists(head, dir, params.Name); err != nil {
+		return volfileProblem(ctx, err, "Stat file")
+	} else if exists && !replace {
+		return JSONProblemf(ctx, http.StatusConflict, "File exists", "%s exists: set replace to replace it", params.Name)
 	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid path", "%s", err)
 	}
-	return a.issueConsoleTicket(ctx, console.Target{Node: a.localhost, Path: p.String(), Kind: console.KindUpload, File: params.Name, Replace: replace})
+	return a.issueConsoleTicket(ctx, console.Target{Node: a.localhost, Path: p.String(), Kind: console.KindUpload, Dir: dir, File: params.Name, Replace: replace})
 }
 
-// DeleteInstanceFile removes a file of a volume.
+// PostInstanceFileDirectory makes a directory of a volume.
+func (a *DaemonAPI) PostInstanceFileDirectory(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceFileDirectoryParams) error {
+	if v, err := assertAdmin(ctx, namespace); !v {
+		return err
+	}
+	if !volfile.IsName(params.Name) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid directory name", "%q: a name of an entry of the directory is expected", params.Name)
+	}
+	nodename = a.parseNodename(nodename)
+	if a.localhost != nodename {
+		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+			return c.PostInstanceFileDirectory(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+		})
+	}
+	dir, err := volumeDir(ctx, params.Dir)
+	if ctx.Response().Committed {
+		return err
+	}
+	head, err := a.volumeHead(ctx, namespace, kind, name)
+	if noVolumeHead(ctx) {
+		return err
+	}
+	if err := volfile.Mkdir(head, dir, params.Name); err != nil {
+		return volfileProblem(ctx, err, "Make directory")
+	}
+	return ctx.NoContent(http.StatusCreated)
+}
+
+// DeleteInstanceFile removes an entry of a directory of a volume.
 func (a *DaemonAPI) DeleteInstanceFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.DeleteInstanceFileParams) error {
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	if !volfile.IsName(params.Name) {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid file name", "%q: a name at the top of the volume is expected", params.Name)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid file name", "%q: a name of an entry of the directory is expected", params.Name)
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
@@ -136,17 +207,16 @@ func (a *DaemonAPI) DeleteInstanceFile(ctx echo.Context, nodename, namespace str
 			return c.DeleteInstanceFile(ctx.Request().Context(), nodename, namespace, kind, name, &params)
 		})
 	}
+	dir, err := volumeDir(ctx, params.Dir)
+	if ctx.Response().Committed {
+		return err
+	}
 	head, err := a.volumeHead(ctx, namespace, kind, name)
 	if noVolumeHead(ctx) {
 		return err
 	}
-	err = volfile.Remove(head, params.Name)
-	switch {
-	case err == nil:
-		return ctx.NoContent(http.StatusNoContent)
-	case errors.Is(err, fs.ErrNotExist):
-		return JSONProblemf(ctx, http.StatusNotFound, "No such file", "%s", params.Name)
-	default:
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Remove file", "%s", err)
+	if err := volfile.Remove(head, dir, params.Name); err != nil {
+		return volfileProblem(ctx, err, "Remove file")
 	}
+	return ctx.NoContent(http.StatusNoContent)
 }

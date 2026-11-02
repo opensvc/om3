@@ -163,6 +163,15 @@ func TestCopyVolumeFile(t *testing.T) {
 	assert.ErrorContains(t, err, "larger than")
 	_, err = copyVolumeFile(head, head, dir, 5)
 	assert.ErrorContains(t, err, "no regular file")
+
+	// A file in a directory of the volume, as volume#2:/isos/debian.iso.
+	require.NoError(t, os.MkdirAll(filepath.Join(head, "isos"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(head, "isos", "debian.iso"), []byte("iso"), 0o644))
+	p, err = copyVolumeFile(head, filepath.Join(head, "isos", "debian.iso"), dir, 5)
+	require.NoError(t, err)
+	b, err = os.ReadFile(p)
+	require.NoError(t, err)
+	assert.Equal(t, "iso", string(b))
 }
 
 // What a volume holds is its user's: a link leading out of it is no way to the
