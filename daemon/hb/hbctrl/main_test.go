@@ -263,3 +263,41 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 		require.NoError(t, testCtrl.Stop(), "unexpected controller stop error")
 	})
 }
+
+// A restart racing the start of a stream: the stop of the stream sends the
+// deletion of its watcher before its start sends the addition. The watcher of
+// the stopped stream is not registered, and the watcher of the next stream of
+// the same hb watches its beats.
+func TestAWatcherOfAStoppedStreamDoesNotStandInTheWayOfTheNext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = bootstrapDaemon(ctx, t)
+	pubDelay = 10 * time.Millisecond
+	testCtrl := setupCtrl(ctx)
+
+	hbID, peer := "hb#9.tx", "node10"
+	sub := pubsub.SubFromContext(ctx, t.Name(), pubsub.Timeout(time.Second))
+	sub.AddFilter(&msgbus.HeartbeatAlive{})
+	sub.Start()
+	defer func() { _ = sub.Stop() }()
+
+	stoppedCtx, stop := context.WithCancel(ctx)
+	stop()
+	testCtrl.cmd <- CmdRegister{ID: hbID, Type: "disk"}
+	testCtrl.cmd <- CmdDelWatcher{HbID: hbID, Nodename: peer}
+	testCtrl.cmd <- CmdAddWatcher{HbID: hbID, Nodename: peer, Ctx: stoppedCtx, Timeout: time.Second}
+	testCtrl.cmd <- CmdAddWatcher{HbID: hbID, Nodename: peer, Ctx: ctx, Timeout: time.Second}
+	testCtrl.cmd <- CmdSetPeerSuccess{HbID: hbID, Nodename: peer, Success: true}
+
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case i := <-sub.C:
+			if msg, ok := i.(*msgbus.HeartbeatAlive); ok && msg.HbID == hbID && msg.Nodename == peer {
+				return
+			}
+		case <-timeout:
+			t.Fatalf("%s -> %s: no beat seen by the watcher of the started stream", hbID, peer)
+		}
+	}
+}
