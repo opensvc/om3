@@ -1342,6 +1342,12 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 ### Orchestration
 
+* A purge unprovisions the instances whatever their provisioned state, as v2 did.
+
+    A purge used to delete an instance read as not provisioned straight away. The provisioned state of an instance aggregates the resources having one, and a resource with none, as the container of an oci resource, may hold what only its unprovision releases: the container was left on the node, and a new object of the same name refused to provision.
+
+    The unprovision of a resource recorded not provisioned stops it and skips its unprovisioner, as in v2: `om <path> instance unprovision` no longer runs the unprovisioner of such a resource, the record saying there is nothing it made to remove.
+
 * A start asked of a frozen object no longer unfreezes it.
 
     In v2 and in earlier v3, `om <path> start` on a frozen instance removed the freeze and then started. The object ended up started and unfrozen, so a freeze an operator had set was discarded to serve the request.

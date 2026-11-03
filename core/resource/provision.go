@@ -272,7 +272,12 @@ func unprovision(ctx context.Context, t Driver, leader bool) error {
 	if err := SCSIPersistentReservationStop(ctx, t); err != nil {
 		return err
 	}
-	if err := unprovisionLeaderOrFollower(ctx, t, leader); err != nil {
+	if recordedNotProvisioned(t) {
+		// As v2: the resource is stopped, and what its provision
+		// would have made is not looked for, the record saying it was
+		// not made, or was unprovisioned already.
+		t.Log().Infof("not provisioned: skip the unprovision of the resource, stopped")
+	} else if err := unprovisionLeaderOrFollower(ctx, t, leader); err != nil {
 		return err
 	}
 	if err := setProvisionedValue(false, t); err != nil {
@@ -371,6 +376,17 @@ func hasAnyProvInterface(r Driver) bool {
 		return true
 	}
 	return false
+}
+
+// recordedNotProvisioned says the provisioned state of the resource is
+// recorded, and false. A resource with no record, as one having no
+// provisioned state, is not.
+func recordedNotProvisioned(r Driver) bool {
+	if !hasProvisionedState(r) {
+		return false
+	}
+	v, err := getProvisionedValue(r)
+	return err == nil && !v
 }
 
 func getProvisionedValue(r Driver) (bool, error) {
