@@ -70,3 +70,40 @@ func TestALateSignalIsNotTheEndOfTheRun(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, signaled)
 }
+
+// signalCommander is a commander signaling its command, as the one of a kvm
+// guest agent runs a kill in the guest: the command then ends as the signal
+// makes it.
+type signalCommander struct {
+	ended chan int
+}
+
+func (c *signalCommander) Signal(sig os.Signal) error {
+	c.ended <- 128 + int(sig.(syscall.Signal))
+	return nil
+}
+func (c *signalCommander) CombinedOutput() ([]byte, error) {
+	code := <-c.ended
+	return nil, &exec.ExitError{ProcessState: nil, Stderr: []byte{byte(code)}}
+}
+func (c *signalCommander) Run() error                         { return nil }
+func (c *signalCommander) Start() error                       { return nil }
+func (c *signalCommander) StderrPipe() (io.ReadCloser, error) { return nil, nil }
+func (c *signalCommander) Wait() error                        { return nil }
+
+// A commander signaling its command gets the signal of the run, and is
+// waited on rather than cancelled.
+func TestACommanderSignalingItsCommandGetsTheSignal(t *testing.T) {
+	ctx, stop := signalrelay.WithSignals(context.Background(), syscall.SIGWINCH)
+	defer stop()
+	r := &T{}
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		_ = syscall.Kill(os.Getpid(), syscall.SIGWINCH)
+	}()
+	cancelled := false
+	_, signaled, err := r.runEncapCmd(ctx, &signalCommander{ended: make(chan int, 1)}, func() { cancelled = true })
+	require.Error(t, err)
+	assert.Equal(t, syscall.SIGWINCH, signaled)
+	assert.False(t, cancelled, "waited on, not cancelled")
+}

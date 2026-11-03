@@ -288,6 +288,18 @@ func (t *T) runEncapCmd(ctx context.Context, cmd resource.Commander, cancel cont
 					if err := c.Process.Signal(sig); err == nil {
 						signaled = sig
 					}
+				} else if s, ok := cmd.(interface{ Signal(os.Signal) error }); ok {
+					// A commander signaling its command, as the one
+					// of a kvm guest agent runs a kill in the guest:
+					// the command ends as the signal makes it, and
+					// is waited on.
+					if err := s.Signal(sig); err == nil {
+						signaled = sig
+					} else {
+						t.Log().Warnf("%s: stop waiting for it", err)
+						signaled = sig
+						cancel()
+					}
 				} else {
 					select {
 					case <-done:
