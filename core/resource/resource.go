@@ -1391,9 +1391,16 @@ func evalStatus(ctx context.Context, r Driver) (status.T, error) {
 			s = status.Undef
 		} else {
 			s = r.Status(ctx)
-			prStatus := SCSIPersistentReservationStatus(ctx, r, s)
-			if s == status.NotApplicable {
+			prStatus, foreign := scsiPersistentReservationStatus(ctx, r, s)
+			switch {
+			case s == status.NotApplicable:
 				s.Add(prStatus)
+			case s == status.Up && len(foreign) > 0:
+				// Up by its own witness, the resource can not write:
+				// another node holds the reservation of its devices,
+				// having fenced this one.
+				r.StatusLog().Warn("the reservation of %s is held by another node: this node can not write to it", strings.Join(foreign, ", "))
+				s.Add(status.Warn)
 			}
 			if s == status.Up {
 				if isStopped, err := IsStopped(r); err != nil {
@@ -1435,9 +1442,13 @@ func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.Pe
 		Key:            o.PersistentReservationKey(),
 		Devices:        o.ReservableDevices(ctx),
 		NoPreemptAbort: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
-		Force:          actioncontext.IsForce(ctx) || env.HasDaemonMonitorOrigin(),
-		Log:            r.Log(),
-		StatusLogger:   r.StatusLog(),
+		// The daemon starting a resource preempts a reservation another
+		// node holds, as a takeover fences the node gone. A restart of
+		// the resource does not: it is the node the reservation was taken
+		// from trying to get it back, from a node that may run the object.
+		Force:        actioncontext.IsForce(ctx) || (env.HasDaemonMonitorOrigin() && !env.IsResourceRestart()),
+		Log:          r.Log(),
+		StatusLogger: r.StatusLog(),
 	}
 	return &hdl
 }
@@ -1482,12 +1493,20 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 }
 
 func SCSIPersistentReservationStatus(ctx context.Context, r Driver, coresourceStatus status.T) status.T {
+	s, _ := scsiPersistentReservationStatus(ctx, r, coresourceStatus)
+	return s
+}
+
+// scsiPersistentReservationStatus returns the status of the reservations of
+// the devices of r, and the devices another key holds the reservation of.
+func scsiPersistentReservationStatus(ctx context.Context, r Driver, coresourceStatus status.T) (status.T, []string) {
 	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
-		return status.NotApplicable
+		return status.NotApplicable, nil
 	} else {
 		hdl.CoresourceStatus = coresourceStatus
 		hdl.CoresourceDisabled = r.IsDisabled()
-		return hdl.Status()
+		s := hdl.Status()
+		return s, hdl.ForeignReserved
 	}
 }
 
