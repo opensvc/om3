@@ -646,6 +646,12 @@ func (t T) DoAsync() error {
 				Path:   p.String(),
 				Status: err.Error(),
 			}
+			// A refusal is recorded under an id, which "daemon
+			// orchestration list" and "wait" answer about.
+			var refused errRefused
+			if errors.As(err, &refused) {
+				r.OrchestrationID = refused.id
+			}
 			if wait {
 				idC <- api.OrchestrationQueued{}
 			}
@@ -675,10 +681,10 @@ func (t T) DoAsync() error {
 	}
 	if t.Follow {
 		// The logs of the orchestrations accepted, rather than their ids,
-		// and the refusals, which have none.
+		// and the refusals, which have no logs.
 		ids := make([]uuid.UUID, 0, len(rs))
 		for _, r := range rs {
-			if r.OrchestrationID != uuid.Nil {
+			if r.OrchestrationID != uuid.Nil && r.Status == "accepted" {
 				ids = append(ids, r.OrchestrationID)
 			} else {
 				errs = errors.Join(errs, fmt.Errorf("%s: %s", r.Path, r.Status))
@@ -934,6 +940,17 @@ func (t T) Do() error {
 
 // handleStatusCode returns an error based on the HTTP status code and the corresponding
 // JSON error field. This factorizes the common status code handling pattern.
+// errRefused is an action refused by the instance monitor, with the id the
+// refusal is recorded under.
+type errRefused struct {
+	id     uuid.UUID
+	detail string
+}
+
+func (t errRefused) Error() string {
+	return "error: " + t.detail
+}
+
 func handleStatusCode(status int, body []byte, json400, json401, json403, json404, json408, json409, json500 any) ([]byte, error) {
 	handleProblem := func(code int, i any) error {
 		if i == nil {
@@ -941,6 +958,12 @@ func handleStatusCode(status int, body []byte, json400, json401, json403, json40
 		}
 		if prob, ok := i.(*api.Problem); ok {
 			return fmt.Errorf("error: %s", prob.Detail)
+		}
+		if refused, ok := i.(*api.OrchestrationRefused); ok && refused != nil {
+			if refused.OrchestrationID != nil {
+				return errRefused{id: *refused.OrchestrationID, detail: refused.Detail}
+			}
+			return fmt.Errorf("error: %s", refused.Detail)
 		}
 		return fmt.Errorf("error: unexpected problem format: %#v", i)
 	}

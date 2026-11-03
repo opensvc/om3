@@ -5552,7 +5552,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5604,7 +5604,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5643,7 +5643,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5678,7 +5678,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5712,7 +5712,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5758,7 +5758,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5797,7 +5797,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5838,7 +5838,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5878,7 +5878,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5912,7 +5912,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5947,7 +5947,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -5987,7 +5987,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -6026,7 +6026,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -6065,7 +6065,7 @@ paths:
         408:
           $ref: '#/components/responses/408'
         409:
-          $ref: '#/components/responses/409'
+          $ref: '#/components/responses/409OrchestrationRefused'
         500:
           $ref: '#/components/responses/500'
 
@@ -9807,6 +9807,33 @@ components:
       required:
         - orchestration_id
 
+    OrchestrationRefused:
+      description: |
+        A problem, for an action refused. When the instance monitor refused
+        it, the refusal is recorded as an orchestration ended refused, with
+        the detail as its reason, under orchestration_id: "daemon
+        orchestration list" and "wait" answer about it, as they do about an
+        orchestration accepted.
+      type: object
+      properties:
+        detail:
+          type: string
+        status:
+          type: integer
+        title:
+          type: string
+        orchestration_id:
+          type: string
+          format: uuid
+          x-go-name: OrchestrationID
+        node:
+          description: the node that recorded the refusal, which answers for it
+          type: string
+      required:
+        - detail
+        - status
+        - title
+
     Package:
       type: object
       required:
@@ -12718,6 +12745,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
+    '409OrchestrationRefused':
+      description: |
+        Conflict: the action is refused, by the instance monitor among others,
+        which records the refusal under the orchestration id of the answer.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OrchestrationRefused"
 
     '410':
       description: Gone

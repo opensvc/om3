@@ -24073,7 +24073,7 @@ type PostObjectActionAbortResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24110,7 +24110,7 @@ type PostObjectActionCapResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24147,7 +24147,7 @@ type PostObjectActionDeleteResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24184,7 +24184,7 @@ type PostObjectActionFreezeResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24221,7 +24221,7 @@ type PostObjectActionGivebackResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24258,7 +24258,7 @@ type PostObjectActionProvisionResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24295,7 +24295,7 @@ type PostObjectActionPurgeResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24332,7 +24332,7 @@ type PostObjectActionResizeResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24369,7 +24369,7 @@ type PostObjectActionRestartResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24406,7 +24406,7 @@ type PostObjectActionStartResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24443,7 +24443,7 @@ type PostObjectActionStopResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24480,7 +24480,7 @@ type PostObjectActionSwitchResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24517,7 +24517,7 @@ type PostObjectActionUnfreezeResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -24554,7 +24554,7 @@ type PostObjectActionUnprovisionResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
-	JSON409      *N409
+	JSON409      *N409OrchestrationRefused
 	JSON500      *N500
 }
 
@@ -36072,7 +36072,7 @@ func ParsePostObjectActionAbortResponse(rsp *http.Response) (*PostObjectActionAb
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36147,7 +36147,7 @@ func ParsePostObjectActionCapResponse(rsp *http.Response) (*PostObjectActionCapR
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36222,7 +36222,7 @@ func ParsePostObjectActionDeleteResponse(rsp *http.Response) (*PostObjectActionD
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36297,7 +36297,7 @@ func ParsePostObjectActionFreezeResponse(rsp *http.Response) (*PostObjectActionF
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36372,7 +36372,7 @@ func ParsePostObjectActionGivebackResponse(rsp *http.Response) (*PostObjectActio
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36447,7 +36447,7 @@ func ParsePostObjectActionProvisionResponse(rsp *http.Response) (*PostObjectActi
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36522,7 +36522,7 @@ func ParsePostObjectActionPurgeResponse(rsp *http.Response) (*PostObjectActionPu
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36597,7 +36597,7 @@ func ParsePostObjectActionResizeResponse(rsp *http.Response) (*PostObjectActionR
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36672,7 +36672,7 @@ func ParsePostObjectActionRestartResponse(rsp *http.Response) (*PostObjectAction
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36747,7 +36747,7 @@ func ParsePostObjectActionStartResponse(rsp *http.Response) (*PostObjectActionSt
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36822,7 +36822,7 @@ func ParsePostObjectActionStopResponse(rsp *http.Response) (*PostObjectActionSto
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36897,7 +36897,7 @@ func ParsePostObjectActionSwitchResponse(rsp *http.Response) (*PostObjectActionS
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36972,7 +36972,7 @@ func ParsePostObjectActionUnfreezeResponse(rsp *http.Response) (*PostObjectActio
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -37047,7 +37047,7 @@ func ParsePostObjectActionUnprovisionResponse(rsp *http.Response) (*PostObjectAc
 		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
+		var dest N409OrchestrationRefused
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

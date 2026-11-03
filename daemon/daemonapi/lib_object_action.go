@@ -107,6 +107,31 @@ func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node stri
 	case errors.Is(err, context.Canceled):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "client context canceled")
 	default:
-		return JSONProblemf(eCtx, http.StatusConflict, "set instance monitor", "%s", err)
+		// Refused by the instance monitor, which records the refusal
+		// under the candidate id, with the reason: the client is handed
+		// that id, for "daemon orchestration list" and "wait" to answer
+		// about it. Recorded before the answer, as an accepted one is,
+		// for a client asking at once.
+		refused := api.OrchestrationRefused{
+			Status: http.StatusConflict,
+			Title:  "set instance monitor",
+			Detail: err.Error(),
+		}
+		if value.CandidateOrchestrationID != uuid.Nil {
+			id := value.CandidateOrchestrationID
+			o := session.Orchestration{
+				OrchestrationID: id.String(),
+				Node:            node,
+				Path:            p.String(),
+			}
+			if value.GlobalExpect != nil {
+				o.Expect = value.GlobalExpect.String()
+			}
+			session.AddOrchestrationIfUnknown(o)
+			session.EndOrchestration(id.String(), session.StateRefused, err.Error())
+			refused.OrchestrationID = &id
+			refused.Node = &node
+		}
+		return eCtx.JSON(http.StatusConflict, refused)
 	}
 }

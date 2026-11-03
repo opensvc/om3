@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,4 +69,28 @@ func TestJSONFromSetInstanceMonitorErrorRecordsTheOrchestration(t *testing.T) {
 	assert.True(t, ok, "the id answered is known before the monitor says it took it on")
 	assert.Equal(t, "test/svc/svc1", o.Path)
 	assert.Equal(t, "placed", o.Expect)
+}
+
+// An action the instance monitor refuses is answered with the id its refusal
+// is recorded under, in the refused state with the reason, for "daemon
+// orchestration list" and "wait" to answer about it.
+func TestJSONFromSetInstanceMonitorErrorHandsTheRefusalID(t *testing.T) {
+	p := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "svc1"}
+	globalExpect := instance.MonitorGlobalExpectPlacedAt
+	value := instance.MonitorUpdate{GlobalExpect: &globalExpect, CandidateOrchestrationID: uuid.New()}
+
+	rec := httptest.NewRecorder()
+	eCtx := echo.New().NewContext(httptest.NewRequest(http.MethodPost, "/", nil), rec)
+	reason := errors.New("no destination node candidate")
+	assert.NoError(t, JSONFromSetInstanceMonitorError(eCtx, p, "node1", &value, reason))
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"orchestration_id":"`+value.CandidateOrchestrationID.String()+`"`)
+	assert.Contains(t, rec.Body.String(), "no destination node candidate")
+
+	o, ok := session.GetOrchestration(value.CandidateOrchestrationID.String())
+	assert.True(t, ok, "the id answered is known")
+	assert.Equal(t, session.StateRefused, o.State)
+	assert.Equal(t, "no destination node candidate", o.Error)
+	assert.Equal(t, "placed@", o.Expect)
+	assert.Equal(t, "test/svc/svc1", o.Path)
 }
