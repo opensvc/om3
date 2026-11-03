@@ -3,7 +3,6 @@ package imon
 import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/provisioned"
 )
 
 var (
@@ -55,15 +54,12 @@ func (t *Manager) purgedFromIdle() {
 	if t.setWaitChildren() || !t.isLocalStatusCurrent() {
 		return
 	}
-	// A mixed instance, as one whose provision failed half way, holds
-	// what its provisioned resources took: deleting it unprovisioned
-	// would leave that behind, a drbd resource up on a volume among them.
-	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.True, provisioned.Mixed, provisioned.NotApplicable) {
-		t.purgedFromIdleProvisioned()
-		return
-	}
-	go t.orchestrateAfterAction(instance.MonitorStateIdle, instance.MonitorStateUnprovisionSuccess)
-	return
+	// The instance is unprovisioned whatever its provisioned state says,
+	// as in v2: the state aggregates the resources having one, and a
+	// resource with none may hold what only its unprovision releases, as
+	// the container of an oci resource, while the others read false. A
+	// resource recorded not provisioned is stopped, not unprovisioned.
+	t.purgedFromIdleProvisioned()
 }
 
 // purgedFromDeleted ends the purge orchestration the way every other

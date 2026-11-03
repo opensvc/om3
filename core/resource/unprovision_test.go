@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // leaderOnlyDriver is a driver that unprovisions with the leader method only,
@@ -82,4 +83,45 @@ func TestProvisionedState(t *testing.T) {
 	v, err = Provisioned(ctx, r)
 	require.NoError(t, err)
 	assert.Equal(t, provisioned.NotApplicable, v)
+}
+
+// provisionerDriver is a driver with a provisioner, stopped and unprovisioned
+// by the leader method, counting both.
+type provisionerDriver struct {
+	Driver
+	varDir                 string
+	stopped, unprovisioned int
+}
+
+func (t *provisionerDriver) VarDir() string             { return t.varDir }
+func (t *provisionerDriver) Log() *plog.Logger          { return plog.NewDefaultLogger() }
+func (t *provisionerDriver) Stop(context.Context) error { t.stopped++; return nil }
+func (t *provisionerDriver) UnprovisionAsLeader(context.Context) error {
+	t.unprovisioned++
+	return nil
+}
+
+// A resource recorded not provisioned is stopped by an unprovision, as in v2,
+// not unprovisioned: the record says its provision made nothing to remove. A
+// resource recorded provisioned, or with no record, is unprovisioned.
+func TestAResourceRecordedNotProvisionedIsStoppedNotUnprovisioned(t *testing.T) {
+	ctx := context.Background()
+
+	r := &provisionerDriver{varDir: t.TempDir()}
+	require.NoError(t, setProvisionedValue(false, r))
+	require.NoError(t, unprovision(ctx, r, true))
+	assert.Equal(t, 1, r.stopped, "stopped")
+	assert.Equal(t, 0, r.unprovisioned, "not unprovisioned")
+
+	r = &provisionerDriver{varDir: t.TempDir()}
+	require.NoError(t, setProvisionedValue(true, r))
+	require.NoError(t, unprovision(ctx, r, true))
+	assert.Equal(t, 1, r.unprovisioned, "recorded provisioned: unprovisioned")
+
+	r = &provisionerDriver{varDir: t.TempDir()}
+	require.NoError(t, unprovision(ctx, r, true))
+	assert.Equal(t, 1, r.unprovisioned, "no record: unprovisioned")
+	v, err := getProvisionedValue(r)
+	require.NoError(t, err)
+	assert.False(t, v, "recorded not provisioned after")
 }

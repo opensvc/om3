@@ -64,3 +64,22 @@ func TestAPurgeGoesOnFromAStartFailed(t *testing.T) {
 		require.Equal(t, instance.MonitorStateWaitNonLeader, m.state.State, "from %s", state)
 	}
 }
+
+// A purge unprovisions an instance read as not provisioned too, as in v2: a
+// resource with no provisioned state, as the container of an oci resource,
+// may hold what only its unprovision releases while the others read false.
+func TestAPurgeUnprovisionsAnInstanceReadNotProvisioned(t *testing.T) {
+	m := newTestManager(&pubSpy{})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	m.ctx = ctx
+	m.path = naming.Path{Kind: naming.KindSvc, Name: "obj"}
+	m.state.GlobalExpect = instance.MonitorGlobalExpectPurged
+	m.state.OrchestrationID = uuid.New()
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Warn, Provisioned: provisioned.False}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+
+	m.orchestratePurged()
+	require.Equal(t, instance.MonitorStateWaitNonLeader, m.state.State,
+		"the instance read not provisioned must be unprovisioned, not deleted as it is")
+}
