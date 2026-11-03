@@ -432,12 +432,18 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 
 	// The restart was planned earlier: what was true then is checked
 	// again. Fired while the monitor runs another action, as the
-	// unprovision of a purge, the start would replace the state of that
-	// action, its end lost. A state waiting for something, as the ready
-	// of a start the orchestration prepares, runs no action: the restart
-	// goes on, as it did.
+	// unprovision of a purge, or waits for one, as the children of a stop,
+	// the start would replace the state of that action or that wait. It
+	// goes on from the states it is planned from, and from the ready of a
+	// start the orchestration prepares: the restart starts the resources
+	// before that start does.
 	reason := restartBlockedByGlobalExpect(t.state.GlobalExpect)
-	if t.state.State.IsDoing() {
+	switch t.state.State {
+	case instance.MonitorStateIdle,
+		instance.MonitorStateReady,
+		instance.MonitorStateStartFailure,
+		instance.MonitorStateStopFailure:
+	default:
 		reason = fmt.Sprintf("state is %s", t.state.State)
 	}
 	if reason != "" {
@@ -465,6 +471,10 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 	if len(rids) == 0 {
 		or.log.Infof("abort restart: no more candidates")
 		return
+	}
+	if t.state.State == instance.MonitorStateReady {
+		// The start prepared is replaced: its timer goes.
+		t.clearPending()
 	}
 	queueFunc := t.queueResourceStart
 	if standby {
