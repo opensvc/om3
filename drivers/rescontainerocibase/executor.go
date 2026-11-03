@@ -446,6 +446,28 @@ func (e *Executor) log() *plog.Logger {
 
 // getArgs returns a that may be prefixed by baseArgs when e.args implements
 // ExecutorBaseArgser.
+// NamesByLabel returns the names of the containers, running or not, carrying
+// the label, a key=value pair.
+func (e *Executor) NamesByLabel(ctx context.Context, label string) ([]string, error) {
+	cmdArgs := e.getArgs("container", "ls", "--all", "--filter", "label="+label, "--format", "{{.Names}}")
+	opts, err := e.commandOpts(ctx, nil, cmdArgs)
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, command.WithBufferedStdout())
+	cmd := command.New(opts...)
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0)
+	for _, s := range strings.Split(string(cmd.Stdout()), "\n") {
+		if s = strings.TrimSpace(s); s != "" {
+			names = append(names, s)
+		}
+	}
+	return names, nil
+}
+
 func (e *Executor) getArgs(a ...string) []string {
 	var cmdArgs []string
 	if i, ok := e.args.(ExecutorBaseArgser); ok {

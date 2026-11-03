@@ -6,6 +6,7 @@ package restaskocibase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"syscall"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/restask"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/signalrelay"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
@@ -71,6 +73,10 @@ type (
 		Timeout         *time.Duration `json:"timeout"`
 
 		containerDetachedGetter ContainerDetachedGetter
+
+		// runName is the name of the container of the run in progress,
+		// when it has one of its own, see RunContainerName.
+		runName string
 	}
 
 	ContainerDetachedGetter interface {
@@ -87,8 +93,25 @@ type (
 		RemoveContainer(context.Context) error
 		ContainerInspectRefresh(context.Context) (rescontainerocibase.Inspecter, error)
 		Signal(context.Context, syscall.Signal) error
+		LabeledContainerNames(context.Context) ([]string, error)
 	}
 )
+
+// RunContainerName returns the name of the task container: the name keyword,
+// or the name of the resource container when empty. A task running several
+// runs at once, max_parallel > 1, has a container per run, named after the
+// exec id of the run: <name>.<exec id>.
+func (t *T) RunContainerName() string {
+	if t.runName != "" {
+		return t.runName
+	}
+	return t.Name
+}
+
+// parallelRuns says the runs of the task have a container each.
+func (t *T) parallelRuns() bool {
+	return t.MaxParallel > 1
+}
 
 func (t *T) SetContainerGetter(c ContainerDetachedGetter) {
 	t.containerDetachedGetter = c
@@ -99,6 +122,9 @@ func (t *T) Run(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) (err error) {
+	if t.parallelRuns() {
+		return t.stopRuns(ctx)
+	}
 	container := t.containerDetachedGetter.GetContainerDetached()
 
 	if container == nil {
@@ -114,7 +140,41 @@ func (t *T) Stop(ctx context.Context) (err error) {
 	return nil
 }
 
+// stopRuns stops the containers of the runs of a task running several at
+// once, found by the label of the resource.
+func (t *T) stopRuns(ctx context.Context) error {
+	base := t.containerDetachedGetter.GetContainerDetached()
+	if base == nil {
+		return nil
+	}
+	names, err := base.LabeledContainerNames(ctx)
+	if err != nil {
+		return fmt.Errorf("list the run containers: %w", err)
+	}
+	var errs error
+	for _, name := range names {
+		t.runName = name
+		if c := t.containerDetachedGetter.GetContainerDetached(); c != nil {
+			if err := c.Stop(ctx); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("stop %s: %w", name, err))
+			}
+		}
+	}
+	t.runName = ""
+	return errs
+}
+
 func (t *T) lockedRun(ctx context.Context) (err error) {
+	if t.parallelRuns() {
+		// Each run has a container of its own: kept, they would pile
+		// up, one per run.
+		if !t.Remove {
+			return fmt.Errorf("max_parallel %d needs rm = true: each run has a container of its own, which a run would leave behind", t.MaxParallel)
+		}
+		base := rescontainerocibase.ContainerNameOf(t.Name, t.Path, t.ResourceID.String())
+		t.runName = base + "." + xsession.ExecID().String()
+		defer func() { t.runName = "" }()
+	}
 	if err := t.RunInstall(ctx); err != nil {
 		return err
 	}
@@ -122,6 +182,21 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 
 	if container == nil {
 		return fmt.Errorf("unable to get task container")
+	}
+
+	// A container running is another run's, or one a run left behind:
+	// starting it would start nothing, and counting it a run, its exit
+	// code read while it runs, would count a run that did nothing.
+	if inspect, err := container.ContainerInspectRefresh(ctx); err == nil && inspect != nil && inspect.Running() {
+		return fmt.Errorf("the task is already running, in container %s", rescontainerocibase.ContainerNameOf(t.RunContainerName(), t.Path, t.ResourceID.String()))
+	}
+	if t.parallelRuns() {
+		// The container of the run goes with it, whatever its end.
+		defer func() {
+			if err := container.RemoveContainer(ctx); err != nil {
+				t.Log().Warnf("remove the run container %s: %s", t.RunContainerName(), err)
+			}
+		}()
 	}
 
 	// A run is not a start, so the action applies no group before it, and
@@ -199,7 +274,7 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	} else if s != status.Up {
 		return fmt.Errorf("command exited with code %d", exitCode)
 	}
-	if t.Remove {
+	if t.Remove && !t.parallelRuns() {
 		if err := container.RemoveContainer(ctx); err != nil {
 			return fmt.Errorf("remove container: %w", err)
 		}

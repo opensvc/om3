@@ -1256,6 +1256,16 @@ which share the same executor.
     logs of the container after it exits. They were logged on the runs
     creating the container only, whatever `log` said.
 
+* **A container task runs a container per run with `max_parallel` above 1:**
+    As in v2, each run has a container of its own, named `<name>.<exec id>`,
+    the `name` keyword or the default container name suffixed by the exec id
+    of the run, which `om daemon exec list` shows. The container is removed at
+    the end of its run, whatever its exit code, and such a task needs
+    `rm = true`: a run of a task setting `max_parallel` above 1 with `rm`
+    false, its default, is refused. A run finding the container of the task
+    running, another run or one left behind, fails rather than counting as a
+    run that succeeded.
+
 ### Object: sec
 
 * **Removed actions:**

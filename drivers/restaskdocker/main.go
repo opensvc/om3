@@ -51,7 +51,7 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			NoPreemptAbort:            t.NoPreemptAbort,
 			OsvcRootPath:              t.OsvcRootPath,
 			GuestOS:                   t.GuestOS,
-			Name:                      t.Name,
+			Name:                      t.RunContainerName(),
 			Hostname:                  t.Hostname,
 			Image:                     t.Image,
 			ImagePullPolicy:           t.ImagePullPolicy,

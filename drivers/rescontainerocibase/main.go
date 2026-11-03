@@ -986,6 +986,25 @@ func (t *BT) Executer() Executer {
 	return t.executer
 }
 
+// LabeledContainerNames returns the names of the containers labeled as the
+// ones of the resource, running or not: the containers of the runs of a task
+// running several at once, each named after its run.
+func (t *BT) LabeledContainerNames(ctx context.Context) ([]string, error) {
+	l, ok := t.executer.(interface {
+		NamesByLabel(context.Context, string) ([]string, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("the executer lists no containers")
+	}
+	return l.NamesByLabel(ctx, "com.opensvc.id="+t.containerLabelID())
+}
+
+// ContainerNameOf returns name, or the name the container of the resource rid
+// of the object at p has when name is empty.
+func ContainerNameOf(name string, p naming.Path, rid string) string {
+	return containerName(name, p, rid)
+}
+
 func (t *BT) containerLabelID() string {
 	return fmt.Sprintf("%s.%s", t.ObjectID, t.ResourceID.String())
 }
