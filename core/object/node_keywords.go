@@ -34,9 +34,10 @@ var (
 		Text:        keywords.NewText(fs, "text/kw/node/id"),
 	}
 	kwNodeOCI = keywords.Keyword{
-		Option:  "oci",
-		Section: "node",
-		Text:    keywords.NewText(fs, "text/kw/node/node.oci"),
+		Candidates: []string{"podman", "docker"},
+		Option:     "oci",
+		Section:    "node",
+		Text:       keywords.NewText(fs, "text/kw/node/node.oci"),
 	}
 	kwNodeUUID = keywords.Keyword{
 		Option:       "uuid",

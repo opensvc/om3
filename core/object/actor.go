@@ -43,6 +43,10 @@ type (
 		// them.
 		unsupported map[string]string
 
+		// ociEngineName caches the engine the oci resources run with,
+		// see ociEngine.
+		ociEngineName string
+
 		// editForce has an edit of the configuration written even when
 		// a resource up on this node would leak by it.
 		editForce bool
@@ -348,6 +352,11 @@ func (t *actor) ConfigureResources() {
 				unsupported[k] = unsupportedDriverName(name, driverName)
 			}
 			continue
+		}
+		if driverName == "oci" && (driverGroup == driver.GroupContainer || driverGroup == driver.GroupTask) {
+			// The engine of the node, as in v2: the resource is the one
+			// of the engine, and says so as its type.
+			driverName = t.ociEngine()
 		}
 		driverID := driver.NewID(driverGroup, driverName)
 		factory := resource.NewResourceFunc(driverID)
@@ -703,4 +712,20 @@ func unsupportedDriverName(group, name string) string {
 		return group
 	}
 	return group + "." + name
+}
+
+// ociEngine returns the engine the oci container and task resources of the
+// object run with, the one of the node, see Node.OCIEngine. Without the node
+// configuration, it is the oci virtual driver, which prefers the same.
+func (t *actor) ociEngine() string {
+	if t.ociEngineName != "" {
+		return t.ociEngineName
+	}
+	n, err := t.Node()
+	if err != nil {
+		t.log.Warnf("oci engine: %s", err)
+		return "oci"
+	}
+	t.ociEngineName = n.OCIEngine()
+	return t.ociEngineName
 }
