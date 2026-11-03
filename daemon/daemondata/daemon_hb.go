@@ -43,12 +43,15 @@ func (d *data) setDaemonHeartbeat() {
 		},
 	}
 	subHb.UpdatedAt = time.Now()
-	daemonsubsystem.DataHeartbeat.Set(d.localNode, subHb.DeepCopy())
+	// The heartbeat status is new, its streams a copy of the cache, and only
+	// read from now on: the cache and the message share it, as their readers
+	// change neither.
+	daemonsubsystem.DataHeartbeat.Set(d.localNode, &subHb)
 	labels := []pubsub.Label{d.labelLocalhost}
 	if changed {
 		labels = append(labels, pubsub.Label{"changed", "true"})
 	}
-	d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, labels...)
+	d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: subHb}, labels...)
 }
 
 func (d *data) setHbMsgPatchLength(node string, length int) {
