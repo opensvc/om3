@@ -2,7 +2,7 @@ package omcmd
 
 import (
 	"github.com/opensvc/om3/v3/core/nodeaction"
-	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/compliance"
 )
 
 type (
@@ -18,15 +18,9 @@ func (t *CmdNodeComplianceListModules) Run() error {
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			comp, err := n.NewCompliance()
-			if err != nil {
-				return nil, err
-			}
-			return comp.ListModuleNames()
+			// The modules installed on the node: no collector is
+			// asked, none is needed.
+			return compliance.New().ListModuleNames()
 		}),
 	).Do()
 }

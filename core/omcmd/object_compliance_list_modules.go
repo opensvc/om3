@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
+	"github.com/opensvc/om3/v3/util/compliance"
 )
 
 type (
@@ -24,15 +25,12 @@ func (t *CmdObjectComplianceListModules) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			if o, err := object.NewSvc(p); err != nil {
+			if _, err := object.NewSvc(p); err != nil {
 				return nil, err
-			} else {
-				comp, err := o.NewCompliance()
-				if err != nil {
-					return nil, err
-				}
-				return comp.ListModuleNames()
 			}
+			// The modules installed on the node: no collector is
+			// asked, none is needed.
+			return compliance.New().ListModuleNames()
 		}),
 	).Do()
 }
