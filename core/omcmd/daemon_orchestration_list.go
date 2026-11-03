@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -161,14 +162,18 @@ const orchestrationListSort = "-started_at,orchestration_id"
 // Whether the daemon still holds the id has already been answered by then, so
 // an empty result at this point is the options, not forgetting.
 func (t *CmdDaemonOrchestrationList) filter(items []api.OrchestrationItem) []api.OrchestrationItem {
-	if len(t.States) == 0 {
+	if len(t.States) == 0 && t.ObjectSelector == "" {
 		return items
 	}
 	l := make([]api.OrchestrationItem, 0, len(items))
 	for _, i := range items {
-		if slices.Contains(t.States, i.State) {
-			l = append(l, i)
+		if len(t.States) > 0 && !slices.Contains(t.States, i.State) {
+			continue
 		}
+		if t.ObjectSelector != "" && (i.Path == nil || !naming.MatchPatterns(t.ObjectSelector, *i.Path)) {
+			continue
+		}
+		l = append(l, i)
 	}
 	return l
 }
@@ -266,6 +271,9 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 	params := api.GetDaemonOrchestrationsParams{}
 	if len(t.States) > 0 {
 		params.States = &t.States
+	}
+	if t.ObjectSelector != "" {
+		params.Selector = &t.ObjectSelector
 	}
 	resp, err := c.GetDaemonOrchestrationsWithResponse(ctx, nodename, &params)
 	if err != nil {
