@@ -239,6 +239,9 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     url = https://collector.opensvc.com
     ```
 
+* **Collector certificate verified on the jsonrpc calls:**
+    The jsonrpc calls to the old collector, the compliance and the init ones on `node.dbopensvc` among them, verify the certificate of the collector, as the calls to oc3 do, where v2 never verified it. Set `node.dbinsecure = true` for a collector whose certificate the node does not trust, a test one.
+
 * **SAN switches:**
     A switch is inventoried by `om node push switch [<name>]`, and on the `schedule` of its `switch#<name>` section, with the `pushswitch` scheduler action: the v2 `om node pushbrocade` command and the `[brocade] schedule` keyword are gone.
     The `telnet` method of a brocade switch is refused, as telnet sends the password in clear: set `method = ssh`, with a `key` or a `password` secret.
