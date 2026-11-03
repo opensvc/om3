@@ -136,11 +136,16 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	opts = append(opts,
 		command.WithTimeout(app.GetTimeout("run")),
 		command.WithIgnoredExitCodes(),
+		// A signal the run receives is passed on to the command.
+		command.WithSignalRelay(ctx),
 	)
 	cmd := command.New(opts...)
 	t.loggerWithCmd(cmd).Infof("run %s", cmd)
 	err = cmd.Run()
-	if err := t.WriteLastRun(cmd.ExitCode()); err != nil {
+	// A command ended by a signal, as the one the run passes on, exits
+	// with 128 + the signal, as the shell reports it, not -1.
+	exitCode := cmd.NormalizedExitCode()
+	if err := t.WriteLastRun(exitCode); err != nil {
 		return err
 	}
 	if err != nil {
@@ -149,10 +154,10 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 			t.Log().Warnf("on error: %s", err)
 		}
 	}
-	if s, err := t.BaseTask.ExitCodeToStatus(cmd.ExitCode()); err != nil {
+	if s, err := t.BaseTask.ExitCodeToStatus(exitCode); err != nil {
 		return err
 	} else if s != status.Up {
-		return fmt.Errorf("command exited with code %d", cmd.ExitCode())
+		return fmt.Errorf("command exited with code %d", exitCode)
 	}
 	return nil
 }

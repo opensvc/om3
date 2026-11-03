@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"syscall"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
@@ -11,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/signalrelay"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -124,6 +126,12 @@ func (t *CmdObjectInstanceRun) Run(kind string) error {
 			ctx = actioncontext.WithCron(ctx, t.Cron)
 			ctx = actioncontext.WithConfirm(ctx, t.Confirm)
 			ctx = actioncontext.WithEnv(ctx, t.Env)
+
+			// A signal, as the kill of the exec by the daemon sends, is
+			// passed on to the commands of the tasks, which the run
+			// waits for, rather than ending the run and orphaning them.
+			ctx, stop := signalrelay.WithSignals(ctx, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+			defer stop()
 			return nil, o.Run(ctx)
 		}),
 	).Do()
