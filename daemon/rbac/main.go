@@ -1,7 +1,7 @@
 package rbac
 
 import (
-	"fmt"
+	"path"
 	"slices"
 	"strings"
 )
@@ -115,6 +115,9 @@ func (t Grants) Has(role Role, scope string) bool {
 	return match(t, role, scope)
 }
 
+// Namespaces returns the namespace selectors of the grants of the roles, of
+// every role with none: namespace names or glob patterns, which MatchNamespace
+// matches against a namespace.
 func (t Grants) Namespaces(roles ...Role) []string {
 	allowAll := false
 	allowedRole := make(map[Role]any)
@@ -147,13 +150,10 @@ func (t Grants) Namespaces(roles ...Role) []string {
 }
 
 func NewGrant(role Role, scope string) Grant {
-	var s string
 	if scope == "" {
-		s = fmt.Sprintf("%s", role)
-	} else {
-		s = fmt.Sprintf("%s:%s", role, scope)
+		return Grant(role)
 	}
-	return Grant(s)
+	return Grant(string(role) + ":" + scope)
 }
 
 func match(userGrants Grants, role Role, scope string) bool {
@@ -164,12 +164,51 @@ func match(userGrants Grants, role Role, scope string) bool {
 func matchGrants(userGrants Grants, grants ...Grant) bool {
 	for _, userGrant := range userGrants {
 		for _, grant := range grants {
-			if userGrant == grant {
+			if matchGrant(userGrant, grant) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// matchGrant says whether the grant of a user holds grant: the same, or the
+// same role on a namespace its namespace selector matches.
+//
+// A selector is matched against a namespace, never against the scope of
+// every namespace a grant with none has: "guest:*" is a guest of each
+// namespace, not the unscoped guest. A grant with no glob character is
+// compared as is, the only cost of the check for most grants.
+func matchGrant(userGrant, grant Grant) bool {
+	if userGrant == grant {
+		return true
+	}
+	if !strings.ContainsAny(string(userGrant), globChars) {
+		return false
+	}
+	userRole, selector := userGrant.Split()
+	role, namespace := grant.Split()
+	if userRole != role || selector == "" || namespace == "" {
+		return false
+	}
+	return MatchNamespace(selector, namespace)
+}
+
+// globChars are the characters making a namespace selector a pattern.
+const globChars = "*?["
+
+// MatchNamespace says whether a namespace selector of a grant, a namespace
+// name or a glob pattern as "prod*", matches the namespace. A malformed
+// pattern matches its name only.
+func MatchNamespace(selector, namespace string) bool {
+	if selector == namespace {
+		return true
+	}
+	if !strings.ContainsAny(selector, globChars) {
+		return false
+	}
+	ok, err := path.Match(selector, namespace)
+	return err == nil && ok
 }
 
 func matchRoles(userGrants Grants, roles ...Role) bool {

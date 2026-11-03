@@ -22,6 +22,7 @@ type (
 		pathMap naming.M
 		nodeMap nodeselector.ResultMap
 		grants  rbac.Grants
+		guestOn func(string) bool
 	}
 )
 
@@ -38,7 +39,13 @@ func (m *Meta) HasPath(s string) bool {
 		return false
 	}
 	grants := m.Grants()
-	return hasRoleGuestOn(grants, p.Namespace) || grants.HasRole(rbac.RoleRoot)
+	if grants.HasRole(rbac.RoleRoot) {
+		return true
+	}
+	if m.guestOn == nil {
+		m.guestOn = guestOn(grants)
+	}
+	return m.guestOn(p.Namespace)
 }
 
 func (m *Meta) Grants() rbac.Grants {

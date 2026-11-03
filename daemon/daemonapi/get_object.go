@@ -52,6 +52,7 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
+	isGuestOn := guestOn(userGrants)
 
 	getCore := func(p naming.Path, ostat *object.Status) api.ObjectCore {
 		core := api.ObjectCore{
@@ -102,7 +103,7 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 
 	l := make(api.ObjectItems, 0)
 	for _, p := range meta.Paths() {
-		if !hasRoot && !hasRoleGuestOn(userGrants, p.Namespace) {
+		if !hasRoot && !isGuestOn(p.Namespace) {
 			continue
 		}
 		ostat := object.StatusData.GetByPath(p)

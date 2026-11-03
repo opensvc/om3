@@ -28,9 +28,10 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 	items := make(api.ResourceItems, 0)
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
+	isGuestOn := guestOn(userGrants)
 
 	for _, config := range configs {
-		if !hasRoot && !hasRoleGuestOn(userGrants, config.Path.Namespace) {
+		if !hasRoot && !isGuestOn(config.Path.Namespace) {
 			continue
 		}
 		if !meta.HasPath(config.Path.String()) {

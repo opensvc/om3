@@ -238,3 +238,13 @@ func TestIsEventAllowedForGuest(t *testing.T) {
 		})
 	}
 }
+
+// A guest of the namespaces a pattern matches gets their events, the ones of
+// the namespaces created after the grant was written among them.
+func TestIsEventAllowedForAGuestOfAPattern(t *testing.T) {
+	grants := rbac.NewGrants("guest:prod*")
+	for ns, allowed := range map[string]bool{"prod": true, "prod-eu": true, "dev": false, "system": false} {
+		msg := &msgbus.InstanceStatusUpdated{Msg: pubsub.Msg{Labels: pubsub.NewLabels("namespace", ns)}}
+		require.Equal(t, allowed, isEventAllowedForGuest(grants, msg), ns)
+	}
+}

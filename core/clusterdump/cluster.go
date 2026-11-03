@@ -1,7 +1,9 @@
 package clusterdump
 
 import (
+	"path"
 	"sort"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -153,19 +155,44 @@ func (s *Data) WithSelector(selector string) *Data {
 }
 
 // WithNamespace returns a view of the dataset without the objects not matching
-// the namespaces. The receiver is not modified, see filter.
+// the namespaces: namespace names, or glob patterns as the namespace selector
+// of a grant is. The receiver is not modified, see filter.
 func (s *Data) WithNamespace(namespaces ...string) *Data {
 	if len(namespaces) == 0 {
 		return s
 	}
-	allowedNamespaces := make(map[string]any, len(namespaces))
+	names := make(map[string]bool, len(namespaces))
+	patterns := make([]string, 0)
 	for _, namespace := range namespaces {
-		allowedNamespaces[namespace] = nil
+		if strings.ContainsAny(namespace, "*?[") {
+			patterns = append(patterns, namespace)
+		} else {
+			names[namespace] = true
+		}
+	}
+	// The verdict of each namespace, the patterns matched once per
+	// namespace rather than per object.
+	verdicts := make(map[string]bool)
+	allowed := func(namespace string) bool {
+		if names[namespace] {
+			return true
+		}
+		if v, ok := verdicts[namespace]; ok {
+			return v
+		}
+		v := false
+		for _, pattern := range patterns {
+			if ok, err := path.Match(pattern, namespace); err == nil && ok {
+				v = true
+				break
+			}
+		}
+		verdicts[namespace] = v
+		return v
 	}
 	return s.filter(func(ps string) bool {
 		p, _ := naming.ParsePath(ps)
-		_, ok := allowedNamespaces[p.Namespace]
-		return ok
+		return allowed(p.Namespace)
 	})
 }
 

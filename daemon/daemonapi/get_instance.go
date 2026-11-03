@@ -27,6 +27,7 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 	l := make(api.InstanceItems, 0)
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
+	isGuestOn := guestOn(userGrants)
 
 	for _, config := range configs {
 		if !meta.HasPath(config.Path.String()) {
@@ -35,7 +36,7 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
-		if !hasRoot && !hasRoleGuestOn(userGrants, config.Path.Namespace) {
+		if !hasRoot && !isGuestOn(config.Path.Namespace) {
 			continue
 		}
 

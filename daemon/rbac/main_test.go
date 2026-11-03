@@ -460,3 +460,53 @@ func TestFilterGrantStrings(t *testing.T) {
 		require.Empty(t, result)
 	})
 }
+
+// The namespace selector of a grant is a name or a glob pattern matched
+// against the namespace of the request, as the grant keyword says.
+func TestTheNamespaceSelectorIsAGlob(t *testing.T) {
+	grants := NewGrants("guest:*", "operator:prod*", "admin:[ab]", "guest:dev")
+	for _, c := range []struct {
+		role  Role
+		scope string
+		want  bool
+	}{
+		{RoleGuest, "c32t230", true},
+		{RoleGuest, "system", true},
+		{RoleOperator, "prod1", true},
+		{RoleOperator, "prod", true},
+		{RoleOperator, "dev", false},
+		{RoleAdmin, "a", true},
+		{RoleAdmin, "c", false},
+		{RoleAdmin, "prod1", false},
+		{RoleGuest, "dev", true},
+		// a selector matches namespaces, not the scope of every
+		// namespace a grant with no selector has.
+		{RoleGuest, "", false},
+		{RoleOperator, "", false},
+	} {
+		require.Equal(t, c.want, grants.Has(c.role, c.scope), "%s on %q", c.role, c.scope)
+	}
+	// a malformed pattern matches nothing but its name.
+	require.False(t, NewGrants("guest:[").Has(RoleGuest, "x"))
+	require.True(t, NewGrants("guest:[").Has(RoleGuest, "["))
+	// a grant covers what its pattern matches, not a wider selector.
+	require.True(t, NewGrants("admin:prod*").Covers("admin:prod1"))
+	require.True(t, NewGrants("admin:prod*").Covers("admin:prod*"))
+	require.False(t, NewGrants("admin:prod*").Covers("admin:*"))
+	require.False(t, NewGrants("admin:*").Covers("admin"))
+	require.True(t, NewGrants("admin:*").Covers("admin:prod*"))
+}
+
+// The check of a namespace against grants with no pattern costs what it cost
+// before the patterns, and a pattern only its own match.
+func BenchmarkGuestCheck(b *testing.B) {
+	literal := NewGrants("guest:dev", "guest:test", "operator:prod1", "operator:prod2", "admin:lab")
+	patterns := NewGrants("guest:dev*", "guest:test*", "operator:prod*", "admin:lab*", "guest:qa[0-9]")
+	for name, grants := range map[string]Grants{"literal": literal, "patterns": patterns} {
+		b.Run(name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				grants.AssertRoleOn("system", RoleGuest, RoleOperator, RoleAdmin)
+			}
+		})
+	}
+}

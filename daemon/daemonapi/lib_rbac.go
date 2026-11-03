@@ -737,6 +737,22 @@ func hasRoleGuestOn(grants rbac.Grants, namespace string) bool {
 	return grants.AssertRoleOn(namespace, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)
 }
 
+// guestOn returns the check of hasRoleGuestOn for the grants, keeping the
+// verdict of each namespace: the namespace selectors of the grants may be
+// glob patterns, matched once per namespace of a listing or of an event
+// stream rather than once per item. The check is not safe for concurrent use.
+func guestOn(grants rbac.Grants) func(string) bool {
+	verdicts := make(map[string]bool)
+	return func(namespace string) bool {
+		if v, ok := verdicts[namespace]; ok {
+			return v
+		}
+		v := hasRoleGuestOn(grants, namespace)
+		verdicts[namespace] = v
+		return v
+	}
+}
+
 // hasRoleOperatorOn checks if the Grants contain either `RoleOperator` or `RoleAdmin` for the specified `namespace`.
 func hasRoleOperatorOn(grants rbac.Grants, namespace string) bool {
 	return grants.AssertRoleOn(namespace, rbac.RoleOperator, rbac.RoleAdmin)
