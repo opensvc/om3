@@ -89,9 +89,12 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 	if len(expectedInstanceMonitor) > 0 {
 		// expected peer instance monitors are still missing
 		switch t.state.GlobalExpect {
-		case instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectDeleted:
+		case instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectDeleted, instance.MonitorGlobalExpectAborted:
 			// purge or deletion orchestration, we can ignore missing peer monitor states,
 			// peer instances may have been already deleted.
+			// The abort of such an orchestration meets the same deleted
+			// peers, which have nothing left to abort: waiting for their
+			// monitors would never end the abort.
 		default:
 			for n := range expectedInstanceMonitor {
 				if _, ok := t.nodeMonitor[n]; ok {
