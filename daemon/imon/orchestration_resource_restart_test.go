@@ -111,3 +111,45 @@ func TestGivebackStartsTheLeaderStillFlaggedStopped(t *testing.T) {
 	m.instStatus["node1"] = local
 	assert.True(t, m.isStartCandidateLeader(false), "frozen, it takes part in a request too")
 }
+
+// No resource restarts while the instance is torn down or frozen, as v2: a
+// restart scheduled before, as the one of the standby resources of a booting
+// node, is dropped with its timer, not to start the resources in the middle
+// of the unprovision.
+func TestNoRestartWhileTheInstanceIsTornDown(t *testing.T) {
+	for _, globalExpect := range []instance.MonitorGlobalExpect{
+		instance.MonitorGlobalExpectPurged,
+		instance.MonitorGlobalExpectUnprovisioned,
+		instance.MonitorGlobalExpectDeleted,
+		instance.MonitorGlobalExpectFrozen,
+	} {
+		m := newRestartTestManager(status.StandbyDown, status.Down)
+		m.state.GlobalExpect = globalExpect
+		m.standbyResourceOrchestrate.log = m.log
+		m.regularResourceOrchestrate.log = m.log
+		fired := make(chan struct{}, 1)
+		m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#3": true}
+		m.standbyResourceOrchestrate.scheduler = time.AfterFunc(50*time.Millisecond, func() { fired <- struct{}{} })
+		m.orchestrateResourceRestart()
+		assert.Empty(t, m.standbyResourceOrchestrate.scheduled, globalExpect)
+		assert.Nil(t, m.standbyResourceOrchestrate.scheduler, globalExpect)
+		select {
+		case <-fired:
+			t.Fatalf("%s: the timer of the dropped restart fired", globalExpect)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+// A restart whose timer fires while the monitor runs another action, as the
+// unprovision of a purge, is dropped: its start would replace the state of
+// that action, whose end would be lost.
+func TestARestartFiringDuringAnotherActionIsDropped(t *testing.T) {
+	m := newRestartTestManager(status.StandbyDown, status.Down)
+	m.standbyResourceOrchestrate.log = m.log
+	m.state.State = instance.MonitorStateUnprovisionProgress
+	m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#3": true}
+	m.resourceRestart([]string{"disk#3"}, true)
+	assert.Equal(t, instance.MonitorStateUnprovisionProgress, m.state.State)
+	assert.Empty(t, m.standbyResourceOrchestrate.scheduled)
+}

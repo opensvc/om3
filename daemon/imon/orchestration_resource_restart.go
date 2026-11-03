@@ -193,6 +193,19 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
+	// ignore during an orchestration tearing the instance down, or
+	// freezing it, as v2 did: a restart would race its actions, and the
+	// restarts already scheduled are dropped, not to fire in their middle.
+	if reason := restartBlockedByGlobalExpect(t.state.GlobalExpect); reason != "" {
+		if t.standbyResourceOrchestrate.dropAllScheduled(reason) {
+			t.change = true
+		}
+		if t.regularResourceOrchestrate.dropAllScheduled(reason) {
+			t.change = true
+		}
+		return
+	}
+
 	// ignore if the instance status does not exist
 	if _, ok := t.instStatus[t.localhost]; !ok {
 		t.log.Infof("skip restart: missing instance status")
@@ -345,6 +358,20 @@ func (t *Manager) orchestrateResourceRestart() {
 	}
 }
 
+// restartBlockedByGlobalExpect returns why no resource is to restart while
+// the global expect is the one of an orchestration tearing the instance down
+// or freezing it, and nothing otherwise.
+func restartBlockedByGlobalExpect(globalExpect instance.MonitorGlobalExpect) string {
+	switch globalExpect {
+	case instance.MonitorGlobalExpectPurged,
+		instance.MonitorGlobalExpectUnprovisioned,
+		instance.MonitorGlobalExpectDeleted,
+		instance.MonitorGlobalExpectFrozen:
+		return fmt.Sprintf("global expect is %s", globalExpect)
+	}
+	return ""
+}
+
 // resourceRestartSchedule schedules a restart for resources based on the provided resource map and standby mode.
 // It updates the state of resources with associated restart timers and logs the operation.
 func (t *Manager) resourceRestartSchedule(todo todoMap, standby bool) {
@@ -382,6 +409,23 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 	now := time.Now()
 	rids := make([]string, 0, len(resourceRids))
 	or := t.orchestrationResource(standby)
+
+	// The restart was planned earlier: what was true then is checked
+	// again. Fired while the monitor runs another action, as the
+	// unprovision of a purge, the start would replace the state of that
+	// action, its end lost.
+	reason := restartBlockedByGlobalExpect(t.state.GlobalExpect)
+	switch t.state.State {
+	case instance.MonitorStateIdle, instance.MonitorStateStartFailure, instance.MonitorStateStopFailure:
+	default:
+		reason = fmt.Sprintf("state is %s", t.state.State)
+	}
+	if reason != "" {
+		if or.dropAllScheduled(reason) {
+			t.change = true
+		}
+		return
+	}
 	for _, rid := range resourceRids {
 		rmon := t.state.Resources.Get(rid)
 		if rmon == nil {
