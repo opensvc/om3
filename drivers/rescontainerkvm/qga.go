@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/v3/util/command"
@@ -48,6 +50,10 @@ type (
 
 			// Exited is true is the command run in the container is terminated
 			Exited bool `json:"exited"`
+
+			// Signal is the signal that ended the command, set in place
+			// of the exit code
+			Signal int `json:"signal"`
 		} `json:"return"`
 	}
 	qgaCommandFileOpenRequest struct {
@@ -190,6 +196,11 @@ func (t *qgaCommand) Wait() error {
 			}
 			if status.Return.Exited {
 				t.status = status
+				if sig := status.Return.Signal; sig != 0 {
+					// Ended by a signal: 128 + the signal, as the
+					// shell reports it.
+					return &qgaExecError{exitCode: 128 + sig, err: fmt.Errorf("qga command ended by signal %d", sig)}
+				}
 				if status.Return.ExitCode != 0 {
 					return &qgaExecError{exitCode: status.Return.ExitCode, err: fmt.Errorf("qga command exit code %d", status.Return.ExitCode)}
 				}
@@ -197,6 +208,33 @@ func (t *qgaCommand) Wait() error {
 			}
 		}
 	}
+}
+
+// Signal sends sig to the command started in the guest, by a kill the guest
+// agent runs there: the agent has no operation stopping a command it started.
+// The command then ends as the signal makes it, which Wait reports. The kill
+// is tracked as a leaked exec, collected later as the others.
+func (t *qgaCommand) Signal(sig os.Signal) error {
+	s, ok := sig.(syscall.Signal)
+	if !ok {
+		return fmt.Errorf("signal %v: not a system signal", sig)
+	}
+	if t.pid == 0 {
+		return fmt.Errorf("signal %v: the command is not started", sig)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var response qgaExecCommandResponse
+	request := qgaCommandRequest{
+		Execute: "guest-exec",
+	}
+	request.Arguments.Path = "kill"
+	request.Arguments.Arg = []string{fmt.Sprintf("-%d", int(s)), strconv.Itoa(t.pid)}
+	if err := qgaPost(ctx, t.Name, &request, &response); err != nil {
+		return fmt.Errorf("signal %v: guest-exec kill: %w", sig, err)
+	}
+	writePid(ctx, t.logger, t.varDir, t.Name, response.Return.PID)
+	return nil
 }
 
 func (t *qgaCommand) StderrPipe() (io.ReadCloser, error) {
