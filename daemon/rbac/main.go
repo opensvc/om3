@@ -191,6 +191,13 @@ func matchGrant(userGrant, grant Grant) bool {
 	if userRole != role || selector == "" || namespace == "" {
 		return false
 	}
+	if strings.ContainsAny(namespace, globChars) {
+		// A pattern asked for, as the scope of a token, is held by
+		// the same pattern, or by "*", never by a pattern matching its
+		// text: "prod?" matches the name "prod*", not the namespaces
+		// "prod*" selects.
+		return selector == "*"
+	}
 	return MatchNamespace(selector, namespace)
 }
 

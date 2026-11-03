@@ -495,6 +495,10 @@ func TestTheNamespaceSelectorIsAGlob(t *testing.T) {
 	require.False(t, NewGrants("admin:prod*").Covers("admin:*"))
 	require.False(t, NewGrants("admin:*").Covers("admin"))
 	require.True(t, NewGrants("admin:*").Covers("admin:prod*"))
+	// a pattern asked for is not held by a pattern matching its text.
+	require.False(t, NewGrants("admin:prod?").Covers("admin:prod*"))
+	require.False(t, NewGrants("admin:prod?").Has(RoleAdmin, "prod*"))
+	require.False(t, NewGrants("admin:p*").Covers("admin:prod?"))
 }
 
 // The check of a namespace against grants with no pattern costs what it cost
