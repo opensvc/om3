@@ -52,6 +52,14 @@ func TestFiltersDoNotModifyTheReceiver(t *testing.T) {
 		assert.Equal(t, all, paths(data))
 	})
 
+	t.Run("WithNamespace patterns, as grant selectors", func(t *testing.T) {
+		data := newData()
+		assert.Equal(t, ns1, paths(data.WithNamespace("*1")))
+		assert.Equal(t, all, paths(data.WithNamespace("ns?")))
+		assert.Equal(t, all, paths(data.WithNamespace("ns1", "*2")))
+		assert.Empty(t, paths(data.WithNamespace("[")))
+	})
+
 	t.Run("WithSelector", func(t *testing.T) {
 		data := newData()
 		assert.Equal(t, ns1, paths(data.WithSelector("ns1/svc/*")))

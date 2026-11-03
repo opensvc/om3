@@ -215,13 +215,17 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return false
 	}
 
+	// allowedOn says whether the user is a guest of a namespace, the
+	// verdict of each namespace kept for the stream.
+	allowedOn := guestOn(userGrants)
+
 	// isAllowed returns false if a message is about a namespace that
 	// doesn't match any of the user's guest grant.
 	isAllowed := func(msg pubsub.Messager) bool {
 		if hasRoot {
 			return true
 		}
-		return isEventAllowedForGuest(userGrants, msg)
+		return isEventAllowedOn(allowedOn, msg)
 	}
 
 	// learnPath adds the object path p to the paths the selector expands
@@ -573,9 +577,17 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 // neither, or with the empty path of the node configuration, is not about a
 // namespace.
 func isEventAllowedForGuest(grants rbac.Grants, msg pubsub.Messager) bool {
+	return isEventAllowedOn(func(namespace string) bool {
+		return hasRoleGuestOn(grants, namespace)
+	}, msg)
+}
+
+// isEventAllowedOn returns false if msg is about a namespace allowedOn
+// refuses, read as isEventAllowedForGuest reads it.
+func isEventAllowedOn(allowedOn func(string) bool, msg pubsub.Messager) bool {
 	labels := msg.GetLabels()
 	if namespace, ok := labels["namespace"]; ok {
-		return hasRoleGuestOn(grants, namespace)
+		return allowedOn(namespace)
 	}
 	s, ok := labels["path"]
 	if !ok || s == "" {
@@ -585,7 +597,7 @@ func isEventAllowedForGuest(grants rbac.Grants, msg pubsub.Messager) bool {
 	if err != nil {
 		return false
 	}
-	return hasRoleGuestOn(grants, p.Namespace)
+	return allowedOn(p.Namespace)
 }
 
 // parseFilters return filters from b.Filter

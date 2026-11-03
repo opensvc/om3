@@ -202,6 +202,18 @@ func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
 		return ""
 	}
 
+	// The verdict of a namespace, once matched against the selectors of
+	// the grants, which may be glob patterns.
+	verdicts := make(map[string]bool)
+	allowedOn := func(namespace string) bool {
+		if v, ok := verdicts[namespace]; ok {
+			return v
+		}
+		v := isNamespaceAllowed(namespace, allowedNamespaces)
+		verdicts[namespace] = v
+		return v
+	}
+
 	// Patterns
 	objectMetricPattern := regexp.MustCompile(`^opensvc_pg_`)
 	namespaceLabelPattern := regexp.MustCompile(`namespace="([^"]+)"`)
@@ -278,7 +290,7 @@ func filterMetricsText(metricsText string, userGrants rbac.Grants) string {
 				keepCurrentMetric = false
 			} else if namespace != "" {
 				// Check if this namespace is allowed
-				keepCurrentMetric = isNamespaceAllowed(namespace, allowedNamespaces)
+				keepCurrentMetric = allowedOn(namespace)
 			} else {
 				// No namespace label found in this line
 				// This could be a metric without labels or a metric declaration
@@ -339,9 +351,10 @@ func isNamespaceAllowed(ns string, allowedNamespaces []string) bool {
 		}
 	}
 
-	// Check if the namespace is in the allowed list
+	// Check if a selector of the allowed list, a name or a glob pattern,
+	// matches the namespace
 	for _, allowed := range allowedNamespaces {
-		if ns == allowed {
+		if rbac.MatchNamespace(allowed, ns) {
 			return true
 		}
 	}
