@@ -147,11 +147,13 @@ func TestNoRestartWhileTheInstanceIsTornDown(t *testing.T) {
 func TestARestartFiringDuringAnotherActionIsDropped(t *testing.T) {
 	m := newRestartTestManager(status.StandbyDown, status.Down)
 	m.standbyResourceOrchestrate.log = m.log
-	m.state.State = instance.MonitorStateUnprovisionProgress
-	m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#3": true}
-	m.resourceRestart([]string{"disk#3"}, true)
-	assert.Equal(t, instance.MonitorStateUnprovisionProgress, m.state.State)
-	assert.Empty(t, m.standbyResourceOrchestrate.scheduled)
+	for _, state := range []instance.MonitorState{instance.MonitorStateUnprovisionProgress, instance.MonitorStateWaitChildren} {
+		m.state.State = state
+		m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#3": true}
+		m.resourceRestart([]string{"disk#3"}, true)
+		assert.Equal(t, state, m.state.State, "the action or the wait goes on")
+		assert.Empty(t, m.standbyResourceOrchestrate.scheduled, state)
+	}
 }
 
 // A restart dropped before it ran gives back the retry its scheduling took:
