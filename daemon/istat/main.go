@@ -341,7 +341,9 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 	if prev.IsFrozen() != msg.Value.IsFrozen() {
 		naming.LogWithPath(t.log, msg.Path).Infof("%s: change frozen to %v", s, msg.Value.IsFrozen())
 	}
-	t.iStatusM[s] = msg.Value
+	// A copy is kept: the slices of the status kept are changed in place, as
+	// Running by a run file removed, and the value posted is the one published.
+	t.iStatusM[s] = *msg.Value.DeepCopy()
 	instance.StatusData.Set(msg.Path, msg.Node, msg.Value.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: msg.Node, Value: msg.Value},
 		t.labelLocalhost,

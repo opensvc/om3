@@ -34,6 +34,15 @@ type (
 
 func (nopPublisher) Pub(pubsub.Messager, ...pubsub.Label) {}
 
+// recordPublisher keeps the messages published.
+type recordPublisher struct {
+	msgs []pubsub.Messager
+}
+
+func (p *recordPublisher) Pub(m pubsub.Messager, _ ...pubsub.Label) {
+	p.msgs = append(p.msgs, m)
+}
+
 // newTestT returns a T logging its json records to buf.
 func newTestT(buf *bytes.Buffer) *T {
 	t := New(nil)
@@ -124,6 +133,39 @@ func TestOnInstanceStatusPostLogsNoUnchangedResourceStatus(tt *testing.T) {
 	t.onInstanceStatusPost(&msgbus.InstanceStatusPost{Path: p, Node: t.localhost, Value: value})
 
 	require.Empty(tt, logEntries(tt, &buf))
+}
+
+// The status posted is kept apart from the one published: a run file removed
+// changes the running list of the status kept in place, which a status
+// published, and read by its subscribers meanwhile, would see change.
+func TestOnInstanceStatusPostKeepsACopy(tt *testing.T) {
+	p, err := naming.ParsePath("svc1")
+	require.NoError(tt, err)
+
+	t := newTestT(&bytes.Buffer{})
+	publisher := &recordPublisher{}
+	t.publisher = publisher
+	instance.ConfigData.Set(p, t.localhost, &instance.Config{})
+	defer instance.ConfigData.Unset(p, t.localhost)
+	defer instance.StatusData.Unset(p, t.localhost)
+
+	now := time.Now()
+	t.onInstanceStatusPost(&msgbus.InstanceStatusPost{
+		Path: p,
+		Node: t.localhost,
+		Value: instance.Status{
+			UpdatedAt: now,
+			Running:   resource.RunningInfoList{{RID: "task#1"}, {RID: "task#2"}},
+		},
+	})
+	require.Len(tt, publisher.msgs, 1)
+	published := publisher.msgs[0].(*msgbus.InstanceStatusUpdated)
+
+	t.onRunFileDeleted(&msgbus.RunFileRemoved{Path: p, RID: "task#1", At: now.Add(time.Second)})
+
+	assert.Equal(tt, resource.RunningInfoList{{RID: "task#1"}, {RID: "task#2"}}, published.Value.Running,
+		"the status published is left as it was")
+	assert.Equal(tt, resource.RunningInfoList{{RID: "task#2"}}, t.iStatusM[p.String()].Running)
 }
 
 // A run file names the session of a running action and is named after its
