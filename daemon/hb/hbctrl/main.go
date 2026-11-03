@@ -346,6 +346,17 @@ func (c *C) run() {
 					remote.beatingChan = make(map[string]chan<- bool)
 					remote.cancel = make(map[string]func())
 				}
+				if o.Ctx.Err() != nil {
+					// The stream is already stopped: its stop sent
+					// the deletion of this watcher before its start
+					// sent the addition, as a restart racing the
+					// start does. Registered, the watcher of the
+					// stopped stream would end at once and stay in
+					// the way of the watcher of the next one, as a
+					// duplicate, the stream never beating again.
+					c.log.Infof("watcher skipped: stream stopped %s -> %s", hbID, peerNode)
+					continue
+				}
 				if _, registered := remote.cancel[hbID]; registered {
 					c.log.Errorf("watcher skipped: duplicate %s -> %s", hbID, peerNode)
 					continue
@@ -380,12 +391,15 @@ func (c *C) run() {
 				if remote, ok := remotes[peerNode]; ok {
 					cancel, registered := remote.cancel[hbID]
 					if !registered {
-						c.log.Errorf("del watcher skipped: already unregistered %s -> %s", hbID, peerNode)
+						// A stream stopped before its start added
+						// the watcher, which the addition then skips.
+						c.log.Infof("del watcher skipped: not registered %s -> %s", hbID, peerNode)
 						continue
 					}
 					c.log.Infof("del watcher %s -> %s", hbID, peerNode)
 					cancel()
 					delete(remote.cancel, hbID)
+					delete(remote.beatingChan, hbID)
 					if strings.HasSuffix(hbID, ".rx") {
 						remote.rxCount--
 					} else {
