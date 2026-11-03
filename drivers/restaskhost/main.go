@@ -5,10 +5,12 @@ package restaskhost
 // * status.json rewrite after lock acquire
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +28,7 @@ import (
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/proc"
+	"github.com/opensvc/om3/v3/util/signalrelay"
 	"github.com/opensvc/om3/v3/util/ulimit"
 )
 
@@ -202,7 +205,7 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 		return err
 	}
 	t.Log().Attr("cmd", t.RunCmd).Infof("run %s in %s", t.RunCmd, t.Container)
-	out, err := cmd.CombinedOutput()
+	out, err := t.runEncapCmd(ctx, cmd)
 	if t.LogOutputs {
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			if line != "" {
@@ -212,7 +215,12 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 	}
 	exitCode := 0
 	var exitErr interface{ ExitCode() int }
-	if errors.As(err, &exitErr) {
+	if sig, ok := signalrelay.Received(ctx).(syscall.Signal); ok {
+		// The run was asked to stop: whatever the process entering the
+		// container exited with, docker exec exiting 0 on the signal,
+		// the run ended as the signal made it, as a host task does.
+		exitCode = 128 + int(sig)
+	} else if errors.As(err, &exitErr) {
 		exitCode = exitErr.ExitCode()
 	} else if err != nil {
 		return fmt.Errorf("run in %s: %w", t.Container, err)
@@ -229,6 +237,40 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 		return fmt.Errorf("command exited with code %d", exitCode)
 	}
 	return nil
+}
+
+// runEncapCmd runs the command entering the container, and returns its
+// combined output. A signal the run receives is passed on to the process
+// entering the container, which ends the run as the signal did before the run
+// relayed it: an engine passing it on to the command it runs in the container
+// stops that command too, and one that does not, as docker exec, leaves it
+// running, as it did.
+func (t *T) runEncapCmd(ctx context.Context, cmd resource.Commander) ([]byte, error) {
+	c, ok := cmd.(*exec.Cmd)
+	if !ok {
+		return cmd.CombinedOutput()
+	}
+	var b bytes.Buffer
+	c.Stdout = &b
+	c.Stderr = &b
+	if err := c.Start(); err != nil {
+		return nil, err
+	}
+	if sigC, unsubscribe := signalrelay.Subscribe(ctx); sigC != nil {
+		done := make(chan struct{})
+		defer close(done)
+		defer unsubscribe()
+		go func() {
+			select {
+			case sig := <-sigC:
+				t.Log().Infof("pass the signal %s on to %s", sig, c)
+				_ = c.Process.Signal(sig)
+			case <-done:
+			}
+		}()
+	}
+	err := c.Wait()
+	return b.Bytes(), err
 }
 
 func (t *T) onError(ctx context.Context) error {
