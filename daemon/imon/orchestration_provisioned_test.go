@@ -239,3 +239,27 @@ func TestAFlexObjectWithNoLeaderIsProvisionedFromTheFirstCandidate(t *testing.T)
 	require.Equal(t, m.localhost, m.provisioningLeader())
 	require.True(t, m.isProvisioningLeader())
 }
+
+// The unprovision of a flex object no node leads is led by the node that
+// leads its provision, the first candidate of the placement: every node tells
+// the leader from the non-leaders by that rule, so the leader waits for the
+// other instances, and not for itself.
+func TestAFlexObjectWithNoLeaderIsUnprovisionedLastByTheFirstCandidate(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateIdle)
+	m.objStatus.Topology = topology.Flex
+	m.objStatus.PlacementPolicy = placement.NodesOrder
+	m.scopeNodes = []string{m.localhost, "node2"}
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle, OrchestrationID: m.state.OrchestrationID}
+	require.Empty(t, m.leaders(), "a flex target of 0")
+	require.Equal(t, m.localhost, m.provisioningLeader(), "the first of the placement")
+
+	require.True(t, m.isUnprovisionLeader())
+	require.True(t, m.isUnprovisionLeaderNode(m.localhost), "the leader by the rule it leads by")
+	require.False(t, m.isUnprovisionLeaderNode("node2"))
+	require.True(t, m.hasNonLeaderProvisioned(), "node2 is still to unprovision")
+
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	require.False(t, m.hasNonLeaderProvisioned(), "the leader does not wait for itself")
+}
