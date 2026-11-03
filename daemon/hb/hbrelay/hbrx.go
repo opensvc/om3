@@ -160,6 +160,7 @@ func (t *rx) recv(nodename string) {
 	resp, err := t.cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
 		t.logFailure("get %s from %s: %s", nodename, t.relay, err)
+		t.rebuildOnTrustError(err)
 		return
 	}
 
