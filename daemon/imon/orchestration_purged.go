@@ -17,6 +17,18 @@ func (t *Manager) orchestratePurged() {
 		t.purgedFromDeleted()
 	case instance.MonitorStateIdle:
 		t.purgedFromIdle()
+	case instance.MonitorStateBootFailed,
+		instance.MonitorStateFreezeFailure,
+		instance.MonitorStateProvisionFailure,
+		instance.MonitorStateStartFailure,
+		instance.MonitorStateUnfreezeFailure:
+		// A failure the purge has nothing to keep of, as the delete:
+		// a start failed, a standby restart of a booting node among
+		// them, leaves resources down the unprovision tears down
+		// anyway. A stop failed still ends the purge, as in v2: the
+		// unprovision would stop what would not stop.
+		t.transitionTo(instance.MonitorStateIdle)
+		t.purgedFromIdle()
 	case instance.MonitorStateStopFailure:
 		t.done()
 	case instance.MonitorStateUnprovisionSuccess:

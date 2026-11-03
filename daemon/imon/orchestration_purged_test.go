@@ -39,3 +39,28 @@ func TestAPurgeUnprovisionsAMixedInstance(t *testing.T) {
 	require.Equal(t, instance.MonitorStateWaitNonLeader, m.state.State,
 		"the mixed instance must be unprovisioned, after its peers, not deleted as it is")
 }
+
+// A purge goes on from a start failed, as one of the restart of the standby
+// resources of a booting node: there is nothing left to keep, and the purge
+// unprovisions the instance as from idle.
+func TestAPurgeGoesOnFromAStartFailed(t *testing.T) {
+	for _, state := range []instance.MonitorState{
+		instance.MonitorStateStartFailure,
+		instance.MonitorStateProvisionFailure,
+		instance.MonitorStateBootFailed,
+	} {
+		m := newTestManager(&pubSpy{})
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		m.ctx = ctx
+		m.path = naming.Path{Kind: naming.KindVol, Name: "obj"}
+		m.state.State = state
+		m.state.GlobalExpect = instance.MonitorGlobalExpectPurged
+		m.state.OrchestrationID = uuid.New()
+		m.instStatus[m.localhost] = instance.Status{Avail: status.Warn, Provisioned: provisioned.True}
+		m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+
+		m.orchestratePurged()
+		require.Equal(t, instance.MonitorStateWaitNonLeader, m.state.State, "from %s", state)
+	}
+}
