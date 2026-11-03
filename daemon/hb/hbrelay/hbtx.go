@@ -203,6 +203,7 @@ func (t *tx) send(b []byte) (bool, time.Duration) {
 	resp, err := t.cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
 		t.logFailure("post to %s: %s", t.relay, err)
+		t.rebuildOnTrustError(err)
 		return false, 0
 	}
 

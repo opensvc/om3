@@ -5,6 +5,9 @@ package hbrelay
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -192,6 +195,33 @@ func (t *cfg) refreshClient() error {
 	}
 	t.log.Debugf("password unchanged for %s", t.passwordFrom.Path)
 	return nil
+}
+
+// isTrustError says whether err is the relay presenting a certificate the
+// client does not trust.
+func isTrustError(err error) bool {
+	var (
+		unknown x509.UnknownAuthorityError
+		verify  *tls.CertificateVerificationError
+	)
+	return errors.As(err, &unknown) || errors.As(err, &verify)
+}
+
+// rebuildOnTrustError builds the client again when the relay presented a
+// certificate it does not trust. A client takes the cluster authorities from
+// the files installed when it is built: at boot, the listener installs them
+// after the heartbeats start, and a rotation replaces them, so a relay of the
+// cluster is trusted only by a client built after them. The attempts are
+// paced by the interval of the stream.
+func (t *cfg) rebuildOnTrustError(err error) {
+	if !isTrustError(err) {
+		return
+	}
+	t.log.Infof("build the client of %s again, to read the cluster authorities installed since", t.relay)
+	t.cli = nil
+	if err := t.refreshClient(); err != nil {
+		t.log.Warnf("build the client of %s again: %s", t.relay, err)
+	}
 }
 
 func (t *cfg) signature() string {
