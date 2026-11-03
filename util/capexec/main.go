@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -342,30 +343,60 @@ func (t T) demote() error {
 	return nil
 }
 
+// ReadyFDEnv names the variable of the descriptor a caller of Exec waits on
+// for the command to take over: the descriptor is closed by the execve of
+// the command, and the error is written to it when the command can not be
+// executed. The command inherits neither the descriptor nor the variable.
+//
+// It is the protocol a Go program starting a command uses with its child, one
+// level deeper: the caller learns the command runs, in its cgroup, with its
+// limits and its identity, without guessing a delay.
+const ReadyFDEnv = "OPENSVC_EXEC_READY_FD"
+
+// readyFile returns the descriptor named by ReadyFDEnv, closed on exec, and
+// unsets the variable.
+func readyFile() *os.File {
+	s, ok := os.LookupEnv(ReadyFDEnv)
+	if !ok {
+		return nil
+	}
+	_ = os.Unsetenv(ReadyFDEnv)
+	fd, err := strconv.Atoi(s)
+	if err != nil || fd < 3 {
+		return nil
+	}
+	syscall.CloseOnExec(fd)
+	return os.NewFile(uintptr(fd), "ready")
+}
+
 func (t T) Exec(args []string) {
-	//fmt.Printf("options: %+v\n", t)
-	//fmt.Printf("args: %+v\n", args)
+	ready := readyFile()
+	fail := func(err error) {
+		fmt.Fprintln(os.Stderr, err)
+		if ready != nil {
+			_, _ = ready.WriteString(err.Error())
+		}
+		os.Exit(1)
+	}
 	if len(args) == 0 {
 		return
 	}
 	prog, err := exec.LookPath(args[0])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fail(err)
 	}
 	if err := t.toLimit().Apply(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fail(err)
 	}
 	if t.PGID != nil && *t.PGID != "" {
 		if err := t.toPG().Apply(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fail(err)
 		}
 	}
 	if err := t.demote(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fail(err)
 	}
-	syscall.Exec(prog, args, os.Environ())
+	// returns only on failure: the command did not take over.
+	err = syscall.Exec(prog, args, os.Environ())
+	fail(fmt.Errorf("exec %s: %w", prog, err))
 }
