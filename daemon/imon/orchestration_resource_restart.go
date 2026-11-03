@@ -197,10 +197,10 @@ func (t *Manager) orchestrateResourceRestart() {
 	// freezing it, as v2 did: a restart would race its actions, and the
 	// restarts already scheduled are dropped, not to fire in their middle.
 	if reason := restartBlockedByGlobalExpect(t.state.GlobalExpect); reason != "" {
-		if t.standbyResourceOrchestrate.dropAllScheduled(reason) {
+		if t.dropScheduledRestarts(&t.standbyResourceOrchestrate, reason) {
 			t.change = true
 		}
-		if t.regularResourceOrchestrate.dropAllScheduled(reason) {
+		if t.dropScheduledRestarts(&t.regularResourceOrchestrate, reason) {
 			t.change = true
 		}
 		return
@@ -358,6 +358,23 @@ func (t *Manager) orchestrateResourceRestart() {
 	}
 }
 
+// dropScheduledRestarts drops the restarts of or scheduled and not run, and
+// gives back the retry their scheduling took: a restart that never ran is no
+// attempt, and a resource down after a freeze would otherwise be left with
+// fewer restarts, or none.
+func (t *Manager) dropScheduledRestarts(or *orchestrationResource, reason string) bool {
+	for rid, consumed := range or.scheduled {
+		if !consumed {
+			continue
+		}
+		if rmon := t.state.Resources.Get(rid); rmon != nil && rmon.Restart != nil {
+			rmon.Restart.Remaining++
+			t.state.Resources.Set(rid, *rmon)
+		}
+	}
+	return or.dropAllScheduled(reason)
+}
+
 // restartBlockedByGlobalExpect returns why no resource is to restart while
 // the global expect is the one of an orchestration tearing the instance down
 // or freezing it, and nothing otherwise.
@@ -394,10 +411,13 @@ func (t *Manager) resourceRestartSchedule(todo todoMap, standby bool) {
 		if rmon == nil {
 			continue
 		}
+		// The value says the scheduling took a retry, which a drop of
+		// the restart before it runs gives back.
+		consumed := rmon.Restart != nil && rmon.Restart.Remaining > 0
 		rmon.DecRestartRemaining()
 		t.state.Resources.Set(rid, *rmon)
 		t.change = true
-		or.scheduled[rid] = true
+		or.scheduled[rid] = consumed
 	}
 
 }
@@ -421,7 +441,7 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 		reason = fmt.Sprintf("state is %s", t.state.State)
 	}
 	if reason != "" {
-		if or.dropAllScheduled(reason) {
+		if t.dropScheduledRestarts(or, reason) {
 			t.change = true
 		}
 		return
