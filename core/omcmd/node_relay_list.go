@@ -35,6 +35,8 @@ func (t *CmdNodeRelayList) Run() error {
 	resp, err := cli.GetRelayStatusWithResponse(context.Background(), &params)
 	if err != nil {
 		return err
+	} else if resp.JSON404 != nil {
+		return fmt.Errorf("%s", resp.JSON404.Detail)
 	} else if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("unexpected get relay message status code %s", resp.Status())
 	}
