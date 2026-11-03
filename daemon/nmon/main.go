@@ -750,8 +750,10 @@ func (t *Manager) updateStats() {
 	if err != nil {
 		t.log.Errorf("get stats: %s", err)
 	}
-	node.StatsData.Set(t.localhost, stats.DeepCopy())
-	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
+	// The stats are new and only read from now on: the cache and the message
+	// share them, as their readers change neither.
+	node.StatsData.Set(t.localhost, &stats)
+	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: stats}, t.labelLocalhost)
 	t.updateIsOverloadedAndPublish(stats)
 }
 
@@ -1008,7 +1010,9 @@ func (t *Manager) loadPools() {
 		renewed[poolName] = nil
 		renewedMu.Unlock()
 
-		pool.StatusData.Set(poolName, t.localhost, data.DeepCopy())
+		// The status is new and only read from now on: the cache and the
+		// message share it, as their readers change neither.
+		pool.StatusData.Set(poolName, t.localhost, &data)
 		t.publisher.Pub(&msgbus.NodePoolStatusUpdated{Node: t.localhost, Name: poolName, Value: data}, t.labelLocalhost)
 
 	}
