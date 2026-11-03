@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -526,9 +527,13 @@ type Filter struct {
 	SessionID       string
 	OrchestrationID string
 	ExecID          string
-	Path            string
-	Node            string
-	RID             string
+
+	// Path is the object selector, comma-separated path patterns
+	// matched against the path of each record, see naming.MatchPatterns.
+	Path string
+
+	Node string
+	RID  string
 }
 
 func (f Filter) match(s *Exec) bool {
@@ -541,7 +546,7 @@ func (f Filter) match(s *Exec) bool {
 	if f.OrchestrationID != "" && s.OrchestrationID != f.OrchestrationID {
 		return false
 	}
-	if f.Path != "" && s.Path != f.Path {
+	if !naming.MatchPatterns(f.Path, s.Path) {
 		return false
 	}
 	if f.Node != "" && s.Node != f.Node {
@@ -584,7 +589,7 @@ func ListOrchestrations(f Filter) []Orchestration {
 	defer mu.RUnlock()
 	l := make([]Orchestration, 0, len(orchestrations))
 	for _, o := range orchestrations {
-		if f.Path != "" && o.Path != f.Path {
+		if !naming.MatchPatterns(f.Path, o.Path) {
 			continue
 		}
 		if f.Node != "" && o.Node != f.Node {

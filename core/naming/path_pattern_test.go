@@ -42,3 +42,25 @@ func TestPathPatternMatch(t *testing.T) {
 	assert.False(t, p.MatchPath(Path{Namespace: "ns2", Kind: KindSec, Name: "haproxy-a"}))
 	assert.False(t, p.MatchPath(Path{Namespace: "ns1", Kind: KindCfg, Name: "haproxy-a"}))
 }
+
+// The object selector of a listing of execs or orchestrations matches the
+// paths of the records: a path, a pattern, several of them.
+func TestMatchPatterns(t *testing.T) {
+	for _, c := range []struct {
+		patterns, path string
+		want           bool
+	}{
+		{"", "ns1/svc/web", true},
+		{"ns1/svc/web", "ns1/svc/web", true},
+		{"ns1/svc/web", "ns1/svc/db", false},
+		{"c32t2*", "c32t201web", true},
+		{"c32t2*", "ns1/svc/c32t201web", false},
+		{"ns1/svc/*", "ns1/svc/db", true},
+		{"ns1/**", "ns1/vol/data", true},
+		{"**", "ns2/cfg/x", true},
+		{"ns1/svc/db,web", "web", true},
+		{"ns1/svc/db,web", "ns1/svc/web", false},
+	} {
+		assert.Equal(t, c.want, MatchPatterns(c.patterns, c.path), "%q on %q", c.patterns, c.path)
+	}
+}

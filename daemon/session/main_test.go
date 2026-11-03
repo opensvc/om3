@@ -374,3 +374,22 @@ func TestRecordingAnOrchestrationIfUnknownLeavesAKnownOneAlone(t *testing.T) {
 	assert.Equal(t, StateRefused, o.State, "an ended orchestration stays ended")
 	assert.NotNil(t, o.EndedAt)
 }
+
+// The object selector narrows the execs and the orchestrations listed to the
+// ones of the objects its patterns match, as it selects objects.
+func TestListingNarrowsOnTheObjectSelector(t *testing.T) {
+	reset()
+	AddExec(Exec{SessionID: "s1", ExecID: "e1", Path: "c32t201web"})
+	AddExec(Exec{SessionID: "s2", ExecID: "e2", Path: "c32t220legacy"})
+	AddExec(Exec{SessionID: "s3", ExecID: "e3", Path: "c32tx/svc/a"})
+	assert.Len(t, ListExecs(Filter{Path: "c32t201web"}), 1)
+	assert.Len(t, ListExecs(Filter{Path: "c32t2*"}), 2)
+	assert.Len(t, ListExecs(Filter{Path: "c32tx/**"}), 1)
+	assert.Len(t, ListExecs(Filter{Path: "**"}), 3)
+
+	AddOrchestration(Orchestration{OrchestrationID: "o1", Path: "c32t201web"})
+	AddOrchestration(Orchestration{OrchestrationID: "o2", Path: "c32tx/svc/refused"})
+	assert.Len(t, ListOrchestrations(Filter{Path: "c32t201web"}), 1)
+	assert.Len(t, ListOrchestrations(Filter{Path: "c32tx/svc/*"}), 1)
+	assert.Len(t, ListOrchestrations(Filter{}), 2)
+}

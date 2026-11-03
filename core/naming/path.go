@@ -332,6 +332,29 @@ func (t Path) Match(pattern string) bool {
 	return false
 }
 
+// MatchPatterns says whether the object path p, as a record of an exec or an
+// orchestration names it, matches one of the comma-separated path patterns,
+// each matched as Path.Match does. A path no longer parsed, as the one of an
+// object of a removed kind, matches a pattern equal to it.
+//
+// The records outlive their objects: the patterns are matched against their
+// paths, not expanded against the objects of the cluster.
+func MatchPatterns(patterns, p string) bool {
+	if patterns == "" {
+		return true
+	}
+	path, err := ParsePath(p)
+	for _, pattern := range strings.Split(patterns, ",") {
+		if pattern == p {
+			return true
+		}
+		if err == nil && path.Match(pattern) {
+			return true
+		}
+	}
+	return false
+}
+
 // Path implements the Pather interface
 func (t Path) Path() Path {
 	return t
