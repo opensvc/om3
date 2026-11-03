@@ -281,6 +281,15 @@ func (t *Manager) provisioningLeader() string {
 		if candidates := t.leaderCandidates(); len(candidates) > 0 {
 			return candidates[0]
 		}
+		// No candidate, every instance n/a or failed to start: the first
+		// of the placement among every instance leads all the same. With
+		// no leader, the nodes waiting for one would wait for ever, and
+		// no node would unprovision the shared resources, which only the
+		// leader does: a purge would leave them behind. Where the object
+		// runs is not chosen from these, see leaderCandidates.
+		if nodes := t.instanceNodes(); len(nodes) > 0 {
+			return t.sortCandidates(nodes)[0]
+		}
 		return ""
 	case 1:
 		return leaders[0]
@@ -288,6 +297,17 @@ func (t *Manager) provisioningLeader() string {
 		sort.StringSlice(leaders).Sort()
 		return leaders[0]
 	}
+}
+
+// instanceNodes returns the nodes of the scope having an instance status.
+func (t *Manager) instanceNodes() []string {
+	l := make([]string, 0, len(t.scopeNodes))
+	for _, node := range t.scopeNodes {
+		if _, ok := t.instStatus[node]; ok {
+			l = append(l, node)
+		}
+	}
+	return l
 }
 
 // runningInstances returns the nodes whose instance is up, or warn.
