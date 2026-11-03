@@ -4,10 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -72,4 +74,30 @@ func TestDropBackupNone(t *testing.T) {
 	assert.DirExists(t, rawconfig.Paths.Etc)
 	cmd.dropBackup(backup)
 	assert.DirExists(t, rawconfig.Paths.Etc)
+}
+
+// The node leaves the cluster as the drain left it: frozen, since the time of
+// the freeze. A freeze of the cluster it leaves becomes a freeze of the node
+// alone, and the rest of the node directory goes.
+func TestTheCleanupKeepsTheNodeFrozen(t *testing.T) {
+	for _, scope := range []freeze.Scope{freeze.ScopeNode, freeze.ScopeCluster} {
+		dir := t.TempDir()
+		flag := filepath.Join(dir, "node", "frozen")
+		other := filepath.Join(dir, "node", "status.json")
+		require.NoError(t, freeze.FreezeScope(flag, scope))
+		require.NoError(t, os.WriteFile(other, nil, 0o644))
+		at := time.Now().Add(-time.Hour).Truncate(time.Second)
+		require.NoError(t, os.Chtimes(flag, at, at))
+
+		log := plog.NewDefaultLogger()
+		require.NoError(t, removeTree(log, dir, keepNodeFreeze(log, dir)))
+
+		assert.True(t, freeze.Frozen(flag).Equal(at), "scope %s: frozen at %s", scope, freeze.Frozen(flag))
+		assert.Equal(t, freeze.ScopeNode, freeze.ScopeOf(flag, freeze.ScopeCluster, freeze.ScopeNode), scope)
+		assert.NoFileExists(t, other)
+	}
+
+	// a node not frozen stays so.
+	dir := t.TempDir()
+	assert.Empty(t, keepNodeFreeze(plog.NewDefaultLogger(), dir))
 }
