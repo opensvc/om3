@@ -13,14 +13,17 @@ var (
 )
 
 func New() resource.Driver {
-	if capabilities.Has(rescontainerdocker.DrvID.Cap()) {
-		return rescontainerdocker.New()
+	// The objects map the oci type to the engine of the node, see
+	// Node.OCIEngine: this one serves what has no node at hand, as the
+	// keywords of the type, in the same order, podman first, as in v2.
+	if capabilities.Has(rescontainerpodman.DrvID.Cap()) {
+		return rescontainerpodman.New()
 	}
-	return rescontainerpodman.New()
+	return rescontainerdocker.New()
 }
 
 func init() {
 	driver.Register(drvID, New)
-	driver.SetDoc(drvID, "Runs an OCI container with the first container runtime the node has.")
-	driver.SetSelects(drvID, rescontainerdocker.DrvID, rescontainerpodman.DrvID)
+	driver.SetDoc(drvID, "Runs an OCI container with the engine the node.oci keyword names, else the first the node has, podman then docker.")
+	driver.SetSelects(drvID, rescontainerpodman.DrvID, rescontainerdocker.DrvID)
 }

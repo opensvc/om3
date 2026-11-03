@@ -1,3 +1,8 @@
-The default micro-container driver.
+The engine the `oci` container and task resources of the node run with:
+`podman` or `docker`.
 
-If not set, prefer podman if installed, else fallback to docker.
+If not set, podman if the node has it, else docker, as in v2.
+
+The resources of type `oci` are the ones of the engine, and say so as their
+type: `container.podman` or `container.docker`. A node running both engines
+keeps its `oci` resources on docker with `oci = docker`.

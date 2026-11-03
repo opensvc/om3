@@ -55,8 +55,8 @@ func TestFeaturesAreOfTheVocabulary(t *testing.T) {
 // prefers them, and an alias the driver it is another name of.
 func TestVirtualAndAliasDrivers(t *testing.T) {
 	m := entries(t)
-	assert.Equal(t, driver.IDs{driver.NewID(driver.GroupContainer, "docker"), driver.NewID(driver.GroupContainer, "podman")}, m["container.oci"].Selects)
-	assert.Equal(t, driver.IDs{driver.NewID(driver.GroupTask, "docker"), driver.NewID(driver.GroupTask, "podman")}, m["task.oci"].Selects)
+	assert.Equal(t, driver.IDs{driver.NewID(driver.GroupContainer, "podman"), driver.NewID(driver.GroupContainer, "docker")}, m["container.oci"].Selects)
+	assert.Equal(t, driver.IDs{driver.NewID(driver.GroupTask, "podman"), driver.NewID(driver.GroupTask, "docker")}, m["task.oci"].Selects)
 	assert.Equal(t, driver.NewID(driver.GroupDisk, "vg"), m["disk.lvm"].AliasOf)
 	assert.Equal(t, driver.NewID(driver.GroupIP, "netns"), m["ip.docker"].AliasOf)
 	assert.True(t, m["disk.vg"].AliasOf.IsZero())
