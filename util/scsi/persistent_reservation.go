@@ -41,6 +41,10 @@ type (
 		CurrentStatus               PersistentReservationStatus
 		CoresourceDisabled          bool
 		CoresourceStatus            status.T
+
+		// ForeignReserved are the devices another key holds the
+		// reservation of, as the last Status found them.
+		ForeignReserved []string
 	}
 
 	PersistentReservationStatus struct {
@@ -92,6 +96,7 @@ func (t *PersistentReservationHandle) Status() status.T {
 		t.StatusLogger.Error("%s", err)
 		return status.Undef
 	}
+	t.ForeignReserved = nil
 	if len(t.Devices) == 0 {
 		return status.NotApplicable
 	}
@@ -174,6 +179,7 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 			reservationMsg = fmt.Sprintf("%s is not reserved", dev)
 		} else if reservation != t.Key {
 			reservationMsg = fmt.Sprintf("%s is reserved by %s", dev, reservation)
+			t.ForeignReserved = append(t.ForeignReserved, dev.String())
 		} else {
 			reservationMsg = fmt.Sprintf("%s is reserved", dev)
 			s = status.Up

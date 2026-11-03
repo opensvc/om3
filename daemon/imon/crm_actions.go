@@ -200,12 +200,24 @@ func (t *Manager) crmResourceIngest(rids []string) error {
 
 func (t *Manager) crmResourceStartStandby(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmMaintenanceAction("start", t.path.String(), "instance", "startstandby", "--rid", s)
+	return t.crmRestartAction("start", t.path.String(), "instance", "startstandby", "--rid", s)
 }
 
 func (t *Manager) crmResourceStart(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmMaintenanceAction("start", t.path.String(), "instance", "start", "--rid", s)
+	return t.crmRestartAction("start", t.path.String(), "instance", "start", "--rid", s)
+}
+
+// crmRestartAction runs a restart of resources, a maintenance action marked
+// as a restart: the start of a resource reserving its devices does not
+// preempt a reservation another node holds then, as the start of a takeover
+// does.
+func (t *Manager) crmRestartAction(title string, cmdArgs ...string) error {
+	if testCRMAction != nil {
+		return testCRMAction(title, cmdArgs...)
+	}
+	_, err := t.crmActionWithEnv(uuid.Nil, title, nil, []string{env.ResourceRestartVar + "=true"}, cmdArgs...)
+	return err
 }
 
 // crmResizeStage grows one stage of the chain, and answers the exit code it
@@ -334,6 +346,12 @@ func (t *Manager) crmMaintenanceAction(title string, cmdArgs ...string) error {
 // question it answers with. They end the exec the way a zero does: reported
 // succeeded, logged as an ordinary end, and answered as the code they are.
 func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, expectExitCodes []int, cmdArgs ...string) (int, error) {
+	return t.crmActionWithEnv(orchestration, title, expectExitCodes, nil, cmdArgs...)
+}
+
+// crmActionWithEnv is crmDefaultAction with the variables of extraEnv set in
+// the environment of the command.
+func (t *Manager) crmActionWithEnv(orchestration uuid.UUID, title string, expectExitCodes []int, extraEnv []string, cmdArgs ...string) (int, error) {
 	sessionID := xsession.NewSessionID()
 	execID := xsession.NewExecID()
 	orchestrationID := xsession.NewOrchestrationID(orchestration)
@@ -343,6 +361,7 @@ func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, expect
 		execID.Var(),
 		sessionID.Var(),
 	}
+	cmdEnv = append(cmdEnv, extraEnv...)
 	if v := orchestrationID.Var(); v != "" {
 		// Only when this exec is a step of an orchestration. Naming one it is
 		// not a step of would put an id in its logs that matches nothing.

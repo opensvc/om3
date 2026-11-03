@@ -49,7 +49,19 @@ var (
 	// so the frozen flag records it, and the peers that missed the freeze
 	// adopt it when they come back.
 	FreezeScopeVar = "OSVC_FREEZE_SCOPE"
+
+	// ResourceRestartVar marks the start of resources the daemon runs to
+	// restart them, as their restart keyword asks, apart from the starts
+	// an orchestration asks: a restart is the node trying to get back
+	// what it lost, not a takeover fencing a node gone.
+	ResourceRestartVar = "OSVC_RESOURCE_RESTART"
 )
+
+// IsResourceRestart says the command is a restart of resources the daemon
+// runs, see ResourceRestartVar.
+func IsResourceRestart() bool {
+	return os.Getenv(ResourceRestartVar) != ""
+}
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
 // is set to one of the daemon origins: "daemon/monitor", "daemon/api" or
