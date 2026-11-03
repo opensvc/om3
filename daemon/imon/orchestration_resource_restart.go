@@ -433,11 +433,11 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 	// The restart was planned earlier: what was true then is checked
 	// again. Fired while the monitor runs another action, as the
 	// unprovision of a purge, the start would replace the state of that
-	// action, its end lost.
+	// action, its end lost. A state waiting for something, as the ready
+	// of a start the orchestration prepares, runs no action: the restart
+	// goes on, as it did.
 	reason := restartBlockedByGlobalExpect(t.state.GlobalExpect)
-	switch t.state.State {
-	case instance.MonitorStateIdle, instance.MonitorStateStartFailure, instance.MonitorStateStopFailure:
-	default:
+	if t.state.State.IsDoing() {
 		reason = fmt.Sprintf("state is %s", t.state.State)
 	}
 	if reason != "" {
