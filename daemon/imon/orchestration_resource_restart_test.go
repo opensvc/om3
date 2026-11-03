@@ -153,3 +153,25 @@ func TestARestartFiringDuringAnotherActionIsDropped(t *testing.T) {
 	assert.Equal(t, instance.MonitorStateUnprovisionProgress, m.state.State)
 	assert.Empty(t, m.standbyResourceOrchestrate.scheduled)
 }
+
+// A restart dropped before it ran gives back the retry its scheduling took:
+// a resource down after a freeze keeps the restarts it had.
+func TestADroppedRestartGivesBackItsRetry(t *testing.T) {
+	m := newRestartTestManager(status.StandbyDown, status.Down)
+	m.standbyResourceOrchestrate.log = m.log
+	m.regularResourceOrchestrate.log = m.log
+	m.state.Resources = instance.ResourceMonitors{}
+	m.state.Resources.Set("disk#3", instance.ResourceMonitor{Restart: &instance.ResourceMonitorRestart{Remaining: 1}})
+	m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#3": true}
+
+	m.state.GlobalExpect = instance.MonitorGlobalExpectFrozen
+	m.orchestrateResourceRestart()
+	assert.Empty(t, m.standbyResourceOrchestrate.scheduled)
+	assert.Equal(t, 2, m.state.Resources.Get("disk#3").Restart.Remaining, "the retry taken by the scheduling is given back")
+
+	// A scheduling that took no retry, none being left, gives none back.
+	m.state.Resources.Set("disk#3", instance.ResourceMonitor{Restart: &instance.ResourceMonitorRestart{Remaining: 0}})
+	m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#3": false}
+	m.orchestrateResourceRestart()
+	assert.Equal(t, 0, m.state.Resources.Get("disk#3").Restart.Remaining)
+}
