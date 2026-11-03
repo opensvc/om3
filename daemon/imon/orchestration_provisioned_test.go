@@ -263,3 +263,25 @@ func TestAFlexObjectWithNoLeaderIsUnprovisionedLastByTheFirstCandidate(t *testin
 	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
 	require.False(t, m.hasNonLeaderProvisioned(), "the leader does not wait for itself")
 }
+
+// With every instance failed to start, no instance is a candidate to run the
+// object, but one still leads its provision and its unprovision: the first
+// of the placement among every instance. Without it, the shared resources,
+// which only the leader unprovisions, would outlive a purge.
+func TestTheFirstInstanceOfThePlacementLeadsWhenNoneIsACandidate(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateStartFailure)
+	m.objStatus.PlacementPolicy = placement.NodesOrder
+	m.scopeNodes = []string{m.localhost, "node2"}
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateStartFailure, OrchestrationID: m.state.OrchestrationID}
+	require.Empty(t, m.leaderCandidates(), "every instance failed to start")
+
+	require.Equal(t, m.localhost, m.provisioningLeader())
+	require.True(t, m.isUnprovisionLeader())
+	require.False(t, m.isUnprovisionLeaderNode("node2"))
+
+	m.scopeNodes = []string{"node2", m.localhost}
+	require.Equal(t, "node2", m.provisioningLeader(), "the placement decides")
+	require.False(t, m.isUnprovisionLeader())
+}
