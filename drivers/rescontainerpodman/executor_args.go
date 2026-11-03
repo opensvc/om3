@@ -34,7 +34,31 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 			a.Append("--userns", s)
 		}
 	}
+	if !hasNetworkOption(a.Get()) {
+		// A container with no netns keyword nor a network in its
+		// run_args has a private netns, as the keyword says and as v2
+		// and the docker driver do, rather than the default network of
+		// podman: an om network ip in the netns would keep the default
+		// route of that network, which its replies would take.
+		a.Append("--net", "none")
+	}
 	return a, nil
+}
+
+// hasNetworkOption says the run args name the network of the container, as
+// "--net x", "--network x" or "--net=x".
+func hasNetworkOption(l []string) bool {
+	for i, s := range l {
+		switch {
+		case s == "--net" || s == "--network":
+			if i+1 < len(l) {
+				return true
+			}
+		case strings.HasPrefix(s, "--net=") || strings.HasPrefix(s, "--network="):
+			return true
+		}
+	}
+	return false
 }
 
 func (ea *ExecutorArg) WaitRemoved(ctx context.Context) error {

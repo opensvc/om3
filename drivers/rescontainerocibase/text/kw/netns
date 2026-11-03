@@ -1,7 +1,15 @@
 * empty or `none`
 
   The container has a private netns other `container`, `ip.netns` or
-  `ip.cni` resources can share.
+  `ip.cni` resources can share. An engine network set in `run_args`, as
+  `--net <network>`, replaces it. The ports `run_args` publishes, as
+  `-p 2222:22`, are published on an engine network only: the engines
+  discard them in a private netns. The `expose` keyword makes SRV records,
+  and publishes nothing.
+
+  The ip of an om network, by an `ip.netns` resource, is not supported in a
+  container joined to an engine network: the netns would keep the default
+  route of the engine, which the replies to the cluster nodes would take.
 
 * `<rid>`
 

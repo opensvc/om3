@@ -163,7 +163,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			hasNotOptions: []string{"--dns", "--dns-opt", "--dns-search"},
 		},
 
-		"don't add --net when no netns and no '--net' run_args": {
+		"add --net none when no netns and no '--net' run_args, as docker": {
 			res: &T{
 				BT: rescontainerocibase.BT{
 					T:    resource.T{ResourceID: &resourceid.T{Name: "id1"}},
@@ -172,13 +172,29 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			},
 			expected: []string{
 				"container", "run", "--name", "foo.id1",
+				"--net", "none",
 			},
-			hasNotOptions: []string{"--net", "--dns", "--dns-opt", "--dns-search"},
+			hasNotOptions: []string{"--dns", "--dns-opt", "--dns-search"},
 		},
 
 		// om writes the resolver of the container, so a resolver configuration
 		// in run_args is a second one, in a place that no longer decides
 		// anything. It is dropped rather than passed on.
+		"keep a --network=x of run_args": {
+			res: &T{
+				BT: rescontainerocibase.BT{
+					Path: p,
+					T:    resource.T{ResourceID: &resourceid.T{Name: "id1"}},
+					RunArgs: []string{
+						"--network=podman",
+					},
+				},
+			},
+			expected: []string{
+				"container", "run", "--name", "foo.id1",
+				"--network=podman",
+			},
+		},
 		"drop the resolver options of run_args": {
 			res: &T{
 				BT: rescontainerocibase.BT{
@@ -196,6 +212,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			expected: []string{
 				"container", "run", "--name", "foo.id1",
 				"--memory", "1g",
+				"--net", "none",
 			},
 			hasNotOptions: []string{"--dns", "--dns-opt", "--dns-option", "--dns-search"},
 		},
