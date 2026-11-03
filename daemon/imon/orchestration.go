@@ -2,6 +2,7 @@ package imon
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -9,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 )
 
@@ -159,11 +161,23 @@ func (t *Manager) setWaitParents() bool {
 }
 
 // setWaitChildren set or reset wait children, return true is state is wait children
+//
+// A child up is waited for. Unprovisioning, as a purge does, a child instance
+// still provisioned on the node is waited for too, down or not, as in v2: it
+// may still need the parent to unprovision, as a share needs the mount point
+// of its volume.
 func (t *Manager) setWaitChildren() bool {
+	teardown := slices.Contains([]instance.MonitorGlobalExpect{instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectUnprovisioned}, t.state.GlobalExpect)
 	for relation, availStatus := range t.state.Children {
+		reason := ""
 		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef, status.NotApplicable) {
+			reason = fmt.Sprintf("avail status is %s", availStatus)
+		} else if teardown {
+			reason = childInstanceProvisioned(relation)
+		}
+		if reason != "" {
 			if t.state.State != instance.MonitorStateWaitChildren {
-				t.log.Infof("wait children because %s avail status is %s", relation, availStatus)
+				t.log.Infof("wait children because %s %s", relation, reason)
 				t.state.State = instance.MonitorStateWaitChildren
 				t.change = true
 			}
@@ -378,4 +392,28 @@ func (t *Manager) isLocalStatusCurrent() bool {
 	}
 	t.log.Debugf("wait for the status of the local instance computed from the current configuration")
 	return false
+}
+
+// childInstanceProvisioned says why the child instance of a relation on a
+// node still holds its parent unprovisioned: it is provisioned, and nothing
+// otherwise. A child instance whose own teardown failed does not hold it: the
+// parent goes on, and the verdict of the orchestration says what failed.
+// A relation to a whole object is not looked at, its instances may live on
+// other nodes.
+func childInstanceProvisioned(relation string) string {
+	p, node, err := naming.Relation(relation).Split()
+	if err != nil || node == "" {
+		return ""
+	}
+	st := instance.StatusData.GetByPathAndNode(p, node)
+	if st == nil || !st.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {
+		return ""
+	}
+	if mon := instance.MonitorData.GetByPathAndNode(p, node); mon != nil {
+		tornDown := slices.Contains([]instance.MonitorGlobalExpect{instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectUnprovisioned, instance.MonitorGlobalExpectDeleted}, mon.GlobalExpect)
+		if tornDown && mon.State.IsOneOf(instance.MonitorStatesFailure...) {
+			return ""
+		}
+	}
+	return fmt.Sprintf("is provisioned (%s)", st.Provisioned)
 }
