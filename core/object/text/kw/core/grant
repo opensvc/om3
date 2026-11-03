@@ -11,7 +11,13 @@ Pervasive roles:
 
 * `squatter`
 
-  Create a new namespace. 
+  Create and write the namespace configuration objects, `nscfg`, the
+  namespaces themselves: what each namespace may take of the resources the
+  cluster shares, its claims, its process group caps, the accounts it runs
+  rootless containers as. They ration the cluster between the namespaces,
+  so they are not the namespace administrator's to write. The squatter gets
+  no role on the namespaces it creates: the objects of a namespace are the
+  ones its `admin` role creates.
 
 * `prioritizer`
 
