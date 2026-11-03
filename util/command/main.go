@@ -20,6 +20,7 @@ import (
 
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/signalrelay"
 )
 
 type (
@@ -37,6 +38,11 @@ type (
 		timeout      time.Duration
 		waitDelay    time.Duration
 		processGroup bool
+
+		// relayCtx carries the signal relay the command is subscribed
+		// to, and relayDone ends the subscription once it is waited.
+		relayCtx     context.Context
+		relayDone    chan struct{}
 		onStdoutLine func(string)
 		onStderrLine func(string)
 		okExitCodes  []int
@@ -242,6 +248,7 @@ func (t *T) Start() (err error) {
 	if t.cmd.Process != nil {
 		t.pid = t.cmd.Process.Pid
 	}
+	t.relaySignals()
 	return nil
 }
 
@@ -257,6 +264,37 @@ func (t *T) startedPID() int {
 		return 0
 	}
 	return t.cmd.Process.Pid
+}
+
+// relaySignals sends the signal the relay of the command receives to the
+// command, to its process group when it runs in one, until it is waited.
+func (t *T) relaySignals() {
+	if t.relayCtx == nil || t.cmd.Process == nil {
+		return
+	}
+	c, unsubscribe := signalrelay.Subscribe(t.relayCtx)
+	if c == nil {
+		return
+	}
+	pid := t.cmd.Process.Pid
+	if t.processGroup {
+		pid = -pid
+	}
+	done := make(chan struct{})
+	t.relayDone = done
+	go func() {
+		defer unsubscribe()
+		select {
+		case sig := <-c:
+			if s, ok := sig.(syscall.Signal); ok {
+				if t.log != nil {
+					t.log.Infof("pass the signal %s on to %s", s, t.cmd)
+				}
+				_ = syscall.Kill(pid, s)
+			}
+		case <-done:
+		}
+	}()
 }
 
 func (t *T) Cmd() *exec.Cmd {
@@ -323,6 +361,9 @@ func (t *T) Wait() error {
 	// Wait closes the pipes when the delay expires, which is what lets the
 	// readers finish at all.
 	err := t.cmd.Wait()
+	if t.relayDone != nil {
+		close(t.relayDone)
+	}
 	t.flushWriters()
 	if errors.Is(err, exec.ErrWaitDelay) {
 		// The process exited, and exited well: the delay expired on the

@@ -45,6 +45,18 @@ func WithContext(ctx context.Context) funcopt.O {
 // WithProcessGroup runs the command in a process group of its own, which a
 // cancel of its context kills as a whole: the processes the command started
 // die with it, rather than outliving it holding its output.
+// WithSignalRelay passes the signal the relay of ctx receives on to the
+// command, see util/signalrelay, rather than leaving it running when the
+// signal ends the process running it. The command is not cancelled: it ends
+// as the signal makes it, and is waited on.
+func WithSignalRelay(ctx context.Context) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.relayCtx = ctx
+		return nil
+	})
+}
+
 func WithProcessGroup() funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)

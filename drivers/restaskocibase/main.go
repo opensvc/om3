@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/drivers/restask"
 	"github.com/opensvc/om3/v3/util/pg"
+	"github.com/opensvc/om3/v3/util/signalrelay"
 )
 
 type (
@@ -135,6 +136,27 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		}
 	}
 
+	// A signal the run receives, as the kill of its exec by the daemon
+	// sends, stops the container as a stop does: the signal of the stop,
+	// then a kill once its timeout expired, as a container whose first
+	// process ignores the signal would run on. The run then ends as the
+	// container did.
+	if c, unsubscribe := signalrelay.Subscribe(ctx); c != nil {
+		done := make(chan struct{})
+		defer close(done)
+		defer unsubscribe()
+		go func() {
+			select {
+			case sig := <-c:
+				t.Log().Infof("stop the container on signal %s", sig)
+				if err := container.Stop(ctx); err != nil {
+					t.Log().Warnf("stop the container on signal %s: %s", sig, err)
+				}
+			case <-done:
+			}
+		}()
+	}
+
 	startedAt := time.Now()
 	startErr := container.Start(ctx)
 
@@ -149,6 +171,15 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	}
 
 	if inspect == nil {
+		if sig, ok := signalrelay.Received(ctx).(syscall.Signal); ok {
+			// The stop on the signal removed the container: the
+			// run ended as the signal made it, 128 + the signal, as a
+			// host task ended by it reports.
+			if err := t.WriteLastRun(128 + int(sig)); err != nil {
+				t.Log().Errorf("write last run: %s", err)
+			}
+			return fmt.Errorf("the container was stopped on signal %s", sig)
+		}
 		err := fmt.Errorf("unable to inspect task container to retrieve its exit code")
 		if startErr != nil {
 			return fmt.Errorf("inspect error: %w after a start error: %w", err, startErr)
