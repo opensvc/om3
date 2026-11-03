@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/xconfig"
@@ -87,6 +88,46 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 		return JSONProblemf(ctx, http.StatusInternalServerError, "new node", "%s", err)
 	}
 	config := node.MergedConfig()
+
+	// configured are the relays of the relay heartbeats, as "hb#4
+	// relay3.opensvc.com:3333", for the error of a filter naming none.
+	configured := make([]string, 0)
+	for _, section := range config.SectionStrings() {
+		if !strings.HasPrefix(section, "hb#") {
+			continue
+		}
+		if config.Get(key.New(section, "type")) != "relay" {
+			continue
+		}
+		hbRelay := config.GetString(key.New(section, "relay"))
+		configured = append(configured, section+" "+hbRelay)
+		if len(relayMap) > 0 {
+			// some relay filtering is on
+			if _, ok := relayMap[hbRelay]; !ok {
+				// filtered out
+				continue
+			}
+			delete(relayMap, hbRelay)
+		}
+	}
+	if len(relayMap) > 0 {
+		// A relay named in the filter is no relay of a heartbeat: an
+		// empty listing would read as a relay holding nothing.
+		unknown := make([]string, 0, len(relayMap))
+		for s := range relayMap {
+			unknown = append(unknown, s)
+		}
+		sort.Strings(unknown)
+		return JSONProblemf(ctx, http.StatusNotFound, "Relay not found",
+			"%s: no relay heartbeat has this relay, the relays are the relay keywords of the relay heartbeats: %s",
+			strings.Join(unknown, ", "), strings.Join(configured, ", "))
+	}
+	if params.Relays != nil {
+		for _, s := range *params.Relays {
+			relayMap[s] = nil
+		}
+	}
+
 	for _, section := range config.SectionStrings() {
 		if !strings.HasPrefix(section, "hb#") {
 			continue
@@ -141,7 +182,14 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 				Status:      resp.Status(),
 			})
 		} else {
-			items = append(items, resp.JSON200.Items...)
+			// The relay names itself by its node name: the item is
+			// named by the relay keyword instead, the address the
+			// relay filter takes, as the placeholders of a relay not
+			// answering are.
+			for _, item := range resp.JSON200.Items {
+				item.Relay = hbRelay
+				items = append(items, item)
+			}
 		}
 	}
 	// Sort by ClusterID, then Nodename, then NodeAddr
@@ -161,21 +209,16 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 	return ctx.JSON(http.StatusOK, data)
 }
 
-func configSectionPasswordSec(config *xconfig.T, section string) (object.Sec, error) {
-	s := config.GetString(key.New(section, "password"))
-	secPath, err := naming.ParsePath(s)
-	if err != nil {
-		return nil, err
-	}
-	return object.NewSec(secPath, object.WithVolatile(true))
-}
-
+// configSectionPassword returns the password of the relay heartbeat of the
+// section, read as the heartbeat reads it: a key reference, "from <sec> key
+// <key>", or the path of a sec of the system namespace and its password key.
 func configSectionPassword(config *xconfig.T, section string) (string, error) {
-	sec, err := configSectionPasswordSec(config, section)
+	s := config.GetString(key.New(section, "password"))
+	km, err := datarecv.ParseKeyMetaRelWithFallback(s, naming.NsSys, "password")
 	if err != nil {
 		return "", err
 	}
-	b, err := sec.DecodeKey("password")
+	b, err := km.Decode()
 	if err != nil {
 		return "", err
 	}
