@@ -461,3 +461,15 @@ func TestAMonitorTakingANewOrchestrationLeavesTheDelete(t *testing.T) {
 	o, _ = GetOrchestration(next.String())
 	assert.Equal(t, StateRunning, o.State)
 }
+
+// A refused orchestration says what was asked, as an accepted one does.
+func TestARefusedOrchestrationSaysWhatWasAsked(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+	globalExpect := instance.MonitorGlobalExpectStopped
+	m.handle(&msgbus.ObjectOrchestrationRefused{ID: id.String(), Reason: "node is frozen", GlobalExpect: &globalExpect})
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, StateRefused, o.State)
+	assert.Equal(t, "stopped", o.Expect)
+}

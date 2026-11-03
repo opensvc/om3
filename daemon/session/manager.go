@@ -205,11 +205,16 @@ func (t *Manager) handle(i any) {
 			}
 			EndOrchestration(m.ID, state, m.Error)
 		case *msgbus.ObjectOrchestrationRefused:
-			AddOrchestration(Orchestration{
+			o := Orchestration{
 				OrchestrationID: m.ID,
 				Node:            m.Node,
 				Path:            m.Path.String(),
-			})
+			}
+			// What was asked, for the listing to say what was refused.
+			if m.GlobalExpect != nil {
+				o.Expect = m.GlobalExpect.String()
+			}
+			AddOrchestration(o)
 			EndOrchestration(m.ID, StateRefused, m.Reason)
 		}
 	}

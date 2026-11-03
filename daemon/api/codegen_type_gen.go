@@ -2462,6 +2462,21 @@ type OrchestrationQueued struct {
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
+// OrchestrationRefused A problem, for an action refused. When the instance monitor refused
+// it, the refusal is recorded as an orchestration ended refused, with
+// the detail as its reason, under orchestration_id: "daemon
+// orchestration list" and "wait" answer about it, as they do about an
+// orchestration accepted.
+type OrchestrationRefused struct {
+	Detail string `json:"detail"`
+
+	// Node the node that recorded the refusal, which answers for it
+	Node            *string             `json:"node,omitempty"`
+	OrchestrationID *openapi_types.UUID `json:"orchestration_id,omitempty"`
+	Status          int                 `json:"status"`
+	Title           string              `json:"title"`
+}
+
 // Package defines model for Package.
 type Package struct {
 	Arch        string    `json:"arch"`
@@ -3718,6 +3733,13 @@ type N408 = Problem
 
 // N409 defines model for 409.
 type N409 = Problem
+
+// N409OrchestrationRefused A problem, for an action refused. When the instance monitor refused
+// it, the refusal is recorded as an orchestration ended refused, with
+// the detail as its reason, under orchestration_id: "daemon
+// orchestration list" and "wait" answer about it, as they do about an
+// orchestration accepted.
+type N409OrchestrationRefused = OrchestrationRefused
 
 // N410 defines model for 410.
 type N410 = Problem

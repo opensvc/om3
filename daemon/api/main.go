@@ -45,3 +45,13 @@ func (t Problem) String() (out string) {
 	}
 	return
 }
+
+// String formats a refused action as a problem, with the id its refusal is
+// recorded under.
+func (t OrchestrationRefused) String() string {
+	out := Problem{Status: t.Status, Title: t.Title, Detail: t.Detail}.String()
+	if t.OrchestrationID != nil {
+		out += fmt.Sprintf(" (orchestration %s)", t.OrchestrationID)
+	}
+	return out
+}
