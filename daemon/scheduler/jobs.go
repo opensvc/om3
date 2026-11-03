@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -116,6 +117,17 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 	return append(head, tail...), nil
 }
 
+// expectedExitCodes returns the non-zero exit codes a job of the action is
+// run accepting: answers of the command, not failures, as a push with nothing
+// to collect on the node.
+func expectedExitCodes(action string) []int {
+	switch action {
+	case "pushstats":
+		return []int{xerrors.ExitCodeNothingToCollect}
+	}
+	return nil
+}
+
 func (o *T) action(e schedule.Entry) error {
 	logger := o.jobLogger(e)
 	execID := xsession.NewExecID()
@@ -163,6 +175,7 @@ func (o *T) action(e schedule.Entry) error {
 				reason = after
 			}
 		}),
+		command.WithIgnoredExitCodes(append([]int{0}, expectedExitCodes(e.Action)...)...),
 	)
 	logger.Debugf("-> exec %s", cmd)
 	startTime := time.Now()
@@ -216,6 +229,11 @@ func (o *T) action(e schedule.Entry) error {
 		return err
 	}
 	duration := time.Now().Sub(startTime)
+	if exitCode := cmd.NormalizedExitCode(); exitCode != 0 {
+		// An exit code the job is run accepting: the command answered
+		// rather than failed, as a push with nothing to collect.
+		logger.Infof("%s: exit code %d: %s", cmd, exitCode, reason)
+	}
 	o.publisher.Pub(&msgbus.ExecSuccess{
 		Command:   cmd.String(),
 		Duration:  duration,

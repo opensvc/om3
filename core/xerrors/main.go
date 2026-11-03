@@ -5,6 +5,7 @@ var (
 	ExitCodeInstanceNotFound           = 3
 	ExitCodeInstanceActionNotSupported = 4
 	ExitCodeResizeNoSuchStage          = 5
+	ExitCodeNothingToCollect           = 6
 
 	ObjectNotFound             = newIndexedError("object not found", ExitCodeObjectNotFound)
 	InstanceNotFound           = newIndexedError("instance not found", ExitCodeInstanceNotFound)
@@ -15,6 +16,11 @@ var (
 	// of the chain, which no one can tell it: the stages are read from the
 	// chain, and only the node walking it knows how many there are.
 	ResizeNoSuchStage = newIndexedError("no such stage", ExitCodeResizeNoSuchStage)
+
+	// NothingToCollect says a push has nothing to collect on the node, as
+	// the stats push on a node without sysstat: the push is not run, which
+	// is no failure of the scheduled push, but a user running it is told.
+	NothingToCollect = newIndexedError("nothing to collect", ExitCodeNothingToCollect)
 )
 
 type indexedError struct {

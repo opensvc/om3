@@ -82,7 +82,7 @@ func Collect(ctx context.Context, o Options) (Stats, error) {
 	needSadf := slices.ContainsFunc(Groups, func(g string) bool { return g != "fs_u" && enabled(g) })
 	if needSadf {
 		if _, err := exec.LookPath("sadf"); err != nil {
-			return nil, fmt.Errorf("sadf not found, install sysstat: %w", err)
+			return nil, fmt.Errorf("%w: sadf not found, install sysstat: %w", ErrNoSysstat, err)
 		}
 		dir, err := sysstatDir(o.Dir)
 		if err != nil {
@@ -120,8 +120,13 @@ func sysstatDir(dir string) (string, error) {
 			return dir, nil
 		}
 	}
-	return "", fmt.Errorf("no sysstat data directory: is the sysstat collection enabled?")
+	return "", fmt.Errorf("%w: no sysstat data directory: is the sysstat collection enabled?", ErrNoSysstat)
 }
+
+// ErrNoSysstat says the node has no sysstat data to read: sysstat is not
+// installed, or its collection has not written any data yet. sysstat is no
+// dependency of the agent: a node without it has nothing to collect.
+var ErrNoSysstat = errors.New("no sysstat data")
 
 // sysstatFiles returns the daily data files covering begin to end: saYYYYMMDD
 // when sysstat names them so, saDD otherwise. A saDD file of a past month is

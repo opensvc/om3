@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/oc3path"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/util/httphelper"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/nodestats"
@@ -137,7 +139,11 @@ func (t *Node) pushStatsRun(ctx context.Context, o PushStatsOptions, send func(c
 			disable = append(slices.Clone(disabled), "fs_u")
 		}
 		stats, err := nodestats.Collect(ctx, nodestats.Options{Begin: batch[0], End: batch[1], Dir: o.StatsDir, Disable: disable})
-		if err != nil {
+		if errors.Is(err, nodestats.ErrNoSysstat) {
+			// om exits with the code of the error, which the
+			// scheduled push is run accepting.
+			return result, fmt.Errorf("%w: %w", xerrors.NothingToCollect, err)
+		} else if err != nil {
 			return result, fmt.Errorf("read %s to %s: %w", pushStatsTime(batch[0]), pushStatsTime(batch[1]), err)
 		}
 		if err := send(ctx, stats, &result); err != nil {
