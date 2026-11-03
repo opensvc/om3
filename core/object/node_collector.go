@@ -158,13 +158,15 @@ func (t *Node) CollectorFeedClient() (*collector.Client, error) {
 func (t Node) CollectorInitClient() (*collector.Client, error) {
 	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
 	secret := t.config.GetString(key.Parse("node.uuid"))
-	return collector.NewInitClient(s, secret)
+	insecure := t.mergedConfig.GetBool(key.Parse("node.dbinsecure"))
+	return collector.NewInitClient(s, secret, insecure)
 }
 
 func (t Node) CollectorComplianceClient() (*collector.Client, error) {
 	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
 	secret := t.config.GetString(key.Parse("node.uuid"))
-	return collector.NewComplianceClient(s, secret)
+	insecure := t.mergedConfig.GetBool(key.Parse("node.dbinsecure"))
+	return collector.NewComplianceClient(s, secret, insecure)
 }
 
 func (t *Node) CollectorRestAPIURL() (*url.URL, error) {

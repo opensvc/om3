@@ -132,34 +132,40 @@ func (c *Config) NewFeedClient() (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newClient(u, c.Password)
+	return newClient(u, c.Password, c.Insecure)
 }
 
 // NewComplianceClient returns a Client to call the collector init app jsonrpc2 methods.
-func NewComplianceClient(endpoint, secret string) (*Client, error) {
+// The certificate of the collector is verified, unless insecure, as the
+// node.dbinsecure keyword says.
+func NewComplianceClient(endpoint, secret string, insecure bool) (*Client, error) {
 	u, err := ComplianceURL(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	return newClient(u, secret)
+	return newClient(u, secret, insecure)
 }
 
 // NewInitClient returns a Client to call the collector init app jsonrpc2 methods.
-func NewInitClient(endpoint, secret string) (*Client, error) {
+// The certificate of the collector is verified, unless insecure.
+func NewInitClient(endpoint, secret string, insecure bool) (*Client, error) {
 	u, err := InitURL(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	return newClient(u, secret)
+	return newClient(u, secret, insecure)
 }
 
-func newClient(url *url.URL, secret string) (*Client, error) {
+// newClient returns a jsonrpc client of the collector at url. Its certificate
+// is verified, as the rest clients of the collector do, unless insecure: the
+// node.dbinsecure keyword, for a test collector.
+func newClient(url *url.URL, secret string, insecure bool) (*Client, error) {
 	client := &Client{
 		client: jsonrpc.NewClientWithOpts(url.String(), &jsonrpc.RPCClientOpts{
 			HTTPClient: &http.Client{
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true,
+						InsecureSkipVerify: insecure,
 					},
 				},
 			},
