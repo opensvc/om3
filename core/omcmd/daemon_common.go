@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -114,11 +115,11 @@ func (t *CmdDaemonCommon) dropBackup(backup string) {
 }
 
 // cleanupVarDir removes the entries of the opensvc var directory, but the
-// backup directory and the filesystems mounted under it, as the one of a
-// pool: they are the node's, not the cluster's, and what they hold is not
-// removed. An entry that can not be removed does not stop the removal of the
-// others, so the node left with a daemon to start has as little as possible
-// of the cluster it left.
+// backup directory, the filesystems mounted under it, as the one of a pool,
+// and the frozen flag of the node: they are the node's, not the cluster's,
+// and what they hold is not removed. An entry that can not be removed does not
+// stop the removal of the others, so the node left with a daemon to start has
+// as little as possible of the cluster it left.
 func (t *CmdDaemonCommon) cleanupVarDir() error {
 	varDir, err := filepath.EvalSymlinks(rawconfig.Paths.Var)
 	if err != nil {
@@ -129,7 +130,33 @@ func (t *CmdDaemonCommon) cleanupVarDir() error {
 	if err != nil {
 		return err
 	}
-	return removeTree(t.logger(), varDir, append(mounts, backup))
+	keep := append(mounts, backup)
+	keep = append(keep, keepNodeFreeze(t.logger(), varDir)...)
+	return removeTree(t.logger(), varDir, keep)
+}
+
+// keepNodeFreeze returns the frozen flag of the node to keep through the
+// cleanup of the var directory, if raised: the freeze is the operator's, as
+// the one of the drain a leave asks for, and nothing is to start on the node
+// until the operator thaws it. A freeze of the cluster the node leaves is made
+// a freeze of the node alone, as the node is no member of that cluster any
+// more: the nodes of the next cluster would adopt it as a freeze of theirs.
+// The flag keeps the time it was raised at.
+func keepNodeFreeze(log *plog.Logger, varDir string) []string {
+	p := filepath.Join(varDir, "node", "frozen")
+	at := freeze.Frozen(p)
+	if at.IsZero() {
+		return nil
+	}
+	if freeze.ScopeOf(p, freeze.ScopeCluster, freeze.ScopeNode) == freeze.ScopeCluster {
+		if err := os.WriteFile(p, []byte(freeze.ScopeNode), 0o644); err != nil {
+			log.Warnf("make the freeze of the cluster a freeze of the node: %s", err)
+		} else if err := os.Chtimes(p, at, at); err != nil {
+			log.Warnf("keep the time of the freeze: %s", err)
+		}
+	}
+	log.Infof("Keep the node frozen since %s", at.Format(time.RFC3339))
+	return []string{p}
 }
 
 // mountsUnder returns the mount points under dir.
