@@ -35,9 +35,13 @@ const (
 	// pfKThread is the PF_KTHREAD bit of the /proc/<pid>/stat flags field.
 	pfKThread = 0x00200000
 
-	environRetryDelay       = time.Millisecond
-	environRetryTimeout     = 100 * time.Millisecond
-	environGoneRetryTimeout = 5 * time.Millisecond
+	environRetryDelay   = time.Millisecond
+	environRetryTimeout = 100 * time.Millisecond
+
+	// statRetryTimeout bounds the retry of a stat read failing while the
+	// kernel makes an exec'ing thread the thread group leader, which it
+	// does at once, under a lock: the margin is not a guess at a load.
+	statRetryTimeout = 10 * time.Millisecond
 )
 
 var (
@@ -203,9 +207,7 @@ func (t *T) Env() map[string]string {
 // their read is not retried with a delay.
 func (t T) readEnviron() ([]string, error) {
 	p := t.Head() + "/environ"
-	start := time.Now()
-	deadline := start.Add(environRetryTimeout)
-	goneDeadline := start.Add(environGoneRetryTimeout)
+	deadline := time.Now().Add(environRetryTimeout)
 	for {
 		l, err := parseFile(p)
 		if err == nil && !isEmpty(l) {
@@ -222,11 +224,9 @@ func (t T) readEnviron() ([]string, error) {
 		case statErr != nil:
 			// the process is gone, or the /proc/<pid> lookup fails
 			// while the exec'ing thread becomes the thread group
-			// leader. Retry for a shorter time, as a process reaped
-			// between the environ and the stat reads gets here too.
-			if time.Now().After(goneDeadline) {
-				return l, err
-			}
+			// leader: retried until the deadline, a process reaped
+			// between the environ and the stat reads too, which is
+			// rare.
 		case !st.mayBeExecuting(err != nil):
 			if err == nil {
 				// env_end may have been set between the environ
@@ -393,18 +393,6 @@ func (t T) PPID() (int, error) {
 	return strconv.Atoi(fields[1])
 }
 
-// IsZombie says the process ended, its parent not having reaped it yet.
-func (t T) IsZombie() (bool, error) {
-	fields, err := t.statFields()
-	if err != nil {
-		return false, err
-	}
-	if len(fields) < 1 {
-		return false, fmt.Errorf("%s/stat: no state field", t.Head())
-	}
-	return fields[0] == "Z" || fields[0] == "X", nil
-}
-
 // StartTime is when the process started, in clock ticks since the boot, read
 // from /proc/<pid>/stat. With the pid and the boot id, it names a process: a
 // pid is reused, but not with the same start time before a reboot.
@@ -417,6 +405,47 @@ func (t T) StartTime() (uint64, error) {
 		return 0, fmt.Errorf("%s/stat: no starttime field", t.Head())
 	}
 	return strconv.ParseUint(fields[22-3], 10, 64)
+}
+
+// RunsSince says the process still runs, started at startTime: a process
+// named by its pid and its start time, which stay readable while it execve's,
+// unlike its environ.
+//
+// A process showing as a zombie with other threads still counted runs: its
+// thread group leader exited, as it does when another thread execve's, or as
+// a program whose main thread returned and whose other threads go on. A stat
+// read failing is retried for a short time, as it fails while the kernel makes
+// an exec'ing thread the thread group leader.
+func (t T) RunsSince(startTime uint64) bool {
+	deadline := time.Now().Add(statRetryTimeout)
+	for {
+		fields, err := t.statFields()
+		if err == nil {
+			return runsSince(fields, startTime)
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(environRetryDelay)
+	}
+}
+
+// runsSince says the stat fields, after the comm one, are the ones of a
+// process running, started at startTime.
+func runsSince(fields []string, startTime uint64) bool {
+	if len(fields) < 22-2 {
+		return false
+	}
+	if st, err := strconv.ParseUint(fields[22-3], 10, 64); err != nil || st != startTime {
+		// another process took the pid.
+		return false
+	}
+	switch fields[0] {
+	case "Z", "X":
+		numThreads, err := strconv.Atoi(fields[20-3])
+		return err == nil && numThreads > 1
+	}
+	return true
 }
 
 // Tree is pid and the ids of all its descendants, parents first, from one

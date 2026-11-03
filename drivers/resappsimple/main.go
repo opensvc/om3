@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resapp"
 	"github.com/opensvc/om3/v3/util/bootid"
+	"github.com/opensvc/om3/v3/util/capexec"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/funcopt"
@@ -71,27 +73,43 @@ func (t *T) Start(ctx context.Context) (err error) {
 		t.Log().Infof("already up")
 		return nil
 	}
+	// om exec closes the write end of the pipe when the command takes
+	// over, or writes why it could not run it: the start waits for it
+	// rather than for a delay.
+	readyR, readyW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = readyR.Close() }()
 	opts = append(opts,
 		command.WithLogger(t.Log()),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
+		// ExtraFiles[0] is the descriptor 3 of the child.
+		command.WithEnv([]string{capexec.ReadyFDEnv + "=3"}),
 	)
 	cmd := command.New(opts...)
 
 	cmd.Cmd().SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true, // Create a new session to avoid kill on exit
 	}
+	cmd.Cmd().ExtraFiles = []*os.File{readyW}
 
 	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
-	if err := cmd.Start(); err != nil {
+	err = cmd.Start()
+	_ = readyW.Close()
+	if err != nil {
 		return err
 	}
 	if err := t.recordStarted(cmd.Cmd().Process.Pid); err != nil {
 		t.Log().Warnf("record the started process: %s", err)
 	}
-	done := make(chan error)
+	done := make(chan error, 1)
 	go func() {
 		done <- cmd.Cmd().Wait()
 	}()
+	if err := t.waitReady(readyR); err != nil {
+		return err
+	}
 	select {
 	case <-time.After(20 * time.Millisecond):
 		// the process is still running
@@ -106,6 +124,38 @@ func (t *T) Start(ctx context.Context) (err error) {
 		return t.Stop(ctx)
 	})
 	return nil
+}
+
+// waitReady waits for om exec to hand over to the command, bounded by the
+// start timeout, a minute when none is set: the pipe closes when the command
+// takes over, its cgroup joined, its limits and identity set, and om exec
+// writes there why it could not run it. A wait expired is warned, the status
+// telling whether the command runs.
+func (t *T) waitReady(r *os.File) error {
+	timeout := t.GetTimeout("start")
+	if timeout <= 0 {
+		timeout = time.Minute
+	}
+	type result struct {
+		b   []byte
+		err error
+	}
+	c := make(chan result, 1)
+	go func() {
+		b, err := io.ReadAll(r)
+		c <- result{b, err}
+	}()
+	select {
+	case res := <-c:
+		if len(res.b) > 0 {
+			return fmt.Errorf("the command did not start: %s", res.b)
+		}
+		return nil
+	case <-time.After(timeout):
+		t.Log().Warnf("the command did not take over after %s", timeout)
+		_ = r.Close()
+		return nil
+	}
 }
 
 // Stop runs the stop command, if any, then terminates the processes the
@@ -290,13 +340,49 @@ func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 }
 
 // getTargets returns the processes the stop terminates and the status looks
-// for, as the kill keyword says.
+// for, as the kill keyword says: the processes carrying the resource
+// identity, and the process the start command launched, as the start
+// recorded it, with kill = tree; that process alone with kill = parent.
+//
+// The recorded process counts whatever its environment says: while it
+// execve's, as om exec does into the command right after the start, its
+// environ can not be read, for longer than a scan waits on a loaded node,
+// and a launcher may clear its environment before it exec's.
 func (t *T) getTargets(cmdArgs []string) (proc.L, error) {
 	procs, err := t.getRunning(cmdArgs)
-	if err != nil || t.Kill != killParent {
+	if err != nil {
 		return procs, err
 	}
-	return t.parentOf(procs), nil
+	if t.Kill == killParent {
+		return t.parentOf(procs), nil
+	}
+	if p, ok := t.recorded(); ok && !procs.HasPID(p.PID()) {
+		procs.Add(p)
+	}
+	return procs, nil
+}
+
+// recorded returns the process the start command launched, as the start
+// recorded it, if it still runs: the same pid, start time and boot.
+func (t *T) recorded() (proc.T, bool) {
+	pid, startTime, bootID, err := t.readStarted()
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			t.Log().Debugf("read the started process: %s", err)
+		}
+		return proc.T{}, false
+	}
+	if bootID != bootid.Get() {
+		// the start times of the processes of another boot are no
+		// telling them apart from those of this one.
+		return proc.T{}, false
+	}
+	p := proc.New(pid)
+	if !p.RunsSince(startTime) {
+		// gone, or the pid reused.
+		return proc.T{}, false
+	}
+	return p, true
 }
 
 // parentOf returns the process the start command launched, if it still
@@ -310,11 +396,7 @@ func (t *T) getTargets(cmdArgs []string) (proc.L, error) {
 // would start it again.
 func (t *T) parentOf(procs proc.L) proc.L {
 	l := proc.NewList()
-	pid, startTime, bootID, err := t.readStarted()
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			t.Log().Debugf("read the started process: %s", err)
-		}
+	if _, err := os.Stat(t.startedFile()); errors.Is(err, os.ErrNotExist) {
 		for _, p := range procs.Procs() {
 			if ppid, err := p.PPID(); err == nil && procs.HasPID(ppid) {
 				continue
@@ -323,20 +405,9 @@ func (t *T) parentOf(procs proc.L) proc.L {
 		}
 		return l
 	}
-	if bootID != bootid.Get() {
-		// the start times of the processes of another boot are no
-		// telling them apart from those of this one.
-		return l
+	if p, ok := t.recorded(); ok {
+		l.Add(p)
 	}
-	p := proc.New(pid)
-	if st, err := p.StartTime(); err != nil || st != startTime {
-		// gone, or the pid reused.
-		return l
-	}
-	if zombie, err := p.IsZombie(); err != nil || zombie {
-		return l
-	}
-	l.Add(p)
 	return l
 }
 

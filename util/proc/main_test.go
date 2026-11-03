@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -85,5 +86,46 @@ func TestTree(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, pid, ppid)
 		_ = syscall.Kill(child, syscall.SIGKILL)
+	}
+}
+
+// A process is named by its pid and its start time: another start time is
+// another process, and a zombie runs only while other threads of its group
+// do, as while one of them execve's.
+func TestRunsSince(t *testing.T) {
+	self, err := New(os.Getpid()).StartTime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !New(os.Getpid()).RunsSince(self) {
+		t.Fatal("this process runs since its start time")
+	}
+	if New(os.Getpid()).RunsSince(self + 1) {
+		t.Fatal("a start time not the process's is another process")
+	}
+	fields := func(state string, threads, start int) []string {
+		l := make([]string, 50)
+		for i := range l {
+			l[i] = "0"
+		}
+		l[0] = state
+		l[20-3] = fmt.Sprint(threads)
+		l[22-3] = fmt.Sprint(start)
+		return l
+	}
+	for _, c := range []struct {
+		state   string
+		threads int
+		want    bool
+	}{
+		{"R", 1, true},
+		{"S", 4, true},
+		{"Z", 1, false},
+		{"Z", 3, true},
+		{"X", 1, false},
+	} {
+		if got := runsSince(fields(c.state, c.threads, 42), 42); got != c.want {
+			t.Errorf("state %s, %d threads: runs %v, want %v", c.state, c.threads, got, c.want)
+		}
 	}
 }

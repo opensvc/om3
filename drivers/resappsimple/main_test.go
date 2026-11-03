@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resapp"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/bootid"
 	"github.com/opensvc/om3/v3/util/executable"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -63,6 +64,18 @@ func TestStart(t *testing.T) {
 	testhelper.SetExecutable(t, "../..")
 	defer executable.Unset()
 	startReturnMsg := "Start(...) returned value"
+
+	t.Run("a command that can not be executed fails the start with the reason", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{T: resapp.T{StartCmd: "/nonexistent/daemon --foreground"}})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		err := app.Start(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "the command did not start")
+		assert.Contains(t, err.Error(), "/nonexistent/daemon")
+	})
 
 	t.Run("execute start command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
@@ -340,6 +353,45 @@ func TestKill(t *testing.T) {
 		assert.Equal(t, status.Up, app.Status(ctx), "status after start")
 		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
 		assert.Equal(t, status.Down, app.Status(ctx), "status after stop")
+	})
+
+	t.Run("tree finds the launched process when it clears its environment", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killTree, T: resapp.T{StartCmd: "env -i sleep 32"}})
+		ctx, cancel := getActionContext()
+		defer cancel()
+		require.Nil(t, app.Start(ctx), "Start(...) returned value")
+		pid, _, _, err := app.readStarted()
+		require.NoError(t, err)
+		for i := 0; i < 100; i++ {
+			if p := proc.New(pid); p.CommandLine() == "sleep" {
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		procs, err := app.getRunning(nil)
+		require.NoError(t, err)
+		require.Equal(t, 0, procs.Len(), "the launched process does not carry the resource identity")
+		assert.Equal(t, status.Up, app.Status(ctx), "status after start")
+		assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+		assert.Equal(t, status.Down, app.Status(ctx), "status after stop")
+		assert.False(t, proc.New(pid).RunsSince(0), "the launched process is stopped")
+	})
+
+	t.Run("tree ignores a recorded pid another process took", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+		app := WithLoggerAndPgApp(T{Kill: killTree})
+		require.NoError(t, os.MkdirAll(filepath.Dir(app.startedFile()), 0o755))
+		self, err := proc.New(os.Getpid()).StartTime()
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(app.startedFile(), []byte(fmt.Sprintf("%d %d %s\n", os.Getpid(), self+1, bootid.Get())), 0o644))
+		ctx, cancel := getActionContext()
+		defer cancel()
+		assert.Equal(t, status.Down, app.Status(ctx), "status of a reused pid")
+		require.NoError(t, os.WriteFile(app.startedFile(), []byte(fmt.Sprintf("%d %d %s\n", os.Getpid(), self, bootid.Get())), 0o644))
+		assert.Equal(t, status.Up, app.Status(ctx), "status of the recorded process")
 	})
 
 	t.Run("parent is the topmost process when the start was not recorded", func(t *testing.T) {
