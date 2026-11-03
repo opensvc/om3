@@ -302,17 +302,23 @@ func (t *Manager) runningInstances() []string {
 }
 
 func (t *Manager) isProvisioningLeader() bool {
-	if t.objStatus.Topology == topology.Flex {
-		if len(t.leaders()) == 0 {
-			return t.provisioningLeader() == t.localhost
+	return t.isProvisioningLeaderNode(t.localhost)
+}
+
+// isProvisioningLeaderNode says the instance of node leads the provision, by
+// the one rule every node applies to every node: the leaders of a flex
+// object, the first candidate of the placement of a flex object no node
+// leads, and the provisioning leader of a failover one. A node telling the
+// leader apart from the non-leaders by another rule than the one it leads by
+// would count itself among the non-leaders, and wait for itself.
+func (t *Manager) isProvisioningLeaderNode(node string) bool {
+	if t.objStatus.Topology == topology.Flex && len(t.leaders()) > 0 {
+		if node == t.localhost {
+			return t.state.IsLeader
 		}
-		return t.state.IsLeader
-	} else {
-		if t.provisioningLeader() == t.localhost {
-			return true
-		}
-		return false
+		return t.instMonitor[node].IsLeader
 	}
+	return node == t.provisioningLeader()
 }
 
 // leaderWaited is the leader of a provision a node waits for, in the

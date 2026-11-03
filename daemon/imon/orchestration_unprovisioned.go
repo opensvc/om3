@@ -4,7 +4,6 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
-	"github.com/opensvc/om3/v3/core/topology"
 )
 
 func (t *Manager) orchestrateUnprovisioned() {
@@ -138,16 +137,9 @@ func (t *Manager) isUnprovisionLeader() bool {
 }
 
 // isUnprovisionLeaderNode says the instance of node is the one unprovisioned
-// last, by the rule isUnprovisionLeader applies to the local one: the leaders
-// of a flex object, and the provisioning leader of a failover one, which is
-// where it runs when it runs. The non-leaders are told apart by the same
-// rule, or the leader would count itself among them and wait for itself.
+// last, by the rule isUnprovisionLeader applies to the local one, see
+// isProvisioningLeaderNode. The non-leaders are told apart by the same rule,
+// or the leader would count itself among them and wait for itself.
 func (t *Manager) isUnprovisionLeaderNode(node string) bool {
-	if t.objStatus.Topology == topology.Flex {
-		if node == t.localhost {
-			return t.state.IsLeader
-		}
-		return t.instMonitor[node].IsLeader
-	}
-	return node == t.provisioningLeader()
+	return t.isProvisioningLeaderNode(node)
 }
