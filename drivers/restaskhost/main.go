@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -200,12 +201,17 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	cmd, err := encaper.EncapCmd(ctx, args, env, strings.NewReader(""))
+	// A commander other than a process, as the one of a kvm guest agent,
+	// stops when its context is cancelled, which a signal the run
+	// receives does.
+	cmdCtx, cancelCmd := context.WithCancel(ctx)
+	defer cancelCmd()
+	cmd, err := encaper.EncapCmd(cmdCtx, args, env, strings.NewReader(""))
 	if err != nil {
 		return err
 	}
 	t.Log().Attr("cmd", t.RunCmd).Infof("run %s in %s", t.RunCmd, t.Container)
-	out, err := t.runEncapCmd(ctx, cmd)
+	out, signaled, err := t.runEncapCmd(ctx, cmd, cancelCmd)
 	if t.LogOutputs {
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			if line != "" {
@@ -215,10 +221,11 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 	}
 	exitCode := 0
 	var exitErr interface{ ExitCode() int }
-	if sig, ok := signalrelay.Received(ctx).(syscall.Signal); ok {
-		// The run was asked to stop: whatever the process entering the
-		// container exited with, docker exec exiting 0 on the signal,
-		// the run ended as the signal made it, as a host task does.
+	if sig, ok := signaled.(syscall.Signal); ok {
+		// The signal reached the command while it ran: whatever the
+		// process entering the container exited with, docker exec
+		// exiting 0 on the signal, the run ended as the signal made it,
+		// as a host task does.
 		exitCode = 128 + int(sig)
 	} else if errors.As(err, &exitErr) {
 		exitCode = exitErr.ExitCode()
@@ -240,37 +247,83 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 }
 
 // runEncapCmd runs the command entering the container, and returns its
-// combined output. A signal the run receives is passed on to the process
-// entering the container, which ends the run as the signal did before the run
-// relayed it: an engine passing it on to the command it runs in the container
-// stops that command too, and one that does not, as docker exec, leaves it
-// running, as it did.
-func (t *T) runEncapCmd(ctx context.Context, cmd resource.Commander) ([]byte, error) {
-	c, ok := cmd.(*exec.Cmd)
-	if !ok {
-		return cmd.CombinedOutput()
-	}
+// combined output, and the signal the run received that reached the command
+// while it ran, if any.
+//
+// A signal the run receives is passed on to the process entering the
+// container, which ends the run as the signal did before the run relayed it:
+// an engine passing it on to the command it runs in the container stops that
+// command too, and one that does not, as docker exec, leaves it running, as
+// it did. A commander other than a process, as the one of a kvm guest agent,
+// is stopped by cancel, which cancels its context. A signal received after the
+// command ended reached nothing, and is not the end of the run.
+func (t *T) runEncapCmd(ctx context.Context, cmd resource.Commander, cancel context.CancelFunc) ([]byte, os.Signal, error) {
+	var (
+		mu       sync.Mutex
+		signaled os.Signal
+		done     = make(chan struct{})
+		waited   = make(chan struct{})
+	)
+	c, isProcess := cmd.(*exec.Cmd)
 	var b bytes.Buffer
-	c.Stdout = &b
-	c.Stderr = &b
-	if err := c.Start(); err != nil {
-		return nil, err
+	if isProcess {
+		c.Stdout = &b
+		c.Stderr = &b
+		if err := c.Start(); err != nil {
+			return nil, nil, err
+		}
 	}
 	if sigC, unsubscribe := signalrelay.Subscribe(ctx); sigC != nil {
-		done := make(chan struct{})
-		defer close(done)
 		defer unsubscribe()
 		go func() {
+			defer close(waited)
 			select {
 			case sig := <-sigC:
-				t.Log().Infof("pass the signal %s on to %s", sig, c)
-				_ = c.Process.Signal(sig)
+				t.Log().Infof("pass the signal %s on to the command run in %s", sig, t.Container)
+				mu.Lock()
+				defer mu.Unlock()
+				if isProcess {
+					// A process already waited is gone: the signal
+					// reached nothing.
+					if err := c.Process.Signal(sig); err == nil {
+						signaled = sig
+					}
+				} else {
+					select {
+					case <-done:
+					default:
+						signaled = sig
+						cancel()
+					}
+				}
 			case <-done:
 			}
 		}()
+	} else {
+		close(waited)
 	}
-	err := c.Wait()
-	return b.Bytes(), err
+	var (
+		out []byte
+		err error
+	)
+	if isProcess {
+		err = c.Wait()
+		out = b.Bytes()
+	} else {
+		out, err = cmd.CombinedOutput()
+	}
+	mu.Lock()
+	close(done)
+	mu.Unlock()
+	<-waited
+	mu.Lock()
+	defer mu.Unlock()
+	if !isProcess && err == nil {
+		// The guest command ended on its own before the cancel reached
+		// it.
+		signaled = nil
+	}
+	return out, signaled, err
 }
 
 func (t *T) onError(ctx context.Context) error {
