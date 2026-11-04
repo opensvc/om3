@@ -61,12 +61,19 @@ func hasNetworkOption(l []string) bool {
 	return false
 }
 
+// WaitRemoved waits for the container to be removed. podman 1 has no
+// --condition: the wait fails there, and the executor inspects the container
+// until it is gone.
 func (ea *ExecutorArg) WaitRemoved(ctx context.Context) error {
-	return ea.wait(ctx, "container", "wait", "--ignore", "--condition", "removing", ea.BT.ContainerName())
+	return ea.wait(ctx, "container", "wait", "--condition", "removing", ea.BT.ContainerName())
 }
 
+// WaitNotRunning waits for the container to be not running: a wait with no
+// --condition waits for it to be stopped, which every podman version does,
+// podman 1 knowing no --condition and podman before 4.3 no --ignore. A
+// container gone fails the wait, which the executor judges by inspect.
 func (ea *ExecutorArg) WaitNotRunning(ctx context.Context) error {
-	return ea.wait(ctx, "container", "wait", "--ignore", "--condition", "stopped", ea.BT.ContainerName())
+	return ea.wait(ctx, "container", "wait", ea.BT.ContainerName())
 }
 
 func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {

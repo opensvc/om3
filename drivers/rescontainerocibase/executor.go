@@ -42,6 +42,15 @@ type (
 	}
 )
 
+var (
+	// waitRemovedByInspectTimeout bounds the inspects judging a failed
+	// wait for the removal of a container.
+	waitRemovedByInspectTimeout = 10 * time.Second
+
+	// waitRemovedByInspectInterval is the delay between these inspects.
+	waitRemovedByInspectInterval = 500 * time.Millisecond
+)
+
 func NewExecutor(exe string, args ExecutorArgser, log Logger) *Executor {
 	return &Executor{bin: exe, args: args, logger: log, mutex: &sync.RWMutex{}}
 }
@@ -296,26 +305,67 @@ func (e *Executor) Unpause(ctx context.Context) error {
 	return e.doExecRun(ctx, nil, e.args.UnpauseArgs().Get()...)
 }
 
+// WaitNotRunning waits for the container to be not running.
+//
+// A wait the engine fails is judged by inspect: the container gone or not
+// running is what the wait was for. An engine may not know the options of
+// the wait, as podman before 4.3 has no --ignore and podman 1 no --condition.
 func (e *Executor) WaitNotRunning(ctx context.Context) error {
-	if err := e.args.WaitNotRunning(ctx); err != nil {
-		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
-			e.log().Tracef("wait not running: container removed")
-			return nil
-		}
+	err := e.args.WaitNotRunning(ctx)
+	if err == nil {
+		return nil
+	}
+	inspect, inspectErr := e.InspectRefresh(ctx)
+	switch {
+	case inspectErr != nil, ctxDone(ctx):
+		// An inspect the context killed says nothing of the container.
+		return err
+	case inspect == nil:
+		e.log().Tracef("wait not running: container removed")
+		return nil
+	case !inspect.Running():
+		e.log().Debugf("wait not running: %s: the container is not running", err)
+		return nil
+	default:
 		return err
 	}
-	return nil
 }
 
+// ctxDone tells if ctx, which may be nil, is done.
+func ctxDone(ctx context.Context) bool {
+	return ctx != nil && ctx.Err() != nil
+}
+
+// WaitRemoved waits for the container to be removed.
+//
+// A wait the engine fails, as WaitNotRunning, is judged by inspect, for a
+// while: the engine may remove an auto-removed container a moment after its
+// stop.
 func (e *Executor) WaitRemoved(ctx context.Context) error {
-	if err := e.args.WaitRemoved(ctx); err != nil {
-		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
-			e.log().Tracef("wait removed: container removed")
+	err := e.args.WaitRemoved(ctx)
+	if err == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, waitRemovedByInspectTimeout)
+	defer cancel()
+	ticker := time.NewTicker(waitRemovedByInspectInterval)
+	defer ticker.Stop()
+	for {
+		inspect, inspectErr := e.InspectRefresh(ctx)
+		if inspectErr == nil && inspect == nil && !ctxDone(ctx) {
+			// Not an inspect the context killed: the container is gone.
+			e.log().Debugf("wait removed: %s: the container is removed", err)
 			return nil
 		}
-		return err
+		select {
+		case <-ctx.Done():
+			return err
+		case <-ticker.C:
+		}
 	}
-	return nil
 }
 
 // ExecutorArgser implements ExecutorArgserGetter for external tests
