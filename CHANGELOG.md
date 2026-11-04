@@ -931,6 +931,16 @@ which share the same executor.
     `run_args = --network podman -p 2222:22`. `expose` publishes nothing, it
     makes SRV records.
 
+* **Changed behaviour, the ports a process not root listens on:**
+    A container with its own netns, the private one of a container with no
+    `netns` or the one of an engine network named in `run_args`, runs with
+    `--sysctl net.ipv4.ip_unprivileged_port_start=0`, as docker sets it: a
+    process not root, as a haproxy run as user 99, listens on ports under
+    1024 in it. podman left the kernel default, 1024. The netns of the node
+    or of another container is not set, nor a setting of the `sysctl`
+    keyword or of `run_args` overridden, nor a kernel older than 4.11, which
+    has no such sysctl.
+
 ### Driver: container.oci
 
     * `stop_timeout`
