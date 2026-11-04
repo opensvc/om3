@@ -5073,6 +5073,12 @@ type GetNodeNetworkReservationsParams struct {
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
 }
 
+// PostNodeNetworkSetupParams defines parameters for PostNodeNetworkSetup.
+type PostNodeNetworkSetupParams struct {
+	// Name the name of a network to set up
+	Name *[]string `form:"name,omitempty" json:"name,omitempty"`
+}
+
 // GetObjectsParams defines parameters for GetObjects.
 type GetObjectsParams struct {
 	// Path object selector expression.

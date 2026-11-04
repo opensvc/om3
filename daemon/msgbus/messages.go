@@ -290,6 +290,7 @@ var (
 
 		"NetLinkDown":         func() any { return &NetLinkDown{} },
 		"NetLinkUp":           func() any { return &NetLinkUp{} },
+		"NetworkSetupRequest": func() any { return &NetworkSetupRequest{} },
 		"NetworkPeersUpdated": func() any { return &NetworkPeersUpdated{} },
 		"NetIPAddrAdded":      func() any { return &NetIPAddrAdded{} },
 		"NetIPAddrDeleted":    func() any { return &NetIPAddrDeleted{} },
@@ -1214,6 +1215,16 @@ type (
 		LinkName   string `json:"link_name" yaml:"link_name"`
 	}
 
+	// NetworkSetupRequest asks the node monitor of Node to set up the
+	// networks named, all of them when none is named. Err is sent the
+	// error of the setup, once run.
+	NetworkSetupRequest struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string                    `json:"node" yaml:"node"`
+		Names      []string                  `json:"names" yaml:"names"`
+		Err        errcontext.ErrCloseSender `json:"-" yaml:"-"`
+	}
+
 	// NetLinkUp is published when a network link goes up
 	NetLinkUp struct {
 		pubsub.Msg `yaml:",inline"`
@@ -1863,6 +1874,17 @@ func (e *NetLinkDown) Kind() string {
 
 func (e *NetLinkDown) Key() string {
 	return fmt.Sprintf("NetLinkDown,node=%s,link_name=%s", e.Node, e.LinkName)
+}
+
+func (e *NetworkSetupRequest) Kind() string {
+	return "NetworkSetupRequest"
+}
+
+// NewNetworkSetupRequestWithErr returns the request of the setup of the
+// networks names on nodename, and the receiver of its error.
+func NewNetworkSetupRequestWithErr(ctx context.Context, nodename string, names []string) (*NetworkSetupRequest, errcontext.ErrReceiver) {
+	err := errcontext.New(ctx)
+	return &NetworkSetupRequest{Node: nodename, Names: names, Err: err}, err
 }
 
 func (e *NetLinkUp) Kind() string {

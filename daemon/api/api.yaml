@@ -2746,6 +2746,45 @@ paths:
         - node
       x-internal: true
 
+  /api/node/name/{nodename}/network/setup:
+    post:
+      operationId: PostNodeNetworkSetup
+      description: |
+        Set up the networks on the node, all of them when none is named: the
+        cni configurations, the bridges, tunnels and routes, and the firewall
+        rules. The node monitor runs the setups one at a time, a setup asked
+        while one runs being merged into the next one, and answers once the
+        setup taking in the request has run.
+      tags:
+        - network
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: name
+          description: the name of a network to set up
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        204:
+          description: the networks are set up
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/network/reservation:
     get:
       description: |

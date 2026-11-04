@@ -52,6 +52,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/bootid"
 	"github.com/opensvc/om3/v3/util/btime"
+	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -137,6 +138,27 @@ type (
 		// exists when we receive msgbus.NodeMonitorUpdated
 		// removed when we receive msgbus.ForgetPeer
 		livePeers map[string]bool
+
+		// networkSetupC receives the end of a network setup run off the
+		// loop.
+		networkSetupC chan networkSetupResult
+
+		// networkSetupRunning says a network setup runs.
+		networkSetupRunning bool
+
+		// networkSetupPending is the setup asked while one runs, run when
+		// it ends: nil for none, empty for all the networks, else the
+		// names of the networks, with the requests waiting for its end.
+		networkSetupPending        *[]string
+		networkSetupPendingWaiters []errcontext.ErrCloseSender
+
+		// networksReady says the first network setup ended: the node goes
+		// idle, and its instances start, once it did.
+		networksReady bool
+
+		// idleWanted says the node ended its rejoin before the first
+		// network setup ended: it goes idle when it does.
+		idleWanted bool
 
 		// arbitrators is a map for arbitratorConfig
 		arbitrators map[string]arbitratorConfig
@@ -231,11 +253,13 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		},
 		cmdC:        make(chan any),
 		arbitratorC: make(chan arbitratorCheck, 1),
-		poolC:       make(chan any, 1),
-		logBase:     plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
-		localhost:   localhost,
-		change:      true,
-		nodeMonitor: make(map[string]node.Monitor),
+
+		networkSetupC: make(chan networkSetupResult, 1),
+		poolC:         make(chan any, 1),
+		logBase:       plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
+		localhost:     localhost,
+		change:        true,
+		nodeMonitor:   make(map[string]node.Monitor),
 		nodeStatus: node.Status{
 			Agent: version.Version(),
 		},
@@ -424,6 +448,7 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeLabelsUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.SetNodeMonitor{})
 	sub.AddFilter(&msgbus.NetLinkUp{})
+	sub.AddFilter(&msgbus.NetworkSetupRequest{}, t.labelLocalhost)
 	sub.Start()
 	t.sub = sub
 }
@@ -440,7 +465,7 @@ func (t *Manager) startRejoin() {
 		t.nodeStatus.LeftAt = leftAt
 		t.nodeStatus.RejoinedAt = time.Now()
 		_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
-		t.transitionTo(node.MonitorStateIdle)
+		t.rejoined()
 		t.publisher.Pub(&msgbus.NodeRejoin{
 			Nodes:          hbMessageType.Nodes,
 			LastShutdownAt: leftAt,
@@ -500,6 +525,10 @@ func (t *Manager) worker() {
 	t.refreshSanPaths()
 	t.updateIfChange()
 	t.networkPeersSigs = t.getNetworkPeersSigs(nil)
+
+	// The networks are set up before the node goes idle, and its instances
+	// start: an ip.cni needs the cni configuration of its network.
+	t.requestNetworkSetup(nil, nil)
 	defer t.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
 	defer node.MonitorData.Unset(t.localhost)
 
@@ -511,7 +540,7 @@ func (t *Manager) worker() {
 		t.rejoinTicker = time.NewTicker(time.Millisecond)
 		t.rejoinTicker.Stop()
 		t.log.Infof("single cluster node, transition to idle")
-		t.transitionTo(node.MonitorStateIdle)
+		t.rejoined()
 	}
 
 	statsTicker := time.NewTicker(statsInterval)
@@ -585,6 +614,8 @@ func (t *Manager) worker() {
 				t.onSetNodeMonitor(c)
 			case *msgbus.NetLinkUp:
 				t.onNetLinkUp(c)
+			case *msgbus.NetworkSetupRequest:
+				t.onNetworkSetupRequest(c)
 			}
 		case i := <-t.cmdC:
 			switch c := i.(type) {
@@ -597,6 +628,8 @@ func (t *Manager) worker() {
 			t.onArbitratorTicker()
 		case c := <-t.arbitratorC:
 			t.onArbitratorsChecked(c)
+		case r := <-t.networkSetupC:
+			t.onNetworkSetupDone(r)
 		case <-t.rejoinTicker.C:
 			t.onRejoinGracePeriodExpire()
 		case <-lastShutdownFileTouchTicker.C:
@@ -651,10 +684,10 @@ func (t *Manager) onRejoinGracePeriodExpire() {
 			return
 		}
 		t.log.Infof("%s: local node has been frozen", msg)
-		t.transitionTo(node.MonitorStateIdle)
+		t.rejoined()
 	} else {
 		t.log.Infof("%s: local node is already frozen", msg)
-		t.transitionTo(node.MonitorStateIdle)
+		t.rejoined()
 	}
 	t.rejoinTicker.Stop()
 }
