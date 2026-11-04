@@ -210,12 +210,49 @@ func (t T) IsActive(ctx context.Context) (bool, string, error) {
 	return true, msg, nil
 }
 
+// Exists says a device holds a superblock of the array, a path of a
+// multipath device aside: blkid reads a path from its buffers, which a write
+// through the multipath device leaves stale, so a path goes on reporting a
+// superblock zeroed or overwritten. The multipath device itself says what the
+// LUN holds.
 func (t T) Exists(ctx context.Context) (bool, error) {
 	buff, err := t.blkidOutput(ctx)
 	if err != nil {
 		return false, err
 	}
-	return t.ContainsUUIDOrName(buff), nil
+	return len(t.members(buff)) > 0, nil
+}
+
+// ExistsFresh is Exists made sure of, for a provision about to create the
+// array or to adopt it: the buffers of each device found are dropped, those
+// of its paths included, and the device is probed again. A superblock zeroed
+// from another node, or through another device, lingers in the buffers of
+// this node blkid reads, and would be taken for an array to adopt. Status
+// does not pay the price of the flushes.
+func (t T) ExistsFresh(ctx context.Context) (bool, error) {
+	buff, err := t.blkidOutput(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, devpath := range t.members(buff) {
+		if err := device.New(devpath, device.WithLogger(t.log)).FlushBufs(ctx); err != nil {
+			t.log.Warnf("%s", err)
+		}
+		probed, err := t.blkidProbe(ctx, devpath)
+		if err != nil {
+			return false, err
+		}
+		if isRaidMember(probed) && t.ContainsUUIDOrName(probed) {
+			return true, nil
+		}
+		t.log.Infof("%s holds no superblock of the array, once its buffers dropped", devpath)
+	}
+	return false, nil
+}
+
+// isRaidMember says a blkid answer is the one of an md member.
+func isRaidMember(s string) bool {
+	return strings.Contains(s, `TYPE="linux_raid_member"`)
 }
 
 func (t T) ContainsUUIDOrName(buff string) bool {
@@ -252,16 +289,15 @@ func (t T) Devices(ctx context.Context) (device.L, error) {
 	if err != nil {
 		return l, nil
 	}
-	for _, d := range t.devsFromBlkidOutput(s) {
+	for _, d := range t.members(s) {
 		resolvedDev, err := filepath.EvalSymlinks(d)
 		if err != nil {
 			continue
 		}
 		l = append(l, device.New(resolvedDev, device.WithLogger(t.log)))
 	}
-	// devsFromBlkidOutput may return a list with duplicates,
-	// like /dev/mpath0 /dev/sda /dev/sdb, where sda and sdb are paths of mpath0.
-	// In this case we want to return only the top holders of the list.
+	// members leaves out the paths of a multipath device, but an array on
+	// arrays lists the devices of both: keep the top holders.
 	return l.HolderEndpoints()
 }
 
@@ -522,11 +558,13 @@ func (t T) DisableAutoActivation() error {
 	return nil
 }
 
+// blkidOutput lists the md members of the node. The blkid cache is not used:
+// it answers what a device held when last probed.
 func (t T) blkidOutput(ctx context.Context) (string, error) {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName(blkid),
-		command.WithVarArgs("-t", "TYPE=linux_raid_member"),
+		command.WithVarArgs("-c", "/dev/null", "-t", "TYPE=linux_raid_member"),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -539,6 +577,48 @@ func (t T) blkidOutput(ctx context.Context) (string, error) {
 	} else {
 		return string(out), nil
 	}
+}
+
+// blkidProbe probes devpath for its superblocks, bypassing the blkid cache.
+func (t T) blkidProbe(ctx context.Context, devpath string) (string, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(blkid),
+		command.WithVarArgs("-p", "-c", "/dev/null", devpath),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithIgnoredExitCodes(0, 2), // 2 is the exit code of blkid when nothing is found
+		command.WithBufferedStdout(),
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+// isMultipathPath says devpath is a path of a multipath device.
+var isMultipathPath = func(devpath string) bool {
+	if resolved, err := filepath.EvalSymlinks(devpath); err == nil {
+		devpath = resolved
+	}
+	parent, err := device.New(devpath).MultipathParent()
+	return err == nil && parent != nil
+}
+
+// members are the devices of a blkid output holding a superblock of the
+// array, the paths of a multipath device aside: see Exists.
+func (t T) members(s string) []string {
+	var l []string
+	for _, devpath := range t.devsFromBlkidOutput(s) {
+		if isMultipathPath(devpath) {
+			continue
+		}
+		l = append(l, devpath)
+	}
+	return l
 }
 
 // devsFromBlkidOutput parses blkid command output and extracts device names

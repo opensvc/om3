@@ -115,3 +115,31 @@ func TestSizesIsWhole(t *testing.T) {
 		})
 	}
 }
+
+// A path of a multipath device is no member of an array: blkid reads it from
+// its buffers, which go on holding the superblock zeroed through the multipath
+// device. The array of a wiped LUN, reported by its paths only, does not exist.
+func TestThePathsOfAMultipathDeviceAreNoMembers(t *testing.T) {
+	paths := map[string]bool{"/dev/sdm": true, "/dev/sdk": true}
+	prev := isMultipathPath
+	isMultipathPath = func(devpath string) bool { return paths[devpath] }
+	t.Cleanup(func() { isMultipathPath = prev })
+
+	const uuid = "736f5713-9405-42de-de5d-b10c9ac1667f"
+	stale := `/dev/sdm: UUID="` + uuid + `" LABEL="n1:c19mdadm.disk.10" TYPE="linux_raid_member"
+/dev/sdk: UUID="` + uuid + `" LABEL="n1:c19mdadm.disk.10" TYPE="linux_raid_member"
+`
+	res := T{name: "c19mdadm.disk.10", uuid: "736f5713:940542de:de5db10c:9ac1667f"}
+	assert.Empty(t, res.members(stale), "the paths alone")
+
+	live := `/dev/mapper/36001405ac42630253a64595b612c878c: UUID="` + uuid + `" LABEL="n1:c19mdadm.disk.10" TYPE="linux_raid_member"
+` + stale
+	assert.Equal(t, []string{"/dev/mapper/36001405ac42630253a64595b612c878c"}, res.members(live))
+}
+
+// A probe answer is the one of a member when its type says so.
+func TestARaidMemberIsToldByItsType(t *testing.T) {
+	assert.True(t, isRaidMember(`/dev/sdb: UUID="x" TYPE="linux_raid_member" USAGE="raid"`))
+	assert.False(t, isRaidMember(`/dev/sdb: UUID="x" TYPE="ext4" USAGE="filesystem"`))
+	assert.False(t, isRaidMember(""))
+}
