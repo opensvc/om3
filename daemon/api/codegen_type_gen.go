@@ -5078,6 +5078,8 @@ type GetNodeNetworkReservationsParams struct {
 
 // PostNodeNetworkSetupParams defines parameters for PostNodeNetworkSetup.
 type PostNodeNetworkSetupParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
 	// Name the name of a network to set up
 	Name *[]string `form:"name,omitempty" json:"name,omitempty"`
 }

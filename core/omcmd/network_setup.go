@@ -38,7 +38,7 @@ func (t *CmdNetworkSetup) Run() error {
 		}
 		return err
 	}
-	err = commoncmd.NetworkSetup(context.Background(), c, nodenames, t.Names)
+	err = commoncmd.NetworkSetup(context.Background(), c, nodenames, t.Names, t.Output)
 	if client.IsDaemonDown(err) && t.NodeSelector == hostname.Hostname() {
 		return t.doLocal()
 	}

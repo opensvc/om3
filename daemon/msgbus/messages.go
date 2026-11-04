@@ -1222,6 +1222,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string                    `json:"node" yaml:"node"`
 		Names      []string                  `json:"names" yaml:"names"`
+		SessionID  uuid.UUID                 `json:"session_id" yaml:"session_id"`
 		Err        errcontext.ErrCloseSender `json:"-" yaml:"-"`
 	}
 
@@ -1882,9 +1883,9 @@ func (e *NetworkSetupRequest) Kind() string {
 
 // NewNetworkSetupRequestWithErr returns the request of the setup of the
 // networks names on nodename, and the receiver of its error.
-func NewNetworkSetupRequestWithErr(ctx context.Context, nodename string, names []string) (*NetworkSetupRequest, errcontext.ErrReceiver) {
+func NewNetworkSetupRequestWithErr(ctx context.Context, nodename string, names []string, sessionID uuid.UUID) (*NetworkSetupRequest, errcontext.ErrReceiver) {
 	err := errcontext.New(ctx)
-	return &NetworkSetupRequest{Node: nodename, Names: names, Err: err}, err
+	return &NetworkSetupRequest{Node: nodename, Names: names, SessionID: sessionID, Err: err}, err
 }
 
 func (e *NetLinkUp) Kind() string {

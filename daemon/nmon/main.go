@@ -52,7 +52,6 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/bootid"
 	"github.com/opensvc/om3/v3/util/btime"
-	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -146,11 +145,9 @@ type (
 		// networkSetupRunning says a network setup runs.
 		networkSetupRunning bool
 
-		// networkSetupPending is the setup asked while one runs, run when
-		// it ends: nil for none, empty for all the networks, else the
-		// names of the networks, with the requests waiting for its end.
-		networkSetupPending        *[]string
-		networkSetupPendingWaiters []errcontext.ErrCloseSender
+		// networkSetupQueue are the setups asked while one runs, run in
+		// turn when it ends.
+		networkSetupQueue []*networkSetupJob
 
 		// networksReady says the first network setup ended: the node goes
 		// idle, and its instances start, once it did.
@@ -528,7 +525,7 @@ func (t *Manager) worker() {
 
 	// The networks are set up before the node goes idle, and its instances
 	// start: an ip.cni needs the cni configuration of its network.
-	t.requestNetworkSetup(nil, nil)
+	t.requestNetworkSetup(nil, nil, uuid.Nil)
 	defer t.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: t.localhost}, t.labelLocalhost)
 	defer node.MonitorData.Unset(t.localhost)
 

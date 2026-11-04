@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/actionlogs"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 // NetworkSetupClientTimeout is the timeout of the client asking a network
@@ -21,11 +24,22 @@ const NetworkSetupClientTimeout = 2*time.Minute + 15*time.Second
 // networks names, all of them when names is empty, and waits for the setups
 // to run. The node monitor runs one setup at a time, so a setup asked never
 // writes the firewall rules of the networks along with another.
-func NetworkSetup(ctx context.Context, c *client.T, nodenames, names []string) error {
-	params := api.PostNodeNetworkSetupParams{}
+//
+// The setups log with the session id of this command, and their logs are
+// streamed in format as they run, the setup running in the daemons.
+func NetworkSetup(ctx context.Context, c *client.T, nodenames, names []string, format string) error {
+	sessionID := xsession.SessionID().UUID()
+	params := api.PostNodeNetworkSetupParams{SessionID: &sessionID}
 	if len(names) > 0 {
 		params.Name = &names
 	}
+	// Opened before the setups are asked, so the stream has their first
+	// entries.
+	logs, err := actionlogs.StartSessionLogs(c, nodenames, sessionID, format)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	defer logs.Stop()
 	var errs error
 	for _, nodename := range nodenames {
 		resp, err := c.PostNodeNetworkSetupWithResponse(ctx, nodename, &params)
