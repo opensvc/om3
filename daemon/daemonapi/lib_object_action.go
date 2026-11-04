@@ -67,12 +67,12 @@ var monitorStatesRunningAction = []instance.MonitorState{
 
 // JSONFromSetInstanceMonitorError sends a JSON response where status code depends
 // on SetMonitorUpdate error value.
-//   - StatusOK: expectation value accepted, or an abort queued to an
-//     instance monitor running an action
-//   - StatusRequestTimeout: request context DeadlineExceeded or timeout reached
+//   - StatusOK: expectation value accepted, or queued to an instance monitor
+//     not reading it in time, as one running an action
+//   - StatusRequestTimeout: the client gone
 //   - StatusConflict: expectation value refused
 func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node string, value *instance.MonitorUpdate, err error) error {
-	queued := func() error {
+	queued := func(unread bool) error {
 		// Recorded before the id is answered, for the client to find it
 		// if it asks at once: the monitor says it took it on, or refused
 		// it, only after answering.
@@ -85,25 +85,26 @@ func JSONFromSetInstanceMonitorError(eCtx echo.Context, p naming.Path, node stri
 			o.Expect = value.GlobalExpect.String()
 		}
 		session.AddOrchestrationIfUnknown(o)
-		return eCtx.JSON(http.StatusOK, api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID, Node: &node})
+		answer := api.OrchestrationQueued{OrchestrationID: value.CandidateOrchestrationID, Node: &node}
+		if unread {
+			answer.Queued = &unread
+		}
+		return eCtx.JSON(http.StatusOK, answer)
 	}
 	switch {
 	case err == nil:
-		return queued()
+		return queued(false)
 	case errors.Is(err, context.DeadlineExceeded):
-		// The instance monitor did not answer. Running an action, it
-		// reads no request until the action ends, which can be long, and
-		// reads the request then: say so, rather than a timeout naming
-		// the request.
+		// The request is published: the instance monitor, busy, as
+		// running an action it reads no request until the end of, reads
+		// it later, and takes it on or refuses it under the id. A timeout
+		// is no refusal.
+		reason := "busy"
 		if instMon := instance.MonitorData.GetByPathAndNode(p, node); instMon != nil && instMon.State.IsOneOf(monitorStatesRunningAction...) {
-			if value.GlobalExpect != nil && *value.GlobalExpect == instance.MonitorGlobalExpectAborted {
-				// An abort is accepted whatever the orchestration in
-				// progress: it is queued, not refused.
-				return queued()
-			}
-			return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "%s is %s on %s: the instance monitor reads the request when the action ends, and may refuse it then", p, instMon.State, node)
+			reason = instMon.State.String()
 		}
-		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "timeout publishing %s", *value)
+		LogHandler(eCtx, "set instance monitor").Infof("%s: the instance monitor, %s, did not read %s in time: answer it queued", p, reason, *value)
+		return queued(true)
 	case errors.Is(err, context.Canceled):
 		return JSONProblemf(eCtx, http.StatusRequestTimeout, "set instance monitor", "client context canceled")
 	default:
