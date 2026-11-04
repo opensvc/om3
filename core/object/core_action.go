@@ -48,8 +48,10 @@ type (
 )
 
 var (
-	ErrInvalidNode            = errors.New("invalid node")
-	ErrDisabled               = errors.New("object instance is disabled")
+	ErrInvalidNode = errors.New("invalid node")
+	// ErrDisabled is the action of a disabled instance, which does
+	// nothing: the command exits xerrors.ExitCodeInstanceDisabled.
+	ErrDisabled               = xerrors.InstanceDisabled
 	ErrEncapAgentNotInstalled = errors.New("opensvc is not installed in the container")
 )
 
@@ -395,7 +397,7 @@ func actionSelectedRIDs(resources resource.Drivers, action string) []string {
 // action to the collector unless ctx already carries a report.
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) (err error) {
 	if t.IsDisabled() {
-		return ErrDisabled
+		return t.disabledActionError(ctx)
 	}
 	ctx, done := t.beginCollectorAction(ctx, actioncontext.Props(ctx).Name)
 	defer func() { done(err, recover()) }()
@@ -1060,4 +1062,25 @@ func finalSyncHint(rid, src string, targets []string, holder resource.Driver) st
 		return s + fmt.Sprintf(". A standby %s, mounted still once the instance is stopped, would let the switch send it", holder.RID())
 	}
 	return s + ". A standby resource mounting it, mounted still once the instance is stopped, would let the switch send it"
+}
+
+// disabledActionError returns the error of the action of ctx on the disabled
+// instance, which does nothing: ErrDisabled, unless it is an unprovision
+// and resources of the instance are recorded provisioned. Done, it would let
+// a purge delete the object with its storage left on the node, which nothing
+// would point at anymore: the instance has to be enabled first.
+func (t *actor) disabledActionError(ctx context.Context) error {
+	if actioncontext.Props(ctx).Name != "unprovision" {
+		return ErrDisabled
+	}
+	var rids []string
+	for _, r := range t.Resources() {
+		if resource.RecordedProvisioned(r) {
+			rids = append(rids, r.RID())
+		}
+	}
+	if len(rids) == 0 {
+		return ErrDisabled
+	}
+	return fmt.Errorf("object instance is disabled, with provisioned resources %s: enable it to unprovision", strings.Join(rids, ","))
 }

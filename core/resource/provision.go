@@ -378,6 +378,16 @@ func hasAnyProvInterface(r Driver) bool {
 	return false
 }
 
+// RecordedProvisioned says the provisioned state of the resource is recorded,
+// and true: the resource holds something on the node.
+func RecordedProvisioned(r Driver) bool {
+	if !hasProvisionedState(r) {
+		return false
+	}
+	v, err := getProvisionedValue(r)
+	return err == nil && v
+}
+
 // recordedNotProvisioned says the provisioned state of the resource is
 // recorded, and false. A resource with no record, as one having no
 // provisioned state, is not.

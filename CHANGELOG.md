@@ -492,6 +492,13 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     om svc1 status --refresh -o tab=object.avail
     ```
 
+* **The actions of a disabled instance exit 7:**
+    `start`, `stop`, `provision` and `unprovision` of an instance whose object has `DEFAULT.disable=true` do
+    nothing, as before, and exit 7 where v2 exited 0: a script tells an action not done because the instance is
+    disabled from a success and from a failure. The daemon takes the code as the end of a stop and of an
+    unprovision, so a disabled object is purged. The `unprovision` of a disabled instance whose resources are
+    provisioned fails: deleted, the object would leave its storage on the node. Enable it to unprovision it.
+
 * `om node register` deprecates `--user` and `--password`. The collector credentials now reach the command as
   `--credential`, naming a file holding the `<username>:<password>` of a collector user, and the
   `OSVC_COLLECTOR_CREDENTIAL` environment variable is read when the option is not set. A password passed as a flag

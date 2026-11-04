@@ -6,6 +6,7 @@ var (
 	ExitCodeInstanceActionNotSupported = 4
 	ExitCodeResizeNoSuchStage          = 5
 	ExitCodeNothingToCollect           = 6
+	ExitCodeInstanceDisabled           = 7
 
 	ObjectNotFound             = newIndexedError("object not found", ExitCodeObjectNotFound)
 	InstanceNotFound           = newIndexedError("instance not found", ExitCodeInstanceNotFound)
@@ -21,6 +22,11 @@ var (
 	// the stats push on a node without sysstat: the push is not run, which
 	// is no failure of the scheduled push, but a user running it is told.
 	NothingToCollect = newIndexedError("nothing to collect", ExitCodeNothingToCollect)
+
+	// InstanceDisabled says the instance is disabled: the action did
+	// nothing, as the disable keyword says, which is no failure of the
+	// action, but not its success either.
+	InstanceDisabled = newIndexedError("object instance is disabled", ExitCodeInstanceDisabled)
 )
 
 type indexedError struct {
