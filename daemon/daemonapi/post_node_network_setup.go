@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -36,7 +37,11 @@ func (a *DaemonAPI) PostNodeNetworkSetup(eCtx echo.Context, nodename api.InPathN
 	}
 	ctx, cancel := context.WithTimeout(eCtx.Request().Context(), networkSetupTimeout)
 	defer cancel()
-	msg, errReceiver := msgbus.NewNetworkSetupRequestWithErr(ctx, a.localhost, names)
+	var sessionID uuid.UUID
+	if params.SessionID != nil {
+		sessionID = *params.SessionID
+	}
+	msg, errReceiver := msgbus.NewNetworkSetupRequestWithErr(ctx, a.localhost, names, sessionID)
 	a.Bus.Pub(msg, a.LabelLocalhost, labelOriginAPI)
 	switch err := errReceiver.Receive(); {
 	case err == nil:

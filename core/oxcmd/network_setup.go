@@ -34,5 +34,5 @@ func (t *CmdNetworkSetup) Run() error {
 	if err != nil {
 		return err
 	}
-	return commoncmd.NetworkSetup(context.Background(), c, nodenames, t.Names)
+	return commoncmd.NetworkSetup(context.Background(), c, nodenames, t.Names, t.Output)
 }

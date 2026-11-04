@@ -2759,7 +2759,8 @@ paths:
         cni configurations, the bridges, tunnels and routes, and the firewall
         rules. The node monitor runs the setups one at a time, a setup asked
         while one runs being merged into the next one, and answers once the
-        setup taking in the request has run.
+        setup taking in the request has run. The setup logs with the
+        session_id given, so the client follows its logs by it.
       tags:
         - network
         - node
@@ -2768,6 +2769,7 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQuerySessionID'
         - in: query
           name: name
           description: the name of a network to set up

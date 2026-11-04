@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -66,21 +67,21 @@ func TestTheNetworkSetupsAskedWhileOneRunsAreMerged(t *testing.T) {
 	calls, release := stubNetworkSetup(t)
 	m := newNetworkSetupTestManager(t, node.MonitorStateIdle)
 
-	m.requestNetworkSetup([]string{"a"}, nil)
+	m.requestNetworkSetup([]string{"a"}, nil, uuid.Nil)
 	assert.Equal(t, []string{"a"}, nextNetworkSetup(t, calls))
-	m.requestNetworkSetup([]string{"b"}, nil)
-	m.requestNetworkSetup([]string{"a"}, nil)
-	require.NotNil(t, m.networkSetupPending)
-	assert.Equal(t, []string{"b", "a"}, *m.networkSetupPending)
-	m.requestNetworkSetup(nil, nil)
-	assert.Empty(t, *m.networkSetupPending, "all the networks")
-	m.requestNetworkSetup([]string{"c"}, nil)
-	assert.Empty(t, *m.networkSetupPending, "all the networks take in a named one")
+	m.requestNetworkSetup([]string{"b"}, nil, uuid.Nil)
+	m.requestNetworkSetup([]string{"a"}, nil, uuid.Nil)
+	require.Len(t, m.networkSetupQueue, 1)
+	assert.Equal(t, []string{"b", "a"}, m.networkSetupQueue[0].names)
+	m.requestNetworkSetup(nil, nil, uuid.Nil)
+	assert.Empty(t, m.networkSetupQueue[0].names, "all the networks")
+	m.requestNetworkSetup([]string{"c"}, nil, uuid.Nil)
+	assert.Empty(t, m.networkSetupQueue[0].names, "all the networks take in a named one")
 
 	release <- nil
 	applyNetworkSetupDone(t, m)
 	assert.Empty(t, nextNetworkSetup(t, calls), "the setup merged runs, of all the networks")
-	assert.Nil(t, m.networkSetupPending)
+	assert.Empty(t, m.networkSetupQueue)
 	release <- nil
 	applyNetworkSetupDone(t, m)
 	assert.False(t, m.networkSetupRunning)
@@ -92,7 +93,7 @@ func TestTheNodeGoesIdleOnceTheNetworksAreSetUp(t *testing.T) {
 	calls, release := stubNetworkSetup(t)
 	m := newNetworkSetupTestManager(t, node.MonitorStateRejoin)
 
-	m.requestNetworkSetup(nil, nil)
+	m.requestNetworkSetup(nil, nil, uuid.Nil)
 	nextNetworkSetup(t, calls)
 	m.rejoined()
 	assert.Equal(t, node.MonitorStateRejoin, m.state.State, "held while the first setup runs")
@@ -112,10 +113,10 @@ func TestARequestWaitingForANetworkSetupIsAnsweredItsEnd(t *testing.T) {
 	calls, release := stubNetworkSetup(t)
 	m := newNetworkSetupTestManager(t, node.MonitorStateIdle)
 
-	m.requestNetworkSetup([]string{"a"}, nil)
+	m.requestNetworkSetup([]string{"a"}, nil, uuid.Nil)
 	nextNetworkSetup(t, calls)
 	waiter := errcontext.New(context.Background())
-	m.requestNetworkSetup([]string{"b"}, waiter)
+	m.requestNetworkSetup([]string{"b"}, waiter, uuid.Nil)
 
 	release <- nil
 	applyNetworkSetupDone(t, m)
@@ -137,7 +138,7 @@ func TestTheRejoinTimerOfANodeRejoinedIsNotRearmed(t *testing.T) {
 	m.rejoinTicker = time.NewTicker(time.Hour)
 	m.rejoinTicker.Stop()
 
-	m.requestNetworkSetup(nil, nil)
+	m.requestNetworkSetup(nil, nil, uuid.Nil)
 	nextNetworkSetup(t, calls)
 	m.rejoined()
 	m.checkRejoinTicker()
@@ -149,4 +150,35 @@ func TestTheRejoinTimerOfANodeRejoinedIsNotRearmed(t *testing.T) {
 	release <- nil
 	applyNetworkSetupDone(t, m)
 	assert.Equal(t, node.MonitorStateIdle, m.state.State)
+}
+
+// A setup logs with one session id, the one of the client following its
+// logs: the setups of two sessions asked while one runs are queued apart,
+// and the requests of the daemon, with none, merge into either.
+func TestTheNetworkSetupsOfTwoSessionsAreRunApart(t *testing.T) {
+	calls, release := stubNetworkSetup(t)
+	m := newNetworkSetupTestManager(t, node.MonitorStateIdle)
+	s1, s2 := uuid.New(), uuid.New()
+
+	m.requestNetworkSetup([]string{"a"}, nil, uuid.Nil)
+	nextNetworkSetup(t, calls)
+	m.requestNetworkSetup([]string{"b"}, nil, s1)
+	m.requestNetworkSetup([]string{"c"}, nil, s2)
+	m.requestNetworkSetup([]string{"d"}, nil, uuid.Nil)
+	m.requestNetworkSetup([]string{"e"}, nil, s1)
+	require.Len(t, m.networkSetupQueue, 2)
+	assert.Equal(t, s1, m.networkSetupQueue[0].sessionID)
+	assert.Equal(t, []string{"b", "d", "e"}, m.networkSetupQueue[0].names)
+	assert.Equal(t, s2, m.networkSetupQueue[1].sessionID)
+	assert.Equal(t, []string{"c"}, m.networkSetupQueue[1].names)
+
+	release <- nil
+	applyNetworkSetupDone(t, m)
+	assert.Equal(t, []string{"b", "d", "e"}, nextNetworkSetup(t, calls))
+	release <- nil
+	applyNetworkSetupDone(t, m)
+	assert.Equal(t, []string{"c"}, nextNetworkSetup(t, calls))
+	release <- nil
+	applyNetworkSetupDone(t, m)
+	assert.False(t, m.networkSetupRunning)
 }

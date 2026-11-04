@@ -4,6 +4,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
@@ -13,6 +15,15 @@ import (
 
 type (
 	// networkSetupResult is the end of a network setup run off the loop.
+	// networkSetupJob is a network setup to run: the networks named, all
+	// of them when names is empty, the requests waiting for its end, and
+	// the session of the client following its logs, if any.
+	networkSetupJob struct {
+		names     []string
+		waiters   []errcontext.ErrCloseSender
+		sessionID uuid.UUID
+	}
+
 	networkSetupResult struct {
 		names   []string
 		err     error
@@ -40,44 +51,78 @@ var (
 // which the monitor read no request, as a freeze or the end of a split.
 //
 // One setup runs at a time, as two would write the same firewall ruleset. A
-// setup asked while one runs is merged into the one run when it ends, the
-// setup of all the networks taking in the ones of named networks. waiter,
-// when not nil, is sent the error of the setup run once the request is
-// merged.
-func (t *Manager) requestNetworkSetup(names []string, waiter errcontext.ErrCloseSender) {
+// setup asked while one runs is merged into a setup queued, run when the
+// running one ends, the setup of all the networks taking in the ones of
+// named networks. waiter, when not nil, is sent the error of the setup run
+// once the request is merged.
+//
+// sessionID, when not nil, is the session of the client asking, which
+// follows the logs of the setup by it: a run logs with one session id, so a
+// request of a session is merged only into a setup queued for no session or
+// for the same one, the others queued after it. The requests of the daemon,
+// with none, merge into any.
+func (t *Manager) requestNetworkSetup(names []string, waiter errcontext.ErrCloseSender, sessionID uuid.UUID) {
 	if t.networkSetupRunning {
-		switch {
-		case t.networkSetupPending == nil:
-			pending := slices.Clone(names)
-			if pending == nil {
-				pending = []string{}
-			}
-			t.networkSetupPending = &pending
-		case len(*t.networkSetupPending) == 0, len(names) == 0:
-			// all the networks
-			*t.networkSetupPending = []string{}
-		default:
-			for _, name := range names {
-				if !slices.Contains(*t.networkSetupPending, name) {
-					*t.networkSetupPending = append(*t.networkSetupPending, name)
-				}
-			}
-		}
-		if waiter != nil {
-			t.networkSetupPendingWaiters = append(t.networkSetupPendingWaiters, waiter)
-		}
+		t.queueNetworkSetup(names, waiter, sessionID)
 		return
 	}
-	var waiters []errcontext.ErrCloseSender
+	job := &networkSetupJob{names: names, sessionID: sessionID}
 	if waiter != nil {
-		waiters = append(waiters, waiter)
+		job.waiters = append(job.waiters, waiter)
 	}
-	t.startNetworkSetup(names, waiters)
+	t.startNetworkSetup(job)
 }
 
-func (t *Manager) startNetworkSetup(names []string, waiters []errcontext.ErrCloseSender) {
+// queueNetworkSetup merges a request into the first setup queued it can be
+// merged into, or queues a setup for it.
+func (t *Manager) queueNetworkSetup(names []string, waiter errcontext.ErrCloseSender, sessionID uuid.UUID) {
+	var job *networkSetupJob
+	for _, queued := range t.networkSetupQueue {
+		if sessionID == uuid.Nil || queued.sessionID == uuid.Nil || queued.sessionID == sessionID {
+			job = queued
+			break
+		}
+	}
+	if job == nil {
+		job = &networkSetupJob{names: []string{}}
+		if len(names) > 0 {
+			job.names = slices.Clone(names)
+		}
+		t.networkSetupQueue = append(t.networkSetupQueue, job)
+	} else {
+		job.merge(names)
+	}
+	if job.sessionID == uuid.Nil {
+		job.sessionID = sessionID
+	}
+	if waiter != nil {
+		job.waiters = append(job.waiters, waiter)
+	}
+}
+
+// merge takes in the networks named, all of them when names is empty: the
+// setup of all the networks takes in the ones of named networks.
+func (j *networkSetupJob) merge(names []string) {
+	switch {
+	case len(j.names) == 0, len(names) == 0:
+		j.names = []string{}
+	default:
+		for _, name := range names {
+			if !slices.Contains(j.names, name) {
+				j.names = append(j.names, name)
+			}
+		}
+	}
+}
+
+func (t *Manager) startNetworkSetup(job *networkSetupJob) {
 	t.networkSetupRunning = true
 	ctx, log, last := t.ctx, t.log, t.networkPeersSigs
+	names := job.names
+	if job.sessionID != uuid.Nil {
+		// The client of the session follows the logs of the setup.
+		log = log.Attr("session_id", job.sessionID.String())
+	}
 	// The monitor stop waits for the setup: the next daemon would set the
 	// networks up while this one still changes them.
 	t.wg.Add(1)
@@ -87,7 +132,7 @@ func (t *Manager) startNetworkSetup(names []string, waiters []errcontext.ErrClos
 		warn := time.AfterFunc(networkSetupWarnAfter, func() {
 			log.Warnf("network setup %v runs for %s", names, networkSetupWarnAfter)
 		})
-		r := networkSetupResult{names: names, waiters: waiters}
+		r := networkSetupResult{names: names, waiters: job.waiters}
 		n, err := object.NewNode(object.WithLogger(log))
 		if err == nil {
 			r.err = networkSetup(n, names...)
@@ -128,10 +173,10 @@ func (t *Manager) onNetworkSetupDone(r networkSetupResult) {
 			}
 		}
 	}
-	if t.networkSetupPending != nil {
-		names, waiters := *t.networkSetupPending, t.networkSetupPendingWaiters
-		t.networkSetupPending, t.networkSetupPendingWaiters = nil, nil
-		t.startNetworkSetup(names, waiters)
+	if len(t.networkSetupQueue) > 0 {
+		job := t.networkSetupQueue[0]
+		t.networkSetupQueue = t.networkSetupQueue[1:]
+		t.startNetworkSetup(job)
 	}
 }
 
@@ -155,5 +200,5 @@ func (t *Manager) onNetworkSetupRequest(c *msgbus.NetworkSetupRequest) {
 		return
 	}
 	t.log.Infof("set up the networks %v on request", c.Names)
-	t.requestNetworkSetup(c.Names, c.Err)
+	t.requestNetworkSetup(c.Names, c.Err, c.SessionID)
 }

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/network"
@@ -79,7 +81,7 @@ func (t *Manager) onNetworkChanged(sectionsChanged []string) {
 	} else {
 		t.log.Infof("reconfigure all networks")
 	}
-	t.requestNetworkSetup(networkNames, nil)
+	t.requestNetworkSetup(networkNames, nil, uuid.Nil)
 }
 
 func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
@@ -117,7 +119,7 @@ func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
 
 	if len(matchingNetworks) > 0 {
 		t.log.Infof("netlink up: configuring networks %v for link %s", matchingNetworks, c.LinkName)
-		t.requestNetworkSetup(matchingNetworks, nil)
+		t.requestNetworkSetup(matchingNetworks, nil, uuid.Nil)
 	}
 }
 
