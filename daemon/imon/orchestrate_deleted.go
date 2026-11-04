@@ -27,7 +27,7 @@ func (t *Manager) orchestrateDeleted() {
 }
 
 func (t *Manager) deletedFromIdle() {
-	if t.setWaitChildren() {
+	if t.setWaitChildren() || t.waitPeersStarting() {
 		return
 	}
 	t.queueAction(t.crmDelete, instance.MonitorStateDeleteProgress, instance.MonitorStateDeleteSuccess, instance.MonitorStateDeleteFailure)

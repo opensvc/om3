@@ -171,6 +171,10 @@ type (
 		// It is used while we are waiting for orchestration reached
 		waitConvergedOrchestrationMsg map[string]string
 
+		// waitPeersStartingMsg is the last message logged waiting for
+		// the instance monitors of peers starting.
+		waitPeersStartingMsg string
+
 		// orchestrationPending represents the ObjectOrchestrationEnd event for the
 		// orchestration that has been accepted
 		// It will be used to notify the end of orchestration
