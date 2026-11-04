@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/confirmation"
+	"github.com/opensvc/om3/v3/util/proc"
 	"github.com/opensvc/om3/v3/util/retcodes"
 	"github.com/opensvc/om3/v3/util/runfiles"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -238,6 +240,86 @@ func (t *BaseTask) Stop(ctx context.Context) error {
 // instance is not started.
 func (t *BaseTask) Boot(ctx context.Context) error {
 	return t.removeLastRun()
+}
+
+// UnprovisionStop stops the runs of the task, then forgets the last run: an
+// unprovision, as the one of a purge, leaves no run behind, whose end would
+// write its result in a var dir deleted, or in the one of an object
+// recreated under the name. A stop leaves the runs alone, as in v2.
+func (t *BaseTask) UnprovisionStop(ctx context.Context, leader bool) error {
+	if err := t.StopRuns(ctx, nil); err != nil {
+		return err
+	}
+	return t.Stop(ctx)
+}
+
+// defaultRunsStopTimeout is the time the runs of a task are given to end
+// once signaled, when the task sets no stop_timeout.
+const defaultRunsStopTimeout = 10 * time.Second
+
+// StopRuns stops the runs of the task: each "om instance run" process is
+// sent SIGTERM, which it relays to the command it runs, or to the container
+// of the run, and those still running after timeout are killed, with the
+// processes they started.
+func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
+	runDir := t.RunDir()
+	l, err := runDir.List()
+	if err != nil {
+		return err
+	}
+	pids := make([]int, 0, len(l))
+	for _, r := range l {
+		if r.PID == os.Getpid() {
+			continue
+		}
+		pids = append(pids, r.PID)
+	}
+	if len(pids) == 0 {
+		return nil
+	}
+	for _, pid := range pids {
+		t.Log().Infof("stop the run of pid %d", pid)
+		if err := syscall.Kill(pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
+			return fmt.Errorf("signal the run of pid %d: %w", pid, err)
+		}
+	}
+	d := defaultRunsStopTimeout
+	if timeout != nil && *timeout > 0 {
+		d = *timeout
+	}
+	deadline := time.Now().Add(d)
+	alive := func() []int {
+		var left []int
+		for _, pid := range pids {
+			if v, _ := runfiles.IsValid(filepath.Join(runDir.Path, strconv.Itoa(pid))); v {
+				left = append(left, pid)
+			}
+		}
+		return left
+	}
+	for {
+		left := alive()
+		if len(left) == 0 {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			for _, pid := range left {
+				t.Log().Warnf("the run of pid %d still runs after %s: kill it", pid, d)
+				// The command of the run first, then the run: killed, the
+				// run relays nothing anymore.
+				tree := proc.Tree(pid)
+				for i := len(tree) - 1; i >= 0; i-- {
+					_ = syscall.Kill(tree[i], syscall.SIGKILL)
+				}
+			}
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
 }
 
 // removeLastRun removes the last run files, the one of v1 too.
