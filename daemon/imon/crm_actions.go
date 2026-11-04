@@ -278,7 +278,7 @@ func (t *Manager) crmStopMoveTo(dst string) error {
 }
 
 func (t *Manager) crmStop() error {
-	return t.crmAction("stop", t.stopArgs()...)
+	return t.crmActionDisabledOk("stop", t.stopArgs()...)
 }
 
 // crmStopSyncToFunc stops the instance of a switch source, its sync
@@ -305,11 +305,24 @@ func (t *Manager) crmUnfreeze() error {
 }
 
 func (t *Manager) crmUnprovisionNonLeader() error {
-	return t.crmAction("unprovision non leader", t.path.String(), "instance", "unprovision")
+	return t.crmActionDisabledOk("unprovision non leader", t.path.String(), "instance", "unprovision")
 }
 
 func (t *Manager) crmUnprovisionLeader() error {
-	return t.crmAction("unprovision leader", t.path.String(), "instance", "unprovision", "--leader")
+	return t.crmActionDisabledOk("unprovision leader", t.path.String(), "instance", "unprovision", "--leader")
+}
+
+// crmActionDisabledOk is crmAction for an action a disabled instance has
+// nothing to do for, as a stop or an unprovision: its exit code saying so is
+// the end of the action, as a purge of the disabled object goes on to its
+// delete. The unprovision of a disabled instance with resources provisioned
+// fails, with another code.
+func (t *Manager) crmActionDisabledOk(title string, cmdArgs ...string) error {
+	if testCRMAction != nil {
+		return testCRMAction(title, cmdArgs...)
+	}
+	_, err := t.crmDefaultAction(t.state.OrchestrationID, title, []int{xerrors.ExitCodeInstanceDisabled}, cmdArgs...)
+	return err
 }
 
 // crmAction forks a crm command as a step of the orchestration the monitor is
