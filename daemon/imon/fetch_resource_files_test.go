@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -99,4 +100,31 @@ func TestTheFilesArePickedFromThePeerOfTheMostSameScopes(t *testing.T) {
 	assert.Equal(t, 1, syncScopeMatches(partly, local), "the files of the disk are the same, the container ones are not")
 	assert.Equal(t, 0, syncScopeMatches(other, local), "nothing of the peer is to fetch")
 	assert.Equal(t, 0, syncScopeMatches(unfetchable, local), "a resource down there, or up here, is not fetched")
+}
+
+// No file is fetched from a peer while the instances are torn down: the
+// definition of a kvm domain the unprovision of a follower undefined came
+// back from the leader, up until the followers are done, and stayed once the
+// object was gone, refusing the provision of the next domain of the name.
+func TestNoFileIsFetchedWhileTheInstancesAreTornDown(t *testing.T) {
+	peerUp := &msgbus.InstanceStatusUpdated{Node: "node2", Value: instance.Status{Avail: status.Up}}
+	m := &Manager{}
+	m.state.LocalExpect = instance.MonitorLocalExpectNone
+	assert.True(t, m.needFetchResourceFiles(peerUp))
+	for _, ge := range []instance.MonitorGlobalExpect{
+		instance.MonitorGlobalExpectPurged,
+		instance.MonitorGlobalExpectUnprovisioned,
+		instance.MonitorGlobalExpectDeleted,
+	} {
+		m.state.GlobalExpect = ge
+		assert.False(t, m.needFetchResourceFiles(peerUp), "global expect %s", ge)
+	}
+	for _, ge := range []instance.MonitorGlobalExpect{
+		instance.MonitorGlobalExpectNone,
+		instance.MonitorGlobalExpectStarted,
+		instance.MonitorGlobalExpectFrozen,
+	} {
+		m.state.GlobalExpect = ge
+		assert.True(t, m.needFetchResourceFiles(peerUp), "global expect %s", ge)
+	}
 }
