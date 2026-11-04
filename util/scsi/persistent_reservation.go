@@ -81,6 +81,28 @@ func FormatPRKey(s string) string {
 	return fmt.Sprintf("0x%016s", s)
 }
 
+// registrationsMsg says the registrations of a device: those of the local
+// key against the count expected, -1 when nothing tells what to expect, and
+// those of other keys. A count found against a count expected, as "2/0",
+// read as a count gone wrong.
+func registrationsMsg(local, foreign, expected int) string {
+	s := fmt.Sprintf("%d local %s", local, plural(local, "registration", "registrations"))
+	switch {
+	case expected == 0:
+		s += " (none expected)"
+	case expected > 0:
+		s += fmt.Sprintf(" (%d expected)", expected)
+	}
+	return s + fmt.Sprintf(" and %d foreign", foreign)
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
+
 func (t PersistentReservationHandle) countHandledRegistrations(registrations []string) int {
 	n := 0
 	for _, r := range registrations {
@@ -213,23 +235,21 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err != nil {
 		t.StatusLogger.Error("%s read registrations: %s", dev, err)
 		s = status.Undef
-	} else if handledRegistrationCount := t.countHandledRegistrations(registrations); !witnessed {
-		t.StatusLogger.Info("%s, %d registrations", reservationMsg, handledRegistrationCount)
-	} else if handledRegistrationCount == expectedRegistrationCount {
-		if expectedRegistrationCount == 0 {
-			if handledRegistrationCount == 0 {
-				t.StatusLogger.Info("%s, no registrations", reservationMsg)
-			} else {
-				t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
-				s.Add(status.Warn)
-			}
-		} else {
-			t.StatusLogger.Info("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
-			s.Add(status.Up)
-		}
 	} else {
-		t.StatusLogger.Warn("%s, %d/%d registrations", reservationMsg, handledRegistrationCount, expectedRegistrationCount)
-		s.Add(status.Warn)
+		local := t.countHandledRegistrations(registrations)
+		foreign := len(registrations) - local
+		switch {
+		case !witnessed:
+			t.StatusLogger.Info("%s, %s", reservationMsg, registrationsMsg(local, foreign, -1))
+		case local == expectedRegistrationCount:
+			t.StatusLogger.Info("%s, %s", reservationMsg, registrationsMsg(local, foreign, expectedRegistrationCount))
+			if local > 0 {
+				s.Add(status.Up)
+			}
+		default:
+			t.StatusLogger.Warn("%s, %s", reservationMsg, registrationsMsg(local, foreign, expectedRegistrationCount))
+			s.Add(status.Warn)
+		}
 	}
 
 	// Report n/a instead of up for scsireserv status if a dev is ro
