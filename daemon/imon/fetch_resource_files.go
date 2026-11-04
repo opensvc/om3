@@ -106,12 +106,33 @@ func (t *Manager) needFetchResourceFiles(ev *msgbus.InstanceStatusUpdated) bool 
 		return false
 	}
 
+	// Are the instances torn down
+	if fetchBlockedByGlobalExpect(t.state.GlobalExpect) {
+		return false
+	}
+
 	// Is the remote node a valid resource file authority
 	if ev.Value.Avail != status.Up {
 		return false
 	}
 
 	return true
+}
+
+// fetchBlockedByGlobalExpect tells whether the global expect tears the
+// instances down, when no resource file is fetched: a file the unprovision of
+// this node removes, as the definition of a kvm domain it undefines, would
+// come back from a peer the orchestration keeps up until this node is done,
+// and be left there once the object is gone. The files are fetched again
+// once the global expect is over.
+func fetchBlockedByGlobalExpect(globalExpect instance.MonitorGlobalExpect) bool {
+	switch globalExpect {
+	case instance.MonitorGlobalExpectPurged,
+		instance.MonitorGlobalExpectUnprovisioned,
+		instance.MonitorGlobalExpectDeleted:
+		return true
+	}
+	return false
 }
 
 func (t *Manager) initLocalResourceFiles() {
