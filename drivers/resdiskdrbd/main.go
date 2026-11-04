@@ -505,6 +505,18 @@ func statusWarnings(res string, st drbd.Status) []string {
 		}
 	}
 	for _, c := range st.Connections {
+		// A connection retrying, as to a peer down, says nothing its peer
+		// disk DUnknown does not. A connection given up, as after a
+		// handshake refused, leaves the replication broken for good while
+		// both sides read up to date: the side stuck behind would be
+		// promoted with stale data.
+		switch c.ConnectionState {
+		case drbd.ConnStateConnected, drbd.ConnStateConnecting:
+		case drbd.ConnStateStandAlone:
+			l = append(l, fmt.Sprintf("drbd %s peer %s connection %s, not trying to reconnect", res, c.Name, c.ConnectionState))
+		default:
+			l = append(l, fmt.Sprintf("drbd %s peer %s connection %s", res, c.Name, c.ConnectionState))
+		}
 		for _, pd := range c.PeerDevices {
 			if pd.PeerDiskState != drbd.DiskStateUpToDate {
 				l = append(l, fmt.Sprintf("drbd %s peer %s volume %d disk %s", res, c.Name, pd.Volume, pd.PeerDiskState))
