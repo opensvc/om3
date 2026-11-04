@@ -206,6 +206,27 @@ func reconcile(existing []netlink.Rule, src *net.IPNet, table int) (del []netlin
 	return del, add
 }
 
+// tableNamedByOther returns the rule naming table for another source than
+// src, or for no source, as a rule of an ip.rule resource or the om rule of
+// an address whose ipv6 hash is the one of src: the table is not the
+// address's own, and sharing it would mix the routes of both.
+func tableNamedByOther(rules []netlink.Rule, src *net.IPNet, table int) string {
+	for _, r := range rules {
+		if r.Table != table {
+			continue
+		}
+		if r.Src != nil && r.Src.String() == src.String() {
+			continue
+		}
+		from := "all"
+		if r.Src != nil {
+			from = r.Src.String()
+		}
+		return fmt.Sprintf("from %s priority %d", from, r.Priority)
+	}
+	return ""
+}
+
 // Apply sets the rule and the table of the address in the namespace, as
 // "ip rule add from <address> lookup <table> priority 32000" and "ip route
 // replace ... table <table>" do. A rule of the address to another table, as
@@ -227,6 +248,9 @@ func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
 		rules, err := netlink.RuleList(t.family())
 		if err != nil {
 			return err
+		}
+		if other := tableNamedByOther(rules, src, table); other != "" {
+			return fmt.Errorf("policy routing of %s: table %d is named by the rule %s: %w", t.Addr.IP, table, other, ErrSourceTableInUse)
 		}
 		del, add := reconcile(rules, src, table)
 		for _, r := range del {
