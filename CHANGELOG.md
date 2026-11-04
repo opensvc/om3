@@ -512,6 +512,14 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
   https://packages.opensvc.com, the default, and `node.branch` a branch of it, `prod` by default; `node.repo` is no
   longer used to update the packages.
 
+* **`om cluster update pkg`** upgrades the opensvc packages of all the cluster nodes, one node at a time. The nodes
+  are asked by an orchestration, as `om cluster freeze` asks them, which `--wait` waits for the end of and
+  `om cluster abort` stops. Each node runs `om node update pkg` in turn, in the order of `cluster.nodes`, once every
+  node of the cluster is live and idle: the upgrade of `opensvc-server` restarts the daemon, and the next node waits
+  for the one before it to be back. The upgrade is given up when it fails on a node, and refused while a node of the
+  cluster is not live. A node upgrading is in the `upgrade` node monitor state, which the peers treat as a
+  maintenance: its data is kept while its daemon restarts, so the services it runs are not taken over.
+
 * `--format` is no longer supported with `print status`. The `om svc1 print config --format json | om svc2 create`
   pattern can be replaced by `om svc1 config show | om svc2 create --config=-`
 

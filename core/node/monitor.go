@@ -64,6 +64,15 @@ func (t MonitorState) IsOneOf(states ...MonitorState) bool {
 	return false
 }
 
+// IsMaintenance says the daemon of a node in this state is stopping, or
+// stopped, on purpose, the objects it runs going on: a maintenance, or an
+// upgrade of its opensvc packages, which restarts the daemon. The peers keep
+// the data of such a node when its heartbeats go stale, for the maintenance
+// grace period, rather than take it for dead.
+func (t MonitorState) IsMaintenance() bool {
+	return t == MonitorStateMaintenance || t == MonitorStateUpgrade
+}
+
 func (t MonitorState) IsRankable() bool {
 	_, ok := MonitorStateUnrankable[t]
 	return !ok

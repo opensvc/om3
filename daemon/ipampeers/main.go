@@ -217,5 +217,5 @@ func (t *Manager) reconcile() {
 // inMaintenance says the daemon of a node is stopping or stopped cleanly.
 func inMaintenance(nodename string) bool {
 	mon := node.MonitorData.GetByNode(nodename)
-	return mon != nil && mon.State == node.MonitorStateMaintenance
+	return mon != nil && mon.State.IsMaintenance()
 }

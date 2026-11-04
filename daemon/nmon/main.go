@@ -111,6 +111,16 @@ type (
 		// frozen is true when local node is frozen
 		frozen bool
 
+		// upgradeWaiting is what the upgrade of the packages waits for, as
+		// last logged, so that it is logged when it changes and not on
+		// every event.
+		upgradeWaiting string
+
+		// upgradeFlagSettled says the upgrade flag file was looked at
+		// since the daemon started or last wrote it, so a flag left
+		// behind is removed once and not looked for on every event.
+		upgradeFlagSettled bool
+
 		nodeMonitor map[string]node.Monitor
 
 		// clusterConfig is a cache of published ClusterConfigUpdated

@@ -41,6 +41,11 @@ type (
 		AsyncFunc  func(context.Context) (api.OrchestrationQueued, error)
 		LocalFunc  func() (any, error)
 		RemoteFunc func(context.Context, string) (any, error)
+
+		// WaitFunc waits for the orchestration to end, in place of asking
+		// the node that accepted it until it says so: an upgrade of the
+		// packages restarts that node's daemon.
+		WaitFunc func(context.Context, *client.T, uuid.UUID, string) error
 	}
 
 	// asyncResult is the answer to an orchestration request, in the shape an
@@ -113,6 +118,16 @@ func LocalFirst() funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultIsLocal = true
+		return nil
+	})
+}
+
+// WithAsyncWaitFunc sets how the end of the orchestration is waited for, in
+// place of asking the node that accepted it until it says so.
+func WithAsyncWaitFunc(f func(context.Context, *client.T, uuid.UUID, string) error) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.WaitFunc = f
 		return nil
 	})
 }
@@ -323,6 +338,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON409)
 				case 500:
 					err = fmt.Errorf("%s", resp.JSON500)
+				default:
+					err = fmt.Errorf("unexpected response status code %d", resp.StatusCode())
 				}
 			}
 		case node.MonitorGlobalExpectFrozen.String():
@@ -344,6 +361,8 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON409)
 				case 500:
 					err = fmt.Errorf("%s", resp.JSON500)
+				default:
+					err = fmt.Errorf("unexpected response status code %d", resp.StatusCode())
 				}
 			}
 		case node.MonitorGlobalExpectUnfrozen.String():
@@ -365,6 +384,33 @@ func (t T) DoAsync() error {
 					err = fmt.Errorf("%s", resp.JSON409)
 				case 500:
 					err = fmt.Errorf("%s", resp.JSON500)
+				default:
+					err = fmt.Errorf("unexpected response status code %d", resp.StatusCode())
+				}
+			}
+		case node.MonitorGlobalExpectUpgraded.String():
+			if resp, e := c.PostClusterActionUpdatePkgWithResponse(ctx); e != nil {
+				err = e
+			} else {
+				switch resp.StatusCode() {
+				case http.StatusOK:
+					b = resp.Body
+				case 400:
+					err = fmt.Errorf("%s", resp.JSON400)
+				case 401:
+					err = fmt.Errorf("%s", resp.JSON401)
+				case 403:
+					err = fmt.Errorf("%s", resp.JSON403)
+				case 408:
+					err = fmt.Errorf("%s", resp.JSON408)
+				case 409:
+					err = fmt.Errorf("%s", resp.JSON409)
+				case 404:
+					err = fmt.Errorf("the daemon of this node does not serve the cluster package update: its opensvc-server is older than this command, upgrade it first with om node update pkg")
+				case 500:
+					err = fmt.Errorf("%s", resp.JSON500)
+				default:
+					err = fmt.Errorf("unexpected response status code %d", resp.StatusCode())
 				}
 			}
 		default:
@@ -415,6 +461,9 @@ func (t T) DoAsync() error {
 				_, _ = fmt.Fprintln(os.Stderr, e)
 			}
 			defer orchestrationLogs.Stop()
+		}
+		if t.WaitFunc != nil {
+			return t.WaitFunc(ctx, c, orchestrationID, acceptedBy)
 		}
 		return actionrouter.WaitOrchestration(ctx, c, orchestrationID, acceptedBy)
 	}

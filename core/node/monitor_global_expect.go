@@ -11,6 +11,10 @@ const (
 	MonitorGlobalExpectNone
 	MonitorGlobalExpectUnfrozen
 
+	// MonitorGlobalExpectUpgraded asks every node to upgrade its opensvc
+	// packages, one node at a time.
+	MonitorGlobalExpectUpgraded
+
 	// MonitorGlobalExpectUnknown is what a value this agent does not know decodes to:
 	// a peer running a later version publishes values this one has no
 	// name for, and failing to decode them failed the whole heartbeat
@@ -35,6 +39,7 @@ func init() {
 		{MonitorGlobalExpectFrozen, "frozen"},
 		{MonitorGlobalExpectNone, "none"},
 		{MonitorGlobalExpectUnfrozen, "unfrozen"},
+		{MonitorGlobalExpectUpgraded, "upgraded"},
 		{MonitorGlobalExpectInit, "init"},
 		{MonitorGlobalExpectUnknown, "unknown"},
 	}

@@ -55,6 +55,7 @@ func (t *Manager) endOrchestration() {
 	}
 	defer t.publishOrchestrationEnded()
 	t.state.OrchestrationID = uuid.Nil
+	t.upgradeWaiting = ""
 	t.logSetOrchestrationID(uuid.Nil)
 }
 
