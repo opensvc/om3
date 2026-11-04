@@ -93,8 +93,8 @@ func (a *DaemonAPI) CheckDataSize(ctx echo.Context) (bool, error) {
 			return false, JSONProblemf(ctx, http.StatusInternalServerError, "NodeConfig", "no config found for node %s", hostname.Hostname())
 		}
 		maxSize := nodeData.MaxKeySize
-		if size, err := strconv.Atoi(contentLength); err == nil && size > int(maxSize) {
-			return false, JSONProblemf(ctx, http.StatusRequestEntityTooLarge, "Body too large", "The request body exceeds the allowed size.")
+		if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil && size > maxSize {
+			return false, JSONProblemf(ctx, http.StatusRequestEntityTooLarge, "Body too large", "%s", object.ValueTooBig(size, maxSize))
 		}
 	}
 	return true, nil
