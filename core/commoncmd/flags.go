@@ -426,6 +426,10 @@ func FlagRelay(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "relay", "", "the name of a relay to query")
 }
 
+func FlagRelaySince(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "since", "", "list only the relay clients whose data was updated within this duration, as 1h, judged by the relay clock")
+}
+
 func FlagRID(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "rid", "", "a resource selector expression (ex: ip#1,app,disk.type=zvol)")
 }

@@ -1533,6 +1533,7 @@ func newCmdNodeRelayList() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRelay(flags, &options.Relays)
+	commoncmd.FlagRelaySince(flags, &options.Since)
 	return cmd
 }
 
