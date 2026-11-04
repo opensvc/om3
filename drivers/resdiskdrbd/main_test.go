@@ -98,6 +98,17 @@ func TestStatusWarnings(t *testing.T) {
 				"drbd r peer n1 volume 0 disk DUnknown",
 			},
 		},
+		"standalone facing a primary": {
+			st: drbd.Status{
+				Role:        "Secondary",
+				Devices:     []drbd.StatusDevice{{DiskState: "UpToDate"}},
+				Connections: []drbd.StatusConnection{peer("StandAlone", "Off", "DUnknown", 0)},
+			},
+			expected: []string{
+				"drbd r peer n1 connection StandAlone, not trying to reconnect",
+				"drbd r peer n1 volume 0 disk DUnknown",
+			},
+		},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
