@@ -288,8 +288,7 @@ func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
 	}
 	// isRun says pid is still the process of its run, checked right before
 	// each signal: the run may have ended and its pid been given to another
-	// process since the listing. A pidfd would close the window left, but
-	// the kernels of the older distributions have none.
+	// process since the listing.
 	isRun := func(pid int) bool {
 		v, _ := runfiles.IsValid(filepath.Join(runDir.Path, strconv.Itoa(pid)))
 		return v
@@ -299,7 +298,7 @@ func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
 			continue
 		}
 		t.Log().Infof("stop the run of pid %d", pid)
-		if err := syscall.Kill(pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
+		if err := signalRun(pid, syscall.SIGTERM, isRun); err != nil {
 			return fmt.Errorf("signal the run of pid %d: %w", pid, err)
 		}
 	}
@@ -329,11 +328,14 @@ func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
 				}
 				t.Log().Warnf("the run of pid %d still runs after %s: kill it", pid, d)
 				// The command of the run first, then the run: killed, the
-				// run relays nothing anymore.
+				// run relays nothing anymore. The commands are the children
+				// of the run checked a moment ago, and the run is killed
+				// through signalRun, its identity checked again.
 				tree := proc.Tree(pid)
-				for i := len(tree) - 1; i >= 0; i-- {
+				for i := len(tree) - 1; i >= 1; i-- {
 					_ = syscall.Kill(tree[i], syscall.SIGKILL)
 				}
+				_ = signalRun(pid, syscall.SIGKILL, isRun)
 			}
 			return nil
 		}
