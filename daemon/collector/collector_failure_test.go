@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -79,6 +78,8 @@ func TestSendResInfoChangeStopsAtTheFirstFailure(t *testing.T) {
 		resInfoSent:    make(map[string]resInfoSent),
 		resInfoToSend:  make(map[string]*msgbus.InstanceResourceInfoUpdated),
 		resInfoFailure: newCollectorFailure("resource info"),
+		sendResultC:    make(chan sendResult, sendResultChanSize),
+		postTimeout:    time.Second,
 		resInfoGet: func(p naming.Path, _ string) (resource.Infos, error) {
 			fetches++
 			return resource.NewInfos(p), nil
@@ -90,6 +91,7 @@ func TestSendResInfoChangeStopsAtTheFirstFailure(t *testing.T) {
 	}
 
 	tr.sendResInfoChange()
+	applyNextResult(t, tr)
 	assert.Equal(t, 1, fetches, "one fetch")
 	assert.Len(t, f.requests, 1, "one send")
 	assert.Len(t, tr.resInfoToSend, 3, "all stay queued")
@@ -97,39 +99,12 @@ func TestSendResInfoChangeStopsAtTheFirstFailure(t *testing.T) {
 
 	down = false
 	tr.sendResInfoChange()
+	applyNextResult(t, tr)
 	assert.Len(t, f.requests, 4)
 	assert.Empty(t, tr.resInfoToSend)
 	assert.False(t, tr.resInfoFailure.isFailing(), "the collector accepts again")
 }
 
-// TestPostPingNotSent pins that a ping not sent says nothing of the
-// collector health, unlike a ping failing.
-func TestPostPingNotSent(t *testing.T) {
-	tr := &T{
-		ctx:          context.Background(),
-		log:          plog.NewDefaultLogger(),
-		pingInterval: time.Hour,
-	}
-	tr.initChangesForTest()
-	assert.ErrorIs(t, tr.postPing(), errCollectorDataNotSent, "no client")
-
-	tr.client = &fakeRequester{respond: func(*http.Request) *http.Response {
-		return response(http.StatusBadGateway, ``)
-	}}
-	tr.feedPingOrStatusAt = time.Now()
-	assert.ErrorIs(t, tr.postPing(), errCollectorDataNotSent, "throttled")
-
-	tr.feedPingOrStatusAt = time.Time{}
-	err := tr.postPing()
-	require.Error(t, err)
-	assert.NotErrorIs(t, err, errCollectorDataNotSent, "a ping failing is a failure")
-}
-
 func (t *T) initChangesForTest() {
-	t.instances = make(map[string]struct{})
-	t.changes = changesData{
-		instanceStatusUpdates: make(map[string]*msgbus.InstanceStatusUpdated),
-		instanceStatusDeletes: make(map[string]*msgbus.InstanceStatusDeleted),
-	}
 	t.daemonStatusChange = make(map[string]struct{})
 }

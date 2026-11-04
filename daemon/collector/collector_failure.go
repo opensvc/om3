@@ -36,11 +36,6 @@ var (
 	warnBackoffMin = 10 * time.Second
 	warnBackoffMax = time.Hour
 
-	// errCollectorDataNotSent is a daemon status, change or ping not sent
-	// on this tick: throttled, or without a collector client. It says
-	// nothing of the collector health.
-	errCollectorDataNotSent = errors.New("not sent")
-
 	// errCollectorRefused is the collector refusing data for good: sending
 	// it again would not do better.
 	errCollectorRefused = errors.New("refused by the collector")

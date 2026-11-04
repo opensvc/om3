@@ -231,7 +231,7 @@ func (t *T) pruneActionSent() {
 
 // sendActions starts sending a batch of the queued action phases, unless a
 // batch is being sent. The result comes back to the loop through
-// actionSendResultC.
+// sendResultC.
 //
 // The batch stops at the first send to retry: with the collector down, the
 // others would fail too, each end after reading its log lines on its node.
@@ -252,9 +252,8 @@ func (t *T) sendActions() {
 	}
 	agentVersion := t.agentVersion()
 	tunables := t.actionTunables
-	resultC := t.actionSendResultC
-	go func() {
-		results := make([]actionSendResult, 0, len(jobs))
+	t.goSend(func() sendResult {
+		results := make(actionSendResults, 0, len(jobs))
 		for _, job := range jobs {
 			r := sendAction(ctx, requester, readLog, agentVersion, tunables, job)
 			results = append(results, r)
@@ -262,11 +261,8 @@ func (t *T) sendActions() {
 				break
 			}
 		}
-		select {
-		case resultC <- results:
-		case <-ctx.Done():
-		}
-	}()
+		return results
+	})
 }
 
 // nextActionJobs returns the next batch of queued action phases to send:

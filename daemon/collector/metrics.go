@@ -62,7 +62,6 @@ var (
 const (
 	feedDaemonPing     = "daemon_ping"
 	feedDaemonStatus   = "daemon_status"
-	feedDaemonChange   = "daemon_change"
 	feedResourceInfo   = "resource_info"
 	feedObjectConfig   = "object_config"
 	feedInstanceAction = "instance_action"
@@ -77,7 +76,6 @@ var feedPaths = []struct {
 }{
 	{oc3path.FeedDaemonPing, feedDaemonPing},
 	{oc3path.FeedDaemonStatus, feedDaemonStatus},
-	{oc3path.FeedDaemonChange, feedDaemonChange},
 	{oc3path.FeedInstanceResinfo, feedResourceInfo},
 	{oc3path.FeedObjectConfig, feedObjectConfig},
 	{oc3path.FeedInstanceAction, feedInstanceAction},
@@ -116,13 +114,9 @@ func (t *instrumentedRequester) NewRequestWithContext(ctx context.Context, metho
 // setPendingMetrics sets collectorPending from the speaker queues. A node
 // not speaker holds nothing.
 func (t *T) setPendingMetrics() {
-	var daemonStatus, daemonChange, resInfo, objectConfig, action int
+	var daemonStatus, resInfo, objectConfig, action int
 	if t.isSpeaker {
-		if t.featurePostChange {
-			daemonChange = len(t.changes.instanceStatusUpdates) + len(t.changes.instanceStatusDeletes)
-		} else {
-			daemonStatus = len(t.daemonStatusChange)
-		}
+		daemonStatus = len(t.daemonStatusChange) + t.daemonStatusInFlight
 		resInfo = len(t.resInfoToSend)
 		objectConfig = len(t.objectConfigToSend)
 		for _, e := range t.actionToSend {
@@ -135,7 +129,6 @@ func (t *T) setPendingMetrics() {
 		}
 	}
 	collectorPending.WithLabelValues(feedDaemonStatus).Set(float64(daemonStatus))
-	collectorPending.WithLabelValues(feedDaemonChange).Set(float64(daemonChange))
 	collectorPending.WithLabelValues(feedResourceInfo).Set(float64(resInfo))
 	collectorPending.WithLabelValues(feedObjectConfig).Set(float64(objectConfig))
 	collectorPending.WithLabelValues(feedInstanceAction).Set(float64(action))
