@@ -101,6 +101,11 @@ func (t *CmdClusterLeave) run() (err error) {
 		return fmt.Errorf("unable to find a peer node to announce we are leaving: %w", err)
 	}
 
+	// The node leaves as frozen as it was: the drain freezes it for the
+	// leave, which is no freeze of the operator, as for a join. A node
+	// evicted was drained by the operator first, and stays frozen. A leave
+	// failing after the drain leaves it frozen, drained.
+	wasFrozen := nodeFrozen()
 	if t.isRunning() {
 		if err := t.nodeDrain(ctx); err != nil {
 			return err
@@ -165,7 +170,7 @@ func (t *CmdClusterLeave) run() (err error) {
 
 	// The config is gone: the daemon is to start alone whatever the
 	// cleanup left, so the node stays reachable.
-	cleanupErr := t.cleanupVarDir(true)
+	cleanupErr := t.cleanupVarDir(wasFrozen)
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return err
 	}

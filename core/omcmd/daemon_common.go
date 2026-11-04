@@ -139,8 +139,9 @@ func (t *CmdDaemonCommon) cleanupVarDir(keepFreeze bool) error {
 
 // keepNodeFreeze returns the frozen flag of the node to keep through the
 // cleanup of the var directory, if raised: the freeze is the operator's, as
-// the one of the drain a leave asks for, and nothing is to start on the node
-// until the operator thaws it. A freeze of the cluster the node leaves is made
+// the one of the drain an evict asks for, and nothing is to start on the node
+// until the operator thaws it. A join or a leave keeps it only when the node
+// was frozen before the drain of its own. A freeze of the cluster the node leaves is made
 // a freeze of the node alone, as the node is no member of that cluster any
 // more: the nodes of the next cluster would adopt it as a freeze of theirs.
 // The flag keeps the time it was raised at.
