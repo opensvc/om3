@@ -60,6 +60,11 @@ const (
 	SourceRulePriority = 32000
 )
 
+// maxReservedTable is the highest of the tables the kernel names: local 255,
+// main 254, default 253, unspec 0, and the ones under them a distribution
+// may name in rt_tables.
+const maxReservedTable = 255
+
 var (
 	ErrSourceTableInUse = errors.New("the table is used by routes of another card")
 )
@@ -72,7 +77,13 @@ var (
 // small ones for ipv4.
 func TableID(ip net.IP) int {
 	if v4 := ip.To4(); v4 != nil {
-		return int(binary.BigEndian.Uint32(v4))
+		n := binary.BigEndian.Uint32(v4)
+		if n <= maxReservedTable {
+			// An address of 0.0.0.0/24 would name a table of the
+			// kernel, as the main one: moved out of their range.
+			n |= 0x80000000
+		}
+		return int(n)
 	}
 	h := fnv.New32a()
 	_, _ = h.Write(ip.To16())
@@ -333,6 +344,10 @@ func (t SourceRoute) Check(netns ns.NetNS) error {
 }
 
 func flushTable(table, family int) error {
+	if table <= maxReservedTable {
+		// A table of the kernel, as the main one, is never om's.
+		return nil
+	}
 	routes, err := netlink.RouteListFiltered(family, &netlink.Route{Table: table}, netlink.RT_FILTER_TABLE)
 	if err != nil {
 		return err

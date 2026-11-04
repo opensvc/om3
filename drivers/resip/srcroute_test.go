@@ -45,6 +45,7 @@ func TestTheTableOfAnAddressIsItsOwn(t *testing.T) {
 	assert.NotEqual(t, v6, TableID(net.ParseIP("fdfe::13")))
 	assert.Greater(t, v6, 255)
 	assert.Equal(t, v6, TableID(net.ParseIP("fdfe::12")), "found again from the address")
+	assert.Greater(t, TableID(net.ParseIP("0.0.0.254")), 255, "no table of the kernel, as the main one")
 }
 
 func TestTheSourceOfTheRuleIsTheAddressAlone(t *testing.T) {
