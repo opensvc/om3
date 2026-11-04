@@ -37,49 +37,39 @@ func (t *T) Activated(ctx context.Context) (bool, error) {
 	return prop.Value.String() == "\"active\"", nil
 }
 
-// CalledFromManager detects if current process as been launched by systemd.
+// CalledFromManager detects if current process as been launched by systemd:
+// it is the main process of the unit, the "om daemon run" of its ExecStart,
+// or its control process, the "om daemon stop" of its ExecStop.
 //
-// systemd sets INVOCATION_ID in the environment of the processes of a unit
-// since its version 232. Before, as the 219 of RHEL 7, the process is known
-// launched by systemd from its cgroup: systemd runs every process of a unit,
-// the ExecStop ones too, in the cgroup of the unit, which the system manager
-// says, so a unit of the same name a user manager runs is not taken for it.
+// A process of the unit cgroup, or with its INVOCATION_ID, is not: every
+// child of the daemon is there, as the "om cluster join" it forks, which,
+// taken for systemd, stopped the daemon through the api and started another
+// itself, out of the unit. The pids of the unit are said by systemd 219 too.
 func (t *T) CalledFromManager() bool {
-	if os.Getenv("INVOCATION_ID") != "" {
-		return true
-	}
 	if t.conn == nil {
 		return false
 	}
-	prop, err := t.conn.GetUnitTypePropertyContext(context.Background(), UnitName, "Service", "ControlGroup")
-	if err != nil || prop == nil {
-		return false
+	pids := make(map[string]uint32)
+	for _, name := range unitPIDProperties {
+		prop, err := t.conn.GetUnitTypePropertyContext(context.Background(), UnitName, "Service", name)
+		if err != nil || prop == nil {
+			continue
+		}
+		if v, ok := prop.Value.Value().(uint32); ok {
+			pids[name] = v
+		}
 	}
-	unitCgroup, ok := prop.Value.Value().(string)
-	if !ok || unitCgroup == "" {
-		return false
-	}
-	b, err := os.ReadFile("/proc/self/cgroup")
-	if err != nil {
-		return false
-	}
-	return inCgroup(b, unitCgroup)
+	return isUnitPID(uint32(os.Getpid()), pids)
 }
 
-// inCgroup says if a /proc/<pid>/cgroup content places the process in the
-// cgroup cg of the systemd hierarchy, or one under it: the line of the
-// systemd hierarchy on cgroup v1, "name=systemd", or the line of the unified
-// hierarchy, "0::".
-func inCgroup(b []byte, cg string) bool {
-	for _, line := range strings.Split(string(b), "\n") {
-		fields := strings.SplitN(line, ":", 3)
-		if len(fields) != 3 {
-			continue
-		}
-		if fields[1] != "name=systemd" && !(fields[0] == "0" && fields[1] == "") {
-			continue
-		}
-		if fields[2] == cg || strings.HasPrefix(fields[2], cg+"/") {
+// unitPIDProperties are the properties of a service unit holding the pids
+// of the processes systemd runs for it.
+var unitPIDProperties = []string{"MainPID", "ControlPID"}
+
+// isUnitPID says pid is one of the pids of a unit, 0 for none.
+func isUnitPID(pid uint32, pids map[string]uint32) bool {
+	for _, v := range pids {
+		if v != 0 && v == pid {
 			return true
 		}
 	}
