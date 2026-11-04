@@ -3441,6 +3441,9 @@ type RelayNodename = string
 // RelayRemote defines model for RelayRemote.
 type RelayRemote = bool
 
+// RelaySince defines model for RelaySince.
+type RelaySince = string
+
 // RelayUsername defines model for RelayUsername.
 type RelayUsername = string
 
@@ -5347,6 +5350,10 @@ type GetRelayStatusParams struct {
 
 	// Remote If true, report the status of relays the server is client of. If false or not set, report the status of the server embedded relay.
 	Remote *RelayRemote `form:"remote,omitempty" json:"remote,omitempty"`
+
+	// Since Only the relay clients whose data was updated within this duration, as
+	// 1h. Each relay judges by its own clock.
+	Since *RelaySince `form:"since,omitempty" json:"since,omitempty"`
 }
 
 // GetResourcesParams defines parameters for GetResources.

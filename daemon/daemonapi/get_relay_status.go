@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/daemon/relay"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -25,14 +27,54 @@ func (a *DaemonAPI) GetRelayStatus(ctx echo.Context, params api.GetRelayStatusPa
 	if v, err := assertGrant(ctx, rbac.GrantHeartbeat, rbac.GrantRoot); !v {
 		return err
 	}
+	since, err := relaySince(params)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
+	}
 	if params.Remote != nil && *params.Remote {
-		return a.getRelayStatusRemote(ctx, params)
+		return a.getRelayStatusRemote(ctx, params, since)
 	} else {
-		return a.getRelayStatusLocal(ctx, params)
+		return a.getRelayStatusLocal(ctx, since)
 	}
 }
 
-func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, params api.GetRelayStatusParams) error {
+// relaySince is the duration the since parameter asks for, 0 for none: the
+// relay clients whose data was updated within it are listed, judged by the
+// clock of the relay holding the data. The parameter is passed on as is to
+// the relays a remote listing asks.
+func relaySince(params api.GetRelayStatusParams) (time.Duration, error) {
+	if params.Since == nil || *params.Since == "" {
+		return 0, nil
+	}
+	v, err := converters.Duration.Convert(*params.Since)
+	if err != nil {
+		return 0, fmt.Errorf("field 'since' with value '%s' validation error: %w", *params.Since, err)
+	}
+	d := *v.(*time.Duration)
+	if d < 0 {
+		return 0, fmt.Errorf("field 'since' with value '%s' validation error: negative", *params.Since)
+	}
+	return d, nil
+}
+
+// sortRelayStatusItems orders the relay clients by the update of their data,
+// the latest first: the live ones on top, the stale ones below.
+func sortRelayStatusItems(items api.RelayStatusItems) {
+	sort.SliceStable(items, func(i, j int) bool {
+		if !items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return items[i].UpdatedAt.After(items[j].UpdatedAt)
+		}
+		if items[i].ClusterID != items[j].ClusterID {
+			return items[i].ClusterID < items[j].ClusterID
+		}
+		if items[i].Nodename != items[j].Nodename {
+			return items[i].Nodename < items[j].Nodename
+		}
+		return items[i].NodeAddr < items[j].NodeAddr
+	})
+}
+
+func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, since time.Duration) error {
 	data := api.RelayStatusList{
 		Kind:  "RelayStatusList",
 		Items: make(api.RelayStatusItems, 0),
@@ -46,8 +88,12 @@ func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, params api.GetRelaySta
 		username := userFromContext(ctx).Username
 		slots = relay.Map.List(username)
 	}
+	now := time.Now()
 	for _, slot := range slots {
 		v := slot.Value.(api.RelayMessage)
+		if since > 0 && now.Sub(v.UpdatedAt) > since {
+			continue
+		}
 		item := api.RelayStatusItem{
 			ClusterID:   v.ClusterID,
 			ClusterName: v.ClusterName,
@@ -61,20 +107,11 @@ func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, params api.GetRelaySta
 		}
 		data.Items = append(data.Items, item)
 	}
-	// Sort by ClusterID, then Nodename, then NodeAddr
-	sort.Slice(data.Items, func(i, j int) bool {
-		if data.Items[i].ClusterID != data.Items[j].ClusterID {
-			return data.Items[i].ClusterID < data.Items[j].ClusterID
-		}
-		if data.Items[i].Nodename != data.Items[j].Nodename {
-			return data.Items[i].Nodename < data.Items[j].Nodename
-		}
-		return data.Items[i].NodeAddr < data.Items[j].NodeAddr
-	})
+	sortRelayStatusItems(data.Items)
 	return ctx.JSON(http.StatusOK, data)
 }
 
-func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelayStatusParams) error {
+func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelayStatusParams, since time.Duration) error {
 	falseValue := false
 	items := make(api.RelayStatusItems, 0)
 	relayMap := make(map[string]any)
@@ -187,21 +224,17 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 			// relay filter takes, as the placeholders of a relay not
 			// answering are.
 			for _, item := range resp.JSON200.Items {
+				// A relay of a version not knowing the since
+				// parameter lists every client: judged here.
+				if since > 0 && time.Since(item.UpdatedAt) > since {
+					continue
+				}
 				item.Relay = hbRelay
 				items = append(items, item)
 			}
 		}
 	}
-	// Sort by ClusterID, then Nodename, then NodeAddr
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].ClusterID != items[j].ClusterID {
-			return items[i].ClusterID < items[j].ClusterID
-		}
-		if items[i].Nodename != items[j].Nodename {
-			return items[i].Nodename < items[j].Nodename
-		}
-		return items[i].NodeAddr < items[j].NodeAddr
-	})
+	sortRelayStatusItems(items)
 	data := api.RelayStatusList{
 		Kind:  "RelayStatusList",
 		Items: items,

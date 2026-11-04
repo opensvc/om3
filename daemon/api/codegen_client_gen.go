@@ -17826,6 +17826,18 @@ func NewGetRelayStatusRequest(server string, params *GetRelayStatusParams) (*htt
 
 		}
 
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "since", *params.Since, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -25570,6 +25582,7 @@ type GetRelayStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RelayStatusList
+	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
 	JSON404      *N404
@@ -38717,6 +38730,13 @@ func ParseGetRelayStatusResponse(rsp *http.Response) (*GetRelayStatusResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

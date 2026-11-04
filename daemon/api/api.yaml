@@ -3,6 +3,11 @@ openapi: 3.0.0
 info:
   title: opensvc agent api
   version: 4.5.0
+  description: |
+    A date-time value carries the offset of the time zone of the node that
+    produced it: the dates of a response gathering the data of several nodes,
+    as a relay listing or the cluster status, may be in different time
+    zones. The instants they spell compare as usual.
 
 paths:
   /api/array:
@@ -7024,6 +7029,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Relays'
         - $ref: '#/components/parameters/RelayRemote'
+        - $ref: '#/components/parameters/RelaySince'
       responses:
         200:
           description: OK
@@ -7031,6 +7037,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RelayStatusList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -11998,6 +12006,16 @@ components:
       description: If true, report the status of relays the server is client of. If false or not set, report the status of the server embedded relay.
       schema:
         type: boolean
+
+    RelaySince:
+      name: since
+      in: query
+      description: |
+        Only the relay clients whose data was updated within this duration, as
+        1h. Each relay judges by its own clock.
+      schema:
+        type: string
+        example: 1h
 
     RelayUsername:
       name: username
