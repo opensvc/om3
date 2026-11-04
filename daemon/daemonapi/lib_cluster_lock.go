@@ -186,7 +186,7 @@ func hearsPeer(localhost, nodename string) bool {
 // ahead of it.
 func maintenanceEndsAt(localhost, nodename string) (time.Time, bool) {
 	mon := node.MonitorData.GetByNode(nodename)
-	if mon == nil || mon.State != node.MonitorStateMaintenance {
+	if mon == nil || !mon.State.IsMaintenance() {
 		return time.Time{}, false
 	}
 	cfg := node.ConfigData.GetByNode(localhost)

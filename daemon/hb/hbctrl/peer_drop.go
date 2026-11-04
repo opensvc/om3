@@ -15,7 +15,7 @@ import (
 )
 
 // peerDropper is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.
-// If <peer> node is in MonitorStateMaintenance state, the drop is delayed until maintenanceGracePeriod is reached.
+// If <peer> node is in a maintenance state (node.MonitorState.IsMaintenance), the drop is delayed until maintenanceGracePeriod is reached.
 // The delayed <peer> node drop is canceled on msgbus.NodeAlive{Node: <peer>}.
 func peerDropper(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
@@ -58,7 +58,7 @@ func peerDropper(ctx context.Context) {
 	}
 
 	delayDropPeer := func(peer string) {
-		if peerMon := node.MonitorData.GetByNode(peer); peerMon != nil && peerMon.State == node.MonitorStateMaintenance {
+		if peerMon := node.MonitorData.GetByNode(peer); peerMon != nil && peerMon.State.IsMaintenance() {
 			delay := maintenanceGracePeriod
 			if drop, ok := dropM[peer]; ok {
 				drop.cancel()

@@ -23,6 +23,12 @@ func init() {
 		commoncmd.NewGroupQuery(),
 		commoncmd.NewGroupSubsystems(),
 	)
+	// The hidden alias of "config update" is where "update pkg" lives, "update"
+	// being taken.
+	cmdObjectUpdate := newCmdObjectUpdate(kind)
+	cmdObjectUpdate.AddCommand(
+		commoncmd.NewCmdClusterUpdatePkg(),
+	)
 	cmdObject.AddCommand(
 		cmdObjectConfig,
 		cmdObjectEdit,
@@ -46,7 +52,7 @@ func init() {
 		newCmdObjectList(kind),
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
+		cmdObjectUpdate,
 		newCmdTUI(kind),
 	)
 	cmdObjectConfig.AddCommand(

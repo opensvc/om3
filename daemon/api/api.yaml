@@ -288,6 +288,42 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/action/update/pkg:
+    post:
+      description: |
+        Upgrade the opensvc packages of all the cluster nodes, one node at a time.
+
+        Each node runs `om node update pkg` in turn, in the order of the cluster
+        nodes, once every node of the cluster is live and idle: the upgrade of
+        opensvc-server restarts the daemon, and the next node waits for the one
+        before it to be back. The upgrade is given up when it fails on a node,
+        and refused while a node of the cluster is not live.
+      operationId: PostClusterActionUpdatePkg
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - cluster
+
   /api/cluster/config:
     get:
       operationId: GetClusterConfig

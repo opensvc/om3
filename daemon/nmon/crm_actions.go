@@ -4,11 +4,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/proc"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -50,11 +53,26 @@ func (t *Manager) crmUnfreeze() error {
 	return t.crmAction("unfreeze", "node", "unfreeze")
 }
 
+// crmUpdatePkg upgrades the opensvc packages of the node, which restarts the
+// daemon when opensvc-server is among them. What the package manager says is
+// logged: it is what is left to read when the upgrade fails.
+func (t *Manager) crmUpdatePkg() error {
+	opts := []funcopt.O{
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	}
+	return t.crmActionWithOpts("update pkg", nil, opts, "node", "update", "pkg")
+}
+
 func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	return t.crmActionWithEnv(title, nil, cmdArgs...)
 }
 
 func (t *Manager) crmActionWithEnv(title string, extraEnv []string, cmdArgs ...string) error {
+	return t.crmActionWithOpts(title, extraEnv, nil, cmdArgs...)
+}
+
+func (t *Manager) crmActionWithOpts(title string, extraEnv []string, extraOpts []funcopt.O, cmdArgs ...string) error {
 	cmdEnv := append([]string{}, extraEnv...)
 
 	sessionID := xsession.NewSessionID()
@@ -81,12 +99,13 @@ func (t *Manager) crmActionWithEnv(title string, extraEnv []string, cmdArgs ...s
 		)
 	}
 
-	cmd := command.New(
+	opts := []funcopt.O{
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithEnv(cmdEnv),
 		command.WithLogger(t.log),
-	)
+	}
+	cmd := command.New(append(opts, extraOpts...)...)
 	if title != "" {
 		t.log.Infof("-> exec %s", cmd)
 	} else {

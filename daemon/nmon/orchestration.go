@@ -24,12 +24,15 @@ func (t *Manager) orchestrate() {
 	switch t.state.GlobalExpect {
 	case node.MonitorGlobalExpectInit:
 	case node.MonitorGlobalExpectNone:
+		t.settleUpgraded()
 	case node.MonitorGlobalExpectAborted:
 		t.orchestrateAborted()
 	case node.MonitorGlobalExpectFrozen:
 		t.orchestrateFrozen()
 	case node.MonitorGlobalExpectUnfrozen:
 		t.orchestrateUnfrozen()
+	case node.MonitorGlobalExpectUpgraded:
+		t.orchestrateUpgraded()
 	}
 	t.updateIfChange()
 }

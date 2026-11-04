@@ -113,6 +113,9 @@ type ClientInterface interface {
 	// PostClusterActionUnfreeze request
 	PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterActionUpdatePkg request
+	PostClusterActionUpdatePkg(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetClusterConfig request
 	GetClusterConfig(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -812,6 +815,18 @@ func (c *Client) PostClusterActionFreeze(ctx context.Context, reqEditors ...Requ
 
 func (c *Client) PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterActionUnfreezeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterActionUpdatePkg(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterActionUpdatePkgRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -3718,6 +3733,33 @@ func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/cluster/action/unfreeze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterActionUpdatePkgRequest generates requests for PostClusterActionUpdatePkg
+func NewPostClusterActionUpdatePkgRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/action/update/pkg")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -18164,6 +18206,9 @@ type ClientWithResponsesInterface interface {
 	// PostClusterActionUnfreezeWithResponse request
 	PostClusterActionUnfreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUnfreezeResponse, error)
 
+	// PostClusterActionUpdatePkgWithResponse request
+	PostClusterActionUpdatePkgWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUpdatePkgResponse, error)
+
 	// GetClusterConfigWithResponse request
 	GetClusterConfigWithResponse(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*GetClusterConfigResponse, error)
 
@@ -19046,6 +19091,42 @@ func (r PostClusterActionUnfreezeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostClusterActionUnfreezeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostClusterActionUpdatePkgResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationQueued
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON408      *N408
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterActionUpdatePkgResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterActionUpdatePkgResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostClusterActionUpdatePkgResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -25648,6 +25729,15 @@ func (c *ClientWithResponses) PostClusterActionUnfreezeWithResponse(ctx context.
 	return ParsePostClusterActionUnfreezeResponse(rsp)
 }
 
+// PostClusterActionUpdatePkgWithResponse request returning *PostClusterActionUpdatePkgResponse
+func (c *ClientWithResponses) PostClusterActionUpdatePkgWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUpdatePkgResponse, error) {
+	rsp, err := c.PostClusterActionUpdatePkg(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterActionUpdatePkgResponse(rsp)
+}
+
 // GetClusterConfigWithResponse request returning *GetClusterConfigResponse
 func (c *ClientWithResponses) GetClusterConfigWithResponse(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*GetClusterConfigResponse, error) {
 	rsp, err := c.GetClusterConfig(ctx, params, reqEditors...)
@@ -27920,6 +28010,74 @@ func ParsePostClusterActionUnfreezeResponse(rsp *http.Response) (*PostClusterAct
 	}
 
 	response := &PostClusterActionUnfreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationQueued
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterActionUpdatePkgResponse parses an HTTP response from a PostClusterActionUpdatePkgWithResponse call
+func ParsePostClusterActionUpdatePkgResponse(rsp *http.Response) (*PostClusterActionUpdatePkgResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterActionUpdatePkgResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

@@ -32,6 +32,11 @@ const (
 	MonitorStateShutdownFailure
 	MonitorStateShutdownSuccess
 
+	// Upgrade of the opensvc packages outcomes: the upgrade itself runs in
+	// the MonitorStateUpgrade state.
+	MonitorStateUpgradeFailure
+	MonitorStateUpgradeSuccess
+
 	// MonitorStateUnknown is what a value this agent does not know decodes to:
 	// a peer running a later version publishes values this one has no
 	// name for, and failing to decode them failed the whole heartbeat
@@ -55,6 +60,7 @@ var (
 		MonitorStateFreezeFailure,
 		MonitorStateShutdownFailure,
 		MonitorStateUnfreezeFailure,
+		MonitorStateUpgradeFailure,
 	}
 
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
@@ -97,6 +103,8 @@ func init() {
 		{MonitorStateShutdownProgress, "shutting"},
 		{MonitorStateShutdownFailure, "shutdown failed"},
 		{MonitorStateShutdownSuccess, "shutdown"},
+		{MonitorStateUpgradeFailure, "upgrade failed"},
+		{MonitorStateUpgradeSuccess, "upgraded"},
 		{MonitorStateUnknown, "unknown"},
 	}
 
