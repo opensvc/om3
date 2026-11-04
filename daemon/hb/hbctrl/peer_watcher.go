@@ -25,7 +25,7 @@ var (
 // peerWatch starts a new peer watcher of nodename for hbID
 // when beating state change a hb_beating or hb_stale event is fired
 // Once beating, hb_stale event is fired if beating is not received after timeout
-func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, desc string, timeout time.Duration) {
+func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, desc string, timeout time.Duration, watcher uint64) {
 	peer := daemonsubsystem.HeartbeatStreamPeerStatus{
 		Desc:      desc,
 		ChangedAt: time.Now(),
@@ -104,6 +104,7 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, d
 							Name:     evName,
 							Nodename: nodename,
 							HbID:     HbID,
+							watcher:  watcher,
 						}
 						c.cmd <- CmdSetPeerStatus{
 							Nodename:   nodename,

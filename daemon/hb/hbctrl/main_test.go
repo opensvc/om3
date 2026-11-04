@@ -301,3 +301,133 @@ func TestAWatcherOfAStoppedStreamDoesNotStandInTheWayOfTheNext(t *testing.T) {
 		}
 	}
 }
+
+// The NodeAlive and NodeStale of a peer, as the heartbeat streams beat, stop
+// and start again: a stream stopped beating, as by its restart or its stop,
+// is not counted beating anymore, so the peer is stale once the streams left
+// stop beating.
+func TestAPeerIsStaleOnceTheStreamsLeftStopBeating(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = bootstrapDaemon(ctx, t)
+	labelLocalhost := pubsub.NewLabels("node", hostname.Hostname())
+	pubDelay = 10 * time.Millisecond
+	testCtrl := setupCtrl(ctx)
+	defer func() { require.NoError(t, testCtrl.Stop()) }()
+
+	settle := func() { time.Sleep(50 * time.Millisecond) }
+	add := func(hbID, peer string) {
+		testCtrl.cmd <- CmdAddWatcher{HbID: hbID, Nodename: peer, Ctx: ctx, Timeout: time.Second}
+	}
+	start := func(hbID, peer string) {
+		testCtrl.cmd <- CmdRegister{ID: hbID, Type: "test-type"}
+		add(hbID, peer)
+	}
+	beat := func(hbID, peer string, v bool) {
+		testCtrl.cmd <- CmdSetPeerSuccess{HbID: hbID, Nodename: peer, Success: v}
+		settle()
+	}
+	del := func(hbID, peer string) {
+		testCtrl.cmd <- CmdDelWatcher{HbID: hbID, Nodename: peer}
+		settle()
+	}
+	alive := func(peer string) any {
+		return msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: peer}
+	}
+	stale := func(peer string) any {
+		return msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: peer}
+	}
+
+	cases := map[string]struct {
+		peer     string
+		steps    func(peer string)
+		expected func(peer string) []any
+	}{
+		// The card: hb#9 added, restarted, deleted, then the peer dies.
+		"restart of a beating stream": {
+			peer: "node11",
+			steps: func(peer string) {
+				start("hb#11.rx", peer)
+				start("hb#12.rx", peer)
+				beat("hb#11.rx", peer, true)
+				beat("hb#12.rx", peer, true)
+				del("hb#12.rx", peer)
+				add("hb#12.rx", peer)
+				beat("hb#12.rx", peer, true)
+				del("hb#12.rx", peer)
+				beat("hb#11.rx", peer, false)
+			},
+			expected: func(peer string) []any { return []any{alive(peer), stale(peer)} },
+		},
+		"stop of a beating stream, the other one stale": {
+			peer: "node12",
+			steps: func(peer string) {
+				start("hb#13.rx", peer)
+				start("hb#14.rx", peer)
+				beat("hb#13.rx", peer, true)
+				beat("hb#14.rx", peer, true)
+				beat("hb#14.rx", peer, false)
+				del("hb#13.rx", peer)
+			},
+			expected: func(peer string) []any { return []any{alive(peer), stale(peer)} },
+		},
+		"unregister of a beating stream": {
+			peer: "node13",
+			steps: func(peer string) {
+				start("hb#15.rx", peer)
+				start("hb#16.rx", peer)
+				beat("hb#15.rx", peer, true)
+				beat("hb#16.rx", peer, true)
+				testCtrl.cmd <- CmdUnregister{ID: "hb#15.rx"}
+				settle()
+				beat("hb#16.rx", peer, false)
+			},
+			expected: func(peer string) []any { return []any{alive(peer), stale(peer)} },
+		},
+		// No rx stream left to say anything of the peer: not stale.
+		"restart of the only stream": {
+			peer: "node14",
+			steps: func(peer string) {
+				start("hb#17.rx", peer)
+				beat("hb#17.rx", peer, true)
+				del("hb#17.rx", peer)
+				add("hb#17.rx", peer)
+				beat("hb#17.rx", peer, true)
+			},
+			expected: func(peer string) []any { return []any{alive(peer), alive(peer)} },
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			sub := pubsub.SubFromContext(ctx, name, pubsub.Timeout(time.Second))
+			sub.AddFilter(&msgbus.NodeAlive{})
+			sub.AddFilter(&msgbus.NodeStale{})
+			sub.Start()
+			defer func() { _ = sub.Stop() }()
+
+			tc.steps(tc.peer)
+			settle()
+
+			found := make([]any, 0)
+			timeout := time.After(100 * time.Millisecond)
+			for done := false; !done; {
+				select {
+				case i := <-sub.C:
+					switch msg := i.(type) {
+					case *msgbus.NodeAlive:
+						if msg.Node == tc.peer {
+							found = append(found, *msg)
+						}
+					case *msgbus.NodeStale:
+						if msg.Node == tc.peer {
+							found = append(found, *msg)
+						}
+					}
+				case <-timeout:
+					done = true
+				}
+			}
+			require.Equal(t, tc.expected(tc.peer), found)
+		})
+	}
+}

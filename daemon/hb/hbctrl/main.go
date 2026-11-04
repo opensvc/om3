@@ -60,6 +60,14 @@ type (
 		rxBeating   int
 		cancel      map[string]func()      // cancel function of hbID peer watcher for the remote
 		beatingChan map[string]chan<- bool // beating bool chan of hbID for the remote
+
+		// watcher is the id of the hbID peer watcher for the remote: an
+		// event of another watcher of hbID, deleted, is not counted.
+		watcher map[string]uint64
+
+		// beating is the rx hbIDs counted in rxBeating: an rx watcher
+		// is counted once, and deleted beating, uncounted.
+		beating map[string]bool
 	}
 
 	// CmdRegister is the command to register a new heartbeat status
@@ -85,6 +93,9 @@ type (
 		Name     string
 		Nodename string
 		HbID     string
+
+		// watcher is the id of the peer watcher posting the event
+		watcher uint64
 	}
 
 	// EventStats is a map that holds event counters
@@ -200,6 +211,53 @@ func (c *C) run() {
 	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
 	labelAliveStale := pubsub.Label{"hb", "alive/stale"}
 
+	// watcherSeq is the id of the latest peer watcher started
+	var watcherSeq uint64
+
+	// delWatcher stops the hbID watcher of peerNode. An rx watcher deleted
+	// beating is not counted anymore: when it was the last beating one and
+	// rx watchers of the peer remain, all stale, the peer is stale. With
+	// no rx watcher left, as the restart of its only hb, nothing says the
+	// peer is stale.
+	delWatcher := func(hbID, peerNode string) {
+		remote, ok := remotes[peerNode]
+		if !ok {
+			return
+		}
+		cancel, registered := remote.cancel[hbID]
+		if !registered {
+			// A stream stopped before its start added the watcher,
+			// which the addition then skips.
+			c.log.Infof("del watcher skipped: not registered %s -> %s", hbID, peerNode)
+			return
+		}
+		c.log.Infof("del watcher %s -> %s", hbID, peerNode)
+		cancel()
+		delete(remote.cancel, hbID)
+		delete(remote.beatingChan, hbID)
+		delete(remote.watcher, hbID)
+		isRx := strings.HasSuffix(hbID, ".rx")
+		if isRx {
+			remote.rxCount--
+		} else {
+			remote.txCount--
+		}
+		if remote.beating[hbID] {
+			delete(remote.beating, hbID)
+			remote.rxBeating--
+			if remote.rxBeating == 0 && remote.rxCount > 0 {
+				c.log.Infof("stale node %s: %s deleted beating, the rx watchers left are stale", peerNode, hbID)
+				changed = true
+				pub.Pub(&msgbus.NodeStale{Node: peerNode}, labelLocalhost)
+			}
+		}
+		if (remote.rxCount + remote.txCount) == 0 {
+			delete(remotes, peerNode)
+		} else {
+			remotes[peerNode] = remote
+		}
+	}
+
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
@@ -247,19 +305,9 @@ func (c *C) run() {
 				}
 				changed = true
 			case CmdUnregister:
-				if hbStatus, ok := heartbeat[o.ID]; ok {
-					if strings.HasSuffix(o.ID, ".rx") {
-						for peerNode, peerStatus := range hbStatus.Peers {
-							if !peerStatus.IsBeating {
-								continue
-							}
-							if peerStatus.IsBeating {
-								if remote, ok := remotes[peerNode]; ok {
-									remote.rxBeating--
-									remotes[peerNode] = remote
-								}
-							}
-						}
+				if _, ok := heartbeat[o.ID]; ok {
+					for peerNode := range remotes {
+						delWatcher(o.ID, peerNode)
 					}
 					delete(heartbeat, o.ID)
 				}
@@ -279,6 +327,13 @@ func (c *C) run() {
 					}
 				}
 			case CmdEvent:
+				remote, ok := remotes[o.Nodename]
+				if !ok || remote.watcher[o.HbID] != o.watcher {
+					// Posted by a watcher deleted before the event
+					// was read: its deletion counted it.
+					c.log.Infof("event %s for %s from %s skipped: watcher deleted", o.Name, o.Nodename, o.HbID)
+					continue
+				}
 				if count, ok := events[o.Name]; ok {
 					events[o.Name] = count + 1
 				} else {
@@ -293,29 +348,37 @@ func (c *C) run() {
 					changed = true
 					pub.Pub(&msgbus.HeartbeatAlive{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, labelLocalhost, labelAliveStale)
 				}
-				if remote, ok := remotes[o.Nodename]; ok {
-					if strings.HasSuffix(o.HbID, ".rx") {
-						switch o.Name {
-						case evBeating:
-							if remote.rxBeating == 0 {
-								c.log.Infof("beating node %s", o.Nodename)
-								changed = true
-								pub.Pub(&msgbus.NodeAlive{Node: o.Nodename}, labelLocalhost)
-							}
-							remote.rxBeating++
-						case evStale:
-							if remote.rxBeating == 0 {
-								panic("stale on already staled node")
-							}
-							remote.rxBeating--
+				if strings.HasSuffix(o.HbID, ".rx") {
+					switch o.Name {
+					case evBeating:
+						if remote.beating[o.HbID] {
+							// Counted already.
+							break
 						}
+						if remote.rxBeating == 0 {
+							c.log.Infof("beating node %s", o.Nodename)
+							changed = true
+							pub.Pub(&msgbus.NodeAlive{Node: o.Nodename}, labelLocalhost)
+						}
+						remote.beating[o.HbID] = true
+						remote.rxBeating++
+					case evStale:
+						if !remote.beating[o.HbID] {
+							// Not counted beating.
+							break
+						}
+						if remote.rxBeating == 0 {
+							panic("stale on already staled node")
+						}
+						delete(remote.beating, o.HbID)
+						remote.rxBeating--
 						if remote.rxBeating == 0 {
 							c.log.Infof("stale node %s", o.Nodename)
 							changed = true
 							pub.Pub(&msgbus.NodeStale{Node: o.Nodename}, labelLocalhost)
 						}
-						remotes[o.Nodename] = remote
 					}
+					remotes[o.Nodename] = remote
 				}
 			case CmdGetEventStats:
 				o.result <- events
@@ -345,6 +408,8 @@ func (c *C) run() {
 				if !ok {
 					remote.beatingChan = make(map[string]chan<- bool)
 					remote.cancel = make(map[string]func())
+					remote.watcher = make(map[string]uint64)
+					remote.beating = make(map[string]bool)
 				}
 				if o.Ctx.Err() != nil {
 					// The stream is already stopped: its stop sent
@@ -373,44 +438,24 @@ func (c *C) run() {
 				c.log.Infof("watcher starting %s -> %s", hbID, peerNode)
 				beatingC := make(chan bool)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
+				watcherSeq++
 				remote.cancel[hbID] = cancel
 				remote.beatingChan[hbID] = beatingC
+				remote.watcher[hbID] = watcherSeq
 				if strings.HasSuffix(hbID, ".rx") {
 					remote.rxCount++
 				} else {
 					remote.txCount++
 				}
 				remotes[peerNode] = remote
-				c.peerWatch(beatingCtx, beatingC, o.HbID, peerNode, o.Desc, o.Timeout)
+				c.peerWatch(beatingCtx, beatingC, o.HbID, peerNode, o.Desc, o.Timeout, watcherSeq)
 			case CmdDelWatcher:
 				hbID := o.HbID
 				peerNode := o.Nodename
 				if _, ok := heartbeat[hbID]; ok {
 					delete(heartbeat[hbID].Peers, peerNode)
 				}
-				if remote, ok := remotes[peerNode]; ok {
-					cancel, registered := remote.cancel[hbID]
-					if !registered {
-						// A stream stopped before its start added
-						// the watcher, which the addition then skips.
-						c.log.Infof("del watcher skipped: not registered %s -> %s", hbID, peerNode)
-						continue
-					}
-					c.log.Infof("del watcher %s -> %s", hbID, peerNode)
-					cancel()
-					delete(remote.cancel, hbID)
-					delete(remote.beatingChan, hbID)
-					if strings.HasSuffix(hbID, ".rx") {
-						remote.rxCount--
-					} else {
-						remote.txCount--
-					}
-					if (remote.rxCount + remote.txCount) == 0 {
-						delete(remotes, peerNode)
-					} else {
-						remotes[peerNode] = remote
-					}
-				}
+				delWatcher(hbID, peerNode)
 			}
 		}
 	}
