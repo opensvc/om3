@@ -1311,9 +1311,10 @@ func (t *Manager) upOrWarnInstances() []string {
 
 func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 	candidates := t.startCandidates(isDaemonDecision)
-	if !isDaemonDecision && t.objStatus.Topology == topology.Failover {
+	if !isDaemonDecision && t.objStatus.Topology == topology.Failover && t.state.GlobalExpect == instance.MonitorGlobalExpectStarted {
 		// The instance a start asked of a failover object in warn
 		// completes is the one to start: see isWarnFailoverStartable.
+		// A giveback moves the object to its placement leader instead.
 		if up := t.upOrWarnInstances(); len(up) == 1 && t.instStatus[up[0]].Avail == status.Warn {
 			if slices.Contains(candidates, up[0]) {
 				candidates = up
