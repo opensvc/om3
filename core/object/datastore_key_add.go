@@ -2,9 +2,11 @@ package object
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 var (
@@ -60,8 +62,8 @@ func (t *dataStore) addKey(name string, b []byte) error {
 	if err != nil {
 		return err
 	}
-	if len(b) > int(*keysize) {
-		return ErrValueTooBig
+	if int64(len(b)) > *keysize {
+		return ValueTooBig(int64(len(b)), *keysize)
 	}
 	s, err := t.encodeDecoder.Encode(b)
 	if err != nil {
@@ -79,4 +81,11 @@ func (t *dataStore) addKey(name string, b []byte) error {
 		t.log.Attr("key", name).Attr("len", len(s)).Infof("set key %s", name)
 	}
 	return nil
+}
+
+// ValueTooBig is the error of a key value of size bytes, over the max allowed
+// by node.max_key_size: it says both sizes and the keyword to raise, the
+// sentinel ErrValueTooBig wrapped for errors.Is.
+func ValueTooBig(size, max int64) error {
+	return fmt.Errorf("%w: %sB > %sB (raise node.max_key_size)", ErrValueTooBig, sizeconv.BSize(float64(size)), sizeconv.BSize(float64(max)))
 }
