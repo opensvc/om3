@@ -198,8 +198,12 @@ func (t *Manager) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
 	t.checkRejoinTicker()
 }
 
+// checkRejoinTicker rearms the rejoin grace period timer of a node rejoining,
+// for a grace period changed. A node rejoined, waiting for the networks to be
+// set up to go idle, has no grace period left to time: rearmed, the timer
+// would freeze it once idle.
 func (t *Manager) checkRejoinTicker() {
-	if t.state.State != node.MonitorStateRejoin {
+	if t.state.State != node.MonitorStateRejoin || t.idleWanted {
 		return
 	}
 	if left := t.startedAt.Add(t.nodeConfig.RejoinGracePeriod).Sub(time.Now()); left <= 0 {
