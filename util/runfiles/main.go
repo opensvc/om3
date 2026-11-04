@@ -1,14 +1,18 @@
 package runfiles
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/util/bootid"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/proc"
 )
 
 type (
@@ -34,6 +38,47 @@ const (
 	doClean cleaning = iota
 	noClean
 )
+
+// headerPrefix begins the first line of a run file, naming the process that
+// wrote it: "run <start time> <boot id>", the start time in clock ticks since
+// the boot. A pid is reused, but not with the same start time before a
+// reboot, so the line tells the writer from a process given its pid since.
+const headerPrefix = "run "
+
+// header returns the identity line of the process pid, nil when it can not
+// be read, the file then written as before, judged by its time.
+func header(pid int) []byte {
+	start, err := proc.New(pid).StartTime()
+	if err != nil {
+		return nil
+	}
+	boot := bootid.Get()
+	if boot == "" {
+		return nil
+	}
+	return []byte(fmt.Sprintf("%s%d %s\n", headerPrefix, start, boot))
+}
+
+// parse returns the identity of the writer of the run file b, ok false for a
+// file written before the identity line, and the content after the line.
+func parse(b []byte) (start uint64, boot string, content []byte, ok bool) {
+	if !bytes.HasPrefix(b, []byte(headerPrefix)) {
+		return 0, "", b, false
+	}
+	line, rest, found := bytes.Cut(b, []byte("\n"))
+	if !found {
+		return 0, "", b, false
+	}
+	fields := strings.Fields(strings.TrimPrefix(string(line), headerPrefix))
+	if len(fields) != 2 {
+		return 0, "", b, false
+	}
+	start, err := strconv.ParseUint(fields[0], 10, 64)
+	if err != nil {
+		return 0, "", b, false
+	}
+	return start, fields[1], rest, true
+}
 
 func (t Dir) filename(pid int) string {
 	return filepath.Join(t.Path, fmt.Sprint(pid))
@@ -69,7 +114,7 @@ func (t Dir) create(pid int, content []byte) error {
 	}
 	defer file.Close()
 	defer file.Sync()
-	_, err = file.Write(content)
+	_, err = file.Write(append(header(pid), content...))
 	return err
 }
 
@@ -102,10 +147,11 @@ func (t Dir) List() (l List, err error) {
 			if err != nil {
 				return err
 			}
-			content, err := os.ReadFile(path)
+			b, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
+			_, _, content, _ := parse(b)
 			l = append(l, Info{
 				PID:     pid,
 				Content: content,
@@ -156,6 +202,30 @@ func IsValid(file string) (bool, error) {
 		return false, nil
 	}
 	pid := filepath.Base(file)
+	if pid == strconv.Itoa(os.Getpid()) {
+		// The run of this process.
+		return true, nil
+	}
+	b, err := os.ReadFile(file)
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	if start, boot, _, ok := parse(b); ok {
+		// The writer is named: the run is the one of the process running
+		// with its pid and start time, in this boot.
+		n, err := strconv.Atoi(pid)
+		if err != nil {
+			return false, nil
+		}
+		if boot != bootid.Get() || !proc.New(n).RunsSince(start) {
+			return false, fmt.Errorf("%w: %s", ErrProcNotFound, pid)
+		}
+		return true, nil
+	}
+	// A run file of an older agent names no writer: judged by the time of
+	// the process directory, which the kernel may recreate.
 	procFile := "/proc/" + pid
 	procInfo, err := os.Lstat(procFile)
 	if os.IsNotExist(err) {
