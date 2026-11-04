@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
@@ -43,10 +44,9 @@ func Test_daemon(t *testing.T) {
 	env, cancel := Setup(t)
 	defer cancel()
 
-	cData, err := GetDaemonStatus(t)
-	require.Nil(t, err)
-
 	paths := []naming.Path{naming.Cluster, naming.SecCa, naming.SecCert}
+	cData := waitDaemonInstances(t, "node1", paths, 5*time.Second)
+
 	for _, p := range paths {
 		s := p.String()
 		t.Run("check instance "+s, func(t *testing.T) {
@@ -168,4 +168,28 @@ func waitNodeMonitorStates(t *testing.T, evReader event.Reader, states ...node.M
 		}
 	}
 	t.Logf("all node monitor states has been reached: %s", states)
+}
+
+// waitDaemonInstances returns the daemon status once it holds the instances
+// of paths on node, or the last one read after timeout. The instances are
+// published once their config is read, and the listener renewing the
+// certificate at the daemon start rewrites the cert config, whose read then
+// waits for the writes to end: a status read at once may miss them.
+func waitDaemonInstances(t *testing.T, nodename string, paths []naming.Path, timeout time.Duration) clusterdump.Data {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for {
+		cData, err := GetDaemonStatus(t)
+		require.Nil(t, err)
+		missing := 0
+		for _, p := range paths {
+			if _, ok := cData.Cluster.Node[nodename].Instance[p.String()]; !ok {
+				missing++
+			}
+		}
+		if missing == 0 || time.Now().After(deadline) {
+			return cData
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
