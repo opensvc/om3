@@ -253,3 +253,21 @@ func TestAResourceInfoWithoutResponseStaysQueued(t *testing.T) {
 	assert.Contains(t, tr.resInfoToSend, i)
 	assert.True(t, tr.resInfoFailure.isFailing())
 }
+
+// The changes a status send took are queued again when its result comes
+// after a new epoch, as one a collector configuration change starts without
+// rebuilding the queue: they would be lost otherwise.
+func TestTheChangesOfAStaleStatusSendAreQueuedAgain(t *testing.T) {
+	f, release := hangingCollector()
+	tr := newSpeakerT(t, f)
+	tr.daemonStatusChange["test/svc/s1"] = struct{}{}
+
+	tr.sendDaemonData()
+	waitRequests(t, f, 1)
+	assert.Empty(t, tr.daemonStatusChange, "taken by the send")
+	tr.newFeedEpoch()
+
+	release <- http.StatusAccepted
+	applyNextResult(t, tr)
+	assert.Contains(t, tr.daemonStatusChange, "test/svc/s1")
+}
