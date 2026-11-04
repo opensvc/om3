@@ -125,3 +125,28 @@ func TestARequestWaitingForANetworkSetupIsAnsweredItsEnd(t *testing.T) {
 	applyNetworkSetupDone(t, m)
 	assert.ErrorIs(t, waiter.Receive(), setupErr)
 }
+
+// A node rejoined, waiting for the networks to be set up to go idle, keeps
+// its rejoin grace period timer stopped when its configuration is loaded
+// again: rearmed, the timer would freeze the node once idle.
+func TestTheRejoinTimerOfANodeRejoinedIsNotRearmed(t *testing.T) {
+	calls, release := stubNetworkSetup(t)
+	m := newNetworkSetupTestManager(t, node.MonitorStateRejoin)
+	m.startedAt = time.Now()
+	m.nodeConfig.RejoinGracePeriod = 10 * time.Millisecond
+	m.rejoinTicker = time.NewTicker(time.Hour)
+	m.rejoinTicker.Stop()
+
+	m.requestNetworkSetup(nil, nil)
+	nextNetworkSetup(t, calls)
+	m.rejoined()
+	m.checkRejoinTicker()
+	select {
+	case <-m.rejoinTicker.C:
+		t.Fatal("the rejoin timer was rearmed")
+	case <-time.After(100 * time.Millisecond):
+	}
+	release <- nil
+	applyNetworkSetupDone(t, m)
+	assert.Equal(t, node.MonitorStateIdle, m.state.State)
+}
