@@ -909,6 +909,21 @@ which share the same executor.
     Updated the default value for the stop_timeout keyword from 120 seconds to 
     10 seconds to align with the default behavior of Docker and Podman.
 
+* **Changed behaviour, the network of a container with no `netns`:**
+    A container with no `netns` keyword, and no network named in its `run_args`,
+    runs with `--net none`, as the `container.docker` driver does: a private
+    network namespace, with no podman network. v2 ran it on the first network
+    podman offered.
+
+    An om network ip plugged in its namespace kept the default route of the
+    podman network, which the replies took, so the other nodes got no answer.
+    A container with om network ips on an engine network is not supported.
+
+    The ports `run_args` publishes need an engine network, which podman
+    discards them without: name it in `run_args`, as
+    `run_args = --network podman -p 2222:22`. `expose` publishes nothing, it
+    makes SRV records.
+
 ### Driver: container.oci
 
     * `stop_timeout`
