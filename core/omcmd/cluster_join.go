@@ -303,6 +303,10 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 		fileTimestamps[file] = timestamp
 	}
 
+	// The node joins as frozen as it was: the drain freezes it for the
+	// join, which is no freeze of the operator, as in v2. A join failing
+	// before the cleanup leaves it frozen, drained.
+	wasFrozen := nodeFrozen()
 	if t.isRunning() {
 		if err := t.nodeDrain(ctx); err != nil {
 			return err
@@ -320,7 +324,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 
 	// The config is gone: the daemon is to start with the fetched one
 	// whatever the cleanup left, so the node joins.
-	cleanupErr := t.cleanupVarDir()
+	cleanupErr := t.cleanupVarDir(wasFrozen)
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return err
 	}

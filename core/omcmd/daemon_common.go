@@ -116,11 +116,11 @@ func (t *CmdDaemonCommon) dropBackup(backup string) {
 
 // cleanupVarDir removes the entries of the opensvc var directory, but the
 // backup directory, the filesystems mounted under it, as the one of a pool,
-// and the frozen flag of the node: they are the node's, not the cluster's,
-// and what they hold is not removed. An entry that can not be removed does not
-// stop the removal of the others, so the node left with a daemon to start has
-// as little as possible of the cluster it left.
-func (t *CmdDaemonCommon) cleanupVarDir() error {
+// and, with keepFreeze, the frozen flag of the node: they are the node's, not
+// the cluster's, and what they hold is not removed. An entry that can not be
+// removed does not stop the removal of the others, so the node left with a
+// daemon to start has as little as possible of the cluster it left.
+func (t *CmdDaemonCommon) cleanupVarDir(keepFreeze bool) error {
 	varDir, err := filepath.EvalSymlinks(rawconfig.Paths.Var)
 	if err != nil {
 		return err
@@ -131,7 +131,9 @@ func (t *CmdDaemonCommon) cleanupVarDir() error {
 		return err
 	}
 	keep := append(mounts, backup)
-	keep = append(keep, keepNodeFreeze(t.logger(), varDir)...)
+	if keepFreeze {
+		keep = append(keep, keepNodeFreeze(t.logger(), varDir)...)
+	}
 	return removeTree(t.logger(), varDir, keep)
 }
 
@@ -157,6 +159,12 @@ func keepNodeFreeze(log *plog.Logger, varDir string) []string {
 	}
 	log.Infof("Keep the node frozen since %s", at.Format(time.RFC3339))
 	return []string{p}
+}
+
+// nodeFrozen says the node is frozen, by a freeze of the node or of its
+// cluster.
+func nodeFrozen() bool {
+	return !freeze.Frozen(filepath.Join(rawconfig.Paths.Var, "node", "frozen")).IsZero()
 }
 
 // mountsUnder returns the mount points under dir.
