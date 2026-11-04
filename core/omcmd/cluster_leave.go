@@ -165,7 +165,7 @@ func (t *CmdClusterLeave) run() (err error) {
 
 	// The config is gone: the daemon is to start alone whatever the
 	// cleanup left, so the node stays reachable.
-	cleanupErr := t.cleanupVarDir()
+	cleanupErr := t.cleanupVarDir(true)
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return err
 	}
