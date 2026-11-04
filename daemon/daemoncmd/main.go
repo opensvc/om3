@@ -672,11 +672,41 @@ func (t *T) getPid() (int, error) {
 	} else if err != nil {
 		return -1, err
 	}
+	if leader, err := isThreadGroupLeader(pid); err != nil {
+		return -1, err
+	} else if !leader {
+		// A thread, not a process: at boot, the pid of the daemon of a
+		// previous boot can be the one of a thread of the daemon starting,
+		// with its command line, which would read "already running".
+		return -1, nil
+	}
 	v, err := isCmdlineMatchingDaemon(pid)
 	if !v {
 		return -1, err
 	}
 	return pid, err
+}
+
+// isThreadGroupLeader says the id pid is the one of a process, and not of
+// one of the threads of a process, which /proc also shows: false for an id
+// unknown.
+func isThreadGroupLeader(pid int) (bool, error) {
+	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if v, ok := strings.CutPrefix(line, "Tgid:"); ok {
+			tgid, err := strconv.Atoi(strings.TrimSpace(v))
+			if err != nil {
+				return false, fmt.Errorf("/proc/%d/status: %w", pid, err)
+			}
+			return tgid == pid, nil
+		}
+	}
+	return false, fmt.Errorf("/proc/%d/status: no Tgid", pid)
 }
 
 func isCmdlineMatchingDaemon(pid int) (bool, error) {
