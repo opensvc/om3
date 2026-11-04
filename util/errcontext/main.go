@@ -73,6 +73,12 @@ func New(ctx context.Context) ErrContexer {
 	return &errCtx{errC: make(chan error, 1), ctx: ctx}
 }
 
+// Done returns the channel closed when the context of the receiver is done,
+// as a request whose caller gave up: an error sent is then dropped.
+func (e *errCtx) Done() <-chan struct{} {
+	return e.ctx.Done()
+}
+
 // Send Sends an error if one has not been sent yet and if the context is still active.
 func (e *errCtx) Send(err error) {
 	if e == nil {

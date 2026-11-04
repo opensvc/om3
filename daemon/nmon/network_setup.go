@@ -22,6 +22,10 @@ type (
 		names     []string
 		waiters   []errcontext.ErrCloseSender
 		sessionID uuid.UUID
+
+		// daemonAsked says a request of the daemon, with no waiter, is
+		// merged in: the setup runs whatever became of the waiters.
+		daemonAsked bool
 	}
 
 	networkSetupResult struct {
@@ -38,6 +42,11 @@ var (
 	networkSetup = func(n *object.Node, names ...string) error {
 		return network.Setup(n, names...)
 	}
+
+	// networkSetupQueueMax is the number of setups queued at most: a
+	// request of a session finding the queue full merges into the last
+	// setup queued, whose logs are not of its session.
+	networkSetupQueueMax = 8
 
 	// networkSetupWarnAfter is the time a network setup runs before it is
 	// warned about: a setup hung, as one waiting for a name of a peer to
@@ -66,7 +75,7 @@ func (t *Manager) requestNetworkSetup(names []string, waiter errcontext.ErrClose
 		t.queueNetworkSetup(names, waiter, sessionID)
 		return
 	}
-	job := &networkSetupJob{names: names, sessionID: sessionID}
+	job := &networkSetupJob{names: names, sessionID: sessionID, daemonAsked: waiter == nil}
 	if waiter != nil {
 		job.waiters = append(job.waiters, waiter)
 	}
@@ -83,7 +92,10 @@ func (t *Manager) queueNetworkSetup(names []string, waiter errcontext.ErrCloseSe
 			break
 		}
 	}
-	if job == nil {
+	if job == nil && len(t.networkSetupQueue) >= networkSetupQueueMax {
+		job = t.networkSetupQueue[len(t.networkSetupQueue)-1]
+		job.merge(names)
+	} else if job == nil {
 		job = &networkSetupJob{names: []string{}}
 		if len(names) > 0 {
 			job.names = slices.Clone(names)
@@ -97,7 +109,29 @@ func (t *Manager) queueNetworkSetup(names []string, waiter errcontext.ErrCloseSe
 	}
 	if waiter != nil {
 		job.waiters = append(job.waiters, waiter)
+	} else {
+		job.daemonAsked = true
 	}
+}
+
+// waited drops the waiters of the job whose caller gave up, as one timing
+// out, and says whether the job is still to run: asked by the daemon, or by
+// a request still waiting for it.
+func (j *networkSetupJob) waited() bool {
+	alive := j.waiters[:0]
+	for _, w := range j.waiters {
+		if d, ok := w.(interface{ Done() <-chan struct{} }); ok {
+			select {
+			case <-d.Done():
+				w.Close()
+				continue
+			default:
+			}
+		}
+		alive = append(alive, w)
+	}
+	j.waiters = alive
+	return j.daemonAsked || len(alive) > 0
 }
 
 // merge takes in the networks named, all of them when names is empty: the
@@ -173,10 +207,15 @@ func (t *Manager) onNetworkSetupDone(r networkSetupResult) {
 			}
 		}
 	}
-	if len(t.networkSetupQueue) > 0 {
+	for len(t.networkSetupQueue) > 0 {
 		job := t.networkSetupQueue[0]
 		t.networkSetupQueue = t.networkSetupQueue[1:]
+		if !job.waited() {
+			t.log.Infof("drop the network setup %v queued: its callers gave up", job.names)
+			continue
+		}
 		t.startNetworkSetup(job)
+		break
 	}
 }
 
