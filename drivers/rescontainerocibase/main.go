@@ -652,6 +652,11 @@ func (t *BT) NeedPreStartRemove() bool {
 // NetNSPath returns the container inspect SandboxKey, else the network
 // namespace of the container process, else "".
 //
+// A container not running has no namespace: an engine may still report the
+// SandboxKey of its last run, as docker 26 does, whose namespace is gone,
+// and the ip resources in it would fail to stop on it, as they would fail a
+// purge.
+//
 // An engine may report no SandboxKey for a container it gave no network,
 // as podman 1.6 does for --net none: the namespace is then the one of the
 // running process, unless it is the one of the node, as for --net host,
@@ -663,6 +668,8 @@ func (t *BT) NetNSPath(ctx context.Context) (string, error) {
 	if i, err := t.executer.Inspect(ctx); err != nil {
 		return "", nil
 	} else if i == nil {
+		return "", nil
+	} else if !i.Running() || i.PID() <= 0 {
 		return "", nil
 	} else if s := i.SandboxKey(); s != "" {
 		return s, nil
