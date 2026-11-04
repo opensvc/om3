@@ -164,7 +164,7 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 		ioReader = bytes.NewBuffer(b)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultPostCollectorTimeout)
+	ctx, cancel, timeout := t.collectorRequestContext(context.Background())
 	defer cancel()
 
 	req, err = oc3.NewRequestWithContext(ctx, method, path, ioReader)
@@ -174,7 +174,7 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 
 	resp, err = oc3.Do(req)
 	if err != nil {
-		return fmt.Errorf("collector %s %s: %w", method, path, err)
+		return collectorRequestError(err, method, path, timeout)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -213,7 +213,7 @@ func (t *Node) RegisterJoiningNode(ctx context.Context, nodename, prevUUID strin
 		return "", fmt.Errorf("encode request body: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, defaultPostCollectorTimeout)
+	ctx, cancel, timeout := t.collectorRequestContext(ctx)
 	defer cancel()
 
 	req, err := oc3.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))
@@ -222,7 +222,7 @@ func (t *Node) RegisterJoiningNode(ctx context.Context, nodename, prevUUID strin
 	}
 	resp, err := oc3.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("collector %s %s: %w", method, path, err)
+		return "", collectorRequestError(err, method, path, timeout)
 	}
 	defer func() { _ = resp.Body.Close() }()
 

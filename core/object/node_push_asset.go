@@ -312,7 +312,7 @@ func (t Node) pushAsset(data asset.Data) error {
 		ioReader = bytes.NewBuffer(b)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultPostCollectorTimeout)
+	ctx, cancel, timeout := t.collectorRequestContext(context.Background())
 	defer cancel()
 
 	req, err = oc3.NewRequestWithContext(ctx, method, path, ioReader)
@@ -322,7 +322,7 @@ func (t Node) pushAsset(data asset.Data) error {
 
 	resp, err = oc3.Do(req)
 	if err != nil {
-		return fmt.Errorf("collector %s %s: %w", method, path, err)
+		return collectorRequestError(err, method, path, timeout)
 	}
 	defer func() { _ = resp.Body.Close() }()
 

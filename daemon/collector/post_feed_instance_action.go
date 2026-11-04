@@ -135,8 +135,7 @@ var (
 	// defaultActionPostTimeout bounds a POST or a PUT feed instance action,
 	// unless collector.timeout says otherwise, up to
 	// maxActionPostTimeout.
-	defaultActionPostTimeout = 5 * time.Second
-	maxActionPostTimeout     = 20 * time.Second
+	defaultActionPostTimeout = collector.DefaultTimeout
 
 	// defaultActionLogTimeout bounds the read of the log lines of an action,
 	// unless collector.action_log_timeout says otherwise.
@@ -386,7 +385,7 @@ func newActionTunables(cfg *collector.Config) actionTunables {
 		t.batch = cfg.ActionBatch
 	}
 	if cfg.Timeout > 0 {
-		t.postTimeout = min(max(cfg.Timeout, minActionTimeout), maxActionPostTimeout)
+		t.postTimeout = collector.BoundTimeout(cfg.Timeout)
 	}
 	if cfg.ActionLogTimeout > 0 {
 		t.logTimeout = max(cfg.ActionLogTimeout, minActionTimeout)

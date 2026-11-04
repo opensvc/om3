@@ -164,7 +164,7 @@ func (t *T) getPeerResInfo(p naming.Path, nodename string) (resource.Infos, erro
 	if err != nil {
 		return infos, fmt.Errorf("new client: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, peerRequestTimeout)
 	defer cancel()
 	resp, err := c.GetInstanceResourceInfoWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name)
 	if err != nil {
@@ -226,7 +226,7 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 		return fmt.Errorf("encode request body: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, t.postTimeout)
 	defer cancel()
 
 	req, err := t.client.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))

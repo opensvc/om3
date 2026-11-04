@@ -27,10 +27,30 @@ type (
 	}
 )
 
+const (
+	// DefaultTimeout bounds a request to the collector, unless
+	// collector.timeout says otherwise.
+	DefaultTimeout = 5 * time.Second
+
+	// MinTimeout and MaxTimeout bound collector.timeout.
+	MinTimeout = time.Second
+	MaxTimeout = 20 * time.Second
+)
+
 var (
 	ErrConfig       = errors.New("collector is not configured")
 	ErrUnregistered = errors.New("this node is not registered. try 'om node register'")
 )
+
+// BoundTimeout returns the collector request timeout d, the
+// collector.timeout value, within MinTimeout and MaxTimeout, or
+// DefaultTimeout when not set.
+func BoundTimeout(d time.Duration) time.Duration {
+	if d <= 0 {
+		return DefaultTimeout
+	}
+	return min(max(d, MinTimeout), MaxTimeout)
+}
 
 func (t *Config) Equal(o *Config) bool {
 	if t == nil && o != nil {
