@@ -1098,15 +1098,26 @@ func (t *T) WipeMD(ctx context.Context) error {
 // defined, as one a provision failed to bring up: drbdadm reads its backing
 // device from the configuration file. Metadata left there would be adopted by
 // the next resource made on the same extents, and handshake with generations
-// its peers never had. The metadata of a backing device gone is no concern
-// of the unprovision, which goes on.
-func (t *T) wipeUndefinedMD(ctx context.Context) {
+// its peers never had: metadata found and not wiped fails the unprovision,
+// the configuration kept to wipe it again. Metadata that can not be read, as
+// on a backing device gone, is no concern of the unprovision, which goes on.
+func (t *T) wipeUndefinedMD(ctx context.Context) error {
 	if !t.isConfigured() {
-		return
+		return nil
 	}
-	if err := t.WipeMD(ctx); err != nil {
-		t.Log().Warnf("wipe the metadata of the resource not defined: %s", err)
+	dev := t.drbd(ctx)
+	has, err := dev.HasMD(ctx)
+	if err != nil {
+		t.Log().Warnf("read the metadata of the resource not defined: %s", err)
+		return nil
 	}
+	if !has {
+		return nil
+	}
+	if err := dev.WipeMD(ctx); err != nil {
+		return fmt.Errorf("wipe the metadata of the resource not defined: %w", err)
+	}
+	return nil
 }
 
 func (t *T) maxPeers() int {
@@ -1222,7 +1233,9 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 		}
 	} else {
 		t.Log().Infof("resource already not defined")
-		t.wipeUndefinedMD(ctx)
+		if err := t.wipeUndefinedMD(ctx); err != nil {
+			return err
+		}
 	}
 	if err := t.deleteConfig(); err != nil {
 		return err

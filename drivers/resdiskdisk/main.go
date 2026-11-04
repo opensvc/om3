@@ -2,6 +2,7 @@ package resdiskdisk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -93,7 +94,15 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.configure(ctx, enforce); err != nil {
 		return err
 	}
-	return t.blankTail(ctx)
+	if err := t.blankTail(ctx); err != nil {
+		// The disk is deleted and its id unset: a retry, finding the
+		// id, would adopt the disk with what its end held.
+		if undoErr := t.UnprovisionAsLeader(ctx); undoErr != nil {
+			return errors.Join(err, fmt.Errorf("delete the disk not blanked: %w", undoErr))
+		}
+		return err
+	}
+	return nil
 }
 
 // blankTail zeroes the end of the disk just made, as what a provision creates
