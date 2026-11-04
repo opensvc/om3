@@ -21,6 +21,7 @@ func newWarnTestManager(localhost string) *Manager {
 	m.objStatus.Avail = status.Warn
 	m.objStatus.Provisioned = provisioned.True
 	m.instStatus["node2"] = instance.Status{Avail: status.Warn, Provisioned: provisioned.True}
+	m.state.GlobalExpect = instance.MonitorGlobalExpectStarted
 	return m
 }
 
@@ -61,4 +62,12 @@ func TestTheDaemonDoesNotStartAFailoverObjectInWarn(t *testing.T) {
 	m := newWarnTestManager("node2")
 	ok, _ := m.isHAOrchestrateable()
 	assert.False(t, ok)
+}
+
+// A giveback moves the object to its placement leader, an instance in warn
+// elsewhere included.
+func TestAGivebackOfAnObjectInWarnGoesToThePlacementLeader(t *testing.T) {
+	m := newWarnTestManager("node1")
+	m.state.GlobalExpect = instance.MonitorGlobalExpectPlaced
+	assert.True(t, m.isStartCandidateLeader(false), "node1 leads the placement")
 }
