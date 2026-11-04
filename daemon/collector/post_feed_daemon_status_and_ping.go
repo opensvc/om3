@@ -145,7 +145,7 @@ func (t *T) postPing() error {
 	}
 	t.log.Tracef("postFeedDaemonPing: %v", body)
 
-	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, t.postTimeout)
 	defer cancel()
 
 	req, err = t.client.NewRequestWithContext(ctx, method, path, ioReader)
@@ -223,7 +223,7 @@ func (t *T) postChanges() error {
 		ioReader = bytes.NewBuffer(b)
 	}
 
-	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, t.postTimeout)
 	defer cancel()
 
 	req, err = t.client.NewRequestWithContext(ctx, method, path, ioReader)
@@ -293,7 +293,7 @@ func (t *T) postStatus() error {
 		return fmt.Errorf("post daemon status body: %s", err)
 	}
 
-	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, t.postTimeout)
 	defer cancel()
 
 	req, err = t.client.NewRequestWithContext(ctx, method, path, ioReader)
@@ -459,18 +459,17 @@ func (t *T) dequeueAction(nodename string) error {
 	if _, ok := t.clusterNode[nodename]; !ok {
 		return fmt.Errorf("node %s not found in cluster", nodename)
 	}
-	tkDuration := 5 * time.Second
 	options := []funcopt.O{
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
 		client.WithServerName(nodename),
 		client.WithBearerFunc(daemonauth.CreateNodeToken),
-		client.WithTimeout(tkDuration),
+		client.WithTimeout(peerRequestTimeout),
 	}
 	cli, err := client.New(options...)
 	if err != nil {
 		return fmt.Errorf("new client: %s", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), tkDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), peerRequestTimeout)
 	defer cancel()
 	resp, err := cli.PostPeerActionDequeue(ctx, nodename, nil)
 	if err != nil {

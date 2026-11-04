@@ -1,3 +1,4 @@
-The maximum time to wait for a collector v3 call, as the send of the begin
-or the end of an instance action.
+The maximum time to wait for a collector v3 request: the node register, the
+push of the asset, disks, packages and checks, and the daemon posts of its
+status, the instance configurations, resource information and actions.
 Minimum value: 1s. Maximum value: 20s.

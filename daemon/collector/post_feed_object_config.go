@@ -194,7 +194,9 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 		}
 		t.log.Debugf("retrieve remote config %s@%s", p, peer)
 		params := &api.GetObjectConfigFileParams{}
-		if resp, err := cli.GetObjectConfigFile(t.ctx, p.Namespace, p.Kind, p.Name, params); err != nil {
+		ctx, cancel := context.WithTimeout(t.ctx, peerRequestTimeout)
+		defer cancel()
+		if resp, err := cli.GetObjectConfigFile(ctx, p.Namespace, p.Kind, p.Name, params); err != nil {
 			return "", []byte{}, err
 		} else if resp.StatusCode == http.StatusOK {
 			if b, err := io.ReadAll(resp.Body); err != nil {
@@ -258,7 +260,7 @@ func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 		path   = oc3path.FeedObjectConfig
 	)
 
-	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
+	ctx, cancel := context.WithTimeout(t.ctx, t.postTimeout)
 	defer cancel()
 
 	req, err = t.client.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))

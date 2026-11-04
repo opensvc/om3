@@ -154,6 +154,7 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 func (t *T) applyConfig(cfg *collector.Config) {
 	t.log.Tracef("reconfigure")
 	t.appliedConfig = cfg.DeepCopy()
+	t.setPostTimeout(cfg)
 	t.setThrottle(cfg)
 	t.setActionTunables(cfg)
 	if err := t.setupRequester(cfg); err != nil {
@@ -165,6 +166,19 @@ func (t *T) applyConfig(cfg *collector.Config) {
 	// collector url set or unset on a node already elected.
 	t.updateSpeaker()
 	t.publishOnChange(t.getState())
+}
+
+// setPostTimeout sets the timeout of the posts of the daemon data from the
+// collector configuration cfg, nil when the collector is not configured.
+func (t *T) setPostTimeout(cfg *collector.Config) {
+	n := collector.DefaultTimeout
+	if cfg != nil {
+		n = collector.BoundTimeout(cfg.Timeout)
+	}
+	if n != t.postTimeout {
+		t.log.Infof("feeder post timeout: %s", n)
+		t.postTimeout = n
+	}
 }
 
 func (t *T) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {

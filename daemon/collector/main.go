@@ -126,6 +126,10 @@ type (
 		// was last set up from.
 		appliedConfig *collector.Config
 
+		// postTimeout bounds a post of the daemon data to the
+		// collector: collector.timeout.
+		postTimeout time.Duration
+
 		subQS pubsub.QueueSizer
 
 		// version is the data version
@@ -231,11 +235,12 @@ const (
 
 	minFeedStatusDelay  = 10 * time.Second
 	minFeedPingInterval = 60 * time.Second
-)
 
-var (
-	// defaultPostMaxDuration is the max duration of post request context.
-	defaultPostMaxDuration = 1000 * time.Millisecond
+	// peerRequestTimeout bounds a request of the speaker to the daemon of
+	// another cluster node, as the GET of an instance configuration file
+	// or resource info to send to the collector: collector.timeout bounds
+	// the requests to the collector only.
+	peerRequestTimeout = 5 * time.Second
 )
 
 func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
@@ -254,6 +259,8 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			Url: "",
 		},
 		version: "3.0.0",
+
+		postTimeout: collector.DefaultTimeout,
 
 		actionPendingDir:  ActionPendingDir(),
 		actionSendResultC: make(chan []actionSendResult, 1),
@@ -318,6 +325,7 @@ func (t *T) Start(ctx context.Context) error {
 		cfg := initialNodeConfig.Collector
 		t.appliedConfig = cfg.DeepCopy()
 
+		t.setPostTimeout(cfg)
 		t.setThrottle(cfg)
 		t.setActionTunables(cfg)
 

@@ -1,9 +1,11 @@
 package object
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -37,10 +39,6 @@ type (
 	CollectorProblem struct {
 		text string
 	}
-)
-
-var (
-	defaultPostCollectorTimeout = 1 * time.Second
 )
 
 // CollectorResponseStatusCheck verifies if the HTTP response status code matches any of the expected codes in `wanted`.
@@ -136,7 +134,7 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 	return &collector.Config{
 		FeederUrl:    t.FeederUrl(),
 		ServerUrl:    t.ServerUrl(),
-		Timeout:      timeout,
+		Timeout:      collector.BoundTimeout(timeout),
 		Insecure:     t.insecure,
 		Password:     t.uuid,
 		PingInterval: pingInterval,
@@ -145,6 +143,24 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 		ActionBatch:      t.actionBatch,
 		ActionLogTimeout: actionLogTimeout,
 	}
+}
+
+// collectorRequestContext returns ctx bounded by collector.timeout, for a
+// request to the collector, and that timeout.
+func (t *Node) collectorRequestContext(ctx context.Context) (context.Context, context.CancelFunc, time.Duration) {
+	timeout := t.CollectorRawConfig().AsConfig().Timeout
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	return ctx, cancel, timeout
+}
+
+// collectorRequestError returns the error err of the request method path to
+// the collector, saying the request timed out after timeout, the value of
+// collector.timeout, when it did.
+func collectorRequestError(err error, method, path string, timeout time.Duration) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("collector %s %s: no answer within %s (collector.timeout): %w", method, path, timeout, err)
+	}
+	return fmt.Errorf("collector %s %s: %w", method, path, err)
 }
 
 func (t *Node) CollectorFeedClient() (*collector.Client, error) {
