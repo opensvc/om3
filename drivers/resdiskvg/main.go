@@ -295,6 +295,23 @@ func (t *T) Label(_ context.Context) string {
 	return t.VGName
 }
 
+// existsFresh says the volume group exists, a vg found checked again once
+// the lvm cache refreshed: with lvmetad, the cache of a node keeps listing
+// a vg of a shared storage another node removed, as the leader of its
+// unprovision, after the followers, and the next provision would refuse it,
+// or adopt a vg gone.
+func (t *T) existsFresh(ctx context.Context) (bool, error) {
+	exists, err := t.vg().Exists(ctx)
+	if err != nil || !exists {
+		return exists, err
+	}
+	if err := lvm2.PVScan(t.Log()); err != nil {
+		t.Log().Debugf("refresh the lvm cache: %s", err)
+		return exists, nil
+	}
+	return t.vg().Exists(ctx)
+}
+
 func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	if !t.IsShared() {
 		return t.ProvisionAsLeader(ctx)
@@ -308,7 +325,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("Volume group %s provisioning skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
 	}
-	exists, err := vg.Exists(ctx)
+	exists, err := t.existsFresh(ctx)
 	if err != nil {
 		return err
 	}
