@@ -26,7 +26,7 @@ func (t *CmdNetworkSetup) Run() error {
 	if t.NodeSelector == "" {
 		return fmt.Errorf("--node must be specified")
 	}
-	c, err := client.New()
+	c, err := client.New(client.WithTimeout(commoncmd.NetworkSetupClientTimeout))
 	if err != nil {
 		return err
 	}

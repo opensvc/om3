@@ -27,7 +27,7 @@ func (t *CmdNetworkSetup) Run() error {
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
-	c, err := client.New()
+	c, err := client.New(client.WithTimeout(commoncmd.NetworkSetupClientTimeout))
 	if err != nil {
 		return err
 	}
