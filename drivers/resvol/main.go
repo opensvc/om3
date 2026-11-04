@@ -647,13 +647,33 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
+// Provisioned says the volume of the resource exists and is claimed by the
+// object, as v2 did. A volume existing but not claimed, as one a service
+// created again points at after the purge of its former self, is not: the
+// provision claims it, and the claim is what the volume reads its children
+// from, which its stop, its purge and its sync store wait for.
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	volume, err := t.Volume()
 	if err != nil {
 		return provisioned.False, err
 	}
-	exists := volume.Path().Exists()
-	return provisioned.FromBool(exists), nil
+	if !volume.Path().Exists() {
+		return provisioned.False, nil
+	}
+	children, err := volume.Children()
+	if err != nil {
+		return provisioned.Undef, err
+	}
+	return claimedBy(children, t.Path)
+}
+
+// claimedBy says the children of a volume hold p, on any node.
+func claimedBy(children naming.Relations, p naming.Path) (provisioned.T, error) {
+	v, err := children.HasPath(p)
+	if err != nil {
+		return provisioned.Undef, err
+	}
+	return provisioned.FromBool(v), nil
 }
 
 // ResizeTarget implements resource.ResizeTargeter.
