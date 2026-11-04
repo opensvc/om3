@@ -45,7 +45,9 @@ func TestTheTableOfAnAddressIsItsOwn(t *testing.T) {
 	assert.NotEqual(t, v6, TableID(net.ParseIP("fdfe::13")))
 	assert.Greater(t, v6, 255)
 	assert.Equal(t, v6, TableID(net.ParseIP("fdfe::12")), "found again from the address")
-	assert.Greater(t, TableID(net.ParseIP("0.0.0.254")), 255, "no table of the kernel, as the main one")
+	assert.False(t, SourceRoute{Addr: cidr(t, "0.0.0.254/23")}.hasTable(), "no table of the kernel, as the main one")
+	assert.True(t, SourceRoute{Addr: cidr(t, "128.0.0.254/24")}.hasTable())
+	assert.NotEqual(t, TableID(net.ParseIP("0.0.0.254")), TableID(net.ParseIP("128.0.0.254")))
 }
 
 func TestTheSourceOfTheRuleIsTheAddressAlone(t *testing.T) {
