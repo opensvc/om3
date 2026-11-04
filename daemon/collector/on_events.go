@@ -22,20 +22,11 @@ func (t *T) onRefreshTicker() {
 		t.pruneActionSent()
 	}
 	if t.isSpeaker {
-		switch err := t.sendCollectorData(); {
-		case errors.Is(err, errCollectorDataNotSent):
-		case err != nil:
-			t.log.Debugf("sendCollectorData: %s", err)
-			t.daemonStatusFailure.update(t.log, time.Now(), err, 0)
-		default:
-			t.daemonStatusFailure.update(t.log, time.Now(), nil, 0)
-		}
-		if len(t.objectConfigToSend) > 0 {
-			t.sendObjectConfigChange()
-		}
-		if len(t.resInfoToSend) > 0 {
-			t.sendResInfoChange()
-		}
+		// Each send runs off the loop, at most one per feed: a collector
+		// slow to answer holds no event.
+		t.sendDaemonData()
+		t.sendObjectConfigChange()
+		t.sendResInfoChange()
 		t.sendActions()
 	} else {
 		t.previousUpdatedAt = time.Time{}
@@ -125,9 +116,6 @@ func (t *T) onInstanceResourceInfoUpdated(c *msgbus.InstanceResourceInfoUpdated)
 
 func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	i := instance.InstanceString(c.Path, c.Node)
-	delete(t.changes.instanceStatusUpdates, i)
-	delete(t.instances, i)
-	t.changes.instanceStatusDeletes[i] = c
 	t.daemonStatusChange[i] = struct{}{}
 	delete(t.resInfoToSend, i)
 	delete(t.resInfoSent, i)
@@ -138,11 +126,7 @@ func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 }
 
 func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
-	i := instance.InstanceString(c.Path, c.Node)
-	delete(t.changes.instanceStatusDeletes, i)
-	t.changes.instanceStatusUpdates[i] = c
-	t.instances[i] = struct{}{}
-	t.daemonStatusChange[i] = struct{}{}
+	t.daemonStatusChange[instance.InstanceString(c.Path, c.Node)] = struct{}{}
 }
 
 func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
@@ -153,6 +137,11 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 // it as the one applied.
 func (t *T) applyConfig(cfg *collector.Config) {
 	t.log.Tracef("reconfigure")
+	if !cfg.Equal(t.appliedConfig) {
+		// The sends in flight go to the collector of the configuration
+		// they were cut with.
+		t.newFeedEpoch()
+	}
 	t.appliedConfig = cfg.DeepCopy()
 	t.setPostTimeout(cfg)
 	t.setThrottle(cfg)
@@ -215,6 +204,7 @@ func (t *T) updateSpeaker() {
 	if isSpeaker {
 		t.seedResInfoToSend()
 	} else {
+		t.newFeedEpoch()
 		t.dropActionToSend()
 		t.daemonStatusFailure.reset()
 		t.resInfoFailure.reset()

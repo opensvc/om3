@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ type (
 	// the requests and their bodies.
 	fakeRequester struct {
 		respond  func(req *http.Request) *http.Response
+		mu       sync.Mutex
 		requests []*http.Request
 		bodies   [][]byte
 	}
@@ -46,9 +48,31 @@ func (f *fakeRequester) NewRequestWithContext(ctx context.Context, method string
 
 func (f *fakeRequester) Do(req *http.Request) (*http.Response, error) {
 	b, _ := io.ReadAll(req.Body)
+	f.mu.Lock()
 	f.requests = append(f.requests, req)
 	f.bodies = append(f.bodies, b)
+	f.mu.Unlock()
 	return f.respond(req), nil
+}
+
+// requestCount returns the number of requests done, while a sender may be
+// doing one.
+func (f *fakeRequester) requestCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.requests)
+}
+
+// applyNextResult waits for the next send result and applies it, as the
+// loop does.
+func applyNextResult(t *testing.T, tr *T) {
+	t.Helper()
+	select {
+	case r := <-tr.sendResultC:
+		r.apply(tr)
+	case <-time.After(5 * time.Second):
+		t.Fatal("no send result")
+	}
 }
 
 func (f *fakePublisher) Pub(m pubsub.Messager, _ ...pubsub.Label) {
@@ -105,7 +129,7 @@ func newTestT(t *testing.T) (*T, *fakePublisher) {
 		version:           "3.0.0",
 		actionPendingDir:  collector.ActionPendingDir(t.TempDir()),
 		actionAnnouncedAt: make(map[string]time.Time),
-		actionSendResultC: make(chan []actionSendResult, 1),
+		sendResultC:       make(chan sendResult, sendResultChanSize),
 		actionFailure:     newCollectorFailure("action logs"),
 		actionTunables:    newActionTunables(nil),
 	}
@@ -385,12 +409,7 @@ func TestSendActionsBatch(t *testing.T) {
 	tr.sendActions()
 	assert.True(t, tr.actionSending)
 	tr.sendActions()
-	select {
-	case results := <-tr.actionSendResultC:
-		tr.onActionSendResults(results)
-	case <-time.After(5 * time.Second):
-		t.Fatal("no send result")
-	}
+	applyNextResult(t, tr)
 	assert.Len(t, f.requests, 1, "one batch at a time")
 	assert.Equal(t, "oc3-uuid", tr.actionBeginUUID[a.Key()])
 	require.Len(t, pub.msgs, 1)
@@ -609,12 +628,7 @@ func TestSendActionsStopsAtTheFirstFailure(t *testing.T) {
 
 	runBatch := func() {
 		tr.sendActions()
-		select {
-		case results := <-tr.actionSendResultC:
-			tr.onActionSendResults(results)
-		case <-time.After(5 * time.Second):
-			t.Fatal("no send result")
-		}
+		applyNextResult(t, tr)
 	}
 
 	runBatch()

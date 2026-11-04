@@ -19,7 +19,6 @@ func TestFeedOf(t *testing.T) {
 	for path, want := range map[string]string{
 		"/feeder/api/daemon/ping":            feedDaemonPing,
 		"/api/daemon/status":                 feedDaemonStatus,
-		"/api/daemon/change":                 feedDaemonChange,
 		"/feeder/api/instance/resource_info": feedResourceInfo,
 		"/feeder/api/object/config":          feedObjectConfig,
 		"/feeder/api/instance/action":        feedInstanceAction,
@@ -77,7 +76,6 @@ func TestSetPendingMetrics(t *testing.T) {
 
 	tr.setPendingMetrics()
 	assert.Equal(t, 2.0, pending(feedDaemonStatus))
-	assert.Equal(t, 0.0, pending(feedDaemonChange))
 	assert.Equal(t, 1.0, pending(feedResourceInfo))
 	assert.Equal(t, 0.0, pending(feedObjectConfig))
 	assert.Equal(t, 2.0, pending(feedInstanceAction))

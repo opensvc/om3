@@ -61,12 +61,6 @@ type (
 		// will post a full dataset.
 		previousUpdatedAt time.Time
 
-		// changes is used to POST /daemon/data
-		changes changesData
-
-		// instances is used to POST /daemon/ping
-		instances map[string]struct{}
-
 		// daemonStatusChange is used when we have to post data to collector:
 		// if the map is empty, we POST oc3path.FeedDaemonPing
 		// else we POST oc3path.FeedDaemonStatus with header XDaemonChange
@@ -81,9 +75,6 @@ type (
 		nodeFrozenAt map[string]time.Time
 
 		clusterData clusterDataer
-
-		// featurePostChange when true, POST oc3path.FeedDaemonChange instead of
-		featurePostChange bool
 
 		// objectConfigToSend is a map of path to the most recent
 		// InstanceConfigUpdated populated from:
@@ -172,9 +163,24 @@ type (
 		// actionSending is true while a batch of action phases is sent.
 		actionSending bool
 
-		// actionSendResultC is where the batch sender returns its results
-		// to the loop.
-		actionSendResultC chan []actionSendResult
+		// daemonDataSending, objectConfigSending and resInfoSending are
+		// true while a send of their feed is in flight.
+		daemonDataSending   bool
+		objectConfigSending bool
+		resInfoSending      bool
+
+		// daemonStatusInFlight is the count of the daemonStatusChange
+		// keys swapped out for the daemon status in flight.
+		daemonStatusInFlight int
+
+		// sendResultC is where the senders running off the loop return
+		// their results to the loop.
+		sendResultC chan sendResult
+
+		// feedEpoch counts the resyncs, speaker changes and collector
+		// configuration changes: a send result of an earlier epoch is
+		// dropped.
+		feedEpoch uint64
 
 		// actionFailed is the set of the queued action phases whose latest
 		// send failed, by key.
@@ -215,22 +221,9 @@ type (
 		ClusterData() *clusterdump.Data
 		ClusterDataJSON() ([]byte, error)
 	}
-
-	changesData struct {
-		instanceStatusUpdates map[string]*msgbus.InstanceStatusUpdated
-		instanceStatusDeletes map[string]*msgbus.InstanceStatusDeleted
-	}
-
-	changesPost struct {
-		PreviousUpdatedAt     time.Time                      `json:"previous_updated_at"`
-		UpdatedAt             time.Time                      `json:"updated_at"`
-		InstanceStatusUpdates []msgbus.InstanceStatusUpdated `json:"instance_status_update"`
-		InstanceStatusDeletes []msgbus.InstanceStatusDeleted `json:"instance_status_delete"`
-	}
 )
 
 const (
-	headerDaemonChange      = "XDaemonChange"
 	headerPreviousUpdatedAt = "XPreviousUpdatedAt"
 
 	minFeedStatusDelay  = 10 * time.Second
@@ -262,8 +255,8 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 
 		postTimeout: collector.DefaultTimeout,
 
-		actionPendingDir:  ActionPendingDir(),
-		actionSendResultC: make(chan []actionSendResult, 1),
+		actionPendingDir: ActionPendingDir(),
+		sendResultC:      make(chan sendResult, sendResultChanSize),
 
 		actionFailure:       newCollectorFailure("action logs"),
 		daemonStatusFailure: newCollectorFailure("daemon status"),
@@ -472,21 +465,19 @@ func (t *T) loop() {
 			}
 		case <-refreshTicker.C:
 			t.onRefreshTicker()
-		case results := <-t.actionSendResultC:
-			t.onActionSendResults(results)
+		case r := <-t.sendResultC:
+			r.apply(t)
 		case <-t.ctx.Done():
 			return
 		}
 	}
 }
 
+// initChanges rebuilds the speaker queues and caches from the daemon data,
+// for a full dataset sent to the collector. It starts a new feed epoch.
 func (t *T) initChanges() {
+	t.newFeedEpoch()
 	t.previousUpdatedAt = time.Time{}
-	t.instances = make(map[string]struct{})
-	t.changes = changesData{
-		instanceStatusUpdates: make(map[string]*msgbus.InstanceStatusUpdated),
-		instanceStatusDeletes: make(map[string]*msgbus.InstanceStatusDeleted),
-	}
 	t.daemonStatusChange = make(map[string]struct{})
 	t.clusterObject = make(map[string]struct{})
 	t.clusterNode = make(map[string]struct{})
@@ -502,15 +493,7 @@ func (t *T) initChanges() {
 	}
 
 	for _, v := range instance.StatusData.GetAll() {
-		i := instance.InstanceString(v.Path, v.Node)
-		t.instances[i] = struct{}{}
-		t.changes.instanceStatusUpdates[i] = &msgbus.InstanceStatusUpdated{
-			Path:  v.Path,
-			Node:  v.Node,
-			Value: *v.Value,
-		}
-
-		t.daemonStatusChange[i] = struct{}{}
+		t.daemonStatusChange[instance.InstanceString(v.Path, v.Node)] = struct{}{}
 	}
 
 	for _, v := range node.StatusData.GetAll() {
@@ -545,8 +528,6 @@ func (t *T) initActions() {
 }
 
 func (t *T) dropChanges() {
-	t.changes.instanceStatusUpdates = make(map[string]*msgbus.InstanceStatusUpdated)
-	t.changes.instanceStatusDeletes = make(map[string]*msgbus.InstanceStatusDeleted)
 	t.daemonStatusChange = make(map[string]struct{})
 }
 

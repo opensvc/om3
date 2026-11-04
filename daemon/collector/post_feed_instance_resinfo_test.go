@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,14 +78,10 @@ func TestDoPostResInfoNamesTheInstanceNode(t *testing.T) {
 	f := &fakeRequester{respond: func(*http.Request) *http.Response {
 		return response(http.StatusAccepted, `null`)
 	}}
-	tr := &T{
-		ctx:         context.Background(),
-		log:         plog.NewDefaultLogger(),
-		localhost:   "node1",
-		client:      f,
-		resInfoSent: make(map[string]resInfoSent),
-	}
-	require.NoError(t, tr.doPostResInfo(v, infos))
+	ctx := context.Background()
+	outcome, err := doPostResInfo(ctx, f, time.Second, v, infos)
+	require.NoError(t, err)
+	assert.Equal(t, sendDone, outcome)
 	require.Len(t, f.bodies, 1)
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(f.bodies[0], &body))
@@ -93,5 +90,7 @@ func TestDoPostResInfoNamesTheInstanceNode(t *testing.T) {
 	f.respond = func(*http.Request) *http.Response {
 		return response(http.StatusForbidden, `{"detail":"node2: not a node of the cluster"}`)
 	}
-	assert.ErrorIs(t, tr.doPostResInfo(v, infos), errCollectorRefused)
+	outcome, err = doPostResInfo(ctx, f, time.Second, v, infos)
+	assert.ErrorIs(t, err, errCollectorRefused)
+	assert.Equal(t, sendDropped, outcome, "refused for good: not sent again")
 }

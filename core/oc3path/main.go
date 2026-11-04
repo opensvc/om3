@@ -5,7 +5,6 @@ const (
 	FeedNodeActionQDone    = "/api/node/actionq/done"
 	FeedNodeActionQRunning = "/api/node/actionq/running"
 
-	FeedDaemonChange = "/api/daemon/change"
 	FeedDaemonPing   = "/api/daemon/ping"
 	FeedDaemonStatus = "/api/daemon/status"
 

@@ -92,37 +92,96 @@ func (t *T) seedResInfoToSend() {
 	}
 }
 
+// sendResInfoChange starts the send of a batch of the queued resource infos,
+// unless one is in flight. The result comes back to the loop through
+// sendResultC.
+//
+// A resource info sent, or refused for good, is dequeued. A send failing
+// stops the batch: it and the ones not tried stay queued for a later tick,
+// as with the collector down the others would fail too, each after fetching
+// its info on its node.
 func (t *T) sendResInfoChange() {
-	t.log.Tracef("sendResInfoChange")
-	getResInfo := t.resInfoGet
-	if getResInfo == nil {
-		getResInfo = t.getResInfo
+	if t.resInfoSending || len(t.resInfoToSend) == 0 || t.client == nil {
+		return
 	}
-	var failErr error
+	jobs := make([]resInfoJob, 0, min(len(t.resInfoToSend), sendBatchMax))
 	for i, v := range t.resInfoToSend {
-		infos, err := getResInfo(v.Path, v.Node)
-		if err != nil {
-			// skip os.ErrNotExist: the instance may never have refreshed its
-			// cache, or may have been deleted.
-			if !errors.Is(err, os.ErrNotExist) {
-				t.log.Warnf("skip send resource info %s: %s", i, err)
-			}
-			delete(t.resInfoToSend, i)
-			continue
-		}
-		if err := t.doPostResInfo(v, infos); errors.Is(err, errCollectorRefused) {
-			// refused for good, as the info of a node the collector does
-			// not know in the cluster: drop it
-			t.log.Warnf("post resource info %s: %s", i, err)
-		} else if err != nil {
-			// Keep it queued, retried on a later tick, and stop: with the
-			// collector down the others would fail too, each after
-			// fetching its info on its node.
-			t.log.Debugf("post resource info %s: %s", i, err)
-			failErr = err
+		if len(jobs) == sendBatchMax {
 			break
 		}
+		jobs = append(jobs, resInfoJob{key: i, queued: v})
+	}
+	t.resInfoSending = true
+	epoch, ctx, requester, timeout, localhost := t.feedEpoch, t.ctx, t.client, t.postTimeout, t.localhost
+	get := t.resInfoGet
+	if get == nil {
+		get = func(p naming.Path, nodename string) (resource.Infos, error) {
+			return getResInfo(ctx, localhost, p, nodename)
+		}
+	}
+	t.goSend(func() sendResult {
+		r := resInfoResult{epoch: epoch}
+		for _, job := range jobs {
+			item := resInfoItem{resInfoJob: job}
+			v := job.queued
+			if infos, err := get(v.Path, v.Node); err != nil {
+				item.outcome, item.err = sendDropped, err
+			} else {
+				item.outcome, item.err = doPostResInfo(ctx, requester, timeout, v, infos)
+				if item.outcome == sendDone {
+					item.sentAt = time.Now()
+				}
+			}
+			r.items = append(r.items, item)
+			if item.outcome == sendFailed {
+				break
+			}
+		}
+		return r
+	})
+}
+
+// apply applies the result of a batch of resource infos sent. An entry
+// replaced in flight stays queued for its newer version, and one deleted in
+// flight, with its instance, is not recorded sent.
+func (r resInfoResult) apply(t *T) {
+	t.resInfoSending = false
+	if r.epoch != t.feedEpoch {
+		t.log.Debugf("drop the result of resource infos sent before a resync or a speaker change")
+		return
+	}
+	var failErr error
+	for _, item := range r.items {
+		i, v := item.key, item.queued
+		switch item.outcome {
+		case sendFailed:
+			// Kept queued, retried on a later tick.
+			t.log.Debugf("post resource info %s: %s", i, item.err)
+			failErr = item.err
+			continue
+		case sendDropped:
+			// skip os.ErrNotExist: the instance may never have refreshed
+			// its cache, or may have been deleted.
+			if errors.Is(item.err, errCollectorRefused) {
+				// refused for good, as the info of a node the collector
+				// does not know in the cluster
+				t.log.Warnf("post resource info %s: %s", i, item.err)
+			} else if !errors.Is(item.err, os.ErrNotExist) {
+				t.log.Warnf("skip send resource info %s: %s", i, item.err)
+			}
+		}
+		if queued, ok := t.resInfoToSend[i]; !ok || queued != v {
+			continue
+		}
 		delete(t.resInfoToSend, i)
+		if item.outcome == sendDone {
+			sent := resInfoSent{path: v.Path, nodename: v.Node, Checksum: v.Checksum, SentAt: item.sentAt}
+			if err := sent.write(); err != nil {
+				// the collector has it: not a send to retry
+				t.log.Warnf("save the sent resource info flag for %s: %s", i, err)
+			}
+			t.resInfoSent[i] = sent
+		}
 	}
 	t.resInfoFailure.update(t.log, time.Now(), failErr, len(t.resInfoToSend))
 }
@@ -130,14 +189,14 @@ func (t *T) sendResInfoChange() {
 // getResInfo returns the resource info key-values of the p instance on nodename,
 // read from the local cache when nodename is localhost, else fetched from the
 // nodename daemon api.
-func (t *T) getResInfo(p naming.Path, nodename string) (resource.Infos, error) {
-	if nodename == t.localhost {
-		return t.getLocalResInfo(p)
+func getResInfo(ctx context.Context, localhost string, p naming.Path, nodename string) (resource.Infos, error) {
+	if nodename == localhost {
+		return getLocalResInfo(p)
 	}
-	return t.getPeerResInfo(p, nodename)
+	return getPeerResInfo(ctx, p, nodename)
 }
 
-func (t *T) getLocalResInfo(p naming.Path) (resource.Infos, error) {
+func getLocalResInfo(p naming.Path) (resource.Infos, error) {
 	type loadResInfoer interface {
 		LoadResInfo() (resource.Infos, error)
 	}
@@ -153,7 +212,7 @@ func (t *T) getLocalResInfo(p naming.Path) (resource.Infos, error) {
 	return i.LoadResInfo()
 }
 
-func (t *T) getPeerResInfo(p naming.Path, nodename string) (resource.Infos, error) {
+func getPeerResInfo(ctx context.Context, p naming.Path, nodename string) (resource.Infos, error) {
 	infos := resource.NewInfos(p)
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
@@ -164,7 +223,7 @@ func (t *T) getPeerResInfo(p naming.Path, nodename string) (resource.Infos, erro
 	if err != nil {
 		return infos, fmt.Errorf("new client: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(t.ctx, peerRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, peerRequestTimeout)
 	defer cancel()
 	resp, err := c.GetInstanceResourceInfoWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name)
 	if err != nil {
@@ -201,16 +260,13 @@ func resInfoFromAPI(p naming.Path, items api.ResourceInfoItems) resource.Infos {
 	return infos
 }
 
-func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.Infos) error {
-	if t.client == nil {
-		return nil
-	}
+// doPostResInfo sends the resource info infos of the instance of v to the
+// collector, and returns the outcome.
+func doPostResInfo(ctx context.Context, requester requester, timeout time.Duration, v *msgbus.InstanceResourceInfoUpdated, infos resource.Infos) (sendOutcome, error) {
 	var (
 		method = http.MethodPost
 		path   = oc3path.FeedInstanceResinfo
 	)
-	i := instance.InstanceString(v.Path, v.Node)
-
 	data := resInfoPost{
 		Info:     infos.Resources,
 		Path:     v.Path.String(),
@@ -220,48 +276,30 @@ func (t *T) doPostResInfo(v *msgbus.InstanceResourceInfoUpdated, infos resource.
 		topology := cfg.Topology.String()
 		data.Topology = &topology
 	}
-
 	b, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("encode request body: %w", err)
+		return sendDropped, fmt.Errorf("encode request body: %w", err)
 	}
-
-	ctx, cancel := context.WithTimeout(t.ctx, t.postTimeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-
-	req, err := t.client.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))
+	req, err := requester.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))
 	if err != nil {
-		return fmt.Errorf("%s %s create request: %w", method, path, err)
+		return sendFailed, fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
-
-	t.log.Debugf("%s %s %s", method, path, i)
-	resp, err := t.client.Do(req)
+	resp, err := requester.Do(req)
 	if err != nil {
-		return fmt.Errorf("%s %s: %w", method, path, err)
+		return sendFailed, fmt.Errorf("%s %s: %w", method, path, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-
 	switch {
 	case resp.StatusCode == http.StatusAccepted:
+		return sendDone, nil
 	case isRefusedStatus(resp.StatusCode):
-		return fmt.Errorf("%w: %s %s status code %d", errCollectorRefused, method, path, resp.StatusCode)
+		return sendDropped, fmt.Errorf("%w: %s %s status code %d", errCollectorRefused, method, path, resp.StatusCode)
 	default:
-		return fmt.Errorf("%s %s unexpected status code: wanted %d got %d",
+		return sendFailed, fmt.Errorf("%s %s unexpected status code: wanted %d got %d",
 			method, path, http.StatusAccepted, resp.StatusCode)
 	}
-	t.log.Tracef("%s %s %s status code %d", method, path, i, resp.StatusCode)
-	sent := resInfoSent{
-		path:     v.Path,
-		nodename: v.Node,
-		Checksum: v.Checksum,
-		SentAt:   time.Now(),
-	}
-	if err := sent.write(); err != nil {
-		// the collector has it: not a send to retry
-		t.log.Warnf("save the sent resource info flag for %s: %s", i, err)
-	}
-	t.resInfoSent[i] = sent
-	return nil
 }
 
 func (o *resInfoSent) filename() string {
