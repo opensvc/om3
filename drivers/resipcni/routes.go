@@ -7,6 +7,7 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/drivers/resip"
@@ -14,11 +15,12 @@ import (
 )
 
 // heldRoutesIn returns the destinations of the routes of the main table of
-// the network namespace, the default ones as 0.0.0.0/0 and ::/0.
+// the network namespace, the default ones as 0.0.0.0/0 and ::/0. The tables
+// of the addresses, see resip.SourceRoute, are not the namespace's routing.
 func heldRoutesIn(netns ns.NetNS) (map[string]bool, error) {
 	held := make(map[string]bool)
 	err := netns.Do(func(_ ns.NetNS) error {
-		routes, err := netlink.RouteList(nil, netlink.FAMILY_ALL)
+		routes, err := netlink.RouteListFiltered(netlink.FAMILY_ALL, &netlink.Route{Table: unix.RT_TABLE_MAIN}, netlink.RT_FILTER_TABLE)
 		if err != nil {
 			return err
 		}
@@ -95,12 +97,12 @@ func (t *T) sourceRoute(netns ns.NetNS, dev string) (resip.SourceRoute, bool) {
 	if err != nil || nw == nil || dev == "" {
 		return resip.SourceRoute{}, false
 	}
-	ip, ipnet, err := t.nsIPNet(netns)
-	if err != nil || ip == nil || ipnet == nil {
+	addr, err := t.addrOnDev(netns, dev)
+	if err != nil || addr == nil {
 		return resip.SourceRoute{}, false
 	}
 	r := resip.SourceRoute{
-		Addr: &net.IPNet{IP: ip, Mask: ipnet.Mask},
+		Addr: addr,
 		Dev:  dev,
 	}
 	if segment, err := nw.IPNet(); err == nil {
@@ -131,4 +133,37 @@ func (t *T) startSourceRoute(ctx context.Context) error {
 		return nil
 	}
 	return r.Apply(netns, t.Log())
+}
+
+// addrOnDev returns the address of the network of the resource held by the
+// card dev of the namespace, with its prefix: the card the resource holds,
+// whatever its name, the nsdev one included.
+func (t *T) addrOnDev(netns ns.NetNS, dev string) (*net.IPNet, error) {
+	netConf, err := t.netConf()
+	if err != nil {
+		return nil, err
+	}
+	_, ref, err := net.ParseCIDR(netConf.IPAM.Subnet)
+	if err != nil {
+		return nil, err
+	}
+	var found *net.IPNet
+	err = netns.Do(func(_ ns.NetNS) error {
+		iface, err := net.InterfaceByName(dev)
+		if err != nil {
+			return err
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return err
+		}
+		for _, addr := range addrs {
+			if ipNet, ok := addr.(*net.IPNet); ok && ref.Contains(ipNet.IP) {
+				found = ipNet
+				return nil
+			}
+		}
+		return nil
+	})
+	return found, err
 }
