@@ -223,7 +223,14 @@ func (r daemonDataResult) apply(t *T) {
 	t.daemonDataSending = false
 	t.daemonStatusInFlight = 0
 	if r.epoch != t.feedEpoch {
-		t.log.Debugf("drop the result of a daemon %s sent before a resync or a speaker change", r.kind())
+		// The changes the send took are queued again: a configuration
+		// change starts a new epoch without rebuilding the queue, which
+		// a resync does, and these changes would be lost. Queued again
+		// after a rebuild, they are there already.
+		for k := range r.changes {
+			t.daemonStatusChange[k] = struct{}{}
+		}
+		t.log.Debugf("drop the result of a daemon %s sent before a resync, a speaker or a configuration change", r.kind())
 		return
 	}
 	if !r.respondedAt.IsZero() {
