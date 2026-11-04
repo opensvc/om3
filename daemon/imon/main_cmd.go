@@ -943,8 +943,8 @@ func (t *Manager) hasInstanceMonitorAndStatusOnPeers() (bool, string) {
 // it is refused when none is, which would leave the orchestration with no
 // instance to start, and never ending.
 func (t *Manager) isRequestedStartable() (bool, string) {
-	if (t.objStatus.Topology == topology.Failover) && (t.objStatus.Avail == status.Warn) {
-		return false, "failover object is warn state"
+	if ok, reason := t.isWarnFailoverStartable(); !ok {
+		return false, reason
 	}
 	switch t.objStatus.Provisioned {
 	case provisioned.False:
@@ -1270,7 +1270,74 @@ func (t *Manager) newIsHALeader() bool {
 // cannot start whoever is asking, and holds for a start a user requested just
 // as much, as do the hard affinities, which the start command enforces too.
 // The soft affinities rank the candidates ahead of the placement policy.
+// isWarnFailoverStartable says whether a start asked of a failover object in
+// warn is accepted. Instances up on two nodes are a split, which a start
+// would not mend. A single instance up in part, as one a sync restore --stop
+// left with its disks up and its apps down on purpose, is completed by a
+// start, as v2 did: it is then the one instance to start, the others to
+// start next to it holding the same disks, so it must be able to.
+//
+// A start the daemon decides on its own still refuses a failover object in
+// warn.
+func (t *Manager) isWarnFailoverStartable() (bool, string) {
+	if t.objStatus.Topology != topology.Failover || t.objStatus.Avail != status.Warn {
+		return true, ""
+	}
+	up := t.upOrWarnInstances()
+	switch len(up) {
+	case 0:
+		return false, "failover object is warn state"
+	case 1:
+	default:
+		return false, fmt.Sprintf("failover object is warn state, up on %s: stop all but one first", strings.Join(up, ", "))
+	}
+	if !slices.Contains(t.startCandidates(false), up[0]) {
+		return false, fmt.Sprintf("failover object is warn state, partly up on %s, whose instance can not start", up[0])
+	}
+	return true, ""
+}
+
+// upOrWarnInstances returns the nodes of the scope whose instance is up or
+// partly up.
+func (t *Manager) upOrWarnInstances() []string {
+	var l []string
+	for _, node := range t.scopeNodes {
+		if instStatus, ok := t.instStatus[node]; ok && instStatus.Avail.Is(status.Up, status.Warn) {
+			l = append(l, node)
+		}
+	}
+	return l
+}
+
 func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
+	candidates := t.startCandidates(isDaemonDecision)
+	if !isDaemonDecision && t.objStatus.Topology == topology.Failover {
+		// The instance a start asked of a failover object in warn
+		// completes is the one to start: see isWarnFailoverStartable.
+		if up := t.upOrWarnInstances(); len(up) == 1 && t.instStatus[up[0]].Avail == status.Warn {
+			if slices.Contains(candidates, up[0]) {
+				candidates = up
+			} else {
+				candidates = nil
+			}
+		}
+	}
+
+	var maxLeaders int = 1
+	if t.objStatus.Topology == topology.Flex {
+		maxLeaders = t.objStatus.Flex.Target
+	}
+
+	i := stringslice.Index(t.localhost, candidates)
+	if i < 0 {
+		return false
+	}
+	return i < maxLeaders
+}
+
+// startCandidates returns the nodes an instance may start on, in the order
+// of the placement policy and the soft affinities.
+func (t *Manager) startCandidates(isDaemonDecision bool) []string {
 	var candidates []string
 
 	for _, node := range t.scopeNodes {
@@ -1305,18 +1372,7 @@ func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 		}
 		candidates = append(candidates, node)
 	}
-	candidates = t.sortBySoftAffinity(t.sortCandidates(candidates))
-
-	var maxLeaders int = 1
-	if t.objStatus.Topology == topology.Flex {
-		maxLeaders = t.objStatus.Flex.Target
-	}
-
-	i := stringslice.Index(t.localhost, candidates)
-	if i < 0 {
-		return false
-	}
-	return i < maxLeaders
+	return t.sortBySoftAffinity(t.sortCandidates(candidates))
 }
 
 // leaderCandidates returns the nodes an instance may lead on, in the order of
