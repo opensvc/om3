@@ -99,6 +99,7 @@ func (t *T) sendObjectConfigChange() {
 	}
 	t.objectConfigSending = true
 	epoch, ctx, requester, timeout, localhost := t.feedEpoch, t.ctx, t.client, t.postTimeout, t.localhost
+	t.log.Tracef("send instance config: %s %s, %d items", http.MethodPost, oc3path.FeedObjectConfig, len(jobs))
 	t.goSend(func() sendResult {
 		r := objectConfigResult{epoch: epoch}
 		for _, job := range jobs {

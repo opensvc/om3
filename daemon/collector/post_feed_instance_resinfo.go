@@ -119,6 +119,7 @@ func (t *T) sendResInfoChange() {
 			return getResInfo(ctx, localhost, p, nodename)
 		}
 	}
+	t.log.Tracef("send resource info: %s %s, %d items", http.MethodPost, oc3path.FeedInstanceResinfo, len(jobs))
 	t.goSend(func() sendResult {
 		r := resInfoResult{epoch: epoch}
 		for _, job := range jobs {
