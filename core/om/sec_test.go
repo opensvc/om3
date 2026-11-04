@@ -216,7 +216,8 @@ func TestSecDataLimit(t *testing.T) {
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		out, _ := cmd.CombinedOutput()
 		if caseValue.expectError {
-			require.Equal(t, "Error: test/sec/sec1: "+object.ErrValueTooBig.Error()+"\n", string(out), "Out : %s", out)
+			require.Contains(t, string(out), "Error: test/sec/sec1: "+object.ErrValueTooBig.Error()+": ", "Out : %s", out)
+			require.Contains(t, string(out), "(raise node.max_key_size)", "Out : %s", out)
 		} else {
 			require.Contains(t, string(out), "set key "+caseValue.extraArgs[2], "Out : %s", out)
 		}
