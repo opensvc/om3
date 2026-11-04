@@ -34,9 +34,17 @@ func routeStrings(l []netlink.Route) []string {
 	return s
 }
 
-func TestTableIDIsClearOfTheTablesNamed(t *testing.T) {
-	assert.Equal(t, 10002, TableID(2))
-	assert.Greater(t, TableID(253), 255)
+// Each address has a table of its own, two addresses sharing a card
+// included, clear of the tables the kernel names.
+func TestTheTableOfAnAddressIsItsOwn(t *testing.T) {
+	a, b := TableID(net.ParseIP("10.100.0.164")), TableID(net.ParseIP("10.100.0.165"))
+	assert.Equal(t, 174325924, a)
+	assert.NotEqual(t, a, b)
+	assert.Greater(t, a, 255)
+	v6 := TableID(net.ParseIP("fdfe::12"))
+	assert.NotEqual(t, v6, TableID(net.ParseIP("fdfe::13")))
+	assert.Greater(t, v6, 255)
+	assert.Equal(t, v6, TableID(net.ParseIP("fdfe::12")), "found again from the address")
 }
 
 func TestTheSourceOfTheRuleIsTheAddressAlone(t *testing.T) {
@@ -99,12 +107,18 @@ func TestReconcileTheRulesOfASource(t *testing.T) {
 	assert.Empty(t, del)
 	assert.True(t, add)
 
-	del, add = reconcile([]netlink.Rule{{Src: src, Table: 10002}, {Src: other, Table: 10003}}, src, 10002)
+	del, add = reconcile([]netlink.Rule{{Src: src, Table: 10002, Priority: SourceRulePriority}, {Src: other, Table: 10003, Priority: SourceRulePriority}}, src, 10002)
 	assert.Empty(t, del)
 	assert.False(t, add)
 
-	del, add = reconcile([]netlink.Rule{{Src: src, Table: 10007}, {Src: nil, Table: 254}}, src, 10002)
+	del, add = reconcile([]netlink.Rule{{Src: src, Table: 10007, Priority: SourceRulePriority}, {Src: nil, Table: 254}}, src, 10002)
 	require.Len(t, del, 1)
 	assert.Equal(t, 10007, del[0].Table)
+	assert.True(t, add)
+
+	// A rule of the source of another priority, as one of an ip.rule
+	// resource, is no rule of om's: left alone.
+	del, add = reconcile([]netlink.Rule{{Src: src, Table: 100, Priority: 100}}, src, 10002)
+	assert.Empty(t, del)
 	assert.True(t, add)
 }

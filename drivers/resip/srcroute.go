@@ -3,8 +3,10 @@
 package resip
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"net"
 
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -52,24 +54,29 @@ type (
 const (
 	// SourceRulePriority is the priority of the rules of the addresses,
 	// before the lookup of the main table at 32766. A rule a user adds
-	// with no priority lands before it, and wins.
+	// with no priority lands before it, and wins. The rules of this
+	// priority are om's: a rule of another priority, as one of an ip.rule
+	// resource, is left alone.
 	SourceRulePriority = 32000
-
-	// sourceTableBase offsets the table of an address from the index of
-	// its card, which a card moved into a namespace keeps when free there,
-	// clear of the tables the kernel and the users name.
-	sourceTableBase = 10000
 )
 
 var (
 	ErrSourceTableInUse = errors.New("the table is used by routes of another card")
 )
 
-// TableID is the routing table of the address held by the card of index
-// ifindex: unique in the namespace, as the index of a card is, and found
-// again from the card alone.
-func TableID(ifindex int) int {
-	return sourceTableBase + ifindex
+// TableID is the routing table of the address: the address itself, as a
+// number, for an ipv4 one, and a hash of it, its high bit set, for an ipv6
+// one. Unique per address, so two addresses sharing a card have a table each,
+// found again from the address alone, and clear of the tables the kernel and
+// the users name, all under 2^31 in practice for ipv6, and far above the
+// small ones for ipv4.
+func TableID(ip net.IP) int {
+	if v4 := ip.To4(); v4 != nil {
+		return int(binary.BigEndian.Uint32(v4))
+	}
+	h := fnv.New32a()
+	_, _ = h.Write(ip.To16())
+	return int(h.Sum32() | 0x80000000)
 }
 
 // IPv6 says the address is an ipv6 one.
@@ -166,13 +173,13 @@ func anyNet(v6 bool) *net.IPNet {
 	return &net.IPNet{IP: net.IPv4zero.To4(), Mask: net.CIDRMask(0, 32)}
 }
 
-// reconcile returns the rules of the source src to delete, the ones naming
-// another table than table, as left by a card the address was on before,
-// and whether the rule of the table is to add.
+// reconcile returns the rules of the source src to delete, the ones of om's
+// priority naming another table than table, and whether the rule of the
+// table is to add. A rule of another priority is no rule of om's.
 func reconcile(existing []netlink.Rule, src *net.IPNet, table int) (del []netlink.Rule, add bool) {
 	add = true
 	for _, r := range existing {
-		if r.Src == nil || r.Src.String() != src.String() {
+		if r.Src == nil || r.Src.String() != src.String() || r.Priority != SourceRulePriority {
 			continue
 		}
 		if r.Table == table && add {
@@ -197,7 +204,7 @@ func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
 		if err != nil {
 			return fmt.Errorf("policy routing of %s: %w", t.Addr.IP, err)
 		}
-		table := TableID(link.Attrs().Index)
+		table := TableID(t.Addr.IP)
 		if err := t.checkTableOwner(table, link.Attrs().Index); err != nil {
 			return err
 		}
@@ -238,8 +245,7 @@ func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
 }
 
 // checkTableOwner refuses a table holding routes of another card than the
-// one of the address: a table a user named, the index of its card being the
-// one of ours.
+// one of the address: a table a user named the number of ours.
 func (t SourceRoute) checkTableOwner(table, linkIndex int) error {
 	routes, err := netlink.RouteListFiltered(t.family(), &netlink.Route{Table: table}, netlink.RT_FILTER_TABLE)
 	if err != nil {
@@ -253,9 +259,10 @@ func (t SourceRoute) checkTableOwner(table, linkIndex int) error {
 	return nil
 }
 
-// Remove deletes the rules of the address and the tables they name, as "ip
-// rule del" and "ip route flush table" do. The kernel removes the routes of
-// a card deleted, but not the rules, and not the routes of a card kept.
+// Remove deletes the rules of the address of om's priority and the tables
+// they name, as "ip rule del" and "ip route flush table" do. The kernel
+// removes the routes of a card deleted, but not the rules, and not the routes
+// of a card kept, as one shared by several addresses.
 func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 	if t.Addr == nil {
 		return nil
@@ -267,17 +274,15 @@ func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 			return err
 		}
 		for _, r := range rules {
-			if r.Src == nil || r.Src.String() != src.String() {
+			if r.Src == nil || r.Src.String() != src.String() || r.Priority != SourceRulePriority {
 				continue
 			}
 			t.logIP(log, "rule del from %s lookup %d", src, r.Table)
 			if err := netlink.RuleDel(&r); err != nil {
 				return err
 			}
-			if r.Table > sourceTableBase {
-				if err := flushTable(r.Table, t.family()); err != nil {
-					return err
-				}
+			if err := flushTable(r.Table, t.family()); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -295,7 +300,7 @@ func (t SourceRoute) Check(netns ns.NetNS) error {
 		if err != nil {
 			return nil
 		}
-		table := TableID(link.Attrs().Index)
+		table := TableID(t.Addr.IP)
 		rules, err := netlink.RuleList(t.family())
 		if err != nil {
 			return err

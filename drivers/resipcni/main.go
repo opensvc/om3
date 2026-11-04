@@ -309,11 +309,8 @@ func (t *T) Start(ctx context.Context) error {
 	if t.Status(ctx) == status.Up {
 		t.Log().Infof("already up")
 		// The policy routing of an address set up by a former agent,
-		// or lost, is set again.
-		if err := t.startSourceRoute(ctx); err != nil {
-			t.Log().Warnf("%s", err)
-		}
-		return nil
+		// or lost, is set again: a start not setting it fails.
+		return t.startSourceRoute(ctx)
 	}
 	if err := t.addObjectNetNS(); err != nil {
 		return err
