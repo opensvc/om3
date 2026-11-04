@@ -1681,6 +1681,43 @@ func newCmdNodeSSHTrust() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeUpdatePkg() *cobra.Command {
+	var options commands.CmdNodeUpdatePkg
+	cmd := &cobra.Command{
+		Use:   "pkg",
+		Short: "upgrade the opensvc packages installed",
+		Long: `Upgrade the opensvc packages installed: opensvc-server, opensvc-client and
+opensvc-webapp.
+
+From the repositories the package manager (apt-get, dnf, yum or zypper) has
+configured when they offer them. Else the latest version of each package is
+downloaded from the opensvc package repository (node.repopkg, or
+https://packages.opensvc.com), of the branch node.branch (prod by default)
+and of the distribution of the node, checked against the sha256 of the
+repository metadata, and installed with the package manager when newer than
+the one installed.
+
+Under systemd, the package manager runs in a scope of its own: the restart of
+opensvc-server the upgrade causes does not stop it halfway.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagDryRun(flags, &options.DryRun)
+	return cmd
+}
+
+// newCmdNodeUpdatepkg is the name of the command in the historical agent, the
+// one the collector queues.
+func newCmdNodeUpdatepkg() *cobra.Command {
+	cmd := newCmdNodeUpdatePkg()
+	cmd.Use = "updatepkg"
+	cmd.Hidden = true
+	return cmd
+}
+
 func newCmdNodeUpdateSSHKeys() *cobra.Command {
 	cmd := newCmdNodeSSHTrust()
 	cmd.Use = "keys"
