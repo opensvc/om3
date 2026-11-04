@@ -286,7 +286,18 @@ func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
 	if len(pids) == 0 {
 		return nil
 	}
+	// isRun says pid is still the process of its run, checked right before
+	// each signal: the run may have ended and its pid been given to another
+	// process since the listing. A pidfd would close the window left, but
+	// the kernels of the older distributions have none.
+	isRun := func(pid int) bool {
+		v, _ := runfiles.IsValid(filepath.Join(runDir.Path, strconv.Itoa(pid)))
+		return v
+	}
 	for _, pid := range pids {
+		if !isRun(pid) {
+			continue
+		}
 		t.Log().Infof("stop the run of pid %d", pid)
 		if err := syscall.Kill(pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
 			return fmt.Errorf("signal the run of pid %d: %w", pid, err)
@@ -300,7 +311,7 @@ func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
 	alive := func() []int {
 		var left []int
 		for _, pid := range pids {
-			if v, _ := runfiles.IsValid(filepath.Join(runDir.Path, strconv.Itoa(pid))); v {
+			if isRun(pid) {
 				left = append(left, pid)
 			}
 		}
@@ -313,6 +324,9 @@ func (t *BaseTask) StopRuns(ctx context.Context, timeout *time.Duration) error {
 		}
 		if time.Now().After(deadline) {
 			for _, pid := range left {
+				if !isRun(pid) {
+					continue
+				}
 				t.Log().Warnf("the run of pid %d still runs after %s: kill it", pid, d)
 				// The command of the run first, then the run: killed, the
 				// run relays nothing anymore.
