@@ -52,6 +52,11 @@ type (
 		At        time.Time `json:"at"`
 		ExitCode  int       `json:"exitcode"`
 		SessionID uuid.UUID `json:"session_id"`
+
+		// ObjectID is the id of the object whose run this is: a run
+		// ending after its object was deleted writes in the var dir of
+		// the object recreated under the name, which this tells apart.
+		ObjectID uuid.UUID `json:"object_id,omitempty"`
 	}
 )
 
@@ -190,6 +195,10 @@ func (t *BaseTask) readLastRunRetcode() (int, error) {
 
 func (t *BaseTask) readLastRun() *LastRun {
 	if lastRun, err := t.readLastRunV2(); err == nil {
+		if id := t.objectID(); lastRun.ObjectID != uuid.Nil && id != uuid.Nil && lastRun.ObjectID != id {
+			// The run of another object of the name, deleted.
+			return nil
+		}
 		return lastRun
 	}
 	if lastRun, err := t.readLastRunV1(); err == nil {
@@ -333,11 +342,20 @@ func (t *BaseTask) removeLastRun() error {
 	return errs
 }
 
+// objectID returns the id of the object of the task, uuid.Nil when unknown.
+func (t *BaseTask) objectID() uuid.UUID {
+	if o, ok := t.GetObject().(interface{ ID() uuid.UUID }); ok {
+		return o.ID()
+	}
+	return uuid.Nil
+}
+
 func (t *BaseTask) WriteLastRun(retcode int) error {
 	lastRun := LastRun{
 		ExitCode:  retcode,
 		At:        time.Now(),
 		SessionID: xsession.SessionID().UUID(),
+		ObjectID:  t.objectID(),
 	}
 	b, err := json.Marshal(lastRun)
 	if err != nil {
