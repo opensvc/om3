@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -648,7 +649,13 @@ func (t *BT) NeedPreStartRemove() bool {
 	return t.Remove || !t.Detach
 }
 
-// NetNSPath returns the container inspect SandboxKey or ""
+// NetNSPath returns the container inspect SandboxKey, else the network
+// namespace of the container process, else "".
+//
+// An engine may report no SandboxKey for a container it gave no network,
+// as podman 1.6 does for --net none: the namespace is then the one of the
+// running process, unless it is the one of the node, as for --net host,
+// which no address is plugged in.
 func (t *BT) NetNSPath(ctx context.Context) (string, error) {
 	if t.executer == nil {
 		return "", fmt.Errorf("NetNSPath: undefined executer")
@@ -657,9 +664,27 @@ func (t *BT) NetNSPath(ctx context.Context) (string, error) {
 		return "", nil
 	} else if i == nil {
 		return "", nil
+	} else if s := i.SandboxKey(); s != "" {
+		return s, nil
+	} else if pid := i.PID(); pid > 0 {
+		return privateNetNSPathOf(pid), nil
 	} else {
-		return i.SandboxKey(), nil
+		return "", nil
 	}
+}
+
+// privateNetNSPathOf returns the path of the network namespace of pid, or ""
+// when it is the one of the node, or can not be told apart from it.
+func privateNetNSPathOf(pid int) string {
+	p := fmt.Sprintf("/proc/%d/ns/net", pid)
+	ns, err := os.Readlink(p)
+	if err != nil {
+		return ""
+	}
+	if nodeNS, err := os.Readlink("/proc/self/ns/net"); err != nil || ns == nodeNS {
+		return ""
+	}
+	return p
 }
 
 // PID returns the container inspect PID or 0
