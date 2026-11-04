@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/toc"
 )
@@ -64,10 +65,6 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 }
 
 func (t *Manager) onNetworkChanged(sectionsChanged []string) {
-	n, err := object.NewNode(object.WithLogger(t.log))
-	if err != nil {
-		t.log.Errorf("allocate Node for network setup: %s", err)
-	}
 	var networkNames []string
 	for _, change := range sectionsChanged {
 		if change == "cni" {
@@ -82,10 +79,7 @@ func (t *Manager) onNetworkChanged(sectionsChanged []string) {
 	} else {
 		t.log.Infof("reconfigure all networks")
 	}
-	if err := network.Setup(n, networkNames...); err != nil {
-		t.log.Infof("reconfigure networks failed: %s", err.Error())
-	}
-	t.publishNetworkPeersUpdated(n)
+	t.requestNetworkSetup(networkNames, nil)
 }
 
 func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
@@ -123,18 +117,15 @@ func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
 
 	if len(matchingNetworks) > 0 {
 		t.log.Infof("netlink up: configuring networks %v for link %s", matchingNetworks, c.LinkName)
-		if err := network.Setup(n, matchingNetworks...); err != nil {
-			t.log.Infof("netlink up: network setup for %v: %s", matchingNetworks, err.Error())
-		}
-		t.publishNetworkPeersUpdated(n)
+		t.requestNetworkSetup(matchingNetworks, nil)
 	}
 }
 
 // publishNetworkPeersUpdated publishes a NetworkPeersUpdated event for each
 // network of the node whose peers changed since the last network setup, or
 // since the daemon started: a network added, removed, or whose peers differ.
-func (t *Manager) publishNetworkPeersUpdated(n *object.Node) {
-	sigs := t.getNetworkPeersSigs(n)
+// sigs are the signatures of the peers read after the setup.
+func (t *Manager) publishNetworkPeersUpdated(sigs map[string]string) {
 	changed := make([]string, 0)
 	for name, sig := range sigs {
 		if last, ok := t.networkPeersSigs[name]; !ok || last != sig {
@@ -154,15 +145,19 @@ func (t *Manager) publishNetworkPeersUpdated(n *object.Node) {
 	t.networkPeersSigs = sigs
 }
 
-// getNetworkPeersSigs returns the signature of the peers of each network of
-// the node saying its peers. A network whose peers can not be read keeps its
-// last signature.
 func (t *Manager) getNetworkPeersSigs(n *object.Node) map[string]string {
+	return networkPeersSigs(n, t.networkPeersSigs, t.log)
+}
+
+// networkPeersSigs returns the signature of the peers of each network of
+// the node saying its peers. A network whose peers can not be read keeps its
+// last signature, from last.
+func networkPeersSigs(n *object.Node, last map[string]string, log *plog.Logger) map[string]string {
 	sigs := make(map[string]string)
 	if n == nil {
 		var err error
 		if n, err = object.NewNode(object.WithVolatile(true)); err != nil {
-			t.log.Warnf("network peers: %s", err)
+			log.Warnf("network peers: %s", err)
 			return sigs
 		}
 	}
@@ -174,9 +169,9 @@ func (t *Manager) getNetworkPeersSigs(n *object.Node) map[string]string {
 		name := nw.Name()
 		peers, err := peerer.Peers()
 		if err != nil {
-			t.log.Tracef("network %s peers: %s", name, err)
-			if last, ok := t.networkPeersSigs[name]; ok {
-				sigs[name] = last
+			log.Tracef("network %s peers: %s", name, err)
+			if sig, ok := last[name]; ok {
+				sigs[name] = sig
 			}
 			continue
 		}
@@ -489,7 +484,8 @@ func missingNodes(nodes, joinedNodes []string) []string {
 }
 
 func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUpdated) {
-	if t.state.State != node.MonitorStateRejoin {
+	if t.state.State != node.MonitorStateRejoin || t.idleWanted {
+		// Not rejoining, or rejoined, waiting for the networks.
 		return
 	}
 	if c.To != "patch" {
@@ -509,7 +505,7 @@ func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUp
 	t.nodeStatus.LeftAt = leftAt
 	t.nodeStatus.RejoinedAt = time.Now()
 	_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
-	t.transitionTo(node.MonitorStateIdle)
+	t.rejoined()
 }
 
 func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {

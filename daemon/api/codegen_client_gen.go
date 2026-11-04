@@ -530,6 +530,9 @@ type ClientInterface interface {
 	// GetNodeNetworkReservations request
 	GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeNetworkSetup request
+	PostNodeNetworkSetup(ctx context.Context, nodename InPathNodeName, params *PostNodeNetworkSetupParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodePing request
 	GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2543,6 +2546,18 @@ func (c *Client) GetNodeMetricsPG(ctx context.Context, nodename InPathNodeName, 
 
 func (c *Client) GetNodeNetworkReservations(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeNetworkReservationsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeNetworkSetup(ctx context.Context, nodename InPathNodeName, params *PostNodeNetworkSetupParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeNetworkSetupRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -14379,6 +14394,67 @@ func NewGetNodeNetworkReservationsRequest(server string, nodename InPathNodeName
 	return req, nil
 }
 
+// NewPostNodeNetworkSetupRequest generates requests for PostNodeNetworkSetup
+func NewPostNodeNetworkSetupRequest(server string, nodename InPathNodeName, params *PostNodeNetworkSetupParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/network/setup", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Name != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodePingRequest generates requests for GetNodePing
 func NewGetNodePingRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -18622,6 +18698,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeNetworkReservationsWithResponse request
 	GetNodeNetworkReservationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeNetworkReservationsParams, reqEditors ...RequestEditorFn) (*GetNodeNetworkReservationsResponse, error)
+
+	// PostNodeNetworkSetupWithResponse request
+	PostNodeNetworkSetupWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeNetworkSetupParams, reqEditors ...RequestEditorFn) (*PostNodeNetworkSetupResponse, error)
 
 	// GetNodePingWithResponse request
 	GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error)
@@ -23507,6 +23586,40 @@ func (r GetNodeNetworkReservationsResponse) ContentType() string {
 	return ""
 }
 
+type PostNodeNetworkSetupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON408      *N408
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeNetworkSetupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeNetworkSetupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostNodeNetworkSetupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetNodePingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27008,6 +27121,15 @@ func (c *ClientWithResponses) GetNodeNetworkReservationsWithResponse(ctx context
 		return nil, err
 	}
 	return ParseGetNodeNetworkReservationsResponse(rsp)
+}
+
+// PostNodeNetworkSetupWithResponse request returning *PostNodeNetworkSetupResponse
+func (c *ClientWithResponses) PostNodeNetworkSetupWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeNetworkSetupParams, reqEditors ...RequestEditorFn) (*PostNodeNetworkSetupResponse, error) {
+	rsp, err := c.PostNodeNetworkSetup(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeNetworkSetupResponse(rsp)
 }
 
 // GetNodePingWithResponse request returning *GetNodePingResponse
@@ -35190,6 +35312,60 @@ func ParseGetNodeNetworkReservationsResponse(rsp *http.Response) (*GetNodeNetwor
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeNetworkSetupResponse parses an HTTP response from a PostNodeNetworkSetupWithResponse call
+func ParsePostNodeNetworkSetupResponse(rsp *http.Response) (*PostNodeNetworkSetupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeNetworkSetupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
