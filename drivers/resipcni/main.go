@@ -330,7 +330,7 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if t.Status(ctx) == status.Down {
+	if t.Status(ctx) == status.Down && t.leftGuestDev(ctx) == "" {
 		t.Log().Infof("already down")
 		return nil
 	}
@@ -394,11 +394,13 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
 	}
-	if dev == "" {
-		return status.Down
-	} else {
+	if dev != "" {
 		return status.Up
 	}
+	if left := t.leftGuestDevIn(netns); left != "" {
+		t.StatusLog().Warn("%s holds no address of the network %s", left, t.Network)
+	}
+	return status.Down
 }
 
 // Label implements Label from resource.Driver interface,
@@ -555,12 +557,6 @@ func (t *T) stop(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	plugin := t.pluginFile(netConf.Type)
-	if plugin == "" {
-		return fmt.Errorf("plugin %s not found", netConf.Type)
-	}
-	bin := t.pluginFile(netConf.Type)
-
 	netns, err := t.getNS(ctx)
 	if err != nil {
 		return err
@@ -575,10 +571,29 @@ func (t *T) stop(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if dev == "" {
+		// The card of the start lost its address: delete it by its name.
+		dev = t.leftGuestDevIn(netns)
+	}
+	if err := t.cniDel(netConf, netns.Path(), containerID, dev); err != nil {
+		return err
+	}
+	t.forgetGuestDev()
+	return nil
+}
+
+// cniDel deletes the card dev of the netns at netnsPath, by the cni plugin
+// of the network.
+func (t *T) cniDel(netConf NetConf, netnsPath, containerID, dev string) error {
+	plugin := t.pluginFile(netConf.Type)
+	if plugin == "" {
+		return fmt.Errorf("plugin %s not found", netConf.Type)
+	}
+	bin := plugin
 	env := []string{
 		"CNI_COMMAND=DEL",
 		fmt.Sprintf("CNI_CONTAINERID=%s", containerID),
-		fmt.Sprintf("CNI_NETNS=%s", netns.Path()),
+		fmt.Sprintf("CNI_NETNS=%s", netnsPath),
 		fmt.Sprintf("CNI_IFNAME=%s", dev),
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
@@ -641,13 +656,26 @@ func (t *T) start(ctx context.Context) error {
 		return err
 	}
 
-	dev, err := t.newGuestDev(cniNetNS)
+	containerID, err := t.getCNIContainerID(ctx)
 	if err != nil {
 		return err
 	}
 
-	containerID, err := t.getCNIContainerID(ctx)
-	if err != nil {
+	// The card of a former start, its address lost, is deleted to be added
+	// again: one card per address, its name kept for the apps. Left in
+	// place, a second card would hold the address, and the replies would
+	// leave by the one the requests do not come in by.
+	dev := ""
+	if netns, err := ns.GetNS(cniNetNS); err == nil {
+		dev = t.leftGuestDevIn(netns)
+		_ = netns.Close()
+	}
+	if dev != "" {
+		t.Log().Infof("delete the card %s of a former start, holding no address", dev)
+		if err := t.cniDel(netConf, cniNetNS, containerID, dev); err != nil {
+			return err
+		}
+	} else if dev, err = t.newGuestDev(cniNetNS); err != nil {
 		return err
 	}
 
@@ -717,7 +745,80 @@ func (t *T) start(ctx context.Context) error {
 		t.Log().Errorf("%s", err)
 		return err
 	}
+	if err := t.recordGuestDev(dev); err != nil {
+		t.Log().Warnf("record the card name %s: %s", dev, err)
+	}
 	return nil
+}
+
+// guestDevFile is the file recording the name of the card the resource
+// added in the netns, to find it again once its address is gone.
+func (t *T) guestDevFile() string {
+	return filepath.Join(t.VarDir(), "guest_dev")
+}
+
+func (t *T) recordGuestDev(dev string) error {
+	if err := os.MkdirAll(t.VarDir(), 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(t.guestDevFile(), []byte(dev+"\n"), 0600)
+}
+
+func (t *T) forgetGuestDev() {
+	if err := os.Remove(t.guestDevFile()); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Log().Warnf("forget the card name: %s", err)
+	}
+}
+
+func (t *T) recordedGuestDev() string {
+	b, err := os.ReadFile(t.guestDevFile())
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+// leftGuestDev returns the name of the card the resource added in its netns
+// and left without its address, "" when there is none.
+func (t *T) leftGuestDev(ctx context.Context) string {
+	netns, err := t.getNSCtx(ctx)
+	if err != nil || netns == nil {
+		return ""
+	}
+	return t.leftGuestDevIn(netns)
+}
+
+// leftGuestDevIn returns the name of the card the resource recorded adding
+// in netns when it is there holding no global address: the card of the
+// resource, its address lost. A card holding one is not it, but the card of
+// another resource given the name in a new netns.
+func (t *T) leftGuestDevIn(netns ns.NetNS) string {
+	dev := t.recordedGuestDev()
+	if dev == "" || netns == nil {
+		return ""
+	}
+	left := false
+	_ = netns.Do(func(_ ns.NetNS) error {
+		iface, err := net.InterfaceByName(dev)
+		if err != nil {
+			return nil
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil
+		}
+		for _, addr := range addrs {
+			if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.IsGlobalUnicast() {
+				return nil
+			}
+		}
+		left = true
+		return nil
+	})
+	if !left {
+		return ""
+	}
+	return dev
 }
 
 func getInterfaceAndAddr(ref *net.IPNet) (net.Interface, net.Addr, error) {
