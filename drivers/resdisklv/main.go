@@ -56,6 +56,12 @@ type (
 	LVDriverWiper interface {
 		Wipe(context.Context) error
 	}
+	// LVDriverTailZeroer is implemented by the lv implementations that zero
+	// the end of a volume they made, where a volume made before on the
+	// same extents may have left metadata.
+	LVDriverTailZeroer interface {
+		ZeroTail(context.Context) error
+	}
 )
 
 func New() resource.Driver {
@@ -189,13 +195,78 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
+		if lvi, ok := lv.(LVDriverWiper); ok && !createsFromAnOrigin(t.CreateOptions) {
+			_ = lvi.Wipe(ctx)
+		}
 		if lvi, ok := lv.(LVDriverUnprovisioner); ok {
 			return lvi.Remove(ctx, []string{"-f"})
 		} else {
 			return nil
 		}
 	})
-	return nil
+	return t.blankTail(ctx, lv)
+}
+
+// activateToWipe activates the volume of a stopped instance, so the wipe
+// reaches it: the volume removed unwiped hands its signatures and the drbd
+// metadata at its end to the next volume made on its extents. The volume is
+// removed next, active or not.
+func (t *T) activateToWipe(ctx context.Context, lv LVDriver) {
+	if active, err := lv.IsActive(ctx); err != nil || active {
+		return
+	}
+	if err := lv.Activate(ctx); err != nil {
+		t.Log().Warnf("activate %s to wipe it: %s", lv.FQN(), err)
+	}
+}
+
+// blankTail zeroes the end of the volume just made, as what a provision
+// creates is blank: a drbd resource on it would otherwise adopt the metadata
+// a removed volume left on the same extents, and handshake with generations
+// its peers never had. A thin volume maps no block yet, and reads zeroes. A
+// snapshot or a cache made by the create options ends with the data of its
+// origin, which is no new volume's to erase.
+func (t *T) blankTail(ctx context.Context, lv LVDriver) error {
+	if t.ThinPool != "" {
+		return nil
+	}
+	if createsFromAnOrigin(t.CreateOptions) {
+		t.Log().Infof("%s is made from an origin: its end is not zeroed", lv.FQN())
+		return nil
+	}
+	lvi, ok := lv.(LVDriverTailZeroer)
+	if !ok {
+		return nil
+	}
+	return lvi.ZeroTail(ctx)
+}
+
+// createsFromAnOrigin says the lvcreate options make a volume on the data
+// of an existing one: a snapshot, or a cache of the origin.
+func createsFromAnOrigin(args []string) bool {
+	for i, arg := range args {
+		switch arg {
+		case "-s", "--snapshot", "-H", "--cache":
+			return true
+		case "--type":
+			if i+1 < len(args) && isOriginType(args[i+1]) {
+				return true
+			}
+		default:
+			if v, ok := strings.CutPrefix(arg, "--type="); ok && isOriginType(v) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isOriginType(s string) bool {
+	switch s {
+	case "snapshot", "cache", "writecache":
+		return true
+	}
+	return false
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
@@ -209,6 +280,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		return nil
 	}
 	if lvi, ok := lv.(LVDriverWiper); ok {
+		t.activateToWipe(ctx, lv)
 		_ = lvi.Wipe(ctx)
 	} else {
 		t.Log().Infof("%s wipe skipped: not implementing by %s", lv.FQN(), lv.DriverName())

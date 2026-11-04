@@ -66,6 +66,33 @@ func (t T) Size() (int64, error) {
 	return f.Seek(0, io.SeekEnd)
 }
 
+// ZeroTail writes zeroes over the last n bytes of the device, over all of it
+// when it holds less. The end of a device is where the internal metadata of
+// drbd, a md 0.90 superblock, the zfs labels and the backup gpt are kept, and
+// wipefs misses those its libblkid is too old to know.
+func (t T) ZeroTail(n int64) error {
+	size, err := t.Size()
+	if err != nil {
+		return err
+	}
+	if n > size {
+		n = size
+	}
+	f, err := os.OpenFile(t.path, os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteAt(make([]byte, n), size-n); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
 func (t T) Path() string {
 	return t.path
 }

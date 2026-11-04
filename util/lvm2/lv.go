@@ -389,14 +389,42 @@ func LVOfDevice(ctx context.Context, dev string, opts ...funcopt.O) (*LV, error)
 	return NewLV(info.VGName, info.LVName, opts...), nil
 }
 
+// Wipe erases the signatures of the volume, and zeroes its end, so the
+// extents it frees hand nothing of what it held to the next volume made on
+// them.
 func (t *LV) Wipe(ctx context.Context) error {
 	path := t.DevPath()
 	if !file.Exists(path) {
 		t.Log().Infof("skip wipe: %s does not exist", path)
 		return nil
 	}
+	if err := t.ZeroTail(ctx); err != nil {
+		t.Log().Warnf("%s", err)
+	}
 	dev := device.New(path, device.WithLogger(t.Log()))
 	return dev.Wipe(ctx)
+}
+
+// TailWipeSize is the end of a volume zeroed by ZeroTail: it holds the
+// internal metadata of drbd 8 and 9, a md 0.90 superblock, the zfs labels and
+// the backup gpt.
+const TailWipeSize int64 = 1024 * 1024
+
+// ZeroTail zeroes the last TailWipeSize bytes of the volume. lvcreate wipes
+// the signatures its libblkid knows, and zeroes the first 4 KiB: on an older
+// distribution, the drbd metadata a volume left at the end of its extents is
+// found by the next volume made on them, and taken for its own.
+func (t *LV) ZeroTail(_ context.Context) error {
+	path := t.DevPath()
+	if !file.Exists(path) {
+		t.Log().Infof("skip zeroing the end of %s: it does not exist", path)
+		return nil
+	}
+	t.Log().Infof("zero the last %d bytes of %s", TailWipeSize, path)
+	if err := device.New(path, device.WithLogger(t.Log())).ZeroTail(TailWipeSize); err != nil {
+		return fmt.Errorf("zero the end of %s: %w", path, err)
+	}
+	return nil
 }
 
 func (t *LV) Remove(ctx context.Context, args []string) error {
