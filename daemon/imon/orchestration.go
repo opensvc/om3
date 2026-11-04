@@ -302,6 +302,14 @@ func (t *Manager) done() {
 }
 
 func (t *Manager) orchestrationIsDoneOnAll() bool {
+	switch t.state.GlobalExpect {
+	case instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectDeleted:
+		// A peer whose instance monitor starts has not taken the
+		// orchestration on yet.
+		if len(t.peersStarting()) > 0 {
+			return false
+		}
+	}
 	for nodename, oImon := range t.AllInstanceMonitors() {
 		if !oImon.OrchestrationIsDone && oImon.OrchestrationID != uuid.Nil {
 			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)

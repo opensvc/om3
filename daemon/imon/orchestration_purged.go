@@ -51,7 +51,7 @@ func (t *Manager) purgedFromIdle() {
 		t.transitionTo(instance.MonitorStateUnprovisionSuccess)
 		return
 	}
-	if t.setWaitChildren() || !t.isLocalStatusCurrent() {
+	if t.setWaitChildren() || !t.isLocalStatusCurrent() || t.waitPeersStarting() {
 		return
 	}
 	// The instance is unprovisioned whatever its provisioned state says,
