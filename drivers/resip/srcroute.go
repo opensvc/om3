@@ -77,17 +77,21 @@ var (
 // small ones for ipv4.
 func TableID(ip net.IP) int {
 	if v4 := ip.To4(); v4 != nil {
-		n := binary.BigEndian.Uint32(v4)
-		if n <= maxReservedTable {
-			// An address of 0.0.0.0/24 would name a table of the
-			// kernel, as the main one: moved out of their range.
-			n |= 0x80000000
-		}
-		return int(n)
+		// An address of 0.0.0.0/24 names a table of the kernel, as the
+		// main one: see hasTable.
+		return int(binary.BigEndian.Uint32(v4))
 	}
 	h := fnv.New32a()
 	_, _ = h.Write(ip.To16())
 	return int(h.Sum32() | 0x80000000)
+}
+
+// hasTable says the address has a table of its own. An address of
+// 0.0.0.0/24, whose number names a table of the kernel, as the main one, has
+// none, and no policy routing: every other number is the one of another
+// address, and an address of 0.0.0.0/8 is no source a host sends from.
+func (t SourceRoute) hasTable() bool {
+	return t.Addr != nil && TableID(t.Addr.IP) > maxReservedTable
 }
 
 // IPv6 says the address is an ipv6 one.
@@ -207,7 +211,7 @@ func reconcile(existing []netlink.Rule, src *net.IPNet, table int) (del []netlin
 // replace ... table <table>" do. A rule of the address to another table, as
 // left by a former card, goes with its table.
 func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
-	if t.Addr == nil || t.Dev == "" {
+	if t.Addr == nil || t.Dev == "" || !t.hasTable() {
 		return nil
 	}
 	return netns.Do(func(_ ns.NetNS) error {
@@ -275,7 +279,7 @@ func (t SourceRoute) checkTableOwner(table, linkIndex int) error {
 // removes the routes of a card deleted, but not the rules, and not the routes
 // of a card kept, as one shared by several addresses.
 func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
-	if t.Addr == nil {
+	if !t.hasTable() {
 		return nil
 	}
 	return netns.Do(func(_ ns.NetNS) error {
@@ -303,7 +307,7 @@ func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 // Check returns an error saying what is missing of the policy routing of
 // the address: the rule, or the default route of its table.
 func (t SourceRoute) Check(netns ns.NetNS) error {
-	if t.Addr == nil || t.Dev == "" {
+	if t.Addr == nil || t.Dev == "" || !t.hasTable() {
 		return nil
 	}
 	return netns.Do(func(_ ns.NetNS) error {
