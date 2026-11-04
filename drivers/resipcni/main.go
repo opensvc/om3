@@ -706,6 +706,7 @@ func (t *T) start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	stdinData = t.keepHeldRoutes(cniNetNS, stdinData)
 	run := func() error {
 		var outB, errB []byte
 		cmd := command.New(
@@ -749,6 +750,31 @@ func (t *T) start(ctx context.Context) error {
 		t.Log().Warnf("record the card name %s: %s", dev, err)
 	}
 	return nil
+}
+
+// keepHeldRoutes removes from the plugin configuration the routes the
+// network namespace holds already: see dropHeldRoutes. A namespace or a
+// configuration that can not be read leaves the configuration as it is.
+func (t *T) keepHeldRoutes(nsPath string, conf []byte) []byte {
+	netns, err := ns.GetNS(nsPath)
+	if err != nil {
+		return conf
+	}
+	held, err := heldRoutesIn(netns)
+	_ = netns.Close()
+	if err != nil {
+		t.Log().Warnf("read the routes of %s: %s", nsPath, err)
+		return conf
+	}
+	b, dropped, err := dropHeldRoutes(conf, held)
+	if err != nil {
+		t.Log().Warnf("keep the routes of %s: %s", nsPath, err)
+		return conf
+	}
+	if len(dropped) > 0 {
+		t.Log().Infof("keep the routes the namespace has to %v", dropped)
+	}
+	return b
 }
 
 // guestDevFile is the file recording the name of the card the resource
