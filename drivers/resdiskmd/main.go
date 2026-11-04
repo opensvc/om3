@@ -59,6 +59,11 @@ type (
 		Create(ctx context.Context, level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error
 		Remove(ctx context.Context) error
 	}
+	// MDDriverFreshExister says whether the array exists once the device
+	// buffers dropped, at a price status does not pay.
+	MDDriverFreshExister interface {
+		ExistsFresh(ctx context.Context) (bool, error)
+	}
 	MDDriverUnprovisioner interface {
 		Wipe(ctx context.Context) error
 	}
@@ -142,6 +147,17 @@ func (t *T) exists(ctx context.Context) (bool, error) {
 	return t.md().Exists(ctx)
 }
 
+// existsFresh says whether the array exists, made sure of on the devices,
+// for a provision to create it or adopt it: a superblock zeroed may linger in
+// the buffers of the devices.
+func (t *T) existsFresh(ctx context.Context) (bool, error) {
+	dev := t.md()
+	if i, ok := dev.(MDDriverFreshExister); ok {
+		return i.ExistsFresh(ctx)
+	}
+	return dev.Exists(ctx)
+}
+
 func (t *T) isUp(ctx context.Context) (bool, error) {
 	active, _, err := t.md().IsActive(ctx)
 	return active, err
@@ -194,7 +210,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("md driver does not implement the provisioner interface")
 	}
-	exists, err := dev.Exists(ctx)
+	exists, err := t.existsFresh(ctx)
 	if err != nil {
 		return err
 	}
