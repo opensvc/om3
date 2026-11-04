@@ -5352,7 +5352,8 @@ type GetRelayStatusParams struct {
 	Remote *RelayRemote `form:"remote,omitempty" json:"remote,omitempty"`
 
 	// Since Only the relay clients whose data was updated within this duration, as
-	// 1h. Each relay judges by its own clock.
+	// 1h. Each relay judges by its own clock, and a relay of a version not
+	// knowing this parameter lists every client.
 	Since *RelaySince `form:"since,omitempty" json:"since,omitempty"`
 }
 

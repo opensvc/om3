@@ -32,7 +32,7 @@ func (a *DaemonAPI) GetRelayStatus(ctx echo.Context, params api.GetRelayStatusPa
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}
 	if params.Remote != nil && *params.Remote {
-		return a.getRelayStatusRemote(ctx, params, since)
+		return a.getRelayStatusRemote(ctx, params)
 	} else {
 		return a.getRelayStatusLocal(ctx, since)
 	}
@@ -41,7 +41,8 @@ func (a *DaemonAPI) GetRelayStatus(ctx echo.Context, params api.GetRelayStatusPa
 // relaySince is the duration the since parameter asks for, 0 for none: the
 // relay clients whose data was updated within it are listed, judged by the
 // clock of the relay holding the data. The parameter is passed on as is to
-// the relays a remote listing asks.
+// the relays a remote listing asks, which apply it by their own clock: a
+// relay of a version not knowing it lists every client.
 func relaySince(params api.GetRelayStatusParams) (time.Duration, error) {
 	if params.Since == nil || *params.Since == "" {
 		return 0, nil
@@ -111,7 +112,7 @@ func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, since time.Duration) e
 	return ctx.JSON(http.StatusOK, data)
 }
 
-func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelayStatusParams, since time.Duration) error {
+func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelayStatusParams) error {
 	falseValue := false
 	items := make(api.RelayStatusItems, 0)
 	relayMap := make(map[string]any)
@@ -224,11 +225,6 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 			// relay filter takes, as the placeholders of a relay not
 			// answering are.
 			for _, item := range resp.JSON200.Items {
-				// A relay of a version not knowing the since
-				// parameter lists every client: judged here.
-				if since > 0 && time.Since(item.UpdatedAt) > since {
-					continue
-				}
 				item.Relay = hbRelay
 				items = append(items, item)
 			}
