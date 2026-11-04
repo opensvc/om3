@@ -258,7 +258,7 @@ func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
 			if err := netlink.RuleDel(&r); err != nil {
 				return err
 			}
-			if err := flushTable(r.Table, t.family()); err != nil {
+			if err := t.flushOwnTable(rules, src, r.Table, log); err != nil {
 				return err
 			}
 		}
@@ -320,12 +320,25 @@ func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 			if err := netlink.RuleDel(&r); err != nil {
 				return err
 			}
-			if err := flushTable(r.Table, t.family()); err != nil {
+			if err := t.flushOwnTable(rules, src, r.Table, log); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+// flushOwnTable flushes the table a rule of the address named, unless
+// another rule names it too, of another source or of none, as one of an
+// ip.rule resource added since: its routes are then that rule's too.
+func (t SourceRoute) flushOwnTable(rules []netlink.Rule, src *net.IPNet, table int, log *plog.Logger) error {
+	if other := tableNamedByOther(rules, src, table); other != "" {
+		if log != nil {
+			log.Infof("keep the table %d, named by the rule %s", table, other)
+		}
+		return nil
+	}
+	return flushTable(table, t.family())
 }
 
 // Check returns an error saying what is missing of the policy routing of
