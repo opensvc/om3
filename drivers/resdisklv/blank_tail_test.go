@@ -12,6 +12,8 @@ func TestAVolumeMadeFromAnOriginIsTold(t *testing.T) {
 	for _, args := range [][]string{
 		{"-s"},
 		{"--snapshot", "vg/origin"},
+		{"--snapshot=vg/origin"},
+		{"--cache=vg/pool"},
 		{"--type", "snapshot"},
 		{"--type=cache"},
 		{"-H", "--cachepool", "vg/pool"},

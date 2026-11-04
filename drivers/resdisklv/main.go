@@ -245,15 +245,17 @@ func (t *T) blankTail(ctx context.Context, lv LVDriver) error {
 // of an existing one: a snapshot, or a cache of the origin.
 func createsFromAnOrigin(args []string) bool {
 	for i, arg := range args {
-		switch arg {
-		case "-s", "--snapshot", "-H", "--cache":
+		switch {
+		case arg == "-s", arg == "--snapshot", arg == "-H", arg == "--cache":
 			return true
-		case "--type":
+		case strings.HasPrefix(arg, "--snapshot="), strings.HasPrefix(arg, "--cache="):
+			return true
+		case arg == "--type":
 			if i+1 < len(args) && isOriginType(args[i+1]) {
 				return true
 			}
-		default:
-			if v, ok := strings.CutPrefix(arg, "--type="); ok && isOriginType(v) {
+		case strings.HasPrefix(arg, "--type="):
+			if isOriginType(strings.TrimPrefix(arg, "--type=")) {
 				return true
 			}
 		}
@@ -281,7 +283,12 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	}
 	if lvi, ok := lv.(LVDriverWiper); ok {
 		t.activateToWipe(ctx, lv)
-		_ = lvi.Wipe(ctx)
+		// A volume removed unwiped hands what it held, as the drbd
+		// metadata at its end, to the next volume made on its extents:
+		// the unprovision fails rather than remove it.
+		if err := lvi.Wipe(ctx); err != nil {
+			return fmt.Errorf("wipe %s before its removal: %w", lv.FQN(), err)
+		}
 	} else {
 		t.Log().Infof("%s wipe skipped: not implementing by %s", lv.FQN(), lv.DriverName())
 	}

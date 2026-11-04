@@ -399,7 +399,7 @@ func (t *LV) Wipe(ctx context.Context) error {
 		return nil
 	}
 	if err := t.ZeroTail(ctx); err != nil {
-		t.Log().Warnf("%s", err)
+		return err
 	}
 	dev := device.New(path, device.WithLogger(t.Log()))
 	return dev.Wipe(ctx)
