@@ -1,8 +1,8 @@
-Set the uri of the opensvc agent package repository and compliance modules
-gzipped tarball repository.
+Set the uri of the compliance modules gzipped tarball repository, and of the
+packages of the historical opensvc agent.
 
-This parameter is used by the `om node updatepkg` and `om node updatecomp`
-commands.
+This parameter is used by the `om node updatecomp` command. The
+`om node update pkg` command of this agent uses `repopkg` instead.
 
 Expected repository structure:
 

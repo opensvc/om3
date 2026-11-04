@@ -505,6 +505,13 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     om node register --credential /etc/opensvc/collector.cred
     ```
 
+* **`om node updatepkg`**, now `om node update pkg`, the historical name kept as a hidden alias as the collector
+  queues it, upgrades the `opensvc-server`, `opensvc-client` and `opensvc-webapp` packages installed: with the package
+  manager (apt-get, dnf, yum or zypper) from its configured repositories when they offer them, else downloading the
+  latest version of each from the opensvc package repository. `node.repopkg` now names a repository laid out as
+  https://packages.opensvc.com, the default, and `node.branch` a branch of it, `prod` by default; `node.repo` is no
+  longer used to update the packages.
+
 * `--format` is no longer supported with `print status`. The `om svc1 print config --format json | om svc2 create`
   pattern can be replaced by `om svc1 config show | om svc2 create --config=-`
 

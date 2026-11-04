@@ -606,7 +606,7 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/node.dblog"),
 	}
 	kwNodeBranch = keywords.Keyword{
-		Example: "1.9",
+		Example: "uat",
 		Option:  "branch",
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.branch"),
@@ -618,7 +618,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.repo"),
 	}
 	kwNodeRepoPkg = keywords.Keyword{
-		Example: "http://repo.opensvc.com",
+		Example: "https://packages.opensvc.com",
 		Option:  "repopkg",
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.repopkg"),

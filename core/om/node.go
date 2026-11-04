@@ -62,8 +62,9 @@ var (
 		Short:   "push node discover information to the collector",
 	}
 	cmdNodeUpdate = &cobra.Command{
-		Use:    "update",
-		Hidden: true,
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "update",
+		Short:   "update the opensvc packages of the node",
 	}
 	cmdNodeComplianceAttach = &cobra.Command{
 		Use:     "attach",
@@ -197,6 +198,7 @@ func init() {
 		newCmdNodeSysreport(),
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
+		newCmdNodeUpdatepkg(),
 	)
 	cmdNodeConfig.AddCommand(
 		omcmd.NewCmdNodeConfigDoc(),
@@ -243,6 +245,7 @@ func init() {
 	)
 	cmdNodeUpdate.AddCommand(
 		cmdNodeUpdateSSH,
+		newCmdNodeUpdatePkg(),
 	)
 	cmdNodeValidate.AddCommand(
 		newCmdNodeValidateConfig(),
