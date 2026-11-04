@@ -91,6 +91,9 @@ func (t *T) startIPVLAN(ctx context.Context) error {
 	if err := t.startRoutesDel(ctx, netns, guestDev); err != nil {
 		return err
 	}
+	if err := t.startSourceRoute(netns, guestDev); err != nil {
+		return err
+	}
 	if err := t.startARP(netns, guestDev); err != nil {
 		return err
 	}

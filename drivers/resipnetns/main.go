@@ -380,20 +380,8 @@ func (t *T) startNetworkRoute(netns ns.NetNS, guestDev string) error {
 // A route through the interface alone would have the namespace look for the
 // addresses of the other nodes on the link, where nothing answers for them.
 func networkRoute(segment, connected *net.IPNet, gateway, dev string) []string {
-	if segment == nil || connected == nil || connected.IP == nil || connected.Mask == nil {
-		return nil
-	}
 	gw := net.ParseIP(gateway)
-	if gw == nil {
-		return nil
-	}
-	base := &net.IPNet{IP: connected.IP.Mask(connected.Mask), Mask: connected.Mask}
-	segOnes, segBits := segment.Mask.Size()
-	conOnes, conBits := base.Mask.Size()
-	if segBits != conBits || conOnes <= segOnes || !segment.Contains(base.IP) {
-		return nil
-	}
-	if !base.Contains(gw) {
+	if !resip.NetworkRouteNeeded(segment, connected, gw) {
 		return nil
 	}
 	return []string{segment.String(), "via", gw.String(), "dev", dev}
@@ -744,6 +732,11 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 			t.StatusLog().Error("interface %s no-carrier.", t.Dev)
 			return status.Down
 		}
+	}
+	// A rule missing, as on an address set up by a former agent, is said
+	// and repaired by the next start, the status left as it is.
+	if err := t.sourceRoute(guestDev).Check(netns); err != nil {
+		t.StatusLog().Warn("%s", err)
 	}
 	return status.Up
 }
@@ -1151,7 +1144,36 @@ func (t *T) stopIP(netns ns.NetNS, guestDev string) error {
 		t.Log().Infof("%s is already down (not found on any netns dev)", ipnet)
 		return nil
 	}
+	if err := t.sourceRoute(guestDev).Remove(netns, t.Log()); err != nil {
+		t.Log().Warnf("remove the policy routing of %s: %s", ipnet.IP, err)
+	}
 	return t.addrDelIn(ipnet.String(), guestDev, netns.Path())
+}
+
+// sourceRoute is the policy routing of the address on the card guestDev of
+// the namespace: the address answers by the gateway of its network.
+func (t *T) sourceRoute(guestDev string) resip.SourceRoute {
+	r := resip.SourceRoute{
+		Addr:    t.ipnet(),
+		Dev:     guestDev,
+		Gateway: net.ParseIP(t.Gateway),
+		OnLink:  t.DelNetRoute,
+	}
+	if r.Addr != nil && (r.Addr.IP == nil || r.Addr.Mask == nil) {
+		r.Addr = nil
+	}
+	if nw, err := t.resolveNetwork(); err == nil && nw != nil {
+		if segment, err := nw.IPNet(); err == nil {
+			r.Network = segment
+		}
+	}
+	return r
+}
+
+// startSourceRoute sets the policy routing of the address, once its routes
+// in the main table are set: see resip.SourceRoute.
+func (t *T) startSourceRoute(netns ns.NetNS, guestDev string) error {
+	return t.sourceRoute(guestDev).Apply(netns, t.Log())
 }
 
 func (t *T) ipnetStrict() (*net.IPNet, error) {

@@ -1,11 +1,16 @@
 package resipcni
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
+
+	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/drivers/resip"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 // heldRoutesIn returns the destinations of the routes of the main table of
@@ -79,4 +84,51 @@ func dropHeldRoutes(conf []byte, held map[string]bool) ([]byte, []string, error)
 	ipam["routes"] = kept
 	b, err := json.Marshal(m)
 	return b, dropped, err
+}
+
+// sourceRoute is the policy routing of the address of the resource, on the
+// card dev of the namespace: the address answers by the gateway of its
+// network. A network om does not own, a cni configuration written by hand,
+// has none: its plugin keeps the routing it was configured with.
+func (t *T) sourceRoute(netns ns.NetNS, dev string) (resip.SourceRoute, bool) {
+	nw, _, err := network.Lookup(t.Network)
+	if err != nil || nw == nil || dev == "" {
+		return resip.SourceRoute{}, false
+	}
+	ip, ipnet, err := t.nsIPNet(netns)
+	if err != nil || ip == nil || ipnet == nil {
+		return resip.SourceRoute{}, false
+	}
+	r := resip.SourceRoute{
+		Addr: &net.IPNet{IP: ip, Mask: ipnet.Mask},
+		Dev:  dev,
+	}
+	if segment, err := nw.IPNet(); err == nil {
+		r.Network = segment
+	}
+	if i, err := network.NewAllocator(nw, hostname.Hostname()); err == nil && i != nil {
+		r.Gateway = i.Gateway
+	}
+	return r, true
+}
+
+// startSourceRoute sets the policy routing of the address, once it is up.
+func (t *T) startSourceRoute(ctx context.Context) error {
+	netConf, err := t.netConf()
+	if err != nil {
+		return err
+	}
+	netns, err := t.getNS(ctx)
+	if err != nil || netns == nil {
+		return err
+	}
+	dev, err := t.currentGuestDev(netConf.IPAM.Subnet, netns)
+	if err != nil {
+		return err
+	}
+	r, ok := t.sourceRoute(netns, dev)
+	if !ok {
+		return nil
+	}
+	return r.Apply(netns, t.Log())
 }

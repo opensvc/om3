@@ -308,6 +308,11 @@ func (t *T) ProvisionStart(ctx context.Context) error {
 func (t *T) Start(ctx context.Context) error {
 	if t.Status(ctx) == status.Up {
 		t.Log().Infof("already up")
+		// The policy routing of an address set up by a former agent,
+		// or lost, is set again.
+		if err := t.startSourceRoute(ctx); err != nil {
+			t.Log().Warnf("%s", err)
+		}
 		return nil
 	}
 	if err := t.addObjectNetNS(); err != nil {
@@ -319,13 +324,16 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.start(ctx); err != nil {
 		return err
 	}
-	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
-		return err
-	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		// Don't use start context to stop (it may be already deadlined)
 		return t.stop(nil)
 	})
+	if err := t.startSourceRoute(ctx); err != nil {
+		return err
+	}
+	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -395,6 +403,13 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 	if dev != "" {
+		// A rule missing, as on an address set up by a former agent, is
+		// said and set again by the next start, the status left as it is.
+		if r, ok := t.sourceRoute(netns, dev); ok {
+			if err := r.Check(netns); err != nil {
+				t.StatusLog().Warn("%s", err)
+			}
+		}
 		return status.Up
 	}
 	if left := t.leftGuestDevIn(netns); left != "" {
@@ -574,6 +589,10 @@ func (t *T) stop(ctx context.Context) error {
 	if dev == "" {
 		// The card of the start lost its address: delete it by its name.
 		dev = t.leftGuestDevIn(netns)
+	} else if r, ok := t.sourceRoute(netns, dev); ok {
+		if err := r.Remove(netns, t.Log()); err != nil {
+			t.Log().Warnf("remove the policy routing of %s: %s", r.Addr.IP, err)
+		}
 	}
 	if err := t.cniDel(netConf, netns.Path(), containerID, dev); err != nil {
 		return err
