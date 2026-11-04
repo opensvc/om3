@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/util/args"
 )
 
@@ -23,8 +24,10 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 		a.Append("--userns", ea.BT.UserNS)
 	}
 
-	if !a.HasOptionAndAnyValue("--net") {
-		// Use the --net none Docker option when nets is unset and --net is not present in run_args
+	if !rescontainerocibase.HasNetworkOption(a.Get()) {
+		// A container with no netns keyword nor a network in its
+		// run_args, as --net or --network, has a private netns. docker
+		// refuses a run naming a network and --net none.
 		a.Append("--net", "none")
 	}
 
