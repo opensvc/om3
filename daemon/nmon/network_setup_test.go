@@ -182,3 +182,27 @@ func TestTheNetworkSetupsOfTwoSessionsAreRunApart(t *testing.T) {
 	applyNetworkSetupDone(t, m)
 	assert.False(t, m.networkSetupRunning)
 }
+
+// A setup queued for requests whose callers all gave up, as ones timing out,
+// is not run: requests of distinct sessions would queue setups the node runs
+// for nobody.
+func TestANetworkSetupQueuedForCallersGoneIsDropped(t *testing.T) {
+	calls, release := stubNetworkSetup(t)
+	m := newNetworkSetupTestManager(t, node.MonitorStateIdle)
+
+	m.requestNetworkSetup([]string{"a"}, nil, uuid.Nil)
+	nextNetworkSetup(t, calls)
+	ctx, cancel := context.WithCancel(context.Background())
+	m.requestNetworkSetup([]string{"b"}, errcontext.New(ctx), uuid.New())
+	cancel()
+
+	release <- nil
+	applyNetworkSetupDone(t, m)
+	assert.False(t, m.networkSetupRunning, "the setup of the caller gone is not run")
+	assert.Empty(t, m.networkSetupQueue)
+	select {
+	case names := <-calls:
+		t.Fatalf("unexpected setup %v", names)
+	default:
+	}
+}

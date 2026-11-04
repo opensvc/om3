@@ -22,8 +22,9 @@ const NetworkSetupClientTimeout = 2*time.Minute + 15*time.Second
 
 // NetworkSetup asks the node monitor of each node of nodenames to set up the
 // networks names, all of them when names is empty, and waits for the setups
-// to run. The node monitor runs one setup at a time, so a setup asked never
-// writes the firewall rules of the networks along with another.
+// to run, on every node at once. The node monitor runs one setup at a time,
+// so a setup asked never writes the firewall rules of the networks along
+// with another.
 //
 // The setups log with the session id of this command, and their logs are
 // streamed in format as they run, the setup running in the daemons.
@@ -40,16 +41,35 @@ func NetworkSetup(ctx context.Context, c *client.T, nodenames, names []string, f
 		fmt.Fprintln(os.Stderr, err)
 	}
 	defer logs.Stop()
+	// The nodes are asked at once: each answers within the 2 minutes the
+	// api waits for its setup, so the log streams, bounded by the client
+	// timeout from their opening, see every setup to its end.
+	type result struct {
+		nodename string
+		err      error
+	}
+	results := make(chan result, len(nodenames))
+	for _, nodename := range nodenames {
+		go func(nodename string) {
+			resp, err := c.PostNodeNetworkSetupWithResponse(ctx, nodename, &params)
+			switch {
+			case err != nil:
+				err = fmt.Errorf("%s: %w", nodename, err)
+			case resp.StatusCode() == http.StatusNoContent:
+			default:
+				err = fmt.Errorf("%s: %s", nodename, networkSetupProblem(resp))
+			}
+			results <- result{nodename: nodename, err: err}
+		}(nodename)
+	}
+	errsByNode := make(map[string]error, len(nodenames))
+	for range nodenames {
+		r := <-results
+		errsByNode[r.nodename] = r.err
+	}
 	var errs error
 	for _, nodename := range nodenames {
-		resp, err := c.PostNodeNetworkSetupWithResponse(ctx, nodename, &params)
-		switch {
-		case err != nil:
-			errs = errors.Join(errs, fmt.Errorf("%s: %w", nodename, err))
-		case resp.StatusCode() == http.StatusNoContent:
-		default:
-			errs = errors.Join(errs, fmt.Errorf("%s: %s", nodename, networkSetupProblem(resp)))
-		}
+		errs = errors.Join(errs, errsByNode[nodename])
 	}
 	return errs
 }
