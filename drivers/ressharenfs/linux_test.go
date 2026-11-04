@@ -158,6 +158,17 @@ func TestStatus(t *testing.T) {
 			exports: []string{"/srv/other h1(rw,sync)"},
 			want:    status.Down,
 		},
+		// nfs-utils before 2 shows no default option: sync, set, shows
+		// as neither sync nor async.
+		"sync shown by neither": {
+			exports: []string{"/srv/share h1(rw,wdelay,no_subtree_check)", "/srv/share h2(ro)"},
+			want:    status.Up,
+		},
+		"async where sync is required": {
+			exports: []string{"/srv/share h1(rw,async)", "/srv/share h2(ro)"},
+			want:    status.Warn,
+			warns:   []string{"/srv/share is exported to client h1 with missing options: current 'rw,async', minimum required 'rw,sync'"},
+		},
 		"one client missing": {
 			exports: []string{"/srv/share h1(rw,sync)"},
 			want:    status.Warn,

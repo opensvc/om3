@@ -60,11 +60,26 @@ func (t Mounts) ByPath(s string) Mounts {
 	return l
 }
 
+// defaultOpts are the export options exportfs applies when the options name
+// none of the pair, each with its opposite: nfs-utils before 2 prints only
+// the opposite when set, so an export with sync shows neither.
+var defaultOpts = map[string]string{
+	"sync":      "async",
+	"no_wdelay": "wdelay",
+	"hide":      "nohide",
+}
+
+// HasOpts says the export has the options l: each one shown, or a default
+// whose opposite is not shown, as nfs-utils before 2 shows no default.
 func (t Export) HasOpts(l []string) bool {
 	for _, e := range l {
-		if !slices.Contains(t.Opts, e) {
-			return false
+		if slices.Contains(t.Opts, e) {
+			continue
 		}
+		if opposite, ok := defaultOpts[e]; ok && !slices.Contains(t.Opts, opposite) {
+			continue
+		}
+		return false
 	}
 	return true
 }
