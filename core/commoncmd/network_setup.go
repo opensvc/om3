@@ -5,10 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
+
+// NetworkSetupClientTimeout is the timeout of the client asking a network
+// setup: the api answers once the setup ran, waiting up to 2 minutes for it
+// (networkSetupTimeout of the daemon api), longer than the default client
+// timeout. A client giving up first would say failed a setup still running.
+const NetworkSetupClientTimeout = 2*time.Minute + 15*time.Second
 
 // NetworkSetup asks the node monitor of each node of nodenames to set up the
 // networks names, all of them when names is empty, and waits for the setups

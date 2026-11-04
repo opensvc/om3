@@ -78,7 +78,11 @@ func (t *Manager) requestNetworkSetup(names []string, waiter errcontext.ErrClose
 func (t *Manager) startNetworkSetup(names []string, waiters []errcontext.ErrCloseSender) {
 	t.networkSetupRunning = true
 	ctx, log, last := t.ctx, t.log, t.networkPeersSigs
+	// The monitor stop waits for the setup: the next daemon would set the
+	// networks up while this one still changes them.
+	t.wg.Add(1)
 	go func() {
+		defer t.wg.Done()
 		begin := time.Now()
 		warn := time.AfterFunc(networkSetupWarnAfter, func() {
 			log.Warnf("network setup %v runs for %s", names, networkSetupWarnAfter)
