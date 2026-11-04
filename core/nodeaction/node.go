@@ -434,7 +434,7 @@ func (t T) DoAsync() error {
 				acceptedBy = *orchestrationQueued.Node
 			}
 			result.OrchestrationID = orchestrationID
-			result.Status = "accepted"
+			result.Status = orchestrationQueued.Status()
 		}
 		switch {
 		case !t.Follow:

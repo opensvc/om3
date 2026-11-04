@@ -9840,6 +9840,13 @@ components:
             from the moment it hands the id out, while the other nodes hear
             of it a heartbeat later
           type: string
+        queued:
+          description: |
+            true when the monitor had not read the request yet when the
+            node answered, as a monitor busy or running an action: it takes
+            the orchestration on, or refuses it, later, under the id, as
+            "daemon orchestration list" and "wait" tell
+          type: boolean
       required:
         - orchestration_id
 

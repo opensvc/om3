@@ -662,7 +662,7 @@ func (t T) DoAsync() error {
 				r = asyncResult{
 					OrchestrationID: orchestrationQueued.OrchestrationID,
 					Path:            p.String(),
-					Status:          "accepted",
+					Status:          orchestrationQueued.Status(),
 				}
 				if wait {
 					idC <- orchestrationQueued
@@ -684,7 +684,7 @@ func (t T) DoAsync() error {
 		// and the refusals, which have no logs.
 		ids := make([]uuid.UUID, 0, len(rs))
 		for _, r := range rs {
-			if r.OrchestrationID != uuid.Nil && r.Status == "accepted" {
+			if r.OrchestrationID != uuid.Nil && (r.Status == api.OrchestrationStatusAccepted || r.Status == api.OrchestrationStatusQueued) {
 				ids = append(ids, r.OrchestrationID)
 			} else {
 				errs = errors.Join(errs, fmt.Errorf("%s: %s", r.Path, r.Status))

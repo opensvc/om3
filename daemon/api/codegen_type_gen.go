@@ -2460,6 +2460,12 @@ type OrchestrationQueued struct {
 	// of it a heartbeat later
 	Node            *string            `json:"node,omitempty"`
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
+
+	// Queued true when the monitor had not read the request yet when the
+	// node answered, as a monitor busy or running an action: it takes
+	// the orchestration on, or refuses it, later, under the id, as
+	// "daemon orchestration list" and "wait" tell
+	Queued *bool `json:"queued,omitempty"`
 }
 
 // OrchestrationRefused A problem, for an action refused. When the instance monitor refused
