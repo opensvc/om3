@@ -202,10 +202,6 @@ func IsValid(file string) (bool, error) {
 		return false, nil
 	}
 	pid := filepath.Base(file)
-	if pid == strconv.Itoa(os.Getpid()) {
-		// The run of this process.
-		return true, nil
-	}
 	b, err := os.ReadFile(file)
 	if os.IsNotExist(err) {
 		return false, nil
@@ -225,7 +221,13 @@ func IsValid(file string) (bool, error) {
 		return true, nil
 	}
 	// A run file of an older agent names no writer: judged by the time of
-	// the process directory, which the kernel may recreate.
+	// the process directory, which the kernel may recreate, but for the run
+	// file of this process, which is its own whatever the time says. A file
+	// naming its writer is judged by it, this process included: a stale
+	// file of a crashed run may carry the pid this process was given.
+	if pid == strconv.Itoa(os.Getpid()) {
+		return true, nil
+	}
 	procFile := "/proc/" + pid
 	procInfo, err := os.Lstat(procFile)
 	if os.IsNotExist(err) {
