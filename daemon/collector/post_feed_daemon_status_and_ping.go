@@ -152,6 +152,7 @@ func (t *T) sendDaemonData() {
 	t.daemonDataSending = true
 	t.daemonStatusInFlight = len(job.changes)
 	ctx, requester, clusterData, timeout := t.ctx, t.client, t.clusterData, t.postTimeout
+	t.log.Tracef("send daemon %s: %s %s", job.kind(), http.MethodPost, job.path())
 	t.goSend(func() sendResult {
 		return sendDaemonData(ctx, requester, clusterData, timeout, job)
 	})

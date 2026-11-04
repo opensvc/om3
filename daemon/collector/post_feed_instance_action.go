@@ -252,6 +252,7 @@ func (t *T) sendActions() {
 	}
 	agentVersion := t.agentVersion()
 	tunables := t.actionTunables
+	t.log.Tracef("send instance action: POST or PUT %s, %d items", oc3path.FeedInstanceAction, len(jobs))
 	t.goSend(func() sendResult {
 		results := make(actionSendResults, 0, len(jobs))
 		for _, job := range jobs {
