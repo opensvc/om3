@@ -180,6 +180,14 @@ func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
+// Boot removes the flag a crash left, as v2 did: the node booted, the
+// instance is not started, and the flag would read the volume of the
+// instance up, holding it. The volume object is booted by the daemon on its
+// own, so the boot does not stop it.
+func (t *T) Boot(ctx context.Context) error {
+	return t.stopFlag(ctx)
+}
+
 func (t *T) name() string {
 	if t.Name != "" {
 		return t.Name
@@ -231,7 +239,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 		return status.Down
 	}
-	t.DataRecv.Status()
+	if data.Avail.Is(status.Up, status.Warn) {
+		// The installed keys are files of the volume, there only while
+		// it is up, as a standby or down volume is not mounted.
+		t.DataRecv.Status()
+	}
 	return data.Avail
 }
 
