@@ -125,3 +125,14 @@ func TestReconcileTheRulesOfASource(t *testing.T) {
 	assert.Empty(t, del)
 	assert.True(t, add)
 }
+
+// A table another rule names, of another source or of none, as one of an
+// ip.rule resource, is not the address's own.
+func TestATableNamedByAnotherRuleIsNotTaken(t *testing.T) {
+	src := prefix(t, "10.100.0.164/32")
+	other := prefix(t, "10.22.56.240/32")
+	assert.Equal(t, "", tableNamedByOther([]netlink.Rule{{Src: src, Table: 7, Priority: SourceRulePriority}}, src, 7))
+	assert.Equal(t, "", tableNamedByOther([]netlink.Rule{{Src: other, Table: 8, Priority: SourceRulePriority}}, src, 7))
+	assert.Equal(t, "from 10.22.56.240/32 priority 32000", tableNamedByOther([]netlink.Rule{{Src: other, Table: 7, Priority: SourceRulePriority}}, src, 7))
+	assert.Equal(t, "from all priority 100", tableNamedByOther([]netlink.Rule{{Table: 7, Priority: 100}}, src, 7))
+}
