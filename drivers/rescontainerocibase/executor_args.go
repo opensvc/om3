@@ -430,3 +430,20 @@ func (ea *ExecutorArg) resolvConfMount() (string, error) {
 	}
 	return path + ":/etc/resolv.conf:ro", nil
 }
+
+// HasNetworkOption says the run args name the network of the container, as
+// "--net x", "--network x", "--net=x" or "--network=x": the engines take
+// both names of the option.
+func HasNetworkOption(l []string) bool {
+	for i, s := range l {
+		switch {
+		case s == "--net" || s == "--network":
+			if i+1 < len(l) {
+				return true
+			}
+		case strings.HasPrefix(s, "--net=") || strings.HasPrefix(s, "--network="):
+			return true
+		}
+	}
+	return false
+}

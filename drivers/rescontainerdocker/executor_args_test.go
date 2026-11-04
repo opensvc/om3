@@ -68,6 +68,37 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			},
 		},
 
+		// docker refuses a run naming a network and --net none: a
+		// network of run_args, by either name of the option, is kept
+		// alone.
+		"keep a --network x of run_args": {
+			res: &T{
+				BT: rescontainerocibase.BT{
+					T:       resource.T{ResourceID: &resourceid.T{Name: "id1"}},
+					Path:    p,
+					RunArgs: []string{"--network", "bridge", "-p", "2222:22"},
+				},
+			},
+			expected: []string{
+				"container", "run", "--name", "foo.id1",
+				"--network", "bridge", "-p", "2222:22",
+			},
+		},
+
+		"keep a --network=x of run_args": {
+			res: &T{
+				BT: rescontainerocibase.BT{
+					T:       resource.T{ResourceID: &resourceid.T{Name: "id1"}},
+					Path:    p,
+					RunArgs: []string{"--network=bridge"},
+				},
+			},
+			expected: []string{
+				"container", "run", "--name", "foo.id1",
+				"--network=bridge",
+			},
+		},
+
 		"defines dns options when netns=none": {
 			res: &T{
 				BT: rescontainerocibase.BT{
