@@ -130,6 +130,16 @@ func (t *T) Stop(ctx context.Context) error {
 	return t.BaseTask.Stop(ctx)
 }
 
+// UnprovisionStop stops the runs of the task, given stop_timeout to end,
+// each stopping its container, then the containers left, then forgets the
+// last run.
+func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
+	if err := t.StopRuns(ctx, t.StopTimeout); err != nil {
+		return err
+	}
+	return t.Stop(ctx)
+}
+
 func (t *T) stopContainers(ctx context.Context) error {
 	if t.parallelRuns() {
 		return t.stopRuns(ctx)

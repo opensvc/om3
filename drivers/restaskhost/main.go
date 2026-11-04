@@ -359,6 +359,15 @@ func (t *T) onError(ctx context.Context) error {
 	return cmd.Run()
 }
 
+// UnprovisionStop stops the runs of the task, given stop_timeout to end,
+// then forgets the last run.
+func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
+	if err := t.StopRuns(ctx, t.StopTimeout); err != nil {
+		return err
+	}
+	return t.BaseTask.Stop(ctx)
+}
+
 func (t *T) Kill(ctx context.Context) error {
 	app := t.App()
 	if app.StopCmd != "" {
