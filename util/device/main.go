@@ -66,6 +66,11 @@ func (t T) Size() (int64, error) {
 	return f.Seek(0, io.SeekEnd)
 }
 
+// TailWipeSize is the end of a device a provision zeroes on a device it made
+// on reused space: it holds the internal metadata of drbd 8 and 9, a md 0.90
+// superblock, the zfs labels and the backup gpt.
+const TailWipeSize int64 = 1024 * 1024
+
 // ZeroTail writes zeroes over the last n bytes of the device, over all of it
 // when it holds less. The end of a device is where the internal metadata of
 // drbd, a md 0.90 superblock, the zfs labels and the backup gpt are kept, and
