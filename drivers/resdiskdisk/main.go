@@ -90,7 +90,29 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.setDiskIDKeywords(ctx, disks); err != nil {
 		return err
 	}
-	return t.configure(ctx, enforce)
+	if err := t.configure(ctx, enforce); err != nil {
+		return err
+	}
+	return t.blankTail(ctx)
+}
+
+// blankTail zeroes the end of the disk just made, as what a provision creates
+// is blank: what an array hands out is up to its vendor, and a drbd resource
+// on it would otherwise adopt the metadata a former user of the space left
+// there.
+func (t *T) blankTail(ctx context.Context) error {
+	devs := t.ExposedDevices(ctx)
+	if len(devs) == 0 {
+		t.Log().Warnf("skip zeroing the end of the disk: it exposes no device")
+		return nil
+	}
+	for _, dev := range devs {
+		t.Log().Infof("zero the last %d bytes of %s", device.TailWipeSize, dev)
+		if err := dev.ZeroTail(device.TailWipeSize); err != nil {
+			return fmt.Errorf("zero the end of %s: %w", dev, err)
+		}
+	}
+	return nil
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {

@@ -405,12 +405,7 @@ func (t *LV) Wipe(ctx context.Context) error {
 	return dev.Wipe(ctx)
 }
 
-// TailWipeSize is the end of a volume zeroed by ZeroTail: it holds the
-// internal metadata of drbd 8 and 9, a md 0.90 superblock, the zfs labels and
-// the backup gpt.
-const TailWipeSize int64 = 1024 * 1024
-
-// ZeroTail zeroes the last TailWipeSize bytes of the volume. lvcreate wipes
+// ZeroTail zeroes the last device.TailWipeSize bytes of the volume. lvcreate wipes
 // the signatures its libblkid knows, and zeroes the first 4 KiB: on an older
 // distribution, the drbd metadata a volume left at the end of its extents is
 // found by the next volume made on them, and taken for its own.
@@ -420,8 +415,8 @@ func (t *LV) ZeroTail(_ context.Context) error {
 		t.Log().Infof("skip zeroing the end of %s: it does not exist", path)
 		return nil
 	}
-	t.Log().Infof("zero the last %d bytes of %s", TailWipeSize, path)
-	if err := device.New(path, device.WithLogger(t.Log())).ZeroTail(TailWipeSize); err != nil {
+	t.Log().Infof("zero the last %d bytes of %s", device.TailWipeSize, path)
+	if err := device.New(path, device.WithLogger(t.Log())).ZeroTail(device.TailWipeSize); err != nil {
 		return fmt.Errorf("zero the end of %s: %w", path, err)
 	}
 	return nil

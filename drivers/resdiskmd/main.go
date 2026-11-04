@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/md"
@@ -237,6 +238,23 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnsetUUID(ctx)
 	})
+	return t.blankTail()
+}
+
+// blankTail zeroes the end of the array just made, as what a provision
+// creates is blank: the array data ends where the data of its members ends,
+// and a drbd resource on it would otherwise adopt the metadata a former user
+// of the members left there.
+func (t *T) blankTail() error {
+	path := "/dev/md/" + t.GetName()
+	if !file.Exists(path) {
+		t.Log().Warnf("skip zeroing the end of %s: it does not exist", path)
+		return nil
+	}
+	t.Log().Infof("zero the last %d bytes of %s", device.TailWipeSize, path)
+	if err := device.New(path, device.WithLogger(t.Log())).ZeroTail(device.TailWipeSize); err != nil {
+		return fmt.Errorf("zero the end of %s: %w", path, err)
+	}
 	return nil
 }
 
