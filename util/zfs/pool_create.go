@@ -69,10 +69,14 @@ func (t *Pool) Create(fopts ...funcopt.O) error {
 		command.WithName("zpool"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
 		command.WithLogger(t.Log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return withStderr(err, cmd.Stderr())
+	}
+	return nil
 }
