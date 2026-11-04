@@ -2,6 +2,7 @@ package rescontainerpodman
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -44,7 +45,54 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 		// would take.
 		a.Append("--net", "none")
 	}
+	if unprivilegedPortsSysctlWanted(a.Get()) {
+		// As docker does: a process of a container with its own netns
+		// listens on any port, as a non-root haproxy on 80, where podman
+		// leaves the kernel default, ports under 1024 for root only. The
+		// netns is the container's own: the node ports are not opened.
+		a.Append("--sysctl", unprivilegedPortsSysctl+"=0")
+	}
 	return a, nil
+}
+
+// unprivilegedPortsSysctl is the sysctl setting the lowest port a process
+// not root may listen on, 1024 by default.
+const unprivilegedPortsSysctl = "net.ipv4.ip_unprivileged_port_start"
+
+// unprivilegedPortsSysctlFile is the file of unprivilegedPortsSysctl, absent
+// from the kernels older than 4.11, which have no such sysctl.
+var unprivilegedPortsSysctlFile = "/proc/sys/net/ipv4/ip_unprivileged_port_start"
+
+// unprivilegedPortsSysctlWanted says the container of the run args l has its
+// own netns, and no setting of unprivilegedPortsSysctl: a netns of the node
+// or of another container is not the container's to set, as docker does
+// not, and the setting the user gives wins.
+func unprivilegedPortsSysctlWanted(l []string) bool {
+	if _, err := os.Stat(unprivilegedPortsSysctlFile); err != nil {
+		return false
+	}
+	network := ""
+	for i, s := range l {
+		switch {
+		case (s == "--net" || s == "--network") && i+1 < len(l):
+			network = l[i+1]
+		case strings.HasPrefix(s, "--net="):
+			network = strings.TrimPrefix(s, "--net=")
+		case strings.HasPrefix(s, "--network="):
+			network = strings.TrimPrefix(s, "--network=")
+		case s == "--sysctl" && i+1 < len(l) && strings.HasPrefix(l[i+1], unprivilegedPortsSysctl+"="):
+			return false
+		case strings.HasPrefix(s, "--sysctl="+unprivilegedPortsSysctl+"="):
+			return false
+		}
+	}
+	switch {
+	case network == "host":
+		return false
+	case strings.HasPrefix(network, "container:"), strings.HasPrefix(network, "ns:"):
+		return false
+	}
+	return true
 }
 
 // WaitRemoved waits for the container to be removed. podman 1 has no

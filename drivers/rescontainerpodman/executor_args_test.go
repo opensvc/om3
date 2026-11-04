@@ -2,8 +2,10 @@ package rescontainerpodman
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -13,6 +15,12 @@ import (
 )
 
 func TestExecutorArg_RunArgsBase(t *testing.T) {
+	// The arguments without the unprivileged ports sysctl, which
+	// TestUnprivilegedPortsSysctlWanted tests.
+	prev := unprivilegedPortsSysctlFile
+	unprivilegedPortsSysctlFile = "/nonexistent"
+	defer func() { unprivilegedPortsSysctlFile = prev }()
+
 	p := naming.Path{Name: "foo", Kind: naming.KindSvc}
 
 	cases := map[string]struct {
@@ -255,4 +263,31 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A container with its own netns may listen on any port as a user not
+// root, as with docker: podman leaves the kernel default, 1024. A netns of
+// the node or of another container is not the container's to set, and the
+// setting of the user wins.
+func TestUnprivilegedPortsSysctlWanted(t *testing.T) {
+	prev := unprivilegedPortsSysctlFile
+	unprivilegedPortsSysctlFile = t.TempDir()
+	defer func() { unprivilegedPortsSysctlFile = prev }()
+
+	for args, want := range map[string]bool{
+		"--net none":            true,
+		"--network podman":      true,
+		"--network=podman":      true,
+		"--net host":            false,
+		"--net=container:abc":   false,
+		"--net ns:/run/netns/x": false,
+		"--net none --sysctl net.ipv4.ip_unprivileged_port_start=80": false,
+		"--net none --sysctl=net.ipv4.ip_unprivileged_port_start=80": false,
+		"--net none --sysctl net.ipv4.ip_forward=1":                  true,
+	} {
+		assert.Equal(t, want, unprivilegedPortsSysctlWanted(strings.Fields(args)), args)
+	}
+
+	unprivilegedPortsSysctlFile = "/nonexistent"
+	assert.False(t, unprivilegedPortsSysctlWanted([]string{"--net", "none"}), "a kernel older than 4.11 has no such sysctl")
 }
