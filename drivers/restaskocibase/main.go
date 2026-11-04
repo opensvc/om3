@@ -121,7 +121,16 @@ func (t *T) Run(ctx context.Context) error {
 	return t.RunIf(ctx, t.lockedRun)
 }
 
-func (t *T) Stop(ctx context.Context) (err error) {
+// Stop stops the containers of the runs, then forgets the last run, as
+// the base task does.
+func (t *T) Stop(ctx context.Context) error {
+	if err := t.stopContainers(ctx); err != nil {
+		return err
+	}
+	return t.BaseTask.Stop(ctx)
+}
+
+func (t *T) stopContainers(ctx context.Context) error {
 	if t.parallelRuns() {
 		return t.stopRuns(ctx)
 	}

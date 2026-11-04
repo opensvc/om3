@@ -1828,6 +1828,13 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 	if !actioncontext.HasResourceSelector(ctx) || actioncontext.IsStep(ctx) {
 		return nil
 	}
+	if _, ok := r.(starter); !ok {
+		// The flag says a resource stopped is to be started again by the
+		// user, and its start removes it. A resource with no start, as a
+		// task, would keep it for good, and its node out of the daemon
+		// decisions.
+		return nil
+	}
 	perm := os.FileMode(0o644)
 	path := stoppedFlag(r)
 	mkfile := func() (*os.File, error) {

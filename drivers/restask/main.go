@@ -3,6 +3,7 @@ package restask
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -223,6 +224,31 @@ func (t *BaseTask) readLastRunV2() (*LastRun, error) {
 		return nil, err
 	}
 	return &lastRun, nil
+}
+
+// Stop forgets the last run, as v2 did: the check=last_run status of a
+// task stopped with its instance would keep the outcome of a run, up, while
+// the instance is down. A stop of the task alone, by --rid, forgets it too:
+// it is the stop of the resource.
+func (t *BaseTask) Stop(ctx context.Context) error {
+	return t.removeLastRun()
+}
+
+// Boot forgets the last run, as the stop does: the node booted, the
+// instance is not started.
+func (t *BaseTask) Boot(ctx context.Context) error {
+	return t.removeLastRun()
+}
+
+// removeLastRun removes the last run files, the one of v1 too.
+func (t *BaseTask) removeLastRun() error {
+	var errs error
+	for _, p := range []string{t.lastRunFile(), t.lastRunRetcodeFile()} {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			errs = errors.Join(errs, err)
+		}
+	}
+	return errs
 }
 
 func (t *BaseTask) WriteLastRun(retcode int) error {
