@@ -751,18 +751,44 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
-	var dev string
-	if t.NSDev != "" {
-		dev = "@" + t.NSDev
-	}
-	ones, _ := t.ipmask().Size()
-	s := fmt.Sprintf("%s/%d%s in %s", t.ipaddr(), ones, dev, t.NetNS)
 	// Name the network the address was drawn from, as the cni label does. The
 	// address alone does not say where it came from, and a reader comparing
 	// the instances of an object wants to see it. A keyword still holding the
 	// address of a network resolves to none, so it does not reach the label.
+	var nwName string
 	if nw, _ := t.resolveNetwork(); nw != nil {
-		s = nw.Name() + " " + s
+		nwName = nw.Name()
+	}
+	ip := t.ipaddr()
+	var ones int
+	if ip != nil {
+		ones, _ = t.ipmask().Size()
+	}
+	return label(nwName, t.Name, ip, ones, t.NSDev, t.NetNS)
+}
+
+// label is the label of an address of the network nwName, or of the name
+// ipName, of ones bits of mask, on the card nsDev of the netns.
+//
+// An address drawn from a network is taken by a start only, so the node not
+// running the instance holds none, nor does a name not resolving: the label
+// then says where the address comes from, as the cni one, rather than an
+// address <nil> with the mask of the network.
+func label(nwName, ipName string, ip net.IP, ones int, nsDev, netns string) string {
+	var dev string
+	if nsDev != "" {
+		dev = "@" + nsDev
+	}
+	if ip == nil {
+		from := nwName
+		if from == "" {
+			from = ipName
+		}
+		return strings.TrimSpace(fmt.Sprintf("%s%s in %s", from, dev, netns))
+	}
+	s := fmt.Sprintf("%s/%d%s in %s", ip, ones, dev, netns)
+	if nwName != "" {
+		s = nwName + " " + s
 	}
 	return s
 }
