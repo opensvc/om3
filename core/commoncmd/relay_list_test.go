@@ -20,3 +20,13 @@ func TestRelayViewsRenderTheAge(t *testing.T) {
 	assert.Equal(t, "3s", l[0].Age)
 	assert.Equal(t, "", l[1].Age)
 }
+
+// A table renders the views, a machine format the api answer as it is.
+func TestTheRelayListIsTabularForAReaderOnly(t *testing.T) {
+	for _, out := range []string{"", "human", "tab", "tab=NODENAME:nodename", "table", "csv"} {
+		assert.True(t, isTabular(out), out)
+	}
+	for _, out := range []string{"json", "jsonline", "flat", "yaml", "template={{.}}"} {
+		assert.False(t, isTabular(out), out)
+	}
+}

@@ -1,6 +1,7 @@
 package commoncmd
 
 import (
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/output"
@@ -39,15 +40,35 @@ func ToRelayViews(items api.RelayStatusItems, now time.Time) []RelayView {
 	return l
 }
 
-// RenderRelayList prints the clients of the relays.
+// RenderRelayList prints the clients of the relays. A table shows the views,
+// with the AGE rendered from the update time. A machine format prints the
+// api answer as it is, a list of its kind, as the api documents it: a
+// script reads the same whether it asks the api or the command.
 func RenderRelayList(data api.RelayStatusList, out, sort, color string) error {
+	var v any = data
+	if isTabular(out) {
+		v = ToRelayViews(data.Items, time.Now())
+	}
 	return output.Renderer{
 		DefaultOutput: relayListColumns,
 		Output:        out,
 		DefaultSort:   relayListSort,
 		Sort:          sort,
 		Color:         color,
-		Data:          ToRelayViews(data.Items, time.Now()),
+		Data:          v,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+}
+
+// isTabular says the output format out, the default one when empty, renders
+// columns for a reader, rather than data for a program.
+func isTabular(out string) bool {
+	format, _, _ := strings.Cut(out, "=")
+	switch output.New(format) {
+	case output.Tab, output.Table, output.CSV, output.Human:
+		// The default output, and an unknown name, read as human,
+		// render the default columns.
+		return true
+	}
+	return false
 }
