@@ -61,8 +61,10 @@ type (
 //
 // If user credentials are given, the POST /register collector handler is
 // used, and the app code is supported.
-// If no user credentials are given, the "register_node" jsonrpc handler
-// is used, and app code is ignored.
+// If no user credentials are given, the node registers anonymously, which
+// the collector may refuse: with oc3, by POST /api/auth/node with no
+// credentials, in the app given, which oc3 requires; with the former
+// collector, by the "register_node" jsonrpc handler, which ignores the app.
 //
 // If app is not set, the node is added to any app under the user's
 // responsibility.
@@ -116,6 +118,9 @@ func (t Node) PushRegistered(ctx context.Context) error {
 
 func (t Node) register(user, password, app string) error {
 	if user == "" {
+		if t.CollectorRawConfig().HasServerV3() {
+			return t.registerAnonymousV3(app)
+		}
 		return t.registerAsNode()
 	} else {
 		if t.CollectorRawConfig().HasServerV3() {
@@ -300,6 +305,64 @@ func (t Node) registerAsUserV2(user, password, app string) error {
 		t.Log().Infof("%s", data.Info)
 	}
 	return t.writeUUID(data.Data.UUID)
+}
+
+// registerAnonymousV3 registers the node on oc3 with no credentials. The
+// collector refuses it unless it allows anonymous registrations, and refuses
+// it for a node already registered: its uuid is the password of the node.
+func (t Node) registerAnonymousV3(app string) error {
+	var (
+		method = http.MethodPost
+		path   = oc3path.ServerRegister
+	)
+	if app == "" {
+		app = t.MergedConfig().GetString(key.Parse("node.app"))
+	}
+	oc3, err := t.CollectorServerWithoutAuth()
+	if err != nil {
+		return fmt.Errorf("create collector server: %w", err)
+	}
+	b, err := json.Marshal(registerReq{
+		Nodename:  hostname.Hostname(),
+		App:       app,
+		ClusterID: t.clusterID(),
+	})
+	if err != nil {
+		return fmt.Errorf("encode request body: %w", err)
+	}
+
+	ctx, cancel, timeout := t.collectorRequestContext(context.Background())
+	defer cancel()
+
+	req, err := oc3.NewRequestWithContext(ctx, method, path, bytes.NewBuffer(b))
+	if err != nil {
+		return fmt.Errorf("create collector request %s %s: %w", method, path, err)
+	}
+	resp, err := oc3.Do(req)
+	if err != nil {
+		return collectorRequestError(err, method, path, timeout)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if err := CollectorResponseStatusCheck(resp, method, path, []int{http.StatusOK}); err != nil {
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return fmt.Errorf("%w: the collector accepts no anonymous registration: register with the credentials of a collector user, with --user", err)
+		case http.StatusBadRequest:
+			return fmt.Errorf("%w: give the app with --app, or register with the credentials of a collector user, with --user", err)
+		case http.StatusConflict:
+			return fmt.Errorf("%w: register with the credentials of a collector user, with --user", err)
+		}
+		return err
+	}
+	data := registerResOK{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return fmt.Errorf("decode response body: %w", err)
+	}
+	if data.Info != "" {
+		t.Log().Infof("%s", data.Info)
+	}
+	return t.writeUUID(data.UUID)
 }
 
 func (t Node) registerAsNode() error {
