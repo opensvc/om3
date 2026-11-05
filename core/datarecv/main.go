@@ -576,7 +576,33 @@ func (t *DataRecv) statusDirs(head string, dirs []dirDefinition) {
 		perm := t.RootDirPerm()
 		if perm != nil {
 			t.statusDir("/", head, *perm, t.User, t.Group)
+		} else {
+			t.statusRootOwner(head)
 		}
+	}
+}
+
+// statusRootOwner warns of a volume root not owned by the user or the group
+// set, with neither dirperm nor perm set.
+func (t *DataRecv) statusRootOwner(head string) {
+	if head == "" {
+		return
+	}
+	uid, gid, set, err := t.rootOwner()
+	if err != nil || !set {
+		return
+	}
+	tree, err := confined.Open(head)
+	if err != nil {
+		return
+	}
+	defer func() { _ = tree.Close() }()
+	info, err := tree.Lstat(head)
+	if err != nil {
+		return
+	}
+	if currentUID, currentGID, differs := ownerDiffers(info, uid, gid); differs {
+		t.to.StatusLog().Warn("%s owner is %d:%d instead of %s:%s", head, currentUID, currentGID, t.User, t.Group)
 	}
 }
 
@@ -1378,13 +1404,69 @@ func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, g
 func (t *DataRecv) installRootDir(path string, head string, user, group string) error {
 	perm := t.RootDirPerm()
 	if perm == nil {
-		t.to.Log().Tracef("no data receiver root dir perm set")
-		return nil
+		// No mode to give the root: its owner, when the user or the
+		// group is set, is given alone.
+		return t.installRootOwner(head)
 	}
 	if err := t.installDir("/", head, *perm, t.User, t.Group); err != nil {
 		return err
 	}
 	return nil
+}
+
+// rootOwner returns the uid and the gid the user and group keywords give
+// the volume root, -1 for one not set, which a chown leaves as it is, and
+// whether either is set.
+func (t *DataRecv) rootOwner() (uid, gid int, set bool, err error) {
+	uid, gid = -1, -1
+	if t.User != "" {
+		if uid, err = t.uid(t.User); err != nil {
+			return
+		}
+	}
+	if t.Group != "" {
+		if gid, err = t.gid(t.Group); err != nil {
+			return
+		}
+	}
+	return uid, gid, t.User != "" || t.Group != "", nil
+}
+
+// ownerDiffers says the owner of info is not the uid and gid, -1 for one
+// not checked.
+func ownerDiffers(info os.FileInfo, uid, gid int) (currentUID, currentGID int, differs bool) {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return -1, -1, false
+	}
+	currentUID, currentGID = int(stat.Uid), int(stat.Gid)
+	differs = (uid != -1 && uid != currentUID) || (gid != -1 && gid != currentGID)
+	return
+}
+
+// installRootOwner gives the volume root the owner the user and group
+// keywords set, with neither dirperm nor perm set: a container run as a user
+// mounting the volume needs a root that user owns, the mode as it is.
+func (t *DataRecv) installRootOwner(head string) error {
+	uid, gid, set, err := t.rootOwner()
+	if err != nil || !set {
+		return err
+	}
+	tree, err := confined.Open(head)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tree.Close() }()
+	info, err := tree.Lstat(head)
+	if err != nil {
+		return err
+	}
+	currentUID, currentGID, differs := ownerDiffers(info, uid, gid)
+	if !differs {
+		return nil
+	}
+	t.to.Log().Infof("change %s owner from %d:%d to %s:%s", head, currentUID, currentGID, t.User, t.Group)
+	return tree.Lchown(head, uid, gid)
 }
 
 // installDir makes a directory of the head, and gives it its owner and
