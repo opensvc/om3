@@ -89,10 +89,12 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	// The keys the configuration references, and the snapshot its
 	// provision restores from, come once the configuration passed: the
 	// requester may read the snapshot, and the keys land with the
-	// configuration in a namespace it is an administrator of. A dry run
-	// writes no key.
+	// configuration in a namespace it is an administrator of. They are
+	// copied as the configuration lands, which a dry run does not reach:
+	// it judges the configuration the create would write, the snapshot
+	// read, and writes no key.
 	dryRun := params.DryRun != nil && *params.DryRun
-	if src != nil && !dryRun {
+	if src != nil {
 		if oc, body, base, err = src.apply(ctx, p, body, base); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Create from store", "%s", err)
 		}
