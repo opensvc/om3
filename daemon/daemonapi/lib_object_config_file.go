@@ -183,7 +183,9 @@ func (a *DaemonAPI) writeNodeConfigFile(ctx echo.Context, nodename string) error
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Validate config", "%s", err)
 	}
 	if alerts.HasError() {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", err)
+		// Say which keywords are wrong: the error of the validation is nil
+		// when it ran and found them.
+		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts.Errors().StringWithoutMeta())
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := o.Config().RecommitInvalid(); err != nil {
