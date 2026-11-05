@@ -53,12 +53,3 @@ func Collect(ctx context.Context, reporter Reporter) (ReportData, error) {
 	}
 	return data, nil
 }
-
-// ReportMethod returns the name of the collector method an array of this type
-// is pushed with.
-//
-// The collector exports one method per array type, named as v2 named it, so
-// this is a contract with the collector rather than a choice.
-func ReportMethod(arrayType string) string {
-	return "update_" + arrayType
-}
