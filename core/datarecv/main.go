@@ -13,7 +13,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 
 	"github.com/anmitsu/go-shlex"
@@ -38,7 +37,10 @@ import (
 // Supports both HTTP/HTTPS URIs (http://, https://) and local file paths.
 // A template is seeded as it is written, and rendered on each node at each
 // install.
-func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger) error {
+//
+// The key is written for the resource rid of the object p, whose install
+// seeds it: the refresh of the consumers of the datastore skips it.
+func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger, p naming.Path, rid string) error {
 	log.Infof("seeding key %s from source %s", keyName, sourceURI)
 
 	var data []byte
@@ -77,7 +79,7 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 	// Add the data as a key to the datastore. The key written, the
 	// datastore refreshes the other services installing its keys: their
 	// failures are theirs, warned of, and not the one of this seeding.
-	warnings, err := object.ConsumersInstallWarnings(ds.AddKey(keyName, data))
+	warnings, err := object.ConsumersInstallWarnings(ds.AddKeySeeded(keyName, data, p, rid))
 	if err != nil {
 		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
 	}
@@ -85,23 +87,6 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 		log.Warnf("seeded key %s, the install it refreshed failed in %s", keyName, w)
 	}
 	return nil
-}
-
-// installing holds the resources whose install runs in this process, by
-// object path and head: the install of a resource seeding a key refreshes
-// the services installing from its datastore, and the refresh skips the
-// resource whose install runs, which installs the key itself next.
-var installing sync.Map
-
-func installingKey(path naming.Path, head string) string {
-	return path.String() + ":" + head
-}
-
-// isInstalling says whether the install of the resource runs in this
-// process.
-func (t *DataRecv) isInstalling() bool {
-	_, ok := installing.Load(installingKey(t.to.GetObject().(object.Core).Path(), t.to.Head()))
-	return ok
 }
 
 // buildEnvTemplateData builds a map of environment variables from the config's env section,
@@ -667,10 +652,9 @@ func (t *DataRecv) Status() {
 }
 
 // InstallFromDatastore installs the keys of the datastore from, the refresh
-// a write of it runs. The resource whose install runs in this process,
-// seeding the key written, is skipped: its install installs the key next.
+// a write of it runs.
 func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataStore) (bool, error) {
-	if len(t.Install) == 0 || t.isInstalling() {
+	if len(t.Install) == 0 {
 		return false, nil
 	}
 
@@ -780,9 +764,6 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 
 func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	t.to.Log().Tracef("install: def: %s", t.Install)
-	k := installingKey(t.to.GetObject().(object.Core).Path(), t.to.Head())
-	installing.Store(k, true)
-	defer installing.Delete(k)
 
 	changed := false
 	head := t.to.Head()
@@ -883,7 +864,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
 			if !dataStore.HasKey(md.FromPattern) {
-				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log()); err != nil {
+				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log(), path, t.rid()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -1282,11 +1263,6 @@ func (t *DataRecv) SendSignals(ctx context.Context, signals *volsignal.T) error 
 }
 
 func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
-	if t.isInstalling() {
-		// A refresh a seeding of this install ran: see
-		// InstallFromDatastore.
-		return false, nil
-	}
 	var changed bool
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
@@ -1649,4 +1625,12 @@ func lineHasLocalSource(words []string) bool {
 		}
 	}
 	return false
+}
+
+// rid returns the resource id of the resource the data is installed for.
+func (t *DataRecv) rid() string {
+	if r, ok := t.to.(interface{ RID() string }); ok {
+		return r.RID()
+	}
+	return ""
 }

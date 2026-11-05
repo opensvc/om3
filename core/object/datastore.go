@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -22,6 +23,11 @@ type (
 	dataStore struct {
 		core
 		encodeDecoder encodeDecoder
+
+		// skipRefresh, set for the commit of AddKeySeeded, names the
+		// resource whose install seeded the key: the refresh of the
+		// consumers skips it.
+		skipRefresh func(p naming.Path, rid string) bool
 	}
 
 	// DataStore is the base interface of sec, cfg and usr objects
@@ -29,6 +35,7 @@ type (
 		Core
 
 		AddKey(name string, b []byte) error
+		AddKeySeeded(name string, b []byte, p naming.Path, rid string) error
 		ChangeKey(name string, b []byte) error
 		DecodeKey(name string) ([]byte, error)
 		DecodeKeys(name ...string) ([][]byte, error)
@@ -99,7 +106,7 @@ func (t *dataStore) temporaryKeyFile(name string) (f *os.File, err error) {
 }
 
 func (t *dataStore) postCommit() error {
-	return t.postInstall("")
+	return t.postInstallSkipping("", t.skipRefresh)
 }
 
 // Delete deletes the datastore, and has the volumes installing from it by a

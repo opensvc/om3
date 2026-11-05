@@ -39,6 +39,13 @@ func TestSeedingNamesTheKeyThatFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, ds.AddKey("other", []byte("x")), "no consumer yet")
 
+	// Another service installs the key, with no source: the seeding of
+	// web refreshes it.
+	other := naming.Path{Name: "web2", Kind: naming.KindSvc, Namespace: naming.NsRoot}
+	otherHead := t.TempDir()
+	require.NoError(t, os.WriteFile(other.ConfigFile(), []byte("[DEFAULT]\nnodes = "+hostname.Hostname()+"\n[fs#1]\ntype = directory\npath = "+otherHead+"\n"+
+		"install = /ok.conf from ./cfg/web key ok.conf\n"), 0600))
+
 	p := naming.Path{Name: "web", Kind: naming.KindSvc, Namespace: naming.NsRoot}
 	conf := "[DEFAULT]\nnodes = " + hostname.Hostname() + "\n[fs#1]\ntype = directory\npath = " + head + "\n" +
 		"install = /ok.conf from ./cfg/web key ok.conf required source " + okSrc + "\n" +
@@ -62,6 +69,9 @@ func TestSeedingNamesTheKeyThatFailed(t *testing.T) {
 	assert.True(t, ds.HasKey("ok.conf"))
 	b, err := os.ReadFile(filepath.Join(head, "ok.conf"))
 	require.NoError(t, err, "installed by the install that seeded it")
+	assert.Equal(t, "ok-content", string(b))
+	b, err = os.ReadFile(filepath.Join(otherHead, "ok.conf"))
+	require.NoError(t, err, "installed by the refresh of the other service the seeding ran")
 	assert.Equal(t, "ok-content", string(b))
 
 	// The source of dump.sql shows up: a write of another key refreshes

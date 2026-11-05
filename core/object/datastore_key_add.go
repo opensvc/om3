@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -29,6 +30,19 @@ func (t *dataStore) AddKey(name string, b []byte) error {
 	if err := t.TransactionAddKey(name, b); err != nil {
 		return err
 	}
+	return t.config.Commit()
+}
+
+// AddKeySeeded sets a new key the install of the resource rid of the object
+// p seeded, and commits immediately. The consumers of the datastore are
+// refreshed but that resource, whose install installs the key next: a
+// refresh of it, nested in its install, would run its install again.
+func (t *dataStore) AddKeySeeded(name string, b []byte, p naming.Path, rid string) error {
+	if err := t.TransactionAddKey(name, b); err != nil {
+		return err
+	}
+	t.skipRefresh = func(path naming.Path, r string) bool { return path == p && r == rid }
+	defer func() { t.skipRefresh = nil }()
 	return t.config.Commit()
 }
 
