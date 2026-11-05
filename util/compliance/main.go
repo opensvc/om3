@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
-const collectorAgentPath = oc3path.ServerComplianceAgent
+const collectorAgentPath = oc3path.ServerAgentCompliance
 
 type (
 	T struct {
