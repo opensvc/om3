@@ -1,2 +1,5 @@
-The group name or id that will own the volume root and installed files and
-directories.
+The group name or id owning the files and directories installed in the
+volume, and the volume root, at each install: with `dirperm` or `perm` set,
+along with the mode of the root, and alone otherwise, the mode of the root
+then left as it is. An `install` line naming the root, as `/ group 70`, sets
+its group instead.

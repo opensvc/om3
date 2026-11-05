@@ -1,1 +1,8 @@
-The permissions to apply to installed directories, in octal notation.
+The permissions, in octal notation, of the directories installed in the
+volume: the ones of the `directories` keyword, the ones of the `install`
+lines ending with a `/`, and the volume root, applied at each install.
+
+The volume root is given this mode, with the owner of the `user` and `group`
+keywords, unless an `install` line names it, as `/ mode 0750 user 70`, which
+sets the root alone. A container not run as root needs a root its user can
+traverse.
