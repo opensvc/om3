@@ -124,6 +124,12 @@ func (t SourceRoute) connected() *net.IPNet {
 // linkIndex: the connected route of the address, unless removed, the route
 // to its network when the connected route covers a part of it only, and the
 // default route by its gateway, when known.
+//
+// No route carries the address as its source: the table is looked up only
+// for the packets that already carry it, by the rule of the address, so the
+// source of a route would never be used. And the kernel refuses an ipv6
+// address as the source of a route while it is tentative, as it is right
+// after it is added, until the duplicate address detection ends.
 func (t SourceRoute) Routes(table, linkIndex int) []netlink.Route {
 	var l []netlink.Route
 	connected := t.connected()
@@ -131,7 +137,6 @@ func (t SourceRoute) Routes(table, linkIndex int) []netlink.Route {
 		l = append(l, netlink.Route{
 			LinkIndex: linkIndex,
 			Dst:       connected,
-			Src:       t.Addr.IP,
 			Scope:     netlink.SCOPE_LINK,
 			Table:     table,
 		})

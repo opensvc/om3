@@ -62,22 +62,23 @@ func TestTheTableOfAnAddress(t *testing.T) {
 	// routed_bridge: the node range of a network.
 	r := SourceRoute{Addr: cidr(t, "10.100.0.164/24"), Network: prefix(t, "10.100.0.0/22"), Gateway: net.ParseIP("10.100.0.1")}
 	assert.Equal(t, []string{
-		"10.100.0.0/24 src 10.100.0.164",
+		"10.100.0.0/24",
 		"10.100.0.0/22 via 10.100.0.1",
 		"default via 10.100.0.1",
 	}, routeStrings(r.Routes(10002, 2)))
 	for _, route := range r.Routes(10002, 2) {
 		assert.Equal(t, 10002, route.Table)
 		assert.Equal(t, 2, route.LinkIndex)
+		assert.Nil(t, route.Src, "a tentative ipv6 address is refused as the source of a route")
 	}
 
 	// bridge: the whole network is connected.
 	r = SourceRoute{Addr: cidr(t, "10.22.56.240/16"), Network: prefix(t, "10.22.0.0/16"), Gateway: net.ParseIP("10.22.0.1")}
-	assert.Equal(t, []string{"10.22.0.0/16 src 10.22.56.240", "default via 10.22.0.1"}, routeStrings(r.Routes(10003, 3)))
+	assert.Equal(t, []string{"10.22.0.0/16", "default via 10.22.0.1"}, routeStrings(r.Routes(10003, 3)))
 
 	// lan with no gateway known: the lookup falls through to the main table.
 	r = SourceRoute{Addr: cidr(t, "192.168.1.10/24")}
-	assert.Equal(t, []string{"192.168.1.0/24 src 192.168.1.10"}, routeStrings(r.Routes(10004, 4)))
+	assert.Equal(t, []string{"192.168.1.0/24"}, routeStrings(r.Routes(10004, 4)))
 
 	// connected route removed: the gateway is on the link.
 	r = SourceRoute{Addr: cidr(t, "192.168.1.10/32"), Gateway: net.ParseIP("192.168.1.1"), OnLink: true}
@@ -85,11 +86,14 @@ func TestTheTableOfAnAddress(t *testing.T) {
 
 	// a gateway out of the connected route is not reachable: no default.
 	r = SourceRoute{Addr: cidr(t, "192.168.1.10/24"), Gateway: net.ParseIP("10.0.0.1")}
-	assert.Equal(t, []string{"192.168.1.0/24 src 192.168.1.10"}, routeStrings(r.Routes(10004, 4)))
+	assert.Equal(t, []string{"192.168.1.0/24"}, routeStrings(r.Routes(10004, 4)))
 
 	// ipv6 routed_bridge.
 	r = SourceRoute{Addr: cidr(t, "fdfe::12/114"), Network: prefix(t, "fdfe::/112"), Gateway: net.ParseIP("fdfe::1")}
-	assert.Equal(t, []string{"fdfe::/114 src fdfe::12", "fdfe::/112 via fdfe::1", "default via fdfe::1"}, routeStrings(r.Routes(10005, 5)))
+	assert.Equal(t, []string{"fdfe::/114", "fdfe::/112 via fdfe::1", "default via fdfe::1"}, routeStrings(r.Routes(10005, 5)))
+	for _, route := range r.Routes(10005, 5) {
+		assert.Nil(t, route.Src, "a tentative ipv6 address is refused as the source of a route")
+	}
 }
 
 func TestNetworkRouteNeeded(t *testing.T) {
