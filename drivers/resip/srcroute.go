@@ -258,7 +258,7 @@ func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
 			if err := netlink.RuleDel(&r); err != nil {
 				return err
 			}
-			if err := t.flushOwnTable(rules, src, r.Table, log); err != nil {
+			if err := t.flushOwnTable(src, r.Table, log); err != nil {
 				return err
 			}
 		}
@@ -320,7 +320,7 @@ func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 			if err := netlink.RuleDel(&r); err != nil {
 				return err
 			}
-			if err := t.flushOwnTable(rules, src, r.Table, log); err != nil {
+			if err := t.flushOwnTable(src, r.Table, log); err != nil {
 				return err
 			}
 		}
@@ -330,8 +330,14 @@ func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 
 // flushOwnTable flushes the table a rule of the address named, unless
 // another rule names it too, of another source or of none, as one of an
-// ip.rule resource added since: its routes are then that rule's too.
-func (t SourceRoute) flushOwnTable(rules []netlink.Rule, src *net.IPNet, table int, log *plog.Logger) error {
+// ip.rule resource added since: its routes are then that rule's too. The
+// rules are read again right before, a rule removed meanwhile leaving the
+// table to flush.
+func (t SourceRoute) flushOwnTable(src *net.IPNet, table int, log *plog.Logger) error {
+	rules, err := netlink.RuleList(t.family())
+	if err != nil {
+		return err
+	}
 	if other := tableNamedByOther(rules, src, table); other != "" {
 		if log != nil {
 			log.Infof("keep the table %d, named by the rule %s", table, other)
