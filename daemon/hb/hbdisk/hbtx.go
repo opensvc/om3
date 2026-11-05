@@ -2,7 +2,6 @@ package hbdisk
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -80,24 +79,14 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}
 	if openErr := t.base.device.open(); openErr != nil {
-		if errors.Is(openErr, sign.ErrLegacySignature) {
-			t.log.Warnf("device %s: %s", t.base.path, openErr)
-		} else {
-			err := fmt.Errorf("device %s: %w", t.base.path, openErr)
+		if err := t.base.startWith(openErr); err != nil {
+			err = fmt.Errorf("device %s: %w", t.base.path, err)
 			t.log.Warnf("startup failed: %s", err)
 			cancel()
 			return err
 		}
 	}
 
-	if err := t.base.scanMetadata(t.base.localhost); err != nil {
-		msg := fmt.Sprintf("initial scan metadata: %s", err)
-		t.log.Infof(msg)
-		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: msg})
-	}
-	if slot := t.base.nodeSlot[t.base.localhost]; slot >= minimumSlot {
-		t.slot = slot
-	}
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
 	t.cmdC = cmdC
 	t.Add(1)
@@ -106,13 +95,19 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		t.log.Infof("started")
 		defer t.log.Infof("stopped")
 
-		if t.slot < minimumSlot {
-			if err := t.allocateSlot(); err != nil {
-				t.log.Infof("can't allocate new slot: %s", err)
+		if t.base.invalidSig {
+			// A disk not signed gets no slot: the first write
+			// once it is signed allocates one.
+			t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
+			cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+		} else {
+			if t.slot < minimumSlot {
+				if err := t.allocateSlot(); err != nil {
+					t.log.Infof("can't allocate new slot: %s", err)
+				}
 			}
+			t.updateAlertWithSlot()
 		}
-
-		t.updateAlertWithSlot()
 		t.sendAlert()
 
 		for _, node := range t.nodes {
@@ -127,7 +122,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		var b []byte
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
-		tickerCheckSignature := time.NewTicker(signatureCheckPeriod(t.interval, false))
+		tickerCheckSignature := time.NewTicker(signatureCheckPeriod(t.interval, t.base.invalidSig))
 		defer tickerCheckSignature.Stop()
 		var reason string
 		for {

@@ -58,8 +58,8 @@ const (
 
 	// signatureCheckTicks is the number of intervals between two checks of
 	// the signature of the disk by a stream: a disk wiped suspends it within
-	// a minute at the default interval.
-	signatureCheckTicks = 15
+	// 12 seconds at the default interval. A check is the read of one page.
+	signatureCheckTicks = 3
 )
 
 // MinTimeout is the shortest timeout of a disk heartbeat writing every
@@ -223,7 +223,7 @@ func (t *base) checkSignature() bool {
 	switch {
 	case err == nil, errors.Is(err, sign.ErrLegacySignature):
 		t.invalidSig = false
-	case errors.Is(err, sign.ErrWrongSignature), errors.Is(err, sign.ErrChecksumMismatch):
+	case isUnsigned(err):
 		t.invalidSig = true
 	default:
 		t.log.Warnf("signature check failed: %s", err)
@@ -254,4 +254,29 @@ func signatureCheckPeriod(interval time.Duration, invalidSig bool) time.Duration
 		return interval
 	}
 	return signatureCheckTicks * interval
+}
+
+// isUnsigned says whether err is the one of a disk not carrying the signature
+// of a heartbeat disk: never signed, wiped, or signed for something else. A
+// stream suspends on such a disk, and resumes once it is signed.
+func isUnsigned(err error) bool {
+	return errors.Is(err, sign.ErrWrongSignature) || errors.Is(err, sign.ErrChecksumMismatch)
+}
+
+// startWith says how a stream starts on its device opened with err: on a
+// legacy signature, warned; on a disk not signed, suspended, as a disk wiped
+// suspends a stream running, to resume once the disk is signed, with no
+// restart. It returns the error failing the start, nil when it starts.
+func (t *base) startWith(err error) error {
+	switch {
+	case errors.Is(err, sign.ErrLegacySignature):
+		t.log.Warnf("device %s: %s", t.path, err)
+		return nil
+	case isUnsigned(err):
+		t.invalidSig = true
+		t.log.Warnf("device %s: %s: suspended until the disk is signed", t.path, err)
+		return nil
+	default:
+		return err
+	}
 }

@@ -192,6 +192,11 @@ func (t *device) open() error {
 		if errors.Is(err, sign.ErrLegacySignature) {
 			return err
 		}
+		if isUnsigned(err) {
+			// The device stays open: the stream starts suspended,
+			// and resumes once the disk is signed.
+			return fmt.Errorf("heartbeat disk signature verify: %w", err)
+		}
 		// The start fails, and is retried: an open file left behind at
 		// each try was a descriptor leaked until collected.
 		t.close()

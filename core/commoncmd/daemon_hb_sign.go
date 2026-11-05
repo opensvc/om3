@@ -22,7 +22,8 @@ func NewCmdHeartbeatSign() *cobra.Command {
 		Use:   "sign NAME...",
 		Short: "sign a heartbeat disk",
 		Long: ForProgram("Write the signature the nodes of a disk heartbeat claim their slot with.\n\n" +
-			HeartbeatNameHelp + "\n\nThe heartbeat must be of type disk: this action writes to its dev."),
+			HeartbeatNameHelp + "\n\nThe heartbeat must be of type disk: this action writes to its dev.\n\n" +
+			"The streams of the heartbeat suspended on a disk not signed, on every node, resume within an interval, with no restart."),
 		Example: ForProgram(`  # sign the disk of hb#2 on the local node
   om daemon hb sign 2
 

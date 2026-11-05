@@ -3,7 +3,6 @@ package hbdisk
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -112,19 +111,12 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
 	}
 	if openErr := t.base.device.open(); openErr != nil {
-		if errors.Is(openErr, sign.ErrLegacySignature) {
-			t.log.Warnf("device %s: %s", t.base.path, openErr)
-		} else {
-			err := fmt.Errorf("device %s: %w", t.base.path, openErr)
+		if err := t.base.startWith(openErr); err != nil {
+			err = fmt.Errorf("device %s: %w", t.base.path, err)
 			t.log.Warnf("startup failed: %s", err)
 			cancel()
 			return err
 		}
-	}
-	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
-		cancel()
-		t.base.device.close()
-		return err
 	}
 
 	t.cmdC = cmdC
@@ -146,14 +138,19 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.log.Infof("started")
 		defer t.log.Infof("stopped")
 
-		t.updateAlertWithSlots()
+		if t.base.invalidSig {
+			t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
+			cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+		} else {
+			t.updateAlertWithSlots()
+		}
 		t.sendAlert()
 
 		crypto := hbcrypto.CryptoFromContext(ctx)
 		t.dedup = hbdedup.CacheFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
-		tickerCheckSignature := time.NewTicker(signatureCheckPeriod(t.interval, false))
+		tickerCheckSignature := time.NewTicker(signatureCheckPeriod(t.interval, t.base.invalidSig))
 		defer tickerCheckSignature.Stop()
 		for {
 			select {
