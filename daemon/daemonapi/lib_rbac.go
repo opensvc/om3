@@ -37,6 +37,9 @@ import (
 //
 // An object being created has nothing to compare against, so every keyword of
 // it is a change, and every keyword answers for itself.
+//
+// Every refusal is returned, not the first one: the author of a configuration
+// learns in one write what the grants do not allow of it.
 func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	o, err := object.New(p, object.WithConfigData(body), object.WithVolatile(true))
 	if err != nil {
@@ -49,20 +52,14 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
 	}
-	if err := sectionNameRbac(cfg); err != nil {
-		return err
-	}
 	from := currentConfig(p)
-	if err := configRbacChanges(grants, p.Kind, from, cfg); err != nil {
-		return err
-	}
-	if err := usrRbac(grants, p, from, cfg); err != nil {
-		return err
-	}
-	if err := hostIPRbac(from, cfg); err != nil {
-		return err
-	}
-	return rootlessRbac(p, from, cfg)
+	return errors.Join(
+		sectionNameRbac(cfg),
+		configRbacChanges(grants, p.Kind, from, cfg),
+		usrRbac(grants, p, from, cfg),
+		hostIPRbac(from, cfg),
+		rootlessRbac(p, from, cfg),
+	)
 }
 
 // instanceStatusesOf returns the status of the instances of an object, by
@@ -308,8 +305,10 @@ func sectionNameRbac(cfg *xconfig.T) error {
 	return nil
 }
 
-// configRbacChanges checks the keywords a write changes against the policy.
+// configRbacChanges checks the keywords a write changes against the policy,
+// and returns every refusal.
 func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T) error {
+	var errs []error
 	scopes := rbacScopes(from, to)
 	for _, section := range to.SectionStrings() {
 		keys := to.Keys(section)
@@ -325,7 +324,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				for _, nodename := range typeChangedOn(from, to, section, scopes) {
 					value := evaluatedOrWrittenAs(to, k, nodename)
 					if err := driverRbacOn(grants, kind, to, k, value, set, nodename); err != nil {
-						return err
+						errs = append(errs, err)
 					}
 				}
 				continue
@@ -342,21 +341,22 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				Index: 0,
 			}
 			if err := keyopRbacOn(grants, kind, kop, set, nodename); err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
 			if err := driverRbacOn(grants, kind, to, k, kop.Value, set, nodename); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 		if err := sectionDriverRbac(grants, kind, from, to, section, set, scopes); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 	if err := encapRbac(grants, from, to, scopes); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 	if from == nil {
-		return nil
+		return errors.Join(errs...)
 	}
 	// A keyword the write takes away is a change like the ones it makes. A
 	// user who may not set a keyword may not unset it either, and a section
@@ -370,14 +370,15 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				continue
 			}
 			if err := keyUnsetRbac(grants, kind, k, evaluatedOrWritten(from, k), set); err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
 			if err := driverRbacOn(grants, kind, from, k, "", set, ""); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // typeChangedOn returns the nodes a write changes the type of a section on, as

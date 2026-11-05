@@ -45,10 +45,38 @@ func TestCreateRestoreReplacesAnExistingObject(t *testing.T) {
 	c, err := client.New(client.WithURL(srv.URL), client.WithBearer("x"), client.WithInsecureSkipVerify(true))
 	require.NoError(t, err)
 
-	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false)
+	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, false)
 	assert.ErrorContains(t, err, "already exists", "a plain create")
 	assert.False(t, forced)
 
-	require.NoError(t, CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, true, false), "a restore")
+	require.NoError(t, CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, true, false, false), "a restore")
 	assert.True(t, forced)
+}
+
+// A dry run asks the daemon to check the create and write nothing, and does
+// not ask it to wait for an object it will not know.
+func TestCreateObjectConfigDryRun(t *testing.T) {
+	p := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "s1"}
+	var query map[string][]string
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		if r.URL.Query().Get("dry_run") != "true" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]any{"title": "Forbidden", "detail": "Config validation: denied: a\ndenied: b", "status": 403})
+	}))
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	defer srv.Close()
+	c, err := client.New(client.WithURL(srv.URL), client.WithBearer("x"), client.WithInsecureSkipVerify(true))
+	require.NoError(t, err)
+
+	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "denied: a\ndenied: b", "every refusal reported")
+	assert.Equal(t, []string{"true"}, query["dry_run"])
+	assert.Empty(t, query["wait_local"])
 }

@@ -6311,6 +6311,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySets'
         - $ref: '#/components/parameters/inQueryWait'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryConfigDryRun'
       responses:
         200:
           description: OK
@@ -6427,6 +6428,7 @@ paths:
         - $ref: '#/components/parameters/inQueryStore'
         - $ref: '#/components/parameters/inQueryCreateSnapshot'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryConfigDryRun'
       requestBody:
         description: OK
         content:
@@ -6479,6 +6481,7 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryWait'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryConfigDryRun'
       requestBody:
         description: OK
         content:
@@ -12401,6 +12404,17 @@ components:
       schema:
         type: string
         example: TERM
+
+    inQueryConfigDryRun:
+      in: query
+      name: dry_run
+      description: |
+        Run every check of the write, the rbac policy, the validation, the
+        claims and the holds, and write nothing. The answer is the one of the
+        write, every keyword the grants do not allow refused at once with its
+        reason.
+      schema:
+        type: boolean
 
     inQueryDryRun:
       in: query

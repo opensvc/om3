@@ -1702,6 +1702,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagConfigWait(flags, &options.Wait)
 	commoncmd.FlagTime(flags, &options.Time)
 	commoncmd.FlagConfigForce(flags, &options.Force)
+	commoncmd.FlagConfigDryRun(flags, &options.DryRun)
 	return cmd
 }
 
@@ -3050,6 +3051,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	commoncmd.FlagProvision(flags, &options.Provision)
 	commoncmd.FlagAdopt(flags, &options.Adopt)
 	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
+	commoncmd.FlagConfigDryRun(flags, &options.DryRun)
 	return cmd
 }
 

@@ -43,7 +43,10 @@ import (
 // configuration lands, which the daemon acts on, by the write that lands
 // alone, under the lock of the file: a write refused, by a check or by
 // another write landing first, leaves the flag as it found it.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown, force, flagStopped bool) error {
+//
+// With dryRun, the checks run and nothing is written: the answer is the one
+// of the write, a refusal or no content.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown, force, flagStopped, dryRun bool) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -72,6 +75,9 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)
 	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Holds", "%s", err)
+	}
+	if dryRun {
+		return ctx.NoContent(http.StatusNoContent)
 	}
 	var knownSub *pubsub.Subscription
 	if waitKnown {

@@ -3509,6 +3509,9 @@ type InQueryAllSlaves = bool
 // InQueryArrayName defines model for inQueryArrayName.
 type InQueryArrayName = string
 
+// InQueryConfigDryRun defines model for inQueryConfigDryRun.
+type InQueryConfigDryRun = bool
+
 // ConfigUpdatedAt defines model for inQueryConfigUpdatedAt.
 type ConfigUpdatedAt = time.Time
 
@@ -5195,6 +5198,12 @@ type PatchObjectConfigParams struct {
 	// thing is still running, and is not an error of the request.
 	Wait  *Wait         `form:"wait,omitempty" json:"wait,omitempty"`
 	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// DryRun Run every check of the write, the rbac policy, the validation, the
+	// claims and the holds, and write nothing. The answer is the one of the
+	// write, every keyword the grants do not allow refused at once with its
+	// reason.
+	DryRun *InQueryConfigDryRun `form:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
 // GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
@@ -5244,6 +5253,12 @@ type PostObjectConfigFileParams struct {
 	// snapshot is of.
 	Snapshot *InQueryCreateSnapshot `form:"snapshot,omitempty" json:"snapshot,omitempty"`
 	Force    *InQueryForce          `form:"force,omitempty" json:"force,omitempty"`
+
+	// DryRun Run every check of the write, the rbac policy, the validation, the
+	// claims and the holds, and write nothing. The answer is the one of the
+	// write, every keyword the grants do not allow refused at once with its
+	// reason.
+	DryRun *InQueryConfigDryRun `form:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
 // PutObjectConfigFileParams defines parameters for PutObjectConfigFile.
@@ -5259,6 +5274,12 @@ type PutObjectConfigFileParams struct {
 	// thing is still running, and is not an error of the request.
 	Wait  *Wait         `form:"wait,omitempty" json:"wait,omitempty"`
 	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// DryRun Run every check of the write, the rbac policy, the validation, the
+	// claims and the holds, and write nothing. The answer is the one of the
+	// write, every keyword the grants do not allow refused at once with its
+	// reason.
+	DryRun *InQueryConfigDryRun `form:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
