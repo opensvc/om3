@@ -33,10 +33,13 @@ func (t *CmdPoolVolumeList) Run() error {
 	}
 	switch resp.StatusCode() {
 	case 200:
-		lines := make([]commoncmd.PoolVolumeLine, len(resp.JSON200.Items))
-		for i, item := range resp.JSON200.Items {
-			lines[i] = commoncmd.NewPoolVolumeLine(item)
-		}
+		lines := commoncmd.ListingData(t.Output, *resp.JSON200, func() any {
+			lines := make([]commoncmd.PoolVolumeLine, len(resp.JSON200.Items))
+			for i, item := range resp.JSON200.Items {
+				lines[i] = commoncmd.NewPoolVolumeLine(item)
+			}
+			return lines
+		})
 		return output.Renderer{
 			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:bin_size,CHARGES:charges_text,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,

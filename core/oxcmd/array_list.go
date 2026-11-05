@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -52,7 +53,7 @@ func (t *CmdArrayList) Run() error {
 			Output:        t.Output,
 			Sort:          t.Sort,
 			Color:         t.Color,
-			Data:          items,
+			Data:          commoncmd.ListingData(t.Output, arr, func() any { return items }),
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}

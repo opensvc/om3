@@ -45,10 +45,7 @@ func ToRelayViews(items api.RelayStatusItems, now time.Time) []RelayView {
 // api answer as it is, a list of its kind, as the api documents it: a
 // script reads the same whether it asks the api or the command.
 func RenderRelayList(data api.RelayStatusList, out, sort, color string) error {
-	var v any = data
-	if isTabular(out) {
-		v = ToRelayViews(data.Items, time.Now())
-	}
+	v := ListingData(out, data, func() any { return ToRelayViews(data.Items, time.Now()) })
 	return output.Renderer{
 		DefaultOutput: relayListColumns,
 		Output:        out,
@@ -60,9 +57,22 @@ func RenderRelayList(data api.RelayStatusList, out, sort, color string) error {
 	}.Print()
 }
 
-// isTabular says the output format out, the default one when empty, renders
-// columns for a reader, rather than data for a program.
-func isTabular(out string) bool {
+// IsTabularOutput says the output format out, the default one when empty,
+// renders columns for a reader, rather than data for a program. A listing
+// renders its views, computed for the reader, in a tabular format, and the
+// api answer as it is in the others: a script reads the same document from
+// the command and from the api.
+// ListingData returns what a listing renders in the output format out: the
+// views, computed for a reader, in a tabular format, and the api answer as
+// it is in the others.
+func ListingData(out string, answer any, views func() any) any {
+	if IsTabularOutput(out) {
+		return views()
+	}
+	return answer
+}
+
+func IsTabularOutput(out string) bool {
 	format, _, _ := strings.Cut(out, "=")
 	switch output.New(format) {
 	case output.Tab, output.Table, output.CSV, output.Human:

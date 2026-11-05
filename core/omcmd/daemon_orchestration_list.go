@@ -292,8 +292,10 @@ func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) error
 		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,EXPECT:expect,ACCEPTED_BY:node,STARTED_AT:started_at,DURATION:duration",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          toOrchestrationViews(items),
-		Colorize:      rawconfig.Colorize,
+		Data: commoncmd.ListingData(t.Output, api.OrchestrationList{Kind: api.OrchestrationListKindOrchestrationList, Items: items}, func() any {
+			return toOrchestrationViews(items)
+		}),
+		Colorize: rawconfig.Colorize,
 	}.Print()
 }
 

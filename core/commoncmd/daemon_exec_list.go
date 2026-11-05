@@ -286,8 +286,10 @@ func (t *CmdDaemonExecList) render(items []api.ExecItem) error {
 		DefaultSort:   execListSort,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          ToExecViews(items),
-		Colorize:      rawconfig.Colorize,
+		Data: ListingData(t.Output, api.ExecList{Kind: api.ExecListKindExecList, Items: items}, func() any {
+			return ToExecViews(items)
+		}),
+		Colorize: rawconfig.Colorize,
 	}.Print()
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 )
@@ -31,7 +32,7 @@ func (t *CmdStoreList) Run() error {
 			Output:        t.Output,
 			Sort:          t.Sort,
 			Color:         t.Color,
-			Data:          resp.JSON200.Items,
+			Data:          commoncmd.ListingData(t.Output, *resp.JSON200, func() any { return resp.JSON200.Items }),
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	case 401:
