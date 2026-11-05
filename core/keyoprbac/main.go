@@ -629,6 +629,17 @@ var rules = map[string]Group{
 	// on, so no keyword of theirs needs a grant.
 	"env":    {},
 	"labels": {},
+
+	// A subset section says whether the resources of a subset start, stop
+	// and provision in parallel: the order the object runs its own
+	// resources in, nothing it takes of the node. A keyword added to subsets
+	// later is refused until weighed.
+	"subset": {
+		Rules: map[string]Rule{
+			"parallel": {},
+		},
+		Default: &rootRule,
+	},
 }
 
 // commonKeywords is the keywords every section carries, whatever its driver.

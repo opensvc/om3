@@ -105,6 +105,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Quiet mode**: New `--quiet` flag for instance actions disables both progress rendering and console logging, useful for scripts and automation.
 
+* **A namespace administrator may start the resources of a subset in parallel**: the `parallel` keyword of a `subset#<group>:<name>` section needed the root grant, as every keyword of a driver group the policy said nothing about. It orders the resources of the object, and takes nothing from the node. The other keywords subsets may gain are refused until weighed.
+
 * **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.
 
 * **Act on the configuration you just wrote**: A configuration write answers with the timestamp the configuration now carries, in the `OM-Last-Modified` header of the `POST` and `PUT` on `/object/path/{namespace}/{kind}/{name}/config/file`, and every instance action accepts that timestamp as the `config_updated_at` parameter.
