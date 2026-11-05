@@ -121,29 +121,30 @@ func (t *Array) Actions() []array.Action {
 // The section names are the ones v2 pushes for an hds array, because the
 // collector reads them to know what it was handed.
 func (t *Array) Reports() []array.Report {
-	subtarget := func(name string) func(context.Context) (any, error) {
+	// attrs reports the attributes of the elements a query answers, as v2
+	// reported them: a list of them, in json.
+	attrs := func(element string, args ...string) func(context.Context) (any, error) {
 		return func(ctx context.Context) (any, error) {
-			out, err := t.run(ctx, true, true, "GetStorageArray", "subtarget="+name)
+			root, err := t.query(ctx, args...)
 			if err != nil {
 				return nil, err
 			}
-			return out, nil
+			l := make([]map[string]string, 0)
+			for _, e := range root.iter(element) {
+				l = append(l, copyAttrs(e.attrs))
+			}
+			return l, nil
 		}
 	}
 	return []array.Report{
-		{
-			Key: "array",
-			Get: func(ctx context.Context) (any, error) {
-				return t.run(ctx, true, true, "GetStorageArray")
-			},
-		},
+		{Key: "array", Get: attrs("StorageArray", "GetStorageArray")},
 		{
 			Key: "lu",
 			Get: func(ctx context.Context) (any, error) {
 				return t.getLogicalUnits(ctx, "")
 			},
 		},
-		{Key: "arraygroup", Get: subtarget("ArrayGroup")},
+		{Key: "arraygroup", Get: attrs("ArrayGroup", "GetStorageArray", "subtarget=ArrayGroup")},
 		{
 			Key: "port",
 			Get: func(ctx context.Context) (any, error) {

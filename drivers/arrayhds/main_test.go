@@ -2,6 +2,8 @@ package arrayhds
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -333,4 +335,37 @@ func TestCreatedVolumeTellsVolumesByDeviceNumber(t *testing.T) {
                             displayName=00:12:35`, 1)
 	_, _, err = createdVolume(other)
 	require.ErrorContains(t, err, "names 2 volumes")
+}
+
+// TestReportsAreJSON pins what the collector parses: every section in json,
+// the array and its groups as the list of the attributes of their elements,
+// as v2 sent them.
+func TestReportsAreJSON(t *testing.T) {
+	a, _ := newTestArray(t,
+		step{want: "GetStorageArray", fixture: "array.xml"},
+		step{want: "GetStorageArray subtarget=Logicalunit lusubinfo=Path,LDEV,VolumeConnection", fixture: "lus.xml"},
+		step{want: "GetStorageArray subtarget=ArrayGroup", fixture: "arraygroups.xml"},
+		step{want: "GetStorageArray subtarget=Port", fixture: "ports.xml"},
+		step{want: "GetStorageArray subtarget=Pool", fixture: "pools.xml"},
+	)
+	data, err := array.Collect(context.Background(), a)
+	require.NoError(t, err)
+	sections := make(map[string]json.RawMessage)
+	for i, k := range data.Keys {
+		b, err := json.Marshal(data.Values[i])
+		require.NoError(t, err)
+		sections[k] = b
+	}
+	var arrays []map[string]string
+	require.NoError(t, json.Unmarshal(sections["array"], &arrays))
+	require.Len(t, arrays, 1)
+	assert.Equal(t, "HUS VM", arrays[0]["arrayType"])
+	assert.Equal(t, "73-03-58-00/00", arrays[0]["controllerVersion"])
+	var groups []map[string]string
+	require.NoError(t, json.Unmarshal(sections["arraygroup"], &groups))
+	assert.Equal(t, []map[string]string{{"objectID": "ARRAYGROUP.HUSVM.210945.1.1", "chassis": "1", "number": "1", "displayName": "1-1", "raidType": "RAID6(6D+2P)", "totalCapacity": "5242880"}}, groups)
+	var lus []map[string]any
+	require.NoError(t, json.Unmarshal(sections["lu"], &lus))
+	require.NotEmpty(t, lus)
+	assert.Equal(t, "LU.HUSVM.210945.100", lus[0]["objectID"])
 }
