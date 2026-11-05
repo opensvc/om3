@@ -298,7 +298,17 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 	if err := t.addrAddIn(ipnet.String(), guestDev, netns.Path()); err != nil {
 		return err
 	}
+	// The rollback opens the namespace again: the caller closes netns when
+	// its start returns, and the policy routing is removed in it.
 	actionrollback.Register(ctx, func(ctx context.Context) error {
+		netns, err := t.getNS(ctx)
+		if err != nil {
+			return err
+		} else if netns == nil {
+			// No namespace left: the address went with it.
+			return nil
+		}
+		defer func() { _ = netns.Close() }()
 		return t.stopIP(netns, guestDev)
 	})
 	return nil
