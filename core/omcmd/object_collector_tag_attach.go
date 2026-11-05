@@ -2,11 +2,9 @@ package omcmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
@@ -27,33 +25,7 @@ func (t *CmdObjectCollectorTagAttach) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			cli, err := n.CollectorFeedClient()
-			if err != nil {
-				return nil, err
-			}
-			options := make(map[string]string)
-			options["svcname"] = p.String()
-			options["tag_name"] = t.Name
-			if t.AttachData != nil {
-				options["tag_attach_data"] = *t.AttachData
-			}
-			type respType struct {
-				Ret int    `json:"ret"`
-				Msg string `json:"msg"`
-			}
-			var resp respType
-			if err := cli.CallFor(&resp, "collector_tag", options); err != nil {
-				return nil, err
-			} else if resp.Ret == 0 {
-				fmt.Println(resp.Msg)
-				return nil, nil
-			} else {
-				return nil, fmt.Errorf("%s", resp.Msg)
-			}
+			return collectorTagAttach(t.Name, p, t.AttachData)
 		}),
 	).Do()
 }
