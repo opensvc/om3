@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized, not captured from an array: the envelope is the
+  HiCommandServerMessage one of the Device Manager xml api. The collector
+  stores the array groups and reads none of their attributes.
+-->
+<HiCommandServerMessage>
+  <Response>
+    <ResultList>
+      <StorageArray objectID="ARRAY.HUSVM.210945" serialNumber="210945">
+        <ArrayGroup objectID="ARRAYGROUP.HUSVM.210945.1.1" chassis="1" number="1" displayName="1-1" raidType="RAID6(6D+2P)" totalCapacity="5242880"/>
+      </StorageArray>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>

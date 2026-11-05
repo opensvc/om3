@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthesized, not captured from an array: the envelope is the
+  HiCommandServerMessage one of the Device Manager xml api, and the
+  attributes of the StorageArray are the ones the collector reads.
+-->
+<HiCommandServerMessage>
+  <APIInfo version="8.8.0"/>
+  <Response>
+    <EchoCommand name="GetStorageArray" status="COMPLETED" result="0"/>
+    <ResultList>
+      <StorageArray objectID="ARRAY.HUSVM.210945" name="HUS VM@10.0.0.10" serialNumber="210945" arrayType="HUS VM" arrayFamily="HUS VM" controllerVersion="73-03-58-00/00" cacheInMB="65536"/>
+    </ResultList>
+  </Response>
+</HiCommandServerMessage>
