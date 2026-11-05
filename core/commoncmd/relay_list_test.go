@@ -24,9 +24,9 @@ func TestRelayViewsRenderTheAge(t *testing.T) {
 // A table renders the views, a machine format the api answer as it is.
 func TestTheRelayListIsTabularForAReaderOnly(t *testing.T) {
 	for _, out := range []string{"", "human", "tab", "tab=NODENAME:nodename", "table", "csv"} {
-		assert.True(t, isTabular(out), out)
+		assert.True(t, IsTabularOutput(out), out)
 	}
 	for _, out := range []string{"json", "jsonline", "flat", "yaml", "template={{.}}"} {
-		assert.False(t, isTabular(out), out)
+		assert.False(t, IsTabularOutput(out), out)
 	}
 }

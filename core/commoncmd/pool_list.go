@@ -76,16 +76,19 @@ func (t *CmdPoolList) Run() error {
 	}
 
 	render := func(items api.PoolItems) error {
-		lines := make([]PoolLine, len(items))
-		for i, item := range items {
-			lines[i] = NewPoolLine(item, t.Physical)
-		}
+		data := ListingData(t.Output, api.PoolList{Kind: api.PoolListKindPoolList, Items: items}, func() any {
+			lines := make([]PoolLine, len(items))
+			for i, item := range items {
+				lines[i] = NewPoolLine(item, t.Physical)
+			}
+			return lines
+		})
 		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
 			Sort:          t.Sort,
 			Color:         t.Color,
-			Data:          lines,
+			Data:          data,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}

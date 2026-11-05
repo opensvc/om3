@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -42,7 +43,7 @@ func (t *CmdNetworkList) Run() error {
 			f, _ := bi.Float64()
 			return f
 		}
-		lines := make(unstructured.List, len(resp.JSON200.Items))
+		views := make(unstructured.List, len(resp.JSON200.Items))
 		for i, network := range resp.JSON200.Items {
 			u := map[string]any{
 				"name":    network.Name,
@@ -55,8 +56,9 @@ func (t *CmdNetworkList) Run() error {
 				// overlapping another's.
 				"errors": joinErrors(network.Errors),
 			}
-			lines[i] = u
+			views[i] = u
 		}
+		lines := commoncmd.ListingData(t.Output, *resp.JSON200, func() any { return views })
 		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,

@@ -22,10 +22,13 @@ type (
 func (t *CmdPoolList) Run() error {
 
 	render := func(items api.PoolItems) error {
-		lines := make([]commoncmd.PoolLine, len(items))
-		for i, item := range items {
-			lines[i] = commoncmd.NewPoolLine(item, t.Physical)
-		}
+		lines := commoncmd.ListingData(t.Output, api.PoolList{Kind: api.PoolListKindPoolList, Items: items}, func() any {
+			lines := make([]commoncmd.PoolLine, len(items))
+			for i, item := range items {
+				lines[i] = commoncmd.NewPoolLine(item, t.Physical)
+			}
+			return lines
+		})
 		return output.Renderer{
 			DefaultOutput: "tab=NAME:name,TYPE:type,CAPABILITIES:capabilities[*],HEAD:head,VOLUME_COUNT:volume_count,BIN_SIZE:bin_size,BIN_USED:bin_used,BIN_FREE:bin_free",
 			Output:        t.Output,

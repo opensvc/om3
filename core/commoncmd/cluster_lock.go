@@ -112,6 +112,22 @@ func (t *CmdClusterLockList) Run() error {
 	if err != nil {
 		return err
 	}
+	data := ListingData(t.Output, api.ClusterLockList{Kind: api.ClusterLockListKindClusterLockList, Items: items}, func() any {
+		return clusterLockViews(items)
+	})
+	return output.Renderer{
+		DefaultOutput: "tab=NAME:name,HOLDER:holder,NODE:node,ACQUIRED_AT:acquired_at,EXPIRES_IN:expires_in",
+		Output:        t.Output,
+		DefaultSort:   "name",
+		Sort:          t.Sort,
+		Color:         t.Color,
+		Data:          data,
+		Colorize:      rawconfig.Colorize,
+	}.Print()
+}
+
+// clusterLockViews are the locks as the table shows them.
+func clusterLockViews(items []api.ClusterLock) []clusterLockView {
 	now := time.Now()
 	views := make([]clusterLockView, len(items))
 	for i, item := range items {
@@ -134,15 +150,7 @@ func (t *CmdClusterLockList) Run() error {
 			views[i].Holder = *item.Holder
 		}
 	}
-	return output.Renderer{
-		DefaultOutput: "tab=NAME:name,HOLDER:holder,NODE:node,ACQUIRED_AT:acquired_at,EXPIRES_IN:expires_in",
-		Output:        t.Output,
-		DefaultSort:   "name",
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          views,
-		Colorize:      rawconfig.Colorize,
-	}.Print()
+	return views
 }
 
 func (t *CmdClusterLockRelease) Run() error {
