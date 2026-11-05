@@ -26,5 +26,7 @@ const (
 )
 
 const (
-	ServerRegister = "/api/auth/node"
+	ServerAgentTags         = "/api/agent/tags"
+	ServerAgentTagsAttached = "/api/agent/tags/attached"
+	ServerRegister          = "/api/auth/node"
 )
