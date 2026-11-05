@@ -618,6 +618,12 @@ func ConsumersInstallWarnings(err error) ([]string, error) {
 // getting the keys. The failures are returned together, as a
 // ConsumersInstallError.
 func (t *dataStore) postInstall(k string) error {
+	return t.postInstallSkipping(k, nil)
+}
+
+// postInstallSkipping is postInstall, skip naming the resources not to
+// refresh, by object and resource id.
+func (t *dataStore) postInstallSkipping(k string, skip func(p naming.Path, rid string) bool) error {
 	type receiver interface {
 		CanInstall(context.Context) (bool, error)
 		InstallFromDatastore(context.Context, DataStore) (bool, error)
@@ -657,6 +663,9 @@ func (t *dataStore) postInstall(k string) error {
 			if !ok {
 				continue
 			}
+			if skip != nil && skip(p, r.RID()) {
+				continue
+			}
 			if !receiverResource.HasMetadata(t.path, k) {
 				continue
 			}
@@ -667,18 +676,23 @@ func (t *dataStore) postInstall(k string) error {
 				continue
 			}
 
-			if v, err := receiverResource.InstallFromDatastore(ctx, t); err != nil {
-				errs = append(errs, fmt.Errorf("%s %s: %w", p, r.RID(), err))
-				continue
-			} else if v {
+			// A refresh failing after it changed files signals the
+			// change all the same.
+			v, err := receiverResource.InstallFromDatastore(ctx, t)
+			if v {
 				onChange = receiverResource.OldSendSignals
 			}
-
-			if v, err := receiverResource.InstallDataByKind(t.path.Kind); err != nil {
+			if err != nil {
 				errs = append(errs, fmt.Errorf("%s %s: %w", p, r.RID(), err))
 				continue
-			} else if v {
+			}
+
+			v, err = receiverResource.InstallDataByKind(t.path.Kind)
+			if v {
 				onChange = receiverResource.OldSendSignals
+			}
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s %s: %w", p, r.RID(), err))
 			}
 		}
 		if onChange != nil {
