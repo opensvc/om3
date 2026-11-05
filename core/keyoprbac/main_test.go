@@ -433,6 +433,15 @@ func TestTheResourcesOfAVolumeNeedTheRootGrant(t *testing.T) {
 // A task.acme runs om's own action, so a namespace administrator may ask for
 // one. The acme section of a sec is theirs too, but the host path its
 // renewal writes in as root.
+// A subset runs its resources in parallel or one after the other, which is
+// the object's business. A keyword subsets gain later is weighed first.
+func TestSubsetParallel(t *testing.T) {
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "subset#container:oc3", "parallel", "true", none))
+	assert.NoError(t, Denied(noGrant, naming.KindVol, "subset#fs:data", "parallel@node1", "true", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "subset#container:oc3", "future_keyword", "x", none), "unweighed keywords need the root grant")
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "subset#container:oc3", "pre_start", "/bin/true", none), "a trigger needs the root grant on a subset too")
+}
+
 func TestAcmeRules(t *testing.T) {
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "task#acme", "type", "acme", none))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "task#acme", "type", "host", none))
