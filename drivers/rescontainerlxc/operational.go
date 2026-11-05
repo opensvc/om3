@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -46,17 +50,42 @@ func (t *T) waitOperational(ctx context.Context) error {
 	if err != nil || pid == 0 {
 		return err
 	}
-	if !isSystemd(pid) {
-		t.Log().Infof("the init of container %s is no systemd: no boot to wait for, its encap resources start now", t.Name)
+	name, err := initName(procRoot, pid)
+	switch {
+	case errors.Is(err, iofs.ErrNotExist) || errors.Is(err, syscall.ESRCH):
+		return fmt.Errorf("container %s went down: its init, pid %d, is gone", t.Name, pid)
+	case err != nil:
+		return fmt.Errorf("container %s: the init, pid %d: %w", t.Name, pid, err)
+	case name != "systemd":
+		t.Log().Infof("the init of container %s is %s, no systemd: no boot to wait for, its encap resources start now", t.Name, name)
 		return nil
 	}
+	t.Log().Debugf("the init of container %s is systemd: wait for the system to run", t.Name)
 	return t.waitSystemRunning(ctx)
 }
 
-// isSystemd says the init of pid is systemd.
-func isSystemd(pid int) bool {
-	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
-	return err == nil && strings.TrimSpace(string(b)) == "systemd"
+// procRoot is where the proc filesystem is mounted, a variable for tests.
+var procRoot = "/proc"
+
+// initName returns the name of the program pid runs: the base name of its
+// executable, as systemd started as /sbin/init, a link to it, keeps the name
+// init in comm until it renames itself, or what comm says when the executable
+// is not readable. A process gone is an error io/fs.ErrNotExist.
+func initName(root string, pid int) (string, error) {
+	dir := filepath.Join(root, strconv.Itoa(pid))
+	if exe, err := os.Readlink(filepath.Join(dir, "exe")); err == nil {
+		exe = strings.TrimSuffix(exe, " (deleted)")
+		if name := filepath.Base(exe); name != "." && name != "/" {
+			return name, nil
+		}
+	} else if errors.Is(err, iofs.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
+		return "", err
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "comm"))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
 }
 
 // attach runs args in the container, and returns what it wrote.
