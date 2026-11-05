@@ -254,11 +254,7 @@ func (t SourceRoute) Apply(netns ns.NetNS, log *plog.Logger) error {
 		}
 		del, add := reconcile(rules, src, table)
 		for _, r := range del {
-			t.logIP(log, "rule del from %s lookup %d", src, r.Table)
-			if err := netlink.RuleDel(&r); err != nil {
-				return err
-			}
-			if err := t.flushOwnTable(src, r.Table, log); err != nil {
+			if err := t.dropRule(r, src, log); err != nil {
 				return err
 			}
 		}
@@ -316,16 +312,26 @@ func (t SourceRoute) Remove(netns ns.NetNS, log *plog.Logger) error {
 			if r.Src == nil || r.Src.String() != src.String() || r.Priority != SourceRulePriority {
 				continue
 			}
-			t.logIP(log, "rule del from %s lookup %d", src, r.Table)
-			if err := netlink.RuleDel(&r); err != nil {
-				return err
-			}
-			if err := t.flushOwnTable(src, r.Table, log); err != nil {
+			if err := t.dropRule(r, src, log); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+// dropRule flushes the table of a rule of the address, unless another rule
+// names it, then deletes the rule. The table goes first: a failure leaves the
+// rule naming it, found again and dropped by the next start or stop of the
+// address, rather than a table no rule names, its routes left behind. A
+// table flushed under its rule is harmless: the lookup of an empty table
+// falls through to the main one.
+func (t SourceRoute) dropRule(r netlink.Rule, src *net.IPNet, log *plog.Logger) error {
+	if err := t.flushOwnTable(src, r.Table, log); err != nil {
+		return err
+	}
+	t.logIP(log, "rule del from %s lookup %d", src, r.Table)
+	return netlink.RuleDel(&r)
 }
 
 // flushOwnTable flushes the table a rule of the address named, unless
