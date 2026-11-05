@@ -29,6 +29,10 @@ type (
 		Force       bool
 		Namespace   string
 
+		// DryRun has the daemon run every check of the create, and write
+		// nothing.
+		DryRun bool
+
 		// Store and Snapshot name a snapshot to create the object from:
 		// the daemon reads it, and names it for the provision to restore
 		// the heads from.
@@ -59,6 +63,13 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		return err
 	} else {
 		t.path = p
+	}
+	if t.DryRun {
+		if t.Provision {
+			return fmt.Errorf("--dry-run and --provision are mutually exclusive: a dry run creates nothing to provision")
+		}
+		// Nothing is created for the daemon to learn of.
+		t.Wait = false
 	}
 
 	// errC must be buffered because of early return if an error occurs during t.do()
@@ -175,7 +186,7 @@ func (t *CmdObjectCreate) do() error {
 // what a copied configuration recorded of itself, unless --restore, the
 // keyword operations applying after.
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force)
+	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, t.DryRun)
 }
 
 // fromStore creates the object from a snapshot: the configuration of the
@@ -191,7 +202,7 @@ func (t *CmdObjectCreate) fromStore() error {
 	case t.path.IsZero():
 		return fmt.Errorf("need a target object path")
 	}
-	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force)
+	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, t.DryRun)
 }
 
 func (t *CmdObjectCreate) fromPath(p naming.Path) error {

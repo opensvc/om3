@@ -2335,6 +2335,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 	commoncmd.FlagsCreateFromStore(flags, &options.Store, &options.Snapshot)
 	flags.BoolVar(&options.WaitLocal, "wait-local", false, "wait for the local daemon to know the object, listed and watched by an instance monitor, for the command run next to find it")
 	commoncmd.FlagAdopt(flags, &options.Adopt)
+	commoncmd.FlagConfigDryRun(flags, &options.DryRun)
 	return cmd
 }
 
@@ -4413,6 +4414,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagTime(flags, &options.Time)
 	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagConfigForce(flags, &options.Force)
+	commoncmd.FlagConfigDryRun(flags, &options.DryRun)
 	return cmd
 }
 

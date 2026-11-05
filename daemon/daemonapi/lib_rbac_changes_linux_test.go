@@ -400,3 +400,30 @@ file = /var/lib/opensvc/pool/loop1/evil.img
 size = {DEFAULT.size}
 `), "the file the loop is backed by is not opened by the size pointing at it")
 }
+
+// Every keyword the grants do not allow is refused at once, with its reason,
+// so the author of a configuration learns in one write what to change.
+func TestAWriteReportsEveryRefusal(t *testing.T) {
+	knownNodes(t)
+	err := configRbacChanges(admin, naming.KindSvc, nil, configOf(t, `
+nodes = *
+
+[container#1]
+type = docker
+image = busybox
+run_args = --privileged
+dns = 192.0.2.53
+
+[disk#1]
+type = loop
+file = /tmp/foo
+
+[subset#container:g1]
+parallel = true
+`))
+	require.Error(t, err)
+	for _, s := range []string{"container#1.run_args", "container#1.dns", "disk#1.type", "disk#1.file"} {
+		assert.Contains(t, err.Error(), s)
+	}
+	assert.NotContains(t, err.Error(), "subset#container:g1", "a namespace administrator sets the parallel start of a subset")
+}

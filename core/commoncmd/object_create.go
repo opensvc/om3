@@ -58,8 +58,10 @@ func DataFromTemplate(template string) ([]byte, error) {
 // A restore replaces an object that exists too, as the create does with no
 // daemon running: what a backup or a hypervisor restores is the object as it
 // was saved, whatever the node holds of it.
-func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force bool) error {
-	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore), force, restore)
+//
+// With dryRun, the daemon runs every check of the create and writes nothing.
+func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force, dryRun bool) error {
+	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore, dryRun), force, restore)
 }
 
 // CreateObjectConfigFromStore creates the object at p from the snapshot of
@@ -67,16 +69,22 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 // object the snapshot is of, creates the keys of the sec and cfg it
 // references that the namespace of p lacks, and names the snapshot the
 // provision restores the heads from.
-func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force bool) error {
-	params := createParams(keywords, restore)
+func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force, dryRun bool) error {
+	params := createParams(keywords, restore, dryRun)
 	params.Store = &store
 	params.Snapshot = &snapshot
 	return postObjectConfig(ctx, c, p, nil, params, force, restore)
 }
 
-func createParams(keywords []string, restore bool) api.PostObjectConfigFileParams {
-	waitLocal := true
-	params := api.PostObjectConfigFileParams{WaitLocal: &waitLocal}
+func createParams(keywords []string, restore, dryRun bool) api.PostObjectConfigFileParams {
+	params := api.PostObjectConfigFileParams{}
+	if dryRun {
+		// Nothing is written for the daemon to learn of.
+		params.DryRun = &dryRun
+	} else {
+		waitLocal := true
+		params.WaitLocal = &waitLocal
+	}
 	if restore {
 		params.Restore = &restore
 	}
@@ -93,7 +101,7 @@ func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte,
 	}
 	switch resp.StatusCode() {
 	case http.StatusNoContent:
-		fmt.Printf("%s: created\n", p)
+		fmt.Printf("%s: %s\n", p, doneOrWouldBe(params.DryRun, "created"))
 		return nil
 	case http.StatusConflict:
 		// Forced, a configuration holding what others hold is written all
@@ -143,7 +151,7 @@ func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte
 	}
 	switch resp.StatusCode() {
 	case http.StatusNoContent:
-		fmt.Printf("%s: %s\n", p, done)
+		fmt.Printf("%s: %s\n", p, doneOrWouldBe(params.DryRun, done))
 		return nil
 	case http.StatusBadRequest:
 		return fmt.Errorf("%s: %s", p, *resp.JSON400)
@@ -170,4 +178,13 @@ func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte
 func CreatedConfigData(p naming.Path, b []byte, keywords []string, restore bool) (object.Configurer, error) {
 	oc, _, err := object.CreatedConfig(p, b, restore, keyop.ParseOps(keywords)...)
 	return oc, err
+}
+
+// doneOrWouldBe says what a configuration write did, or would have done in a
+// dry run.
+func doneOrWouldBe(dryRun *bool, done string) string {
+	if dryRun != nil && *dryRun {
+		return "would be " + done
+	}
+	return done
 }

@@ -78,23 +78,23 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-	if _, ok := instanceConfigData[a.localhost]; ok {
+	if _, ok := instanceConfigData[a.localhost]; ok && params.DryRun != nil && *params.DryRun {
+		// Every check of the update, and no write: the answer says
+		// whether it would change the configuration.
+		u, err := prepareConfigUpdate(ctx, log, p, deletes, unsets, sets, params.Force != nil && *params.Force)
+		if err != nil {
+			return configUpdateProblem(ctx, err)
+		}
+		return ctx.JSON(http.StatusOK, api.Committed{IsChanged: u.changed})
+	} else if ok {
 		var sub *pubsub.Subscription
 		if waiting {
 			sub = a.subscribeConfigPropagation(fmt.Sprintf("api.patch_object_config %s %s", p, ctx.Get("uuid")), p)
 			defer func() { _ = sub.Stop() }()
 		}
 		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets, params.Force != nil && *params.Force)
-		if errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
-			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
-		} else if errors.Is(err, ErrInvalidConfig) {
-			return JSONProblemf(ctx, http.StatusBadRequest, "Update config", "%s", err)
-		} else if errors.Is(err, ErrHoldConflict) {
-			return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)
-		} else if errors.Is(err, ErrConfigChanged) {
-			return JSONProblemf(ctx, http.StatusConflict, "Update config", "%s", err)
-		} else if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
+		if err != nil {
+			return configUpdateProblem(ctx, err)
 		}
 		if changed {
 			a.announceConfigFileWritten(p)
@@ -188,4 +188,20 @@ func refuseSizeWhileResizing(p naming.Path, sets keyop.L) error {
 		}
 	}
 	return nil
+}
+
+// configUpdateProblem answers the refusal of a configuration update.
+func configUpdateProblem(ctx echo.Context, err error) error {
+	switch {
+	case errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun):
+		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+	case errors.Is(err, ErrInvalidConfig):
+		return JSONProblemf(ctx, http.StatusBadRequest, "Update config", "%s", err)
+	case errors.Is(err, ErrHoldConflict):
+		return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)
+	case errors.Is(err, ErrConfigChanged):
+		return JSONProblemf(ctx, http.StatusConflict, "Update config", "%s", err)
+	default:
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
+	}
 }

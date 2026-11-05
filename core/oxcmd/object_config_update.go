@@ -23,6 +23,10 @@ type (
 		Wait   bool
 		Time   time.Duration
 		Force  bool
+
+		// DryRun has the daemon run every check of the update, and write
+		// nothing.
+		DryRun bool
 	}
 )
 
@@ -30,6 +34,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 	if len(t.Delete) == 0 && len(t.Set) == 0 && len(t.Unset) == 0 {
 		fmt.Println("no changes requested")
 		return nil
+	}
+	if t.DryRun && t.Wait {
+		return fmt.Errorf("--dry-run and --wait are mutually exclusive: a dry run writes nothing to wait for")
 	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, ctx, cancel, err := commoncmd.ConfigWaitClient(t.Wait, t.Time)
@@ -66,6 +73,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			if t.Force {
 				params.Force = &t.Force
 			}
+			if t.DryRun {
+				params.DryRun = &t.DryRun
+			}
 			if t.Wait {
 				wait := t.Time.String()
 				params.Wait = &wait
@@ -78,7 +88,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			if !noPrefix {
 				prefix = p.String() + ": "
 			}
-			if changed {
+			if changed && t.DryRun {
+				fmt.Printf("%swould be committed\n", prefix)
+			} else if changed {
 				fmt.Printf("%scommitted\n", prefix)
 			} else {
 				fmt.Printf("%sunchanged\n", prefix)

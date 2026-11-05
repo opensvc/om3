@@ -105,6 +105,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Quiet mode**: New `--quiet` flag for instance actions disables both progress rendering and console logging, useful for scripts and automation.
 
+* **Check a configuration write before making it**: `om|ox <path> create --dry-run` and `om|ox <path> config update --dry-run` have the daemon run every check of the write, the rbac policy for the grants of the requester, the validation, the claims and the holds, and write nothing. The `dry_run` parameter of the `POST` and `PUT` on `/object/path/{namespace}/{kind}/{name}/config/file` and of the `PATCH` on `.../config` does the same through the api. A write the policy refuses, dry or not, lists every keyword the grants do not allow, with its reason, rather than the first one: one pass shows what a namespace administrator can not deploy of a template.
+
 * **A namespace administrator may start the resources of a subset in parallel**: the `parallel` keyword of a `subset#<group>:<name>` section needed the root grant, as every keyword of a driver group the policy said nothing about. It orders the resources of the object, and takes nothing from the node. The other keywords subsets may gain are refused until weighed.
 
 * **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.

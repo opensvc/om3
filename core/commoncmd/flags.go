@@ -916,3 +916,9 @@ func FlagIgnoreNoCollectorConfigured(flags *pflag.FlagSet, p *bool) {
 func FlagRedactSecrets(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "redact-secrets", false, "hide secret values in the output")
 }
+
+// FlagConfigDryRun adds the --dry-run of a configuration write: the daemon
+// runs every check of the write and writes nothing.
+func FlagConfigDryRun(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "dry-run", false, "run every check of the write, the rbac policy for your grants, the validation, the claims and the holds, and write nothing: every keyword your grants do not allow is reported at once")
+}

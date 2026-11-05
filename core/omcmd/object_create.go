@@ -42,6 +42,10 @@ type (
 		Force     bool
 		Namespace string
 
+		// DryRun has the daemon run every check of the create, and write
+		// nothing.
+		DryRun bool
+
 		// Store and Snapshot name a snapshot to create the object from:
 		// its configuration, and its heads restored at provision.
 		Store    string
@@ -75,6 +79,16 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	}
 	if t.path.IsZero() {
 		return fmt.Errorf("the path of the new object is required")
+	}
+	if t.DryRun {
+		switch {
+		case t.Local:
+			return fmt.Errorf("--dry-run and --local are mutually exclusive: the checks of a create are the daemon's, and --local writes without it")
+		case t.Provision:
+			return fmt.Errorf("--dry-run and --provision are mutually exclusive: a dry run creates nothing to provision")
+		}
+		// Nothing is created for the daemon to learn of.
+		t.Wait, t.WaitLocal = false, false
 	}
 	if c, err := client.New(); err != nil {
 		return err
@@ -260,9 +274,12 @@ func (t *CmdObjectCreate) fromStore() error {
 		// The daemon reads the snapshot, checks its configuration as any
 		// other, and writes the keys it references with it, taking them
 		// back if the configuration does not land.
-		err := commoncmd.CreateObjectConfigFromStore(ctx, t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force)
+		err := commoncmd.CreateObjectConfigFromStore(ctx, t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, t.DryRun)
 		if !daemonUnreachable(err) {
 			return err
+		}
+		if t.DryRun {
+			return errDryRunNeedsDaemon(t.path)
 		}
 		fmt.Fprintf(os.Stderr, "%s: the daemon is not running: the configuration is written on this node only, with none of the checks of the daemon\n", t.path)
 	}
@@ -389,8 +406,10 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 		return err
 	}
 	t.reportConfigWarnings(p, oc)
-	err = commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force)
-	if daemonUnreachable(err) {
+	err = commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, t.DryRun)
+	if daemonUnreachable(err) && t.DryRun {
+		return errDryRunNeedsDaemon(p)
+	} else if daemonUnreachable(err) {
 		fmt.Fprintf(os.Stderr, "%s: the daemon is not running: the configuration is written on this node only, with none of the checks of the daemon\n", p)
 		return t.localFromData(p, b)
 	}
@@ -509,4 +528,9 @@ func objectExists(p naming.Path) (bool, error) {
 		return false, fmt.Errorf("can not tell whether %s exists: %w", p, err)
 	}
 	return exists, nil
+}
+
+// errDryRunNeedsDaemon is the refusal of a dry run the daemon can not run.
+func errDryRunNeedsDaemon(p naming.Path) error {
+	return fmt.Errorf("%s: the daemon is not running: the checks of a dry run are the daemon's", p)
 }

@@ -154,5 +154,5 @@ func (a *DaemonAPI) restoreConfigInPlace(ctx echo.Context, p naming.Path, params
 	if err := stopToChange(ctx, p, body, false); err != nil {
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 	}
-	return a.writeObjectConfigFile(ctx, p, body, base, nil, false, false, false)
+	return a.writeObjectConfigFile(ctx, p, body, base, nil, false, false, false, false)
 }
