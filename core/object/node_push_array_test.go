@@ -1,28 +1,53 @@
 package object
 
 import (
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ybbus/jsonrpc"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/collector"
+	"github.com/opensvc/om3/v3/util/httphelper"
 )
 
-// callSpy records what an array pushed, without a collector to push to.
-type callSpy struct {
-	method string
-	params []interface{}
-	err    error
+// arrayFeeder serves the oc3 array feed with the status given, recording
+// the requests it received.
+type arrayFeeder struct {
+	status   int
+	path     string
+	encoding string
+	body     map[string]any
+	calls    int
 }
 
-func (t *callSpy) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
-	t.method = method
-	t.params = params
-	return &jsonrpc.RPCResponse{}, t.err
+func (f *arrayFeeder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.calls++
+	f.path = r.URL.Path
+	f.encoding = r.Header.Get("Content-Encoding")
+	if zr, err := gzip.NewReader(r.Body); err == nil {
+		_ = json.NewDecoder(zr).Decode(&f.body)
+	}
+	w.WriteHeader(f.status)
+	if f.status >= 400 {
+		_, _ = w.Write([]byte(`{"text":"the collector does not parse quiet arrays yet"}`))
+	}
+}
+
+func newArrayFeeder(t *testing.T, status int) (*arrayFeeder, *httphelper.T) {
+	t.Helper()
+	f := &arrayFeeder{status: status}
+	srv := httptest.NewServer(f)
+	t.Cleanup(srv.Close)
+	cli, err := collector.NewRequester(srv.URL, "", false)
+	require.NoError(t, err)
+	return f, cli
 }
 
 // fakeArray is an array driver reporting two sections.
@@ -53,52 +78,64 @@ func (t *fakeArray) Reports() []array.Report {
 	}
 }
 
-// TestAnArrayIsPushedAsV2PushesIt pins the shape of the call: the method the
-// collector exports for the type of the array, then its name, the names of its
-// sections and their contents. That is what v2 sends, and the collector reads
-// it by position.
-func TestAnArrayIsPushedAsV2PushesIt(t *testing.T) {
-	spy := &callSpy{}
-	drv := &fakeArray{}
-	push := ArrayPush{Name: "array#arr1", Type: "freenas"}
+// An array is posted to the oc3 array feed, compressed, with its name, its
+// type, and the sections of its driver by name.
+func TestAnArrayIsPostedToTheFeed(t *testing.T) {
+	feeder, cli := newArrayFeeder(t, http.StatusAccepted)
+	push := ArrayPush{Name: "arr1", Type: "pure"}
 
 	node := Node{}
-	err := node.pushArrayWithDriver(context.Background(), spy, drv, ArrayItem{Name: "array#arr1", Type: "freenas"}, &push)
+	err := node.pushArrayWithDriver(context.Background(), cli, &fakeArray{}, ArrayItem{Name: "arr1", Type: "pure"}, &push)
 	require.NoError(t, err)
 
-	assert.Equal(t, "update_freenas", spy.method)
-	require.Len(t, spy.params, 3)
-	assert.Equal(t, "array#arr1", spy.params[0])
-	assert.Equal(t, []string{"system", "pools"}, spy.params[1])
-	assert.Equal(t, []any{map[string]string{"model": "m1"}, []string{"p1", "p2"}}, spy.params[2])
+	assert.Equal(t, "/api/array", feeder.path)
+	assert.Equal(t, "gzip", feeder.encoding)
+	assert.Equal(t, map[string]any{
+		"name": "arr1",
+		"type": "pure",
+		"data": map[string]any{
+			"system": map[string]any{"model": "m1"},
+			"pools":  []any{"p1", "p2"},
+		},
+	}, feeder.body)
 	assert.Equal(t, 2, push.Keys)
+}
+
+// A refusal of the collector is an error carrying its reason.
+func TestAnArrayRefusedSaysWhy(t *testing.T) {
+	_, cli := newArrayFeeder(t, http.StatusBadRequest)
+	push := ArrayPush{}
+
+	node := Node{}
+	err := node.pushArrayWithDriver(context.Background(), cli, &fakeArray{}, ArrayItem{Name: "arr1", Type: "quiet"}, &push)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "[400]: the collector does not parse quiet arrays yet")
 }
 
 // TestAnArrayThatCannotBeReadIsNotPushed pins that half a configuration is
 // never reported as a whole one: the collector would take what is missing for
 // what has gone away.
 func TestAnArrayThatCannotBeReadIsNotPushed(t *testing.T) {
-	spy := &callSpy{}
-	drv := &fakeArray{fail: true}
+	feeder, cli := newArrayFeeder(t, http.StatusAccepted)
 	push := ArrayPush{}
 
 	node := Node{}
-	err := node.pushArrayWithDriver(context.Background(), spy, drv, ArrayItem{Name: "array#arr1", Type: "freenas"}, &push)
+	err := node.pushArrayWithDriver(context.Background(), cli, &fakeArray{fail: true}, ArrayItem{Name: "arr1", Type: "pure"}, &push)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "system")
-	assert.Empty(t, spy.method, "nothing must be pushed")
+	assert.Zero(t, feeder.calls, "nothing must be pushed")
 }
 
 // TestADriverThatDoesNotReportSaysSo pins the message for a driver that has no
 // Reports of its own yet.
 func TestADriverThatDoesNotReportSaysSo(t *testing.T) {
-	spy := &callSpy{}
+	feeder, cli := newArrayFeeder(t, http.StatusAccepted)
 	push := ArrayPush{}
 	node := Node{}
-	err := node.pushArrayWithDriver(context.Background(), spy, &silentArray{}, ArrayItem{Name: "array#arr1", Type: "quiet"}, &push)
+	err := node.pushArrayWithDriver(context.Background(), cli, &silentArray{}, ArrayItem{Name: "arr1", Type: "quiet"}, &push)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not report its configuration")
-	assert.Empty(t, spy.method)
+	assert.Zero(t, feeder.calls)
 }
 
 type silentArray struct{ array.Array }

@@ -1,22 +1,22 @@
 package object
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
-
-	"github.com/ybbus/jsonrpc"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/oc3path"
+	"github.com/opensvc/om3/v3/util/httphelper"
 )
 
 type (
-	// collectorCaller is the part of the collector client this needs, so a
-	// test can watch what an array pushes without a collector to push to.
-	collectorCaller interface {
-		Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error)
-	}
-
 	// ArrayPush is what came of pushing one array to the collector.
 	ArrayPush struct {
 		Name  string `json:"name"`
@@ -24,27 +24,32 @@ type (
 		Keys  int    `json:"keys"`
 		Error string `json:"error,omitempty"`
 	}
+
+	// oc3ArrayBody is what an array pushes: its name, its type, and the
+	// sections its driver reports, by name.
+	oc3ArrayBody struct {
+		Name string         `json:"name"`
+		Type string         `json:"type"`
+		Data map[string]any `json:"data"`
+	}
 )
+
+// pushArrayTimeout bounds the post of one array, whose configuration can
+// weigh tens of megabytes.
+var pushArrayTimeout = 2 * time.Minute
 
 // PushArrays reports the configuration of the arrays of the cluster to the
 // collector.
 //
-// The collector is fed through the jsonrpc method it exports for the type of
-// each array, "update_freenas" for a freenas and so on, with the section names
-// and their contents. That is the api v2 fed.
-//
-// It is the jsonrpc api and not a rest one because oc3, which takes the roles
-// of the old collector over one at a time, exposes no array feed yet: its
-// feeder serves the node, the instance and the object, and nothing about an
-// array. oc3 will drop the jsonrpc api when it has taken everything over, so
-// this call is to be moved to the rest feed the day oc3 grows one, and a rest
-// endpoint is to be preferred over jsonrpc wherever both exist.
+// Each array is posted to the array feed of the oc3 feeder, compressed: the
+// sections its driver reports, under the names v2 sent them, which the
+// collector parses by type.
 //
 // One array failing does not stop the others: an array that is down or whose
 // credentials have expired must not keep the ones that are reachable from
 // being reported. What failed is in the result, and in the error.
 func (t Node) PushArrays(ctx context.Context, name string) ([]ArrayPush, error) {
-	client, err := t.CollectorFeedClient()
+	oc3, err := t.CollectorFeeder()
 	if err != nil {
 		return nil, err
 	}
@@ -61,10 +66,10 @@ func (t Node) PushArrays(ctx context.Context, name string) ([]ArrayPush, error) 
 			continue
 		}
 		push := ArrayPush{Name: item.Name, Type: item.Type}
-		if err := t.pushArray(ctx, client, item, &push); err != nil {
+		if err := t.pushArray(ctx, oc3, item, &push); err != nil {
 			push.Error = err.Error()
 			t.Log().Attr("array", item.Name).Warnf("push array %s: %s", item.Name, err)
-			errs = fmt.Errorf("%w", err)
+			errs = errors.Join(errs, fmt.Errorf("array %s: %w", item.Name, err))
 		}
 		l = append(l, push)
 	}
@@ -75,16 +80,16 @@ func (t Node) PushArrays(ctx context.Context, name string) ([]ArrayPush, error) 
 }
 
 // pushArray reports one array.
-func (t Node) pushArray(ctx context.Context, client collectorCaller, item ArrayItem, push *ArrayPush) error {
+func (t Node) pushArray(ctx context.Context, oc3 *httphelper.T, item ArrayItem, push *ArrayPush) error {
 	drv := t.Array(item.Name)
 	if drv == nil {
 		return fmt.Errorf("no array driver found matching type %s", item.Type)
 	}
-	return t.pushArrayWithDriver(ctx, client, drv, item, push)
+	return t.pushArrayWithDriver(ctx, oc3, drv, item, push)
 }
 
 // pushArrayWithDriver reports one array through a driver already resolved.
-func (t Node) pushArrayWithDriver(ctx context.Context, client collectorCaller, drv array.Driver, item ArrayItem, push *ArrayPush) error {
+func (t Node) pushArrayWithDriver(ctx context.Context, oc3 *httphelper.T, drv array.Driver, item ArrayItem, push *ArrayPush) error {
 	reporter, ok := drv.(array.Reporter)
 	if !ok {
 		return fmt.Errorf("the %s driver does not report its configuration", item.Type)
@@ -94,12 +99,36 @@ func (t Node) pushArrayWithDriver(ctx context.Context, client collectorCaller, d
 		return err
 	}
 	push.Keys = len(data.Keys)
-	response, err := client.Call(array.ReportMethod(item.Type), item.Name, data.Keys, data.Values)
+	body := oc3ArrayBody{Name: item.Name, Type: item.Type, Data: make(map[string]any, len(data.Keys))}
+	for i, k := range data.Keys {
+		body.Data[k] = data.Values[i]
+	}
+	return t.postArray(ctx, oc3, body)
+}
+
+// postArray posts the configuration of an array to the oc3 array feed,
+// compressed.
+func (t Node) postArray(ctx context.Context, oc3 *httphelper.T, body oc3ArrayBody) error {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		return fmt.Errorf("encode request body: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("compress request body: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(ctx, pushArrayTimeout)
+	defer cancel()
+	method, path := http.MethodPost, oc3path.FeedArray
+	req, err := oc3.NewRequestWithContext(ctx, method, path, &buf)
 	if err != nil {
-		return err
+		return fmt.Errorf("create collector request %s %s: %w", method, path, err)
 	}
-	if response != nil && response.Error != nil {
-		return fmt.Errorf("%s: %s", array.ReportMethod(item.Type), response.Error.Message)
+	req.Header.Set("Content-Encoding", "gzip")
+	resp, err := oc3.Do(req)
+	if err != nil {
+		return fmt.Errorf("collector %s %s: %w", method, path, err)
 	}
-	return nil
+	defer func() { _ = resp.Body.Close() }()
+	return CollectorResponseStatusCheck(resp, method, path, []int{http.StatusAccepted})
 }

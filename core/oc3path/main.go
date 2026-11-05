@@ -20,6 +20,8 @@ const (
 
 	FeedObjectConfig = "/api/object/config"
 
+	FeedArray = "/api/array"
+
 	FeedSANSwitch = "/api/sanswitch"
 
 	FeedVersion = "/api/version"
