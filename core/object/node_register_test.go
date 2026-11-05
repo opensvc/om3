@@ -140,3 +140,15 @@ func TestRegisterAnonymousV3Refused(t *testing.T) {
 		assert.Contains(t, err.Error(), "--user")
 	}
 }
+
+// A node with no oc3 collector configured has nowhere to register: the
+// former collector is no longer fed, and the error says what to set.
+func TestRegisterNeedsAnOC3Collector(t *testing.T) {
+	n := setupRegisterNode(t, "", "")
+	err := n.register("", "", "app1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "collector.url")
+	err = n.register("user1", "secret", "app1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "collector.url")
+}

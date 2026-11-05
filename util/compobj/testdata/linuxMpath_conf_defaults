@@ -1,4 +1,0 @@
-defaults {
-        user_friendly_names     yes
-        path_grouping_policy    multibus
-}

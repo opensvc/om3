@@ -247,14 +247,19 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     url = https://collector.opensvc.com
     ```
 
-* **Collector certificate verified on the jsonrpc calls:**
-    The jsonrpc calls to the old collector, the compliance and the init ones on `node.dbopensvc` among them, verify the certificate of the collector, as the calls to oc3 do, where v2 never verified it. Set `node.dbinsecure = true` for a collector whose certificate the node does not trust, a test one.
+* **The former collector is no longer fed:**
+    om feeds and reads an oc3 collector only, set by `collector.url`, or `collector.feeder` and `collector.server`. The jsonrpc and rest calls to the former collector are dropped, the last ones with them: `om node register` with or without `--user` on a node with no oc3 collector, which now fails saying what to set.
+    `node.dbopensvc` and `node.dbcompliance` are ignored, and `om node config migrate` drops them. `node.dbinsecure` still disables the certificate verification of the calls to oc3, for a test collector.
+    The `{collector_api}` reference names the api of the oc3 server, `<collector.server>/api`.
+
+* **The compliance objects are no longer shipped with om:**
+    The `compobj` binary and the compliance modules it installed in `share/opensvc/compliance` are gone from the om packages. The compliance modules come from the archive of the collector, which `om node compliance update` installs in the same place.
 
 * **SAN switches:**
     A switch is inventoried by `om node push switch [<name>]`, and on the `schedule` of its `switch#<name>` section, with the `pushswitch` scheduler action: the v2 `om node pushbrocade` command and the `[brocade] schedule` keyword are gone.
     The `telnet` method of a brocade switch is refused, as telnet sends the password in clear: set `method = ssh`, with a `key` or a `password` secret.
     The switch key is trusted on the first connection and recorded in the root known hosts, where v2 connected with `StrictHostKeyChecking=no`: a switch presenting another key later is refused.
-    The report goes to the oc3 switch feed, and to the old collector `update_brocade` rpc where oc3 does not serve it.
+    The report goes to the oc3 switch feed.
 
 * **`cluster.name` default value:**
     In v2.1, the default cluster name was `default`.

@@ -2,7 +2,6 @@ package object
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -163,48 +162,20 @@ func collectorRequestError(err error, method, path string, timeout time.Duration
 	return fmt.Errorf("collector %s %s: %w", method, path, err)
 }
 
-func (t *Node) CollectorFeedClient() (*collector.Client, error) {
-	cfg := t.CollectorRawConfig().AsConfig()
-	if cfg.FeederUrl == "" {
+// CollectorServerAPIURL returns the url of the api of the oc3 server, which
+// the {collector_api} reference names.
+func (t *Node) CollectorServerAPIURL() (*url.URL, error) {
+	s := t.CollectorRawConfig().ServerUrl()
+	if s == "" {
 		return nil, collector.ErrConfig
 	}
-	return cfg.NewFeedClient()
-}
-
-func (t Node) CollectorInitClient() (*collector.Client, error) {
-	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
-	secret := t.config.GetString(key.Parse("node.uuid"))
-	insecure := t.mergedConfig.GetBool(key.Parse("node.dbinsecure"))
-	return collector.NewInitClient(s, secret, insecure)
-}
-
-func (t *Node) CollectorRestAPIURL() (*url.URL, error) {
-	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
-	return collector.RestURL(s)
-}
-
-func (t *Node) Collector3RestAPIURL() (*url.URL, error) {
-	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
-	u, err := collector.RestURL(s)
+	u, err := collector.BaseURL(s)
 	if err != nil {
-		return u, err
+		return nil, err
 	}
-	u.Path = strings.Replace(u.Path, "/init/rest/api", "", 1)
-	u.RawPath = strings.Replace(u.Path, "/init/rest/api", "", 1)
+	u.Path = strings.TrimSuffix(u.Path, "/") + "/api"
+	u.RawPath = ""
 	return u, nil
-}
-
-func (t *Node) CollectorRestAPIClient() *http.Client {
-	insecure := t.MergedConfig().GetBool(key.Parse("node.dbinsecure"))
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: insecure,
-			},
-		},
-	}
-	return client
 }
 
 // CollectorFeeder returns new collector feeder client from config
