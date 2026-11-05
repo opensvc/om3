@@ -39,7 +39,7 @@ func TestGetData(t *testing.T) {
 	})
 	data, err := comp.GetData([]string{"m1", "m2"})
 	require.NoError(t, err)
-	assert.Equal(t, "/api/compliance/agent/data", got.URL.Path)
+	assert.Equal(t, "/api/agent/compliance/data", got.URL.Path)
 	assert.Equal(t, []string{"m1", "m2"}, got.URL.Query()["moduleset"])
 	assert.False(t, got.URL.Query().Has("path"))
 	assert.Equal(t, "mod1", data.Modsets["m1"][0].Name)
@@ -59,11 +59,11 @@ func TestAttachmentOfObject(t *testing.T) {
 	comp.SetObjectPath(p)
 	require.NoError(t, comp.AttachModuleset("my set"))
 	assert.Equal(t, http.MethodPost, got.Method)
-	assert.Equal(t, "/api/compliance/agent/modulesets/my set", got.URL.Path)
+	assert.Equal(t, "/api/agent/compliance/modulesets/my set", got.URL.Path)
 	assert.Equal(t, "ns1/svc/s1", got.URL.Query().Get("path"))
 	require.NoError(t, comp.DetachRuleset("r1"))
 	assert.Equal(t, http.MethodDelete, got.Method)
-	assert.Equal(t, "/api/compliance/agent/rulesets/r1", got.URL.Path)
+	assert.Equal(t, "/api/agent/compliance/rulesets/r1", got.URL.Path)
 }
 
 func TestCollectorProblem(t *testing.T) {
@@ -88,7 +88,7 @@ func TestPush(t *testing.T) {
 	run.data = Data{Rsets: Rulesets{"osvc_collector": {Vars: Vars{{Name: "ruleset_md5", Value: "abc"}}}}}
 	run.ModuleActions = append(run.ModuleActions, &ModuleAction{Module: "mod1", Action: ActionCheck, ExitCode: 2})
 	require.NoError(t, run.Push())
-	assert.Equal(t, "/api/compliance/agent/logs", got.URL.Path)
+	assert.Equal(t, "/api/agent/compliance/logs", got.URL.Path)
 	require.Len(t, body, 1)
 	assert.Equal(t, "mod1", body[0]["module"])
 	assert.EqualValues(t, 2, body[0]["status"])
