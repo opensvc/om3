@@ -27,7 +27,8 @@ func NewCmdHeartbeatWipe() *cobra.Command {
 			HeartbeatNameHelp + "\n\nThe heartbeat must be of type disk: this action writes to its dev.\n\n" +
 			"A disk can hold the heartbeats of several clusters under one signature, which a wipe takes from them all. " +
 			"So the wipe first watches the disk for a heartbeat timeout, at most 20s, and is refused when nodes outside the heartbeat write to it. " +
-			"--force wipes without looking."),
+			"--force wipes without looking.\n\n" +
+			"The streams of the heartbeat suspend within 3 intervals, failed with the reason in the heartbeat status, and resume once the disk is signed again."),
 		Example: ForProgram(`  # wipe the disk of hb#2 on the local node
   om daemon hb wipe 2
 

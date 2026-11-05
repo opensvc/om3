@@ -1,6 +1,8 @@
 package hbdisk
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,5 +49,24 @@ func TestCheckSignature(t *testing.T) {
 	assert.True(t, b.invalidSig)
 
 	assert.Equal(t, 4*time.Second, signatureCheckPeriod(4*time.Second, true), "suspended: checked every interval")
-	assert.Equal(t, time.Minute, signatureCheckPeriod(4*time.Second, false))
+	assert.Equal(t, 12*time.Second, signatureCheckPeriod(4*time.Second, false), "signed: checked every 3 intervals")
+}
+
+// A stream starts on a disk not signed, suspended until it is, and on a disk
+// of the former signature. Another failure of the open fails the start.
+func TestStartWith(t *testing.T) {
+	b := base{log: plog.NewDefaultLogger()}
+	require.NoError(t, b.startWith(fmt.Errorf("verify: %w", sign.ErrLegacySignature)))
+	assert.False(t, b.invalidSig, "a legacy signature beats")
+
+	require.NoError(t, b.startWith(fmt.Errorf("verify: %w", sign.ErrWrongSignature)))
+	assert.True(t, b.invalidSig, "not signed: started suspended")
+
+	b = base{log: plog.NewDefaultLogger()}
+	require.NoError(t, b.startWith(fmt.Errorf("verify: %w", sign.ErrChecksumMismatch)))
+	assert.True(t, b.invalidSig, "a header corrupted: started suspended")
+
+	b = base{log: plog.NewDefaultLogger()}
+	assert.Error(t, b.startWith(errors.New("no such device")))
+	assert.False(t, b.invalidSig)
 }
