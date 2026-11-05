@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/anmitsu/go-shlex"
@@ -73,12 +74,34 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 		}
 	}
 
-	// Add the data as a key to the datastore
-	if err := ds.AddKey(keyName, data); err != nil {
+	// Add the data as a key to the datastore. The key written, the
+	// datastore refreshes the other services installing its keys: their
+	// failures are theirs, warned of, and not the one of this seeding.
+	warnings, err := object.ConsumersInstallWarnings(ds.AddKey(keyName, data))
+	if err != nil {
 		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
 	}
-
+	for _, w := range warnings {
+		log.Warnf("seeded key %s, the install it refreshed failed in %s", keyName, w)
+	}
 	return nil
+}
+
+// installing holds the resources whose install runs in this process, by
+// object path and head: the install of a resource seeding a key refreshes
+// the services installing from its datastore, and the refresh skips the
+// resource whose install runs, which installs the key itself next.
+var installing sync.Map
+
+func installingKey(path naming.Path, head string) string {
+	return path.String() + ":" + head
+}
+
+// isInstalling says whether the install of the resource runs in this
+// process.
+func (t *DataRecv) isInstalling() bool {
+	_, ok := installing.Load(installingKey(t.to.GetObject().(object.Core).Path(), t.to.Head()))
+	return ok
 }
 
 // buildEnvTemplateData builds a map of environment variables from the config's env section,
@@ -643,8 +666,11 @@ func (t *DataRecv) Status() {
 	}
 }
 
+// InstallFromDatastore installs the keys of the datastore from, the refresh
+// a write of it runs. The resource whose install runs in this process,
+// seeding the key written, is skipped: its install installs the key next.
 func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataStore) (bool, error) {
-	if len(t.Install) == 0 {
+	if len(t.Install) == 0 || t.isInstalling() {
 		return false, nil
 	}
 
@@ -716,20 +742,9 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		// Seed the datastore key from source URI if provided and key doesn't exist
-		if md.Source != "" && md.FromPattern != "" {
-			if !store.HasKey(md.FromPattern) {
-				if err := seedKeyFromSource(store, md.FromPattern, md.Source, t.to.Log()); err != nil {
-					if md.Required {
-						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
-					} else {
-						t.to.Log().Warnf("failed to seed key %s from source %s: %v", md.FromPattern, md.Source, err)
-					}
-				} else {
-					t.to.Log().Infof("seeded key %s from source %s", md.FromPattern, md.Source)
-				}
-			}
-		}
+		// A refresh installs what the datastore holds: a key is seeded
+		// from its source by the install of the resource, at its start,
+		// provision or task run, and not by the write of another key.
 		md.ToLog = t.to.Log()
 		md.LogUnchanged = t.report
 		md.Wrote = func(p string) { installed = appendNew(installed, p) }
@@ -765,6 +780,9 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 
 func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	t.to.Log().Tracef("install: def: %s", t.Install)
+	k := installingKey(t.to.GetObject().(object.Core).Path(), t.to.Head())
+	installing.Store(k, true)
+	defer installing.Delete(k)
 
 	changed := false
 	head := t.to.Head()
@@ -1264,6 +1282,11 @@ func (t *DataRecv) SendSignals(ctx context.Context, signals *volsignal.T) error 
 }
 
 func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
+	if t.isInstalling() {
+		// A refresh a seeding of this install ran: see
+		// InstallFromDatastore.
+		return false, nil
+	}
 	var changed bool
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()

@@ -56,7 +56,10 @@ func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind n
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Name, err)
 		}
-		err = ks.AddKey(params.Name, b)
+		if err = ks.TransactionAddKey(params.Name, b); err == nil {
+			err = ks.Config().Commit()
+		}
+		warnings, err := object.ConsumersInstallWarnings(err)
 		switch {
 		case errors.Is(err, object.ErrKeyExist):
 			return JSONProblemf(ctx, http.StatusConflict, "AddKey", "%s: %s. consider using the PUT method.", params.Name, err)
@@ -66,7 +69,7 @@ func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind n
 			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Name, err)
 		default:
 			a.announceConfigFileWritten(p)
-			return ctx.NoContent(http.StatusNoContent)
+			return ctx.JSON(http.StatusOK, keysCommitted(true, warnings))
 		}
 	}
 

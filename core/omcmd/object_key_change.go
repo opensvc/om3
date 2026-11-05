@@ -54,7 +54,7 @@ func (t *CmdObjectKeyChange) Run(kind string) error {
 				return nil, err
 			}
 			if t.Value != nil {
-				return nil, store.ChangeKey(t.Name, []byte(*t.Value))
+				return nil, commoncmd.PrintLocalKeysWarnings(p, store.ChangeKey(t.Name, []byte(*t.Value)))
 			}
 			if t.From == nil {
 				return nil, fmt.Errorf("value or value source mut be specified for a change action")
@@ -73,7 +73,7 @@ func (t *CmdObjectKeyChange) Run(kind string) error {
 					return nil, err
 				}
 			}
-			return nil, store.Config().CommitInvalid()
+			return nil, commoncmd.PrintLocalKeysWarnings(p, store.Config().CommitInvalid())
 		}),
 	).Do()
 }

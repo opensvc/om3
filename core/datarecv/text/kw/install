@@ -47,16 +47,17 @@ Where:
   * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified,
     or the file removed with its key.
 
-* `<uri>`
-  * is the source URI or local file path to seed the datastore key with during provision if the key doesn't already exist.
-  * HTTP/HTTPS URIs (http://, https://) are fetched via HTTP GET.
-  * Local file paths are read directly from the filesystem.
-
 * `required`
   * stop installing items if this item install failed.
 
 * `source <uri>`
   * seed the datastore key with the content of `<uri>`, as it is written: a template is stored as a template.
+  * the key is seeded by the install of the resource, at its start, its provision or its task run, when the
+    datastore does not hold it. A key already there is left as it is.
+  * an `http://` or `https://` uri is fetched, as the `node.allowed_urls` and SSRF policies allow. Any other uri is
+    the path of a file of the node.
+  * the write of a key refreshes the services installing from the datastore, on every node it reaches: a refresh
+    installs what the datastore holds, and seeds no key.
 
 * `template`
   * the key content is a go template, rendered on each node at each install into the installed file. The key

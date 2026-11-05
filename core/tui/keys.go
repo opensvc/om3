@@ -229,7 +229,7 @@ func (t *App) createAddInputBox() {
 			return
 		}
 		switch {
-		case response.StatusCode() == http.StatusNoContent:
+		case response.StatusCode() == http.StatusOK:
 			clean()
 			return
 		case response.StatusCode() == http.StatusConflict:

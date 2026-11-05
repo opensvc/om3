@@ -6615,8 +6615,15 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryWait'
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          description: |
+            The keys are written. The services installing them are refreshed,
+            and the warnings name each service and resource whose install
+            failed: the write is done all the same.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -6720,8 +6727,15 @@ paths:
               type: string
               format: binary
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          description: |
+            The keys are written. The services installing them are refreshed,
+            and the warnings name each service and resource whose install
+            failed: the write is done all the same.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -6757,8 +6771,15 @@ paths:
               type: string
               format: binary
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          description: |
+            The keys are written. The services installing them are refreshed,
+            and the warnings name each service and resource whose install
+            failed: the write is done all the same.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -7699,7 +7720,8 @@ components:
           type: array
           description: |
             What the write leaves to look at, the write being done: a
-            namespace holding more than it claims of a compute type.
+            namespace holding more than it claims of a compute type, or, for
+            a key write, a service whose install of the keys failed.
           items:
             type: string
 

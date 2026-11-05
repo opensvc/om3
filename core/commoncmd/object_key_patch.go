@@ -2,13 +2,17 @@ package commoncmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"slices"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/datastore"
@@ -87,7 +91,8 @@ func PatchObjectData(ctx context.Context, c *client.T, p naming.Path, data api.P
 		return err
 	}
 	switch {
-	case resp.StatusCode() == http.StatusNoContent:
+	case resp.JSON200 != nil:
+		PrintKeysWarnings(p, resp.JSON200.Warnings)
 		return nil
 	case resp.JSON408 != nil:
 		return fmt.Errorf("%s: %s", p, resp.JSON408.Detail)
@@ -108,4 +113,37 @@ func PatchObjectData(ctx context.Context, c *client.T, p naming.Path, data api.P
 	default:
 		return fmt.Errorf("%s: unexpected response: %s", p, resp.Status())
 	}
+}
+
+// PrintKeysWarnings prints what a key write warns of, the keys written: the
+// services whose install of the keys failed.
+func PrintKeysWarnings(p naming.Path, warnings *[]string) {
+	if warnings == nil {
+		return
+	}
+	for _, w := range *warnings {
+		fmt.Fprintf(os.Stderr, "%s: warning: install failed in %s\n", p, w)
+	}
+}
+
+// KeysWarningsOf prints the warnings of the answer body of a key write, a
+// Committed, and says whether it is one.
+func KeysWarningsOf(p naming.Path, body io.Reader) error {
+	var answer api.Committed
+	if err := json.NewDecoder(body).Decode(&answer); err != nil {
+		return fmt.Errorf("%s: decode the answer: %w", p, err)
+	}
+	PrintKeysWarnings(p, answer.Warnings)
+	return nil
+}
+
+// PrintLocalKeysWarnings prints the warnings of a key write made without the
+// daemon, and returns its error, nil when the keys were written.
+func PrintLocalKeysWarnings(p naming.Path, err error) error {
+	warnings, err := object.ConsumersInstallWarnings(err)
+	if err != nil {
+		return err
+	}
+	PrintKeysWarnings(p, &warnings)
+	return nil
 }

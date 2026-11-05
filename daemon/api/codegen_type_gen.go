@@ -1415,7 +1415,8 @@ type Committed struct {
 	IsChanged bool `json:"is_changed"`
 
 	// Warnings What the write leaves to look at, the write being done: a
-	// namespace holding more than it claims of a compute type.
+	// namespace holding more than it claims of a compute type, or, for
+	// a key write, a service whose install of the keys failed.
 	Warnings *[]string `json:"warnings,omitempty"`
 }
 
