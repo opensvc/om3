@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func setupRegisterNode(t *testing.T, cluster, node string) *Node {
@@ -86,4 +88,55 @@ func TestRegisterJoiningNodeUnregistered(t *testing.T) {
 	n := setupRegisterNode(t, "[collector]\nserver = https://oc3/server\n", "")
 	_, err := n.RegisterJoiningNode(context.Background(), "node3", "uuid-old")
 	assert.ErrorIs(t, err, collector.ErrUnregistered)
+}
+
+// TestRegisterAnonymousV3 pins that a registration with no user is sent to
+// oc3 with no credentials, in the app given, and stores the uuid.
+func TestRegisterAnonymousV3(t *testing.T) {
+	var (
+		gotAuth string
+		gotBody registerReq
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != oc3path.ServerRegister || r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		gotAuth = r.Header.Get("Authorization")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_ = json.NewEncoder(w).Encode(registerResOK{UUID: "uuid-anon", Info: "node is registered"})
+	}))
+	defer srv.Close()
+
+	n := setupRegisterNode(t, "[collector]\nserver = "+srv.URL+"\n", "")
+	require.NoError(t, n.register("", "", "app1"))
+	assert.Empty(t, gotAuth, "no credentials")
+	assert.Equal(t, registerReq{Nodename: hostname.Hostname(), App: "app1"}, gotBody)
+	n, err := NewNode()
+	require.NoError(t, err)
+	assert.Equal(t, "uuid-anon", n.Config().GetString(key.Parse("node.uuid")))
+}
+
+// TestRegisterAnonymousV3Refused pins that a refusal carries the reason of
+// the collector, and says how to register instead.
+func TestRegisterAnonymousV3Refused(t *testing.T) {
+	cases := map[int]struct{ text, hint string }{
+		http.StatusUnauthorized: {"strategies/union: no session", "accepts no anonymous registration"},
+		http.StatusForbidden:    {"anonymous node registration is disabled", "accepts no anonymous registration"},
+		http.StatusBadRequest:   {"missing app", "--app"},
+		http.StatusConflict:     {"node n1 is already registered", "with --user"},
+	}
+	for code, c := range cases {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(code)
+			_ = json.NewEncoder(w).Encode(map[string]string{"text": c.text})
+		}))
+		n := setupRegisterNode(t, "[collector]\nserver = "+srv.URL+"\n", "")
+		err := n.register("", "", "app1")
+		srv.Close()
+		require.Error(t, err, code)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[%d]: %s", code, c.text))
+		assert.Contains(t, err.Error(), c.hint)
+		assert.Contains(t, err.Error(), "--user")
+	}
 }
