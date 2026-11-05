@@ -7,12 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/sanswitch"
 	"github.com/opensvc/om3/v3/util/key"
@@ -27,10 +24,6 @@ type (
 		// Commands is the number of switch commands whose output was
 		// pushed.
 		Commands int `json:"commands"`
-
-		// Via says which collector api received the push: "oc3", or
-		// "jsonrpc" where oc3 does not serve the switch feed.
-		Via string `json:"via,omitempty"`
 
 		Error string `json:"error,omitempty"`
 	}
@@ -48,15 +41,9 @@ type (
 	}
 )
 
-var (
-	// errFeedNotServed is an oc3 answering 404 to the switch feed: an oc3
-	// older than it.
-	errFeedNotServed = errors.New("the collector feeder does not serve this feed")
-
-	// pushSwitchTimeout bounds the post of one switch, whose zoning can
-	// weigh megabytes.
-	pushSwitchTimeout = 30 * time.Second
-)
+// pushSwitchTimeout bounds the post of one switch, whose zoning can weigh
+// megabytes.
+var pushSwitchTimeout = 30 * time.Second
 
 // ListSwitches returns the switch sections of the node and cluster
 // configuration.
@@ -99,11 +86,7 @@ func (t *Node) Switch(name string) sanswitch.Driver {
 // configuration, all of them or the one named, and reports their
 // configuration to the collector.
 //
-// The report goes to the switch feed of oc3. Where oc3 does not serve it,
-// because the node feeds the old collector only or because the oc3 it feeds
-// is older than the feed, it goes to the "update_<type>" jsonrpc method of
-// the old collector, as v2 sent it. That fallback is to be removed when oc3
-// has replaced the old collector, which drops the jsonrpc api.
+// The report goes to the switch feed of the oc3 feeder.
 //
 // One switch failing does not stop the others: a switch out of reach must
 // not keep the reachable ones from being reported.
@@ -139,22 +122,7 @@ func (t Node) pushSwitch(ctx context.Context, item SwitchItem, push *SwitchPush)
 		return err
 	}
 	push.Commands = len(data)
-	reportedName := drv.ReportName()
-	err = t.postSANSwitch(ctx, reportedName, item.Type, data)
-	switch {
-	case err == nil:
-		push.Via = "oc3"
-		return nil
-	case errors.Is(err, collector.ErrConfig), errors.Is(err, errFeedNotServed):
-		t.Log().Attr("switch", item.Name).Infof("push switch %s through the jsonrpc api: %s", item.Name, err)
-	default:
-		return err
-	}
-	if err := t.callUpdateSANSwitch(reportedName, item.Type, data); err != nil {
-		return err
-	}
-	push.Via = "jsonrpc"
-	return nil
+	return t.postSANSwitch(ctx, drv.ReportName(), item.Type, data)
 }
 
 // postSANSwitch posts the switch report to the oc3 switch feed.
@@ -179,59 +147,5 @@ func (t Node) postSANSwitch(ctx context.Context, name, switchType string, data m
 		return fmt.Errorf("collector %s %s: %w", method, path, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	switch resp.StatusCode {
-	case http.StatusAccepted:
-		return nil
-	case http.StatusNotFound:
-		return fmt.Errorf("%w: %s %s", errFeedNotServed, method, path)
-	default:
-		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
-			method, path, http.StatusAccepted, resp.StatusCode)
-	}
-}
-
-// callUpdateSANSwitch reports the switch through the jsonrpc method v2 used,
-// "update_brocade" for a brocade, with the command outputs named as v2 named
-// them, "brocadeswitchshow" and so on, which the old collector stores them
-// under.
-func (t Node) callUpdateSANSwitch(name, switchType string, data map[string]string) error {
-	client, err := t.CollectorFeedClient()
-	if err != nil {
-		return err
-	}
-	keys := make([]string, 0, len(data))
-	values := make([]any, 0, len(data))
-	for _, cmd := range sanSwitchCommandOrder(data) {
-		keys = append(keys, switchType+cmd)
-		values = append(values, data[cmd])
-	}
-	method := "update_" + switchType
-	response, err := client.Call(method, name, keys, values)
-	if err != nil {
-		return err
-	}
-	if response != nil && response.Error != nil {
-		return fmt.Errorf("%s: %s", method, response.Error.Message)
-	}
-	return nil
-}
-
-// sanSwitchCommandOrder returns the commands of a report in the order v2
-// sent them, and any other after, sorted.
-func sanSwitchCommandOrder(data map[string]string) []string {
-	known := []string{"switchshow", "nsshow", "zoneshow"}
-	l := make([]string, 0, len(data))
-	for _, cmd := range known {
-		if _, ok := data[cmd]; ok {
-			l = append(l, cmd)
-		}
-	}
-	others := make([]string, 0)
-	for cmd := range data {
-		if !slices.Contains(known, cmd) {
-			others = append(others, cmd)
-		}
-	}
-	sort.Strings(others)
-	return append(l, others...)
+	return CollectorResponseStatusCheck(resp, method, path, []int{http.StatusAccepted})
 }

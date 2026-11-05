@@ -93,7 +93,6 @@ func TestPushSwitchesToOC3(t *testing.T) {
 	l, err := n.PushSwitches(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, l, 1)
-	assert.Equal(t, "oc3", l[0].Via)
 	assert.Equal(t, 3, l[0].Commands)
 	require.Len(t, feeder.rest, 1)
 	assert.Equal(t, "sansw1.example.com", feeder.rest[0]["name"])
@@ -102,25 +101,22 @@ func TestPushSwitchesToOC3(t *testing.T) {
 	assert.Empty(t, feeder.jsonrpc)
 }
 
-// An oc3 older than the switch feed answers 404, and the switch is reported
-// through the jsonrpc method v2 used, with the outputs named as v2 named
-// them.
-func TestPushSwitchesFallsBackToJSONRPC(t *testing.T) {
+// A feeder not serving the switch feed is an error carrying its reason,
+// and the switch is not reported through the jsonrpc api of the former
+// collector.
+func TestPushSwitchesFeedNotServed(t *testing.T) {
 	feeder := &fakeFeeder{status: http.StatusNotFound}
 	server := httptest.NewServer(feeder)
 	defer server.Close()
 	n := setupSwitchNode(t, server.URL)
 
 	l, err := n.PushSwitches(context.Background(), "switch#sw1")
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "POST /api/sanswitch")
+	assert.Contains(t, err.Error(), "404")
 	require.Len(t, l, 1)
-	assert.Equal(t, "jsonrpc", l[0].Via)
-	require.Len(t, feeder.jsonrpc, 1)
-	assert.Equal(t, "update_testswitch", feeder.jsonrpc[0]["method"])
-	params := feeder.jsonrpc[0]["params"].([]any)
-	assert.Equal(t, "sansw1.example.com", params[0])
-	assert.Equal(t, []any{"testswitchswitchshow", "testswitchnsshow", "testswitchzoneshow"}, params[1])
-	assert.Equal(t, []any{"a", "b", "c"}, params[2])
+	assert.NotEmpty(t, l[0].Error)
+	assert.Empty(t, feeder.jsonrpc)
 }
 
 // A switch named that no section declares is an error, rather than a push
