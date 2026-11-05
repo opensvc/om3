@@ -118,6 +118,11 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 			return err
 		}
 	}
+	if err := t.initialScan(); err != nil {
+		cancel()
+		t.base.device.close()
+		return err
+	}
 
 	t.cmdC = cmdC
 	t.msgC = msgC
@@ -310,6 +315,15 @@ func (t *rx) onSignatureChange() {
 	}
 	t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
 	t.rescanMetadata("signature valid again")
+}
+
+// initialScan finds the slots the peers hold on the disk, to read them. A
+// disk not signed holds no slot of a peer: it is scanned once signed.
+func (t *rx) initialScan() error {
+	if t.base.invalidSig {
+		return nil
+	}
+	return t.base.scanMetadata(append(t.nodes, t.base.localhost)...)
 }
 
 func (t *rx) sendAlert() {

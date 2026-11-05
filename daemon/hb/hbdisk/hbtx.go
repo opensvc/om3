@@ -86,7 +86,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			return err
 		}
 	}
-
+	t.initialScan()
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
 	t.cmdC = cmdC
 	t.Add(1)
@@ -249,6 +249,23 @@ func (t *tx) onSignatureChange() {
 		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
 	}
 	t.sendAlert()
+}
+
+// initialScan finds the slot this node holds on the disk, to write in it
+// again after a restart. A disk not signed holds no slot of this node: it
+// gets one once signed.
+func (t *tx) initialScan() {
+	if t.base.invalidSig {
+		return
+	}
+	if err := t.base.scanMetadata(t.base.localhost); err != nil {
+		msg := fmt.Sprintf("initial scan metadata: %s", err)
+		t.log.Infof(msg)
+		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: msg})
+	}
+	if slot := t.base.nodeSlot[t.base.localhost]; slot >= minimumSlot {
+		t.slot = slot
+	}
 }
 
 func (t *tx) sendAlert() {
