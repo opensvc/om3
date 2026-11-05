@@ -1,3 +1,5 @@
-Set the uri of the collector's main rpc server.
+Ignored: the uri of the compliance rpc server of the former collector, which
+om no longer calls.
 
-The path part of the uri can be left unspecified.
+om reads the compliance of a node from the oc3 server, set by `collector.url`
+or `collector.server`. `om node config migrate` drops this keyword.

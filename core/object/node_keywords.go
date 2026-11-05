@@ -455,10 +455,12 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.asset_env"),
 	}
 	kwNodeDBOpensvc = keywords.Keyword{
-		Example: "https://collector.opensvc.com",
-		Option:  "dbopensvc",
-		Section: "node",
-		Text:    keywords.NewText(fs, "text/kw/node/node.dbopensvc"),
+		Deprecated: "v3.0.0-rc58",
+		ReplacedBy: "collector.url",
+		Example:    "https://collector.opensvc.com",
+		Option:     "dbopensvc",
+		Section:    "node",
+		Text:       keywords.NewText(fs, "text/kw/node/node.dbopensvc"),
 	}
 	kwNodeCollector = keywords.Keyword{
 		Deprecated: "v3.0.0-rc44",
@@ -592,11 +594,11 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/node.dbinsecure"),
 	}
 	kwNodeDBCompliance = keywords.Keyword{
-		DefaultText: keywords.NewText(fs, "text/kw/node/node.dbcompliance.default"),
-		Example:     "https://collector.opensvc.com",
-		Option:      "dbcompliance",
-		Section:     "node",
-		Text:        keywords.NewText(fs, "text/kw/node/node.dbcompliance"),
+		Deprecated: "v3.0.0-rc58",
+		Example:    "https://collector.opensvc.com",
+		Option:     "dbcompliance",
+		Section:    "node",
+		Text:       keywords.NewText(fs, "text/kw/node/node.dbcompliance"),
 	}
 	kwNodeDBLog = keywords.Keyword{
 		Converter: converters.Bool,

@@ -236,6 +236,8 @@ func TestNodeMigrationRemovedKeywords(t *testing.T) {
 	m := clusterMigrationOf(t, `
 [node]
 default_mon_format = compact
+dbopensvc = https://collector.example.com
+dbcompliance = https://collector.example.com/init/compliance/call/xmlrpc
 
 [reboot]
 schedule = @1d
@@ -261,7 +263,7 @@ schedule = @10m
 	assert.True(t, deleted(m, "reboot"))
 	assert.True(t, deleted(m, "dequeue_actions"))
 	assert.False(t, deleted(m, "stats"), "the stats section is read")
-	for _, k := range []string{"node.default_mon_format", "arbitrator#1.timeout", "arbitrator#1.secret", "hb#1.secret"} {
+	for _, k := range []string{"node.default_mon_format", "node.dbopensvc", "node.dbcompliance", "arbitrator#1.timeout", "arbitrator#1.secret", "hb#1.secret"} {
 		assert.True(t, unset(m, k), "%s is dropped", k)
 	}
 	assert.Empty(t, m.Refusals)

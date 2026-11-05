@@ -25,8 +25,9 @@ PREFIX ?= /usr
 DIST := dist
 OM := bin/om
 OX := bin/ox
-COMPOBJ := bin/compobj
-COMPOBJ_D := share/opensvc/compliance
+# The compliance modules are installed there from the archive of the
+# collector, by om node compliance update.
+COMPLIANCE_D := share/opensvc/compliance
 LOCAL_HOSTNAME := $(shell hostname 2>/dev/null || echo $${HOSTNAME:-localhost})
 
 .PHONY: version dist deploy restart
@@ -35,9 +36,9 @@ all: clean vet test race build dist
 
 all-race: clean vet test race build-race dist
 
-build: version api om ox compobj
+build: version api om ox
 
-build-race: version api om-race ox-race compobj-race
+build-race: version api om-race ox-race
 
 deps:
 	$(GOINSTALL) github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
@@ -49,12 +50,6 @@ clean:
 	$(GOCLEAN)
 	$(GOCLEAN) -testcache
 	rm -f $(OM) $(OX)
-
-compobj:
-	$(GOBUILD) -trimpath -o $(COMPOBJ) ./util/compobj/
-
-compobj-race:
-	$(GOBUILDRACE) -o $(COMPOBJ) ./util/compobj/
 
 deploy:
 	@for node in $(shell $(OM) node ls); do \
@@ -82,21 +77,16 @@ deploy:
 
 dist:
 	$(MKDIR) -p $(DIST)/bin
-	$(MKDIR) -p $(DIST)/$(COMPOBJ_D)
 	$(INSTALL) -m 755 $(OM) $(DIST)/$(OM)
 	$(INSTALL) -m 755 $(OX) $(DIST)/$(OX)
-	$(INSTALL) -m 755 $(COMPOBJ) $(DIST)/$(COMPOBJ)
-	$(DIST)/$(COMPOBJ) -r -i $(DIST)/$(COMPOBJ_D)
-	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX) $(DIST)/$(COMPOBJ)
-	VERSION=`git describe --tags --abbrev` && cd $(DIST) && tar czvf opensvc-$$VERSION.tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
+	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX)
+	VERSION=`git describe --tags --abbrev` && cd $(DIST) && tar czvf opensvc-$$VERSION.tar.gz $(OM) $(OX) && cd -
 
 install:
 	$(MKDIR) -p $(PREFIX)/bin
-	$(MKDIR) -p $(PREFIX)/$(COMPOBJ_D)
+	$(MKDIR) -p $(PREFIX)/$(COMPLIANCE_D)
 	$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM)
 	$(INSTALL) -m 755 $(OX) $(PREFIX)/$(OX)
-	$(INSTALL) -m 755 $(COMPOBJ) $(PREFIX)/$(COMPOBJ)
-	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
 
 om:
 	$(GOBUILD) -trimpath -o $(OM) ./cmd/om/
@@ -147,7 +137,6 @@ help:
 	@echo "Available targets:"
 	@echo "  api            - Generate the api code from api.yaml"
 	@echo "  build          - Build om and ox"
-	@echo "  compobj        - Build the compliance modules pack"
 	@echo "  dist           - Build, strip binaries and make a tarball"
 	@echo "  om             - Build om"
 	@echo "  ox             - Build ox"
@@ -163,7 +152,6 @@ help:
 	@echo
 	@echo "Available -race targets:"
 	@echo "  build-race     - Build om and ox if race-free"
-	@echo "  compobj-race   - Build the compliance modules pack if race-free"
 	@echo "  om-race        - Build om if race-free"
 	@echo "  ox-race        - Build ox if race-free"
 	@echo "  test-race      - Run tests with race detection"

@@ -494,7 +494,7 @@ func (t *core) Dereference(ref string) (string, error) {
 	case "collector_api":
 		if n, err := t.Node(); err != nil {
 			return "", err
-		} else if url, err := n.CollectorRestAPIURL(); err != nil {
+		} else if url, err := n.CollectorServerAPIURL(); err != nil {
 			return "", err
 		} else {
 			return url.String(), nil

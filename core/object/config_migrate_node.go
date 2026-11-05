@@ -290,7 +290,7 @@ func migrateRemovedKeywords(cfg *xconfig.T, m *Migration) {
 			}
 		}
 	}
-	unset("node", "default_mon_format")
+	unset("node", "default_mon_format", "dbopensvc", "dbcompliance")
 	for _, section := range sectionsOf(cfg, "arbitrator") {
 		unset(section, "timeout", "secret")
 	}

@@ -1,6 +1,4 @@
-Set the uri of the collector's feed rpc server.
+Ignored: the uri of the former collector, which om no longer feeds.
 
-The path part of the uri can be left unspecified.
-
-If `dbopensvc` is not set, the agent does not try to communicate with a
-collector.
+om feeds an oc3 collector, set by `collector.url`, or `collector.feeder` and
+`collector.server`. `om node config migrate` drops this keyword.
