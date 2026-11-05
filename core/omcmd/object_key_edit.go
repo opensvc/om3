@@ -87,10 +87,11 @@ func pushKey(p naming.Path, key string, fName string, c *client.T) (err error) {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusNoContent {
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s", resp.Status)
 	}
-	return nil
+	return commoncmd.KeysWarningsOf(p, resp.Body)
 }
 
 func (t *CmdObjectKeyEdit) doRemote(p naming.Path, c *client.T) error {

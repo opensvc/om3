@@ -574,6 +574,49 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) (bool, error) {
 	return changed, nil
 }
 
+// ConsumersInstallError is the failure of the installs a datastore write
+// refreshes, in the services installing its keys: the write itself is done.
+// Each error names the service and the resource it failed in.
+type ConsumersInstallError struct {
+	Errs []error
+}
+
+func (t *ConsumersInstallError) Error() string {
+	return errors.Join(t.Errs...).Error()
+}
+
+func (t *ConsumersInstallError) Unwrap() []error {
+	return t.Errs
+}
+
+// Warnings returns the failures of the installs of the consumers, one line
+// each.
+func (t *ConsumersInstallError) Warnings() []string {
+	l := make([]string, len(t.Errs))
+	for i, err := range t.Errs {
+		l[i] = err.Error()
+	}
+	return l
+}
+
+// ConsumersInstallWarnings splits the error of a datastore write: the
+// failures of the installs it refreshed, which leave the write done, and
+// the error of the write, nil when it was done.
+func ConsumersInstallWarnings(err error) ([]string, error) {
+	var consumers *ConsumersInstallError
+	if errors.As(err, &consumers) {
+		return consumers.Warnings(), nil
+	}
+	return nil, err
+}
+
+// postInstall installs the keys of the datastore, the key k or all of
+// them, in the volumes and directories of the services installing them,
+// whose install the datastore change refreshes.
+//
+// Every service is attempted: one failing does not keep the others from
+// getting the keys. The failures are returned together, as a
+// ConsumersInstallError.
 func (t *dataStore) postInstall(k string) error {
 	type receiver interface {
 		CanInstall(context.Context) (bool, error)
@@ -587,6 +630,7 @@ func (t *dataStore) postInstall(k string) error {
 	if err != nil {
 		return err
 	}
+	var errs []error
 	for _, p := range paths {
 		if !t.Allow(p.Namespace) {
 			continue
@@ -596,7 +640,8 @@ func (t *dataStore) postInstall(k string) error {
 		}
 		o, err := NewCore(p, WithVolatile(true))
 		if err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("%s: %w", p, err))
+			continue
 		}
 		var onChange func(context.Context) error
 		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume, driver.GroupFS}) {
@@ -616,19 +661,22 @@ func (t *dataStore) postInstall(k string) error {
 				continue
 			}
 			if ok, err := receiverResource.CanInstall(ctx); err != nil {
-				return err
+				errs = append(errs, fmt.Errorf("%s %s: %w", p, r.RID(), err))
+				continue
 			} else if !ok {
 				continue
 			}
 
 			if v, err := receiverResource.InstallFromDatastore(ctx, t); err != nil {
-				return err
+				errs = append(errs, fmt.Errorf("%s %s: %w", p, r.RID(), err))
+				continue
 			} else if v {
 				onChange = receiverResource.OldSendSignals
 			}
 
 			if v, err := receiverResource.InstallDataByKind(t.path.Kind); err != nil {
-				return err
+				errs = append(errs, fmt.Errorf("%s %s: %w", p, r.RID(), err))
+				continue
 			} else if v {
 				onChange = receiverResource.OldSendSignals
 			}
@@ -636,9 +684,12 @@ func (t *dataStore) postInstall(k string) error {
 		if onChange != nil {
 			t.log.Tracef("signal key %s referrer: %s", k, p)
 			if err := onChange(ctx); err != nil {
-				return err
+				errs = append(errs, fmt.Errorf("%s: signal: %w", p, err))
 			}
 		}
+	}
+	if len(errs) > 0 {
+		return &ConsumersInstallError{Errs: errs}
 	}
 	return nil
 }

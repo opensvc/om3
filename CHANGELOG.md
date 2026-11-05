@@ -685,6 +685,22 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **`om <kvstore> key change`:**
     This action is no longer failing if the key does not exist. The key is added instead.
 
+* **A key write succeeds when a service installing it fails:**
+    A key added, changed or seeded refreshes the services installing from its datastore. A refresh failing in one
+    of them made the write fail, though the key was written, and kept the services after it from being refreshed.
+    Every service is refreshed now, and the write succeeds, each failure warned of with the service and the resource
+    it failed in. `om <kvstore> key install` still fails with them: installing is what it is asked to do.
+
+    The api answers of `PATCH /api/object/path/{namespace}/{kind}/{name}/data` and of the `POST` and `PUT` on
+    `.../data/key` are `200` with a `Committed` body, `{"is_changed": ..., "warnings": [...]}`, instead of
+    `204 No Content`.
+
+* **A key is seeded by the install of its resource only:**
+    A `source` of an `install` line seeds the key when the resource installs, at its start, provision or task run.
+    The refresh the write of another key runs installs what the datastore holds and seeds nothing: a write fetched
+    the sources of the lines of every service installing from the datastore, and an install seeding two keys
+    reported the failure of the second as the one of the first.
+
 * **`om <selector> instance freeze|unfreeze`:**
     If none of --slave, --slaves or --master is specified, act on both encap and host instances. The v2 agent only acted on the host instance.
     This aligns freeze|unfreeze with all other actions encap behaviour.

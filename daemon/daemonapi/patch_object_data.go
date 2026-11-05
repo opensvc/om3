@@ -129,7 +129,9 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 			}
 		}
 
-		if err := ks.Config().CommitInvalid(); err != nil {
+		changed := ks.Config().Changed()
+		warnings, err := object.ConsumersInstallWarnings(ks.Config().CommitInvalid())
+		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 		}
 		a.announceConfigFileWritten(p)
@@ -148,7 +150,7 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 					p, mtime.Format(time.RFC3339Nano), strings.Join(lagging, ", "))
 			}
 		}
-		return ctx.NoContent(http.StatusNoContent)
+		return ctx.JSON(http.StatusOK, keysCommitted(changed, warnings))
 	}
 
 	// The operations are applied by the first node holding the object, which
@@ -178,4 +180,14 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 	}
 
 	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", p)
+}
+
+// keysCommitted is the answer of a key write, its warnings the services
+// whose install of the keys failed, the keys written all the same.
+func keysCommitted(changed bool, warnings []string) api.Committed {
+	answer := api.Committed{IsChanged: changed}
+	if len(warnings) > 0 {
+		answer.Warnings = &warnings
+	}
+	return answer
 }

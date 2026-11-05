@@ -61,7 +61,12 @@ func (a *DaemonAPI) PutObjectDataKey(ctx echo.Context, namespace string, kind na
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "ReadAll", "%s: %s", params.Name, err)
 		}
-		err = ks.ChangeKey(params.Name, b)
+		changed := false
+		if err = ks.TransactionChangeKey(params.Name, b); err == nil {
+			changed = ks.Config().Changed()
+			err = ks.Config().Commit()
+		}
+		warnings, err := object.ConsumersInstallWarnings(err)
 		switch {
 		case errors.Is(err, object.ErrKeyEmpty):
 			return JSONProblemf(ctx, http.StatusBadRequest, "ChangeKey", "%s: %s", params.Name, err)
@@ -69,7 +74,7 @@ func (a *DaemonAPI) PutObjectDataKey(ctx echo.Context, namespace string, kind na
 			return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", params.Name, err)
 		default:
 			a.announceConfigFileWritten(p)
-			return ctx.NoContent(http.StatusNoContent)
+			return ctx.JSON(http.StatusOK, keysCommitted(changed, warnings))
 		}
 	}
 

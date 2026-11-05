@@ -56,10 +56,10 @@ func (t *CmdObjectKeyAdd) Run(kind string) error {
 				return nil, err
 			}
 			if t.Value != nil {
-				return nil, store.AddKey(t.Name, []byte(*t.Value))
+				return nil, commoncmd.PrintLocalKeysWarnings(p, store.AddKey(t.Name, []byte(*t.Value)))
 			}
 			if t.From == nil {
-				return nil, store.AddKey(t.Name, []byte{})
+				return nil, commoncmd.PrintLocalKeysWarnings(p, store.AddKey(t.Name, []byte{}))
 			}
 			m, err := uri.ReadAllFrom(*t.From)
 			if err != nil {
@@ -74,7 +74,7 @@ func (t *CmdObjectKeyAdd) Run(kind string) error {
 					return nil, err
 				}
 			}
-			return nil, store.Config().CommitInvalid()
+			return nil, commoncmd.PrintLocalKeysWarnings(p, store.Config().CommitInvalid())
 		}),
 	).Do()
 }
