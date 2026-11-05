@@ -37,7 +37,7 @@ type (
 	}
 
 	CollectorProblem struct {
-		text string
+		Text string `json:"text"`
 	}
 )
 
@@ -54,7 +54,7 @@ func CollectorResponseStatusCheck(resp *http.Response, method, path string, want
 			method, path, wanted, resp.StatusCode)
 	}
 	return fmt.Errorf("%s %s: [%d]: %s",
-		method, path, resp.StatusCode, data.text)
+		method, path, resp.StatusCode, data.Text)
 }
 
 func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
