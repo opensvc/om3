@@ -80,11 +80,15 @@ valid until they expire.`,
 func newCmdClusterJoin() *cobra.Command {
 	var options commands.CmdClusterJoin
 	cmd := &cobra.Command{
-		Use:   "join",
-		Short: "add this node to a cluster",
-		Long: "Join the cluster of the node specified by '--node <node>'.\n" +
+		Use:    "join",
+		Hidden: true,
+		Short:  "internal: add this node to a cluster, as 'om cluster enroll' orders",
+		Long: "This is an internal command: the daemon runs it for an 'om cluster enroll' or 'ox cluster enroll'," +
+			" run on a node of the cluster to join, which is the command to use.\n\n" +
+			"Join the cluster of the node specified by '--node <node>'.\n" +
 			"The remote node expects the joiner to provide a join token, named by '--token <path>'.\n" +
-			"The join token can be created on the remote node by the 'daemon auth token --role join' command or by getting /auth/token with a user having the joiner or root role.",
+			"The join token can be created on the remote node by the 'daemon auth token --role join' command or by getting /auth/token with a user having the joiner or root role.\n" +
+			"The node keeps the frozen state it had before the join.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -107,11 +111,15 @@ func newCmdClusterJoin() *cobra.Command {
 func newCmdClusterLeave() *cobra.Command {
 	var options commands.CmdClusterLeave
 	cmd := &cobra.Command{
-		Use:   "leave",
-		Short: "remove this node from a cluster",
-		Long: "Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.\n" +
+		Use:    "leave",
+		Hidden: true,
+		Short:  "internal: remove this node from its cluster, as 'om cluster evict' orders",
+		Long: "This is an internal command: the daemon runs it for an 'om cluster evict' or 'ox cluster evict'," +
+			" run on a node of the cluster, which is the command to use.\n\n" +
+			"Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.\n" +
 			"Once alone, this node has a cluster secret of its own, so no user, token or certificate of the cluster" +
-			" it left can reach its api anymore. Use '--credential' to have a user created to reach it with.",
+			" it left can reach its api anymore. Use '--credential' to have a user created to reach it with.\n" +
+			"The node keeps the frozen state it had before the leave.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -4879,13 +4887,13 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 func newCmdDaemonJoin() *cobra.Command {
 	cmd := newCmdClusterJoin()
 	cmd.Hidden = true
-	cmd.Deprecated = "use `cluster join`."
+	cmd.Deprecated = "use `cluster enroll` on a node of the cluster to join."
 	return cmd
 }
 
 func newCmdDaemonLeave() *cobra.Command {
 	cmd := newCmdClusterLeave()
 	cmd.Hidden = true
-	cmd.Deprecated = "use `cluster leave`."
+	cmd.Deprecated = "use `cluster evict` on a node of the cluster."
 	return cmd
 }
