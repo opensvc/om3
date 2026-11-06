@@ -30,7 +30,11 @@ OX := bin/ox
 COMPLIANCE_D := share/opensvc/compliance
 LOCAL_HOSTNAME := $(shell hostname 2>/dev/null || echo $${HOSTNAME:-localhost})
 
-.PHONY: version dist deploy restart
+# No target makes a file of its name: om and ox build bin/om and bin/ox, and
+# an om or ox file left at the root would otherwise make them up to date.
+.PHONY: all all-race build build-race deps api clean deploy dist install \
+	om om-race ox ox-race test test-race test-cover testinfo restart version \
+	vet om-image ox-image omx-image all-image help
 
 all: clean vet test race build dist
 
