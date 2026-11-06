@@ -431,3 +431,20 @@ func TestAPeerIsStaleOnceTheStreamsLeftStopBeating(t *testing.T) {
 		})
 	}
 }
+
+// A peer reported beating then not beating, before its watcher reads either,
+// is read not beating: the last value sent is the one read, in order.
+func TestSendLatestKeepsTheOrder(t *testing.T) {
+	c := make(chan bool, 1)
+	sendLatest(c, true)
+	sendLatest(c, false)
+	require.False(t, <-c, "the last value sent")
+	select {
+	case v := <-c:
+		t.Fatalf("a value read after the last one: %v", v)
+	default:
+	}
+	sendLatest(c, false)
+	sendLatest(c, true)
+	require.True(t, <-c)
+}
