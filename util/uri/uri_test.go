@@ -40,3 +40,19 @@ func TestClusterSources(t *testing.T) {
 func TestSharedAddressSpaceIsBlocked(t *testing.T) {
 	assert.Contains(t, rawconfig.SSRFBlockedCIDR, "100.64.0.0/10")
 }
+
+// "random" generates a password, as /dev/urandom still does, deprecated: the
+// command warns to write random instead.
+func TestReadAllFromRandom(t *testing.T) {
+	for _, from := range []string{FromRandom, "/dev/urandom"} {
+		m, err := ReadAllFrom(from)
+		assert.NoError(t, err, from)
+		assert.Len(t, m, 1, from)
+		assert.Len(t, m[""], 32, from)
+	}
+	replacement, ok := DeprecatedFrom("/dev/urandom")
+	assert.True(t, ok)
+	assert.Equal(t, FromRandom, replacement)
+	_, ok = DeprecatedFrom(FromRandom)
+	assert.False(t, ok)
+}

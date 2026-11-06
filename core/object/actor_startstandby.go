@@ -23,6 +23,9 @@ func (t *actor) StartStandby(ctx context.Context) error {
 }
 
 func (t *actor) lockedStartStandby(ctx context.Context) error {
+	if err := t.seedKeySources(ctx, false); err != nil {
+		return err
+	}
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.StartStandby(ctx, r)
 	})

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -178,4 +179,10 @@ func (t *KeyMeta) CacheFile() (string, error) {
 
 func (t *KeyMeta) String() string {
 	return fmt.Sprintf("%s:%s:%s", t.Path, t.Key, t.From)
+}
+
+// SourceIsRandom says the key is generated, "source random", rather than read
+// from a source.
+func (t *KeyMeta) SourceIsRandom() bool {
+	return t.Source == keywords.SourceRandom
 }

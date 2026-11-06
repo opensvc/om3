@@ -46,6 +46,7 @@ const (
 	alertKindCapabilities
 	alertKindInvalidSection
 	alertKindConfigure
+	alertKindKeySource
 )
 
 var (
@@ -71,6 +72,7 @@ var (
 	alertKindCapabilitiesStr    = "unusable driver on this node"
 	alertKindInvalidSectionStr  = "invalid section name"
 	alertKindConfigureStr       = "resource configuration error"
+	alertKindKeySourceStr       = "key source error"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -84,6 +86,7 @@ var (
 		alertKindCapabilities:    alertKindCapabilitiesStr,
 		alertKindInvalidSection:  alertKindInvalidSectionStr,
 		alertKindConfigure:       alertKindConfigureStr,
+		alertKindKeySource:       alertKindKeySourceStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -98,6 +101,7 @@ var (
 		alertKindCapabilitiesStr:    alertKindCapabilities,
 		alertKindInvalidSectionStr:  alertKindInvalidSection,
 		alertKindConfigureStr:       alertKindConfigure,
+		alertKindKeySourceStr:       alertKindKeySource,
 	}
 )
 
@@ -175,6 +179,20 @@ func (t T) NewAlertConfigure(section string, did driver.ID, err error, disabled 
 		Key:     key.T{Section: section},
 		Driver:  did,
 		Comment: err.Error(),
+	}
+}
+
+// NewAlertKeySource says a keyword names a key of a datastore with a source
+// the object can not seed it from: a key another keyword seeds from another
+// source, or a key of a datastore of another namespace.
+func (t T) NewAlertKeySource(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindKeySource,
+		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
 	}
 }
 

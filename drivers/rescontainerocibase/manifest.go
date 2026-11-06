@@ -3,6 +3,7 @@ package rescontainerocibase
 import (
 	"embed"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -167,12 +168,13 @@ var (
 			Example:   "kernel.shm_rmid_forced=1 net.ipv4.tcp_syncookies=1",
 		},
 		{
-			Option:    "environment",
-			Attr:      "Env",
-			Scopable:  true,
-			Converter: converters.Shlex,
-			Text:      keywords.NewText(fs, "text/kw/environment"),
-			Example:   "KEY=cert1/server.key PASSWORD=db/password",
+			Option:     "environment",
+			Attr:       "Env",
+			Scopable:   true,
+			Converter:  converters.Shlex,
+			Text:       keywords.NewText(fs, "text/kw/environment"),
+			Example:    "KEY=cert1/server.key PASSWORD=db/password",
+			KeySources: datarecv.EnvironmentKeySources,
 		},
 		{
 			Deprecated: "v3.0.0-rc57",

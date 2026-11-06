@@ -3,10 +3,9 @@ package datarecv
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
-	"io"
 	"maps"
-	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -32,63 +31,6 @@ import (
 	"github.com/opensvc/om3/v3/util/uri"
 )
 
-// seedKeyFromSource fetches data from a URI or local file and adds it as a key to the datastore.
-// It only seeds the key if it doesn't already exist.
-// Supports both HTTP/HTTPS URIs (http://, https://) and local file paths.
-// A template is seeded as it is written, and rendered on each node at each
-// install.
-//
-// The key is written for the resource rid of the object p, whose install
-// seeds it: the refresh of the consumers of the datastore skips it.
-func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger, p naming.Path, rid string) error {
-	log.Infof("seeding key %s from source %s", keyName, sourceURI)
-
-	var data []byte
-	var err error
-
-	// Retrieve date from http url or a local file
-	if uri.IsValidHttp(sourceURI) {
-		var resp *http.Response
-		client, err := uri.SafeHttpClient(sourceURI)
-		if err != nil {
-			return fmt.Errorf("failed to create http client for %s: %w", sourceURI, err)
-		}
-		resp, err = client.Get(sourceURI)
-		if err != nil {
-			return fmt.Errorf("failed to fetch from %s: %w", sourceURI, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to fetch from %s: HTTP %d", sourceURI, resp.StatusCode)
-		}
-
-		// Read the response body
-		data, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read from %s: %w", sourceURI, err)
-		}
-	} else {
-		// Treat as local file path
-		data, err = os.ReadFile(sourceURI)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", sourceURI, err)
-		}
-	}
-
-	// Add the data as a key to the datastore. The key written, the
-	// datastore refreshes the other services installing its keys: their
-	// failures are theirs, warned of, and not the one of this seeding.
-	warnings, err := object.ConsumersInstallWarnings(ds.AddKeySeeded(keyName, data, p, rid))
-	if err != nil {
-		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
-	}
-	for _, w := range warnings {
-		log.Warnf("seeded key %s, the install it refreshed failed in %s", keyName, w)
-	}
-	return nil
-}
-
 // buildEnvTemplateData builds a map of environment variables from the config's env section,
 // the data of the templates an install renders.
 func buildEnvTemplateData(config *xconfig.T) map[string]string {
@@ -101,59 +43,6 @@ func buildEnvTemplateData(config *xconfig.T) map[string]string {
 	}
 
 	return data
-}
-
-// ensureDataStoreExists creates the datastore object if it doesn't exist and the namespace matches.
-// Returns the DataStore interface and a boolean indicating if the datastore was created.
-// Note: Creating the datastore will trigger postCommit callbacks, but we check in InstallFromDatastore
-// and install() to avoid re-creating it.
-func ensureDataStoreExists(fromStore naming.Path, serviceNamespace string, log *plog.Logger) (object.DataStore, bool, error) {
-	// Check if the datastore already exists
-	if fromStore.Exists() {
-		// Try to get the existing datastore
-		ds, err := object.NewDataStore(fromStore)
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to init existing datastore %s: %w", fromStore, err)
-		}
-		return ds, false, nil
-	}
-
-	// Datastore doesn't exist - check if namespace matches
-	if fromStore.Namespace != serviceNamespace {
-		return nil, false, fmt.Errorf("datastore %s does not exist and namespace %s doesn't match service namespace %s",
-			fromStore, fromStore.Namespace, serviceNamespace)
-	}
-
-	// Create the datastore object based on its kind
-	var ds object.DataStore
-	var err error
-
-	switch fromStore.Kind {
-	case naming.KindCfg:
-		ds, err = object.NewCfg(fromStore)
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to create cfg datastore %s: %w", fromStore, err)
-		}
-	case naming.KindSec:
-		ds, err = object.NewSec(fromStore)
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to create sec datastore %s: %w", fromStore, err)
-		}
-	default:
-		return nil, false, fmt.Errorf("unsupported datastore kind %s for %s", fromStore.Kind, fromStore)
-	}
-
-	// Save the empty datastore to disk
-	if err := ds.Config().Commit(); err != nil {
-		return nil, false, fmt.Errorf("failed to save new datastore %s: %w", fromStore, err)
-	}
-
-	// Return the datastore with volatile mode for further operations
-	newDs, err := object.NewDataStore(fromStore)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to reinit datastore %s after creation: %w", fromStore, err)
-	}
-	return newDs, true, nil
 }
 
 // certificateKeys are the keys of a sec holding its certificate, as a
@@ -209,6 +98,10 @@ type (
 		// install asked by the user. A start installs quietly what has not
 		// changed.
 		report bool
+
+		// sourceErrs are the lines of the last parse whose source the
+		// grammar refuses, see sourceLineErr.
+		sourceErrs []error
 	}
 
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
@@ -281,12 +174,14 @@ func Keywords(prefix string) []*keywords.Keyword {
 		/etc/ssl/certs/*.pem from ./sec/web-* key fullpem signal HUP:container#haproxy
 		/init/nfs from ./cfg/{name} key init/nfs mode 0755 source https://raw.githubusercontent.com/opensvc/opensvc_templates/refs/heads/main/nfs/script
 		/init/backup from ./cfg/{name} key init/backup mode 0755 source /tmp/scripts/backup.sh
+		/run/secrets/db_password from ./sec/{name} key db_password source random
 		/init/config.sh from ./cfg/{name} key init/config.sh mode 0755 source https://example.com/templates/config.sh template
 		/data/`,
-			Option:   "install",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/install"),
-			Validate: ValidateInstall,
+			Option:     "install",
+			Scopable:   true,
+			Text:       keywords.NewText(fs, "text/kw/install"),
+			Validate:   ValidateInstall,
+			KeySources: InstallKeySources,
 		},
 		{
 			Attr:      prefix + "Configs",
@@ -771,6 +666,9 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 
 	path := t.to.GetObject().(object.Core).Path()
 	dirs, files, patterns := t.getInstallLines(head)
+	if len(t.sourceErrs) > 0 {
+		return false, errors.Join(t.sourceErrs...)
+	}
 	t.to.Log().Tracef("install: dirs: %s", dirs)
 	t.to.Log().Tracef("install: files: %s", files)
 
@@ -825,10 +723,17 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		ids = append(ids, installLineID(md))
 		var dataStore object.DataStore
 		var err error
+		// A key generated is the provision's to write, on its leader node:
+		// one missing is an error at every install, as a password made
+		// here would differ from the one each other node makes, and from
+		// the one what reads it already holds.
+		if md.Source == keywords.SourceRandom && !object.HasDataStoreKey(md.FromStore, md.FromPattern) {
+			return false, object.ErrRandomKeyMissing{Path: md.FromStore, Key: md.FromPattern}
+		}
 		// If datastore doesn't exist, try to create it if namespace matches
 		if !md.FromStore.Exists() {
 			var created bool
-			dataStore, created, err = ensureDataStoreExists(md.FromStore, path.Namespace, t.to.Log())
+			dataStore, created, err = object.EnsureDataStore(md.FromStore, path.Namespace)
 			if err != nil {
 				err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume: %w", md.FromStore, md.FromPattern, err)
 				if md.Required {
@@ -861,10 +766,12 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		// Seed the datastore key from source URI if provided and key doesn't exist
+		// Seed the datastore key from source URI if provided and key
+		// doesn't exist. A datastore of another namespace sharing its
+		// keys lets the object read them, and is not seeded.
 		if md.Source != "" && md.FromPattern != "" {
 			if !dataStore.HasKey(md.FromPattern) {
-				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log(), path, t.rid()); err != nil {
+				if err := object.SeedKey(dataStore, md.FromPattern, md.Source, t.to.Log(), path, t.rid()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -985,6 +892,7 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 // installing from the datastores of a pattern being an item per datastore
 // matching, and returns these lines too.
 func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefinition, []object.KVInstall, patternLines) {
+	t.sourceErrs = nil
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
 	patterns := make(patternLines, 0)
@@ -1145,6 +1053,11 @@ func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefini
 			}
 		}
 
+		if err := sourceLineErr(item, pattern); err != nil {
+			t.sourceErrs = append(t.sourceErrs, err)
+			return
+		}
+
 		if pattern == nil {
 			if isTemplate {
 				item.Render = t.renderer(item.FromStore)
@@ -1190,6 +1103,49 @@ func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefini
 		}
 	}
 	return dirs, files, patterns
+}
+
+// sourceLineErr refuses a source on a line it can not seed a key of:
+//
+//   - a key pattern names no key to seed: it matches the keys a datastore
+//     holds, and a key the source would make has no name until written.
+//
+//   - a generated key, "source random", in the datastores of a pattern: the
+//     provision generates the keys it knows of, in the datastores that
+//     match then, and a datastore made later would never have one, its
+//     install failing at each start. Its key is added with the datastore.
+//     An url or a file seeds, at each install, the datastores matching.
+func sourceLineErr(item object.KVInstall, pattern *naming.PathPattern) error {
+	switch {
+	case item.Source == "":
+		return nil
+	case strings.ContainsAny(item.FromPattern, "*?["):
+		return fmt.Errorf("install from %s key %s source %s: a source seeds a key named, not the keys of a pattern", item.FromStore, item.FromPattern, item.Source)
+	case pattern != nil && item.Source == keywords.SourceRandom:
+		return fmt.Errorf("install from %s key %s source random: a key generated is not seeded in the datastores of a pattern, add it with each datastore", pattern, item.FromPattern)
+	default:
+		return nil
+	}
+}
+
+// InstallKeySources returns the keys the lines of an install value seed from
+// a source, the value evaluated, its relative datastore paths being of the
+// namespace given. A line installing from the datastores of a pattern seeds
+// the key of each one matching, as its install does.
+func InstallKeySources(value []string, namespace string) ([]keywords.KeySource, error) {
+	t := &DataRecv{Install: value}
+	_, files, _ := t.parseInstallLines("/", naming.Path{Namespace: namespace})
+	if len(t.sourceErrs) > 0 {
+		return nil, errors.Join(t.sourceErrs...)
+	}
+	l := make([]keywords.KeySource, 0)
+	for _, md := range files {
+		if md.Source == "" || md.FromPattern == "" {
+			continue
+		}
+		l = append(l, keywords.KeySource{Path: md.FromStore, Key: md.FromPattern, Source: md.Source})
+	}
+	return l, nil
 }
 
 // RunInstall installs what the data receiver declares, as a start does, and
@@ -1590,7 +1546,7 @@ func TextHasSpecialMode(s string) bool {
 }
 
 // TextHasLocalSource reports whether an install text names a source the server
-// reads locally, as opposed to one it fetches over http.
+// reads locally, as opposed to one it fetches over http or generates.
 //
 // It lives here, next to the grammar it parses, so the rbac policy that refuses
 // a local source to a user holding no root grant does not have to reimplement
@@ -1615,16 +1571,23 @@ func lineHasLocalSource(words []string) bool {
 		}
 		switch word {
 		case "source":
-			// The test the install runs to choose between a fetch and a
-			// local read, so a source it reads locally, as "http:///etc/x"
-			// with no host, is never taken for a fetch here.
 			word, words = Pop(words)
-			if !uri.IsValidHttp(word) {
+			if IsLocalSource(word) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// IsLocalSource reports whether a source is read from the node: any source
+// but "random", which is generated, and an http or https url, fetched.
+//
+// It is the test the seeding runs to choose between a generation, a fetch
+// and a local read, so a source it reads locally, as "http:///etc/x" with no
+// host, is never taken for a fetch here, and /dev/urandom is a path.
+func IsLocalSource(s string) bool {
+	return s != keywords.SourceRandom && !uri.IsValidHttp(s)
 }
 
 // rid returns the resource id of the resource the data is installed for.

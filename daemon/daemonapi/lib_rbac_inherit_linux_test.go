@@ -154,3 +154,68 @@ image = alpine
 	assert.NoError(t, write(t, rootDefault, rootDefault+"\n[env]\na = 1\n"),
 		"a write changing nothing a section inherits")
 }
+
+// The source an environment reference seeds its key from is judged as the
+// section reads it, inherited from DEFAULT or through a reference: a file of
+// the node is the server's to read as root, a key generated or fetched reads
+// nothing of the node.
+func TestAnEnvironmentSourceIsJudgedAsTheSectionReadsIt(t *testing.T) {
+	knownNodes(t)
+	err := create(t, `
+nodes = *
+environment = X from ./sec/a key k source /etc/shadow
+
+[container#1]
+type = oci
+image = alpine
+`)
+	require.Error(t, err, "inherited from DEFAULT")
+	assert.Contains(t, err.Error(), "inherited from DEFAULT.environment")
+	assert.Contains(t, err.Error(), "a server-local source uri requires the root grant")
+
+	assert.NoError(t, create(t, `
+nodes = *
+environment = X from ./sec/a key k source random
+
+[container#1]
+type = oci
+image = alpine
+`), "a key generated, inherited from DEFAULT")
+
+	err = create(t, `
+nodes = *
+
+[env]
+x = X from ./sec/a key k source /etc/shadow
+
+[container#1]
+type = oci
+image = alpine
+environment = {env.x}
+`)
+	require.Error(t, err, "read through a reference")
+	assert.Contains(t, err.Error(), "a server-local source uri requires the root grant")
+
+	assert.NoError(t, create(t, `
+nodes = *
+
+[env]
+x = X from ./sec/a key k source random
+
+[container#1]
+type = oci
+image = alpine
+environment = {env.x}
+`), "a key generated, read through a reference")
+
+	err = create(t, `
+nodes = *
+
+[container#1]
+type = oci
+image = alpine
+environment = A=1 X from ./sec/a key k source /etc/shadow
+`)
+	require.Error(t, err, "written in the section")
+	assert.Contains(t, err.Error(), "a server-local source uri requires the root grant")
+}

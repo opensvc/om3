@@ -378,6 +378,7 @@ var rules = map[string]Group{
 		"devices":       devicesRule,
 		"privileged":    privilegedRule,
 		"netns":         hostNetnsRule,
+		"environment":   environmentSourceRule,
 	}},
 	"container": {Rules: map[string]Rule{
 		"type": {
@@ -409,6 +410,11 @@ var rules = map[string]Group{
 		"devices":       devicesRule,
 		"privileged":    privilegedRule,
 		"netns":         hostNetnsRule,
+		"environment":   environmentSourceRule,
+		// The environment of the creation of a lxc container, whose type
+		// requires the root grant already, is held to the same rule as
+		// the environment of the other types.
+		"create_environment": environmentSourceRule,
 	}},
 	// A volume section of a service is the consumer asking a pool for storage,
 	// which is what an object administrator is for. The same section of a
@@ -756,6 +762,17 @@ var (
 		Grant:  rbac.GrantRoot,
 		Reason: "the host network namespace requires the root grant",
 		Denies: valueOnly(func(s string) bool { return strings.TrimSpace(s) == "host" }),
+	}
+
+	// environmentSourceRule refuses a reference of an environment seeding
+	// its key from a file of the node: the server would read it as root,
+	// and write it in a datastore the object reads. A source fetched over
+	// http, as the SSRF policies allow, or generated, "random", reads
+	// nothing of the node.
+	environmentSourceRule = Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: "a server-local source uri requires the root grant",
+		Denies: valueOnly(datarecv.EnvironmentHasLocalSource),
 	}
 )
 

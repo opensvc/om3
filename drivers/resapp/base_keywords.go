@@ -1,6 +1,7 @@
 package resapp
 
 import (
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/util/converters"
 )
@@ -50,12 +51,13 @@ var (
 		Text:       keywords.NewText(fs, "text/kw/configs_environment"),
 	}
 	BaseKeywordEnv = keywords.Keyword{
-		Attr:      "Env",
-		Example:   "SLIP=slob OC3_DB_PASSWORD from ./sec/oc3 key db_password",
-		Option:    "environment",
-		Converter: converters.Shlex,
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/environment"),
+		Attr:       "Env",
+		Example:    "SLIP=slob OC3_DB_PASSWORD from ./sec/oc3 key db_password source random",
+		Option:     "environment",
+		Converter:  converters.Shlex,
+		Scopable:   true,
+		Text:       keywords.NewText(fs, "text/kw/environment"),
+		KeySources: datarecv.EnvironmentKeySources,
 	}
 	BaseKeywordRetCodes = keywords.Keyword{
 		Attr:     "RetCodes",

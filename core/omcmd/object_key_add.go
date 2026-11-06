@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/datastore"
-	"github.com/opensvc/om3/v3/util/uri"
 )
 
 type (
@@ -61,7 +60,7 @@ func (t *CmdObjectKeyAdd) Run(kind string) error {
 			if t.From == nil {
 				return nil, commoncmd.PrintLocalKeysWarnings(p, store.AddKey(t.Name, []byte{}))
 			}
-			m, err := uri.ReadAllFrom(*t.From)
+			m, err := commoncmd.ReadKeysFrom(*t.From)
 			if err != nil {
 				return nil, err
 			}

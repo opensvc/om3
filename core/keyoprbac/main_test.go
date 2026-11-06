@@ -104,6 +104,18 @@ func TestDeniedByValue(t *testing.T) {
 		{"volume#1", "install", "/srv/ mode 2775", true},
 		{"volume#1", "install", "/srv/ mode 1777", false},
 		{"volume#1", "install", "/etc/nginx.conf from ./cfg/c mode 0640 user 101", false},
+		{"volume#1", "install", "/run/pw from ./sec/s key pw source random", false},
+		{"volume#1", "install", "/run/pw from ./sec/s key pw source /dev/urandom", true},
+
+		{"container#1", "environment", "A=1 PW from ./sec/s key pw", false},
+		{"container#1", "environment", "PW from ./sec/s key pw source random", false},
+		{"container#1", "environment", "PW from ./sec/s key pw source https://example.com/pw", false},
+		{"container#1", "environment", "PW from ./sec/s key pw source /etc/shadow", true},
+		{"container#1", "environment", "PW from ./sec/s key pw source /dev/urandom", true},
+		{"container#1", "environment", "PW from ./sec/s key pw source http:///etc/shadow", true},
+		{"container#1", "create_environment", "PW from ./sec/s key pw source /etc/shadow", true},
+		{"task#1", "environment", "PW from ./sec/s key pw source random", false},
+		{"task#1", "environment", "PW from ./sec/s key pw source /etc/shadow", true},
 		{"volume#1", "perm", "0644", false},
 		{"volume#1", "perm", "644", false},
 		{"volume#1", "perm", "1777", false},
@@ -209,6 +221,8 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
 	assert.Equal(t, "A network named by a path requires the root grant.", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
+	assert.Equal(t, "A server-local source uri requires the root grant.", Doc(naming.KindSvc, "container", "environment"))
+	assert.Equal(t, "A server-local source uri requires the root grant.", Doc(naming.KindSvc, "task", "environment"))
 	assert.Equal(t, "A server-local source uri, or a setuid or setgid mode, requires the root grant.", Doc(naming.KindSvc, "volume", "install"))
 	assert.Equal(t, "Requires the prioritizer grant.", Doc(naming.KindSvc, "DEFAULT", "priority"))
 	assert.Equal(t, "Triggers require the root grant.", Doc(naming.KindSvc, "container", "pre_start"))
