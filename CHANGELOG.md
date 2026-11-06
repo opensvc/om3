@@ -482,6 +482,31 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     `--force`, as to recover from a resource that cannot be stopped. The
     keywords concerned say `stop first` in `om <path> config doc`.
 
+* **Security: a keyword inherited from `DEFAULT` is judged as the keyword of the section inheriting it**
+
+    The keyword policy now judges a keyword written in `DEFAULT` as the
+    keyword of every resource section inheriting it, on its evaluated value
+    before and after the write. A namespace administrator could write
+    `privileged`, `volume_mounts`, `devices`, `run_args`, `netns`, or the
+    keywords of a driver, in `DEFAULT`, and have the containers, tasks,
+    filesystems, ips, shares and syncs of the object inherit values the
+    policy refuses in their own section. Such writes are refused, as is
+    adding a section that inherits a root-only value, or removing a section
+    keyword that shadowed one. The refusal names both keywords, as
+    `denied: container#1.volume_mounts=/etc:/hostetc:ro, inherited from DEFAULT.volume_mounts: host path mounts in container require the root grant`.
+
+    A keyword written in `DEFAULT` that no section inherits is let in, and
+    judged when a section comes to inherit it. The keywords a set of
+    identical containers share, as `image`, `rm`, `restart`, `environment`
+    or a `volume_mounts` of a volume, are written once in `DEFAULT` as
+    before.
+
+* **The type of a resource no longer inherits from `DEFAULT.type`**
+
+    A section runs the driver its own `type` names, or the default driver of
+    its group, as in v2. `type` written in `DEFAULT` chose the driver of every
+    section naming none, a way around the rule on the driver a section runs.
+
 ### Commands
 
 * **Configuration updates and queries use the daemon api by default:**

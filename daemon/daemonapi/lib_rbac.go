@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/keyoprbac"
+	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resourceid"
@@ -312,7 +313,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 	scopes := rbacScopes(from, to)
 	for _, section := range to.SectionStrings() {
 		keys := to.Keys(section)
-		set := sectionSetter(keys)
+		set := inheritingSetter(kind, to, section, keys)
 		for _, option := range keys {
 			k := key.New(section, option)
 			nodename, changed := keyChangedOn(from, to, k, scopes)
@@ -351,6 +352,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 		if err := sectionDriverRbac(grants, kind, from, to, section, set, scopes); err != nil {
 			errs = append(errs, err)
 		}
+		errs = append(errs, inheritedRbac(grants, kind, from, to, section, set, scopes)...)
 	}
 	if err := encapRbac(grants, from, to, scopes); err != nil {
 		errs = append(errs, err)
@@ -363,7 +365,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 	// deleted is every keyword of it unset.
 	for _, section := range from.SectionStrings() {
 		keys := from.Keys(section)
-		set := sectionSetter(keys)
+		set := inheritingSetter(kind, from, section, keys)
 		for _, option := range keys {
 			k := key.New(section, option)
 			if to.HasKey(k) {
@@ -379,6 +381,152 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// inheritedRbac checks the keywords a resource section takes from DEFAULT,
+// which it does not write.
+//
+// A keyword a section does not write takes the value of DEFAULT, under its
+// own name or the one its DefaultOption gives. The policy judges a keyword by
+// the section it is written in, and the DEFAULT rules know nothing of the
+// keywords of the drivers: a privileged, a volume_mounts or a devices written
+// in DEFAULT was let through, and every container and task of the object ran
+// with it. So the value a section inherits is judged as the keyword of that
+// section it is, by its rule, where the write changes it: a DEFAULT keyword
+// changed, a section added under a DEFAULT keyword, or a keyword of the
+// section taken away, which uncovers the DEFAULT one.
+//
+// A DEFAULT keyword no section inherits changes nothing yet, and is judged
+// when a section comes to inherit it. A section added under a value root
+// wrote in DEFAULT is refused all the same: root let it in for the sections
+// it saw, and the user writes the value they may in the section instead.
+func inheritedRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T, section string, set keyoprbac.Section, scopes []string) []error {
+	if to.Referrer == nil {
+		return nil
+	}
+	group, _, _ := strings.Cut(section, "#")
+	if !driver.NewGroup(group).IsValid() {
+		return nil
+	}
+	defaults := defaultOptions(from, to)
+	if len(defaults) == 0 {
+		return nil
+	}
+	written := sectionSetter(to.Keys(section))
+	existed := from != nil && slices.Contains(from.SectionStrings(), section)
+	localhost := hostname.Hostname()
+	var errs []error
+	for _, option := range object.KeywordOptions(kind, section) {
+		k := key.New(section, option)
+		kw := to.Referrer.KeywordLookup(k, to.SectionType(k))
+		if !inheritsFromDefault(kw) || !defaults[kw.DefaultKey().Option] || writesKeyword(written, kw) {
+			continue
+		}
+		for _, nodename := range append([]string{localhost}, scopes...) {
+			before := ""
+			if existed {
+				before = inheritedAs(from, k, kw, nodename)
+			}
+			after := inheritedAs(to, k, kw, nodename)
+			if before == after {
+				continue
+			}
+			var err error
+			if after == "" {
+				err = keyoprbac.DeniedUnset(grants, kind, section, option, before, set)
+			} else if err = keyoprbac.Denied(grants, kind, section, option, after, set); err == nil {
+				typ := to.GetStringAs(key.New(section, "type"), nodename)
+				if typ == "" {
+					typ = driver.DefaultDriver[driver.NewGroup(group)]
+				}
+				err = keyoprbac.DeniedByDriver(grants, kind, section, option, after, typ, set)
+			}
+			if err == nil {
+				continue
+			}
+			on := ""
+			if nodename != localhost {
+				on = " on " + nodename
+			}
+			origin := "DEFAULT." + kw.DefaultKey().Option
+			if after == "" {
+				errs = append(errs, fmt.Errorf("%w: unset %s=%s%s, inherited from %s: %w", ErrDenied, k, before, on, origin, err))
+			} else {
+				errs = append(errs, fmt.Errorf("%w: %s=%s%s, inherited from %s: %w", ErrDenied, k, after, on, origin, err))
+			}
+			break
+		}
+	}
+	return errs
+}
+
+// inheritsFromDefault says a keyword of a resource section takes the value
+// of DEFAULT when the section does not write it.
+func inheritsFromDefault(kw *keywords.Keyword) bool {
+	if kw == nil || kw.Option == "" || kw.Option == "*" || kw.Section == "DEFAULT" {
+		return false
+	}
+	return kw.Inherit != keywords.InheritLeaf
+}
+
+// writesKeyword says a section writes a keyword, under its name or an alias,
+// for any node.
+func writesKeyword(written keyoprbac.Section, kw *keywords.Keyword) bool {
+	if written(kw.Option) {
+		return true
+	}
+	for _, alias := range kw.Aliases {
+		if written(alias) {
+			return true
+		}
+	}
+	return false
+}
+
+// defaultOptions returns the options written in DEFAULT, for any node, in
+// the configurations.
+func defaultOptions(cfgs ...*xconfig.T) map[string]bool {
+	m := make(map[string]bool)
+	for _, cfg := range cfgs {
+		if cfg == nil {
+			continue
+		}
+		for _, option := range cfg.Keys("DEFAULT") {
+			option, _, _ = strings.Cut(option, "@")
+			m[option] = true
+		}
+	}
+	return m
+}
+
+// inheritedAs is the value a keyword a section does not write takes on
+// nodename, as it evaluates, or as DEFAULT writes it when it does not.
+func inheritedAs(cfg *xconfig.T, k key.T, kw *keywords.Keyword, nodename string) string {
+	v, err := cfg.EvalKeywordAs(k, kw, nodename)
+	if err != nil {
+		return cfg.Get(kw.DefaultKey())
+	}
+	return xconfig.EvaluatedString(v)
+}
+
+// inheritingSetter answers whether an option is set in a section, written
+// there or taken from DEFAULT: a rule about the setup of a section, as the
+// address of an ip named or drawn from a network, reads what the resource
+// runs with, wherever it is written.
+func inheritingSetter(kind naming.Kind, cfg *xconfig.T, section string, keys []string) keyoprbac.Section {
+	written := sectionSetter(keys)
+	defaults := defaultOptions(cfg)
+	return func(option string) bool {
+		if written(option) {
+			return true
+		}
+		if cfg.Referrer == nil || section == "DEFAULT" {
+			return false
+		}
+		k := key.New(section, option)
+		kw := cfg.Referrer.KeywordLookup(k, cfg.SectionType(k))
+		return inheritsFromDefault(kw) && defaults[kw.DefaultKey().Option]
+	}
 }
 
 // typeChangedOn returns the nodes a write changes the type of a section on, as
