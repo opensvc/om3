@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -76,4 +77,23 @@ func TestRedirectRefused(t *testing.T) {
 	_, err = get(t, policy, loop.URL+"/start", true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "stopped after")
+}
+
+// A request carrying data does not follow a redirect: a 307 would send its
+// body again, to the host the redirect names.
+func TestRedirectOfARequestWithDataRefused(t *testing.T) {
+	var got []byte
+	other := serveOn(t, "127.0.0.1", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got, _ = io.ReadAll(r.Body)
+	}))
+	api := serveOn(t, "127.0.0.1", http.RedirectHandler(other.URL+"/collect", http.StatusTemporaryRedirect))
+	policy := httppolicy.New([]string{api.URL + "/*"}, []string{"*"}, []string{"127.0.0.1/32"}, []string{"127.0.0.0/8"})
+	ip, port, err := policy.Check(api.URL + "/api")
+	require.NoError(t, err)
+	c, err := pinnedClient(policy, api.URL+"/api", ip, port, true)
+	require.NoError(t, err)
+	_, err = c.Post(api.URL+"/api", "application/json", strings.NewReader(`{"secret":"x"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "only a download follows a redirect")
+	assert.Empty(t, got, "the body is not sent to the redirect target")
 }

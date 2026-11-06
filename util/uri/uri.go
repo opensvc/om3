@@ -167,8 +167,8 @@ const maxRedirects = 5
 // checked as it comes. A host resolved again at dial time could answer with
 // another address than the one checked.
 //
-// A redirect is followed when enabled, at most maxRedirects times, never
-// from https to http, its target held to the cidr lists and not to the url
+// A redirect is followed when enabled, by a GET or a HEAD only, at most
+// maxRedirects times, never from https to http, its target held to the cidr lists and not to the url
 // lists: the url lists judge the url a configuration names, and where that
 // source keeps its content, as the storage a release download redirects to,
 // is the source's to say.
@@ -199,6 +199,12 @@ func pinnedClient(policy *httppolicy.T, rawURL string, ip net.IP, port string, e
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if !enableRedirects {
 				return http.ErrUseLastResponse
+			}
+			// A download follows a redirect. A request carrying data, as
+			// the calls of an array api, does not: a 307 or 308 would send
+			// its body again, to whatever host the redirect names.
+			if m := via[0].Method; m != http.MethodGet && m != http.MethodHead {
+				return fmt.Errorf("redirect of a %s request refused: only a download follows a redirect", m)
 			}
 			if len(via) >= maxRedirects {
 				return fmt.Errorf("stopped after %d redirects", maxRedirects)

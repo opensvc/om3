@@ -151,7 +151,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     The `node.allowed_urls` and `node.allowed_cidrs` keywords add to what is allowed, for
     all the nodes of a cluster.
 
-    A redirect is followed, at most 5 times and never from https to http: the
+    A download follows a redirect, at most 5 times and never from https to
+    http, and a request carrying data, as the calls of an array api, never: the
     url lists judge the url a configuration names, and the target of each
     redirect is held to the cidr lists, its address checked and the
     connection pinned to it. A release download is so trusted by its url,
