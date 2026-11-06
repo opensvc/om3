@@ -328,3 +328,51 @@ func TestInstallFromDatastoreKeepsTheFilesFetched(t *testing.T) {
 	assert.FileExists(t, filepath.Join(head, "web/html/index.html.gz"))
 	assert.Equal(t, 1, srv.fetches("/index.html.gz"))
 }
+
+// A file written over since it was fetched is fetched again, rather than
+// served as the content of its url: checked against the digest of its mark,
+// against the one this node recorded on a volume keeping no mark, and
+// against the sha256 the line names.
+func TestInstallFetchChangedSince(t *testing.T) {
+	o := setupFetch(t)
+	srv := newFetchServer(t)
+	srv.set("/v1/index.html.gz", "v1")
+	head := t.TempDir()
+	dst := filepath.Join(head, "web/html/index.html.gz")
+	url := srv.URL + "/v1/index.html.gz"
+	recv := &DataRecv{to: headReceiver{o: o, head: head}, Install: []string{"/web/html/index.html.gz", "source", url}}
+	install := func() bool {
+		t.Helper()
+		changed, err := recv.install(context.Background())
+		require.NoError(t, err)
+		return changed
+	}
+	// writeOver changes the content, keeping the file, its mark included.
+	writeOver := func() {
+		t.Helper()
+		f, err := os.OpenFile(dst, os.O_WRONLY|os.O_TRUNC, 0)
+		require.NoError(t, err)
+		_, err = f.WriteString("tampered")
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+	}
+
+	require.True(t, install())
+	writeOver()
+	assert.True(t, install(), "the mark's digest tells the file changed")
+	assert.Equal(t, "v1", readFile(t, dst))
+	assert.Equal(t, 2, srv.fetches("/v1/index.html.gz"))
+	assert.False(t, install(), "the content of the url is kept")
+
+	writeOver()
+	_ = unix.Removexattr(dst, volfile.InstallAttr)
+	assert.True(t, install(), "with no mark, the digest recorded tells the file changed")
+	assert.Equal(t, "v1", readFile(t, dst))
+
+	sum := sha256.Sum256([]byte("v1"))
+	recv.Install = []string{"/web/html/index.html.gz", "source", url, "sha256", hex.EncodeToString(sum[:])}
+	writeOver()
+	assert.True(t, install(), "the sha256 of the line tells the file changed")
+	assert.Equal(t, "v1", readFile(t, dst))
+	assert.Equal(t, 4, srv.fetches("/v1/index.html.gz"))
+}

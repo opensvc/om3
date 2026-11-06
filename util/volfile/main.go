@@ -7,6 +7,7 @@ package volfile
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -151,6 +152,11 @@ type InstallMark struct {
 	From string    `json:"from"`
 	Key  string    `json:"key,omitempty"`
 	At   time.Time `json:"at"`
+
+	// SHA256 is the digest of the content Install wrote, which a later
+	// install compares the file with: a file changed since is installed
+	// again.
+	SHA256 string `json:"sha256,omitempty"`
 }
 
 // InstalledReason says why an upload does not replace the installed file of
@@ -501,38 +507,44 @@ func Install(head, dir, name string, r io.Reader, m InstallMark, perm fs.FileMod
 	if err != nil {
 		return err
 	}
+	// The file stays root's, and readable by root alone, until it takes
+	// its place: an owner given before could change the content checked
+	// before it is published. It is given its owner and mode once
+	// renamed, through the file still open.
 	f, err := root.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
+	renamed := false
 	defer func() {
-		if err != nil {
+		_ = f.Close()
+		if err != nil && !renamed {
 			_ = root.Remove(tmp)
 		}
 	}()
-	_, err = io.Copy(f, r)
-	// The owner first: a chown drops the setuid and setgid bits.
-	if err == nil {
-		err = f.Chown(uid, gid)
-	}
-	if err == nil {
-		err = f.Chmod(perm)
-	}
-	if err == nil {
-		setInstallMark(f, m)
-	}
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err != nil {
+	h := sha256.New()
+	if _, err = io.Copy(io.MultiWriter(f, h), r); err != nil {
 		return err
 	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	m.SHA256 = hex.EncodeToString(h.Sum(nil))
+	setInstallMark(f, m)
 	unlock, err := lockRoot(root)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	return root.Rename(tmp, path.Join(dir, name))
+	if err = root.Rename(tmp, path.Join(dir, name)); err != nil {
+		return err
+	}
+	renamed = true
+	// The owner first: a chown drops the setuid and setgid bits.
+	if err = f.Chown(uid, gid); err != nil {
+		return err
+	}
+	return f.Chmod(perm)
 }
 
 // fitsAtEnd says what the volume holds now, the files the other transfers
