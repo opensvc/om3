@@ -91,15 +91,16 @@ func (t T) IsValidHttp() bool {
 	return IsValidHttp(t.uri)
 }
 
-func (t T) HttpFetch() (string, error) {
-	var resp *http.Response
-
-	client, err := SafeHttpClient(t.uri)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err = client.Get(t.uri)
+// CallerFetch fetches the url a command is given, in the process of the
+// command, and returns the path of a temporary file holding the body.
+//
+// It is held to no SSRF policy: the url is the argument of who runs the
+// command, fetched from where they run it, with nothing more than they
+// could fetch with curl and pass on the standard input of the same command.
+// A url a configuration names, fetched by a node, as the source of a key or
+// the image of a vm, is the SafeHttpClient's to fetch.
+func (t T) CallerFetch() (string, error) {
+	resp, err := http.Get(t.uri)
 	if err != nil {
 		return "", err
 	}
@@ -122,8 +123,10 @@ func (t T) HttpFetch() (string, error) {
 			return "", err
 		}
 	}
+	defer f.Close()
 	fName := f.Name()
 	if _, err = io.Copy(f, resp.Body); err != nil {
+		_ = os.Remove(fName)
 		return "", err
 	}
 	return fName, nil
@@ -294,7 +297,7 @@ func readAllFromDir(p string) (map[string][]byte, error) {
 }
 
 func readAllFromHttp(u T) (map[string][]byte, error) {
-	fName, err := u.HttpFetch()
+	fName, err := u.CallerFetch()
 	if err != nil {
 		return nil, err
 	}
