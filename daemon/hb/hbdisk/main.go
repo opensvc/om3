@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
+	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/sign"
 
 	"github.com/opensvc/om3/v3/core/hbcfg"
@@ -242,6 +243,15 @@ func (t *base) invalidSigAlert() daemonsubsystem.Alert {
 	return daemonsubsystem.Alert{
 		Severity: "error",
 		Message:  fmt.Sprintf("%s has not the signature of a heartbeat disk, wiped or signed for something else: suspended until signed (om daemon hb sign)", t.path),
+	}
+}
+
+// stopBeating tells the watchers of the stream id that its peers no longer
+// beat on it: a stream suspended reads or writes nothing. The watchers say so
+// at once, rather than when their timeout expires.
+func (t *base) stopBeating(cmdC chan<- any, id string, nodes []string) {
+	for _, node := range nodes {
+		cmdC <- hbctrl.CmdSetPeerSuccess{Nodename: node, HbID: id, Success: false}
 	}
 }
 

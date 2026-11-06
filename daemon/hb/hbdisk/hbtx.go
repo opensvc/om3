@@ -86,7 +86,6 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			return err
 		}
 	}
-	t.initialScan()
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
 	t.cmdC = cmdC
 	t.Add(1)
@@ -96,16 +95,12 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		defer t.log.Infof("stopped")
 
 		if t.base.invalidSig {
-			// A disk not signed gets no slot: the first write
-			// once it is signed allocates one.
+			// A disk not signed gets no slot: the resume claims
+			// one once it is signed.
 			t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
 			cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
 		} else {
-			if t.slot < minimumSlot {
-				if err := t.allocateSlot(); err != nil {
-					t.log.Infof("can't allocate new slot: %s", err)
-				}
-			}
+			t.claimSlot()
 			t.updateAlertWithSlot()
 		}
 		t.sendAlert()
@@ -202,18 +197,12 @@ func (t *tx) send(b []byte) {
 		needAllocateReason = fmt.Sprintf("slot %d stolen by node %s", t.slot, nodename)
 	}
 	if len(needAllocateReason) > 0 {
-		t.log.Infof(needAllocateReason)
+		t.log.Infof("%s", needAllocateReason)
 		t.alert = make([]daemonsubsystem.Alert, 0)
 		defer t.sendAlert()
-		if err := t.allocateSlot(); err != nil {
-			t.log.Infof("can't allocate new slot: %s", err)
-			t.alert = append(t.alert,
-				daemonsubsystem.Alert{Severity: "info", Message: needAllocateReason},
-				daemonsubsystem.Alert{Severity: "warning", Message: fmt.Sprintf("can't allocate new slot: %s", err)},
-			)
-			return
-		}
+		t.claimSlot()
 		if t.slot < minimumSlot {
+			t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: needAllocateReason})
 			return
 		}
 		t.updateAlertWithSlot()
@@ -238,33 +227,46 @@ func (t *tx) updateAlertWithSlot() {
 	t.alert = append(t.alert, getSlotAlert(t.base.localhost, t.slot))
 }
 
-// onSignatureChange reports the stream suspended or resumed.
+// onSignatureChange reports the stream suspended or resumed. Suspended, it
+// stops beating at once, rather than one timeout later. Resumed, it claims
+// its slot again before it writes: a wipe and a sign keep the metadata, and
+// the slot this node holds there.
 func (t *tx) onSignatureChange() {
 	if t.base.invalidSig {
 		t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
 		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+		t.base.stopBeating(t.cmdC, t.id, t.nodes)
 	} else {
 		t.alert = make([]daemonsubsystem.Alert, 0)
+		t.claimSlot()
 		t.updateAlertWithSlot()
 		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
 	}
 	t.sendAlert()
 }
 
-// initialScan finds the slot this node holds on the disk, to write in it
-// again after a restart. A disk not signed holds no slot of this node: it
-// gets one once signed.
-func (t *tx) initialScan() {
+// claimSlot sets the slot this node writes in: the one it holds on the disk,
+// else a free one. A slot is never allocated without this look first, which
+// would leave the node twice in the metadata, its peers reading the slot
+// found first. A disk not signed holds no slot of this node: it gets one
+// once signed.
+func (t *tx) claimSlot() {
 	if t.base.invalidSig {
 		return
 	}
+	t.slot = 0
 	if err := t.base.scanMetadata(t.base.localhost); err != nil {
-		msg := fmt.Sprintf("initial scan metadata: %s", err)
-		t.log.Infof(msg)
+		msg := fmt.Sprintf("scan metadata: %s", err)
+		t.log.Infof("%s", msg)
 		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: msg})
 	}
 	if slot := t.base.nodeSlot[t.base.localhost]; slot >= minimumSlot {
 		t.slot = slot
+		return
+	}
+	if err := t.allocateSlot(); err != nil {
+		t.log.Infof("can't allocate new slot: %s", err)
+		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "warning", Message: fmt.Sprintf("can't allocate new slot: %s", err)})
 	}
 }
 
