@@ -108,3 +108,23 @@ func (t ResourceInfoList) GetItems() any {
 func (t ConfigAlertList) GetItems() any {
 	return t.Items
 }
+
+func (t ClusterLockList) GetItems() any {
+	return t.Items
+}
+
+func (t ExecList) GetItems() any {
+	return t.Items
+}
+
+func (t OrchestrationList) GetItems() any {
+	return t.Items
+}
+
+func (t ArrayList) GetItems() any {
+	return t.Items
+}
+
+func (t StoreList) GetItems() any {
+	return t.Items
+}
