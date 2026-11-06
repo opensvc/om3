@@ -1053,9 +1053,13 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/pool"),
 	},
 	{
-		Kind:   naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option: "type",
-		Text:   keywords.NewText(fs, "text/kw/core/type"),
+		// A section runs the driver it names, never one DEFAULT names: a
+		// type taken from DEFAULT would choose the driver of sections
+		// written for another one, as v2 never did.
+		Inherit: keywords.InheritLeaf,
+		Kind:    naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Option:  "type",
+		Text:    keywords.NewText(fs, "text/kw/core/type"),
 	},
 }
 
