@@ -1,0 +1,3 @@
+The maximum size of a file an install line fetches from an `https://` url into a volume, the line naming no datastore.
+
+A fetch announcing a larger body, or sending one, fails naming the url, and leaves the file installed before as it is.

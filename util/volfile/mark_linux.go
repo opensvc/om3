@@ -18,6 +18,16 @@ func setMark(f *os.File, m mark) {
 	_ = unix.Fsetxattr(int(f.Fd()), UploadAttr, b, 0)
 }
 
+// setInstallMark writes the mark of an install on f, best effort as the mark
+// of an upload is.
+func setInstallMark(f *os.File, m InstallMark) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+	_ = unix.Fsetxattr(int(f.Fd()), InstallAttr, b, 0)
+}
+
 // getMark reads the mark of an upload of the entry of the name in the
 // directory d, opened in the volume.
 func getMark(d *os.File, name string) (mark, bool) {

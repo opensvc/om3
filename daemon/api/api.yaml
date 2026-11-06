@@ -10205,10 +10205,10 @@ components:
           description: when the file was uploaded, absent for a file not uploaded
         installed_from:
           type: string
-          description: the datastore an install writes the file from, absent for a file not installed
+          description: the datastore an install writes the file from, or the https url it fetches it from, absent for a file not installed
         installed_key:
           type: string
-          description: the key of the datastore the file is written from, absent for a file not installed
+          description: the key of the datastore the file is written from, absent for a file not installed or fetched from a url
         installed_at:
           type: string
           format: date-time

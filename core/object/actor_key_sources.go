@@ -313,7 +313,7 @@ func (t *actor) seedKeySources(ctx context.Context, provision bool) error {
 		if created {
 			t.log.Infof("%s: created datastore %s for seeding", ks.Keyword, ks.Path)
 		}
-		if err := SeedKey(ds, ks.Key, ks.Source, t.log, t.path, ""); err != nil {
+		if err := SeedKey(ctx, ds, ks.Key, ks.Source, t.log, t.path, ""); err != nil {
 			err = fmt.Errorf("%s: failed to seed %s from source %s: %w", ks.Keyword, id, ks.Source, err)
 			if ks.IsRandom() {
 				errs = append(errs, err)

@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/random"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/uri"
 )
 
@@ -64,7 +66,7 @@ func HasDataStoreKey(p naming.Path, keyName string) bool {
 // The key is written for the object p, and the refresh of the consumers of
 // the datastore skips the resources of p seeding it, which install it next.
 // The datastore is to be of the namespace of p.
-func SeedKey(ds DataStore, keyName, source string, log *plog.Logger, p naming.Path, rid string) error {
+func SeedKey(ctx context.Context, ds DataStore, keyName, source string, log *plog.Logger, p naming.Path, rid string) error {
 	if ds.Path().Namespace != p.Namespace {
 		return fmt.Errorf("%s key %s: %w", ds.Path(), keyName, ErrSeedOtherNamespace)
 	}
@@ -73,7 +75,7 @@ func SeedKey(ds DataStore, keyName, source string, log *plog.Logger, p naming.Pa
 	} else {
 		log.Infof("seeding key %s of %s from source %s", keyName, ds.Path(), source)
 	}
-	data, err := readSource(source)
+	data, err := readSource(ctx, ds, source)
 	if err != nil {
 		return err
 	}
@@ -94,23 +96,45 @@ func SeedKey(ds DataStore, keyName, source string, log *plog.Logger, p naming.Pa
 // readSource returns the content of a source: a password generated, the
 // body of an http or https url, or the content of a regular file of the
 // node.
-func readSource(source string) ([]byte, error) {
+func readSource(ctx context.Context, ds DataStore, source string) ([]byte, error) {
 	switch {
 	case source == keywords.SourceRandom:
 		return random.Password(32, nil), nil
 	case uri.IsValidHttp(source):
-		return fetchSource(source)
+		// The key add refuses a value over node.max_key_size: the fetch
+		// stops there, rather than read a body to be refused whole.
+		maxSize := int64(-1)
+		if v, ok := ds.(interface{ maxKeySize() (int64, error) }); ok {
+			n, err := v.maxKeySize()
+			if err != nil {
+				return nil, err
+			}
+			maxSize = n
+		}
+		return fetchSource(ctx, source, maxSize)
 	default:
 		return readSourceFile(source)
 	}
 }
 
-func fetchSource(source string) ([]byte, error) {
-	client, err := uri.SafeHttpClient(source)
+// seedHttpClient returns the client fetching the url a key is seeded from,
+// held to the node.allowed_urls and SSRF policies. The tests replace it.
+var seedHttpClient = uri.SafeHttpClient
+
+// fetchSource returns the body of the url, maxSize bytes at most, none for a
+// negative maxSize. The fetch ends with the action seeding the key: a server
+// sending nothing does not hold it forever. A body announced or found over
+// maxSize is refused, as the key add would refuse it.
+func fetchSource(ctx context.Context, source string, maxSize int64) ([]byte, error) {
+	client, err := seedHttpClient(source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http client for %s: %w", source, err)
 	}
-	resp, err := client.Get(source)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch from %s: %w", source, err)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch from %s: %w", source, err)
 	}
@@ -118,9 +142,22 @@ func fetchSource(source string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch from %s: HTTP %d", source, resp.StatusCode)
 	}
-	data, err := io.ReadAll(resp.Body)
+	if maxSize < 0 {
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read from %s: %w", source, err)
+		}
+		return data, nil
+	}
+	if resp.ContentLength > maxSize {
+		return nil, fmt.Errorf("failed to fetch from %s: %w", source, ValueTooBig(resp.ContentLength, maxSize))
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from %s: %w", source, err)
+	}
+	if int64(len(data)) > maxSize {
+		return nil, fmt.Errorf("failed to fetch from %s: %w: more than %sB (raise node.max_key_size)", source, ErrValueTooBig, sizeconv.BSize(float64(maxSize)))
 	}
 	return data, nil
 }

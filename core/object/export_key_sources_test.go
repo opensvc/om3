@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 )
 
@@ -27,4 +28,13 @@ func SetRandomKeyWait(timeout, interval time.Duration) func() {
 	return func() {
 		randomKeyWaitTimeout, randomKeyWaitInterval = formerTimeout, formerInterval
 	}
+}
+
+// SetSeedHttpClient has the seeding of a key fetch with the client given,
+// as a test server's, rather than one held to the SSRF policy, and returns
+// the function restoring the former one.
+func SetSeedHttpClient(c *http.Client) func() {
+	former := seedHttpClient
+	seedHttpClient = func(string) (*http.Client, error) { return c, nil }
+	return func() { seedHttpClient = former }
 }

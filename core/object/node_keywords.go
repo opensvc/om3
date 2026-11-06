@@ -375,6 +375,13 @@ var (
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_key_size"),
 	}
+	kwNodeMaxInstallSize = keywords.Keyword{
+		Converter: converters.Size,
+		Default:   "64mb",
+		Option:    "max_install_size",
+		Section:   "node",
+		Text:      keywords.NewText(fs, "text/kw/node/node.max_install_size"),
+	}
 	kwNodeAllowedNetworks = keywords.Keyword{
 		Converter: converters.List,
 		Default:   "10.0.0.0/8 172.16.0.0/24 192.168.0.0/16",
@@ -2083,6 +2090,7 @@ var (
 		&kwNodeAllowedCIDRs,
 		&kwNodeMaxParallel,
 		&kwNodeMaxKeySize,
+		&kwNodeMaxInstallSize,
 		&kwNodeAllowedNetworks,
 		&kwNodeLocCountry,
 		&kwNodeLocCity,
