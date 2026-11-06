@@ -63,8 +63,10 @@ func TestUnprovisionRemovesTheMountPointItCreated(t *testing.T) {
 	replaced := filepath.Join(root, "replaced")
 	r = newMountPointResource(t, replaced)
 	require.NoError(t, r.createMountPoint(ctx))
-	require.NoError(t, os.Remove(replaced))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "hold-the-inode"), nil, 0600))
+	// The directory created is moved away rather than removed: it keeps
+	// its inode, which a directory made in its place can not be given,
+	// whatever the filesystem does with the inodes it frees.
+	require.NoError(t, os.Rename(replaced, filepath.Join(root, "replaced-before")))
 	require.NoError(t, os.Mkdir(replaced, 0755))
 	require.NoError(t, r.UnprovisionAsLeader(ctx))
 	assert.DirExists(t, replaced, "a mount point replaced since the start created it is the operator's")
