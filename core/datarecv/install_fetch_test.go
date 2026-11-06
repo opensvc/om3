@@ -369,10 +369,16 @@ func TestInstallFetchChangedSince(t *testing.T) {
 	assert.True(t, install(), "with no mark, the digest recorded tells the file changed")
 	assert.Equal(t, "v1", readFile(t, dst))
 
+	// The record of the digest lost, on a volume keeping no mark.
+	require.NoError(t, os.Remove(recv.fetchedFile()))
+	_ = unix.Removexattr(dst, volfile.InstallAttr)
+	assert.True(t, install(), "no digest known: fetched again")
+	assert.Equal(t, 4, srv.fetches("/v1/index.html.gz"))
+
 	sum := sha256.Sum256([]byte("v1"))
 	recv.Install = []string{"/web/html/index.html.gz", "source", url, "sha256", hex.EncodeToString(sum[:])}
 	writeOver()
 	assert.True(t, install(), "the sha256 of the line tells the file changed")
 	assert.Equal(t, "v1", readFile(t, dst))
-	assert.Equal(t, 4, srv.fetches("/v1/index.html.gz"))
+	assert.Equal(t, 5, srv.fetches("/v1/index.html.gz"))
 }

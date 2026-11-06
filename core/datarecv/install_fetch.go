@@ -439,10 +439,12 @@ func (t *DataRecv) recordFetched(fd fetchDefinition, digest string) error {
 // digest, fetched before one was recorded, is kept.
 func (t *DataRecv) changedSinceFetched(tree *confined.Tree, dst string, fd fetchDefinition) string {
 	want := fd.SHA256
+	marked := false
 	if want == "" {
 		if b, err := tree.GetXattr(dst, volfile.InstallAttr); err == nil {
 			var m volfile.InstallMark
 			if json.Unmarshal(b, &m) == nil && m.From == fd.URL {
+				marked = true
 				want = m.SHA256
 			}
 		}
@@ -452,8 +454,15 @@ func (t *DataRecv) changedSinceFetched(tree *confined.Tree, dst string, fd fetch
 			want = r.SHA256
 		}
 	}
-	if want == "" {
+	switch {
+	case want != "":
+	case marked:
+		// Fetched before the mark held a digest: kept as it was.
 		return ""
+	default:
+		// No mark, and the record of its digest lost: nothing tells
+		// the file is the url's, so it is fetched again.
+		return fmt.Sprintf("no digest of %s is known", dst)
 	}
 	f, err := tree.Open(dst)
 	if err != nil {
