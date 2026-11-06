@@ -32,7 +32,7 @@ func MakeDataPatch(name string, value, from *string, action api.PatchDataKeyActi
 		})
 		return data, nil
 	}
-	m, err := uri.ReadAllFrom(*from)
+	m, err := ReadKeysFrom(*from)
 	if err != nil {
 		return data, err
 	}
@@ -48,6 +48,17 @@ func MakeDataPatch(name string, value, from *string, action api.PatchDataKeyActi
 		})
 	}
 	return data, nil
+}
+
+// ReadKeysFrom returns the values the from location of a key command holds,
+// by the path of each file read, the one value of a location that is no
+// directory under the empty path. A deprecated from is warned of, with the
+// one to write instead.
+func ReadKeysFrom(from string) (map[string][]byte, error) {
+	if replacement, ok := uri.DeprecatedFrom(from); ok {
+		fmt.Fprintf(os.Stderr, "warning: --from %s is deprecated: use --from %s\n", from, replacement)
+	}
+	return uri.ReadAllFrom(from)
 }
 
 // RunObjectDataPatch applies the key operations of data to the datastores

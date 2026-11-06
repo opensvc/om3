@@ -111,6 +111,25 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.
 
+* **A template creates its own secrets**: an install line and an `environment` reference name the source of the key they read, `source <uri>`, and `source random` generates a password:
+
+    ```
+    [env]
+    oc3_environment = OC3_DB_PASSWORD from ./sec/{name} key db_password source random
+
+    [container#db]
+    environment = {env.oc3_environment}
+        MARIADB_ROOT_PASSWORD from ./sec/{name} key db_root_password source random
+    ```
+
+    The provision of the object on its leader node creates the sec or the cfg in the namespace of the object, and generates the keys missing, once for all the nodes: the provisions of the other nodes wait for them to reach their node, and fail naming the key when they do not. A start, a standby start, a task run, or an install, not finding a key generated fails naming it and its datastore, rather than starting without it or making a password of its own. An `http://` or `https://` source is fetched, and a file source read, at each provision and start not finding the key, the `environment` references like the install lines. A key there is never written again, and an unprovision leaves the keys.
+
+    An object whose resources have nothing to provision, as apps alone, is never provisioned: it takes a `fs.flag` resource to have its keys generated.
+
+    The validation of the configuration refuses a key two keywords seed from two sources, wherever they are written, in a section, in `DEFAULT` or read through a reference, a source on an install line naming its keys by a pattern, `key conf/*`, and `source random` in the datastores of a pattern, `from ./sec/haproxy-*`, a datastore made later never having its key. `environment` and `create_environment` reading a file of the node, `source <path>`, require the root grant, as the install lines do: `denied: container#db.environment=…: a server-local source uri requires the root grant`.
+
+    `om|ox <sec|cfg> key add --from random` generates a key the same way. `--from /dev/urandom` still does, deprecated: it warns to use `--from random`.
+
 * **Act on the configuration you just wrote**: A configuration write answers with the timestamp the configuration now carries, in the `OM-Last-Modified` header of the `POST` and `PUT` on `/object/path/{namespace}/{kind}/{name}/config/file`, and every instance action accepts that timestamp as the `config_updated_at` parameter.
 
     An instance whose configuration is older than the one named answers `409 Conflict`, saying which configuration it holds, rather than running the action on the configuration the write was replacing. A write is acknowledged by the node that received it and reaches the peer nodes a moment later, so a client that writes a configuration and immediately acts on the instances would otherwise race that propagation, silently, on every node but one.
@@ -506,6 +525,25 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     A section runs the driver its own `type` names, or the default driver of
     its group, as in v2. `type` written in `DEFAULT` chose the driver of every
     section naming none, a way around the rule on the driver a section runs.
+
+* **A key of a datastore of another namespace is never seeded**
+
+    A datastore sharing its keys with a namespace, `share = <namespace>`,
+    lets the objects of that namespace read them. An install line naming a
+    `source` seeded the key missing of such a datastore, a write the share
+    did not grant. The seeding is refused, whatever the source, and the
+    validation of the configuration refuses an install line or an
+    `environment` reference naming a source for a key of a datastore of
+    another namespace. Seed the key from an object of the namespace of the
+    datastore, or add it there with `key add`.
+
+* **`source /dev/urandom` is a path, and refused**
+
+    An install line `source /dev/urandom` read the device as a file, and
+    never ended. A source is read when it is a regular file only, and the
+    error says to write `source random`, the generator, instead.
+    `key add --from /dev/urandom` keeps generating a password, deprecated in
+    favor of `--from random`.
 
 ### Commands
 

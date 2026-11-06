@@ -3,6 +3,7 @@ package restaskocibase
 import (
 	"embed"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/util/converters"
 )
@@ -163,12 +164,13 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/volume_mounts"),
 		},
 		{
-			Attr:      "Env",
-			Converter: converters.Shlex,
-			Example:   "SLIP=slob OC3_DB_PASSWORD from ./sec/oc3 key db_password",
-			Option:    "environment",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/environment"),
+			Attr:       "Env",
+			Converter:  converters.Shlex,
+			Example:    "SLIP=slob OC3_DB_PASSWORD from ./sec/oc3 key db_password source random",
+			Option:     "environment",
+			Scopable:   true,
+			Text:       keywords.NewText(fs, "text/kw/environment"),
+			KeySources: datarecv.EnvironmentKeySources,
 		},
 		{
 			Attr:       "ConfigsEnv",

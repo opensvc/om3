@@ -1,5 +1,6 @@
 A whitespace-separated list of variables: `<var>=<value>`, or
-`<var> from <path> key <key>` to read the value from the key of a sec or a cfg.
+`<var> from <path> key <key> [source <uri>]` to read the value from the key of
+a sec or a cfg.
 
 A shell expression splitter is applied, so double quotes can be around
 `<value>` only or whole `<var>=<value>`.
@@ -13,10 +14,36 @@ matching: `* from ./sec/oc3 key db_*` sets a variable named after each key
 starting with db_, and `OC3_* from ./cfg/oc3 key *` one per key, prefixed with
 OC3_.
 
+`source <uri>` seeds the key when the datastore does not hold it, so a template
+creates the secrets it reads:
+
+* `source random` generates a password, once, at the provision of the object on
+  its leader node, the datastore created in the namespace of the object if
+  needed. The other nodes wait for it to reach them. A start, a task run or a
+  provision not finding it fails, naming the key and the datastore: no node
+  makes one of its own. An object whose resources have nothing to provision,
+  as apps alone, is never provisioned, and its first start fails on the key
+  missing: give it a `fs.flag` resource, which the provision provisions.
+* an `http://` or `https://` uri is fetched, as the `node.allowed_urls` and SSRF
+  policies allow, at each provision and start of a node not finding the key.
+* any other uri is the path of a regular file of the node, read as the url is,
+  which requires the root grant. `/dev/urandom` is such a path, and refused as
+  no regular file: `source random` is the generator.
+
+A key the datastore holds is never written again, whatever the source, and an
+unprovision leaves it. A key two keywords of the object seed from two sources,
+and a key of a datastore of another namespace, are refused by the validation of
+the configuration.
+
+A reference ends after its key, or after its source: a bare `source` variable
+right after a reference is read as its source, so write it `source=` or before
+the reference.
+
 Example:
 
 	environment = SLIP=slob
-	    OC3_DB_PASSWORD from ./sec/oc3 key db_password
+	    OC3_DB_PASSWORD from ./sec/oc3 key db_password source random
 	    OC3_FOO from ./cfg/oc3 key bar
 
-A datastore or a key not existing is logged, and the variable not set.
+A datastore or a key not existing is logged, and the variable not set, but a
+key generated, `source random`, which is an error.

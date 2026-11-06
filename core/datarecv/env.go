@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/anmitsu/go-shlex"
+	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 )
@@ -14,8 +16,10 @@ import (
 type (
 	// EnvItem is an item of an environment keyword: a variable with its
 	// value, NAME=value, or a variable read from the key of a datastore,
-	// NAME from <path> key <key>. A * in the name of a reference stands for
-	// the key: with a key pattern, it names a variable per key matching.
+	// NAME from <path> key <key> [source <uri>]. A * in the name of a
+	// reference stands for the key: with a key pattern, it names a variable
+	// per key matching. The source seeds the key the datastore does not
+	// hold.
 	EnvItem struct {
 		Literal string
 		Name    string
@@ -52,6 +56,9 @@ func (t EnvItem) String() string {
 	if !t.IsRef() {
 		return t.Literal
 	}
+	if t.Ref.Source != "" {
+		return fmt.Sprintf("%s from %s key %s source %s", t.Name, t.Ref.Path, t.Ref.Key, t.Ref.Source)
+	}
 	return fmt.Sprintf("%s from %s key %s", t.Name, t.Ref.Path, t.Ref.Key)
 }
 
@@ -61,6 +68,12 @@ func (t EnvItem) String() string {
 // A word followed by "from" starts a reference, which no literal does: a
 // literal holds an "=", or is a bare name a container engine reads from its
 // own environment.
+//
+// A reference ends after its key, or after "source <uri>": so a bare name
+// "source" right after a reference, followed by another item, is read as
+// the source of the reference. It is written "source=" or moved before the
+// reference to be a variable. A "source" followed by "from" is the name of
+// the next reference, and one ending the list a bare name.
 func ParseEnvironment(items []string, namespace string) ([]EnvItem, error) {
 	l := make([]EnvItem, 0, len(items))
 	for i := 0; i < len(items); i++ {
@@ -91,8 +104,15 @@ func ParseEnvironment(items []string, namespace string) ([]EnvItem, error) {
 		default:
 			return nil, fmt.Errorf("%s: not a variable name", s)
 		}
-		l = append(l, EnvItem{Name: s, Ref: km})
 		i += 4
+		if i+2 < len(items) && items[i+1] == "source" && items[i+2] != "from" {
+			km.Source = items[i+2]
+			i += 2
+			if isPattern {
+				return nil, fmt.Errorf("%s from %s key %s source %s: a key pattern names no key to seed", s, km.Path, km.Key, km.Source)
+			}
+		}
+		l = append(l, EnvItem{Name: s, Ref: km})
 	}
 	return l, nil
 }
@@ -143,7 +163,10 @@ func (t EnvItem) Resolve() (env []string, secret bool, err error) {
 // NAME=value, in the order they are written, so the last of a name wins, and
 // the names of the ones read from a sec, whose values are secret.
 // A datastore or a key not existing is passed to missing, which says whether
-// it is an error, nil going on without it.
+// it is an error, nil going on without it. A key generated, "source random",
+// not existing is an error: the provision of the object generates it on its
+// leader node, and a variable going without it, or a password made here,
+// would differ from what the other nodes and the data hold.
 func Environment(items []string, namespace string, missing func(error) error) (env []string, secrets map[string]bool, err error) {
 	parsed, err := ParseEnvironment(items, namespace)
 	if err != nil {
@@ -153,7 +176,9 @@ func Environment(items []string, namespace string, missing func(error) error) (e
 	for _, item := range parsed {
 		l, isSecret, err := item.Resolve()
 		var e ErrEnvSourceMissing
-		if errors.As(err, &e) && missing != nil {
+		if errors.As(err, &e) && item.Ref.SourceIsRandom() {
+			return nil, nil, fmt.Errorf("%s: %w", item, object.ErrRandomKeyMissing{Path: item.Ref.Path, Key: item.Ref.Key})
+		} else if errors.As(err, &e) && missing != nil {
 			if err := missing(fmt.Errorf("%s: %w", item, err)); err != nil {
 				return nil, nil, err
 			}
@@ -188,4 +213,49 @@ func EnvironmentDatastores(items []string, namespace string) (naming.Paths, erro
 		}
 	}
 	return l, nil
+}
+
+// EnvironmentKeySources returns the keys the references of an environment
+// value seed from a source, the value evaluated, its relative datastore paths
+// being of the namespace given.
+func EnvironmentKeySources(value []string, namespace string) ([]keywords.KeySource, error) {
+	parsed, err := ParseEnvironment(value, namespace)
+	if err != nil {
+		return nil, err
+	}
+	l := make([]keywords.KeySource, 0)
+	for _, item := range parsed {
+		if item.IsRef() && item.Ref.Source != "" {
+			l = append(l, keywords.KeySource{Path: item.Ref.Path, Key: item.Ref.Key, Source: item.Ref.Source})
+		}
+	}
+	return l, nil
+}
+
+// EnvironmentHasLocalSource reports whether an environment value names a
+// source the server reads locally, as opposed to one it fetches over http or
+// generates, as IsLocalSource tells.
+//
+// A value the grammar refuses seeds nothing, as the resource refuses it at its
+// action, but is judged all the same, every word following "source" taken
+// for a source: what it means is not for the policy to guess.
+func EnvironmentHasLocalSource(s string) bool {
+	items, _ := shlex.Split(s, true)
+	// The namespace places the relative paths, which the source does not
+	// depend on.
+	parsed, err := ParseEnvironment(items, naming.NsRoot)
+	if err != nil {
+		for i, word := range items {
+			if word == "source" && i+1 < len(items) && IsLocalSource(items[i+1]) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, item := range parsed {
+		if item.IsRef() && item.Ref.Source != "" && IsLocalSource(item.Ref.Source) {
+			return true
+		}
+	}
+	return false
 }

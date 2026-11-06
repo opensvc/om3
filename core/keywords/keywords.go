@@ -160,6 +160,33 @@ type (
 		// copy keeping the array uuid assembles the template's array under
 		// its own name instead of making one.
 		Recorded bool
+
+		// KeySources, when set, returns the keys of a sec or a cfg the
+		// value names with a source to seed them from: the install lines
+		// and the environment references written "source <uri>". It is
+		// given the value evaluated, its relative datastore paths being of
+		// the namespace given, and errs on a value it cannot read, which
+		// the resource refuses at its action.
+		//
+		// The object reads them to refuse two keywords seeding a key from
+		// two sources, or a key of a datastore of another namespace, and
+		// to seed the keys missing at its provision and its start.
+		KeySources func(value []string, namespace string) ([]KeySource, error)
+	}
+
+	// KeySource is a key of a sec or a cfg a keyword names with the source
+	// seeding it when the datastore does not hold it.
+	KeySource struct {
+		// Path is the datastore.
+		Path naming.Path
+
+		// Key is the name of the key.
+		Key string
+
+		// Source is the uri the key is seeded from: an http or https url
+		// fetched, SourceRandom generated, or the path of a file of the
+		// node.
+		Source string
 	}
 
 	Store   []*Keyword
@@ -169,12 +196,21 @@ type (
 	Indices []Index
 )
 
+// SourceRandom is the source of a key generated: a random password the
+// provision of the object writes once, on its leader node.
+const SourceRandom = "random"
+
 const (
 	InheritLeaf2Head Inherit = iota
 	InheritHead2Leaf
 	InheritLeaf
 	InheritHead
 )
+
+// IsRandom says the key is generated rather than read from a source.
+func (t KeySource) IsRandom() bool {
+	return t.Source == SourceRandom
+}
 
 func (t Inherit) String() string {
 	switch t {

@@ -3,6 +3,7 @@ package rescontainerlxc
 import (
 	"embed"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -86,6 +87,7 @@ var (
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_environment"),
+			KeySources:   datarecv.EnvironmentKeySources,
 		},
 		{
 			Attr:      "RCmd",

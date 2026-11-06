@@ -52,10 +52,24 @@ Where:
 
 * `source <uri>`
   * seed the datastore key with the content of `<uri>`, as it is written: a template is stored as a template.
-  * the key is seeded by the install of the resource, at its start, its provision or its task run, when the
-    datastore does not hold it. A key already there is left as it is.
+  * the key is seeded at the provision and the start of the object, and by the install of the resource, at its
+    start, its provision or its task run, when the datastore does not hold it. A key already there is never
+    written again, whatever the source, and an unprovision leaves it.
+  * `source random` generates a password, once, at the provision of the object on its leader node, the datastore
+    created in the namespace of the object if needed. The other nodes wait for it to reach them. An install not
+    finding it fails, required or not, naming the key and the datastore: no node makes one of its own. An object
+    whose resources have nothing to provision, as apps alone, is never provisioned, and its first start fails on
+    the key missing: give it a `fs.flag` resource, which the provision provisions.
+  * a source seeds a key named: it is refused with a key pattern, as `key conf/*`, which names no key to seed.
+    `source random` is refused in the datastores of a pattern, as `from ./sec/haproxy-*`, as a datastore made
+    later would never have its key: add the key with each datastore. An `http://`, `https://` or file uri seeds
+    the datastores the pattern matches, at each install.
   * an `http://` or `https://` uri is fetched, as the `node.allowed_urls` and SSRF policies allow. Any other uri is
-    the path of a file of the node.
+    the path of a regular file of the node, which requires the root grant. `/dev/urandom` is such a path, and
+    refused as no regular file: `source random` is the generator.
+  * a key two keywords of the object seed from two sources, an install line and an `environment` reference
+    included, and a key of a datastore of another namespace, which shares its keys for the object to read them,
+    are refused by the validation of the configuration.
   * the write of a key refreshes the services installing from the datastore, on every node it reaches: a refresh
     installs what the datastore holds, and seeds no key.
 

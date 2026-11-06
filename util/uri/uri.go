@@ -30,6 +30,27 @@ var (
 	ErrFromEmpty   = errors.New("from is empty")
 )
 
+const (
+	// FromRandom is the from generating a random password, as the
+	// "source random" of an install line or an environment reference.
+	FromRandom = "random"
+
+	// fromURandom is the from "key add" took for a generator before
+	// FromRandom. It still generates, deprecated: everywhere else a source
+	// naming /dev/urandom is the path it names.
+	fromURandom = "/dev/urandom"
+)
+
+// DeprecatedFrom says a from is deprecated, and returns the one to use
+// instead, for the command to warn of: /dev/urandom, which reads as a path
+// and generates a password, is FromRandom.
+func DeprecatedFrom(from string) (string, bool) {
+	if from == fromURandom {
+		return FromRandom, true
+	}
+	return "", false
+}
+
 func New(s string) T {
 	return T{
 		uri: s,
@@ -113,8 +134,8 @@ func ReadAllFrom(from string) (map[string][]byte, error) {
 		return nil, ErrFromEmpty
 	case "-", "stdin", "/dev/stdin":
 		return readAllFromStdin()
-	case "/dev/urandom":
-		return readFromURandom()
+	case FromRandom, fromURandom:
+		return readFromRandom()
 	default:
 		u := New(from)
 		if u.IsValidHttp() {
@@ -200,7 +221,7 @@ func readAllFromStdin() (map[string][]byte, error) {
 	return m, fmt.Errorf("stdin must be a pipe")
 }
 
-func readFromURandom() (map[string][]byte, error) {
+func readFromRandom() (map[string][]byte, error) {
 	m := make(map[string][]byte)
 	m[""] = random.Password(32, nil)
 	return m, nil

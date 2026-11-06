@@ -744,7 +744,7 @@ func FlagUpdateUnset(flags *pflag.FlagSet, p *[]string) {
 }
 
 func FlagFrom(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin, /dev/urandom)")
+	flags.StringVar(p, "from", "", "the key value source: an uri, a file, a directory, /dev/stdin, or random for a generated password")
 }
 
 func FlagKeyName(flags *pflag.FlagSet, p *string) {

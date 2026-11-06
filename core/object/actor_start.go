@@ -29,6 +29,11 @@ func (t *actor) lockedStart(ctx context.Context) error {
 	if err := file.Touch(t.lastStartFile(), time.Now()); err != nil {
 		return err
 	}
+	// A start seeds the keys missing a source names, but generates none:
+	// the resource reading a key generated fails on its absence.
+	if err := t.seedKeySources(ctx, false); err != nil {
+		return err
+	}
 	return t.action(ctx, resource.Start)
 }
 

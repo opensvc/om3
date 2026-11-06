@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/datastore"
-	"github.com/opensvc/om3/v3/util/uri"
 )
 
 type (
@@ -59,7 +58,7 @@ func (t *CmdObjectKeyChange) Run(kind string) error {
 			if t.From == nil {
 				return nil, fmt.Errorf("value or value source mut be specified for a change action")
 			}
-			m, err := uri.ReadAllFrom(*t.From)
+			m, err := commoncmd.ReadKeysFrom(*t.From)
 			if err != nil {
 				return nil, err
 			}
