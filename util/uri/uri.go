@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/file"
@@ -155,33 +156,64 @@ func ReadAllFrom(from string) (map[string][]byte, error) {
 	}
 }
 
-func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
-	dialer := &net.Dialer{}
+// maxRedirects is how many redirects a fetch follows.
+const maxRedirects = 5
 
+// pinnedClient returns a client dialing only the addresses the policy
+// accepted: the one of the url fetched, and the one of each redirect target,
+// checked as it comes. A host resolved again at dial time could answer with
+// another address than the one checked.
+//
+// A redirect is followed when enabled, at most maxRedirects times, never
+// from https to http, its target held to the cidr lists and not to the url
+// lists: the url lists judge the url a configuration names, and where that
+// source keeps its content, as the storage a release download redirects to,
+// is the source's to say.
+func pinnedClient(policy *httppolicy.T, rawURL string, ip net.IP, port string, enableRedirects bool) (*http.Client, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	var mu sync.Mutex
+	pinned := map[string]string{
+		net.JoinHostPort(u.Hostname(), port): net.JoinHostPort(ip.String(), port),
+	}
+	dialer := &net.Dialer{}
 	transport := &http.Transport{
-		DialContext: func(
-			ctx context.Context,
-			network, _ string,
-		) (net.Conn, error) {
-			return dialer.DialContext(
-				ctx,
-				network,
-				net.JoinHostPort(ip.String(), port),
-			)
+		Proxy: nil,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			mu.Lock()
+			target, ok := pinned[addr]
+			mu.Unlock()
+			if !ok {
+				return nil, fmt.Errorf("dial %s: not an address the policy accepted", addr)
+			}
+			return dialer.DialContext(ctx, network, target)
 		},
 	}
-
 	client := &http.Client{
 		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if !enableRedirects {
+				return http.ErrUseLastResponse
+			}
+			if len(via) >= maxRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxRedirects)
+			}
+			if via[len(via)-1].URL.Scheme == "https" && req.URL.Scheme != "https" {
+				return fmt.Errorf("redirect from https to %s refused", req.URL.Scheme)
+			}
+			ip, port, err := policy.CheckRedirect(req.URL.String())
+			if err != nil {
+				return fmt.Errorf("redirect to %s: %w", req.URL.Redacted(), err)
+			}
+			mu.Lock()
+			pinned[net.JoinHostPort(req.URL.Hostname(), port)] = net.JoinHostPort(ip.String(), port)
+			mu.Unlock()
+			return nil
+		},
 	}
-
-	if !enableRedirects {
-		// Never follow redirects.
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
-	return client
+	return client, nil
 }
 
 // ClusterSources returns the urls and the address ranges the cluster allows on
@@ -190,23 +222,29 @@ func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
 // cluster, the policy of the node is the whole of it.
 var ClusterSources func() (urls, cidrs []string)
 
-func checkHttpUrl(s string) (net.IP, string, error) {
+// ssrfPolicy returns the policy of this node, with the sources the cluster
+// allows on top.
+func ssrfPolicy() *httppolicy.T {
 	urls, cidrs := rawconfig.SSRFAllowedURL, rawconfig.SSRFAllowedCIDR
 	if ClusterSources != nil {
 		moreURLs, moreCIDRs := ClusterSources()
 		urls = append(slices.Clone(urls), moreURLs...)
 		cidrs = append(slices.Clone(cidrs), moreCIDRs...)
 	}
-	policy := httppolicy.New(urls, rawconfig.SSRFBlockedURL, cidrs, rawconfig.SSRFBlockedCIDR)
-	return policy.Check(s)
+	return httppolicy.New(urls, rawconfig.SSRFBlockedURL, cidrs, rawconfig.SSRFBlockedCIDR)
+}
+
+func checkHttpUrl(s string) (net.IP, string, error) {
+	return ssrfPolicy().Check(s)
 }
 
 func safeHttpClient(s string) (*http.Client, error) {
-	ip, port, err := checkHttpUrl(s)
+	policy := ssrfPolicy()
+	ip, port, err := policy.Check(s)
 	if err != nil {
 		return nil, err
 	}
-	return clientForIP(ip, port, rawconfig.SSRFEnableRedirects), nil
+	return pinnedClient(policy, s, ip, port, rawconfig.SSRFEnableRedirects)
 }
 
 func readAllFromStdin() (map[string][]byte, error) {

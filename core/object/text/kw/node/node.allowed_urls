@@ -4,3 +4,10 @@ allows, as patterns: `https://cloud-images.ubuntu.com/*`.
 They are for all that fetches a url on a node: the image of a virtual machine, the
 source of a key. What is fetched ends up where the users of the cluster can read
 it, the ones with no root grant included, so these are to be sources root trusts.
+
+A url allowed is trusted wherever it redirects to, the address of each
+redirect target held to the address ranges all the same: a release download,
+`https://github.com/<owner>/<repo>/releases/*`, needs no pattern for the
+storage it redirects to. What the opensvc organization publishes,
+`https://raw.githubusercontent.com/opensvc/*` and
+`https://github.com/opensvc/*/releases/*`, is allowed with no pattern.

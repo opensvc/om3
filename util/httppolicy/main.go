@@ -44,6 +44,20 @@ func New(allowedURL, blockedURL, allowedCIDR, blockedCIDR []string) *T {
 // Check validates the given rawURL, resolves its IP, determines its port, and ensures it complies with set rules.
 // The accepted ip, port is returned to prevent TOCTOU bugs.
 func (t *T) Check(rawURL string) (ip net.IP, port string, err error) {
+	return t.check(rawURL, true)
+}
+
+// CheckRedirect validates the target of a redirect served by a url Check
+// accepted: its addresses are held to the cidr lists, as every request is,
+// and its url is not held to the url lists. The url lists say which sources
+// an operator trusts, by the url a configuration names; where that source
+// keeps its content, as the storage a release download redirects to, is the
+// source's to say. An address blocked is refused whatever redirects to it.
+func (t *T) CheckRedirect(rawURL string) (ip net.IP, port string, err error) {
+	return t.check(rawURL, false)
+}
+
+func (t *T) check(rawURL string, checkURL bool) (ip net.IP, port string, err error) {
 	if t == nil {
 		return nil, "", fmt.Errorf("unexpected validator")
 	}
@@ -63,8 +77,10 @@ func (t *T) Check(rawURL string) (ip net.IP, port string, err error) {
 		return nil, "", err
 	}
 
-	if err := rejectURL(parsedURL, t.AllowedUrl, t.BlockedUrl); err != nil {
-		return nil, "", err
+	if checkURL {
+		if err := rejectURL(parsedURL, t.AllowedUrl, t.BlockedUrl); err != nil {
+			return nil, "", err
+		}
 	}
 
 	allowedNets := parseBlockedCIDRs(t.AllowedCIDR)
