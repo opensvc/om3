@@ -88,6 +88,10 @@ Where:
   * the file is written aside and renamed in place once whole, so a fetch failing leaves the file fetched before.
     A fetch over `node.max_install_size`, announced or sent, fails naming the url. `sha256 <hex>` fails a fetch whose
     content is of another sha256.
+  * a file kept is checked, at each install, against the `sha256` of the line, else the digest its mark holds,
+    else the one the node recorded at its fetch: a file written over since, by a user of the volume or an
+    upload a volume keeping no mark let in, is fetched again, with a warning. The file stays root's, readable
+    by root alone, until it takes its place, its owner and mode given then.
   * the file is marked installed from the url: an upload does not replace it, and a delete is allowed. A line taken
     away from `install` removes its file, as long as it is the one fetched.
   * a refresh of the datastores, at the write of a key, fetches nothing.

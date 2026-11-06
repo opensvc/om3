@@ -267,6 +267,10 @@ func (t *DataRecv) installFetch(ctx context.Context, head string, fd fetchDefini
 		}
 		t.to.Log().Infof("remove the empty directory %s to install the file fetched from %s", dst, fd.URL)
 	case t.isFetched(tree, dst, info, fd):
+		if reason := t.changedSinceFetched(tree, dst, fd); reason != "" {
+			t.to.Log().Warnf("%s: fetch it again from %s", reason, fd.URL)
+			break
+		}
 		return false, t.keepFetched(tree, dst, info, fd)
 	}
 	if err := t.makeFetchDir(tree, filepath.Dir(dst)); err != nil {
@@ -373,10 +377,97 @@ func (t *DataRecv) fetch(ctx context.Context, head string, fd fetchDefinition) e
 	if fd.SHA256 != "" {
 		r = &checksumReader{r: r, h: sha256.New(), want: fd.SHA256}
 	}
+	h := sha256.New()
+	r = io.TeeReader(r, h)
 	t.to.Log().Infof("fetch %s to %s with owner %s:%s perm %v", fd.URL, filepath.Join(head, fd.Path), fd.User, fd.Group, fd.Perm)
 	rel := strings.TrimPrefix(fd.Path, "/")
 	m := volfile.InstallMark{From: fd.URL, At: time.Now()}
-	return volfile.Install(head, path.Dir(rel), path.Base(rel), r, m, fd.Perm, uid, gid)
+	if err := volfile.Install(head, path.Dir(rel), path.Base(rel), r, m, fd.Perm, uid, gid); err != nil {
+		return err
+	}
+	return t.recordFetched(fd, hex.EncodeToString(h.Sum(nil)))
+}
+
+// fetchedRecord is what a node records of a file it fetched: the url, and the
+// digest of the content written. A volume holding no mark, as a filesystem
+// with no extended attributes, is checked against it.
+type fetchedRecord struct {
+	URL    string `json:"url"`
+	SHA256 string `json:"sha256"`
+}
+
+func (t *DataRecv) fetchedFile() string {
+	if f := t.installFilesFile(); f != "" {
+		return f + "_fetched"
+	}
+	return ""
+}
+
+func (t *DataRecv) readFetched() map[string]fetchedRecord {
+	m := make(map[string]fetchedRecord)
+	if f := t.fetchedFile(); f != "" {
+		if b, err := os.ReadFile(f); err == nil {
+			_ = json.Unmarshal(b, &m)
+		}
+	}
+	return m
+}
+
+// recordFetched records the digest of the file the line fetched.
+func (t *DataRecv) recordFetched(fd fetchDefinition, digest string) error {
+	f := t.fetchedFile()
+	if f == "" {
+		return nil
+	}
+	m := t.readFetched()
+	m[fd.Path] = fetchedRecord{URL: fd.URL, SHA256: digest}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(f), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(f, b, 0o600)
+}
+
+// changedSinceFetched says why the file at dst is not the content the line
+// fetched, empty when it is: the digest the line names, else the one of the
+// mark, else the one this node recorded, of the same url. A file written
+// over, by a user of the volume or an upload a volume with no mark let in,
+// is fetched again rather than served as the url's. A file of no known
+// digest, fetched before one was recorded, is kept.
+func (t *DataRecv) changedSinceFetched(tree *confined.Tree, dst string, fd fetchDefinition) string {
+	want := fd.SHA256
+	if want == "" {
+		if b, err := tree.GetXattr(dst, volfile.InstallAttr); err == nil {
+			var m volfile.InstallMark
+			if json.Unmarshal(b, &m) == nil && m.From == fd.URL {
+				want = m.SHA256
+			}
+		}
+	}
+	if want == "" {
+		if r, ok := t.readFetched()[fd.Path]; ok && r.URL == fd.URL {
+			want = r.SHA256
+		}
+	}
+	if want == "" {
+		return ""
+	}
+	f, err := tree.Open(dst)
+	if err != nil {
+		return fmt.Sprintf("%s can not be read: %s", dst, err)
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return fmt.Sprintf("%s can not be read: %s", dst, err)
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); got != want {
+		return fmt.Sprintf("%s changed since it was fetched, sha256 %s expected, got %s", dst, want, got)
+	}
+	return ""
 }
 
 func (t *cappedReader) Read(p []byte) (int, error) {
