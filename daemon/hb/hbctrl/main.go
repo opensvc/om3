@@ -59,7 +59,7 @@ type (
 		txBeating   int
 		rxBeating   int
 		cancel      map[string]func()      // cancel function of hbID peer watcher for the remote
-		beatingChan map[string]chan<- bool // beating bool chan of hbID for the remote
+		beatingChan map[string]chan bool // beating mailbox of hbID for the remote, see sendLatest
 
 		// watcher is the id of the hbID peer watcher for the remote: an
 		// event of another watcher of hbID, deleted, is not counted.
@@ -321,9 +321,7 @@ func (c *C) run() {
 				if remote, ok := remotes[o.Nodename]; ok {
 					k := o.HbID
 					if beatC, found := remote.beatingChan[k]; found {
-						go func() {
-							beatC <- o.Success
-						}()
+						sendLatest(beatC, o.Success)
 					}
 				}
 			case CmdEvent:
@@ -406,7 +404,7 @@ func (c *C) run() {
 				peerNode := o.Nodename
 				remote, ok := remotes[peerNode]
 				if !ok {
-					remote.beatingChan = make(map[string]chan<- bool)
+					remote.beatingChan = make(map[string]chan bool)
 					remote.cancel = make(map[string]func())
 					remote.watcher = make(map[string]uint64)
 					remote.beating = make(map[string]bool)
@@ -436,7 +434,7 @@ func (c *C) run() {
 					continue
 				}
 				c.log.Infof("watcher starting %s -> %s", hbID, peerNode)
-				beatingC := make(chan bool)
+				beatingC := make(chan bool, 1)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
 				watcherSeq++
 				remote.cancel[hbID] = cancel
@@ -459,4 +457,23 @@ func (c *C) run() {
 			}
 		}
 	}
+}
+
+// sendLatest puts v in the mailbox c, a channel of capacity 1 this loop alone
+// sends to, replacing a value its watcher has not read yet. The watcher reads
+// the values in the order they are sent, the last one always, and the loop
+// never waits for it: a suspended stream reporting its peers not beating is
+// not overtaken by a beat it reported before, as a value delivered by its own
+// goroutine could be.
+func sendLatest(c chan bool, v bool) {
+	select {
+	case c <- v:
+		return
+	default:
+	}
+	select {
+	case <-c:
+	default:
+	}
+	c <- v
 }
