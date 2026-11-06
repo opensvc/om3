@@ -119,8 +119,12 @@ func (a *DaemonAPI) GetInstanceFiles(ctx echo.Context, nodename, namespace strin
 		if f.Type == volfile.TypeLink {
 			items[i].Target = &f.Target
 		}
+		// A file fetched from a url has no key.
 		if m := f.Installed; m != nil {
-			items[i].InstalledFrom, items[i].InstalledKey, items[i].InstalledAt = &m.From, &m.Key, &m.At
+			items[i].InstalledFrom, items[i].InstalledAt = &m.From, &m.At
+			if m.Key != "" {
+				items[i].InstalledKey = &m.Key
+			}
 		}
 	}
 	return ctx.JSON(http.StatusOK, api.VolumeFileList{Kind: "VolumeFileList", Items: items, Truncated: l.Truncated})
@@ -155,12 +159,13 @@ func (a *DaemonAPI) PostInstanceFile(ctx echo.Context, nodename, namespace strin
 		return err
 	}
 	replace := params.Replace != nil && *params.Replace
-	// An install of a datastore writes the file: changing it is changing
-	// the key, which an upload does not, replace or not.
+	// An install writes the file, from the key of a datastore or a url:
+	// changing it is changing the key or the url, which an upload does
+	// not, replace or not.
 	if m, ok, err := volfile.Installed(head, dir, params.Name); err != nil {
 		return volfileProblem(ctx, err, "Stat file")
 	} else if ok {
-		return JSONProblemf(ctx, http.StatusConflict, "Installed file", "%s is installed from %s key %s: change the key", params.Name, m.From, m.Key)
+		return JSONProblemf(ctx, http.StatusConflict, "Installed file", "%s", volfile.InstalledReason(params.Name, m))
 	}
 	// Asked again as the transfer ends, for a file created meanwhile.
 	info, err := volfile.Lstat(head, dir, params.Name)

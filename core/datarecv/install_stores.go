@@ -102,7 +102,8 @@ func (t patternLines) line(id string) (patternLine, bool) {
 // ValidateInstall says whether the install lines of value are ones the
 // install takes, as far as the lines naming datastores by a pattern go: their
 // pattern, and the * of their destination, the files of the datastores
-// having to be told apart.
+// having to be told apart. A line fetching its file from a url is held to
+// fetchLineErr: an https url, a file, and no key nor template.
 func ValidateInstall(value string) error {
 	i, err := converters.Shlex.Convert(value)
 	if err != nil {
@@ -110,6 +111,12 @@ func ValidateInstall(value string) error {
 	}
 	words, _ := i.([]string)
 	for _, line := range Split(words) {
+		if isFetchLine(line) {
+			if err := fetchLineErr(line); err != nil {
+				return err
+			}
+			continue
+		}
 		idx := slices.Index(line, "from")
 		if idx < 0 || idx+1 >= len(line) {
 			continue

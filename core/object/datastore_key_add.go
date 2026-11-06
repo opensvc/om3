@@ -76,12 +76,12 @@ func (t *dataStore) addKey(name string, b []byte) error {
 	if b == nil {
 		b = []byte{}
 	}
-	keysize, err := t.node.mergedConfig.GetSizeStrict(key.New("node", "max_key_size"))
+	keysize, err := t.maxKeySize()
 	if err != nil {
 		return err
 	}
-	if int64(len(b)) > *keysize {
-		return ValueTooBig(int64(len(b)), *keysize)
+	if int64(len(b)) > keysize {
+		return ValueTooBig(int64(len(b)), keysize)
 	}
 	s, err := t.encodeDecoder.Encode(b)
 	if err != nil {
@@ -99,6 +99,15 @@ func (t *dataStore) addKey(name string, b []byte) error {
 		t.log.Attr("key", name).Attr("len", len(s)).Infof("set key %s", name)
 	}
 	return nil
+}
+
+// maxKeySize returns the most a key value holds, node.max_key_size.
+func (t *dataStore) maxKeySize() (int64, error) {
+	v, err := t.node.mergedConfig.GetSizeStrict(key.New("node", "max_key_size"))
+	if err != nil {
+		return 0, err
+	}
+	return *v, nil
 }
 
 // ValueTooBig is the error of a key value of size bytes, over the max allowed

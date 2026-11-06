@@ -233,7 +233,7 @@ func TestSeedKeyOtherNamespace(t *testing.T) {
 	require.True(t, ds.Allow("dev"))
 
 	p := naming.Path{Namespace: "dev", Kind: naming.KindSvc, Name: "web"}
-	err = object.SeedKey(ds, "pw", keywords.SourceRandom, plog.NewDefaultLogger(), p, "")
+	err = object.SeedKey(context.Background(), ds, "pw", keywords.SourceRandom, plog.NewDefaultLogger(), p, "")
 	require.ErrorIs(t, err, object.ErrSeedOtherNamespace)
 	assert.False(t, object.HasDataStoreKey(other, "pw"))
 
@@ -260,7 +260,7 @@ func TestSeedKeyNotRegular(t *testing.T) {
 	p := naming.Path{Namespace: "dev", Kind: naming.KindSvc, Name: "web"}
 	for _, source := range []string{"/dev/urandom", "/dev/null", fifo, link, dir} {
 		done := make(chan error, 1)
-		go func() { done <- object.SeedKey(ds, "k", source, plog.NewDefaultLogger(), p, "") }()
+		go func() { done <- object.SeedKey(context.Background(), ds, "k", source, plog.NewDefaultLogger(), p, "") }()
 		select {
 		case err := <-done:
 			require.ErrorIs(t, err, object.ErrSourceNotRegular, source)

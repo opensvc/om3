@@ -130,6 +130,17 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     `om|ox <sec|cfg> key add --from random` generates a key the same way. `--from /dev/urandom` still does, deprecated: it warns to use `--from random`.
 
+    A key seeded from an url is fetched as long as the action seeding it lasts, and holds `node.max_key_size` at most: a body announced or sent larger fails the fetch, rather than being read whole for the key add to refuse it.
+
+* **An install line fetches a file from an url, with no datastore**: a file too large for a key, as the web ui of an application, is fetched straight into the volume:
+
+    ```
+    [volume#1]
+    install = /web/html/index.html.gz required source https://github.com/opensvc/oc3-frontend/releases/latest/download/index.html.gz
+    ```
+
+    The url is an `https://` one, for the root grant too: a line naming no datastore with any other source, an `http://` url, a path or `random`, is refused, and so are a `key`, a `template` and a destination ending with a `/`. Such a line made a directory of the name of the file before, the url ignored. The file is fetched by a start, a provision or an install when it is missing or its url changed, and a start finding the file of the url fetches nothing: a url naming the latest release is fetched again once the file is deleted, or the url changed for the one of a version. The file is written aside and renamed in place, so a fetch failing leaves the file fetched before. A fetch holds the new `node.max_install_size`, `64mb` by default, at most, and `sha256 <hex>` refuses a content of another checksum. The file is marked installed from the url: the volume file listing says so in `installed_from`, with no `installed_key`, and an upload does not replace it, the `409` naming the url to change.
+
 * **Act on the configuration you just wrote**: A configuration write answers with the timestamp the configuration now carries, in the `OM-Last-Modified` header of the `POST` and `PUT` on `/object/path/{namespace}/{kind}/{name}/config/file`, and every instance action accepts that timestamp as the `config_updated_at` parameter.
 
     An instance whose configuration is older than the one named answers `409 Conflict`, saying which configuration it holds, rather than running the action on the configuration the write was replacing. A write is acknowledged by the node that received it and reaches the peer nodes a moment later, so a client that writes a configuration and immediately acts on the instances would otherwise race that propagation, silently, on every node but one.

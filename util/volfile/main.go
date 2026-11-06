@@ -143,13 +143,24 @@ const (
 	InstallAttr = "user.opensvc.install"
 )
 
-// InstallMark is what a file a datastore install writes is marked with: the
-// datastore, its key, and when. An upload does not replace such a file, which
-// the next install would write again: the key is what to change.
+// InstallMark is what a file an install writes is marked with: the datastore
+// and its key, or the url fetched, which has no key, and when. An upload does
+// not replace such a file, which the next install would write again: the key,
+// or the url, is what to change.
 type InstallMark struct {
 	From string    `json:"from"`
-	Key  string    `json:"key"`
+	Key  string    `json:"key,omitempty"`
 	At   time.Time `json:"at"`
+}
+
+// InstalledReason says why an upload does not replace the installed file of
+// the name, and what to change instead: the key of the datastore it is
+// written from, or the url it is fetched from.
+func InstalledReason(name string, m InstallMark) string {
+	if m.Key == "" {
+		return fmt.Sprintf("%s is installed from %s: change the source url", name, m.From)
+	}
+	return fmt.Sprintf("%s is installed from %s key %s: change the key", name, m.From, m.Key)
 }
 
 // Lock takes the lock of the volume mounted on head an upload ending and an
@@ -185,7 +196,7 @@ func lockRoot(root *os.Root) (func(), error) {
 
 // installedError says why an upload does not replace an installed file.
 func installedError(name string, m InstallMark) error {
-	return fmt.Errorf("%w: %s is installed from %s key %s: change the key", ErrInstalled, name, m.From, m.Key)
+	return fmt.Errorf("%w: %s", ErrInstalled, InstalledReason(name, m))
 }
 
 // Installed returns the mark of the install of the entry of the name in the
@@ -387,11 +398,10 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 	sweep(root)
 	// A name of its own: transfers run in processes of their own, two of a
 	// same file at once included, the last one ending being the one kept.
-	suffix := make([]byte, 8)
-	if _, err := rand.Read(suffix); err != nil {
+	tmp, err := tempName()
+	if err != nil {
 		return err
 	}
-	tmp := uploadPrefix + hex.EncodeToString(suffix)
 	p := path.Join(dir, name)
 	var held int64
 	if size >= 0 {
@@ -446,6 +456,83 @@ func Write(head, dir, name string, r io.Reader, size int64, upload Upload) (err 
 	}
 	_ = root.Remove(tmp)
 	return nil
+}
+
+// tempName returns a name a file is written under until it is complete, at
+// the top of the volume: a name of its own, as the other transfers write
+// there too.
+func tempName() (string, error) {
+	suffix := make([]byte, 8)
+	if _, err := rand.Read(suffix); err != nil {
+		return "", err
+	}
+	return uploadPrefix + hex.EncodeToString(suffix), nil
+}
+
+// Install writes r to the file of the name in the directory of the volume
+// mounted on head, as an install fetching it from a url does: the file is
+// marked with m, and given perm and the owner uid and gid, -1 leaving the
+// one of the agent.
+//
+// The file is written aside, at the top of the volume under the name a
+// transfer takes, which a listing hides and the count of what the volume
+// holds sees, and renamed over the file of the name once complete: what
+// reads it sees the former file or the new one, never part of one. A reader
+// failing, as a fetch cut, found over its size or not of its checksum, leaves
+// the former file as it is, and nothing aside.
+//
+// The owner, the mode and the mark are set on the file opened, never through
+// a path a link of the volume could lead elsewhere, and the rename holds the
+// lock of the volume an upload ending looks for the mark under: none replaces
+// the file in between. A link of the name is replaced, not followed. The
+// directory is to exist: an install makes it, with the mode and the owner
+// its line says.
+func Install(head, dir, name string, r io.Reader, m InstallMark, perm fs.FileMode, uid, gid int) (err error) {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\x00") {
+		return fmt.Errorf("install %q: not a file name", name)
+	}
+	root, err := openRoot(head, dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	sweep(root)
+	tmp, err := tempName()
+	if err != nil {
+		return err
+	}
+	f, err := root.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = root.Remove(tmp)
+		}
+	}()
+	_, err = io.Copy(f, r)
+	// The owner first: a chown drops the setuid and setgid bits.
+	if err == nil {
+		err = f.Chown(uid, gid)
+	}
+	if err == nil {
+		err = f.Chmod(perm)
+	}
+	if err == nil {
+		setInstallMark(f, m)
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return err
+	}
+	unlock, err := lockRoot(root)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return root.Rename(tmp, path.Join(dir, name))
 }
 
 // fitsAtEnd says what the volume holds now, the files the other transfers

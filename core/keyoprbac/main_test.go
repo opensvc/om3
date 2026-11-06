@@ -106,6 +106,9 @@ func TestDeniedByValue(t *testing.T) {
 		{"volume#1", "install", "/etc/nginx.conf from ./cfg/c mode 0640 user 101", false},
 		{"volume#1", "install", "/run/pw from ./sec/s key pw source random", false},
 		{"volume#1", "install", "/run/pw from ./sec/s key pw source /dev/urandom", true},
+		{"volume#1", "install", "/web/html/index.html.gz required source https://github.com/opensvc/oc3-frontend/releases/latest/download/index.html.gz", false},
+		{"volume#1", "install", "/web/index.html source /srv/www/index.html", true},
+		{"volume#1", "install", "/bin/tool source https://example.com/tool mode 4755 user 0", true},
 
 		{"container#1", "environment", "A=1 PW from ./sec/s key pw", false},
 		{"container#1", "environment", "PW from ./sec/s key pw source random", false},

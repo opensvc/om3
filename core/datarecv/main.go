@@ -100,8 +100,12 @@ type (
 		report bool
 
 		// sourceErrs are the lines of the last parse whose source the
-		// grammar refuses, see sourceLineErr.
+		// grammar refuses, see sourceLineErr and fetchLineErr.
 		sourceErrs []error
+
+		// fetches are the lines of the last parse fetching a file from a
+		// url, naming no datastore.
+		fetches []fetchDefinition
 	}
 
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
@@ -176,6 +180,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		/init/backup from ./cfg/{name} key init/backup mode 0755 source /tmp/scripts/backup.sh
 		/run/secrets/db_password from ./sec/{name} key db_password source random
 		/init/config.sh from ./cfg/{name} key init/config.sh mode 0755 source https://example.com/templates/config.sh template
+		/web/html/index.html.gz required source https://github.com/opensvc/oc3-frontend/releases/latest/download/index.html.gz
 		/data/`,
 			Option:     "install",
 			Scopable:   true,
@@ -514,6 +519,7 @@ func (t *DataRecv) Status() {
 	head := t.to.Head()
 	dirs, _, patterns := t.getInstallLines(head)
 	t.statusDirs(head, dirs)
+	t.statusFetches(head)
 	for _, l := range patterns {
 		if l.required && l.matched == 0 {
 			t.to.StatusLog().Warn("no datastore matches %s: missing ...%s", l.pattern, l.dest)
@@ -583,7 +589,9 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	// naming it by a pattern are gone with it, and their files are removed
 	// with the lines no longer configured.
 	gone := !from.Path().Exists()
-	ids := make([]string, 0, len(files))
+	// A refresh fetches nothing: the files of the lines fetching them stay
+	// as they are.
+	ids := t.fetchIDs()
 
 	for _, md := range files {
 		ids = append(ids, installLineID(md))
@@ -673,7 +681,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	t.to.Log().Tracef("install: files: %s", files)
 
 	if head == "" {
-		if len(dirs)+len(files) == 0 {
+		if len(dirs)+len(files)+len(t.fetches) == 0 {
 			// ignore empty head when nothing to install
 			// example: volume on pool loop
 			t.to.Log().Tracef("install skipped (empty head)")
@@ -771,7 +779,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		// keys lets the object read them, and is not seeded.
 		if md.Source != "" && md.FromPattern != "" {
 			if !dataStore.HasKey(md.FromPattern) {
-				if err := object.SeedKey(dataStore, md.FromPattern, md.Source, t.to.Log(), path, t.rid()); err != nil {
+				if err := object.SeedKey(ctx, dataStore, md.FromPattern, md.Source, t.to.Log(), path, t.rid()); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -800,6 +808,27 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 		if fileChanged {
 			signals.Merge(md.Signals)
+			changed = true
+		}
+	}
+
+	for _, fd := range t.fetches {
+		ids = append(ids, fd.lineID())
+		fetched, err := t.installFetch(ctx, head, fd)
+		if err != nil {
+			if fd.Required {
+				return false, err
+			}
+			t.to.Log().Warnf("%s", err)
+			// The file of the url the line named before, the url
+			// changed, stays until one of the new url replaces it.
+			ids = append(ids, t.linesHolding(fd.Path)...)
+			continue
+		}
+		t.pruneInstallLine(head, fd.lineID(), []string{fd.Path})
+		if fetched {
+			installed = appendNew(installed, fd.Path)
+			signals.Merge(fd.Signals)
 			changed = true
 		}
 	}
@@ -893,6 +922,7 @@ func (t *DataRecv) parseInstall(head string, path naming.Path) ([]dirDefinition,
 // matching, and returns these lines too.
 func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefinition, []object.KVInstall, patternLines) {
 	t.sourceErrs = nil
+	t.fetches = nil
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
 	patterns := make(patternLines, 0)
@@ -1095,10 +1125,20 @@ func (t *DataRecv) parseInstallLines(head string, path naming.Path) ([]dirDefini
 		patterns = append(patterns, pl)
 	}
 
+	// A line naming a datastore installs its keys, one naming a source and
+	// no datastore fetches its file from the url, and any other is a
+	// directory.
 	for _, line := range Split(t.Install) {
-		if slices.Contains(line, "from") {
+		switch {
+		case slices.Contains(line, "from"):
 			parseFile(line)
-		} else {
+		case isFetchLine(line):
+			if fd, err := t.parseFetchLine(line); err != nil {
+				t.sourceErrs = append(t.sourceErrs, err)
+			} else {
+				t.fetches = append(t.fetches, fd)
+			}
+		default:
 			parseDir(line)
 		}
 	}
