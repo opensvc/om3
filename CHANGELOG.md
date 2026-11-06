@@ -144,14 +144,21 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     All configuration, cfg, and secret 
     values fetched from HTTP(S) URLs are now validated against SSRF policies. 
-    By default, only `https://raw.githubusercontent.com/opensvc/opensvc_templates/*` 
-    URLs are allowed, while all other URLs and private/internal CIDR ranges 
+    By default, only what the opensvc organization publishes is allowed,
+    `https://raw.githubusercontent.com/opensvc/*` and `https://github.com/opensvc/*/releases/*`,
+    while all other URLs and private/internal CIDR ranges 
     (including loopback, RFC 1918, link-local, TEST-NET, and IPv6 ULA) are blocked. 
     The `node.allowed_urls` and `node.allowed_cidrs` keywords add to what is allowed, for
     all the nodes of a cluster.
 
-    Redirects are disabled by default. Administrators can override these defaults 
-    via environment variables in `/etc/default/opensvc` or `/etc/sysconfig/opensvc`:
+    A redirect is followed, at most 5 times and never from https to http: the
+    url lists judge the url a configuration names, and the target of each
+    redirect is held to the cidr lists, its address checked and the
+    connection pinned to it. A release download is so trusted by its url,
+    `https://github.com/<owner>/<repo>/releases/*`, wherever its storage
+    redirects to. Administrators can override these defaults 
+    via environment variables in `/etc/default/opensvc` or `/etc/sysconfig/opensvc`,
+    `OSVC_SSRF_ENABLE_REDIRECTS=false` refusing the redirects:
   ```
   OSVC_SSRF_ALLOWED_URL
   OSVC_SSRF_BLOCKED_URL

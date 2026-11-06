@@ -3,8 +3,14 @@ package rawconfig
 import "strings"
 
 var (
+	// defaultSSRFAllowedURL is what the opensvc organization publishes:
+	// the files of its repositories and the assets of their releases, as a
+	// template seeds its keys from, which a namespace administrator may
+	// fetch with no grant from root. Anyone else's is added by root, in
+	// node.allowed_urls.
 	defaultSSRFAllowedURL = []string{
-		"https://raw.githubusercontent.com/opensvc/opensvc_templates/*",
+		"https://raw.githubusercontent.com/opensvc/*",
+		"https://github.com/opensvc/*/releases/*",
 	}
 
 	defaultSSRFBlockedURL = []string{
@@ -34,21 +40,23 @@ var (
 
 // setSSRF configures SSRF protection settings, including allowed/blocked URLs, CIDR ranges, and redirect behavior.
 // Default is:
-// OSVC_SSRF_ALLOWED_URL = https://raw.githubusercontent.com/opensvc/opensvc_templates/*
+// OSVC_SSRF_ALLOWED_URL = https://raw.githubusercontent.com/opensvc/* https://github.com/opensvc/*/releases/*
 // OSVC_SSRF_BLOCKED_URL = *
 // OSVC_SSRF_BLOCKED_CIDR = 127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10 192.0.2.0/24 198.51.100.0/24 203.0.113.0/24 ::1/128 fe80::/10 fc00::/7 ff00::/8
 // OSVC_SSRF_ALLOWED_CIDR =
-// OSVC_SSRF_ENABLE_REDIRECTS = false
+// OSVC_SSRF_ENABLE_REDIRECTS = true
 func setSSRF(env map[string]string) {
 
 	SSRFAllowedURL = getSSRFValue(env, "OSVC_SSRF_ALLOWED_URL", defaultSSRFAllowedURL)
 	SSRFBlockedURL = getSSRFValue(env, "OSVC_SSRF_BLOCKED_URL", defaultSSRFBlockedURL)
 	SSRFAllowedCIDR = getSSRFValue(env, "OSVC_SSRF_ALLOWED_CIDR", defaultSSRFAllowedCIDR)
 	SSRFBlockedCIDR = getSSRFValue(env, "OSVC_SSRF_BLOCKED_CIDR", defaultSSRFBlockedCIDR)
-	if enableRedirects, _ := env["OSVC_SSRF_ENABLE_REDIRECTS"]; enableRedirects == "true" {
-		SSRFEnableRedirects = true
-	} else {
+	// A redirect is followed unless disabled: its target is held to the
+	// cidr lists, hop by hop, and pinned to the address checked.
+	if enableRedirects, _ := env["OSVC_SSRF_ENABLE_REDIRECTS"]; enableRedirects == "false" {
 		SSRFEnableRedirects = false
+	} else {
+		SSRFEnableRedirects = true
 	}
 }
 
