@@ -304,12 +304,15 @@ func (t *rx) updateAlertWithSlots() {
 	}
 }
 
-// onSignatureChange reports the stream suspended or resumed. Resumed, it reads
-// the metadata again: a disk signed again holds no slot.
+// onSignatureChange reports the stream suspended or resumed. Suspended, it
+// stops beating at once, rather than one timeout later. Resumed, it reads the
+// metadata again, as the peers may have claimed other slots meanwhile; a peer
+// beats again on its first frame read.
 func (t *rx) onSignatureChange() {
 	if t.base.invalidSig {
 		t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
 		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+		t.base.stopBeating(t.cmdC, t.id, t.nodes)
 		t.sendAlert()
 		return
 	}
