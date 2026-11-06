@@ -219,3 +219,31 @@ environment = A=1 X from ./sec/a key k source /etc/shadow
 	require.Error(t, err, "written in the section")
 	assert.Contains(t, err.Error(), "a server-local source uri requires the root grant")
 }
+
+// A keyword a section writes for one node leaves the other nodes to DEFAULT:
+// the value they inherit is judged on each of them.
+func TestAScopedKeywordLeavesThePeersToDefault(t *testing.T) {
+	knownNodes(t)
+	err := create(t, `
+nodes = *
+privileged = true
+
+[container#1]
+type = oci
+image = alpine
+privileged@`+hostname.Hostname()+` = false
+`)
+	require.Error(t, err, "the peers run the container privileged")
+	assert.Contains(t, err.Error(), "container#1.privileged=true on ")
+	assert.Contains(t, err.Error(), "inherited from DEFAULT.privileged")
+
+	assert.NoError(t, create(t, `
+nodes = *
+privileged = true
+
+[container#1]
+type = oci
+image = alpine
+privileged = false
+`), "written for every node")
+}

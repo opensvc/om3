@@ -412,17 +412,21 @@ func inheritedRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T, se
 	if len(defaults) == 0 {
 		return nil
 	}
-	written := sectionSetter(to.Keys(section))
 	existed := from != nil && slices.Contains(from.SectionStrings(), section)
 	localhost := hostname.Hostname()
 	var errs []error
 	for _, option := range object.KeywordOptions(kind, section) {
 		k := key.New(section, option)
 		kw := to.Referrer.KeywordLookup(k, to.SectionType(k))
-		if !inheritsFromDefault(kw) || !defaults[kw.DefaultKey().Option] || writesKeyword(written, kw) {
+		if !inheritsFromDefault(kw) || !defaults[kw.DefaultKey().Option] {
 			continue
 		}
 		for _, nodename := range append([]string{localhost}, scopes...) {
+			if writesKeywordAs(to, k, kw, nodename) {
+				// The section says what it takes there: the write of
+				// that keyword is judged as written.
+				continue
+			}
 			before := ""
 			if existed {
 				before = inheritedAs(from, k, kw, nodename)
@@ -469,14 +473,38 @@ func inheritsFromDefault(kw *keywords.Keyword) bool {
 	return kw.Inherit != keywords.InheritLeaf
 }
 
-// writesKeyword says a section writes a keyword, under its name or an alias,
-// for any node.
-func writesKeyword(written keyoprbac.Section, kw *keywords.Keyword) bool {
-	if written(kw.Option) {
+// writesKeywordAs says a section writes a keyword, under its name or an
+// alias, for nodename: scoped to it, to a node set it is in, or for every
+// node. A keyword written for one node alone leaves the others to DEFAULT,
+// so the section is asked node by node, as the configuration resolves it.
+func writesKeywordAs(cfg *xconfig.T, k key.T, kw *keywords.Keyword, nodename string) bool {
+	options := append([]string{kw.Option}, kw.Aliases...)
+	has := func(scope string) bool {
+		for _, o := range options {
+			if scope != "" {
+				o += "@" + scope
+			}
+			if cfg.HasKey(key.New(k.Section, o)) {
+				return true
+			}
+		}
+		return false
+	}
+	if has(nodename) || has("") {
 		return true
 	}
-	for _, alias := range kw.Aliases {
-		if written(alias) {
+	for scope, in := range map[string]func(string) (bool, error){
+		"nodes":      cfg.IsInNodes,
+		"drpnodes":   cfg.IsInDRPNodes,
+		"encapnodes": cfg.IsInEncapNodes,
+	} {
+		if !has(scope) {
+			continue
+		}
+		// A node set that can not be read is not taken to hold the
+		// node: the value DEFAULT gives there is judged, on the safe
+		// side of a refusal.
+		if ok, err := in(nodename); ok && err == nil {
 			return true
 		}
 	}
