@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.5.0
+  version: 4.5.1
   description: |
     A date-time value carries the offset of the time zone of the node that
     produced it: the dates of a response gathering the data of several nodes,
@@ -927,6 +927,8 @@ paths:
   /api/cluster/leave:
     post:
       description: |
+        For internal use only.
+
         Register a leave request to remove a cluster node member.
         The requester must be granted the 'root' or 'Leave' roles.
 
