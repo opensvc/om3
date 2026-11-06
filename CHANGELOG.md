@@ -158,7 +158,13 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     `https://github.com/<owner>/<repo>/releases/*`, wherever its storage
     redirects to. Administrators can override these defaults 
     via environment variables in `/etc/default/opensvc` or `/etc/sysconfig/opensvc`,
-    `OSVC_SSRF_ENABLE_REDIRECTS=false` refusing the redirects:
+    `OSVC_SSRF_ENABLE_REDIRECTS=false` refusing the redirects. The url a
+    command is given, `om|ox <path> create --config <url>` and
+    `om|ox <path> key add|change --from <url>`, is fetched by the command
+    itself, with no SSRF policy: whoever runs it could fetch it with curl
+    and pass it on the standard input. The policy is for the urls a node
+    fetches from a configuration, as the sources of the keys and the images
+    of the virtual machines:
   ```
   OSVC_SSRF_ALLOWED_URL
   OSVC_SSRF_BLOCKED_URL

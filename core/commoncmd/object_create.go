@@ -17,7 +17,7 @@ import (
 )
 
 func DataFromConfigHttp(u uri.T) ([]byte, error) {
-	fpath, err := u.HttpFetch()
+	fpath, err := u.CallerFetch()
 	if err != nil {
 		return nil, err
 	}
