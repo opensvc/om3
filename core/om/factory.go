@@ -3906,7 +3906,7 @@ func newCmdObjectResize(kind string) *cobra.Command {
 		Long: `Grow the volume on every node holding an instance, to SIZE.
 
 SIZE is written to the volume configuration, which is the size every node
-converges to, and is what a listing like "om pool volume ls" reports. It can
+converges to, and is what a listing like "om pool volume list" reports. It can
 be a size to reach, as "11g", "11GB" or "12Gi", or an amount to add, as "+1g".
 
 The work runs in two phases, because a replicated resource offers only what
@@ -4480,7 +4480,7 @@ func newCmdPoolList() *cobra.Command {
 
 The sizes shown are what a pool can still hand out to volumes, which is the
 size a volume is asked for, the size a claim on the pool rations, and what
-"om pool volume ls" reports. A pool whose nodes each hold a copy of every
+"om pool volume list" reports. A pool whose nodes each hold a copy of every
 volume hands out what the node with the least room can take, not the sum of
 what its nodes hold. Use --physical for the storage behind the pool.
 

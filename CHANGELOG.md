@@ -73,9 +73,9 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Improved object labels**: Enhanced support for labeling objects, enabling better organization and selection. Labels help third-party solutions like backup tools, ingress gateways, and monitoring systems identify and handle objects appropriately.
 
-* **Better container management**: New commands for container operations including `om <svc> container ls`, `om <svc> container enter <id>`, and `om <svc> container logs <id>`.
+* **Better container management**: New commands for container operations including `om <svc> container list`, `om <svc> container enter <id>`, and `om <svc> container logs <id>`.
 
-* **Task management**: New commands for task operations including `om <svc> task ls` and `om <svc> task run <id>`.
+* **Task management**: New commands for task operations including `om <svc> task list` and `om <svc> task run <id>`.
 
 * **Event-triggered tasks**: A task's new `on` keyword runs it on events of its node, `NetworkPeersUpdated` when the peers of a network changed, `FileInstalled` when an install of a resource of its object wrote files, whatever ran it, paced by `pace` (`@30s backoff @1m`), with the `run_requires` and the frozen policy of its scheduled runs. A task's new `install = <rid>...` installs the files of volumes and filesystems again before its own work, a host task's command then being optional, so files rendered from the networks follow them.
 
