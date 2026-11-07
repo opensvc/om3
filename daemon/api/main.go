@@ -26,6 +26,18 @@ const AuditEventPreempted = "preempted"
 // from the 409 answering the creation of an object that exists.
 const ProblemTitleHeld = "Held by another object"
 
+// The kinds of the ConfigAlert a configuration write refused for something
+// else than its validation gives, in a dry run or a validation of a draft:
+// a keyword the grants of the caller do not allow, a change a resource up
+// would leak by, a claim of the namespace overrun, and a value another
+// object's resources hold.
+const (
+	ConfigAlertKindDenied       = "denied"
+	ConfigAlertKindResourceUp   = "resource up"
+	ConfigAlertKindClaimOverrun = "claim overrun"
+	ConfigAlertKindHeld         = "held by another object"
+)
+
 const (
 	AliasLocalhost      = "localhost"
 	AliasShortLocalhost = "_"

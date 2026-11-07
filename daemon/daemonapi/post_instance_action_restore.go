@@ -148,11 +148,9 @@ func (a *DaemonAPI) restoreConfigInPlace(ctx echo.Context, p naming.Path, params
 	if len(drift) == 0 {
 		return ctx.NoContent(http.StatusNoContent)
 	}
-	if err := configRbac(ctx, p, body); err != nil {
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
+	check := a.newConfigCheck(ctx, p, false)
+	if !check.rbac(body) || !check.stopToChange(body, false) {
+		return check.answer()
 	}
-	if err := stopToChange(ctx, p, body, false); err != nil {
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
-	}
-	return a.writeObjectConfigFile(ctx, p, body, base, nil, false, false, false, false)
+	return a.writeObjectConfigFile(ctx, check, body, base, nil, false, false, false)
 }

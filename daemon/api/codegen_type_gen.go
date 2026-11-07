@@ -1512,6 +1512,12 @@ type ConfigAlertList struct {
 // ConfigAlertListKind defines model for ConfigAlertList.Kind.
 type ConfigAlertListKind string
 
+// ConfigUpdateResult The answer of a configuration update: Committed, or the
+// ConfigAlertList of a dry run.
+type ConfigUpdateResult struct {
+	union json.RawMessage
+}
+
 // ConsoleTicket defines model for ConsoleTicket.
 type ConsoleTicket struct {
 	// ExpiredAt When the ticket stops being accepted.
@@ -5315,9 +5321,13 @@ type PatchObjectConfigParams struct {
 	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 
 	// DryRun Run every check of the write, the rbac policy, the validation, the
-	// claims and the holds, and write nothing. The answer is the one of the
-	// write, every keyword the grants do not allow refused at once with its
-	// reason.
+	// claims and the holds, and write nothing. The answer is a 200 with the
+	// ConfigAlertList of everything the checks found, the problems the
+	// write would be refused for as errors, every keyword the grants do not
+	// allow with its reason, and the warnings of the validation, which a
+	// write does not answer. A request the write would refuse whatever its
+	// configuration, the caller not allowed to write the object, or a
+	// configuration that does not parse, is refused as the write.
 	DryRun *InQueryConfigDryRun `form:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
@@ -5370,9 +5380,13 @@ type PostObjectConfigFileParams struct {
 	Force    *InQueryForce          `form:"force,omitempty" json:"force,omitempty"`
 
 	// DryRun Run every check of the write, the rbac policy, the validation, the
-	// claims and the holds, and write nothing. The answer is the one of the
-	// write, every keyword the grants do not allow refused at once with its
-	// reason.
+	// claims and the holds, and write nothing. The answer is a 200 with the
+	// ConfigAlertList of everything the checks found, the problems the
+	// write would be refused for as errors, every keyword the grants do not
+	// allow with its reason, and the warnings of the validation, which a
+	// write does not answer. A request the write would refuse whatever its
+	// configuration, the caller not allowed to write the object, or a
+	// configuration that does not parse, is refused as the write.
 	DryRun *InQueryConfigDryRun `form:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
@@ -5391,9 +5405,13 @@ type PutObjectConfigFileParams struct {
 	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 
 	// DryRun Run every check of the write, the rbac policy, the validation, the
-	// claims and the holds, and write nothing. The answer is the one of the
-	// write, every keyword the grants do not allow refused at once with its
-	// reason.
+	// claims and the holds, and write nothing. The answer is a 200 with the
+	// ConfigAlertList of everything the checks found, the problems the
+	// write would be refused for as errors, every keyword the grants do not
+	// allow with its reason, and the warnings of the validation, which a
+	// write does not answer. A request the write would refuse whatever its
+	// configuration, the caller not allowed to write the object, or a
+	// configuration that does not parse, is refused as the write.
 	DryRun *InQueryConfigDryRun `form:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
@@ -5621,6 +5639,68 @@ type PostPoolClaimJSONRequestBody = PostPoolClaim
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage
+
+// AsCommitted returns the union data inside the ConfigUpdateResult as a Committed
+func (t ConfigUpdateResult) AsCommitted() (Committed, error) {
+	var body Committed
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCommitted overwrites any union data inside the ConfigUpdateResult as the provided Committed
+func (t *ConfigUpdateResult) FromCommitted(v Committed) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCommitted performs a merge with any union data inside the ConfigUpdateResult, using the provided Committed
+func (t *ConfigUpdateResult) MergeCommitted(v Committed) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsConfigAlertList returns the union data inside the ConfigUpdateResult as a ConfigAlertList
+func (t ConfigUpdateResult) AsConfigAlertList() (ConfigAlertList, error) {
+	var body ConfigAlertList
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromConfigAlertList overwrites any union data inside the ConfigUpdateResult as the provided ConfigAlertList
+func (t *ConfigUpdateResult) FromConfigAlertList(v ConfigAlertList) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeConfigAlertList performs a merge with any union data inside the ConfigUpdateResult, using the provided ConfigAlertList
+func (t *ConfigUpdateResult) MergeConfigAlertList(v ConfigAlertList) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ConfigUpdateResult) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ConfigUpdateResult) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // AsObjectActor returns the union data inside the ObjectData as a ObjectActor
 func (t ObjectData) AsObjectActor() (ObjectActor, error) {

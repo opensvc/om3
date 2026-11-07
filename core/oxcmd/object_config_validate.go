@@ -11,8 +11,6 @@ import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
-	"github.com/opensvc/om3/v3/core/output"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -20,13 +18,23 @@ type (
 	CmdObjectConfigValidate struct {
 		OptsGlobal
 		NodeSelector string
+
+		// Config is a draft configuration to validate, a file path or -
+		// for stdin, rather than the one the object holds.
+		Config string
 	}
 )
 
 // Run validates the configuration of the selected objects on the selected
 // nodes of each, as om validate config does on the node it runs on: the
 // checks the drivers make loading the resources are the node's.
+//
+// With Config, it validates that draft instead, as the daemon checks a
+// write of it to the object.
 func (t *CmdObjectConfigValidate) Run(kind string) error {
+	if t.Config != "" {
+		return commoncmd.ValidateDraftConfig(context.Background(), t.ObjectSelector, t.Config, t.Output, t.Sort, t.Color)
+	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
@@ -105,15 +113,8 @@ func (t *CmdObjectConfigValidate) Run(kind string) error {
 		}
 		return 0
 	})
-	errs = errors.Join(errs, output.Renderer{
-		DefaultOutput: "tab=LEVEL:level,PATH:path,NODE:node,DRIVER:driver,KEY:key,KIND:kind,COMMENT:comment",
-		Output:        t.Output,
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          alerts,
-		Colorize:      rawconfig.Colorize,
-	}.Print())
-	return errors.Join(errs, configAlertErrors(alerts.Items))
+	errs = errors.Join(errs, commoncmd.PrintConfigAlerts(alerts.Items, t.Output, t.Sort, t.Color))
+	return errors.Join(errs, commoncmd.ConfigAlertErrors(alerts.Items))
 }
 
 func (t *CmdObjectConfigValidate) validate(ctx context.Context, c *client.T, p naming.Path, node string) (api.ConfigAlertItems, error) {
@@ -137,19 +138,4 @@ func (t *CmdObjectConfigValidate) validate(ctx context.Context, c *client.T, p n
 	default:
 		return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, node, resp.Status())
 	}
-}
-
-// configAlertErrors returns an error when an alert is an error, so the
-// validation exits non-zero for a configuration that is not good.
-func configAlertErrors(items api.ConfigAlertItems) error {
-	n := 0
-	for _, e := range items {
-		if e.Level == api.ConfigAlertLevelError {
-			n++
-		}
-	}
-	if n > 0 {
-		return fmt.Errorf("the configuration has %d error(s)", n)
-	}
-	return nil
 }

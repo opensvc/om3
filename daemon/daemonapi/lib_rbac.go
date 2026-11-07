@@ -42,9 +42,15 @@ import (
 // Every refusal is returned, not the first one: the author of a configuration
 // learns in one write what the grants do not allow of it.
 func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
+	return errors.Join(configRbacRefusals(ctx, p, body)...)
+}
+
+// configRbacRefusals returns the refusals of configRbac one by one, so a dry
+// run or a validation says each of them, by the keyword it is about.
+func configRbacRefusals(ctx echo.Context, p naming.Path, body []byte) []error {
 	o, err := object.New(p, object.WithConfigData(body), object.WithVolatile(true))
 	if err != nil {
-		return fmt.Errorf("new object: %s", err)
+		return []error{fmt.Errorf("new object: %s", err)}
 	}
 	configurer := o.(object.Configurer)
 	cfg := configurer.Config()
@@ -54,13 +60,39 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 		return nil
 	}
 	from := currentConfig(p)
-	return errors.Join(
-		sectionNameRbac(cfg),
-		configRbacChanges(grants, p.Kind, from, cfg),
+	l := []error{sectionNameRbac(cfg)}
+	l = append(l, configRbacChangeList(grants, p.Kind, from, cfg)...)
+	l = append(l,
 		usrRbac(grants, p, from, cfg),
 		hostIPRbac(from, cfg),
 		rootlessRbac(p, from, cfg),
 	)
+	return slices.DeleteFunc(l, func(err error) bool { return err == nil })
+}
+
+// keyRefusal is a refusal of a write naming the keyword it is about, or the
+// section, so a dry run or a validation says which. It reads as the refusal
+// it wraps.
+type keyRefusal struct {
+	key key.T
+	err error
+}
+
+func (t keyRefusal) Error() string {
+	return t.err.Error()
+}
+
+func (t keyRefusal) Unwrap() error {
+	return t.err
+}
+
+// refusalOf returns err naming the keyword k it is about, and nil for no
+// refusal.
+func refusalOf(k key.T, err error) error {
+	if err == nil {
+		return nil
+	}
+	return keyRefusal{key: k, err: err}
 }
 
 // instanceStatusesOf returns the status of the instances of an object, by
@@ -147,17 +179,17 @@ func hostIPRbac(from, to *xconfig.T) error {
 				continue
 			}
 			if evaluatedOrWrittenAs(to, key.New(section, "name"), nodename) != "" {
-				return fmt.Errorf("%w: %s on %s: the network of an address root named requires the root grant", ErrDenied, section, nodename)
+				return refusalOf(kn, fmt.Errorf("%w: %s on %s: the network of an address root named requires the root grant", ErrDenied, section, nodename))
 			}
 			nw, err := lookupNetwork(name)
 			if err != nil {
-				return fmt.Errorf("%s: network %s: %w", section, name, err)
+				return refusalOf(kn, fmt.Errorf("%s: network %s: %w", section, name, err))
 			}
 			if nw == nil {
-				return fmt.Errorf("%w: %s on %s: no network %s to draw the address from", ErrDenied, section, nodename, name)
+				return refusalOf(kn, fmt.Errorf("%w: %s on %s: no network %s to draw the address from", ErrDenied, section, nodename, name))
 			}
 			if i, ok := nw.(network.ClusterWider); !ok || !i.IsClusterWide() {
-				return fmt.Errorf("%w: %s on %s: a host address drawn from network %s, a %s network rather than a lan one, requires the root grant", ErrDenied, section, nodename, name, nw.Type())
+				return refusalOf(kn, fmt.Errorf("%w: %s on %s: a host address drawn from network %s, a %s network rather than a lan one, requires the root grant", ErrDenied, section, nodename, name, nw.Type()))
 			}
 		}
 	}
@@ -197,10 +229,10 @@ func usrRbac(grants rbac.Grants, p naming.Path, from, to *xconfig.T) error {
 		}
 	}
 	if l := grants.Uncovered(added...); len(l) > 0 {
-		return fmt.Errorf("%w: %s: granting %s requires holding it", ErrDenied, p, l)
+		return refusalOf(grantKey, fmt.Errorf("%w: %s: granting %s requires holding it", ErrDenied, p, l))
 	}
 	if cn, _ := to.EvalNoConv(cnKey); cn != heldCN {
-		return fmt.Errorf("%w: %s: setting the cn of a user requires the root grant", ErrDenied, p)
+		return refusalOf(cnKey, fmt.Errorf("%w: %s: setting the cn of a user requires the root grant", ErrDenied, p))
 	}
 	// The local logins a user is bound to authenticate as that user on the
 	// user socket, as the certificate named by its cn does.
@@ -210,7 +242,7 @@ func usrRbac(grants rbac.Grants, p naming.Path, from, to *xconfig.T) error {
 		heldUX = strings.Join(from.GetStrings(uxuserKey), " ")
 	}
 	if strings.Join(to.GetStrings(uxuserKey), " ") != heldUX {
-		return fmt.Errorf("%w: %s: setting the uxuser of a user requires the root grant", ErrDenied, p)
+		return refusalOf(uxuserKey, fmt.Errorf("%w: %s: setting the uxuser of a user requires the root grant", ErrDenied, p))
 	}
 	return nil
 }
@@ -252,12 +284,12 @@ func rootlessRbac(p naming.Path, from, to *xconfig.T) error {
 			if allowed == nil {
 				a, err := rootless.Load(p.Namespace)
 				if err != nil {
-					return fmt.Errorf("read the rootless accounts of the %s namespace: %w", p.Namespace, err)
+					return refusalOf(ku, fmt.Errorf("read the rootless accounts of the %s namespace: %w", p.Namespace, err))
 				}
 				allowed = &a
 			}
 			if err := allowed.Check(u, g); err != nil {
-				return fmt.Errorf("%w: %s runs as %s on %s: %w", ErrDenied, section, u, nodename, err)
+				return refusalOf(ku, fmt.Errorf("%w: %s runs as %s on %s: %w", ErrDenied, section, u, nodename, err))
 			}
 		}
 	}
@@ -300,7 +332,7 @@ func sectionNameRbac(cfg *xconfig.T) error {
 			continue
 		}
 		if err := resourceid.CheckName(section); err != nil {
-			return fmt.Errorf("%w: section %s: %w", ErrDenied, section, err)
+			return refusalOf(key.T{Section: section}, fmt.Errorf("%w: section %s: %w", ErrDenied, section, err))
 		}
 	}
 	return nil
@@ -309,6 +341,11 @@ func sectionNameRbac(cfg *xconfig.T) error {
 // configRbacChanges checks the keywords a write changes against the policy,
 // and returns every refusal.
 func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T) error {
+	return errors.Join(configRbacChangeList(grants, kind, from, to)...)
+}
+
+// configRbacChangeList returns the refusals of configRbacChanges one by one.
+func configRbacChangeList(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T) []error {
 	var errs []error
 	scopes := rbacScopes(from, to)
 	for _, section := range to.SectionStrings() {
@@ -358,7 +395,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 		errs = append(errs, err)
 	}
 	if from == nil {
-		return errors.Join(errs...)
+		return errs
 	}
 	// A keyword the write takes away is a change like the ones it makes. A
 	// user who may not set a keyword may not unset it either, and a section
@@ -380,7 +417,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			}
 		}
 	}
-	return errors.Join(errs...)
+	return errs
 }
 
 // inheritedRbac checks the keywords a resource section takes from DEFAULT,
@@ -454,9 +491,9 @@ func inheritedRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T, se
 			}
 			origin := "DEFAULT." + kw.DefaultKey().Option
 			if after == "" {
-				errs = append(errs, fmt.Errorf("%w: unset %s=%s%s, inherited from %s: %w", ErrDenied, k, before, on, origin, err))
+				errs = append(errs, refusalOf(k, fmt.Errorf("%w: unset %s=%s%s, inherited from %s: %w", ErrDenied, k, before, on, origin, err)))
 			} else {
-				errs = append(errs, fmt.Errorf("%w: %s=%s%s, inherited from %s: %w", ErrDenied, k, after, on, origin, err))
+				errs = append(errs, refusalOf(k, fmt.Errorf("%w: %s=%s%s, inherited from %s: %w", ErrDenied, k, after, on, origin, err)))
 			}
 			break
 		}
@@ -599,7 +636,7 @@ func encapRbac(grants rbac.Grants, from, to *xconfig.T, scopes []string) error {
 				// Root set it up: the write is about something else.
 				continue
 			}
-			return fmt.Errorf("%w: %s with encapnodes on %s: requires the root grant", ErrDenied, section, nodename)
+			return refusalOf(encapNodes, fmt.Errorf("%w: %s with encapnodes on %s: requires the root grant", ErrDenied, section, nodename))
 		}
 	}
 	return nil
@@ -642,7 +679,7 @@ func sectionDriverRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			continue
 		}
 		if err := keyoprbac.Denied(grants, kind, section, "type", name, set); err != nil {
-			return fmt.Errorf("%w: %s runs the %s driver on %s, which it does not name: %w", ErrDenied, section, name, nodename, err)
+			return refusalOf(k, fmt.Errorf("%w: %s runs the %s driver on %s, which it does not name: %w", ErrDenied, section, name, nodename, err))
 		}
 	}
 	return nil
@@ -854,9 +891,9 @@ func keyopRbacOn(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac
 	case err == nil:
 		return nil
 	case nodename == "" || nodename == hostname.Hostname():
-		return fmt.Errorf("%w: %s: %w", ErrDenied, op, err)
+		return refusalOf(op.Key, fmt.Errorf("%w: %s: %w", ErrDenied, op, err))
 	default:
-		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, op, nodename, err)
+		return refusalOf(op.Key, fmt.Errorf("%w: %s on %s: %w", ErrDenied, op, nodename, err))
 	}
 }
 
@@ -876,9 +913,9 @@ func driverRbacOn(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T, k key.T,
 	case err == nil:
 		return nil
 	case nodename == "" || nodename == hostname.Hostname():
-		return fmt.Errorf("%w: %s: %w", ErrDenied, k, err)
+		return refusalOf(k, fmt.Errorf("%w: %s: %w", ErrDenied, k, err))
 	default:
-		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, k, nodename, err)
+		return refusalOf(k, fmt.Errorf("%w: %s on %s: %w", ErrDenied, k, nodename, err))
 	}
 }
 
@@ -887,7 +924,7 @@ func driverRbacOn(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T, k key.T,
 // not unset it from that value either.
 func keyUnsetRbac(grants rbac.Grants, kind naming.Kind, k key.T, value string, set keyoprbac.Section) error {
 	if err := keyoprbac.DeniedUnset(grants, kind, k.Section, k.Option, value, set); err != nil {
-		return fmt.Errorf("%w: unset %s: %w", ErrDenied, k, err)
+		return refusalOf(k, fmt.Errorf("%w: unset %s: %w", ErrDenied, k, err))
 	}
 	return nil
 }

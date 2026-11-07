@@ -53,33 +53,67 @@ func FlagConfigWait(flags *pflag.FlagSet, p *bool) {
 // naming where it has not landed, after a write that was made all the same:
 // writing again would apply a += operation twice.
 func PatchObjectConfig(ctx context.Context, c *client.T, p naming.Path, params api.PatchObjectConfigParams) (bool, []string, error) {
-	resp, err := c.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+	result, err := patchObjectConfig(ctx, c, p, params)
 	if err != nil {
 		return false, nil, err
 	}
+	committed, err := result.AsCommitted()
+	if err != nil {
+		return false, nil, fmt.Errorf("%s: %w", p, err)
+	}
+	var warnings []string
+	if committed.Warnings != nil {
+		warnings = *committed.Warnings
+	}
+	return committed.IsChanged, warnings, nil
+}
+
+// DryRunPatchObjectConfig has the daemon run every check of the keyword
+// operations of params on the configuration of p, and write nothing. It
+// returns the alerts the checks found: the problems the update would be
+// refused for, and the warnings of the validation.
+func DryRunPatchObjectConfig(ctx context.Context, c *client.T, p naming.Path, params api.PatchObjectConfigParams) (*api.ConfigAlertList, error) {
+	dryRun := true
+	params.DryRun = &dryRun
+	params.Wait = nil
+	result, err := patchObjectConfig(ctx, c, p, params)
+	if err != nil {
+		return nil, err
+	}
+	alerts, err := result.AsConfigAlertList()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", p, err)
+	}
+	return &alerts, nil
+}
+
+func patchObjectConfig(ctx context.Context, c *client.T, p naming.Path, params api.PatchObjectConfigParams) (*api.ConfigUpdateResult, error) {
+	resp, err := c.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+	if err != nil {
+		return nil, err
+	}
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		var warnings []string
-		if resp.JSON200.Warnings != nil {
-			warnings = *resp.JSON200.Warnings
+		if resp.JSON200 == nil {
+			return nil, fmt.Errorf("%s: unexpected response: %s", p, resp.Status())
 		}
-		return resp.JSON200.IsChanged, warnings, nil
+		return resp.JSON200, nil
 	case http.StatusBadRequest:
-		return false, nil, fmt.Errorf("%s: %s", p, *resp.JSON400)
+		return nil, fmt.Errorf("%s: %s", p, *resp.JSON400)
 	case http.StatusUnauthorized:
-		return false, nil, fmt.Errorf("%s: %s", p, *resp.JSON401)
+		return nil, fmt.Errorf("%s: %s", p, *resp.JSON401)
 	case http.StatusForbidden:
-		return false, nil, fmt.Errorf("%s: %s", p, *resp.JSON403)
+		return nil, fmt.Errorf("%s: %s", p, *resp.JSON403)
 	case http.StatusNotFound:
-		return false, nil, fmt.Errorf("%s: %s", p, *resp.JSON404)
+		return nil, fmt.Errorf("%s: %s", p, *resp.JSON404)
 	case http.StatusRequestTimeout:
-		return false, nil, fmt.Errorf("%s: %s", p, resp.JSON408.Detail)
+		return nil, fmt.Errorf("%s: %s", p, resp.JSON408.Detail)
 	case http.StatusConflict:
-		return false, nil, fmt.Errorf("%s: %s", p, *resp.JSON409)
+		return nil, fmt.Errorf("%s: %s", p, *resp.JSON409)
 	case http.StatusInternalServerError:
-		return false, nil, fmt.Errorf("%s: %s", p, *resp.JSON500)
+		return nil, fmt.Errorf("%s: %s", p, *resp.JSON500)
 	default:
-		return false, nil, fmt.Errorf("%s: unexpected response: %s", p, resp.Status())
+		return nil, fmt.Errorf("%s: unexpected response: %s", p, resp.Status())
 	}
 }
 

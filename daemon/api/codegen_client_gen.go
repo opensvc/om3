@@ -662,6 +662,9 @@ type ClientInterface interface {
 	// GetObjectConfigKeywords request
 	GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostObjectConfigValidateWithBody request with any body
+	PostObjectConfigValidateWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetObjectData request
 	GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3086,6 +3089,18 @@ func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPa
 
 func (c *Client) GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectConfigKeywordsRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostObjectConfigValidateWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectConfigValidateRequestWithBody(c.Server, namespace, kind, name, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16903,6 +16918,56 @@ func NewGetObjectConfigKeywordsRequest(server string, namespace InPathNamespace,
 	return req, nil
 }
 
+// NewPostObjectConfigValidateRequestWithBody generates requests for PostObjectConfigValidate with any type of body
+func NewPostObjectConfigValidateRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/config/validate", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetObjectDataRequest generates requests for GetObjectData
 func NewGetObjectDataRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams) (*http.Request, error) {
 	var err error
@@ -18890,6 +18955,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetObjectConfigKeywordsWithResponse request
 	GetObjectConfigKeywordsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetObjectConfigKeywordsResponse, error)
+
+	// PostObjectConfigValidateWithBodyWithResponse request with any body
+	PostObjectConfigValidateWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigValidateResponse, error)
 
 	// GetObjectDataWithResponse request
 	GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error)
@@ -24943,7 +25011,7 @@ func (r GetObjectConfigResponse) ContentType() string {
 type PatchObjectConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Committed
+	JSON200      *ConfigUpdateResult
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -25013,6 +25081,7 @@ func (r GetObjectConfigFileResponse) ContentType() string {
 type PostObjectConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ConfigAlertList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -25049,6 +25118,7 @@ func (r PostObjectConfigFileResponse) ContentType() string {
 type PutObjectConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ConfigAlertList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -25110,6 +25180,40 @@ func (r GetObjectConfigKeywordsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetObjectConfigKeywordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostObjectConfigValidateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ConfigAlertList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostObjectConfigValidateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostObjectConfigValidateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostObjectConfigValidateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -27587,6 +27691,15 @@ func (c *ClientWithResponses) GetObjectConfigKeywordsWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseGetObjectConfigKeywordsResponse(rsp)
+}
+
+// PostObjectConfigValidateWithBodyWithResponse request with arbitrary body returning *PostObjectConfigValidateResponse
+func (c *ClientWithResponses) PostObjectConfigValidateWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigValidateResponse, error) {
+	rsp, err := c.PostObjectConfigValidateWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostObjectConfigValidateResponse(rsp)
 }
 
 // GetObjectDataWithResponse request returning *GetObjectDataResponse
@@ -37654,7 +37767,7 @@ func ParsePatchObjectConfigResponse(rsp *http.Response) (*PatchObjectConfigRespo
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Committed
+		var dest ConfigUpdateResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -37775,6 +37888,13 @@ func ParsePostObjectConfigFileResponse(rsp *http.Response) (*PostObjectConfigFil
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigAlertList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -37843,6 +37963,13 @@ func ParsePutObjectConfigFileResponse(rsp *http.Response) (*PutObjectConfigFileR
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigAlertList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -37913,6 +38040,60 @@ func ParseGetObjectConfigKeywordsResponse(rsp *http.Response) (*GetObjectConfigK
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest KeywordDefinitionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostObjectConfigValidateResponse parses an HTTP response from a PostObjectConfigValidateWithResponse call
+func ParsePostObjectConfigValidateResponse(rsp *http.Response) (*PostObjectConfigValidateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostObjectConfigValidateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigAlertList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

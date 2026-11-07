@@ -90,7 +90,11 @@ func (t *CmdObjectConfigMigrate) migrate(c *client.T, p naming.Path, prefixed bo
 	}
 	switch response.StatusCode() {
 	case 200:
-		if response.JSON200.IsChanged {
+		committed, err := response.JSON200.AsCommitted()
+		if err != nil {
+			return fmt.Errorf("%s: %w", p, err)
+		}
+		if committed.IsChanged {
 			fmt.Printf("%scommitted\n", prefix)
 		} else {
 			fmt.Printf("%sunchanged\n", prefix)

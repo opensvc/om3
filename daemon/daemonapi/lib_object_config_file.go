@@ -11,12 +11,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -44,40 +46,54 @@ import (
 // alone, under the lock of the file: a write refused, by a check or by
 // another write landing first, leaves the flag as it found it.
 //
-// With dryRun, the checks run and nothing is written: the answer is the one
-// of the write, a refusal or no content.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait, waitKnown, force, flagStopped, dryRun bool) error {
+// The checks are the ones of check, which the caller ran the first of, the
+// keyword policy and the resources up: with check collecting, as a dry run
+// and the validation of a draft ask, every check runs, nothing is written,
+// and the answer is the alerts the checks found.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, check *configCheck, body []byte, base configBase, wait *api.Wait, waitKnown, force, flagStopped bool) error {
+	p := check.p
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	defer cancel()
-	o, err := object.New(p, object.WithConfigData(body))
+	// A dry run writes nothing, not even the lock of the object, which a
+	// validation takes, nor its files.
+	vctx := ctx.Request().Context()
+	opts := []funcopt.O{object.WithConfigData(body)}
+	if check.collect {
+		vctx = actioncontext.WithLockDisabled(vctx, true)
+		opts = append(opts, object.WithVolatile(true))
+	}
+	o, err := object.New(p, opts...)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New object", "%s", err)
 	}
 	configurer := o.(object.Configurer)
-	alerts, err := configurer.ValidateConfig(ctx.Request().Context())
+	alerts, err := configurer.ValidateConfig(vctx)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Validate config", "%s", err)
 	}
-	if alerts.HasError() {
+	if !check.validate(alerts, func() configRefusal {
 		// Say which keywords are wrong: the error of the validation is nil
 		// when it ran and found them.
-		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts.Errors().StringWithoutMeta())
+		detail := alerts.Errors().StringWithoutMeta()
+		return configRefusal{status: http.StatusBadRequest, title: "Validate config", detail: detail, err: invalidConfigError{errors.New(detail)}}
+	}) {
+		return check.answer()
 	}
-	if err := refuseClaimOverrun(ctx.Request().Context(), p, o, configurer.Config()); err != nil {
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+	if ok, err := check.claims(o, configurer.Config()); err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Claims", "%s", err)
+	} else if !ok {
+		return check.answer()
 	}
-	if err := refuseHoldConflicts(ctx, p, body, configScope(p, configurer), force); errors.Is(err, ErrDenied) {
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
-	} else if errors.Is(err, ErrHoldConflict) {
-		return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)
-	} else if err != nil {
+	if ok, err := check.holds(body, configScope(p, configurer), force); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Holds", "%s", err)
+	} else if !ok {
+		return check.answer()
 	}
-	if dryRun {
-		return ctx.NoContent(http.StatusNoContent)
+	if check.collect {
+		return check.answer()
 	}
 	var knownSub *pubsub.Subscription
 	if waitKnown {

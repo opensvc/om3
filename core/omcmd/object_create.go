@@ -274,7 +274,7 @@ func (t *CmdObjectCreate) fromStore() error {
 		// The daemon reads the snapshot, checks its configuration as any
 		// other, and writes the keys it references with it, taking them
 		// back if the configuration does not land.
-		err := commoncmd.CreateObjectConfigFromStore(ctx, t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, t.DryRun)
+		err := commoncmd.CreateObjectConfigFromStore(ctx, t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
 		if !daemonUnreachable(err) {
 			return err
 		}
@@ -405,8 +405,12 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	if err != nil {
 		return err
 	}
-	t.reportConfigWarnings(p, oc)
-	err = commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, t.DryRun)
+	if !t.DryRun {
+		// A dry run is answered the warnings by the daemon, with
+		// everything else its checks find.
+		t.reportConfigWarnings(p, oc)
+	}
+	err = commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
 	if daemonUnreachable(err) && t.DryRun {
 		return errDryRunNeedsDaemon(p)
 	} else if daemonUnreachable(err) {

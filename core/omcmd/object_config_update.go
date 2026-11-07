@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -65,6 +66,7 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 	}
 	noPrefix := len(paths) == 1
 	prefix := ""
+	var dryRunErrs error
 	for _, p := range paths {
 		params := api.PatchObjectConfigParams{}
 		params.Set = &t.Set
@@ -74,7 +76,14 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			params.Force = &t.Force
 		}
 		if t.DryRun {
-			params.DryRun = &t.DryRun
+			// The alerts of every object are printed, the ones of an
+			// update that would be refused included.
+			alerts, err := commoncmd.DryRunPatchObjectConfig(ctx, c, p, params)
+			if err == nil {
+				err = commoncmd.NewDryRun(true, t.Output, t.Color).Report(p, alerts, "committed")
+			}
+			dryRunErrs = errors.Join(dryRunErrs, err)
+			continue
 		}
 		if t.Wait {
 			wait := t.Time.String()
@@ -87,9 +96,7 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 		if !noPrefix {
 			prefix = p.String() + ": "
 		}
-		if changed && t.DryRun {
-			fmt.Printf("%swould be committed\n", prefix)
-		} else if changed {
+		if changed {
 			fmt.Printf("%scommitted\n", prefix)
 		} else {
 			fmt.Printf("%sunchanged\n", prefix)
@@ -98,7 +105,7 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			fmt.Fprintf(os.Stderr, "%swarning: %s\n", prefix, w)
 		}
 	}
-	return nil
+	return dryRunErrs
 }
 
 func (t *CmdObjectConfigUpdate) doObjectAction(mergedSelector string) error {

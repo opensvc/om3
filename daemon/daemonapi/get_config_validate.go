@@ -82,7 +82,13 @@ func (a *DaemonAPI) GetInstanceConfigValidate(ctx echo.Context, nodename, namesp
 }
 
 func (a *DaemonAPI) configAlertList(alerts xconfig.Alerts) api.ConfigAlertList {
-	l := api.ConfigAlertList{Kind: "ConfigAlertList", Items: make(api.ConfigAlertItems, 0, len(alerts))}
+	return api.ConfigAlertList{Kind: "ConfigAlertList", Items: configAlertItems(a.localhost, alerts)}
+}
+
+// configAlertItems returns the alerts of a validation run on nodename, as the
+// api answers them.
+func configAlertItems(nodename string, alerts xconfig.Alerts) api.ConfigAlertItems {
+	l := make(api.ConfigAlertItems, 0, len(alerts))
 	for _, e := range alerts {
 		path, drv := "", ""
 		if !e.Path.IsZero() {
@@ -91,8 +97,8 @@ func (a *DaemonAPI) configAlertList(alerts xconfig.Alerts) api.ConfigAlertList {
 		if !e.Driver.IsZero() {
 			drv = e.Driver.String()
 		}
-		l.Items = append(l.Items, api.ConfigAlert{
-			Node:    a.localhost,
+		l = append(l, api.ConfigAlert{
+			Node:    nodename,
 			Path:    path,
 			Level:   api.ConfigAlertLevel(e.Level.String()),
 			Kind:    e.Kind.String(),

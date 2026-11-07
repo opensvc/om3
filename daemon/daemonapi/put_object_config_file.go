@@ -40,13 +40,24 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read body", "%s", err)
 	}
 
-	// Validate RBAC rules for config keys
-	if err := configRbac(ctx, p, body); err != nil {
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
-	}
-	if err := stopToChange(ctx, p, body, params.Force != nil && *params.Force); err != nil {
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
-	}
+	force := params.Force != nil && *params.Force
 
-	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, false, params.Force != nil && *params.Force, false, params.DryRun != nil && *params.DryRun)
+	// A dry run runs every check, and answers what they found. A
+	// configuration that does not parse is not one to check.
+	dryRun := params.DryRun != nil && *params.DryRun
+	if dryRun {
+		if err := parseDraft(p, body); err != nil {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad config", "%s", err)
+		}
+	}
+	check := a.newConfigCheck(ctx, p, dryRun)
+
+	// Validate RBAC rules for config keys
+	if !check.rbac(body) {
+		return check.answer()
+	}
+	if !check.stopToChange(body, force) {
+		return check.answer()
+	}
+	return a.writeObjectConfigFile(ctx, check, body, base, params.Wait, false, force, false)
 }

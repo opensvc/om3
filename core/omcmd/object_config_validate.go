@@ -19,10 +19,19 @@ type (
 	CmdObjectConfigValidate struct {
 		OptsGlobal
 		commoncmd.OptsLock
+
+		// Config is a draft configuration the daemon validates, a file
+		// path or - for stdin, rather than the one the object holds.
+		Config string
 	}
 )
 
 func (t *CmdObjectConfigValidate) Run(kind string) error {
+	if t.Config != "" {
+		// The checks of a write are the daemon's: the grants of the
+		// caller, the claims and the holds of the cluster.
+		return commoncmd.ValidateDraftConfig(context.Background(), t.ObjectSelector, t.Config, t.Output, t.Sort, t.Color)
+	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	alerts := make(xconfig.Alerts, 0)
 	alertsQ := make(chan xconfig.Alerts)

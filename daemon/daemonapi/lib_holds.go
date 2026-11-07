@@ -20,9 +20,12 @@ import (
 var ErrHoldConflict = errors.New("held by another object")
 
 // holdConflictError says the conflicts of a configuration, and is an
-// ErrHoldConflict: the answer is titled so, and its detail is the list.
+// ErrHoldConflict: the answer is titled so, and its detail is the list. The
+// resource of each conflict is kept beside it, for a dry run or a validation
+// to say each conflict by the section it is about.
 type holdConflictError struct {
 	conflicts []string
+	rids      []string
 }
 
 func (t holdConflictError) Error() string {
@@ -144,7 +147,9 @@ func refuseHoldConflicts(ctx echo.Context, p naming.Path, body []byte, scope []s
 		return nil
 	}
 	l := make([]string, len(order))
+	rids := make([]string, len(order))
 	for i, k := range order {
+		rids[i] = k.rid
 		on := "every node"
 		if !everywhere[k] {
 			slices.Sort(where[k])
@@ -161,7 +166,7 @@ func refuseHoldConflicts(ctx echo.Context, p naming.Path, body []byte, scope []s
 			l[i] += ", which uses it exclusively: set exclusive=false on both to share it"
 		}
 	}
-	return holdConflictError{conflicts: l}
+	return holdConflictError{conflicts: l, rids: rids}
 }
 
 // addedHolds returns the holds of l the object does not have already, as
