@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"errors"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/backup"
@@ -87,7 +88,7 @@ func (t *CmdStoreSnapshotList) Run() error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          l,
+		Data:          commoncmd.NewList("StoreSnapshotList", l),
 		Colorize:      rawconfig.Colorize,
 	}.Print())
 }

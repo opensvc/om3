@@ -158,9 +158,20 @@ func (t *CmdDaemonHeartbeatList) Run() error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          table,
-		Colorize:      rawconfig.Colorize,
+		Data: ListingData(t.Output, NewList("HeartbeatStreamList", table.entries()), func() any {
+			return table
+		}),
+		Colorize: rawconfig.Colorize,
 	}.Print()
+}
+
+// entries returns what the rows carry, without the icons the table draws.
+func (t heartbeatStreamRows) entries() []daemonsubsystem.HeartbeatStreamPeerStatusTableEntry {
+	l := make([]daemonsubsystem.HeartbeatStreamPeerStatusTableEntry, len(t))
+	for i, row := range t {
+		l[i] = row.HeartbeatStreamPeerStatusTableEntry
+	}
+	return l
 }
 
 // NewCmdDaemonHeartbeatStatus is the name the list command answered to

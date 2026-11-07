@@ -16,6 +16,7 @@ func TestListsHandTheirItems(t *testing.T) {
 	for _, l := range []any{
 		ClusterLockList{}, ExecList{}, OrchestrationList{}, ArrayList{}, StoreList{},
 		PoolList{}, PoolVolumeList{}, NetworkList{}, RelayStatusList{},
+		DNSRecordList{}, ObjectPathList{}, DataValueList{},
 	} {
 		_, ok := l.(getItemser)
 		assert.True(t, ok, "%T", l)

@@ -1,6 +1,7 @@
 package omcmd
 
 import (
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -22,7 +23,7 @@ func (t *CmdStoreList) Run() error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          n.ListStores(),
+		Data:          commoncmd.NewList("StoreList", n.ListStores()),
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 }

@@ -128,3 +128,15 @@ func (t ArrayList) GetItems() any {
 func (t StoreList) GetItems() any {
 	return t.Items
 }
+
+func (t DNSRecordList) GetItems() any {
+	return t.Items
+}
+
+func (t ObjectPathList) GetItems() any {
+	return t.Items
+}
+
+func (t DataValueList) GetItems() any {
+	return t.Items
+}

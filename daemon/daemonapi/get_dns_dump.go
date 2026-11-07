@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/dns"
 )
 
@@ -16,7 +17,12 @@ func (a *DaemonAPI) GetDaemonDNSDump(ctx echo.Context, nodename string) error {
 	}
 	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost {
-		return ctx.JSON(http.StatusOK, dns.GetZone())
+		zone := dns.GetZone()
+		resp := api.DNSRecordList{Kind: api.DNSRecordListKindDNSRecordList, Items: make(api.DNSZone, 0, len(zone))}
+		for _, r := range zone {
+			resp.Items = append(resp.Items, api.DNSRecord{Qname: r.Name, Qtype: r.Type, Ttl: r.TTL, Content: r.Content, DomainID: r.DomainID})
+		}
+		return ctx.JSON(http.StatusOK, resp)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 		return c.GetDaemonDNSDump(ctx.Request().Context(), nodename)

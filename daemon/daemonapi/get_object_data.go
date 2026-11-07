@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind namin
 		}
 	}
 
-	result := make(api.DataKeys, 0)
+	result := api.DataValueList{Kind: api.DataValueListKindDataValueList, Items: make(api.DataKeys, 0)}
 
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
@@ -53,7 +53,7 @@ func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind namin
 			if b, err := ks.DecodeKey(name); err != nil {
 				return JSONProblemf(ctx, http.StatusInternalServerError, "DecodeKey", "%s: %s", name, err)
 			} else {
-				result = append(result, api.DataKey{Name: name, Bytes: b})
+				result.Items = append(result.Items, api.DataKey{Name: name, Bytes: b})
 			}
 		}
 		return ctx.JSON(http.StatusOK, result)

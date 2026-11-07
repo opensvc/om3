@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/daemon/dns"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (
@@ -56,16 +56,18 @@ func (t *CmdDaemonDNSDump) Run() error {
 		return fmt.Errorf("unexpected get daemon dns dump status code %s", resp.Status)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	var parsed dns.Zone
+	var parsed api.DNSRecordList
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return err
 	}
 	renderer := output.Renderer{
-		Output:   t.Output,
-		Sort:     t.Sort,
-		Color:    t.Color,
-		Data:     parsed,
-		Colorize: rawconfig.Colorize,
+		DefaultOutput: "tab=NAME:qname,TYPE:qtype,TTL:ttl,CONTENT:content",
+		DefaultSort:   "NAME,TYPE",
+		Output:        t.Output,
+		Sort:          t.Sort,
+		Color:         t.Color,
+		Data:          parsed,
+		Colorize:      rawconfig.Colorize,
 	}
 	return renderer.Print()
 }

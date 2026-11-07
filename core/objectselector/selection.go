@@ -412,7 +412,16 @@ func (t *Selection) daemonExpand() error {
 		return fmt.Errorf("unexpected get objects selector status %s", resp.Status)
 	} else {
 		defer func() { _ = resp.Body.Close() }()
-		return json.NewDecoder(resp.Body).Decode(&t.cache)
+		var l api.ObjectPathList
+		if err := json.NewDecoder(resp.Body).Decode(&l); err != nil {
+			return err
+		}
+		paths, err := naming.ParsePaths(l.Items...)
+		if err != nil {
+			return err
+		}
+		t.cache = paths
+		return nil
 	}
 }
 

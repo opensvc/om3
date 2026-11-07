@@ -138,6 +138,21 @@ func (e ConfigAlertListKind) Valid() bool {
 	}
 }
 
+// Defines values for DNSRecordListKind.
+const (
+	DNSRecordListKindDNSRecordList DNSRecordListKind = "DNSRecordList"
+)
+
+// Valid indicates whether the value is a known member of the DNSRecordListKind enum.
+func (e DNSRecordListKind) Valid() bool {
+	switch e {
+	case DNSRecordListKindDNSRecordList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DaemonListenerName.
 const (
 	ApiInet DaemonListenerName = "api.inet"
@@ -165,6 +180,21 @@ const (
 func (e DataKeyListKind) Valid() bool {
 	switch e {
 	case DataKeyListKindDataKeyList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DataValueListKind.
+const (
+	DataValueListKindDataValueList DataValueListKind = "DataValueList"
+)
+
+// Valid indicates whether the value is a known member of the DataValueListKind enum.
+func (e DataValueListKind) Valid() bool {
+	switch e {
+	case DataValueListKindDataValueList:
 		return true
 	default:
 		return false
@@ -519,6 +549,21 @@ const (
 func (e ObjectListKind) Valid() bool {
 	switch e {
 	case ObjectListKindObjectList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ObjectPathListKind.
+const (
+	ObjectPathListKindObjectPathList ObjectPathListKind = "ObjectPathList"
+)
+
+// Valid indicates whether the value is a known member of the ObjectPathListKind enum.
+func (e ObjectPathListKind) Valid() bool {
+	switch e {
+	case ObjectPathListKindObjectPathList:
 		return true
 	default:
 		return false
@@ -1485,14 +1530,25 @@ type ConsoleTicket struct {
 	Url *string `json:"url,omitempty"`
 }
 
-// DNSRecord defines model for DNSRecord.
+// DNSRecord A record of the cluster zone, as the daemon serves it to the
+// remote backend of the dns server: name, type, time to live and
+// content.
 type DNSRecord struct {
-	Class string `json:"class"`
-	Data  string `json:"data"`
-	Name  string `json:"name"`
-	Ttl   int    `json:"ttl"`
-	Type  string `json:"type"`
+	Content  string `json:"content"`
+	DomainID int    `json:"domain_id"`
+	Qname    string `json:"qname"`
+	Qtype    string `json:"qtype"`
+	Ttl      int    `json:"ttl"`
 }
+
+// DNSRecordList defines model for DNSRecordList.
+type DNSRecordList struct {
+	Items DNSZone           `json:"items"`
+	Kind  DNSRecordListKind `json:"kind"`
+}
+
+// DNSRecordListKind defines model for DNSRecordList.Kind.
+type DNSRecordListKind string
 
 // DNSZone defines model for DNSZone.
 type DNSZone = []DNSRecord
@@ -1630,6 +1686,15 @@ type DataKeyListItems = []DataKeyListItem
 
 // DataKeys defines model for DataKeys.
 type DataKeys = []DataKey
+
+// DataValueList defines model for DataValueList.
+type DataValueList struct {
+	Items DataKeys          `json:"items"`
+	Kind  DataValueListKind `json:"kind"`
+}
+
+// DataValueListKind defines model for DataValueList.Kind.
+type DataValueListKind string
 
 // Disk defines model for Disk.
 type Disk struct {
@@ -2338,6 +2403,15 @@ type ObjectListKind string
 type ObjectMeta struct {
 	Object string `json:"object"`
 }
+
+// ObjectPathList defines model for ObjectPathList.
+type ObjectPathList struct {
+	Items ObjectPaths        `json:"items"`
+	Kind  ObjectPathListKind `json:"kind"`
+}
+
+// ObjectPathListKind defines model for ObjectPathList.Kind.
+type ObjectPathListKind string
 
 // ObjectPaths defines model for ObjectPaths.
 type ObjectPaths = []string
