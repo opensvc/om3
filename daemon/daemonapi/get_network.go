@@ -15,7 +15,7 @@ func (a *DaemonAPI) GetNetworks(ctx echo.Context, params api.GetNetworksParams) 
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
-	var items api.NetworkItems
+	items := make(api.NetworkItems, 0)
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", "%s", err)

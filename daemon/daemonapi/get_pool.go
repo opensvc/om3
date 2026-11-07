@@ -50,7 +50,7 @@ func (a *DaemonAPI) GetPools(ctx echo.Context, params api.GetPoolsParams) error 
 }
 
 func (a *DaemonAPI) getNodePools(ctx echo.Context, name *string, nodeMap nodeselector.ResultMap) api.PoolItems {
-	var items api.PoolItems
+	items := make(api.PoolItems, 0)
 	for _, e := range pool.StatusData.GetAll() {
 		if name != nil && *name != e.Name {
 			continue
@@ -89,7 +89,7 @@ func (a *DaemonAPI) getNodePools(ctx echo.Context, name *string, nodeMap nodesel
 }
 
 func (a *DaemonAPI) getClusterPools(ctx echo.Context, name *string) api.PoolItems {
-	var items api.PoolItems
+	items := make(api.PoolItems, 0)
 	m := make(map[string]api.Pool)
 	for _, e := range pool.StatusData.GetAll() {
 		if name != nil && *name != e.Name {

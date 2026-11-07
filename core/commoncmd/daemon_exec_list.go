@@ -138,8 +138,9 @@ func (t *CmdDaemonExecList) Gather() ([]api.ExecItem, error) {
 	defer cancel()
 
 	var (
-		mu    sync.Mutex
-		items []api.ExecItem
+		mu sync.Mutex
+		// Not nil: a listing of no exec is an empty list, not null.
+		items = make([]api.ExecItem, 0)
 		errs  error
 		wg    sync.WaitGroup
 	)
