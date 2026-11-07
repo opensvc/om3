@@ -122,13 +122,7 @@ func (t Renderer) Sprint() (string, error) {
 	if t.Colorize == nil {
 		t.Colorize = palette.DefaultFuncPalette()
 	}
-	switch data := t.Data.(type) {
-	case []string:
-		if data == nil {
-			// JSON Marshal renders "null" for unallocated empty slices
-			t.Data = make([]string, 0)
-		}
-	}
+	t.Data = emptyNotNull(t.Data)
 	switch formatID {
 	case Flat:
 		var sep string
@@ -498,4 +492,38 @@ func (t Renderer) Print() error {
 	}
 	fmt.Print(s)
 	return nil
+}
+
+// emptyNotNull returns data with a nil slice in place of an empty one, as
+// JSON Marshal renders "null" for a slice never allocated: a listing of
+// nothing is an empty list, which a script iterates, not null. The slice is
+// data itself, or the Items of the list an api answers with, which a listing
+// prints as it is in the machine formats. A list is copied, never changed.
+func emptyNotNull(data any) any {
+	v := reflect.ValueOf(data)
+	switch {
+	case !v.IsValid():
+		return data
+	case v.Kind() == reflect.Slice:
+		if v.IsNil() {
+			return reflect.MakeSlice(v.Type(), 0, 0).Interface()
+		}
+	case v.Kind() == reflect.Struct:
+		items := v.FieldByName("Items")
+		if items.IsValid() && items.Kind() == reflect.Slice && items.IsNil() {
+			c := reflect.New(v.Type()).Elem()
+			c.Set(v)
+			c.FieldByName("Items").Set(reflect.MakeSlice(items.Type(), 0, 0))
+			return c.Interface()
+		}
+	case v.Kind() == reflect.Pointer && !v.IsNil() && v.Elem().Kind() == reflect.Struct:
+		items := v.Elem().FieldByName("Items")
+		if items.IsValid() && items.Kind() == reflect.Slice && items.IsNil() {
+			c := reflect.New(v.Elem().Type())
+			c.Elem().Set(v.Elem())
+			c.Elem().FieldByName("Items").Set(reflect.MakeSlice(items.Type(), 0, 0))
+			return c.Interface()
+		}
+	}
+	return data
 }

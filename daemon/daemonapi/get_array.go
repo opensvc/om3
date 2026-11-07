@@ -14,7 +14,7 @@ import (
 
 func (a *DaemonAPI) GetArray(ctx echo.Context, params api.GetArrayParams) error {
 	var (
-		items api.ArrayItems
+		items = make(api.ArrayItems, 0)
 	)
 	if v, err := assertRoot(ctx); !v {
 		return err

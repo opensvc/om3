@@ -29,7 +29,8 @@ func (a *DaemonAPI) getLocalCapabilities(ctx echo.Context) error {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Load capabilities", "%s", err)
 	}
 	resp := api.CapabilityList{
-		Kind: "CapabilityList",
+		Kind:  "CapabilityList",
+		Items: make(api.CapabilityItems, 0),
 	}
 	for _, e := range caps {
 		item := api.CapabilityItem{

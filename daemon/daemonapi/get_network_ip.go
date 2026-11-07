@@ -47,7 +47,7 @@ func (a *DaemonAPI) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams
 	} else {
 		networkStatusList = network.ShowNetworks(n, clusterIPs)
 	}
-	var l api.NetworkIPItems
+	l := make(api.NetworkIPItems, 0)
 	for _, networkStatus := range networkStatusList {
 		for _, ip := range networkStatus.IPs {
 			l = append(l, api.NetworkIP{
