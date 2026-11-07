@@ -51,8 +51,10 @@ func (t *CmdStoreSnapshotList) Run() error {
 			Output:        t.Output,
 			Sort:          t.Sort,
 			Color:         t.Color,
-			Data:          resp.JSON200.Items,
-			Colorize:      rawconfig.Colorize,
+			Data: commoncmd.ListingData(t.Output, *resp.JSON200, func() any {
+				return resp.JSON200.Items
+			}),
+			Colorize: rawconfig.Colorize,
 		}.Print()
 	case 400:
 		return fmt.Errorf("%s", resp.JSON400)

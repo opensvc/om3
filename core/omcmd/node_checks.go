@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"errors"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 
 	"github.com/opensvc/om3/v3/core/check"
 	"github.com/opensvc/om3/v3/core/object"
@@ -31,8 +32,10 @@ func (t *CmdNodeChecks) Run() error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          rs.Lines(),
-		Colorize:      rawconfig.Colorize,
+		Data: commoncmd.ListingData(t.Output, commoncmd.NewList("CheckList", rs.Lines()), func() any {
+			return rs.Lines()
+		}),
+		Colorize: rawconfig.Colorize,
 	}.Print()
 	return errors.Join(renderErr, pushErr)
 }

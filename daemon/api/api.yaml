@@ -2132,7 +2132,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DNSZone'
+                $ref: '#/components/schemas/DNSRecordList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -5502,7 +5502,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectPaths'
+                $ref: '#/components/schemas/ObjectPathList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -6578,7 +6578,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DataKeys'
+                $ref: '#/components/schemas/DataValueList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -7727,28 +7727,38 @@ components:
 
     DNSRecord:
       type: object
-      required:
-        - name
-        - type
-        - class
-        - ttl
-        - data
+      description: |
+        A record of the cluster zone, as the daemon serves it to the
+        remote backend of the dns server: name, type, time to live and
+        content.
+      required: [qname, qtype, ttl, content, domain_id]
       properties:
-        name:
+        qname:
           type: string
-        type:
-          type: string
-        class:
+        qtype:
           type: string
         ttl:
           type: integer
-        data:
+        content:
           type: string
+        domain_id:
+          type: integer
+          x-go-name: DomainID
 
     DNSZone:
       type: array
       items:
         $ref: '#/components/schemas/DNSRecord'
+
+    DNSRecordList:
+      type: object
+      required: [kind, items]
+      properties:
+        kind:
+          type: string
+          enum: [DNSRecordList]
+        items:
+          $ref: '#/components/schemas/DNSZone'
 
     DRBDAllocation:
       type: object
@@ -8219,6 +8229,16 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/DataKey'
+
+    DataValueList:
+      type: object
+      required: [kind, items]
+      properties:
+        kind:
+          type: string
+          enum: [DataValueList]
+        items:
+          $ref: '#/components/schemas/DataKeys'
 
     Disk:
       type: object
@@ -9859,6 +9879,16 @@ components:
       type: array
       items:
         type: string
+
+    ObjectPathList:
+      type: object
+      required: [kind, items]
+      properties:
+        kind:
+          type: string
+          enum: [ObjectPathList]
+        items:
+          $ref: '#/components/schemas/ObjectPaths'
 
     ObjectSec:
       allOf:

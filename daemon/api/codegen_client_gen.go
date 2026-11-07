@@ -21042,7 +21042,7 @@ func (r PostDaemonAuditResponse) ContentType() string {
 type GetDaemonDNSDumpResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DNSZone
+	JSON200      *DNSRecordList
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
@@ -24188,7 +24188,7 @@ func (r GetObjectsResponse) ContentType() string {
 type GetObjectPathsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ObjectPaths
+	JSON200      *ObjectPathList
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
@@ -25119,7 +25119,7 @@ func (r GetObjectConfigKeywordsResponse) ContentType() string {
 type GetObjectDataResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DataKeys
+	JSON200      *DataValueList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -31139,7 +31139,7 @@ func ParseGetDaemonDNSDumpResponse(rsp *http.Response) (*GetDaemonDNSDumpRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DNSZone
+		var dest DNSRecordList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -36233,7 +36233,7 @@ func ParseGetObjectPathsResponse(rsp *http.Response) (*GetObjectPathsResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ObjectPaths
+		var dest ObjectPathList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -37966,7 +37966,7 @@ func ParseGetObjectDataResponse(rsp *http.Response) (*GetObjectDataResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DataKeys
+		var dest DataValueList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

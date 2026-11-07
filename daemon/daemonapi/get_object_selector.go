@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 		log.Warnf("expand selection from param selector %s: %s", params.Path, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
-	result := api.ObjectPaths{}
+	result := api.ObjectPathList{Kind: api.ObjectPathListKindObjectPathList, Items: make(api.ObjectPaths, 0)}
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
 	isGuestOn := guestOn(userGrants)
@@ -34,7 +34,7 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 		if !hasRoot && !isGuestOn(path.Namespace) {
 			continue
 		}
-		result = append(result, path.String())
+		result.Items = append(result.Items, path.String())
 	}
 	return ctx.JSON(http.StatusOK, result)
 }
