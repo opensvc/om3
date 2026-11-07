@@ -16,6 +16,7 @@ var (
 		Option:   "blocking_post_provision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_post_provision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPostRun = keywords.Keyword{
@@ -23,6 +24,7 @@ var (
 		Option:   "blocking_post_run",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_post_run"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPostStart = keywords.Keyword{
@@ -30,6 +32,7 @@ var (
 		Option:   "blocking_post_start",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_post_start"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPostStop = keywords.Keyword{
@@ -37,6 +40,7 @@ var (
 		Option:   "blocking_post_stop",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_post_stop"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPostUnprovision = keywords.Keyword{
@@ -44,6 +48,7 @@ var (
 		Option:   "blocking_post_unprovision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_post_unprovision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPreProvision = keywords.Keyword{
@@ -51,6 +56,7 @@ var (
 		Option:   "blocking_pre_provision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_pre_provision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPreRun = keywords.Keyword{
@@ -58,6 +64,7 @@ var (
 		Option:   "blocking_pre_run",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_pre_run"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPreStart = keywords.Keyword{
@@ -65,6 +72,7 @@ var (
 		Option:   "blocking_pre_start",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_pre_start"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPreStop = keywords.Keyword{
@@ -72,6 +80,7 @@ var (
 		Option:   "blocking_pre_stop",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_pre_stop"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWBlockingPreUnprovision = keywords.Keyword{
@@ -79,6 +88,7 @@ var (
 		Option:   "blocking_pre_unprovision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/blocking_pre_unprovision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWDisable = keywords.Keyword{
@@ -87,6 +97,7 @@ var (
 		Option:    "disable",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/disable"),
+		Group:     GroupAvailability.ID,
 	}
 
 	KWEnableProvision = keywords.Keyword{
@@ -95,6 +106,7 @@ var (
 		Default:   "true",
 		Option:    "provision",
 		Text:      keywords.NewText(fs, "text/kw/provision"),
+		Group:     GroupProvisioning.ID,
 	}
 
 	KWEnableUnprovision = keywords.Keyword{
@@ -103,6 +115,7 @@ var (
 		Default:   "true",
 		Option:    "unprovision",
 		Text:      keywords.NewText(fs, "text/kw/unprovision"),
+		Group:     GroupProvisioning.ID,
 	}
 
 	KWEncap = keywords.Keyword{
@@ -110,6 +123,7 @@ var (
 		Converter: converters.Bool,
 		Option:    "encap",
 		Text:      keywords.NewText(fs, "text/kw/encap"),
+		Group:     GroupEncap.ID,
 	}
 
 	KWMonitor = keywords.Keyword{
@@ -118,6 +132,7 @@ var (
 		Option:    "monitor",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/monitor"),
+		Group:     GroupMonitoring.ID,
 	}
 
 	KWOptional = keywords.Keyword{
@@ -127,6 +142,7 @@ var (
 		Option:    "optional",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/optional"),
+		Group:     GroupAvailability.ID,
 	}
 
 	KWPostProvision = keywords.Keyword{
@@ -134,6 +150,7 @@ var (
 		Option:   "post_provision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPostRun = keywords.Keyword{
@@ -141,6 +158,7 @@ var (
 		Option:   "post_run",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/post_run"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPostStart = keywords.Keyword{
@@ -148,6 +166,7 @@ var (
 		Option:   "post_start",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/post_start"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPostStop = keywords.Keyword{
@@ -155,6 +174,7 @@ var (
 		Option:   "post_stop",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/post_stop"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPostUnprovision = keywords.Keyword{
@@ -162,6 +182,7 @@ var (
 		Option:   "post_unprovision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/post_unprovision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPreProvision = keywords.Keyword{
@@ -169,6 +190,7 @@ var (
 		Option:   "pre_provision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/pre_provision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPreRun = keywords.Keyword{
@@ -176,6 +198,7 @@ var (
 		Option:   "pre_run",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/pre_run"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPreStart = keywords.Keyword{
@@ -183,6 +206,7 @@ var (
 		Option:   "pre_start",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/pre_start"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPreStop = keywords.Keyword{
@@ -190,6 +214,7 @@ var (
 		Option:   "pre_stop",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/pre_stop"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWPreUnprovision = keywords.Keyword{
@@ -197,6 +222,7 @@ var (
 		Option:   "pre_unprovision",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/pre_unprovision"),
+		Group:    GroupTriggers.ID,
 	}
 
 	KWProvisionRequires = keywords.Keyword{
@@ -204,6 +230,7 @@ var (
 		Example: "ip#0 fs#0(down,stdby down)",
 		Option:  "provision_requires",
 		Text:    keywords.NewText(fs, "text/kw/provision_requires"),
+		Group:   GroupRequirements.ID,
 	}
 
 	KWRestart = keywords.Keyword{
@@ -213,6 +240,7 @@ var (
 		Option:    "restart",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/restart"),
+		Group:     GroupMonitoring.ID,
 	}
 
 	KWRestartDelay = keywords.Keyword{
@@ -222,6 +250,7 @@ var (
 		Option:    "restart_delay",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/restart_delay"),
+		Group:     GroupMonitoring.ID,
 	}
 
 	KWRunRequires = keywords.Keyword{
@@ -229,6 +258,7 @@ var (
 		Example: "ip#0 fs#0(down,stdby down)",
 		Option:  "run_requires",
 		Text:    keywords.NewText(fs, "text/kw/run_requires"),
+		Group:   GroupRequirements.ID,
 	}
 
 	KWSCSIPersistentReservationEnabled = keywords.Keyword{
@@ -236,6 +266,7 @@ var (
 		Converter: converters.Bool,
 		Option:    "scsireserv",
 		Text:      keywords.NewText(fs, "text/kw/scsireserv"),
+		Group:     GroupReservation.ID,
 	}
 
 	KWSCSIPersistentReservationKey = keywords.Keyword{
@@ -244,6 +275,7 @@ var (
 		Scopable: true,
 		Default:  "{node.node.prkey}",
 		Text:     keywords.NewText(fs, "text/kw/prkey"),
+		Group:    GroupReservation.ID,
 	}
 
 	KWSCSIPersistentReservationNoPreemptAbort = keywords.Keyword{
@@ -252,6 +284,7 @@ var (
 		Option:    "no_preempt_abort",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/no_preempt_abort"),
+		Group:     GroupReservation.ID,
 	}
 
 	KWShared = keywords.Keyword{
@@ -260,6 +293,7 @@ var (
 		Option:    "shared",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/shared"),
+		Group:     GroupProvisioning.ID,
 	}
 
 	KWStandby = keywords.Keyword{
@@ -268,6 +302,7 @@ var (
 		Option:    "standby",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/standby"),
+		Group:     GroupAvailability.ID,
 	}
 
 	KWStartRequires = keywords.Keyword{
@@ -275,6 +310,7 @@ var (
 		Example: "ip#0 fs#0(down,stdby down)",
 		Option:  "start_requires",
 		Text:    keywords.NewText(fs, "text/kw/start_requires"),
+		Group:   GroupRequirements.ID,
 	}
 
 	KWStopRequires = keywords.Keyword{
@@ -282,6 +318,7 @@ var (
 		Example: "ip#0 fs#0(down,stdby down)",
 		Option:  "stop_requires",
 		Text:    keywords.NewText(fs, "text/kw/stop_requires"),
+		Group:   GroupRequirements.ID,
 	}
 
 	KWSubset = keywords.Keyword{
@@ -289,6 +326,7 @@ var (
 		Option:   "subset",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/subset"),
+		Group:    GroupSelection.ID,
 	}
 
 	// KWUpdateRequires gates the update and full actions. It is named
@@ -300,6 +338,7 @@ var (
 		Example: "ip#0 fs#0(down,stdby down)",
 		Option:  "update_requires",
 		Text:    keywords.NewText(fs, "text/kw/update_requires"),
+		Group:   GroupRequirements.ID,
 	}
 
 	KWTags = keywords.Keyword{
@@ -308,6 +347,7 @@ var (
 		Option:    "tags",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/tags"),
+		Group:     GroupSelection.ID,
 	}
 
 	KWUnprovisionRequires = keywords.Keyword{
@@ -315,6 +355,7 @@ var (
 		Example: "ip#0 fs#0(down,stdby down)",
 		Option:  "unprovision_requires",
 		Text:    keywords.NewText(fs, "text/kw/unprovision_requires"),
+		Group:   GroupRequirements.ID,
 	}
 
 	SCSIPersistentReservationKeywords = []*keywords.Keyword{

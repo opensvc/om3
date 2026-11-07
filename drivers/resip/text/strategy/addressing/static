@@ -1,0 +1,6 @@
+The address is the one `name` holds, an address or a DNS name, with the
+netmask `netmask` holds, or else the one of an address already plumbed on
+the interface.
+
+Choose it for an address known in advance, as the one a DNS name of the
+service resolves to.

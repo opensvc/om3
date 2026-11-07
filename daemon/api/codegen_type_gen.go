@@ -2016,7 +2016,10 @@ type KeywordDefinitionItem struct {
 	GrantAlways bool `json:"grantAlways"`
 
 	// GrantDoc The sentence the keyword documentation shows about the grant, which says when only some values need it. Empty when grant is.
-	GrantDoc     string   `json:"grantDoc"`
+	GrantDoc string `json:"grantDoc"`
+
+	// Group The id of the group of the keyword, the topic a wizard shows it under, as "addressing". Never empty: a keyword not grouped yet is of the "other" group. The groups of the keywords of a list are described in its groups.
+	Group        string   `json:"group"`
 	Inherit      string   `json:"inherit"`
 	Kind         []string `json:"kind"`
 	Minimal      bool     `json:"minimal"`
@@ -2052,12 +2055,32 @@ type KeywordDefinitionItems = []KeywordDefinitionItem
 
 // KeywordDefinitionList defines model for KeywordDefinitionList.
 type KeywordDefinitionList struct {
-	Items KeywordDefinitionItems    `json:"items"`
-	Kind  KeywordDefinitionListKind `json:"kind"`
+	// Groups The groups of the keywords of the list, each once per driver declaring it, sorted by order.
+	Groups KeywordGroupItems         `json:"groups"`
+	Items  KeywordDefinitionItems    `json:"items"`
+	Kind   KeywordDefinitionListKind `json:"kind"`
 }
 
 // KeywordDefinitionListKind defines model for KeywordDefinitionList.Kind.
 type KeywordDefinitionListKind string
+
+// KeywordGroupItem A topic of the keywords of a section: the keywords a wizard shows together. A group with strategies has alternative ways to be configured, whose keywords are not to be set together.
+type KeywordGroupItem struct {
+	// Driver The driver declaring the group, as "ip.host". Empty for a group every resource has, and for the "other" group of the keywords not grouped yet.
+	Driver string `json:"driver"`
+
+	// Id The id the group field of a keyword names, as "addressing".
+	Id   string `json:"id"`
+	Name string `json:"name"`
+
+	// Order The rank of the group among the groups of a section, the lowest first.
+	Order      int                   `json:"order"`
+	Strategies []KeywordStrategyItem `json:"strategies"`
+	Text       string                `json:"text"`
+}
+
+// KeywordGroupItems The groups of the keywords of the list, each once per driver declaring it, sorted by order.
+type KeywordGroupItems = []KeywordGroupItem
 
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
@@ -2091,6 +2114,23 @@ type KeywordList struct {
 
 // KeywordListKind defines model for KeywordList.Kind.
 type KeywordListKind string
+
+// KeywordStrategyItem One way to configure a group among its alternatives. A configuration setting a keyword the strategy excludes next to one it uses is warned of by the validation.
+type KeywordStrategyItem struct {
+	// Excludes The options of the keywords the strategy leaves unset.
+	Excludes []string `json:"excludes"`
+
+	// Id The id of the strategy, as "static".
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Text string `json:"text"`
+
+	// Uses The options of the keywords the strategy sets.
+	Uses []string `json:"uses"`
+
+	// When The conditions on a selector keyword choosing the strategy, as "topology=flex", written as the depends of a keyword. Empty when no keyword chooses it.
+	When []string `json:"when"`
+}
 
 // Kind defines model for Kind.
 type Kind = naming.Kind

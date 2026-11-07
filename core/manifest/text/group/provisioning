@@ -1,0 +1,3 @@
+Whether the provision and unprovision actions act on the resource, and
+whether the resource is provisioned once for every node, by the leader
+instance, or on each node.

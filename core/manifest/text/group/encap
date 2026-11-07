@@ -1,0 +1,2 @@
+Whether the resource is handled by the agent of the node, or by the agent
+running in the containers of the object.

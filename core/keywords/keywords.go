@@ -47,6 +47,11 @@ type (
 		// Text is a text explaining the role of the keyword.
 		Text string
 
+		// Group is the id of the group of the keyword, the topic a wizard
+		// shows it under. Empty is the group of the keywords not grouped
+		// yet, GroupOtherID.
+		Group string
+
 		// DefaultText is a text explaining the default value.
 		DefaultText string
 
@@ -673,6 +678,7 @@ func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of stri
 	}
 	fprintProp("required", fmt.Sprint(t.Required))
 	fprintProp("scopable", fmt.Sprint(t.Scopable))
+	fprintProp("group", t.GroupID())
 	if t.Since != "" {
 		fprintProp("since", t.Since)
 	}

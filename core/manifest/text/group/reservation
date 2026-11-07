@@ -1,0 +1,5 @@
+How the resource keeps the storage it uses for the node running it, so
+that a node not running the instance can not write to it: the SCSI3
+persistent reservation it takes on its disks when it starts, or the lock
+the storage itself takes, as the RBD lock of a rados disk, exclusive or
+shared as its access mode says.

@@ -41,6 +41,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 			Scopable:             item.Scopable,
 			Section:              item.Section,
 			Text:                 item.Text,
+			Group:                item.Group,
 		}
 		kw.Aliases = append(kw.Aliases, item.Aliases...)
 		kw.Candidates = append(kw.Candidates, item.Candidates...)
