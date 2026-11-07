@@ -34,8 +34,9 @@ func (a *DaemonAPI) GetClusterConfigKeywords(ctx echo.Context, params api.GetClu
 		return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
 	}
 	r := api.KeywordDefinitionList{
-		Kind:  "KeywordDefinitionList",
-		Items: doc.ConvertKeywordStore(store),
+		Kind:   "KeywordDefinitionList",
+		Items:  doc.ConvertKeywordStore(store),
+		Groups: doc.ConvertKeywordGroups(object.KeywordGroups(store)),
 	}
 	return ctx.JSON(http.StatusOK, r)
 }

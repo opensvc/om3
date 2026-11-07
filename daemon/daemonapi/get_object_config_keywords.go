@@ -54,8 +54,9 @@ func (a *DaemonAPI) GetObjectConfigKeywords(ctx echo.Context, namespace string, 
 	items := doc.ConvertKeywordStore(store)
 	doc.AddObjectKeywordGrants(items, kind)
 	r := api.KeywordDefinitionList{
-		Kind:  "KeywordDefinitionList",
-		Items: items,
+		Kind:   "KeywordDefinitionList",
+		Items:  items,
+		Groups: doc.ConvertKeywordGroups(object.KeywordGroups(store)),
 	}
 	return ctx.JSON(http.StatusOK, r)
 }

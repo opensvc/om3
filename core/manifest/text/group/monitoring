@@ -1,0 +1,3 @@
+What the daemon does when the resource of a started instance goes down:
+how many times it restarts it, and whether it then triggers the monitor
+action of the object.

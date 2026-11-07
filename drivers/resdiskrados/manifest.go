@@ -45,6 +45,7 @@ var (
 			Attr:         "Access",
 			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
 			Default:      "rwo",
+			Group:        manifest.GroupReservation.ID,
 			Option:       "access",
 			Provisioning: true,
 			Scopable:     true,

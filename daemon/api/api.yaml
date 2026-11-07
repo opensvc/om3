@@ -8974,11 +8974,19 @@ components:
         - grant
         - grantDoc
         - grantAlways
+        - group
       properties:
         section:
           type: string
         option:
           type: string
+        group:
+          type: string
+          description: >
+            The id of the group of the keyword, the topic a wizard shows it
+            under, as "addressing". Never empty: a keyword not grouped yet is
+            of the "other" group. The groups of the keywords of a list are
+            described in its groups.
         grant:
           type: string
           description: >
@@ -9094,6 +9102,7 @@ components:
       required:
         - kind
         - items
+        - groups
       properties:
         kind:
           type: string
@@ -9101,6 +9110,91 @@ components:
             - KeywordDefinitionList
         items:
           $ref: '#/components/schemas/KeywordDefinitionItems'
+        groups:
+          $ref: '#/components/schemas/KeywordGroupItems'
+
+    KeywordGroupItems:
+      type: array
+      description: >
+        The groups of the keywords of the list, each once per driver declaring
+        it, sorted by order.
+      items:
+        $ref: '#/components/schemas/KeywordGroupItem'
+
+    KeywordGroupItem:
+      type: object
+      description: >
+        A topic of the keywords of a section: the keywords a wizard shows
+        together. A group with strategies has alternative ways to be
+        configured, whose keywords are not to be set together.
+      required:
+        - id
+        - driver
+        - name
+        - text
+        - order
+        - strategies
+      properties:
+        id:
+          type: string
+          description: The id the group field of a keyword names, as "addressing".
+        driver:
+          type: string
+          description: >
+            The driver declaring the group, as "ip.host". Empty for a group
+            every resource has, and for the "other" group of the keywords not
+            grouped yet.
+        name:
+          type: string
+        text:
+          type: string
+        order:
+          type: integer
+          description: The rank of the group among the groups of a section, the lowest first.
+        strategies:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeywordStrategyItem'
+
+    KeywordStrategyItem:
+      type: object
+      description: >
+        One way to configure a group among its alternatives. A configuration
+        setting a keyword the strategy excludes next to one it uses is warned
+        of by the validation.
+      required:
+        - id
+        - name
+        - text
+        - uses
+        - excludes
+        - when
+      properties:
+        id:
+          type: string
+          description: The id of the strategy, as "static".
+        name:
+          type: string
+        text:
+          type: string
+        uses:
+          type: array
+          description: The options of the keywords the strategy sets.
+          items:
+            type: string
+        excludes:
+          type: array
+          description: The options of the keywords the strategy leaves unset.
+          items:
+            type: string
+        when:
+          type: array
+          description: >
+            The conditions on a selector keyword choosing the strategy, as
+            "topology=flex", written as the depends of a keyword. Empty when
+            no keyword chooses it.
+          items:
+            type: string
 
     KeywordItem:
       type: object

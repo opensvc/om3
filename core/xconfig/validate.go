@@ -47,6 +47,7 @@ const (
 	alertKindInvalidSection
 	alertKindConfigure
 	alertKindKeySource
+	alertKindStrategies
 )
 
 var (
@@ -73,6 +74,7 @@ var (
 	alertKindInvalidSectionStr  = "invalid section name"
 	alertKindConfigureStr       = "resource configuration error"
 	alertKindKeySourceStr       = "key source error"
+	alertKindStrategiesStr      = "conflicting strategies"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -87,6 +89,7 @@ var (
 		alertKindInvalidSection:  alertKindInvalidSectionStr,
 		alertKindConfigure:       alertKindConfigureStr,
 		alertKindKeySource:       alertKindKeySourceStr,
+		alertKindStrategies:      alertKindStrategiesStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -102,6 +105,7 @@ var (
 		alertKindInvalidSectionStr:  alertKindInvalidSection,
 		alertKindConfigureStr:       alertKindConfigure,
 		alertKindKeySourceStr:       alertKindKeySource,
+		alertKindStrategiesStr:      alertKindStrategies,
 	}
 )
 
@@ -276,6 +280,23 @@ func (t T) NewAlertMoved(k key.T, did driver.ID, comment string) Alert {
 	return Alert{
 		Path:    t.Path,
 		Kind:    alertKindMoved,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertStrategies says a section sets keywords of two strategies of a
+// group of keywords that exclude each other, as an address and the network
+// to draw one from: one of the two is not used as its writer expects.
+//
+// It is a warning, the resource doing with the keywords what its driver
+// does.
+func (t T) NewAlertStrategies(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindStrategies,
 		Level:   alertLevelWarn,
 		Key:     k,
 		Driver:  did,
@@ -465,6 +486,10 @@ func (t T) Validate() (Alerts, error) {
 				}
 			}
 		}
+		// written are the options of the keywords the section sets, in
+		// any scope, by their name or an alias, each with the name it is
+		// written by.
+		written := make(map[string]string)
 		for option, raw := range s.KeysHash() {
 			k, err := key.ParseStrict(section + "." + option)
 			if err != nil {
@@ -490,6 +515,9 @@ func (t T) Validate() (Alerts, error) {
 					alerts = append(alerts, t.newAlertGone(k, did, err))
 					continue
 				}
+			}
+			if _, ok := written[kw.Option]; !ok || k.BaseOption() == kw.Option {
+				written[kw.Option] = k.BaseOption()
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
 				alerts = append(alerts, t.NewAlertScoping(k, did))
@@ -527,6 +555,9 @@ func (t T) Validate() (Alerts, error) {
 				}
 			}
 		}
+		if did.Group.IsResource() {
+			alerts = append(alerts, t.strategyAlerts(section, did, written)...)
+		}
 	}
 	if i, ok := t.Referrer.(sectionsValidator); ok {
 		alerts = append(alerts, i.ValidateSections(&t)...)
@@ -539,6 +570,69 @@ func (t T) Validate() (Alerts, error) {
 // networks of the cluster handing out the same addresses.
 type sectionsValidator interface {
 	ValidateSections(*T) Alerts
+}
+
+// keywordGrouper is a referrer knowing the groups of the keywords of a
+// resource driver, whose strategies say which keywords are ways to configure
+// a group that exclude each other.
+type keywordGrouper interface {
+	DriverKeywordGroups(driver.ID) []keywords.Group
+}
+
+// strategyAlerts warns of the keywords a resource section sets that belong to
+// strategies excluding each other: a keyword a strategy excludes set next to
+// one the strategy uses, as an address and the network to draw one from.
+//
+// The keywords judged are the ones the section writes, in any scope: a value
+// inherited from the DEFAULT section is not the resource's choice. A pair of
+// keywords is warned of once, whichever of its two strategies finds it.
+//
+// A keyword a strategy uses is set next to the keyword of another strategy
+// when that other strategy does not exclude it: the netmask of a static
+// address also overrides the one of the network an address is drawn from.
+func (t T) strategyAlerts(section string, did driver.ID, written map[string]string) Alerts {
+	i, ok := t.Referrer.(keywordGrouper)
+	if !ok {
+		return nil
+	}
+	var alerts Alerts
+	reported := make(map[[2]string]bool)
+	for _, group := range i.DriverKeywordGroups(did) {
+		for _, strategy := range group.Strategies {
+			for _, used := range strategy.Uses {
+				usedAs, ok := written[used]
+				if !ok {
+					continue
+				}
+				for _, excluded := range strategy.Excludes {
+					excludedAs, ok := written[excluded]
+					if !ok {
+						continue
+					}
+					other, hasOther := group.StrategyUsing(excluded)
+					if hasOther && !slices.Contains(other.Excludes, used) {
+						continue
+					}
+					pair := [2]string{used, excluded}
+					if pair[0] > pair[1] {
+						pair[0], pair[1] = pair[1], pair[0]
+					}
+					if reported[pair] {
+						continue
+					}
+					reported[pair] = true
+					var comment string
+					if hasOther {
+						comment = fmt.Sprintf("%s and %s are both set, but %s is the %s %s strategy and %s the %s one", usedAs, excludedAs, usedAs, strategy.ID, group.ID, excludedAs, other.ID)
+					} else {
+						comment = fmt.Sprintf("%s and %s are both set, but the %s %s strategy uses %s and excludes %s", usedAs, excludedAs, strategy.ID, group.ID, usedAs, excludedAs)
+					}
+					alerts = append(alerts, t.NewAlertStrategies(key.T{Section: section, Option: excludedAs}, did, comment))
+				}
+			}
+		}
+	}
+	return alerts
 }
 
 // hasResourceSections reports whether the sections of the configuration are

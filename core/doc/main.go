@@ -157,6 +157,7 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 		item := api.KeywordDefinitionItem{
 			Option:               kw.Option,
 			Section:              kw.Section,
+			Group:                kw.GroupID(),
 			Converter:            converters.Name(kw.Converter),
 			Default:              kw.Default,
 			DefaultOption:        kw.DefaultOption,
@@ -214,6 +215,38 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 		}
 		return slices.Compare(left.Kind, right.Kind) < 0
 	})
+	return l
+}
+
+// ConvertKeywordGroups returns the api items of the groups of keywords, in
+// their order, each list empty rather than null.
+func ConvertKeywordGroups(groups []keywords.DriverGroup) api.KeywordGroupItems {
+	l := make(api.KeywordGroupItems, 0, len(groups))
+	for _, g := range groups {
+		item := api.KeywordGroupItem{
+			Id:         g.ID,
+			Driver:     g.Driver,
+			Name:       g.Name,
+			Text:       g.Text,
+			Order:      g.Order,
+			Strategies: make([]api.KeywordStrategyItem, 0, len(g.Strategies)),
+		}
+		for _, s := range g.Strategies {
+			strategy := api.KeywordStrategyItem{
+				Id:       s.ID,
+				Name:     s.Name,
+				Text:     s.Text,
+				Uses:     append([]string{}, s.Uses...),
+				Excludes: append([]string{}, s.Excludes...),
+				When:     make([]string, 0, len(s.When)),
+			}
+			for _, kop := range s.When {
+				strategy.When = append(strategy.When, kop.String())
+			}
+			item.Strategies = append(item.Strategies, strategy)
+		}
+		l = append(l, item)
+	}
 	return l
 }
 

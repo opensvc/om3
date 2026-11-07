@@ -1,0 +1,2 @@
+The commands run before and after an action acts on the resource. The error
+of a blocking trigger interrupts the action, the errors of the others do not.

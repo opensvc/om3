@@ -1,0 +1,3 @@
+Whether the resource is acted upon, whether it is started on the nodes
+where the instance is not, and whether its errors and its status count in
+the availability of the instance.

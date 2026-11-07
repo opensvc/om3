@@ -1,0 +1,7 @@
+The address is drawn from the om network `network` names. On a lan network,
+it is drawn the first time the resource starts and recorded in `addr`, which
+every node then uses. The netmask is the one of the network, unless `netmask`
+is set.
+
+Choose it to have om pick a free address of a network declared in the
+cluster configuration.

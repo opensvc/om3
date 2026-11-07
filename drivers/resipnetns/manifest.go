@@ -113,6 +113,7 @@ var (
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/name"),
+			Group:        resip.GroupAddressing.ID,
 		},
 		{
 			Aliases:      []string{"ipdev"},
@@ -130,6 +131,7 @@ var (
 			Option:   "netmask",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/netmask"),
+			Group:    resip.GroupAddressing.ID,
 		},
 		{
 			Attr:         "Gateway",
@@ -146,6 +148,7 @@ var (
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/addr"),
+			Group:        resip.GroupAddressing.ID,
 		},
 		{
 			Attr:         "Network",
@@ -154,6 +157,7 @@ var (
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/network"),
+			Group:        resip.GroupAddressing.ID,
 		},
 		{
 			Attr:      "CheckCarrier",
@@ -202,5 +206,6 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(kws...)
+	m.AddGroups(resip.GroupAddressing)
 	return m
 }

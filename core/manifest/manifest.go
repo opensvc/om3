@@ -22,6 +22,10 @@ type (
 		DriverID driver.ID `json:"driver"`
 		Kinds    naming.Kinds
 		Attrs    map[string]Attr
+
+		// Groups are the groups of keywords the driver declares, beside
+		// the ones every resource has.
+		Groups []keywords.Group
 	}
 
 	//
@@ -141,6 +145,32 @@ func (t *T) AddKeywords(attrs ...*keywords.Keyword) *T {
 		t.Attrs[attr.Name()] = attr
 	}
 	return t
+}
+
+// AddGroups adds the groups of keywords the driver declares, and returns t.
+func (t *T) AddGroups(groups ...keywords.Group) *T {
+	t.Groups = append(t.Groups, groups...)
+	return t
+}
+
+// OwnGroup returns the group of the id the driver declares, and whether it
+// declares one.
+func (t *T) OwnGroup(id string) (keywords.Group, bool) {
+	for _, g := range t.Groups {
+		if g.ID == id {
+			return g, true
+		}
+	}
+	return keywords.Group{}, false
+}
+
+// AllGroups returns the groups the keywords of the driver may name: the ones
+// the driver declares, and the ones every resource has.
+func (t *T) AllGroups() []keywords.Group {
+	l := make([]keywords.Group, 0, len(t.Groups)+len(SharedGroups)+1)
+	l = append(l, t.Groups...)
+	l = append(l, SharedGroups...)
+	return append(l, keywords.GroupOther)
 }
 
 // Keywords returns the keywords of the manifest, in a stable order.
