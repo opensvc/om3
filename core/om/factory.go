@@ -4451,6 +4451,7 @@ func newCmdObjectConfigValidate(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagDraftConfig(flags, &options.Config)
 	return cmd
 }
 

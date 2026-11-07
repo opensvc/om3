@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -72,7 +73,7 @@ func (t *CmdNodeConfigValidate) Run() error {
 		Data:          alerts,
 		Colorize:      rawconfig.Colorize,
 	}.Print())
-	return errors.Join(errs, configAlertErrors(alerts.Items))
+	return errors.Join(errs, commoncmd.ConfigAlertErrors(alerts.Items))
 }
 
 func (t *CmdNodeConfigValidate) validate(ctx context.Context, c *client.T, node string) (api.ConfigAlertItems, error) {

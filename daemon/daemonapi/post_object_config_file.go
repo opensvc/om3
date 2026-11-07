@@ -78,13 +78,15 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad config", "%s", err)
 	}
 
-	// Validate RBAC rules for config keys
-	if err := configRbac(ctx, p, body); err != nil {
-		log.Warnf("%s: rbac: %s", p, err)
-		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
-	}
+	// A dry run runs every check, and answers what they found.
+	dryRun := params.DryRun != nil && *params.DryRun
+	check := a.newConfigCheck(ctx, p, dryRun)
 
-	log.Tracef("%s: rbac passed", p)
+	// Validate RBAC rules for config keys
+	if !check.rbac(body) {
+		log.Warnf("%s: rbac: %s", p, check.refusal.err)
+		return check.answer()
+	}
 
 	// The keys the configuration references, and the snapshot its
 	// provision restores from, come once the configuration passed: the
@@ -92,18 +94,16 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	// configuration in a namespace it is an administrator of. They are
 	// copied as the configuration lands, which a dry run does not reach:
 	// it judges the configuration the create would write, the snapshot
-	// read, and writes no key.
-	dryRun := params.DryRun != nil && *params.DryRun
-	if src != nil {
+	// read, and writes no key. A dry run the keyword policy refused judges
+	// the configuration without them.
+	if src != nil && !check.refused() {
 		if oc, body, base, err = src.apply(ctx, p, body, base); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Create from store", "%s", err)
 		}
 	}
 
-	if exists {
-		if err := stopToChange(ctx, p, body, force); err != nil {
-			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
-		}
+	if exists && !check.stopToChange(body, force) {
+		return check.answer()
 	}
 
 	// Flag the instance stopped on purpose if the daemon would start it on
@@ -114,5 +114,5 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 		flagStopped = true
 	}
 	waitLocal := params.WaitLocal != nil && *params.WaitLocal
-	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait, waitLocal, force, flagStopped, dryRun)
+	return a.writeObjectConfigFile(ctx, check, body, base, params.Wait, waitLocal, force, flagStopped)
 }

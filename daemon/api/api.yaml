@@ -6314,11 +6314,15 @@ paths:
         - $ref: '#/components/parameters/inQueryConfigDryRun'
       responses:
         200:
-          description: OK
+          description: |
+            The update, Committed. A dry run answers a ConfigAlertList
+            instead: every problem the update would be refused for, and the
+            warnings of the validation, as POST
+            /api/object/path/{namespace}/{kind}/{name}/config/validate does.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Committed'
+                $ref: '#/components/schemas/ConfigUpdateResult'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -6437,6 +6441,16 @@ paths:
               type: string
               format: binary
       responses:
+        200:
+          description: |
+            A dry run: every problem the write would be refused for, and the
+            warnings of the validation, as POST
+            /api/object/path/{namespace}/{kind}/{name}/config/validate
+            answers them. Nothing is written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigAlertList'
         204:
           description: No Content
           headers:
@@ -6490,6 +6504,16 @@ paths:
               type: string
               format: binary
       responses:
+        200:
+          description: |
+            A dry run: every problem the write would be refused for, and the
+            warnings of the validation, as POST
+            /api/object/path/{namespace}/{kind}/{name}/config/validate
+            answers them. Nothing is written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigAlertList'
         204:
           description: No Content
           headers:
@@ -6546,6 +6570,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/config/validate:
+    post:
+      operationId: PostObjectConfigValidate
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / nscfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Validate a draft configuration of the object, the request body, and
+        write nothing: the answer is every problem a write of it would be
+        refused for, and the warnings of the validation, as a list of
+        alerts.
+
+        The checks are the ones of a write of the body. The object exists,
+        and they are the ones of a replace, PUT
+        /api/object/path/{namespace}/{kind}/{name}/config/file: the keywords
+        the grants of the caller allow are judged by what the draft changes
+        of the configuration. The object does not exist, and they are the
+        ones of a create, POST of the same path: every keyword answers for
+        itself, and the claims of the namespace are checked.
+
+        Every keyword the grants do not allow is an error alert of kind
+        denied, its key the keyword, or the section ended by a dot, and its
+        comment the reason. A resource up that the draft would leak, a claim
+        the namespace would overrun, a value another object's resources
+        hold, are error alerts too, of the kinds "resource up", "claim
+        overrun" and "held by another object". The holds are judged only of a
+        draft the keyword policy allows, as a write judges them.
+
+        The caller is one allowed to write the configuration of the object:
+        an administrator of its namespace, who may validate a create there.
+        A body that does not parse is answered 400, as the write.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: the configuration to validate
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: |
+            The alerts, an empty list for a configuration a write would land.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigAlertList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -7724,6 +7814,14 @@ components:
             a key write, a service whose install of the keys failed.
           items:
             type: string
+
+    ConfigUpdateResult:
+      description: |
+        The answer of a configuration update: Committed, or the
+        ConfigAlertList of a dry run.
+      oneOf:
+        - $ref: '#/components/schemas/Committed'
+        - $ref: '#/components/schemas/ConfigAlertList'
 
     DNSRecord:
       type: object
@@ -12556,9 +12654,13 @@ components:
       name: dry_run
       description: |
         Run every check of the write, the rbac policy, the validation, the
-        claims and the holds, and write nothing. The answer is the one of the
-        write, every keyword the grants do not allow refused at once with its
-        reason.
+        claims and the holds, and write nothing. The answer is a 200 with the
+        ConfigAlertList of everything the checks found, the problems the
+        write would be refused for as errors, every keyword the grants do not
+        allow with its reason, and the warnings of the validation, which a
+        write does not answer. A request the write would refuse whatever its
+        configuration, the caller not allowed to write the object, or a
+        configuration that does not parse, is refused as the write.
       schema:
         type: boolean
 

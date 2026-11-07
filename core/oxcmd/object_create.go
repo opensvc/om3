@@ -186,7 +186,7 @@ func (t *CmdObjectCreate) do() error {
 // what a copied configuration recorded of itself, unless --restore, the
 // keyword operations applying after.
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, t.DryRun)
+	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
 }
 
 // fromStore creates the object from a snapshot: the configuration of the
@@ -202,7 +202,7 @@ func (t *CmdObjectCreate) fromStore() error {
 	case t.path.IsZero():
 		return fmt.Errorf("need a target object path")
 	}
-	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, t.DryRun)
+	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
 }
 
 func (t *CmdObjectCreate) fromPath(p naming.Path) error {

@@ -59,9 +59,11 @@ func DataFromTemplate(template string) ([]byte, error) {
 // daemon running: what a backup or a hypervisor restores is the object as it
 // was saved, whatever the node holds of it.
 //
-// With dryRun, the daemon runs every check of the create and writes nothing.
-func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force, dryRun bool) error {
-	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore, dryRun), force, restore)
+// With dryRun, the daemon runs every check of the create and writes nothing,
+// and the alerts it answers with are printed: the problems the create would
+// be refused for, and the warnings of the validation.
+func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force bool, dryRun *DryRun) error {
+	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore, dryRun != nil), force, restore, dryRun)
 }
 
 // CreateObjectConfigFromStore creates the object at p from the snapshot of
@@ -69,11 +71,11 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 // object the snapshot is of, creates the keys of the sec and cfg it
 // references that the namespace of p lacks, and names the snapshot the
 // provision restores the heads from.
-func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force, dryRun bool) error {
-	params := createParams(keywords, restore, dryRun)
+func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force bool, dryRun *DryRun) error {
+	params := createParams(keywords, restore, dryRun != nil)
 	params.Store = &store
 	params.Snapshot = &snapshot
-	return postObjectConfig(ctx, c, p, nil, params, force, restore)
+	return postObjectConfig(ctx, c, p, nil, params, force, restore, dryRun)
 }
 
 func createParams(keywords []string, restore, dryRun bool) api.PostObjectConfigFileParams {
@@ -94,12 +96,20 @@ func createParams(keywords []string, restore, dryRun bool) api.PostObjectConfigF
 	return params
 }
 
-func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, force, replace bool) error {
+func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, force, replace bool, dryRun *DryRun) error {
 	resp, err := c.PostObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	switch resp.StatusCode() {
+	case http.StatusOK:
+		// A dry run. Forced, a configuration holding what others hold is
+		// written all the same, so the dry run is the one of the forced
+		// write, as the create asks it on a conflict.
+		if dryRun != nil && force && resp.JSON200 != nil && HasConfigAlertErrorsOf(resp.JSON200.Items, api.ConfigAlertKindHeld) {
+			return forceObjectConfig(ctx, c, p, b, params, "created", dryRun)
+		}
+		return reportDryRun(p, resp.JSON200, dryRun, "created")
 	case http.StatusNoContent:
 		fmt.Printf("%s: %s\n", p, doneOrWouldBe(params.DryRun, "created"))
 		return nil
@@ -114,9 +124,9 @@ func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte,
 		case !force && !replace:
 			return fmt.Errorf("%s already exists", p)
 		case held:
-			return forceObjectConfig(ctx, c, p, b, params, "created")
+			return forceObjectConfig(ctx, c, p, b, params, "created", dryRun)
 		default:
-			return forceObjectConfig(ctx, c, p, b, params, "replaced")
+			return forceObjectConfig(ctx, c, p, b, params, "replaced", dryRun)
 		}
 	case http.StatusBadRequest:
 		return fmt.Errorf("%s: %s", p, *resp.JSON400)
@@ -142,7 +152,7 @@ func postObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte,
 // configuration of an object that exists is replaced, the daemon giving it
 // the treatment of a creation, and the checks of an update. done says what
 // was done, created or replaced.
-func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, done string) error {
+func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, params api.PostObjectConfigFileParams, done string, dryRun *DryRun) error {
 	force := true
 	params.Force = &force
 	resp, err := c.PostObjectConfigFileWithBodyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, "application/octet-stream", bytes.NewReader(b))
@@ -150,6 +160,8 @@ func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte
 		return err
 	}
 	switch resp.StatusCode() {
+	case http.StatusOK:
+		return reportDryRun(p, resp.JSON200, dryRun, done)
 	case http.StatusNoContent:
 		fmt.Printf("%s: %s\n", p, doneOrWouldBe(params.DryRun, done))
 		return nil
@@ -178,6 +190,16 @@ func forceObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte
 func CreatedConfigData(p naming.Path, b []byte, keywords []string, restore bool) (object.Configurer, error) {
 	oc, _, err := object.CreatedConfig(p, b, restore, keyop.ParseOps(keywords)...)
 	return oc, err
+}
+
+// reportDryRun prints the alerts the daemon answered a dry run with. An
+// answer with alerts to a write, which a daemon answers with no content, is
+// an unexpected one.
+func reportDryRun(p naming.Path, alerts *api.ConfigAlertList, dryRun *DryRun, done string) error {
+	if dryRun == nil {
+		return fmt.Errorf("%s: unexpected response to a write: alerts", p)
+	}
+	return dryRun.Report(p, alerts, done)
 }
 
 // doneOrWouldBe says what a configuration write did, or would have done in a

@@ -79,13 +79,14 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok && params.DryRun != nil && *params.DryRun {
-		// Every check of the update, and no write: the answer says
-		// whether it would change the configuration.
-		u, err := prepareConfigUpdate(ctx, log, p, deletes, unsets, sets, params.Force != nil && *params.Force)
-		if err != nil {
+		// Every check of the update, and no write: the answer is the
+		// alerts of the checks, as a dry run of a configuration file
+		// write answers them.
+		check := a.newConfigCheck(ctx, p, true)
+		if _, err := planConfigUpdate(check, log, deletes, unsets, sets, params.Force != nil && *params.Force); err != nil {
 			return configUpdateProblem(ctx, err)
 		}
-		return ctx.JSON(http.StatusOK, api.Committed{IsChanged: u.changed})
+		return check.answer()
 	} else if ok {
 		var sub *pubsub.Subscription
 		if waiting {
