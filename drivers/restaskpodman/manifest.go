@@ -72,5 +72,7 @@ func (t *T) Manifest() *manifest.T {
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(restaskocibase.Keywords...)
 	m.AddKeywords(kws...)
+	// The guest keywords the container drivers share name their group.
+	m.AddGroups(rescontainer.GroupGuest)
 	return m
 }

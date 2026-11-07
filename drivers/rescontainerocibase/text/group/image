@@ -1,0 +1,2 @@
+The image the container runs, the registry credentials it is pulled with,
+and when and how long it is pulled.

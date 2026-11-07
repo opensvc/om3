@@ -1,0 +1,4 @@
+The namespaces the container shares with the node or another container,
+the user of the node a rootless container runs as, and the privileges the
+container is given: on the kernel, by its tunables, and on the cluster, by
+the user socket of the node.

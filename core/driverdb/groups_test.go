@@ -166,3 +166,31 @@ func TestKeywordGroupsOfIPDrivers(t *testing.T) {
 		}
 	}
 }
+
+// TestKeywordGroupsOfContainerDrivers verifies no keyword of a container
+// driver is left in the group of the keywords not grouped yet, and pins the
+// install group of the kvm driver and its strategies.
+func TestKeywordGroupsOfContainerDrivers(t *testing.T) {
+	n := 0
+	for drvID, m := range driverManifests() {
+		if drvID.Group != driver.GroupContainer {
+			continue
+		}
+		n++
+		for _, kw := range m.Keywords() {
+			assert.NotEqualf(t, keywords.GroupOtherID, kw.GroupID(), "%s.%s is not grouped", drvID, kw.Option)
+		}
+	}
+	if n == 0 {
+		t.Skip("no container driver on this os")
+	}
+	factory := resource.NewResourceFunc(driver.NewID(driver.GroupContainer, "kvm"))
+	require.NotNil(t, factory)
+	g, ok := manifest.Get(factory()).OwnGroup("install")
+	require.True(t, ok, "kvm declares the install group")
+	ids := make([]string, 0)
+	for _, s := range g.Strategies {
+		ids = append(ids, s.ID)
+	}
+	assert.Equal(t, []string{"image", "cdrom", "virtinst"}, ids)
+}

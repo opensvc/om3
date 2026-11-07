@@ -1,0 +1,6 @@
+The first disk of the guest is written from the cloud image `image` names,
+and the guest is given the cloud-init user data `cloud_init` names at its
+first boot, and its addresses on a lan network.
+
+Choose it for a guest made in a moment, with no question to answer, from the
+cloud image of a distribution.

@@ -23,6 +23,7 @@ var (
 			Aliases:      []string{"container_data_dir"},
 			Attr:         "DataDir",
 			Example:      "/srv/svc1/data/containers",
+			Group:        rescontainer.GroupStorage.ID,
 			Option:       "data_dir",
 			Scopable:     true,
 			StopToChange: true,
@@ -31,6 +32,7 @@ var (
 		{
 			Attr:         "RootDir",
 			Example:      "/srv/svc1/data/containers",
+			Group:        rescontainer.GroupStorage.ID,
 			Option:       "rootfs",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/rootfs"),
@@ -38,6 +40,7 @@ var (
 		{
 			Attr:         "ConfigFile",
 			Example:      "/srv/svc1/config",
+			Group:        rescontainer.GroupStorage.ID,
 			Option:       "cf",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/cf"),
@@ -45,6 +48,7 @@ var (
 		{
 			Attr:         "Template",
 			Example:      "ubuntu",
+			Group:        GroupCreation.ID,
 			Option:       "template",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/template"),
@@ -53,6 +57,7 @@ var (
 			Attr:         "TemplateOptions",
 			Converter:    converters.Shlex,
 			Example:      "--release focal",
+			Group:        GroupCreation.ID,
 			Option:       "template_options",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/template_options"),
@@ -63,6 +68,7 @@ var (
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 			Deprecated:   "v3.0.0-rc57",
 			ReplacedBy:   "create_environment",
+			Group:        GroupCreation.ID,
 			Option:       "create_secrets_environment",
 			Provisioning: true,
 			Scopable:     true,
@@ -74,6 +80,7 @@ var (
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 			Deprecated:   "v3.0.0-rc57",
 			ReplacedBy:   "create_environment",
+			Group:        GroupCreation.ID,
 			Option:       "create_configs_environment",
 			Provisioning: true,
 			Scopable:     true,
@@ -83,6 +90,7 @@ var (
 			Attr:         "CreateEnvironment",
 			Converter:    converters.Shlex,
 			Example:      "FOO=bar BAR=baz",
+			Group:        GroupCreation.ID,
 			Option:       "create_environment",
 			Provisioning: true,
 			Scopable:     true,
@@ -93,6 +101,7 @@ var (
 			Attr:      "RCmd",
 			Converter: converters.Shlex,
 			Example:   "lxc-attach -e -n osvtavnprov01 -- ",
+			Group:     rescontainer.GroupGuest.ID,
 			Option:    "rcmd",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/rcmd"),
@@ -104,6 +113,16 @@ var (
 		&rescontainer.KWPromoteRW,
 		&rescontainer.KWOsvcRootPath,
 		&rescontainer.KWGuestOS,
+	}
+
+	// GroupCreation holds how lxc-create makes the container at its
+	// provision: the template it unpacks, and the arguments and the
+	// variables given to the script of the template.
+	GroupCreation = keywords.Group{
+		ID:    "creation",
+		Name:  "Creation",
+		Text:  keywords.NewText(fs, "text/group/creation"),
+		Order: 20,
 	}
 )
 
@@ -129,5 +148,12 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(
+		rescontainer.GroupIdentity,
+		GroupCreation,
+		rescontainer.GroupStorage,
+		rescontainer.GroupGuest,
+		rescontainer.GroupTimeouts,
+	)
 	return m
 }

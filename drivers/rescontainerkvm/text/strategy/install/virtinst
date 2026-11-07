@@ -1,0 +1,6 @@
+The guest is made by the command `virtinst` says, a `virt-install` or a
+script of its own, which says all of the guest: the keywords describing it,
+its cpus, its memory, its disks, its networks, its os and how it is
+installed, are not to be set.
+
+Choose it for a guest the other keywords can not describe.

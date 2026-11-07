@@ -1,0 +1,2 @@
+The virtual hardware of the guest, as its cpus, its memory and the os its
+devices are chosen for, and whether it starts with a display.

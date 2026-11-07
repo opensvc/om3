@@ -1,0 +1,3 @@
+How lxc-create makes the container at its provision: the template it
+unpacks or runs, the arguments given to the script of the template, and the
+variables of its environment.

@@ -19,6 +19,7 @@ var (
 	kws = []*keywords.Keyword{
 		{
 			Option:       "name",
+			Group:        rescontainer.GroupIdentity.ID,
 			Attr:         "Name",
 			Scopable:     true,
 			DefaultText:  keywords.NewText(fs, "text/kw/name.default"),
@@ -28,6 +29,7 @@ var (
 		},
 		{
 			Option:   "hostname",
+			Group:    rescontainer.GroupIdentity.ID,
 			Attr:     "Hostname",
 			Scopable: true,
 			Example:  "nginx1",
@@ -35,6 +37,7 @@ var (
 		},
 		{
 			Option:    "dns",
+			Group:     rescontainer.GroupNetwork.ID,
 			Attr:      "DNSExtra",
 			Converter: converters.List,
 			Scopable:  true,
@@ -43,6 +46,7 @@ var (
 		},
 		{
 			Option:    "dns_search",
+			Group:     rescontainer.GroupNetwork.ID,
 			Attr:      "DNSSearch",
 			Converter: converters.List,
 			Aliases:   []string{},
@@ -53,6 +57,7 @@ var (
 		},
 		{
 			Option:   "image",
+			Group:    GroupImage.ID,
 			Attr:     "Image",
 			Aliases:  []string{"run_image"},
 			Scopable: true,
@@ -61,6 +66,7 @@ var (
 		},
 		{
 			Option:     "image_pull_policy",
+			Group:      GroupImage.ID,
 			Attr:       "ImagePullPolicy",
 			Scopable:   true,
 			Candidates: []string{imagePullPolicyOnce, imagePullPolicyAlways},
@@ -69,6 +75,7 @@ var (
 		},
 		{
 			Option:   "cwd",
+			Group:    GroupProcess.ID,
 			Attr:     "CWD",
 			Scopable: true,
 			Example:  "/opt/foo",
@@ -76,6 +83,7 @@ var (
 		},
 		{
 			Option:    "command",
+			Group:     GroupProcess.ID,
 			Attr:      "Command",
 			Aliases:   []string{"run_command"},
 			Scopable:  true,
@@ -85,6 +93,7 @@ var (
 		},
 		{
 			Option:    "run_args",
+			Group:     GroupProcess.ID,
 			Attr:      "RunArgs",
 			Scopable:  true,
 			Converter: converters.Shlex,
@@ -93,6 +102,7 @@ var (
 		},
 		{
 			Option:    "entrypoint",
+			Group:     GroupProcess.ID,
 			Attr:      "Entrypoint",
 			Scopable:  true,
 			Converter: converters.Shlex,
@@ -101,6 +111,7 @@ var (
 		},
 		{
 			Option:    "detach",
+			Group:     GroupProcess.ID,
 			Attr:      "Detach",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -109,6 +120,7 @@ var (
 		},
 		{
 			Option:    "rm",
+			Group:     GroupProcess.ID,
 			Attr:      "Remove",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -117,6 +129,7 @@ var (
 		},
 		{
 			Option:    "read_only",
+			Group:     rescontainer.GroupStorage.ID,
 			Attr:      "ReadOnly",
 			Scopable:  true,
 			Converter: converters.Tristate,
@@ -124,6 +137,7 @@ var (
 		},
 		{
 			Option:    "privileged",
+			Group:     GroupIsolation.ID,
 			Attr:      "Privileged",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -131,6 +145,7 @@ var (
 		},
 		{
 			Option:    "init",
+			Group:     GroupProcess.ID,
 			Attr:      "Init",
 			Scopable:  true,
 			Default:   "true",
@@ -139,6 +154,7 @@ var (
 		},
 		{
 			Option:    "interactive",
+			Group:     GroupProcess.ID,
 			Attr:      "Interactive",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -146,6 +162,7 @@ var (
 		},
 		{
 			Option:    "tty",
+			Group:     GroupProcess.ID,
 			Attr:      "TTY",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -153,6 +170,7 @@ var (
 		},
 		{
 			Option:    "volume_mounts",
+			Group:     rescontainer.GroupStorage.ID,
 			Attr:      "VolumeMounts",
 			Scopable:  true,
 			Converter: converters.Shlex,
@@ -161,6 +179,7 @@ var (
 		},
 		{
 			Option:    "sysctl",
+			Group:     GroupIsolation.ID,
 			Attr:      "Sysctl",
 			Scopable:  true,
 			Converter: converters.Shlex,
@@ -169,6 +188,7 @@ var (
 		},
 		{
 			Option:     "environment",
+			Group:      GroupEnvironment.ID,
 			Attr:       "Env",
 			Scopable:   true,
 			Converter:  converters.Shlex,
@@ -180,6 +200,7 @@ var (
 			Deprecated: "v3.0.0-rc57",
 			ReplacedBy: "environment",
 			Option:     "configs_environment",
+			Group:      GroupEnvironment.ID,
 			Attr:       "ConfigsEnv",
 			Scopable:   true,
 			Converter:  converters.Shlex,
@@ -188,6 +209,7 @@ var (
 		},
 		{
 			Option:    "devices",
+			Group:     rescontainer.GroupStorage.ID,
 			Attr:      "Devices",
 			Scopable:  true,
 			Converter: converters.Shlex,
@@ -196,6 +218,7 @@ var (
 		},
 		{
 			Option:   "netns",
+			Group:    rescontainer.GroupNetwork.ID,
 			Attr:     "NetNS",
 			Aliases:  []string{"net"},
 			Scopable: true,
@@ -204,6 +227,7 @@ var (
 		},
 		{
 			Option:   "user",
+			Group:    GroupProcess.ID,
 			Attr:     "User",
 			Scopable: true,
 			Example:  "guest",
@@ -211,6 +235,7 @@ var (
 		},
 		{
 			Option:   "pidns",
+			Group:    GroupIsolation.ID,
 			Attr:     "PIDNS",
 			Scopable: true,
 			Example:  "container#0",
@@ -218,6 +243,7 @@ var (
 		},
 		{
 			Option:   "ipcns",
+			Group:    GroupIsolation.ID,
 			Attr:     "IPCNS",
 			Scopable: true,
 			Example:  "container#0",
@@ -225,6 +251,7 @@ var (
 		},
 		{
 			Option:     "utsns",
+			Group:      GroupIsolation.ID,
 			Attr:       "UTSNS",
 			Scopable:   true,
 			Candidates: []string{"", "host"},
@@ -233,6 +260,7 @@ var (
 		},
 		{
 			Option:   "registry_creds",
+			Group:    GroupImage.ID,
 			Attr:     "RegistryCreds",
 			Scopable: true,
 			Example:  "creds-registry-opensvc-com",
@@ -240,6 +268,7 @@ var (
 		},
 		{
 			Option:    "pull_timeout",
+			Group:     GroupImage.ID,
 			Attr:      "PullTimeout",
 			Scopable:  true,
 			Converter: converters.Duration,
@@ -249,6 +278,7 @@ var (
 		},
 		{
 			Option:    "start_timeout",
+			Group:     rescontainer.GroupTimeouts.ID,
 			Attr:      "StartTimeout",
 			Scopable:  true,
 			Converter: converters.Duration,
@@ -258,6 +288,7 @@ var (
 		},
 		{
 			Option:    "uxgrant",
+			Group:     GroupIsolation.ID,
 			Attr:      "UXGrant",
 			Converter: converters.ListLowercase,
 			Scopable:  true,
@@ -266,6 +297,7 @@ var (
 		},
 		{
 			Option:   "quiesce",
+			Group:    GroupQuiesce.ID,
 			Attr:     "QuiesceCmd",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/quiesce"),
@@ -273,6 +305,7 @@ var (
 		},
 		{
 			Option:   "quiesce_input",
+			Group:    GroupQuiesce.ID,
 			Attr:     "QuiesceInput",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/quiesce_input"),
@@ -280,6 +313,7 @@ var (
 		},
 		{
 			Option:   "quiesce_ready",
+			Group:    GroupQuiesce.ID,
 			Attr:     "QuiesceReady",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/quiesce_ready"),
@@ -287,6 +321,7 @@ var (
 		},
 		{
 			Option:   "resume_input",
+			Group:    GroupQuiesce.ID,
 			Attr:     "ResumeInput",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/resume_input"),
@@ -294,6 +329,7 @@ var (
 		},
 		{
 			Option:    "quiesce_timeout",
+			Group:     GroupQuiesce.ID,
 			Attr:      "QuiesceTimeout",
 			Scopable:  true,
 			Converter: converters.Duration,
@@ -303,6 +339,7 @@ var (
 		},
 		{
 			Option:    "stop_timeout",
+			Group:     rescontainer.GroupTimeouts.ID,
 			Attr:      "StopTimeout",
 			Scopable:  true,
 			Converter: converters.Duration,
@@ -314,26 +351,18 @@ var (
 			Deprecated: "v3.0.0-rc57",
 			ReplacedBy: "environment",
 			Option:     "secrets_environment",
+			Group:      GroupEnvironment.ID,
 			Attr:       "SecretsEnv",
 			Scopable:   true,
 			Converter:  converters.Shlex,
 			Text:       keywords.NewText(fs, "text/kw/secrets_environment"),
 			Example:    "CRT=cert1/server.pem sec1/*",
 		},
-		{
-			Deprecated: "v3.0.0-rc57",
-			ReplacedBy: "environment",
-			Option:     "configs_environment",
-			Attr:       "ConfigsEnv",
-			Scopable:   true,
-			Converter:  converters.Shlex,
-			Text:       keywords.NewText(fs, "text/kw/configs_environment"),
-			Example:    "PORT=http/port webapp/app1* {name}/* {name}-debug/settings",
-		},
 		&rescontainer.KWOsvcRootPath,
 		&rescontainer.KWGuestOS,
 		{
 			Option:    "log_outputs",
+			Group:     GroupProcess.ID,
 			Attr:      "LogOutputs",
 			Scopable:  true,
 			Converter: converters.Bool,
@@ -355,5 +384,6 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(Groups...)
 	return m
 }

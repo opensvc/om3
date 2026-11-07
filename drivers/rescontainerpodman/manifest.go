@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 			Attr:     "UserNS",
 			Scopable: true,
 			Example:  "container#0",
+			Group:    rescontainerocibase.GroupIsolation.ID,
 			Text:     keywords.NewText(fs, "text/kw/userns"),
 		},
 		{
@@ -31,11 +33,13 @@ var (
 			Example:      "opensvc",
 			Since:        "v3.0.0-rc42",
 			StopToChange: true,
+			Group:        rescontainerocibase.GroupIsolation.ID,
 			Text:         keywords.NewText(fs, "text/kw/rootless_user"),
 		},
 		{
 			Option:   "rootless_group",
 			Attr:     "RootlessGroup",
+			Group:    rescontainerocibase.GroupIsolation.ID,
 			Scopable: true,
 			Example:  "opensvc",
 			Since:    "v3.0.0-rc42",

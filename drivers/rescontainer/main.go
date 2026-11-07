@@ -14,6 +14,7 @@ var (
 	KWPromoteRW = keywords.Keyword{
 		Attr:      "PromoteRW",
 		Converter: converters.Bool,
+		Group:     GroupStorage.ID,
 		Option:    "promote_rw",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
@@ -21,6 +22,7 @@ var (
 	KWOsvcRootPath = keywords.Keyword{
 		Attr:     "OsvcRootPath",
 		Example:  "/opt/opensvc",
+		Group:    GroupGuest.ID,
 		Option:   "osvc_root_path",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/osvc_root_path"),
@@ -31,6 +33,7 @@ var (
 		Candidates: []string{"unix", "windows"},
 		Default:    "unix",
 		Example:    "unix",
+		Group:      GroupGuest.ID,
 		Option:     "guest_os",
 		Scopable:   true,
 		Text:       keywords.NewText(fs, "text/kw/guest_os"),
@@ -39,6 +42,7 @@ var (
 		Attr:      "RCmd",
 		Converter: converters.Shlex,
 		Example:   "lxc-attach -e -n osvtavnprov01 -- ",
+		Group:     GroupGuest.ID,
 		Option:    "rcmd",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/rcmd"),
@@ -46,6 +50,7 @@ var (
 	}
 	KWName = keywords.Keyword{
 		Attr:         "Name",
+		Group:        GroupIdentity.ID,
 		Option:       "name",
 		Required:     true,
 		Scopable:     true,
@@ -55,6 +60,7 @@ var (
 	KWHostname = keywords.Keyword{
 		Attr:     "Hostname",
 		Example:  "nginx1",
+		Group:    GroupIdentity.ID,
 		Option:   "hostname",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/hostname"),
@@ -64,6 +70,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "4m",
 		Example:   "1m5s",
+		Group:     GroupTimeouts.ID,
 		Option:    "start_timeout",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/start_timeout"),
@@ -73,6 +80,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "2m",
 		Example:   "2m30s",
+		Group:     GroupTimeouts.ID,
 		Option:    "stop_timeout",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/stop_timeout"),

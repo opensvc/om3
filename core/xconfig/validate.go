@@ -597,8 +597,22 @@ func (t T) strategyAlerts(section string, did driver.ID, written map[string]stri
 	}
 	var alerts Alerts
 	reported := make(map[[2]string]bool)
+	// active says the selector values a strategy is chosen by hold in the
+	// section, as quiesce=pause: a strategy chosen by none always does.
+	active := func(s keywords.Strategy) bool {
+		for _, w := range s.When {
+			w.Key = key.New(section, w.Key.Option)
+			if !t.HasKeyMatchingOp(w) {
+				return false
+			}
+		}
+		return true
+	}
 	for _, group := range i.DriverKeywordGroups(did) {
 		for _, strategy := range group.Strategies {
+			if !active(strategy) {
+				continue
+			}
 			for _, used := range strategy.Uses {
 				usedAs, ok := written[used]
 				if !ok {
@@ -609,7 +623,13 @@ func (t T) strategyAlerts(section string, did driver.ID, written map[string]stri
 					if !ok {
 						continue
 					}
+					// A strategy using the keyword excluded, not chosen
+					// in this section, makes it a keyword the strategy
+					// chosen does not read.
 					other, hasOther := group.StrategyUsing(excluded)
+					if hasOther && !active(other) {
+						hasOther = false
+					}
 					if hasOther && !slices.Contains(other.Excludes, used) {
 						continue
 					}

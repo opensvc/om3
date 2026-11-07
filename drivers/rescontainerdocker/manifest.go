@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 			Attr:     "UserNS",
 			Scopable: true,
 			Example:  "container#0",
+			Group:    rescontainerocibase.GroupIsolation.ID,
 			Text:     keywords.NewText(fs, "text/kw/userns"),
 		},
 	}
