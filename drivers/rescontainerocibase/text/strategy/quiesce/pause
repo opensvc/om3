@@ -1,0 +1,6 @@
+The processes of the container are frozen with the pause of the engine,
+and unpaused at the resume. Nothing runs in the container, so the keywords
+feeding a command, and its timeout, are not read.
+
+Choose it for a container whose writes are consistent at any time, and need
+no flush.

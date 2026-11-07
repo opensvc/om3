@@ -31,6 +31,7 @@ var (
 			Converter:  converters.Bool,
 			Default:    "false",
 			Deprecated: "3.0",
+			Group:      rescontainer.GroupMachine.ID,
 			Option:     "headless",
 			Text:       keywords.NewText(fs, "text/kw/headless"),
 		},
@@ -59,5 +60,12 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(
+		rescontainer.GroupIdentity,
+		rescontainer.GroupMachine,
+		rescontainer.GroupStorage,
+		rescontainer.GroupGuest,
+		rescontainer.GroupTimeouts,
+	)
 	return m
 }

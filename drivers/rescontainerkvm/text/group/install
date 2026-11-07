@@ -1,0 +1,8 @@
+How the provision makes the guest: by a virt-install command the keywords
+describing the guest make, its system written from a cloud image or
+installed from an installer, or by a command the virtinst keyword says all
+of.
+
+A guest given neither an image nor an installer boots its first disk as it
+is. The provision of a guest given no keyword describing it, nor virtinst,
+fails, unless its domain is defined already.

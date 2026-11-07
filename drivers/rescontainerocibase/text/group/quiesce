@@ -1,0 +1,4 @@
+How the writes of the container are suspended during a run of a sync
+resource of the object, for the data it saves to be consistent: its
+processes paused, or a command run in the container, as a database client
+holding a lock.

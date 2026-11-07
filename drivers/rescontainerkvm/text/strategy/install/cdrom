@@ -1,0 +1,6 @@
+The guest boots the installer `cdrom` names, which installs its system on its
+first disk, answered on its display. An installed system has no cloud-init,
+so the guest finds its address by dhcp.
+
+Choose it for a system with no cloud image, or installed as a physical
+machine would be.

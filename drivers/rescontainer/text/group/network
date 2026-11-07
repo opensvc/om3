@@ -1,0 +1,2 @@
+The networks the container is on, or the network namespace it shares, and
+the resolver it uses.

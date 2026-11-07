@@ -1,0 +1,3 @@
+Where the container keeps its files, and the storage of the node it uses:
+the volumes and the devices it mounts, the disks of a virtual machine, the
+directories of a system container.

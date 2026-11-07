@@ -21,6 +21,7 @@ var (
 		{
 			Option:    "qga",
 			Attr:      "QGA",
+			Group:     rescontainer.GroupGuest.ID,
 			Converter: converters.Bool,
 			Text:      keywords.NewText(fs, "text/kw/qga"),
 			Scopable:  true,
@@ -28,6 +29,7 @@ var (
 		{
 			Option:    "qga_operational_delay",
 			Attr:      "QGAOperationalDelay",
+			Group:     rescontainer.GroupGuest.ID,
 			Converter: converters.Duration,
 			Default:   "10s",
 			Text:      "Wait after we successfully tested a pwd in the container, so the os is sufficiently started to accept a encap start.",
@@ -36,6 +38,7 @@ var (
 		{
 			Option:    "vsock_port",
 			Attr:      "VsockPort",
+			Group:     rescontainer.GroupGuest.ID,
 			Converter: converters.Int,
 			Default:   "1215",
 			Text:      keywords.NewText(fs, "text/kw/vsock_port"),
@@ -44,6 +47,7 @@ var (
 		{
 			Option:       "vcpus",
 			Attr:         "VCPUs",
+			Group:        rescontainer.GroupMachine.ID,
 			Provisioning: true,
 			Converter:    converters.Int,
 			Text:         keywords.NewText(fs, "text/kw/vcpus"),
@@ -52,6 +56,7 @@ var (
 		{
 			Option:       "memory",
 			Attr:         "Memory",
+			Group:        rescontainer.GroupMachine.ID,
 			Provisioning: true,
 			Converter:    converters.Size,
 			Text:         keywords.NewText(fs, "text/kw/memory"),
@@ -60,6 +65,7 @@ var (
 		{
 			Option:       "disk",
 			Attr:         "Disk",
+			Group:        rescontainer.GroupStorage.ID,
 			Provisioning: true,
 			Converter:    converters.List,
 			Text:         keywords.NewText(fs, "text/kw/disk"),
@@ -68,6 +74,7 @@ var (
 		{
 			Option:       "bridge",
 			Attr:         "Bridge",
+			Group:        rescontainer.GroupNetwork.ID,
 			Provisioning: true,
 			Converter:    converters.List,
 			Text:         keywords.NewText(fs, "text/kw/bridge"),
@@ -76,6 +83,7 @@ var (
 		{
 			Option:    "network",
 			Attr:      "Network",
+			Group:     rescontainer.GroupNetwork.ID,
 			Converter: converters.List,
 			Text:      keywords.NewText(fs, "text/kw/network"),
 			Example:   "backend3 backend5",
@@ -83,6 +91,7 @@ var (
 		{
 			Option:    "network_filter",
 			Attr:      "NetworkFilter",
+			Group:     rescontainer.GroupNetwork.ID,
 			Converter: converters.Bool,
 			Default:   "true",
 			Text:      keywords.NewText(fs, "text/kw/network_filter"),
@@ -91,6 +100,7 @@ var (
 		{
 			Option:       "osinfo",
 			Attr:         "OSInfo",
+			Group:        rescontainer.GroupMachine.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/osinfo"),
 			Example:      "ubuntu24.04",
@@ -98,6 +108,7 @@ var (
 		{
 			Option:       "image",
 			Attr:         "Image",
+			Group:        GroupInstall.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/image"),
 			Example:      "/srv/images/noble.qcow2",
@@ -105,6 +116,7 @@ var (
 		{
 			Option:       "cdrom",
 			Attr:         "CDROM",
+			Group:        GroupInstall.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/cdrom"),
 			Example:      "https://images.example.com/debian-13-netinst.iso",
@@ -112,6 +124,7 @@ var (
 		{
 			Option:       "cloud_init",
 			Attr:         "CloudInit",
+			Group:        GroupInstall.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/cloud_init"),
 			Example:      "from ./cfg/vm1 key user-data",
@@ -119,6 +132,7 @@ var (
 		{
 			Option:       "virtinst_args",
 			Attr:         "VirtInstArgs",
+			Group:        GroupInstall.ID,
 			Provisioning: true,
 			Converter:    converters.Shlex,
 			Text:         keywords.NewText(fs, "text/kw/virtinst_args"),
@@ -127,6 +141,7 @@ var (
 		{
 			Option:       "virtinst",
 			Attr:         "VirtInst",
+			Group:        GroupInstall.ID,
 			Provisioning: true,
 			Converter:    converters.Shlex,
 			Text:         keywords.NewText(fs, "text/kw/virtinst"),
@@ -135,6 +150,7 @@ var (
 		{
 			Option:    "migrate_timeout",
 			Attr:      "MigrateTimeout",
+			Group:     rescontainer.GroupTimeouts.ID,
 			Converter: converters.Duration,
 			Example:   "30m",
 			Text:      keywords.NewText(fs, "text/kw/migrate_timeout"),
@@ -183,5 +199,14 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(
+		rescontainer.GroupIdentity,
+		rescontainer.GroupMachine,
+		GroupInstall,
+		rescontainer.GroupStorage,
+		rescontainer.GroupNetwork,
+		rescontainer.GroupGuest,
+		rescontainer.GroupTimeouts,
+	)
 	return m
 }

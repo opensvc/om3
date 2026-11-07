@@ -1,0 +1,4 @@
+The process the container runs: its command and entrypoint, the user and
+the directory it runs as and in, its terminal, and how the engine runs and
+removes the container. The arguments of the run command the other keywords
+do not cover are given here too.

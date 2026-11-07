@@ -1,0 +1,7 @@
+A command runs in the container with `sh -c`, reading `quiesce_input` on its
+stdin. It ends before the run, as a flush, or, with `quiesce_ready`, it is a
+session held open during the run, given `resume_input` at the resume, as a
+database client holding a lock. `quiesce_timeout` bounds each step.
+
+Choose it for an application that knows how to make its data consistent,
+as a database.

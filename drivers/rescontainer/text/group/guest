@@ -1,0 +1,4 @@
+The system running in the container, and how the agent of the node reaches
+it: the command running a command there, where the agent installed in it is,
+and the os it runs. The encapsulated resources of the object are handled by
+that agent.
