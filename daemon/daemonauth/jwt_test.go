@@ -230,3 +230,31 @@ func TestJWTStrategyAcceptsATokenOfAFormerCA(t *testing.T) {
 	_, err = s.Authenticate(context.Background(), bearerRequest(t, signedToken(t, other, claims())))
 	assert.Error(t, err)
 }
+
+// The 401 tells a client presenting a well-signed but expired token that it
+// is expired, a client presenting another refused token that it is invalid,
+// and a client presenting none the scheme alone, as RFC 6750 words it.
+func TestChallenge(t *testing.T) {
+	key := testKey(t)
+	other := testKey(t)
+	authenticate := func(t *testing.T, r *http.Request) error {
+		authCache = newCache()
+		s := Union{&jwtStrategy{verifyKey: &key.PublicKey}}
+		_, err := s.AuthenticateRequest(r)
+		require.Error(t, err)
+		return err
+	}
+	expired := bearerRequest(t, signedToken(t, key, jwt.MapClaims{"sub": "alice", "exp": time.Now().Add(-time.Minute).Unix()}))
+	assert.Equal(t, `Bearer error="invalid_token", error_description="the token is expired"`, Challenge(expired, authenticate(t, expired)))
+
+	// The expiry of a token signed by someone else is not told.
+	foreign := bearerRequest(t, signedToken(t, other, jwt.MapClaims{"sub": "alice", "exp": time.Now().Add(-time.Minute).Unix()}))
+	assert.Equal(t, `Bearer error="invalid_token"`, Challenge(foreign, authenticate(t, foreign)))
+
+	none := bearerRequest(t, "")
+	assert.Equal(t, "Bearer", Challenge(none, authenticate(t, none)))
+
+	basic := bearerRequest(t, "")
+	basic.SetBasicAuth("alice", "secret")
+	assert.Equal(t, "Bearer", Challenge(basic, authenticate(t, basic)))
+}

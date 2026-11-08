@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"time"
@@ -116,6 +117,7 @@ func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
 //	request authorization header will be created from one of config properties:
 //	- Username & Password
 //	- Bearer
+//	- BearerFunc, called once the connection is ready
 //	- Authorization
 func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 	cachedClient, err := httpclientcache.Client(httpclientcache.Options{
@@ -137,6 +139,14 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 
 	if !strings.Contains(config.URL[8:], ":") {
 		config.URL += fmt.Sprintf(":%d", daemonenv.HTTPPort)
+	}
+
+	if config.BearerFunc != nil {
+		// The bearer of BearerFunc is minted by the transport once the
+		// connection is ready, not by a request editor: the generated
+		// client runs those before the connect and the tls handshake,
+		// which can outlast a token valid a few seconds.
+		baseTransport = &bearerFuncTransport{Base: baseTransport, fn: config.BearerFunc}
 	}
 
 	httpClient := *cachedClient
@@ -169,10 +179,6 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		options = append(options, api.WithRequestEditorFn(provider.Intercept))
 	}
 
-	if config.BearerFunc != nil {
-		options = append(options, api.WithRequestEditorFn(requestBearerFuncEditorFn(config.BearerFunc)))
-	}
-
 	if config.Authorization != "" {
 		fn := requestAuthorizationEditorFn(config.Authorization)
 		options = append(options, api.WithRequestEditorFn(fn))
@@ -194,18 +200,68 @@ func requestAuthorizationEditorFn(s string) func(context.Context, *http.Request)
 	}
 }
 
-// requestBearerFuncEditorFn returns request editor function that sets the
-// request authorization header to the bearer token fn returns as the request
-// is sent.
-func requestBearerFuncEditorFn(fn func() (string, error)) func(context.Context, *http.Request) error {
-	return func(_ context.Context, req *http.Request) error {
-		tk, err := fn()
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Authorization", "Bearer "+tk)
-		return nil
+// bearerFuncTransport sets the Authorization header of each request to the
+// bearer token fn returns once the connection the request is sent on is
+// ready.
+//
+// The token of a node is valid a few seconds, and the connect to a peer
+// whose network comes back is retried by tcp for longer than that: a token
+// minted before the connect, or even as RoundTrip is entered, which is
+// before the connect too, is expired when the peer reads it.
+//
+// The token is minted in the GotConn hook of an httptrace.ClientTrace. The
+// http.Transport calls it once it holds a connection, dialed and through
+// its tls handshake or taken idle from the pool, and before it writes the
+// request on it, from the goroutine of RoundTrip. The http2 transport calls
+// it after it obtained its client connection, before it encodes the
+// headers. A retry on another connection calls it again, and mints a new
+// token.
+//
+// A token fn fails to mint fails the request, which is not sent: the hook
+// can't abort it, and the transport does not look at a canceled context
+// before it writes, so the hook closes the connection. The transport of the
+// cached clients speaks http/1.1, its tls configuration asking for no other
+// protocol, and the connection serves this request alone.
+type bearerFuncTransport struct {
+	Base http.RoundTripper
+	fn   func() (string, error)
+}
+
+func (t *bearerFuncTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	var fnErr error
+	// A RoundTripper must not modify the request it is given: the
+	// token is set in a copy of its headers, which the request sent
+	// carries.
+	header := req.Header.Clone()
+	if header == nil {
+		header = make(http.Header)
 	}
+	// No credential of the caller rides along, nor survives a token
+	// that fails to be minted.
+	header.Del("Authorization")
+	trace := &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			tk, err := t.fn()
+			if err != nil {
+				fnErr = err
+				header.Del("Authorization")
+				_ = info.Conn.Close()
+				return
+			}
+			fnErr = nil
+			header.Set("Authorization", "Bearer "+tk)
+		},
+	}
+	r := req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	r.Header = header
+	resp, err := t.Base.RoundTrip(r)
+	if fnErr != nil {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		return nil, fnErr
+	}
+	return resp, err
 }
 
 func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) {

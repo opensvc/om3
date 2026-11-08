@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/opensvc/om3/v3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -91,6 +93,28 @@ func (u Union) AuthenticateRequest(r *http.Request) (*Info, error) {
 		errs = append(errs, err)
 	}
 	return nil, errors.Join(errs...)
+}
+
+// Challenge returns the WWW-Authenticate value of the 401 answering r, which
+// AuthenticateRequest refused with err, as RFC 6750 words it.
+//
+// A request without a bearer token is told the scheme alone, without an
+// error code. A bearer token refused is an invalid_token, and the
+// description says when it is expired: a token is said expired only once
+// its signature is verified, so a client learns nothing from it it did not
+// sign itself, and a node knows its token was spent before the peer read
+// it, not that the peer does not trust it.
+//
+// The Basic scheme the listener also accepts is not offered: a browser
+// would answer it with its login dialog.
+func Challenge(r *http.Request, err error) string {
+	if _, e := bearerToken(r); e != nil {
+		return "Bearer"
+	}
+	if errors.Is(err, jwt.ErrTokenExpired) {
+		return `Bearer error="invalid_token", error_description="the token is expired"`
+	}
+	return `Bearer error="invalid_token"`
 }
 
 var (

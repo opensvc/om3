@@ -178,8 +178,10 @@ func WithBearer(s string) funcopt.O {
 }
 
 // WithBearerFunc sets the function returning the bearer token of each
-// request, called as the request is sent: a token valid a few seconds, as
-// the node token, is not expired by a request waiting to be sent.
+// request. The transport calls it once it holds the connection the request
+// is written on, after the connect and the tls handshake, and again for a
+// retry on another connection: a token valid a few seconds, as the node
+// token, is not spent by a peer slow to reach.
 func WithBearerFunc(fn func() (string, error)) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)

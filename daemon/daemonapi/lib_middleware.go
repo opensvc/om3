@@ -266,6 +266,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				// an unauthenticated client whether a username exists,
 				// and which strategies this listener runs.
 				log.Errorf("authenticating request from %s: %s", r.RemoteAddr, err)
+				c.Response().Header().Set("WWW-Authenticate", daemonauth.Challenge(r, err))
 				code := http.StatusUnauthorized
 				return JSONProblem(c, code, http.StatusText(code), "Invalid or missing credentials")
 			}
