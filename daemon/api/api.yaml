@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.5.1
+  version: 4.6.0
   description: |
     A date-time value carries the offset of the time zone of the node that
     produced it: the dates of a response gathering the data of several nodes,
@@ -9653,6 +9653,7 @@ components:
         - env
         - hooks
         - labels
+        - load_pool_interval
         - maintenance_grace_period
         - max_parallel
         - min_avail_mem_pct
@@ -9674,6 +9675,8 @@ components:
         labels:
           additionalProperties:
             type: string
+        load_pool_interval:
+          x-go-type: time.Duration
         maintenance_grace_period:
           x-go-type: time.Duration
         max_parallel:

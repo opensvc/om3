@@ -652,6 +652,15 @@ var (
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.maintenance_grace_period"),
 	}
+	kwNodeLoadPoolInterval = keywords.Keyword{
+		Converter: converters.Duration,
+		Default:   "60s",
+		Example:   "5m",
+		Option:    "load_pool_interval",
+		Section:   "node",
+		Since:     "v3.0.0-rc60",
+		Text:      keywords.NewText(fs, "text/kw/node/node.load_pool_interval"),
+	}
 	kwNodeRejoinGracePeriod = keywords.Keyword{
 		Converter: converters.Duration,
 		Default:   "90s",
@@ -2129,6 +2138,7 @@ var (
 		&kwNodeRUser,
 		&kwNodeMaintenanceGracePeriod,
 		&kwNodeRejoinGracePeriod,
+		&kwNodeLoadPoolInterval,
 		&kwNodeReadyPeriod,
 		&kwNodeSysreportSchedule,
 		&kwNodeComplianceSchedule,

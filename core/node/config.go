@@ -20,6 +20,7 @@ type (
 		Env                    string            `json:"env"`
 		Hooks                  Hooks             `json:"hooks"`
 		Labels                 label.M           `json:"labels"`
+		LoadPoolInterval       time.Duration     `json:"load_pool_interval"`
 		MaintenanceGracePeriod time.Duration     `json:"maintenance_grace_period"`
 		MaxParallel            int               `json:"max_parallel"`
 		MaxKeySize             int64             `json:"max_key_size"`
@@ -62,6 +63,7 @@ func (cfg *Config) DeepCopy() *Config {
 
 func (c Config) Equal(other Config) bool {
 	if c.Env != other.Env ||
+		c.LoadPoolInterval != other.LoadPoolInterval ||
 		c.MaintenanceGracePeriod != other.MaintenanceGracePeriod ||
 		c.MaxParallel != other.MaxParallel ||
 		c.MaxKeySize != other.MaxKeySize ||

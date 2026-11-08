@@ -19,6 +19,7 @@ func (t *Manager) getNodeConfig() node.Config {
 		keyMaxKeySize             = key.New("node", "max_key_size")
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
+		keyLoadPoolInterval       = key.New("node", "load_pool_interval")
 		keyEnv                    = key.New("node", "env")
 		keySplitAction            = key.New("node", "split_action")
 		keySSHKey                 = key.New("node", "sshkey")
@@ -36,6 +37,11 @@ func (t *Manager) getNodeConfig() node.Config {
 	}
 	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
+	}
+	if d := t.config.GetDuration(keyLoadPoolInterval); d != nil && *d > 0 {
+		cfg.LoadPoolInterval = *d
+	} else {
+		cfg.LoadPoolInterval = defaultLoadPoolInterval
 	}
 	if d := t.config.GetSize(keyMaxKeySize); d != nil {
 		cfg.MaxKeySize = *d

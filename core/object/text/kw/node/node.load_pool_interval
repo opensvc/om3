@@ -1,0 +1,5 @@
+A duration expression, like `5m`, defining how often the daemon loads the
+status of the pools of the node, their usage included, which it publishes to
+its peers and the api.
+
+A change of the node configuration loads them at once too.
