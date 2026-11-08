@@ -38,6 +38,11 @@ type (
 		// or in regular mode (non-standby).
 		standby bool
 
+		// restartedAt is when the exec of the last restart ended, on the
+		// local clock. The resources are not judged again on a local
+		// instance status older than that: see waitRestartStatus.
+		restartedAt time.Time
+
 		log *plog.Logger
 	}
 )
@@ -267,6 +272,10 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
+	if t.waitRestartStatus() {
+		return
+	}
+
 	todoRestart := newTodoMap()
 	todoStandby := newTodoMap()
 
@@ -481,9 +490,50 @@ func (t *Manager) resourceRestart(resourceRids []string, standby bool) {
 		queueFunc = t.queueResourceStartStandby
 	}
 	action := func() error {
-		return queueFunc(rids)
+		err := queueFunc(rids)
+		or.restartedAt = time.Now()
+		return err
 	}
 	t.doTransitionAction(action, instance.MonitorStateStartProgress, instance.MonitorStateIdle, instance.MonitorStateStartFailure)
+
+	// The status the start posted is dated within the command, before the
+	// exec ended, so it can not tell it follows the restart: a status
+	// evaluated now does, and is the one the restart is judged on.
+	t.requestStatusRefresh(t.instConfig.Priority)
+}
+
+// resourceRestartedAt returns when the exec of the last restart ended,
+// standby or regular, and the zero time when none ran.
+func (t *Manager) resourceRestartedAt() time.Time {
+	regular, standby := t.regularResourceOrchestrate.restartedAt, t.standbyResourceOrchestrate.restartedAt
+	if regular.After(standby) {
+		return regular
+	}
+	return standby
+}
+
+// waitRestartStatus returns true while the local instance status is older
+// than the end of the last restart exec, and the resources are not to be
+// judged on it.
+//
+// The imon goroutine is blocked during the exec, and the status the start
+// posted is read after the exec ended, maybe after an orchestration pass.
+// That pass would judge the resources on the status that triggered the
+// restart: a resource up again would be found still down, with no restart
+// left, and the monitor action would run though the restart succeeded.
+//
+// The refresh asked at the end of the restart brings a newer status, whose
+// event orchestrates again. Should it not come, as with a status evaluation
+// failing, the outdated timer asks another, paced by its floor, and the
+// resources are still judged on a status taken after the restart.
+func (t *Manager) waitRestartStatus() bool {
+	restartedAt := t.resourceRestartedAt()
+	if !t.instStatus[t.localhost].UpdatedAt.Before(restartedAt) {
+		return false
+	}
+	t.log.Infof("wait for the status of the restart")
+	t.armOutdatedTimer(time.Now())
+	return true
 }
 
 // getRidsAndDelay processes a todoMap to retrieve resource IDs and calculates the maximum required restart delay.
