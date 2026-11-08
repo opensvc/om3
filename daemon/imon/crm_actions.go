@@ -30,6 +30,10 @@ var (
 
 	// testCRMAction can be used to define alternate testCRMAction for tests
 	testCRMAction func(title string, cmdArgs ...string) error
+
+	// testQueueAction, set by a test, is told the state of the action the
+	// monitor queues, instead of the action being run.
+	testQueueAction func(newState instance.MonitorState)
 )
 
 func init() {

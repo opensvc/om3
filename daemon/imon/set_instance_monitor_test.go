@@ -44,6 +44,8 @@ func newTestManager(pub pubsub.Publisher) *Manager {
 		// The timers of the waits, stopped, as a monitor starts them.
 		waitSyncsTimer:       stoppedTimer(),
 		waitDestinationTimer: stoppedTimer(),
+		waitFilesTimer:       stoppedTimer(),
+		files:                newFilesManager(),
 		instMonitor:          make(map[string]instance.Monitor),
 		instStatus:           make(map[string]instance.Status),
 		state: instance.Monitor{

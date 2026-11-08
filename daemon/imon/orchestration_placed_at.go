@@ -27,6 +27,8 @@ func (t *Manager) orchestrateFailoverPlacedStart() {
 	case instance.MonitorStateStartProgress:
 	case instance.MonitorStateWaitParents:
 		t.orchestratePlacedAtSetWaitParents()
+	case instance.MonitorStateWaitFiles:
+		t.orchestrateFailoverPlacedStartFromStopped()
 	default:
 		t.log.Errorf("don't know how to orchestrate placed start from %s", t.state.State)
 	}
@@ -57,6 +59,8 @@ func (t *Manager) orchestrateFlexPlacedStart() {
 	case instance.MonitorStateStartProgress:
 	case instance.MonitorStateWaitParents:
 		t.orchestratePlacedAtSetWaitParents()
+	case instance.MonitorStateWaitFiles:
+		t.placedStart()
 	default:
 		t.log.Errorf("don't know how to orchestrate placed start from %s", t.state.State)
 	}
@@ -177,6 +181,9 @@ func (t *Manager) placedStart() {
 	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown, status.StandbyUp:
+		if t.setWaitFiles() {
+			return
+		}
 		t.doPlacedStart()
 	case status.Up, status.Warn:
 		t.skipPlacedStart()
@@ -375,6 +382,9 @@ func (t *Manager) placedStartAfterMove() {
 	}
 	if t.instStatus[t.localhost].Avail.Is(status.Up) {
 		t.skipPlacedStart()
+		return
+	}
+	if t.setWaitFiles() {
 		return
 	}
 	t.doPlacedStart()

@@ -6,5 +6,6 @@ func (t *Manager) orchestrateAborted() {
 	t.change = true
 	t.state.GlobalExpectOptions = nil
 	t.state.OrchestrationIsDone = true
+	t.leaveWaitFiles()
 	t.updateIfChange()
 }

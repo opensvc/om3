@@ -1720,6 +1720,12 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * Add a 60 seconds timeout to `pre_monitor_action`. The 2.1 daemon waits forever for this callout to terminate.
 
+* A switch or a takeover starts the destination with the resource files of the source.
+
+    The resource files, as the definition of a kvm domain or the configuration of a lxc container, were fetched from an instance up only. A file changed shortly before a move is listed first by the status the source refreshes at the end of its stop, when no instance is up any more, and the destination started without it: "definition not found", start failed.
+
+    The source stays the authority for its files while the orchestration that stopped it lasts. The destination waits, in the new `wait files` monitor state, to hold the files the source lists in the version it lists, compared by checksum, and starts once they are fetched. Past one minute, its start fails, the log naming the files and the source.
+
 * Earlier local object instance orchestration after node boot
 
     In 2.1 local object instance orchestration waits for all local object instances boot action done

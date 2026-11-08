@@ -146,6 +146,12 @@ type (
 		waitDestinationTimer *time.Timer
 		waitDestinationSince time.Time
 
+		// waitFilesTimer fires when the destination of a placement has
+		// waited long enough for the resource files of the source it takes
+		// over from, waiting since waitFilesSince.
+		waitFilesTimer *time.Timer
+		waitFilesSince time.Time
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -504,6 +510,8 @@ func (t *Manager) worker(initialNodes []string) {
 	t.waitSyncsTimer.Stop()
 	t.waitDestinationTimer = time.NewTimer(time.Hour)
 	t.waitDestinationTimer.Stop()
+	t.waitFilesTimer = time.NewTimer(time.Hour)
+	t.waitFilesTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
@@ -635,6 +643,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onWaitSyncsTimer()
 		case <-t.waitDestinationTimer.C:
 			t.onWaitDestinationTimer()
+		case <-t.waitFilesTimer.C:
+			t.onWaitFilesTimer()
 		}
 	}
 }

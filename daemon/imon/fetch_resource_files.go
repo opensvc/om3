@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/util/file"
 
@@ -47,6 +51,11 @@ type (
 		// fetching is true when the resource files fetch and ingest routine is
 		// running
 		fetching bool
+
+		// sources stores, by peer node, the orchestration a peer instance
+		// was seen up under: the source of a placement, which stays the
+		// authority for its files once the orchestration stopped it.
+		sources map[string]uuid.UUID
 	}
 )
 
@@ -54,6 +63,7 @@ func newFilesManager() *filesManager {
 	return &filesManager{
 		states:  make(map[string]ridFile),
 		skipped: make(map[string]bool),
+		sources: make(map[string]uuid.UUID),
 	}
 }
 
@@ -97,7 +107,10 @@ func (t *Manager) handleResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 func (t *Manager) handlePeerResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 	t.files.attention = nil
 	t.files.fetching = true
-	go t.fetchResourceFiles(t.files.Fetched(), t.instStatus[t.localhost], ev)
+	// A peer not up is an authority only as the source the orchestration
+	// stopped (see needFetchResourceFiles): its resources are down there.
+	fromStopped := !ev.Value.Avail.Is(status.Up)
+	go t.fetchResourceFiles(t.files.Fetched(), t.instStatus[t.localhost], ev, fromStopped)
 }
 
 func (t *Manager) needFetchResourceFiles(ev *msgbus.InstanceStatusUpdated) bool {
@@ -111,12 +124,81 @@ func (t *Manager) needFetchResourceFiles(ev *msgbus.InstanceStatusUpdated) bool 
 		return false
 	}
 
-	// Is the remote node a valid resource file authority
-	if ev.Value.Avail != status.Up {
+	// Is the remote node a valid resource file authority: an instance up,
+	// or the source of the placement under way, stopped by it, whose files
+	// are still on its disk.
+	if ev.Value.Avail != status.Up && !t.isStoppedSource(ev.Node, ev.Value.Avail) {
 		return false
 	}
 
 	return true
+}
+
+// recordFilesSource remembers the orchestration a peer instance is up
+// under, which makes it the source of the placement the orchestration
+// does: the instance the orchestration stops for this one to start.
+//
+// It is called on the status and on the monitor of the peer, the peer
+// taking the orchestration up before it stops for it.
+func (t *Manager) recordFilesSource(nodename string) {
+	if nodename == t.localhost || t.files == nil {
+		return
+	}
+	id := t.instMonitor[nodename].OrchestrationID
+	if id == uuid.Nil {
+		return
+	}
+	if !t.instStatus[nodename].Avail.Is(status.Up, status.Warn) {
+		return
+	}
+	t.files.sources[nodename] = id
+}
+
+// isStoppedSource says whether a peer instance is the source of the
+// placement under way, stopped by it: seen up under the orchestration of
+// the local instance, still in it, and no longer up.
+//
+// The files the source lists are the version it stopped with, the one the
+// local instance is to start with. No other node is an authority by then: a
+// definition changed shortly before the move reaches no node before the
+// source refreshed its status, which it does at the end of its stop.
+func (t *Manager) isStoppedSource(nodename string, avail status.T) bool {
+	id := t.state.OrchestrationID
+	switch {
+	case id == uuid.Nil, nodename == t.localhost, t.files == nil:
+		return false
+	case t.state.GlobalExpect != instance.MonitorGlobalExpectPlacedAt && t.state.GlobalExpect != instance.MonitorGlobalExpectPlaced:
+		// Only a placement moves the object: the instances a stop
+		// stops are no source of anything.
+		return false
+	case t.state.GlobalExpect == instance.MonitorGlobalExpectPlacedAt && !t.isPlacedAtDestination():
+		// The files are for the destination to start with.
+		return false
+	case t.files.sources[nodename] != id:
+		return false
+	case t.instMonitor[nodename].OrchestrationID != id:
+		return false
+	}
+	return !avail.Is(status.Up, status.Warn)
+}
+
+// isPlacedAtDestination says whether the local node is a destination of
+// the placed@ orchestration under way.
+func (t *Manager) isPlacedAtDestination() bool {
+	dst, ok := t.getPlacedAtDestination()
+	return ok && slices.Contains(dst, t.localhost)
+}
+
+// stoppedSources returns the peers isStoppedSource says are, sorted.
+func (t *Manager) stoppedSources() []string {
+	l := make([]string, 0)
+	for nodename, instStatus := range t.instStatus {
+		if t.isStoppedSource(nodename, instStatus.Avail) {
+			l = append(l, nodename)
+		}
+	}
+	sort.Strings(l)
+	return l
 }
 
 // fetchBlockedByGlobalExpect tells whether the global expect tears the
@@ -209,10 +291,11 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 			if t.localhost == nodename {
 				continue
 			}
-			if instanceStatus.Avail != status.Up {
+			fromStopped := t.isStoppedSource(nodename, instanceStatus.Avail)
+			if instanceStatus.Avail != status.Up && !fromStopped {
 				continue
 			}
-			if n := syncScopeMatches(*instanceStatus, ev.Value); n > bestMatches {
+			if n := syncScopeMatches(*instanceStatus, ev.Value, fromStopped); n > bestMatches {
 				best, bestStatus, bestMatches = nodename, instanceStatus, n
 			}
 		}
@@ -225,7 +308,12 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 	}
 }
 
-func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus instance.Status, ev *msgbus.InstanceStatusUpdated) {
+// fetchResourceFiles fetches the files the peer instance of the event lists
+// and the local one does not hold in the version listed. The files of the
+// resources up there are fetched, or, fromStopped, of all of them: the
+// source of a placement stopped its resources, and its files are the
+// version it stopped with.
+func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus instance.Status, ev *msgbus.InstanceStatusUpdated, fromStopped bool) {
 
 	var (
 		ridsToIngest []string
@@ -235,7 +323,7 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 	done := cmdFetchDone{}
 
 	for rid, peerResourceStatus := range ev.Value.Resources {
-		if peerResourceStatus.Status != status.Up {
+		if peerResourceStatus.Status != status.Up && !fromStopped {
 			continue
 		}
 		localResourceStatus, ok := localInstanceStatus.Resources[rid]
@@ -312,14 +400,15 @@ func sameSyncScope(peer, local resource.Status) bool {
 }
 
 // syncScopeMatches is the number of resources whose files the fetch would
-// take from the peer instance: up there, down here, holding files, with the
-// same scope on both. A peer running a container named otherwise holds the
-// files of another one, which the fetch skips, while another peer may hold
-// the right ones; the files of its other resources are fetched all the same.
-func syncScopeMatches(peer, local instance.Status) int {
+// take from the peer instance: up there, or stopped there by the placement
+// under way when fromStopped, down here, holding files, with the same scope
+// on both. A peer running a container named otherwise holds the files of
+// another one, which the fetch skips, while another peer may hold the right
+// ones; the files of its other resources are fetched all the same.
+func syncScopeMatches(peer, local instance.Status, fromStopped bool) int {
 	n := 0
 	for rid, peerResourceStatus := range peer.Resources {
-		if peerResourceStatus.Status != status.Up || len(peerResourceStatus.Files) == 0 {
+		if (peerResourceStatus.Status != status.Up && !fromStopped) || len(peerResourceStatus.Files) == 0 {
 			continue
 		}
 		localResourceStatus, ok := local.Resources[rid]
@@ -474,5 +563,9 @@ func (t *Manager) onFetchDone(c cmdFetchDone) {
 	t.files.fetching = false
 	if t.files.attention != nil {
 		t.handlePeerResourceFiles(t.files.attention)
+	}
+	if t.state.State == instance.MonitorStateWaitFiles {
+		// The start of a placement waits for these files.
+		t.onChange()
 	}
 }
