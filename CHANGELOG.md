@@ -1120,6 +1120,13 @@ which share the same executor.
     is announced by an unsolicited neighbor advertisement, as an IPv4 address is by a gratuitous arp, so the neighbors
     of an address moved to another node send to it there at once. v2 announced neither.
 
+* **`ip.cni` addresses are announced at start:**
+    The start sends, in the network namespace of the container and over the card the CNI ADD named, 3 gratuitous arp
+    a second apart for each IPv4 address the plugin set, and 3 unsolicited neighbor advertisements for each IPv6 one,
+    as `ip.netns` does for its IPv4 address. A restart reusing the address puts it on a new card with a new mac, which
+    the node and the peers on the bridge learn at once, rather than send to the mac of the removed card for the 30 to
+    60 seconds their neighbor entry lives. A failed announce fails the start.
+
 * **Changed default DNS search list:**
     The fqdn of the object is no longer the first domain a container searches a
     shortname in. The default list is now the domain of the object and each of
