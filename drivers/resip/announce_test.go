@@ -146,3 +146,23 @@ func TestAnnounceStopsOnError(t *testing.T) {
 	assert.ErrorIs(t, err, inErr)
 	assert.Empty(t, f.sent)
 }
+
+// An operating system om does not announce on is warned of: the announce
+// stops, sending nothing more, and does not fail the start.
+func TestAnnounceUnsupported(t *testing.T) {
+	f := fake(t, 0)
+	sendGratuitousARP = func(ip net.IP, dev string) error {
+		f.sent = append(f.sent, sent{kind: "arp", ip: ip.String(), dev: dev})
+		return ErrAnnounceUnsupported
+	}
+	err := Announce{
+		Log:      plog.NewDefaultLogger(),
+		Dev:      "eth0",
+		IPs:      []net.IP{net.ParseIP("10.140.0.61"), net.ParseIP("fd00::61")},
+		Count:    3,
+		Interval: time.Second,
+	}.Send()
+	assert.NoError(t, err)
+	assert.Len(t, f.sent, 1)
+	assert.Empty(t, f.slept)
+}
