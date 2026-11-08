@@ -23,7 +23,85 @@ func newRestartTestManager(local, peer status.T) *Manager {
 	m.nodeStatus = map[string]node.Status{"node1": {}}
 	m.instStatus["node1"] = instance.Status{Avail: local, Provisioned: provisioned.True, UpdatedAt: time.Now()}
 	m.instStatus["node2"] = instance.Status{Avail: peer, Provisioned: provisioned.True, UpdatedAt: time.Now()}
+	m.outdatedTimer = stoppedTimer()
 	return m
+}
+
+// newRestartedTestManager returns the manager of a local instance whose
+// monitored resource ip#0 was restarted, its last restart used, the exec
+// ending at the returned time. The local instance status kept is the one
+// that triggered the restart: ip#0 down, dated before the exec ended.
+func newRestartedTestManager() (*Manager, time.Time) {
+	m := newRestartTestManager(status.Down, status.Down)
+	m.regularResourceOrchestrate.log = m.log
+	m.standbyResourceOrchestrate.log = m.log
+	m.regularResourceOrchestrate.scheduled = make(map[string]bool)
+	m.standbyResourceOrchestrate.scheduled = make(map[string]bool)
+	m.instConfig.ActorConfig = &instance.ActorConfig{
+		Resources: instance.ResourceConfigs{"ip#0": {IsMonitored: true, Restart: 1}},
+	}
+	m.initialMonitorAction = instance.MonitorActionNone
+	m.state.Resources = instance.ResourceMonitors{}
+	m.state.Resources.Set("ip#0", instance.ResourceMonitor{Restart: &instance.ResourceMonitorRestart{Remaining: 0}})
+	restartedAt := time.Now()
+	m.regularResourceOrchestrate.restartedAt = restartedAt
+	m.instStatus["node1"] = localStatusWithIP0(status.Down, restartedAt.Add(-3*time.Second))
+	return m, restartedAt
+}
+
+// localStatusWithIP0 returns a local instance status of ip#0 st, dated at.
+func localStatusWithIP0(st status.T, at time.Time) instance.Status {
+	return instance.Status{
+		Avail:       st,
+		Provisioned: provisioned.True,
+		UpdatedAt:   at,
+		Resources:   instance.ResourceStatuses{"ip#0": resource.Status{Status: st}},
+	}
+}
+
+// A restart is not judged on the status that triggered it. The status the
+// start posts is read after the exec ended, maybe after an orchestration
+// pass: that pass waits, the status it holds says ip#0 down with no restart
+// left, and the monitor action would run though the restart succeeded.
+func TestARestartIsNotJudgedOnTheStatusBeforeIt(t *testing.T) {
+	m, _ := newRestartedTestManager()
+	m.orchestrateResourceRestart()
+	assert.True(t, m.state.MonitorActionExecutedAt.IsZero(), "no monitor action")
+	assert.Equal(t, instance.MonitorLocalExpectStarted, m.state.LocalExpect)
+	assert.Equal(t, 0, m.state.Resources.Get("ip#0").Restart.Remaining, "the retry budget is untouched")
+	assert.True(t, m.outdatedTimer.Stop(), "the outdated timer is armed to refresh the status, should none come")
+}
+
+// The status taken after the restart is the one judged: ip#0 up again, no
+// monitor action runs, and its restarts are given back as before.
+func TestARestartIsJudgedUpOnTheStatusAfterIt(t *testing.T) {
+	m, restartedAt := newRestartedTestManager()
+	m.orchestrateResourceRestart()
+	m.instStatus["node1"] = localStatusWithIP0(status.Up, restartedAt.Add(time.Millisecond))
+	m.orchestrateResourceRestart()
+	assert.True(t, m.state.MonitorActionExecutedAt.IsZero(), "no monitor action")
+	assert.Equal(t, instance.MonitorLocalExpectStarted, m.state.LocalExpect)
+	assert.Equal(t, 1, m.state.Resources.Get("ip#0").Restart.Remaining, "the restart count is reset to the config value")
+}
+
+// The status taken after the restart says ip#0 still down, with no restart
+// left: the monitor action runs, as it did.
+func TestARestartIsJudgedDownOnTheStatusAfterIt(t *testing.T) {
+	m, restartedAt := newRestartedTestManager()
+	m.orchestrateResourceRestart()
+	m.instStatus["node1"] = localStatusWithIP0(status.Down, restartedAt.Add(time.Millisecond))
+	m.orchestrateResourceRestart()
+	assert.False(t, m.state.MonitorActionExecutedAt.IsZero(), "the monitor action runs")
+	assert.Equal(t, instance.MonitorLocalExpectEvicted, m.state.LocalExpect)
+}
+
+// A standby restart holds the judgment of the resources the same way.
+func TestAStandbyRestartIsNotJudgedOnTheStatusBeforeIt(t *testing.T) {
+	m, restartedAt := newRestartedTestManager()
+	m.regularResourceOrchestrate.restartedAt = time.Time{}
+	m.standbyResourceOrchestrate.restartedAt = restartedAt
+	m.orchestrateResourceRestart()
+	assert.True(t, m.state.MonitorActionExecutedAt.IsZero(), "no monitor action")
 }
 
 // A failover instance down while a peer runs the object is no longer the one
