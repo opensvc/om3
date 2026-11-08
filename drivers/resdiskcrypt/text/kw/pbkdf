@@ -1,0 +1,15 @@
+The key derivation of the LUKS2 keyslot the provision writes, as the
+`--pbkdf` option of `cryptsetup luksFormat`:
+
+* `pbkdf2` costs cpu time only.
+* `argon2i` and `argon2id` cost memory and threads too, which
+  `pbkdf_memory` and `pbkdf_parallel` cap.
+
+A memory-hard derivation slows the guessing of a passphrase a human chose.
+It adds nothing to the random passphrase om generates, and costs the node up
+to a gigabyte of memory and seconds of cpu at each provision and each start,
+which a small node may run short of.
+
+The derivation is written in the header: changing it does not change the
+volumes already provisioned, which open with the derivation they were
+formatted with.

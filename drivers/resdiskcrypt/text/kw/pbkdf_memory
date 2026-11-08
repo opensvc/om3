@@ -1,0 +1,7 @@
+The memory an argon2 key derivation takes, as the `--pbkdf-memory` option of
+`cryptsetup luksFormat`: a number is a count of KiB, as cryptsetup reads it,
+and a size as `64m` is converted to KiB.
+
+It applies to the argon2 derivations only, and is refused with
+`pbkdf = pbkdf2`. Set with no `pbkdf`, the derivation is the argon2
+cryptsetup chooses, the passphrase om generates included.

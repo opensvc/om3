@@ -1,0 +1,3 @@
+The time, in milliseconds, the key derivation takes on the node formatting
+the volume, as the `--iter-time` option of `cryptsetup luksFormat`. The
+other nodes take about as long to open the volume, longer when slower.
