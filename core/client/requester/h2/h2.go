@@ -146,7 +146,11 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		// connection is ready, not by a request editor: the generated
 		// client runs those before the connect and the tls handshake,
 		// which can outlast a token valid a few seconds.
-		baseTransport = &bearerFuncTransport{Base: baseTransport, fn: config.BearerFunc}
+		origin, err := url.Parse(config.URL)
+		if err != nil {
+			return nil, err
+		}
+		baseTransport = &bearerFuncTransport{Base: baseTransport, fn: config.BearerFunc, origin: origin}
 	}
 
 	httpClient := *cachedClient
@@ -217,17 +221,40 @@ func requestAuthorizationEditorFn(s string) func(context.Context, *http.Request)
 // headers. A retry on another connection calls it again, and mints a new
 // token.
 //
+// The token is minted only for a request to the origin of the client, its
+// scheme and host: a redirect elsewhere, which the http.Client follows
+// through this transport, is sent with no Authorization, as the http.Client
+// strips the one of the request it copies, so a peer answering a redirect
+// can't hand the token of the node to another server.
+//
 // A token fn fails to mint fails the request, which is not sent: the hook
 // can't abort it, and the transport does not look at a canceled context
 // before it writes, so the hook closes the connection. The transport of the
 // cached clients speaks http/1.1, its tls configuration asking for no other
 // protocol, and the connection serves this request alone.
 type bearerFuncTransport struct {
-	Base http.RoundTripper
-	fn   func() (string, error)
+	Base   http.RoundTripper
+	fn     func() (string, error)
+	origin *url.URL
+}
+
+// sameOrigin says u is on the scheme and the host, port included, of the
+// origin of the client.
+func (t *bearerFuncTransport) sameOrigin(u *url.URL) bool {
+	return u != nil && t.origin != nil &&
+		strings.EqualFold(u.Scheme, t.origin.Scheme) &&
+		strings.EqualFold(u.Host, t.origin.Host)
 }
 
 func (t *bearerFuncTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !t.sameOrigin(req.URL) {
+		if req.Header.Get("Authorization") == "" {
+			return t.Base.RoundTrip(req)
+		}
+		r := req.Clone(req.Context())
+		r.Header.Del("Authorization")
+		return t.Base.RoundTrip(r)
+	}
 	var fnErr error
 	// A RoundTripper must not modify the request it is given: the
 	// token is set in a copy of its headers, which the request sent

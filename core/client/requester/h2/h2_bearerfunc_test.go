@@ -124,3 +124,37 @@ func TestNewInetBearerFuncError(t *testing.T) {
 	defer mu.Unlock()
 	assert.Equal(t, []string{"Bearer tk"}, received)
 }
+
+// A redirect to another server is followed with no token: the token of the
+// node is minted for the origin of the client alone.
+func TestNewInetBearerFuncNotSentAcrossRedirect(t *testing.T) {
+	var (
+		mu       sync.Mutex
+		received []string
+	)
+	other := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		received = append(received, r.Header.Get("Authorization"))
+	}))
+	defer other.Close()
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+r.URL.Path, http.StatusFound)
+	}))
+	defer srv.Close()
+
+	minted := 0
+	fn := func() (string, error) {
+		minted++
+		return "tk", nil
+	}
+	c, err := NewInet(Config{URL: srv.URL, BearerFunc: fn, InsecureSkipVerify: true})
+	require.NoError(t, err)
+	resp, err := c.GetNodePing(context.Background(), "n1")
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, []string{""}, received, "the Authorization the redirect target received")
+	assert.Equal(t, 1, minted, "the tokens minted, for the origin alone")
+}
