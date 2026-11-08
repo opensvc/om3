@@ -770,7 +770,7 @@ func (t *T) start(ctx context.Context) error {
 	// A restart reusing the address puts it on a new card, with a new mac:
 	// the neighbors learn it now, rather than send to the mac of the card
 	// the restart removed until their cache entry expires.
-	return t.announce(cniNetNS, dev, addResultIPs(outB))
+	return t.announce(cniNetNS, dev, addResultIPs(outB, dev))
 }
 
 // announce sends the gratuitous arp and the unsolicited neighbor
@@ -799,13 +799,21 @@ func (t *T) announce(nsPath, dev string, ips []net.IP) error {
 	}.Send()
 }
 
-// addResultIPs returns the addresses a CNI ADD result names: the "ips" list
-// since the 0.3.0 spec, the "ip4" and "ip6" sections before. A result not
-// read names none.
-func addResultIPs(b []byte) []net.IP {
+// addResultIPs returns the addresses a CNI ADD result names on dev, the card
+// the plugin added in the container, CNI_IFNAME: the "ips" list since the
+// 0.3.0 spec, the "ip4" and "ip6" sections before. An address of the "ips"
+// list naming, by its index in "interfaces", another card, as the veth end
+// on the host or a second card of a chained plugin, is on another link and
+// is not announced over dev. One naming no card is on dev, as the addresses
+// of the results before. A result not read names none.
+func addResultIPs(b []byte, dev string) []net.IP {
 	var result struct {
+		Interfaces []struct {
+			Name string `json:"name"`
+		} `json:"interfaces"`
 		IPs []struct {
-			Address string `json:"address"`
+			Address   string `json:"address"`
+			Interface *int   `json:"interface"`
 		} `json:"ips"`
 		IP4 *struct {
 			IP string `json:"ip"`
@@ -819,6 +827,9 @@ func addResultIPs(b []byte) []net.IP {
 	}
 	cidrs := make([]string, 0, len(result.IPs)+2)
 	for _, e := range result.IPs {
+		if i := e.Interface; i != nil && (*i < 0 || *i >= len(result.Interfaces) || result.Interfaces[*i].Name != dev) {
+			continue
+		}
 		cidrs = append(cidrs, e.Address)
 	}
 	if result.IP4 != nil {
