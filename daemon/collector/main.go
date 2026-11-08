@@ -408,6 +408,11 @@ func (t *T) loop() {
 	}
 	sub := t.startSubscriptions()
 
+	// An audit session begun before the subscription, as one reconnecting to
+	// a daemon restarting, published its AuditStart to no collector: attach
+	// it now. One begun after comes as an event.
+	t.attachActiveAuditIfAny()
+
 	t.catchUpConfig()
 
 	// Announce the local actions left pending by a daemon down during the
