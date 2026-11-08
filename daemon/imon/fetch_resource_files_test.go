@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -96,10 +97,11 @@ func TestTheFilesArePickedFromThePeerOfTheMostSameScopes(t *testing.T) {
 		"container#1": {Status: down, SyncScope: "vm1", Files: files},
 		"disk#2":      {Status: up, Files: files},
 	}}
-	assert.Equal(t, 2, syncScopeMatches(same, local))
-	assert.Equal(t, 1, syncScopeMatches(partly, local), "the files of the disk are the same, the container ones are not")
-	assert.Equal(t, 0, syncScopeMatches(other, local), "nothing of the peer is to fetch")
-	assert.Equal(t, 0, syncScopeMatches(unfetchable, local), "a resource down there, or up here, is not fetched")
+	assert.Equal(t, 2, syncScopeMatches(same, local, false))
+	assert.Equal(t, 1, syncScopeMatches(partly, local, false), "the files of the disk are the same, the container ones are not")
+	assert.Equal(t, 0, syncScopeMatches(other, local, false), "nothing of the peer is to fetch")
+	assert.Equal(t, 0, syncScopeMatches(unfetchable, local, false), "a resource down there, or up here, is not fetched")
+	assert.Equal(t, 1, syncScopeMatches(unfetchable, local, true), "a resource the placement stopped there is fetched")
 }
 
 // No file is fetched from a peer while the instances are torn down: the
@@ -127,4 +129,51 @@ func TestNoFileIsFetchedWhileTheInstancesAreTornDown(t *testing.T) {
 		m.state.GlobalExpect = ge
 		assert.True(t, m.needFetchResourceFiles(peerUp), "global expect %s", ge)
 	}
+}
+
+// The source of a placement stays the authority for its files once the
+// orchestration stopped it: a file changed shortly before the move is listed
+// first by the status the source refreshes at the end of its stop, when no
+// instance is up to fetch it from. A peer down otherwise is not one: its
+// files may be the ones of a definition left behind long ago.
+func TestTheSourceAPlacementStoppedIsAnAuthorityForItsFiles(t *testing.T) {
+	newManager := func() *Manager {
+		m := newTestManager(&pubSpy{})
+		m.state.GlobalExpect = instance.MonitorGlobalExpectPlacedAt
+		m.state.GlobalExpectOptions = instance.MonitorGlobalExpectOptionsPlacedAt{Destination: []string{"node1"}}
+		m.state.OrchestrationID = uuid.New()
+		for _, nodename := range []string{"node2", "node3"} {
+			m.instMonitor[nodename] = instance.Monitor{OrchestrationID: m.state.OrchestrationID}
+			m.instStatus[nodename] = instance.Status{Avail: status.Down}
+		}
+		// node2 is seen up under the orchestration, before it stops.
+		m.instStatus["node2"] = instance.Status{Avail: status.Up}
+		m.recordFilesSource("node2")
+		m.instStatus["node2"] = instance.Status{Avail: status.Down}
+		return m
+	}
+	stopped := func(nodename string) *msgbus.InstanceStatusUpdated {
+		return &msgbus.InstanceStatusUpdated{Node: nodename, Value: instance.Status{Avail: status.Down}}
+	}
+
+	m := newManager()
+	assert.True(t, m.needFetchResourceFiles(stopped("node2")), "the source the orchestration stopped")
+	assert.Equal(t, []string{"node2"}, m.stoppedSources())
+	assert.False(t, m.needFetchResourceFiles(stopped("node3")), "a peer down before the orchestration")
+
+	m = newManager()
+	m.state.OrchestrationID = uuid.New()
+	assert.False(t, m.needFetchResourceFiles(stopped("node2")), "the source of another orchestration")
+
+	m = newManager()
+	m.instMonitor["node2"] = instance.Monitor{}
+	assert.False(t, m.needFetchResourceFiles(stopped("node2")), "a source out of the orchestration")
+
+	m = newManager()
+	m.state.GlobalExpectOptions = instance.MonitorGlobalExpectOptionsPlacedAt{Destination: []string{"node3"}}
+	assert.False(t, m.needFetchResourceFiles(stopped("node2")), "a node the object is not placed on")
+
+	m = newManager()
+	m.state.GlobalExpect = instance.MonitorGlobalExpectStopped
+	assert.False(t, m.needFetchResourceFiles(stopped("node2")), "a stop moves nothing")
 }

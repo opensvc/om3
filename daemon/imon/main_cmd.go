@@ -293,6 +293,7 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	}
 	if srcCmd.Node != t.localhost {
 		t.onPeerWrites(srcCmd.Node, srcCmd.Value)
+		t.recordFilesSource(srcCmd.Node)
 	}
 	if srcCmd.Node == t.localhost {
 		t.janitorVolumes()
@@ -843,6 +844,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	instMon := c.Value
 	t.log.Tracef("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
+	t.recordFilesSource(remote)
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
 	t.replayDeferredEventRefresh()
@@ -1442,6 +1444,10 @@ func (t *Manager) queueLastAction(action func() error, newState, successState, e
 }
 
 func (t *Manager) queueAction(action func() error, newState, successState, errorState instance.MonitorState) {
+	if testQueueAction != nil {
+		testQueueAction(newState)
+		return
+	}
 	_ = runner.Run(t.instConfig.Priority, t.runnerLabel(newState.String()), func() error {
 		t.doAction(action, newState, successState, errorState)
 		return nil

@@ -71,6 +71,10 @@ const (
 	MonitorStateWaitDestination
 	MonitorStateWaitDestinationFailure
 
+	// MonitorStateWaitFiles is the destination of a placement waiting, before
+	// it starts, for the resource files the source it took over from lists.
+	MonitorStateWaitFiles
+
 	// Miscellaneous
 	MonitorStateRunning
 	MonitorStateSyncing
@@ -184,6 +188,7 @@ func init() {
 		{MonitorStateWaitSyncs, "wait syncs"},
 		{MonitorStateWaitDestination, "wait destination"},
 		{MonitorStateWaitDestinationFailure, "wait destination failed"},
+		{MonitorStateWaitFiles, "wait files"},
 
 		// Miscellaneous
 		{MonitorStateRunning, "running"},
