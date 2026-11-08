@@ -457,7 +457,10 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 }
 
 // startARP sends the gratuitous arp of the ipv4 address in the namespace,
-// over the guest card. An ipv6 address is not announced.
+// over the guest card. An ipv6 address is announced by the kernel: the start
+// sets ndisc_notify on the guest card before it adds the address, so the
+// kernel sends an unsolicited neighbor advertisement once the duplicate
+// address detection completes.
 func (t *T) startARP(netns ns.NetNS, guestDev string) error {
 	ip := t.ipaddr()
 	if ip.To4() == nil {
