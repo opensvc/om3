@@ -353,6 +353,12 @@ func (t *actor) ConfigureResources() {
 			}
 			continue
 		}
+		if driverName == "" && driver.DefaultDriver[driverGroup] == "oci" {
+			// A section naming no type runs the driver of its group,
+			// which is the oci one for a container: the engine of the
+			// node too, not the one the oci virtual driver prefers.
+			driverName = "oci"
+		}
 		if driverName == "oci" && (driverGroup == driver.GroupContainer || driverGroup == driver.GroupTask) {
 			// The engine of the node, as in v2: the resource is the one
 			// of the engine, and says so as its type.
