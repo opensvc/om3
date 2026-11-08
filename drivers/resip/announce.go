@@ -1,6 +1,7 @@
 package resip
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -44,6 +45,12 @@ const (
 	AnnounceInterval = time.Second
 )
 
+// ErrAnnounceUnsupported is the error of the senders of an operating system
+// om does not announce an address on. An announce meeting it sends nothing
+// more and warns, rather than fail the start of the address: the neighbors
+// learn the address when they next resolve it.
+var ErrAnnounceUnsupported = errors.New("not supported on this operating system")
+
 var (
 	// The senders and the wait between rounds, variables for the tests to
 	// replace.
@@ -53,7 +60,8 @@ var (
 )
 
 // Send announces the addresses Count times, Interval apart, and stops on its
-// first error.
+// first error. An operating system om does not announce on is warned of, and
+// is not an error.
 func (t Announce) Send() error {
 	ips := make([]net.IP, 0, len(t.IPs))
 	for _, ip := range t.IPs {
@@ -93,6 +101,10 @@ func (t Announce) Send() error {
 			err = round()
 		} else {
 			err = t.In(round)
+		}
+		if errors.Is(err, ErrAnnounceUnsupported) {
+			t.Log.Warnf("%s not announced over %s: %s", ips, t.Dev, err)
+			return nil
 		}
 		if err != nil {
 			return err

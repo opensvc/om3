@@ -5,9 +5,9 @@ package resip
 import "net"
 
 func gratuitousARP(ip net.IP, dev string) error {
-	return nil
+	return ErrAnnounceUnsupported
 }
 
 func neighborAdvertisement(ip net.IP, dev string) error {
-	return nil
+	return ErrAnnounceUnsupported
 }
