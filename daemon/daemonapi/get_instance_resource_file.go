@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -41,10 +40,12 @@ func (a *DaemonAPI) GetInstanceResourceFile(ctx echo.Context, nodename, namespac
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "instance status not found: %s@%s", objPath, nodename)
 		}
 
-		// Verify the instance is avail up
-		if instStatus.Avail != status.Up {
-			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "instance avail status is not up: %s@%s: %s", objPath, nodename, instStatus.Avail)
-		}
+		// The instance is not required to be up: the requester judges
+		// which peer is the authority for the files. An instance up is,
+		// and so is the source of a placement once the orchestration
+		// stopped it, whose files are the version it stopped with, the
+		// one the destination is to start with. The files served are the
+		// ones the status of the instance lists, whatever its state.
 
 		// Verify the resource exists
 		resourceStatus, ok := instStatus.Resources[params.Rid]
@@ -65,12 +66,12 @@ func (a *DaemonAPI) GetInstanceResourceFile(ctx echo.Context, nodename, namespac
 		}
 
 		info, err := os.Stat(params.Name)
-		uxInfo := info.Sys().(*syscall.Stat_t)
 		if errors.Is(err, os.ErrNotExist) {
 			return JSONProblemf(ctx, http.StatusNotFound, "Not Found", "")
 		} else if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "Stat %s: %s", params.Name, err)
 		}
+		uxInfo := info.Sys().(*syscall.Stat_t)
 
 		ctx.Response().Header().Add(api.HeaderLastModified, info.ModTime().Format(time.RFC3339Nano))
 		ctx.Response().Header().Add(api.HeaderPerm, fmt.Sprintf("%o", info.Mode()))

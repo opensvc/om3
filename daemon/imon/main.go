@@ -491,6 +491,12 @@ func (t *Manager) worker(initialNodes []string) {
 	for n, v := range instance.StatusData.GetByPath(t.path) {
 		t.instStatus[n] = *v
 	}
+	// A peer up under an orchestration as the worker starts is the source
+	// of the placement it does, as recordFilesSource would have recorded it
+	// on the events published before the subscription.
+	for n := range t.instMonitor {
+		t.recordFilesSource(n)
+	}
 
 	// force retrieval of possible lost global expectation from the peer
 	// instance monitor cache.
