@@ -5,9 +5,12 @@ import (
 	"io/fs"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -42,6 +45,8 @@ func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	for _, nodename := range c.NodesRemoved {
 		delete(t.clusterNode, nodename)
 	}
+	// The speaker is chosen in the order of the cluster nodes.
+	t.updateSpeaker()
 }
 
 func (t *T) onInstanceConfigDeleted(c *msgbus.InstanceConfigDeleted) {
@@ -173,6 +178,8 @@ func (t *T) setPostTimeout(cfg *collector.Config) {
 func (t *T) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
 	delete(t.nodeFrozenAt, c.Node)
 	t.daemonStatusChange[c.Node] = struct{}{}
+	// A node gone speaks no more.
+	t.updateSpeaker()
 }
 
 func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
@@ -180,23 +187,83 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		t.nodeFrozenAt[c.Node] = c.Value.FrozenAt
 		t.daemonStatusChange[c.Node] = struct{}{}
 	}
-	wasLeader := t.nodeIsLeader[c.Node]
 	t.nodeIsLeader[c.Node] = c.Value.IsLeader
+	// The status of a peer comes with its liveness, as at its rejoin.
+	t.updateSpeaker()
+}
+
+// onDaemonCollectorUpdated chooses the speaker again on a change of the
+// collector state of a peer: one losing or getting its client, as on a
+// change of its node.uuid, gives or takes the speech.
+func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 	if c.Node == t.localhost {
-		t.updateSpeaker()
+		return
 	}
-	if c.Value.IsLeader && !wasLeader {
-		// A new speaker has none of the local actions pending: announce
-		// them all again.
-		t.announceActionPending(true)
+	t.updateSpeaker()
+}
+
+// speakerNode returns the node speaking to the collector: the first live
+// cluster node whose collector can speak, as the node leader is the first
+// live one. A node whose collector can not, as one that lost its node.uuid,
+// leaves the speech to the next, and stays the leader, granting the cluster
+// locks. With no node able to speak, the leader speaks, its state saying the
+// warning.
+//
+// Every node chooses from the same data, the cluster nodes, their liveness
+// and the collector states they publish, and so the same speaker.
+func (t *T) speakerNode() string {
+	for _, nodename := range clusternode.Get() {
+		if nodename != t.localhost && node.MonitorData.GetByNode(nodename) == nil {
+			// not alive
+			continue
+		}
+		if t.canSpeak(nodename) {
+			return nodename
+		}
+	}
+	for nodename, isLeader := range t.nodeIsLeader {
+		if isLeader {
+			return nodename
+		}
+	}
+	return ""
+}
+
+// canSpeak says whether the collector of nodename can speak: configured,
+// with a client. A peer whose collector state is not known yet is taken for
+// one that can, so no node behind it speaks at once in its place.
+func (t *T) canSpeak(nodename string) bool {
+	if nodename == t.localhost {
+		return !t.disable && t.client != nil
+	}
+	c := daemonsubsystem.DataCollector.Get(nodename)
+	if c == nil || c.State == "" {
+		return true
+	}
+	switch c.State {
+	case "speaker", "speaker-candidate":
+		return true
+	default:
+		return false
 	}
 }
 
-// updateSpeaker sets isSpeaker from the collector configuration and the
-// localhost election, and applies its transition. It must be called on a
-// change of either: t.disable or t.nodeIsLeader[t.localhost].
+// updateSpeaker sets isSpeaker from the speaker chosen, and applies its
+// transition. It must be called on a change of what the choice reads: the
+// collector configuration and client of the node, the cluster nodes, their
+// liveness, their leader, or the collector state of a peer.
 func (t *T) updateSpeaker() {
-	isSpeaker := !t.disable && t.nodeIsLeader[t.localhost]
+	speaker := t.speakerNode()
+	if speaker != t.speaker {
+		if t.speaker != "" && speaker != "" {
+			// A new speaker has none of the local actions pending:
+			// announce them all again.
+			t.log.Infof("collector speaker %s -> %s", t.speaker, speaker)
+			defer t.announceActionPending(true)
+		}
+		t.speaker = speaker
+	}
+	isSpeaker := !t.disable && speaker == t.localhost
 	if isSpeaker == t.isSpeaker {
 		return
 	}

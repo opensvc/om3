@@ -107,8 +107,12 @@ type (
 		// the collector, keyed by instance key (<path>@<node>).
 		resInfoSent map[string]resInfoSent
 
-		// isSpeaker is true when localhost NodeStatus.IsLeader is true
+		// isSpeaker is true when localhost is the speaker node.
 		isSpeaker bool
+
+		// speaker is the node speaking to the collector, chosen by
+		// speakerNode.
+		speaker string
 
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
 		disable bool
@@ -374,6 +378,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
 
 	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, pubsub.Label{"changed", "true"})
+	sub.AddFilter(&msgbus.DaemonCollectorUpdated{})
 
 	sub.Start()
 	return sub
@@ -459,6 +464,8 @@ func (t *T) loop() {
 				t.onNodeConfigUpdated(c)
 			case *msgbus.DaemonHeartbeatUpdated:
 				t.daemonStatusChange[c.Node] = struct{}{}
+			case *msgbus.DaemonCollectorUpdated:
+				t.onDaemonCollectorUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
 				t.onNodeMonitorDeleted(c)
 			case *msgbus.NodeStatusUpdated:
@@ -547,7 +554,8 @@ func (t *T) publish() {
 //
 //	disable: node has no collector configuration
 //	speaker: node is collector speaker
-//	speaker-warning: node is collector speaker, but has client errors
+//	speaker-warning: node is collector speaker, but has client errors, as
+//	                 no node can speak
 //	speaker-candidate: node is collector speaker candidate
 //	warning: node is collector speaker candidate, but has client errors
 func (t *T) getState() string {
