@@ -1,6 +1,6 @@
 //go:build !solaris
 
-package resiphost
+package resip
 
 import (
 	"fmt"
@@ -10,12 +10,12 @@ import (
 	"golang.org/x/net/ipv6"
 )
 
-// neighborAdvertise sends an unsolicited neighbor advertisement of the address
-// to all the nodes of the link, overriding their cache, as an ipv4 gratuitous
-// arp does: the neighbors of a moved address send to its new node at once,
-// rather than to the node it left until their cache entry fails.
-func (t *T) neighborAdvertise(dev string) error {
-	ip := t.ipaddr().To16()
+// neighborAdvertisement sends an unsolicited neighbor advertisement of the
+// address to all the nodes of the link, overriding their cache, as an ipv4
+// gratuitous arp does: the neighbors of a moved address send to its new node
+// at once, rather than to the node it left until their cache entry fails.
+func neighborAdvertisement(ip net.IP, dev string) error {
+	ip = ip.To16()
 	ifi, err := net.InterfaceByName(dev)
 	if err != nil {
 		return err

@@ -456,34 +456,26 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 	return nil
 }
 
-// arpAnnounces is the number of gratuitous arp a start sends, every
-// arpAnnounceInterval, as "arping -U -c 3" does: a neighbor missing the one a
-// start used to send kept the address on the mac of the namespace it left,
-// until its probe of the entry failed.
-const (
-	arpAnnounces        = 3
-	arpAnnounceInterval = time.Second
-)
-
+// startARP sends the gratuitous arp of the ipv4 address in the namespace,
+// over the guest card. An ipv6 address is not announced.
 func (t *T) startARP(netns ns.NetNS, guestDev string) error {
-	return announce(arpAnnounces, arpAnnounceInterval, func(i int) error {
-		return netns.Do(func(_ ns.NetNS) error {
-			return t.arpAnnounce(guestDev)
-		})
-	})
-}
-
-// announce calls send n times, interval apart, and stops on its first error.
-func announce(n int, interval time.Duration, send func(int) error) error {
-	for i := 0; i < n; i++ {
-		if i > 0 {
-			time.Sleep(interval)
-		}
-		if err := send(i); err != nil {
-			return err
-		}
+	ip := t.ipaddr()
+	if ip.To4() == nil {
+		t.Log().Tracef("skip arp announce on non-ip4 address %s", ip)
+		return nil
 	}
-	return nil
+	return resip.Announce{
+		Log:      t.Log(),
+		Dev:      guestDev,
+		IPs:      []net.IP{ip},
+		Count:    resip.AnnounceCount,
+		Interval: resip.AnnounceInterval,
+		In: func(f func() error) error {
+			return netns.Do(func(_ ns.NetNS) error {
+				return f()
+			})
+		},
+	}.Send()
 }
 
 func (t *T) Stop(ctx context.Context) error {
@@ -1034,31 +1026,6 @@ func getIPBits(ip net.IP) (bits int) {
 		bits = 128
 	}
 	return
-}
-
-func (t *T) arpAnnounce(dev string) error {
-	ip := t.ipaddr()
-	if ip.IsLoopback() {
-		t.Log().Tracef("skip arp announce on loopback address %s", ip)
-		return nil
-	}
-	if ip.IsLinkLocalUnicast() {
-		t.Log().Tracef("skip arp announce on link local unicast address %s", ip)
-		return nil
-	}
-	if ip.To4() == nil {
-		t.Log().Tracef("skip arp announce on non-ip4 address %s", ip)
-		return nil
-	}
-	if i, err := net.InterfaceByName(dev); err == nil && i.Flags&net.FlagLoopback != 0 {
-		t.Log().Tracef("skip arp announce on loopback interface %s", dev)
-		return nil
-	}
-	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)
-	if err := t.arpGratuitous(ip, dev); err != nil {
-		return fmt.Errorf("arping -i %s %s: %w", dev, ip, err)
-	}
-	return nil
 }
 
 func (t *T) LinkTo() string {

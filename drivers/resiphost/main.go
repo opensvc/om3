@@ -626,29 +626,14 @@ func getIPBits(ip net.IP) (bits int) {
 	return
 }
 
+// arpAnnounce tells the neighbors of the segment the address moved, rather
+// than let them send to the node it left until their cache expires.
 func (t *T) arpAnnounce(dev string) error {
-	ip := t.ipaddr()
-	if ip.IsLoopback() {
-		t.Log().Tracef("skip arp announce on loopback address %s", ip)
-		return nil
-	}
-	if ip.IsLinkLocalUnicast() {
-		t.Log().Tracef("skip arp announce on link local unicast address %s", ip)
-		return nil
-	}
-	if i, err := net.InterfaceByName(dev); err == nil && i.Flags&net.FlagLoopback != 0 {
-		t.Log().Tracef("skip arp announce on loopback interface %s", t.Dev)
-		return nil
-	}
-	if ip.To4() == nil {
-		// The neighbors of the segment learn the address moved, as an ipv4
-		// gratuitous arp tells them, rather than keep sending to the node
-		// it left until their cache expires.
-		t.Log().Infof("send an unsolicited neighbor advertisement to announce %s over %s", ip, dev)
-		return t.neighborAdvertise(dev)
-	}
-	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)
-	return t.arpGratuitous(dev)
+	return resip.Announce{
+		Log: t.Log(),
+		Dev: dev,
+		IPs: []net.IP{t.ipaddr()},
+	}.Send()
 }
 
 func (t *T) ipmaskOnes() int {

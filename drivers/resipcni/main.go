@@ -321,10 +321,6 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.start(ctx); err != nil {
 		return err
 	}
-	actionrollback.Register(ctx, func(ctx context.Context) error {
-		// Don't use start context to stop (it may be already deadlined)
-		return t.stop(nil)
-	})
 	if err := t.startSourceRoute(ctx); err != nil {
 		return err
 	}
@@ -723,8 +719,9 @@ func (t *T) start(ctx context.Context) error {
 		return err
 	}
 	stdinData = t.keepHeldRoutes(cniNetNS, stdinData)
+	var outB []byte
 	run := func() error {
-		var outB, errB []byte
+		var errB []byte
 		cmd := command.New(
 			command.WithName(bin),
 			command.WithEnv(env),
@@ -762,10 +759,81 @@ func (t *T) start(ctx context.Context) error {
 		t.Log().Errorf("%s", err)
 		return err
 	}
+	// A start failing past this point removes the card the plugin added.
+	actionrollback.Register(ctx, func(ctx context.Context) error {
+		// Don't use start context to stop (it may be already deadlined)
+		return t.stop(nil)
+	})
 	if err := t.recordGuestDev(dev); err != nil {
 		t.Log().Warnf("record the card name %s: %s", dev, err)
 	}
-	return nil
+	// A restart reusing the address puts it on a new card, with a new mac:
+	// the neighbors learn it now, rather than send to the mac of the card
+	// the restart removed until their cache entry expires.
+	return t.announce(cniNetNS, dev, addResultIPs(outB))
+}
+
+// announce sends the gratuitous arp and the unsolicited neighbor
+// advertisements of the addresses the plugin set on dev, in the network
+// namespace at nsPath.
+func (t *T) announce(nsPath, dev string, ips []net.IP) error {
+	if len(ips) == 0 {
+		return nil
+	}
+	netns, err := ns.GetNS(nsPath)
+	if err != nil {
+		return fmt.Errorf("announce %v: %w", ips, err)
+	}
+	defer func() { _ = netns.Close() }()
+	return resip.Announce{
+		Log:      t.Log(),
+		Dev:      dev,
+		IPs:      ips,
+		Count:    resip.AnnounceCount,
+		Interval: resip.AnnounceInterval,
+		In: func(f func() error) error {
+			return netns.Do(func(_ ns.NetNS) error {
+				return f()
+			})
+		},
+	}.Send()
+}
+
+// addResultIPs returns the addresses a CNI ADD result names: the "ips" list
+// since the 0.3.0 spec, the "ip4" and "ip6" sections before. A result not
+// read names none.
+func addResultIPs(b []byte) []net.IP {
+	var result struct {
+		IPs []struct {
+			Address string `json:"address"`
+		} `json:"ips"`
+		IP4 *struct {
+			IP string `json:"ip"`
+		} `json:"ip4"`
+		IP6 *struct {
+			IP string `json:"ip"`
+		} `json:"ip6"`
+	}
+	if err := json.Unmarshal(b, &result); err != nil {
+		return nil
+	}
+	cidrs := make([]string, 0, len(result.IPs)+2)
+	for _, e := range result.IPs {
+		cidrs = append(cidrs, e.Address)
+	}
+	if result.IP4 != nil {
+		cidrs = append(cidrs, result.IP4.IP)
+	}
+	if result.IP6 != nil {
+		cidrs = append(cidrs, result.IP6.IP)
+	}
+	ips := make([]net.IP, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		if ip, _, err := net.ParseCIDR(cidr); err == nil {
+			ips = append(ips, ip)
+		}
+	}
+	return ips
 }
 
 // keepHeldRoutes removes from the plugin configuration the routes the
