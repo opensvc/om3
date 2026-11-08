@@ -223,6 +223,19 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     its cgroup. Root is not root on this socket. Prefer it to `sudo om`
     rules, which are root grants whatever arguments they allow.
 
+* **Node to node authentication**:
+
+    A node calls the api of its peers with a token it signs with the key
+    of the cluster ca, valid 5 seconds, instead of the cluster secret. The
+    token is signed once the connection to the peer is up, after the tcp
+    connect and the tls handshake, so a peer slow to reach, as when its
+    network comes back, does not receive a token already expired.
+
+    The 401 answers of the api carry a `WWW-Authenticate: Bearer`
+    challenge, as RFC 6750 describes it, with `error="invalid_token"` for a
+    bearer token refused, and an `error_description` saying when the token
+    is expired.
+
 ### Network & Storage
 
 * **Modern firewall management**: Configuration now uses nftables exclusively, with better support for large subnets including IPv6 via the new `mask_per_node` keyword.
