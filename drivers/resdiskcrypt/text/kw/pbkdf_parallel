@@ -1,0 +1,6 @@
+The threads an argon2 key derivation runs, as the `--pbkdf-parallel` option
+of `cryptsetup luksFormat`.
+
+It applies to the argon2 derivations only, and is refused with
+`pbkdf = pbkdf2`. Set with no `pbkdf`, the derivation is the argon2
+cryptsetup chooses, the passphrase om generates included.

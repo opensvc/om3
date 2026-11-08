@@ -47,6 +47,10 @@ type (
 		ManagePassphrase bool        `json:"manage_passphrase"`
 		Secret           string      `json:"secret"`
 		FormatLabel      string      `json:"label"`
+		Pbkdf            string      `json:"pbkdf"`
+		PbkdfMemory      string      `json:"pbkdf_memory"`
+		PbkdfParallel    int         `json:"pbkdf_parallel"`
+		IterTime         int         `json:"iter_time"`
 		Path             naming.Path `json:"path"`
 	}
 )
@@ -368,6 +372,12 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("%s is already luks formatted", dev)
 		return nil
 	}
+	// The key derivation options are checked before a passphrase is
+	// generated, so a refused combination leaves no key in the sec.
+	pbkdfArgs, err := t.pbkdfArgs()
+	if err != nil {
+		return err
+	}
 	if t.ManagePassphrase {
 		b, err = t.passphraseNew()
 	} else {
@@ -384,6 +394,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		"--type", "luks2",
 		"--batch-mode",
 	}
+	args = append(args, pbkdfArgs...)
 	if t.FormatLabel != "" {
 		args = append(args, "--label", t.FormatLabel)
 	}

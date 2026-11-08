@@ -264,6 +264,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     thin_pool = pool1
     ```
 
+* **Light key derivation for the encrypted disks om keys**: A `disk.crypt` resource whose passphrase om generates, `manage_passphrase = true` as by default, formats its volume with `--pbkdf pbkdf2 --iter-time 100`. The default LUKS2 derivation, argon2, takes up to a gigabyte of memory and several threads for seconds at each provision and each start, which stalled a small node long enough for its daemon to miss the systemd watchdog, and makes a random 256-character passphrase no harder to guess. A passphrase the user supplies, `manage_passphrase = false`, keeps the derivation cryptsetup chooses. The new provisioning keywords `pbkdf` (`pbkdf2`, `argon2i` or `argon2id`), `pbkdf_memory` (a count of KiB or a size), `pbkdf_parallel` and `iter_time` (milliseconds) set the derivation of both, `pbkdf_memory` and `pbkdf_parallel` being refused with `pbkdf = pbkdf2`. The volumes formatted already keep their derivation, which the open reads from their header.
+
 ## Breaking Changes
 
 ### Cluster and Node Configuration

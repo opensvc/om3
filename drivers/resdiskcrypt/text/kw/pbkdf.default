@@ -1,0 +1,3 @@
+`pbkdf2` when `manage_passphrase` is `true` and neither `pbkdf_memory` nor
+`pbkdf_parallel` is set, the choice of cryptsetup otherwise (argon2 for
+LUKS2).

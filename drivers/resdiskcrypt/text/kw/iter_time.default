@@ -1,0 +1,2 @@
+`100` when the derivation is the `pbkdf2` of a passphrase om generates, the
+choice of cryptsetup otherwise (2000).

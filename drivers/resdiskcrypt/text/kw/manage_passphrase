@@ -3,3 +3,7 @@ printable chars), and forgets it on `unprovision`.
 
 If set to `false`, require a passphrase to be already present in the `sec`
 object to `provision`, and don't remove it on `unprovision`.
+
+The passphrase om generates is derived with `pbkdf2` for 100ms, as a
+memory-hard derivation makes a random passphrase no harder to guess: see
+`pbkdf`. A passphrase the user supplies is derived as cryptsetup chooses.
