@@ -119,15 +119,17 @@ func (t *instrumentedRequester) Do(req *http.Request) (*http.Response, error) {
 }
 
 // observe records an answer of the collector: a 401 starts or extends the run
-// of credentials refused, any other answer ends it. A request without answer,
-// as one timing out, tells nothing of the credentials.
+// of credentials refused, and an accepted answer, a 2xx, ends it. Any other
+// answer, as a 403 or a 5xx of a collector or a proxy failing, tells nothing
+// of the credentials, nor does a request without answer, as one timing out.
 func (t *instrumentedRequester) observe(code int, now time.Time) {
-	if code == http.StatusUnauthorized {
+	switch {
+	case code == http.StatusUnauthorized:
 		t.unauthorizedSince.CompareAndSwap(0, now.UnixNano())
-		return
+	case code >= 200 && code < 300:
+		t.unauthorizedSince.Store(0)
+		t.acceptedAt.Store(now.UnixNano())
 	}
-	t.unauthorizedSince.Store(0)
-	t.acceptedAt.Store(now.UnixNano())
 }
 
 func (t *instrumentedRequester) NewRequestWithContext(ctx context.Context, method string, relPath string, body io.Reader) (*http.Request, error) {

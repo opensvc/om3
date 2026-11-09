@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	// credsRefusedAfter is how long the collector answers 401 to every
-	// request of the node, and nothing else, before its credentials are
+	// credsRefusedAfter is how long the collector answers 401 to the
+	// requests of the node, and accepts none, before its credentials are
 	// taken for refused: a collector restarting or an authentication
 	// backend failing a moment does not move the speech.
 	credsRefusedAfter = 1 * time.Minute

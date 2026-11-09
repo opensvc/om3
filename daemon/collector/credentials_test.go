@@ -74,6 +74,26 @@ func TestAnAcceptedRequestEndsTheRunOf401(t *testing.T) {
 	assert.Equal(t, "n2", tr.speaker)
 }
 
+// An answer neither accepted nor 401, as a 403 or a 5xx, tells nothing of the
+// credentials: it neither ends the run of 401 nor counts as an acceptance.
+func TestAnErrorAnswerTellsNothingOfTheCredentials(t *testing.T) {
+	tr, r := newCredsT(t, "speaker-candidate")
+	t0 := time.Now()
+	r.observe(http.StatusUnauthorized, t0)
+	r.observe(http.StatusInternalServerError, t0.Add(20*time.Second))
+	r.observe(http.StatusForbidden, t0.Add(30*time.Second))
+	assert.True(t, tr.acceptedAt().IsZero())
+
+	tr.checkCredentials(t0.Add(credsRefusedAfter))
+	assert.True(t, tr.credsRefused(), "the run of 401 went on through the errors")
+
+	tr.checkCredentials(tr.credsRefusedUntil)
+	offered := tr.credsOfferedAt
+	r.observe(http.StatusBadGateway, offered.Add(time.Second))
+	tr.checkCredentials(offered.Add(2 * time.Second))
+	assert.Equal(t, credsRefusedMin, tr.credsRefusedBackoff, "a 502 is no acceptance: the backoff stays")
+}
+
 // A new node.uuid is offered at once, and the backoff forgotten.
 func TestANewNodeUUIDIsOfferedAtOnce(t *testing.T) {
 	tr, r := newCredsT(t, "speaker-candidate")
