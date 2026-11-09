@@ -301,6 +301,8 @@ func (t *T) nextActionJobs() []actionSendJob {
 func (t *T) onActionSendResults(results []actionSendResult) {
 	t.actionSending = false
 	now := time.Now()
+	warned := warnSeries{log: t.log}
+	defer warned.done("send action phases with an error")
 	for _, r := range results {
 		a := r.msg.Action
 		if !r.done {
@@ -312,7 +314,7 @@ func (t *T) onActionSendResults(results []actionSendResult) {
 			continue
 		}
 		if r.err != nil {
-			t.log.Warnf("send the %s of the action %s: %s", r.msg.Phase, r.key, r.err)
+			warned.add("send the %s of the action %s: %s", r.msg.Phase, r.key, r.err)
 		}
 		delete(t.actionFailed, r.key)
 		switch r.msg.Phase {

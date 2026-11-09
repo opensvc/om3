@@ -2,6 +2,8 @@ package collector
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/opensvc/om3/v3/util/plog"
@@ -43,9 +45,35 @@ var (
 
 // isRefusedStatus tells whether the collector response status code refuses
 // the data for good, as a 4xx does, as opposed to a collector failing to
-// take it now.
+// take it now. A 401 refuses the credentials of the speaker, not the data: the
+// data is sent again, by the next speaker when the credentials stay refused.
 func isRefusedStatus(code int) bool {
-	return code >= 400 && code < 500
+	return code >= 400 && code < 500 && code != http.StatusUnauthorized
+}
+
+// warnSeries logs a series of like warnings, as about the items of a send
+// batch the collector refuses: the first at the warn level, the next ones at
+// the debug level, and their count at the end, when more than one.
+type warnSeries struct {
+	log   *plog.Logger
+	count int
+}
+
+// add logs a warning of the series.
+func (w *warnSeries) add(format string, args ...any) {
+	w.count++
+	if w.count == 1 {
+		w.log.Warnf(format, args...)
+	} else {
+		w.log.Debugf(format, args...)
+	}
+}
+
+// done logs the count of the warnings of the series, when more than one.
+func (w *warnSeries) done(format string, args ...any) {
+	if w.count > 1 {
+		w.log.Warnf("%s: %d times, the first one logged, the others at the debug level", fmt.Sprintf(format, args...), w.count)
+	}
 }
 
 func newCollectorFailure(subject string) collectorFailure {

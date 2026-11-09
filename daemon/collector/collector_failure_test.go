@@ -1,13 +1,18 @@
 package collector
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -47,6 +52,7 @@ func TestIsRefusedStatus(t *testing.T) {
 		http.StatusBadRequest:          true,
 		http.StatusForbidden:           true,
 		http.StatusNotFound:            true,
+		http.StatusUnauthorized:        false,
 		http.StatusAccepted:            false,
 		http.StatusInternalServerError: false,
 		http.StatusBadGateway:          false,
@@ -107,4 +113,56 @@ func TestSendResInfoChangeStopsAtTheFirstFailure(t *testing.T) {
 
 func (t *T) initChangesForTest() {
 	t.daemonStatusChange = make(map[string]struct{})
+}
+
+// A 401 refuses the credentials of the speaker, not the resource info: it is
+// kept queued, for the next send, by the next speaker if need be.
+func TestAResourceInfoAnswered401IsRetried(t *testing.T) {
+	f := &fakeRequester{respond: func(*http.Request) *http.Response {
+		return response(http.StatusUnauthorized, "")
+	}}
+	v := &msgbus.InstanceResourceInfoUpdated{Path: naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "s1"}, Node: "node1"}
+	outcome, err := doPostResInfo(context.Background(), f, time.Second, v, resource.Infos{})
+	assert.Equal(t, sendFailed, outcome)
+	assert.NotErrorIs(t, err, errCollectorRefused)
+
+	f.respond = func(*http.Request) *http.Response { return response(http.StatusForbidden, "") }
+	outcome, err = doPostResInfo(context.Background(), f, time.Second, v, resource.Infos{})
+	assert.Equal(t, sendDropped, outcome, "a 403 refuses the resource info for good")
+	assert.ErrorIs(t, err, errCollectorRefused)
+}
+
+// A series of like warnings logs the first one at the warn level, the next
+// ones at the debug level, and their count at the end.
+func TestWarnSeries(t *testing.T) {
+	var buf bytes.Buffer
+	w := warnSeries{log: plog.NewLogger(zerolog.New(&buf).Level(zerolog.TraceLevel))}
+	for _, i := range []string{"a", "b", "c"} {
+		w.add("refused %s", i)
+	}
+	w.done("refused items")
+
+	type entry struct {
+		Level   string `json:"level"`
+		Message string `json:"message"`
+	}
+	var got []entry
+	d := json.NewDecoder(&buf)
+	for d.More() {
+		var e entry
+		require.NoError(t, d.Decode(&e))
+		got = append(got, e)
+	}
+	assert.Equal(t, []entry{
+		{"warn", "refused a"},
+		{"debug", "refused b"},
+		{"debug", "refused c"},
+		{"warn", "refused items: 3 times, the first one logged, the others at the debug level"},
+	}, got)
+
+	buf.Reset()
+	one := warnSeries{log: plog.NewLogger(zerolog.New(&buf).Level(zerolog.TraceLevel))}
+	one.add("refused a")
+	one.done("refused items")
+	assert.Equal(t, 1, strings.Count(buf.String(), "\n"), "no count for a single warning")
 }
