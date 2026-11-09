@@ -3,6 +3,7 @@ package imon
 import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
 )
 
 var (
@@ -99,7 +100,37 @@ func (t *Manager) purgedFromWaitNonLeader() {
 		return
 	}
 	if t.hasNonLeaderProvisioned() {
+		// A non-leader whose unprovision failed stays provisioned, and
+		// a failed action is not retried: the leader would wait for it
+		// forever, and the purge would never end. The leader gives up,
+		// as the unprovision orchestration does, and keeps its instance
+		// and its configuration: its unprovision releases what the
+		// non-leaders share, which one of them still holds.
+		if node, ok := t.nonLeaderProvisionedWithState(instance.MonitorStatePurgeFailed); ok {
+			t.log.Warnf("the purge failed on %s, still provisioned there: the leader does not unprovision", node)
+			t.transitionTo(instance.MonitorStatePurgeFailed)
+		}
 		return
 	}
 	t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateUnprovisionSuccess, instance.MonitorStatePurgeFailed)
+}
+
+// nonLeaderProvisionedWithState returns a non-leader both provisioned, which
+// the leader waits for, and in one of the states, as one whose purge failed.
+// A non-leader whose purge failed once it was not provisioned any more, as
+// on its delete, does not hold the leader, nor another non-leader still
+// unprovisioning.
+func (t *Manager) nonLeaderProvisionedWithState(states ...instance.MonitorState) (string, bool) {
+	for node, instStatus := range t.instStatus {
+		if t.isUnprovisionLeaderNode(node) {
+			continue
+		}
+		if !instStatus.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {
+			continue
+		}
+		if t.instMonitor[node].State.IsOneOf(states...) {
+			return node, true
+		}
+	}
+	return "", false
 }
