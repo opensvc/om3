@@ -38,11 +38,10 @@ func (t *Manager) getNodeConfig() node.Config {
 	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
 	}
-	if d := t.config.GetDuration(keyLoadPoolInterval); d != nil && *d > 0 {
+	if d := t.config.GetDuration(keyLoadPoolInterval); d != nil {
 		cfg.LoadPoolInterval = *d
-	} else {
-		cfg.LoadPoolInterval = defaultLoadPoolInterval
 	}
+	cfg.LoadPoolInterval = cfg.EffectiveLoadPoolInterval()
 	if d := t.config.GetSize(keyMaxKeySize); d != nil {
 		cfg.MaxKeySize = *d
 	}

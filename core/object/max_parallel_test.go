@@ -16,3 +16,14 @@ func TestValidMaxParallel(t *testing.T) {
 		assert.Error(t, validMaxParallel(s), s)
 	}
 }
+
+// node.load_pool_interval takes 1s at least: a lower one, 0 included, would
+// have the daemon load the pools without pause.
+func TestValidLoadPoolInterval(t *testing.T) {
+	for _, s := range []string{"1s", "5m", " 90s ", "60"} {
+		assert.NoError(t, validLoadPoolInterval(s), s)
+	}
+	for _, s := range []string{"0", "0s", "500ms", "-1s", "x"} {
+		assert.Error(t, validLoadPoolInterval(s), s)
+	}
+}

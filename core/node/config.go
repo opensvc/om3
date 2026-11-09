@@ -50,6 +50,30 @@ type (
 	}
 )
 
+const (
+	// DefaultLoadPoolInterval is the interval between 2 loads of the pools
+	// status of a node when node.load_pool_interval sets none.
+	DefaultLoadPoolInterval = 60 * time.Second
+
+	// MinLoadPoolInterval is the least node.load_pool_interval.
+	MinLoadPoolInterval = time.Second
+)
+
+// EffectiveLoadPoolInterval returns the interval the node loads its pools
+// status at: the default when the config holds none, as the config of a node
+// of a version before the keyword, or of a daemon starting, and the minimum
+// when it holds a lower one.
+func (cfg Config) EffectiveLoadPoolInterval() time.Duration {
+	switch {
+	case cfg.LoadPoolInterval <= 0:
+		return DefaultLoadPoolInterval
+	case cfg.LoadPoolInterval < MinLoadPoolInterval:
+		return MinLoadPoolInterval
+	default:
+		return cfg.LoadPoolInterval
+	}
+}
+
 func (cfg *Config) DeepCopy() *Config {
 	newCfg := *cfg
 	newCfg.Issues = append([]string{}, cfg.Issues...)

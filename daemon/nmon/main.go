@@ -226,10 +226,6 @@ var (
 	// arbitratorInterval is the interval duration between 2 arbitrator checks
 	arbitratorInterval = 60 * time.Second
 
-	// defaultLoadPoolInterval is the interval duration between 2 pools
-	// status loads, when node.load_pool_interval sets none.
-	defaultLoadPoolInterval = 60 * time.Second
-
 	// To ensure no actions are performed during the split analyse
 	// splitActionDelay + arbitratorCheckDuration must be lower than daemonenv.ReadyDuration
 
@@ -529,7 +525,7 @@ func (t *Manager) getLoadPoolInterval() time.Duration {
 	if d := time.Duration(t.loadPoolInterval.Load()); d > 0 {
 		return d
 	}
-	return defaultLoadPoolInterval
+	return node.DefaultLoadPoolInterval
 }
 
 // worker watch for local nmon updates

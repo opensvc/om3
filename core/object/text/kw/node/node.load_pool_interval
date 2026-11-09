@@ -3,3 +3,5 @@ status of the pools of the node, their usage included, which it publishes to
 its peers and the api.
 
 A change of the node configuration loads them at once too.
+
+The minimum is `1s`: a lower value, `0` included, is refused.

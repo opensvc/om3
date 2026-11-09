@@ -44,7 +44,7 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 				Env:                    config.Value.Env,
 				Hooks:                  make([]api.NodeConfigHook, len(config.Value.Hooks)),
 				Labels:                 make(map[string]string),
-				LoadPoolInterval:       config.Value.LoadPoolInterval,
+				LoadPoolInterval:       config.Value.EffectiveLoadPoolInterval(),
 				MaintenanceGracePeriod: config.Value.MaintenanceGracePeriod,
 				MaxParallel:            config.Value.MaxParallel,
 				MinAvailMemPct:         config.Value.MinAvailMemPct,

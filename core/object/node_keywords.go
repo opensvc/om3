@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/kwoption"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/util/converters"
@@ -660,6 +662,7 @@ var (
 		Section:   "node",
 		Since:     "v3.0.0-rc60",
 		Text:      keywords.NewText(fs, "text/kw/node/node.load_pool_interval"),
+		Validate:  validLoadPoolInterval,
 	}
 	kwNodeRejoinGracePeriod = keywords.Keyword{
 		Converter: converters.Duration,
@@ -2354,6 +2357,22 @@ func validMaxParallel(value string) error {
 	}
 	if i != 0 && i < MinNodeMaxParallel {
 		return fmt.Errorf("%d is below the minimum of %d actions in parallel, 0 being the number of cpus", i, MinNodeMaxParallel)
+	}
+	return nil
+}
+
+// validLoadPoolInterval refuses a node.load_pool_interval below the minimum,
+// 0 included, which would have the daemon load the pools without pause.
+func validLoadPoolInterval(value string) error {
+	// The converter the keyword is read with: a number without unit is a
+	// number of seconds.
+	v, err := converters.Duration.Convert(strings.TrimSpace(value))
+	if err != nil {
+		return err
+	}
+	d, ok := v.(*time.Duration)
+	if !ok || d == nil || *d < node.MinLoadPoolInterval {
+		return fmt.Errorf("%s is below the minimum of %s", strings.TrimSpace(value), node.MinLoadPoolInterval)
 	}
 	return nil
 }
