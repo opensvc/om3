@@ -59,7 +59,9 @@ func (t *T) peerStatesKnown() bool {
 			continue
 		}
 		c := daemonsubsystem.DataCollector.Get(nodename)
-		if c == nil || c.State == "" {
+		if c == nil || c.State == "" || isStopState(c.State) {
+			// A state stopping or stopped may be one the peer left
+			// before a restart: wait for the state of its new daemon.
 			return false
 		}
 		if t.holdOnEnable && c.State == "disabled" {
@@ -69,9 +71,18 @@ func (t *T) peerStatesKnown() bool {
 	return true
 }
 
+// isStopState says whether a collector state is the one of a collector
+// stopping, as with its daemon restarting.
+func isStopState(state string) bool {
+	return state == "stopping" || state == "stopped"
+}
+
 // startingPeerBefore returns the first live peer before the node in the
-// cluster nodes whose collector is starting, "" when none is.
-func (t *T) startingPeerBefore() string {
+// cluster nodes whose collector is starting, "" when none is. withStopped
+// takes a peer stopping or stopped for one starting again, as for the first
+// choice of a node restarting with it: a node choosing again has a speaker,
+// and waits for it gone for collector.speaker_grace_period only.
+func (t *T) startingPeerBefore(withStopped bool) string {
 	for _, nodename := range clusternode.Get() {
 		if nodename == t.localhost {
 			return ""
@@ -79,7 +90,8 @@ func (t *T) startingPeerBefore() string {
 		if node.MonitorData.GetByNode(nodename) == nil {
 			continue
 		}
-		if c := daemonsubsystem.DataCollector.Get(nodename); c != nil && c.State == "starting" {
+		c := daemonsubsystem.DataCollector.Get(nodename)
+		if c != nil && (c.State == "starting" || (withStopped && isStopState(c.State))) {
 			return nodename
 		}
 	}

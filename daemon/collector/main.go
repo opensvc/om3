@@ -462,12 +462,7 @@ func (t *T) loop() {
 	// subscription, for a speaker to queue its own.
 	t.announceActionPending(true)
 	defer func() {
-		// The peers wait for a speaker stopping, as with its daemon
-		// restarting, rather than take the speech at once.
-		if t.isSpeaker {
-			t.markSpeaker()
-		}
-		t.status.State = "stopping"
+		t.status.State = t.stopState()
 		t.publish()
 
 		if err := sub.Stop(); err != nil {
@@ -602,8 +597,10 @@ func (t *T) publish() {
 //	                 credentials are refused, as no node can speak
 //	starting: node is collector speaker candidate, holding its speech until
 //	          it knows the collector state of the live peers
-//	stopping: node collector is stopping, as with its daemon restarting: the
-//	          peers wait for a speaker stopping before another speaks
+//	stopping: node collector speaker is stopping, as with its daemon
+//	          restarting: the peers wait for it before another speaks
+//	stopped: node collector not speaker, or not able to speak, is stopping:
+//	         the peers do not wait for it
 //	speaker-candidate: node is collector speaker candidate
 //	warning: node is collector speaker candidate, but has no client or its
 //	         credentials are refused
@@ -633,9 +630,12 @@ func (t *T) getState() string {
 // UpdatedAt is the time of last publication (updated each time publication is
 // done).
 func (t *T) publishOnChange(state string) {
-	if state != t.status.State {
-		t.log.Infof("state change %s -> %s", t.status.State, state)
+	if state != t.status.State || t.speaker != t.status.Speaker {
+		if state != t.status.State {
+			t.log.Infof("state change %s -> %s", t.status.State, state)
+		}
 		t.status.State = state
+		t.status.Speaker = t.speaker
 		t.status.UpdatedAt = time.Now()
 		t.publish()
 	} else if t.status.ConfiguredAt.After(t.status.UpdatedAt) {

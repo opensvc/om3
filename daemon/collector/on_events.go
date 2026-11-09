@@ -242,6 +242,9 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 //     move back to a node before it in the cluster nodes, once able again.
 //     Of several speaking, as a moment after a speaker change, the first in
 //     the cluster nodes
+//   - else, for a node not speaking, the speaker its live peers report, alive,
+//     its own state not saying it can not speak: a node restarting follows
+//     the node that took the speech meanwhile, before its state reaches it
 //   - else the node itself if it was the speaker before its stop, the nodes
 //     waiting for it
 //   - else the first live cluster node whose collector can speak, as the
@@ -267,7 +270,12 @@ func (t *T) speakerNode() string {
 			return nodename
 		}
 	}
-	if t.wasSpeaker(now) && t.canSpeak(t.localhost) {
+	if !t.isSpeaker {
+		if speaker := t.peersSpeaker(); speaker != "" {
+			return speaker
+		}
+	}
+	if t.wasSpeaker(now) && t.canSpeak(t.localhost) && t.peersWaitFor() {
 		return t.localhost
 	}
 	for _, nodename := range clusternode.Get() {
@@ -332,12 +340,12 @@ func (t *T) canSpeak(nodename string) bool {
 func (t *T) updateSpeaker() {
 	t.checkStarting(time.Now())
 	speaker := t.speakerNode()
-	if speaker == t.localhost && !t.isSpeaker && !t.wasSpeaker(time.Now()) {
-		// Nodes starting together each see the others starting, unable to
-		// speak yet: the first of them in the cluster nodes takes the
-		// speech, the others leave it to it. A node speaking already keeps
-		// it, as from a peer rejoining.
-		if peer := t.startingPeerBefore(); peer != "" {
+	if speaker == t.localhost && !t.isSpeaker && !(t.wasSpeaker(time.Now()) && t.peersWaitFor()) {
+		// Nodes starting together each see the others starting, or
+		// stopping, unable to speak yet: the first of them in the cluster
+		// nodes takes the speech, the others leave it to it. A node
+		// speaking already keeps it, as from a peer rejoining.
+		if peer := t.startingPeerBefore(t.speaker == ""); peer != "" {
 			speaker = peer
 		}
 	}

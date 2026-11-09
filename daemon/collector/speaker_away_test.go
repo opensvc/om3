@@ -205,3 +205,117 @@ func TestTheSpeakerGracePeriodIsConfigured(t *testing.T) {
 	n2.appliedConfig = nil
 	assert.Equal(t, collector.DefaultSpeakerGracePeriod, n2.speakerGracePeriod(), "the default when not set")
 }
+
+// A collector stopping says stopping, and leaves its mark, only as a speaker
+// feeding the collector: the peers wait for it. Else it says stopped, which
+// the peers do not wait for, as for the node leader speaking with no client.
+func TestTheStopState(t *testing.T) {
+	testhelper.Setup(t)
+	for name, tc := range map[string]struct {
+		isSpeaker, hasClient bool
+		want                 string
+	}{
+		"a speaker feeding the collector": {true, true, "stopping"},
+		"a speaker with no client":        {true, false, "stopped"},
+		"a node not speaking":             {false, true, "stopped"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tr := newSpeakerT(t, &fakeRequester{})
+			tr.isSpeaker = tc.isSpeaker
+			if !tc.hasClient {
+				tr.client = nil
+			}
+			_ = os.Remove(speakerMarkFile())
+			assert.Equal(t, tc.want, tr.stopState())
+			if tc.want == "stopping" {
+				assert.FileExists(t, speakerMarkFile())
+			} else {
+				assert.NoFileExists(t, speakerMarkFile())
+			}
+		})
+	}
+}
+
+// The peers do not wait for a speaker stopped, which did not feed the
+// collector: the next node able to speak takes the speech at once.
+func TestASpeakerStoppedLosesTheSpeechAtOnce(t *testing.T) {
+	trs := newClusterTs(t, map[string]string{"n1": "speaker-warning", "n3": "speaker-candidate"})
+	n2 := trs["n2"]
+	n2.speaker = "n1"
+	setPeerState("n1", "stopped")
+	n2.updateSpeaker()
+	assert.Equal(t, "n2", n2.speaker)
+	assert.True(t, n2.isSpeaker)
+}
+
+// Two collectors restarting together each see the state the other left at its
+// stop: they wait for the state of its new daemon, rather than take it for
+// final and both speak, and the first in the cluster nodes takes the speech.
+func TestCollectorsRestartingTogetherSpeakOnce(t *testing.T) {
+	for _, stale := range []string{"stopping", "stopped"} {
+		t.Run(stale, func(t *testing.T) {
+			setCluster(t, []string{"n1", "n2"}, nil)
+			node.MonitorData.Set("n1", &node.Monitor{})
+			node.MonitorData.Set("n2", &node.Monitor{})
+			trs := map[string]*T{"n1": newStartingT(t, "n1"), "n2": newStartingT(t, "n2")}
+			setPeerState("n1", stale)
+			setPeerState("n2", stale)
+			// n2 chooses first, knowing of n1 the state it left only.
+			trs["n2"].updateSpeaker()
+			assert.False(t, trs["n2"].isSpeaker, "n2 took the %s state of n1 for final", stale)
+			assert.True(t, trs["n2"].starting(), "n2 waits for the state of the new daemon of n1")
+			for range 3 {
+				for _, nodename := range []string{"n2", "n1"} {
+					trs[nodename].updateSpeaker()
+					assert.False(t, trs["n1"].isSpeaker && trs["n2"].isSpeaker, "both speak")
+				}
+			}
+			assert.True(t, trs["n1"].isSpeaker)
+			assert.False(t, trs["n2"].isSpeaker)
+		})
+	}
+}
+
+// A speaker restarting does not take the speech back from its mark after a
+// peer, waiting for it less, took the speech: it follows the speaker its peers
+// report, before the state of that speaker reaches it. It takes it back while
+// its peers wait for it.
+func TestARestartingSpeakerFollowsTheSpeakerItsPeersReport(t *testing.T) {
+	testhelper.Setup(t)
+	for name, tc := range map[string]struct {
+		reported string
+		want     string
+	}{
+		"a peer took the speech": {"n3", "n3"},
+		"the peers wait for it":  {"n1", "n1"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			setCluster(t, []string{"n1", "n2", "n3"}, nil)
+			node.MonitorData.Set("n2", &node.Monitor{})
+			node.MonitorData.Set("n3", &node.Monitor{})
+			c := daemonsubsystem.Collector{}
+			c.State = "speaker-candidate"
+			c.Speaker = tc.reported
+			daemonsubsystem.DataCollector.Set("n2", &c)
+			// The state of n3 does not reach n1 yet.
+
+			n1 := newSpeakerT(t, &fakeRequester{})
+			n1.localhost = "n1"
+			n1.isSpeaker = false
+			n1.nodeIsLeader = map[string]bool{"n1": true}
+			n1.markSpeaker()
+			n1.readSpeakerMark(time.Now())
+			n1.updateSpeaker()
+			assert.Equal(t, tc.want, n1.speaker)
+			assert.Equal(t, tc.want == "n1", n1.isSpeaker)
+		})
+	}
+}
+
+// The collector publishes the speaker it takes, for a node restarting to
+// follow it.
+func TestTheSpeakerIsPublished(t *testing.T) {
+	trs := newClusterTs(t, map[string]string{"n1": "speaker", "n3": "speaker-candidate"})
+	trs["n2"].updateSpeaker()
+	assert.Equal(t, "n1", daemonsubsystem.DataCollector.Get("n2").Speaker)
+}

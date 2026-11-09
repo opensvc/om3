@@ -398,9 +398,15 @@ func isBeating(data clusterdump.Data, node string) bool {
 }
 
 // collectorStateKnown says whether a collector state tells the registration
-// of its node: not empty, as not published yet, nor starting or stopping.
+// of its node: not empty, as not published yet, nor starting, stopping or
+// stopped.
 func collectorStateKnown(state string) bool {
-	return state != "" && state != "starting" && state != "stopping"
+	switch state {
+	case "", "starting", "stopping", "stopped":
+		return false
+	default:
+		return true
+	}
 }
 
 // printCollectorState reports the collector registration of the enrolled

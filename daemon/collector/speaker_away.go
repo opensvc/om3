@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -32,7 +33,7 @@ func (t *T) speakerGracePeriod() time.Duration {
 // unable to speak: its node gone, its collector stopping with its daemon, or
 // starting again, or its state not known yet. A collector disabled, without
 // client, or whose credentials the collector refuses, is unable to speak, not
-// away.
+// away, and so is a collector stopped, which did not feed the collector.
 func isAway(nodename string) bool {
 	if node.MonitorData.GetByNode(nodename) == nil {
 		return true
@@ -109,4 +110,58 @@ func (t *T) readSpeakerMark(now time.Time) {
 // than the speaker grace period ago: the nodes wait for it to speak again.
 func (t *T) wasSpeaker(now time.Time) bool {
 	return now.Before(t.wasSpeakerUntil)
+}
+
+// stopState returns the state the collector says at its stop: stopping for a
+// speaker feeding the collector, which leaves its mark, for the peers to wait
+// for it, as with its daemon restarting, and stopped for another node, as the
+// node leader speaking with no client or refused credentials, which the peers
+// do not wait for.
+func (t *T) stopState() string {
+	if t.isSpeaker && !t.disable && t.client != nil && !t.credsRefused() {
+		t.markSpeaker()
+		return "stopping"
+	}
+	return "stopped"
+}
+
+// peersWaitFor says whether no live peer takes another node for the speaker:
+// a node restarting takes the speech back from its mark only then, not after
+// a peer, waiting for it less than the node did, took the speech.
+func (t *T) peersWaitFor() bool {
+	for _, nodename := range clusternode.Get() {
+		if nodename == t.localhost || node.MonitorData.GetByNode(nodename) == nil {
+			continue
+		}
+		c := daemonsubsystem.DataCollector.Get(nodename)
+		if c != nil && c.Speaker != "" && c.Speaker != t.localhost {
+			return false
+		}
+	}
+	return true
+}
+
+// peersSpeaker returns the speaker the live peers report, other than the node
+// itself, "" when none does: the first peer in the cluster nodes reporting a
+// live speaker whose state is not known yet, or says it speaks. A speaker
+// whose state says it can not speak, or does not speak, is not followed.
+func (t *T) peersSpeaker() string {
+	for _, nodename := range clusternode.Get() {
+		if nodename == t.localhost || node.MonitorData.GetByNode(nodename) == nil {
+			continue
+		}
+		c := daemonsubsystem.DataCollector.Get(nodename)
+		if c == nil || c.Speaker == "" || c.Speaker == t.localhost {
+			continue
+		}
+		speaker := c.Speaker
+		if speaker != nodename && node.MonitorData.GetByNode(speaker) == nil {
+			continue
+		}
+		if s := daemonsubsystem.DataCollector.Get(speaker); s != nil && s.State != "" && s.State != "speaker" {
+			continue
+		}
+		return speaker
+	}
+	return ""
 }
