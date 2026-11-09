@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -42,6 +43,17 @@ type (
 )
 
 var (
+	// DialTimeout bounds the TCP connect of a client. Without it the
+	// connect to an unreachable node waits for the kernel to give up
+	// (about 2 minutes with the default 6 SYN retries), and it is not
+	// abandoned when the request context ends: the transport completes
+	// the dial in the background to pool the connection.
+	DialTimeout = 5 * time.Second
+
+	// TLSHandshakeTimeout bounds the TLS handshake of a new connection
+	// to a node that accepts the connection but does not answer.
+	TLSHandshakeTimeout = 10 * time.Second
+
 	getClientChan   = make(chan getClient)
 	purgeClientChan = make(chan bool)
 )
@@ -162,7 +174,11 @@ func newClient(o Options) (cli *http.Client, err error) {
 	if err != nil {
 		return nil, err
 	}
-	cli = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+	cli = &http.Client{Transport: &http.Transport{
+		TLSClientConfig:     config,
+		DialContext:         (&net.Dialer{Timeout: DialTimeout, KeepAlive: 30 * time.Second}).DialContext,
+		TLSHandshakeTimeout: TLSHandshakeTimeout,
+	}}
 	if o.Timeout > 0 {
 		cli.Timeout = o.Timeout
 	}

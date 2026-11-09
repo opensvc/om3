@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -112,4 +113,38 @@ func TestClientCachedByAuthorityContent(t *testing.T) {
 	require.NoError(t, os.WriteFile(caFile1, b, 0o600))
 	require.NoError(t, get(t, o, srv2.URL))
 	require.Error(t, get(t, o, srv1.URL))
+}
+
+// A node that accepts the connection and never answers the handshake: the
+// request ends at TLSHandshakeTimeout, not at the client timeout, which is
+// zero here.
+func TestClientTLSHandshakeTimeout(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			t.Cleanup(func() { _ = c.Close() })
+		}
+	}()
+
+	saved := TLSHandshakeTimeout
+	TLSHandshakeTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { TLSHandshakeTimeout = saved })
+
+	cli, err := newClient(Options{InsecureSkipVerify: true})
+	require.NoError(t, err)
+	tp, ok := cli.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotNil(t, tp.DialContext, "the transport dials without a connect timeout")
+
+	begin := time.Now()
+	_, err = cli.Get("https://" + ln.Addr().String())
+	require.Error(t, err)
+	require.Less(t, time.Since(begin), 2*time.Second)
+	require.Contains(t, err.Error(), "TLS handshake timeout")
 }
