@@ -2,6 +2,7 @@ package asset
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -309,6 +310,46 @@ func GetLANS() (map[string][]LAN, error) {
 				m[hwAddr] = make([]LAN, 0)
 			}
 			m[hwAddr] = append(m[hwAddr], e)
+		}
+	}
+	return m, nil
+}
+
+// optionalProperties are the properties the collector must not reset when
+// the node has no value for them: they are only set from the node config
+// (or a probe) and may also be edited on the collector side.
+var optionalProperties = map[string]bool{
+	"asset_env":    true,
+	"connect_to":   true,
+	"loc_addr":     true,
+	"loc_building": true,
+	"loc_city":     true,
+	"loc_country":  true,
+	"loc_floor":    true,
+	"loc_rack":     true,
+	"loc_room":     true,
+	"loc_zip":      true,
+	"sec_zone":     true,
+	"team_integ":   true,
+	"team_support": true,
+}
+
+// FeedMap returns the properties to post to the collector, as a map indexed
+// by property name. Like the v2 agent, the optional properties that are not
+// set (source "default" or empty) are omitted so the collector keeps its
+// value.
+func (t Properties) FeedMap() (map[string]Property, error) {
+	b, err := json.Marshal(t)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]Property)
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	for k, p := range m {
+		if optionalProperties[k] && (p.Source == SrcDefault || p.Source == "") {
+			delete(m, k)
 		}
 	}
 	return m, nil
