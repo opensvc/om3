@@ -236,8 +236,9 @@ func (t *T) speakerNode() string {
 }
 
 // canSpeak says whether the collector of nodename can speak: configured,
-// with a client whose credentials the collector does not refuse. A peer whose collector state is not known yet is taken for
-// one that can, so no node behind it speaks at once in its place.
+// with a client whose credentials the collector does not refuse. A peer
+// whose collector state is not known yet is taken for one that can, so no
+// node behind it speaks at once in its place.
 func (t *T) canSpeak(nodename string) bool {
 	if nodename == t.localhost {
 		return !t.disable && t.client != nil && !t.credsRefused()
