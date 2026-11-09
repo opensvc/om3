@@ -330,6 +330,9 @@ func (t *T) Start(ctx context.Context) error {
 
 	go func(errC chan<- error) {
 		defer t.wg.Done()
+		// An audit session active already gets the logs of the setup.
+		// The loop attaches again the one begun during the delay.
+		t.attachActiveAuditIfAny()
 		initialNodeConfig := node.ConfigData.GetByNode(t.localhost)
 		if initialNodeConfig == nil {
 			errC <- fmt.Errorf("unexpected nil node config data")
@@ -416,6 +419,14 @@ func (t *T) catchUpConfig() {
 }
 
 func (t *T) loop() {
+	// Subscribe first: the events coming during the init wait in the queue,
+	// and an audit session begun before the subscription, as one
+	// reconnecting to a daemon restarting, published its AuditStart to no
+	// collector: attach it now, before the first log of the loop. One begun
+	// after comes as an event.
+	sub := t.startSubscriptions()
+	t.attachActiveAuditIfAny()
+
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
 
@@ -427,12 +438,6 @@ func (t *T) loop() {
 	// a cluster another node speaks for. A start as speaker seeds the feeds.
 	t.updateSpeaker()
 	t.publishOnChange(t.getState())
-	sub := t.startSubscriptions()
-
-	// An audit session begun before the subscription, as one reconnecting to
-	// a daemon restarting, published its AuditStart to no collector: attach
-	// it now. One begun after comes as an event.
-	t.attachActiveAuditIfAny()
 
 	t.catchUpConfig()
 
