@@ -19,10 +19,10 @@ var (
 )
 
 func (t *T) onRefreshTicker() {
-	if t.starting() {
-		// The startup hold ends at its deadline, whatever the peers say.
+	if t.starting() || !t.speakerAwaySince.IsZero() {
+		// The startup hold and the wait for a speaker away end at their
+		// deadline, whatever the peers say.
 		t.updateSpeaker()
-		t.publishOnChange(t.getState())
 	}
 	t.checkCredentials(time.Now())
 	if time.Since(t.actionAnnounceCheckAt) >= actionAnnounceInterval {
@@ -147,7 +147,7 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 // applyConfig sets the collector up from its configuration, and remembers
 // it as the one applied.
 func (t *T) applyConfig(cfg *collector.Config) {
-	t.log.Tracef("reconfigure")
+	t.log.Debugf("reconfigure")
 	if !cfg.Equal(t.appliedConfig) {
 		// The sends in flight go to the collector of the configuration
 		// they were cut with.
@@ -164,10 +164,18 @@ func (t *T) applyConfig(cfg *collector.Config) {
 	t.setPostTimeout(cfg)
 	t.setThrottle(cfg)
 	t.setActionTunables(cfg)
+	wasAble := !t.disable && t.client != nil
 	if err := t.setupRequester(cfg); err != nil {
 		if !errors.Is(err, collector.ErrConfig) {
 			t.log.Errorf("can't setup requester: %s", err)
 		}
+	}
+	if !wasAble && !t.disable && t.client != nil {
+		// A collector.url set in the cluster config enables the
+		// collectors of the peers together: hold the speech until they
+		// say their state, rather than all speak a moment, each taking
+		// the others for disabled.
+		t.startHold(true)
 	}
 	// The collector configuration enables or disables the speaker, as a
 	// collector url set or unset on a node already elected.
@@ -225,22 +233,45 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 	t.updateSpeaker()
 }
 
-// speakerNode returns the node speaking to the collector: the first live
-// cluster node whose collector can speak, as the node leader is the first
-// live one. A node whose collector can not, as one that lost its node.uuid,
-// leaves the speech to the next, and stays the leader, granting the cluster
-// locks. With no node able to speak, the leader speaks, its state saying the
+// speakerNode returns the node speaking to the collector:
+//
+//   - the speaker away less than collector.speaker_grace_period, as with its
+//     daemon restarting: the nodes wait for it, rather than switch the
+//     speech twice
+//   - else a live node able to speak, speaking already: the speech does not
+//     move back to a node before it in the cluster nodes, once able again.
+//     Of several speaking, as a moment after a speaker change, the first in
+//     the cluster nodes
+//   - else the node itself if it was the speaker before its stop, the nodes
+//     waiting for it
+//   - else the first live cluster node whose collector can speak, as the
+//     node leader is the first live one. A node whose collector can not, as
+//     one that lost its node.uuid, leaves the speech to the next, and stays
+//     the leader, granting the cluster locks.
+//
+// With no node able to speak, the leader speaks, its state saying the
 // warning.
 //
 // Every node chooses from the same data, the cluster nodes, their liveness
 // and the collector states they publish, and so the same speaker.
 func (t *T) speakerNode() string {
+	now := time.Now()
+	if speaker := t.awaySpeaker(now); speaker != "" {
+		return speaker
+	}
+	live := func(nodename string) bool {
+		return nodename == t.localhost || node.MonitorData.GetByNode(nodename) != nil
+	}
 	for _, nodename := range clusternode.Get() {
-		if nodename != t.localhost && node.MonitorData.GetByNode(nodename) == nil {
-			// not alive
-			continue
+		if live(nodename) && t.canSpeak(nodename) && t.isSpeaking(nodename) {
+			return nodename
 		}
-		if t.canSpeak(nodename) {
+	}
+	if t.wasSpeaker(now) && t.canSpeak(t.localhost) {
+		return t.localhost
+	}
+	for _, nodename := range clusternode.Get() {
+		if live(nodename) && t.canSpeak(nodename) {
 			return nodename
 		}
 	}
@@ -261,6 +292,16 @@ func (t *T) speakerNode() string {
 		}
 	}
 	return ""
+}
+
+// isSpeaking says whether the collector of nodename speaks: the node itself
+// speaking, or a peer saying so.
+func (t *T) isSpeaking(nodename string) bool {
+	if nodename == t.localhost {
+		return t.isSpeaker
+	}
+	c := daemonsubsystem.DataCollector.Get(nodename)
+	return c != nil && c.State == "speaker"
 }
 
 // canSpeak says whether the collector of nodename can speak: configured,
@@ -291,7 +332,7 @@ func (t *T) canSpeak(nodename string) bool {
 func (t *T) updateSpeaker() {
 	t.checkStarting(time.Now())
 	speaker := t.speakerNode()
-	if speaker == t.localhost && !t.isSpeaker {
+	if speaker == t.localhost && !t.isSpeaker && !t.wasSpeaker(time.Now()) {
 		// Nodes starting together each see the others starting, unable to
 		// speak yet: the first of them in the cluster nodes takes the
 		// speech, the others leave it to it. A node speaking already keeps
@@ -301,10 +342,11 @@ func (t *T) updateSpeaker() {
 		}
 	}
 	if speaker != t.speaker {
+		t.speakerAwaySince = time.Time{}
 		if t.speaker != "" && speaker != "" {
 			// A new speaker has none of the local actions pending:
 			// announce them all again.
-			t.log.Infof("collector speaker %s -> %s", t.speaker, speaker)
+			t.log.Infof("proposed speaker change %s -> %s", t.speaker, speaker)
 			defer t.announceActionPending(true)
 		}
 		t.speaker = speaker

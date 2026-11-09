@@ -1,0 +1,9 @@
+A duration expression, like `1m`, defining how long the nodes wait for the
+collector speaker when it is away, as when its daemon restarts or its node is
+down, before another node speaks to the collector.
+
+A speaker back within this period speaks again, so a daemon restart does not
+move the speech. A speaker unable to speak, as one whose collector lost its
+node.uuid, leaves the speech at once.
+
+The minimum is `1s`: a lower value, `0` included, is refused.

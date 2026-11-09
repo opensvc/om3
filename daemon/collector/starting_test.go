@@ -40,10 +40,10 @@ func setPeerState(nodename, state string) {
 }
 
 // A peer rejoining is alive before its collector says it can speak, its
-// collector starting 5s after its daemon: the node speaking keeps the speech
-// until the peer says it can take it, rather than leave the cluster without
-// speaker meanwhile.
-func TestARejoiningPeerTakesTheSpeechOnceItsCollectorCan(t *testing.T) {
+// collector starting 5s after its daemon: the node speaking keeps the speech,
+// rather than leave the cluster without speaker meanwhile, and keeps it once
+// the peer can speak: the speech does not move back.
+func TestARejoiningPeerLeavesTheSpeechToTheSpeaker(t *testing.T) {
 	setCluster(t, []string{"n1", "n2"}, nil)
 	tr := newSpeakerT(t, &fakeRequester{})
 	tr.localhost = "n2"
@@ -62,13 +62,14 @@ func TestARejoiningPeerTakesTheSpeechOnceItsCollectorCan(t *testing.T) {
 
 	setPeerState("n1", "speaker-candidate")
 	tr.onDaemonCollectorUpdated(&msgbus.DaemonCollectorUpdated{Node: "n1"})
-	assert.Equal(t, "n1", tr.speaker)
-	assert.False(t, tr.isSpeaker)
+	assert.Equal(t, "n2", tr.speaker, "n1 can speak, n2 speaks already")
+	assert.True(t, tr.isSpeaker)
 }
 
 // A collector starting holds its speech until it knows the collector state
 // of the live peers, its own state saying starting: restarting first in the
-// cluster nodes, it does not speak beside the node speaking in its absence.
+// cluster nodes, it does not speak beside the node speaking in its absence,
+// and leaves it the speech.
 func TestAStartingCollectorHoldsItsSpeech(t *testing.T) {
 	setCluster(t, []string{"n1", "n2"}, map[string]string{"n2": ""})
 	tr := newSpeakerT(t, &fakeRequester{})
@@ -85,9 +86,9 @@ func TestAStartingCollectorHoldsItsSpeech(t *testing.T) {
 	setPeerState("n2", "speaker")
 	tr.onDaemonCollectorUpdated(&msgbus.DaemonCollectorUpdated{Node: "n2"})
 	assert.False(t, tr.starting())
-	assert.Equal(t, "n1", tr.speaker)
-	assert.True(t, tr.isSpeaker)
-	assert.Equal(t, "speaker", tr.getState())
+	assert.Equal(t, "n2", tr.speaker, "n2 speaks already")
+	assert.False(t, tr.isSpeaker)
+	assert.Equal(t, "speaker-candidate", tr.getState())
 }
 
 // The startup hold ends at its deadline, though the collector state of a

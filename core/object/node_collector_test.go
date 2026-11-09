@@ -30,6 +30,26 @@ func TestCollectorRawConfig(t *testing.T) {
 				assert.Equal(t, 5*time.Second, cfg.Timeout)
 				assert.Equal(t, 100, cfg.ActionBatch)
 				assert.Equal(t, 10*time.Second, cfg.ActionLogTimeout)
+				assert.Equal(t, collector.DefaultSpeakerGracePeriod, cfg.SpeakerGracePeriod)
+			},
+		},
+		"the speaker grace period of the cluster": {
+			cluster: "[collector]\nspeaker_grace_period = 2m\n",
+			check: func(t *testing.T, cfg *collector.Config) {
+				assert.Equal(t, 2*time.Minute, cfg.SpeakerGracePeriod)
+			},
+		},
+		"the speaker grace period of the node over the cluster": {
+			cluster: "[collector]\nspeaker_grace_period = 2m\n",
+			node:    "[collector]\nspeaker_grace_period = 45s\n",
+			check: func(t *testing.T, cfg *collector.Config) {
+				assert.Equal(t, 45*time.Second, cfg.SpeakerGracePeriod)
+			},
+		},
+		"a speaker grace period below the minimum, written by hand": {
+			cluster: "[collector]\nspeaker_grace_period = 500ms\n",
+			check: func(t *testing.T, cfg *collector.Config) {
+				assert.Equal(t, collector.MinSpeakerGracePeriod, cfg.SpeakerGracePeriod)
 			},
 		},
 		"the collector section": {

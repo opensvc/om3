@@ -33,6 +33,8 @@ type (
 
 		actionBatch      int
 		actionLogTimeout *time.Duration
+
+		speakerGracePeriod *time.Duration
 	}
 
 	CollectorProblem struct {
@@ -69,6 +71,8 @@ func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 
 		actionBatch:      cfg.GetInt(key.Parse(kwCollectorActionBatch.String())),
 		actionLogTimeout: cfg.GetDuration(key.Parse(kwCollectorActionLogTimeout.String())),
+
+		speakerGracePeriod: cfg.GetDuration(key.Parse(kwCollectorSpeakerGracePeriod.String())),
 
 		// uuid is loaded from node.conf
 		uuid: t.Config().GetString(key.Parse("node.uuid")),
@@ -130,6 +134,10 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 	if t.actionLogTimeout != nil {
 		actionLogTimeout = *t.actionLogTimeout
 	}
+	var speakerGracePeriod time.Duration
+	if t.speakerGracePeriod != nil {
+		speakerGracePeriod = *t.speakerGracePeriod
+	}
 	return &collector.Config{
 		FeederUrl:    t.FeederUrl(),
 		ServerUrl:    t.ServerUrl(),
@@ -141,6 +149,8 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 
 		ActionBatch:      t.actionBatch,
 		ActionLogTimeout: actionLogTimeout,
+
+		SpeakerGracePeriod: collector.BoundSpeakerGracePeriod(speakerGracePeriod),
 	}
 }
 

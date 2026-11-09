@@ -14,13 +14,25 @@ import (
 // enrolled node.
 const startingMax = 15 * time.Second
 
-// starting says whether the collector holds its speech at its start.
+// starting says whether the collector holds its speech, at its start or at
+// its enabling.
 func (t *T) starting() bool {
 	return !t.startingUntil.IsZero()
 }
 
+// startHold starts holding the speech, for startingMax at most. onEnable is
+// set for a collector a configuration change enables, as a collector.url set
+// in the cluster config, which enables the collectors of the peers too: a
+// peer saying disabled may not have applied the change yet, and is waited
+// for as a peer whose state is not known.
+func (t *T) startHold(onEnable bool) {
+	t.startingUntil = time.Now().Add(startingMax)
+	t.holdOnEnable = onEnable
+}
+
 // checkStarting ends the startup hold once the collector state of every live
-// peer is known, or at its deadline.
+// peer is known, or at its deadline. A hold on enable takes a peer saying
+// disabled for one whose state is not known yet.
 //
 // A node starting, as one restarting first in the cluster nodes, would
 // otherwise take the speech at once, beside the node speaking in its
@@ -35,7 +47,8 @@ func (t *T) checkStarting(now time.Time) {
 		return
 	}
 	t.startingUntil = time.Time{}
-	t.log.Infof("startup hold ended: the node may speak to the collector")
+	t.holdOnEnable = false
+	t.log.Debugf("startup hold ended: the node may speak to the collector")
 }
 
 // peerStatesKnown says whether the collector state of every live peer is
@@ -45,7 +58,11 @@ func (t *T) peerStatesKnown() bool {
 		if nodename == t.localhost || node.MonitorData.GetByNode(nodename) == nil {
 			continue
 		}
-		if c := daemonsubsystem.DataCollector.Get(nodename); c == nil || c.State == "" {
+		c := daemonsubsystem.DataCollector.Get(nodename)
+		if c == nil || c.State == "" {
+			return false
+		}
+		if t.holdOnEnable && c.State == "disabled" {
 			return false
 		}
 	}

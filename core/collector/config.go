@@ -22,6 +22,10 @@ type (
 		// instance action on the node it ran on.
 		ActionLogTimeout time.Duration `json:"action_log_timeout"`
 
+		// SpeakerGracePeriod is how long the nodes wait for a speaker
+		// away, as one whose daemon restarts, before another speaks.
+		SpeakerGracePeriod time.Duration `json:"speaker_grace_period"`
+
 		// Hidden fields
 		Password string `json:"-"`
 	}
@@ -41,6 +45,25 @@ var (
 	ErrConfig       = errors.New("collector is not configured")
 	ErrUnregistered = errors.New("this node is not registered. try 'om node register'")
 )
+
+const (
+	// DefaultSpeakerGracePeriod is the collector.speaker_grace_period
+	// when not set.
+	DefaultSpeakerGracePeriod = 30 * time.Second
+
+	// MinSpeakerGracePeriod is the least collector.speaker_grace_period.
+	MinSpeakerGracePeriod = time.Second
+)
+
+// BoundSpeakerGracePeriod returns the speaker grace period d, the
+// collector.speaker_grace_period value, MinSpeakerGracePeriod at least, or
+// DefaultSpeakerGracePeriod when not set.
+func BoundSpeakerGracePeriod(d time.Duration) time.Duration {
+	if d <= 0 {
+		return DefaultSpeakerGracePeriod
+	}
+	return max(d, MinSpeakerGracePeriod)
+}
 
 // BoundTimeout returns the collector request timeout d, the
 // collector.timeout value, within MinTimeout and MaxTimeout, or

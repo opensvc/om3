@@ -126,8 +126,10 @@ func TestSpeakerFallbackIsTheLiveLeader(t *testing.T) {
 }
 
 // A peer rejoining sends its node status and collector state before its
-// monitor, which tells it is alive: its monitor chooses the speaker again.
-func TestARejoiningPeerTakesTheSpeechBack(t *testing.T) {
+// monitor, which tells it is alive: its monitor chooses the speaker again. A
+// peer rejoining speaking still, as after a split, keeps the speech, the
+// first in the cluster nodes of the two speaking.
+func TestARejoiningPeerSpeakingKeepsTheSpeech(t *testing.T) {
 	node.InitData()
 	daemonsubsystem.InitData()
 	clusternode.Set([]string{"n1", "n2"})
@@ -137,7 +139,7 @@ func TestARejoiningPeerTakesTheSpeechBack(t *testing.T) {
 		daemonsubsystem.InitData()
 	})
 	c := daemonsubsystem.Collector{}
-	c.State = "speaker-candidate"
+	c.State = "speaker"
 	daemonsubsystem.DataCollector.Set("n1", &c)
 
 	tr := newSpeakerT(t, &fakeRequester{})
@@ -146,6 +148,7 @@ func TestARejoiningPeerTakesTheSpeechBack(t *testing.T) {
 	tr.nodeIsLeader = map[string]bool{"n2": true}
 	tr.updateSpeaker()
 	require.Equal(t, "n2", tr.speaker, "n1 is not alive yet")
+	require.True(t, tr.isSpeaker)
 
 	node.MonitorData.Set("n1", &node.Monitor{})
 	tr.onNodeMonitorUpdated(&msgbus.NodeMonitorUpdated{Node: "n1"})

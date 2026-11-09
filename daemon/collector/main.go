@@ -127,8 +127,20 @@ type (
 		// startingUntil is the deadline of the startup hold, zero once
 		// it ended: the collector does not speak until it knows the
 		// collector state of the live peers, so a node starting does not
-		// speak beside the node speaking. See checkStarting.
+		// speak beside the node speaking. holdOnEnable is set for the
+		// hold of a collector a configuration change enables. See
+		// checkStarting.
 		startingUntil time.Time
+		holdOnEnable  bool
+
+		// speakerAwaySince is when the speaker, a peer, went away, as with
+		// its daemon restarting: the node waits for it, for
+		// collector.speaker_grace_period, before another speaks.
+		// wasSpeakerUntil is set at the start of a node that was the
+		// speaker before its stop, until the end of the grace the peers
+		// wait for it. See awaySpeaker.
+		speakerAwaySince time.Time
+		wasSpeakerUntil  time.Time
 
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
 		disable bool
@@ -432,7 +444,11 @@ func (t *T) loop() {
 
 	t.initChanges()
 	t.initActions()
-	t.startingUntil = time.Now().Add(startingMax)
+	t.startHold(false)
+	// A node that was the speaker before its stop takes the speech back:
+	// the peers wait for it. The mark is read once.
+	t.readSpeakerMark(time.Now())
+	t.unmarkSpeaker()
 	// The speaker is chosen as on any event, not taken from the leader flag:
 	// a node leader may not be able to speak, and a node starting may join
 	// a cluster another node speaks for. A start as speaker seeds the feeds.
@@ -446,7 +462,12 @@ func (t *T) loop() {
 	// subscription, for a speaker to queue its own.
 	t.announceActionPending(true)
 	defer func() {
-		t.status.State = "disabled"
+		// The peers wait for a speaker stopping, as with its daemon
+		// restarting, rather than take the speech at once.
+		if t.isSpeaker {
+			t.markSpeaker()
+		}
+		t.status.State = "stopping"
 		t.publish()
 
 		if err := sub.Stop(); err != nil {
@@ -581,6 +602,8 @@ func (t *T) publish() {
 //	                 credentials are refused, as no node can speak
 //	starting: node is collector speaker candidate, holding its speech until
 //	          it knows the collector state of the live peers
+//	stopping: node collector is stopping, as with its daemon restarting: the
+//	          peers wait for a speaker stopping before another speaks
 //	speaker-candidate: node is collector speaker candidate
 //	warning: node is collector speaker candidate, but has no client or its
 //	         credentials are refused

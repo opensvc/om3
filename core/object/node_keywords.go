@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/kwoption"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -559,6 +560,16 @@ var (
 		Converter: converters.Duration,
 		Default:   "60s",
 		Text:      keywords.NewText(fs, "text/kw/node/collector.ping_interval"),
+	}
+	kwCollectorSpeakerGracePeriod = keywords.Keyword{
+		Example:   "1m",
+		Option:    "speaker_grace_period",
+		Section:   "collector",
+		Since:     "v3.0.0-rc60",
+		Converter: converters.Duration,
+		Default:   "30s",
+		Text:      keywords.NewText(fs, "text/kw/node/collector.speaker_grace_period"),
+		Validate:  validSpeakerGracePeriod,
 	}
 	kwCollectorStatusDelay = keywords.Keyword{
 		Example:   "30s",
@@ -2131,6 +2142,7 @@ var (
 		&kwCollectorFeeder,
 		&kwCollectorPingInterval,
 		&kwCollectorStatusDelay,
+		&kwCollectorSpeakerGracePeriod,
 		&kwCollectorTimeout,
 		&kwCollectorActionBatch,
 		&kwCollectorActionLogTimeout,
@@ -2364,15 +2376,27 @@ func validMaxParallel(value string) error {
 // validLoadPoolInterval refuses a node.load_pool_interval below the minimum,
 // 0 included, which would have the daemon load the pools without pause.
 func validLoadPoolInterval(value string) error {
-	// The converter the keyword is read with: a number without unit is a
-	// number of seconds.
+	return validMinDuration(value, node.MinLoadPoolInterval)
+}
+
+// validSpeakerGracePeriod refuses a collector.speaker_grace_period below the
+// minimum, 0 included, which would have the nodes take the speech of a
+// speaker restarting at once.
+func validSpeakerGracePeriod(value string) error {
+	return validMinDuration(value, collector.MinSpeakerGracePeriod)
+}
+
+// validMinDuration refuses a duration value below minimum. It reads it with
+// the converter the duration keywords are read with: a number without unit
+// is a number of seconds.
+func validMinDuration(value string, minimum time.Duration) error {
 	v, err := converters.Duration.Convert(strings.TrimSpace(value))
 	if err != nil {
 		return err
 	}
 	d, ok := v.(*time.Duration)
-	if !ok || d == nil || *d < node.MinLoadPoolInterval {
-		return fmt.Errorf("%s is below the minimum of %s", strings.TrimSpace(value), node.MinLoadPoolInterval)
+	if !ok || d == nil || *d < minimum {
+		return fmt.Errorf("%s is below the minimum of %s", strings.TrimSpace(value), minimum)
 	}
 	return nil
 }
