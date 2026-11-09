@@ -291,6 +291,15 @@ func (t *T) canSpeak(nodename string) bool {
 func (t *T) updateSpeaker() {
 	t.checkStarting(time.Now())
 	speaker := t.speakerNode()
+	if speaker == t.localhost && !t.isSpeaker {
+		// Nodes starting together each see the others starting, unable to
+		// speak yet: the first of them in the cluster nodes takes the
+		// speech, the others leave it to it. A node speaking already keeps
+		// it, as from a peer rejoining.
+		if peer := t.startingPeerBefore(); peer != "" {
+			speaker = peer
+		}
+	}
 	if speaker != t.speaker {
 		if t.speaker != "" && speaker != "" {
 			// A new speaker has none of the local actions pending:
@@ -301,23 +310,24 @@ func (t *T) updateSpeaker() {
 		t.speaker = speaker
 	}
 	isSpeaker := !t.disable && speaker == t.localhost
-	if isSpeaker == t.isSpeaker {
-		return
+	if isSpeaker != t.isSpeaker {
+		t.isSpeaker = isSpeaker
+		if isSpeaker {
+			// A node not speaker drops the changes it sees: the new
+			// speaker sends the full dataset, the changes the former
+			// speaker failed to send included.
+			t.initChanges()
+			t.seedResInfoToSend()
+		} else {
+			t.newFeedEpoch()
+			t.dropActionToSend()
+			t.daemonStatusFailure.reset()
+			t.resInfoFailure.reset()
+			t.objectConfigFailure.reset()
+		}
 	}
-	t.isSpeaker = isSpeaker
-	if isSpeaker {
-		// A node not speaker drops the changes it sees: the new speaker
-		// sends the full dataset, the changes the former speaker failed
-		// to send included.
-		t.initChanges()
-		t.seedResInfoToSend()
-	} else {
-		t.newFeedEpoch()
-		t.dropActionToSend()
-		t.daemonStatusFailure.reset()
-		t.resInfoFailure.reset()
-		t.objectConfigFailure.reset()
-	}
+	// The state changes without the speaker too, as at the end of the
+	// startup hold of a node not speaking: starting to speaker-candidate.
 	t.publishOnChange(t.getState())
 }
 

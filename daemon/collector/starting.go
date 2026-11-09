@@ -51,3 +51,20 @@ func (t *T) peerStatesKnown() bool {
 	}
 	return true
 }
+
+// startingPeerBefore returns the first live peer before the node in the
+// cluster nodes whose collector is starting, "" when none is.
+func (t *T) startingPeerBefore() string {
+	for _, nodename := range clusternode.Get() {
+		if nodename == t.localhost {
+			return ""
+		}
+		if node.MonitorData.GetByNode(nodename) == nil {
+			continue
+		}
+		if c := daemonsubsystem.DataCollector.Get(nodename); c != nil && c.State == "starting" {
+			return nodename
+		}
+	}
+	return ""
+}
