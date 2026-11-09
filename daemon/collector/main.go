@@ -124,6 +124,12 @@ type (
 		credsRefusedBackoff time.Duration
 		credsOfferedAt      time.Time
 
+		// startingUntil is the deadline of the startup hold, zero once
+		// it ended: the collector does not speak until it knows the
+		// collector state of the live peers, so a node starting does not
+		// speak beside the node speaking. See checkStarting.
+		startingUntil time.Time
+
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
 		disable bool
 
@@ -415,6 +421,7 @@ func (t *T) loop() {
 
 	t.initChanges()
 	t.initActions()
+	t.startingUntil = time.Now().Add(startingMax)
 	// The speaker is chosen as on any event, not taken from the leader flag:
 	// a node leader may not be able to speak, and a node starting may join
 	// a cluster another node speaks for. A start as speaker seeds the feeds.
@@ -567,6 +574,8 @@ func (t *T) publish() {
 //	speaker: node is collector speaker
 //	speaker-warning: node is collector speaker, but has no client or its
 //	                 credentials are refused, as no node can speak
+//	starting: node is collector speaker candidate, holding its speech until
+//	          it knows the collector state of the live peers
 //	speaker-candidate: node is collector speaker candidate
 //	warning: node is collector speaker candidate, but has no client or its
 //	         credentials are refused
@@ -581,10 +590,12 @@ func (t *T) getState() string {
 			return "speaker-warning"
 		}
 	} else {
-		if usable {
-			return "speaker-candidate"
-		} else {
+		if !usable {
 			return "warning"
+		} else if t.starting() {
+			return "starting"
+		} else {
+			return "speaker-candidate"
 		}
 	}
 }

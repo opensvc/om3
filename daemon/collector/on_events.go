@@ -19,6 +19,11 @@ var (
 )
 
 func (t *T) onRefreshTicker() {
+	if t.starting() {
+		// The startup hold ends at its deadline, whatever the peers say.
+		t.updateSpeaker()
+		t.publishOnChange(t.getState())
+	}
 	t.checkCredentials(time.Now())
 	if time.Since(t.actionAnnounceCheckAt) >= actionAnnounceInterval {
 		t.actionAnnounceCheckAt = time.Now()
@@ -246,6 +251,11 @@ func (t *T) speakerNode() string {
 		if nodename != t.localhost && node.MonitorData.GetByNode(nodename) == nil {
 			continue
 		}
+		if nodename == t.localhost && t.starting() {
+			// A leader starting does not speak during its startup hold
+			// either: the node speaking in its absence may still be.
+			continue
+		}
 		if t.nodeIsLeader[nodename] {
 			return nodename
 		}
@@ -254,16 +264,17 @@ func (t *T) speakerNode() string {
 }
 
 // canSpeak says whether the collector of nodename can speak: configured,
-// with a client whose credentials the collector does not refuse. A peer
-// whose collector state is not known yet is taken for one that can, so no
-// node behind it speaks at once in its place.
+// with a client whose credentials the collector does not refuse, and done
+// starting. A peer whose collector state is not known yet, as one rejoining
+// whose collector has not started, can not: the node speaking keeps the
+// speech until the peer says it can take it.
 func (t *T) canSpeak(nodename string) bool {
 	if nodename == t.localhost {
-		return !t.disable && t.client != nil && !t.credsRefused()
+		return !t.disable && t.client != nil && !t.credsRefused() && !t.starting()
 	}
 	c := daemonsubsystem.DataCollector.Get(nodename)
 	if c == nil || c.State == "" {
-		return true
+		return false
 	}
 	switch c.State {
 	case "speaker", "speaker-candidate":
@@ -278,6 +289,7 @@ func (t *T) canSpeak(nodename string) bool {
 // collector configuration and client of the node, the cluster nodes, their
 // liveness, their leader, or the collector state of a peer.
 func (t *T) updateSpeaker() {
+	t.checkStarting(time.Now())
 	speaker := t.speakerNode()
 	if speaker != t.speaker {
 		if t.speaker != "" && speaker != "" {

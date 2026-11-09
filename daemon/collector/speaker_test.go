@@ -49,7 +49,11 @@ func TestSpeakerIsTheFirstLiveNodeAbleToSpeak(t *testing.T) {
 		},
 		"a peer collector state not known yet": {
 			peers:     map[string]peer{"n1": {true, ""}, "n3": {true, "speaker-candidate"}},
-			hasClient: true, leader: "n1", want: "n1",
+			hasClient: true, leader: "n1", want: "n2",
+		},
+		"a peer collector starting": {
+			peers:     map[string]peer{"n1": {true, "starting"}, "n3": {true, "speaker-candidate"}},
+			hasClient: true, leader: "n1", want: "n2",
 		},
 		"no node can speak: the leader keeps the warning": {
 			peers:     map[string]peer{"n1": {true, "speaker-warning"}, "n3": {true, "warning"}},
