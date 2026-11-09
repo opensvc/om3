@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
 // The collector speaker is the first live cluster node whose collector can
@@ -86,4 +88,81 @@ func TestSpeakerIsTheFirstLiveNodeAbleToSpeak(t *testing.T) {
 			assert.Equal(t, tc.want == "n2", tr.isSpeaker)
 		})
 	}
+}
+
+// With no node able to speak, the speaker is the live leader: the leader flag
+// of a node gone stays set beside the one of the leader elected after it.
+func TestSpeakerFallbackIsTheLiveLeader(t *testing.T) {
+	node.InitData()
+	daemonsubsystem.InitData()
+	clusternode.Set([]string{"n1", "n2", "n3"})
+	t.Cleanup(func() {
+		clusternode.Set(nil)
+		node.InitData()
+		daemonsubsystem.InitData()
+	})
+	node.MonitorData.Set("n3", &node.Monitor{})
+	c := daemonsubsystem.Collector{}
+	c.State = "warning"
+	daemonsubsystem.DataCollector.Set("n3", &c)
+
+	tr := newSpeakerT(t, nil)
+	tr.client = nil
+	tr.localhost = "n2"
+	tr.isSpeaker = false
+	tr.nodeIsLeader = map[string]bool{"n1": true, "n3": true}
+	for range 20 {
+		tr.updateSpeaker()
+		assert.Equal(t, "n3", tr.speaker, "n1 is gone")
+	}
+}
+
+// A peer rejoining sends its node status and collector state before its
+// monitor, which tells it is alive: its monitor chooses the speaker again.
+func TestARejoiningPeerTakesTheSpeechBack(t *testing.T) {
+	node.InitData()
+	daemonsubsystem.InitData()
+	clusternode.Set([]string{"n1", "n2"})
+	t.Cleanup(func() {
+		clusternode.Set(nil)
+		node.InitData()
+		daemonsubsystem.InitData()
+	})
+	c := daemonsubsystem.Collector{}
+	c.State = "speaker-candidate"
+	daemonsubsystem.DataCollector.Set("n1", &c)
+
+	tr := newSpeakerT(t, &fakeRequester{})
+	tr.localhost = "n2"
+	tr.isSpeaker = false
+	tr.nodeIsLeader = map[string]bool{"n2": true}
+	tr.updateSpeaker()
+	require.Equal(t, "n2", tr.speaker, "n1 is not alive yet")
+
+	node.MonitorData.Set("n1", &node.Monitor{})
+	tr.onNodeMonitorUpdated(&msgbus.NodeMonitorUpdated{Node: "n1"})
+	assert.Equal(t, "n1", tr.speaker)
+	assert.False(t, tr.isSpeaker)
+}
+
+// A node becoming speaker sends the full dataset: a node not speaker dropped
+// the changes it saw, and the former speaker may have failed to send them.
+func TestANewSpeakerSendsTheFullDataset(t *testing.T) {
+	node.InitData()
+	daemonsubsystem.InitData()
+	clusternode.Set([]string{"n2"})
+	t.Cleanup(func() {
+		clusternode.Set(nil)
+		node.InitData()
+		daemonsubsystem.InitData()
+	})
+	node.StatusData.Set("n2", &node.Status{})
+
+	tr := newSpeakerT(t, &fakeRequester{})
+	tr.localhost = "n2"
+	tr.isSpeaker = false
+	tr.nodeIsLeader = map[string]bool{"n2": true}
+	tr.updateSpeaker()
+	require.True(t, tr.isSpeaker)
+	assert.Contains(t, tr.daemonStatusChange, "@n2")
 }

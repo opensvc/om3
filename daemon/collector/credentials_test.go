@@ -92,6 +92,21 @@ func TestANewNodeUUIDIsOfferedAtOnce(t *testing.T) {
 	assert.Equal(t, "n2", tr.speaker)
 }
 
+// Another collector is offered the credentials at once: the refusal of the
+// former one tells nothing of it.
+func TestAnotherCollectorIsOfferedAtOnce(t *testing.T) {
+	tr, r := newCredsT(t, "speaker-candidate")
+	tr.appliedConfig = &collector.Config{FeederUrl: "https://collector.example.com", Password: "uuid-old"}
+	t0 := time.Now()
+	r.observe(http.StatusUnauthorized, t0)
+	tr.checkCredentials(t0.Add(credsRefusedAfter))
+	require.True(t, tr.credsRefused())
+
+	tr.applyConfig(&collector.Config{FeederUrl: "https://other.example.com", Password: "uuid-old"})
+	assert.False(t, tr.credsRefused())
+	assert.Equal(t, "n2", tr.speaker)
+}
+
 // Refused credentials are offered again at the end of the backoff, which
 // doubles at each refusal, and is forgotten once the collector accepts them.
 func TestRefusedCredentialsAreOfferedAgainAfterTheBackoff(t *testing.T) {

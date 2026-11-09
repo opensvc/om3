@@ -383,6 +383,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
@@ -411,16 +412,14 @@ func (t *T) catchUpConfig() {
 func (t *T) loop() {
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
-	t.isSpeaker = !t.disable && node.StatusData.GetByNode(t.localhost).IsLeader
-	t.publishOnChange(t.getState())
 
 	t.initChanges()
 	t.initActions()
-	if t.isSpeaker {
-		// onNodeStatusUpdated fires no transition when the daemon starts while
-		// already speaker, so seed here too.
-		t.seedResInfoToSend()
-	}
+	// The speaker is chosen as on any event, not taken from the leader flag:
+	// a node leader may not be able to speak, and a node starting may join
+	// a cluster another node speaks for. A start as speaker seeds the feeds.
+	t.updateSpeaker()
+	t.publishOnChange(t.getState())
 	sub := t.startSubscriptions()
 
 	// An audit session begun before the subscription, as one reconnecting to
@@ -478,6 +477,8 @@ func (t *T) loop() {
 				t.onDaemonCollectorUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
 				t.onNodeMonitorDeleted(c)
+			case *msgbus.NodeMonitorUpdated:
+				t.onNodeMonitorUpdated(c)
 			case *msgbus.NodeStatusUpdated:
 				t.onNodeStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:

@@ -148,9 +148,11 @@ func (t *T) applyConfig(cfg *collector.Config) {
 		// they were cut with.
 		t.newFeedEpoch()
 	}
-	if cfg == nil || t.appliedConfig == nil || cfg.Password != t.appliedConfig.Password {
-		// A new node.uuid is offered at once, whatever the collector
-		// refused of the former one.
+	if cfg == nil || t.appliedConfig == nil ||
+		cfg.Password != t.appliedConfig.Password ||
+		cfg.FeederUrl != t.appliedConfig.FeederUrl {
+		// A new node.uuid, or another collector, is offered at once,
+		// whatever the collector refused of the former credentials.
 		t.resetCredsRefused()
 	}
 	t.appliedConfig = cfg.DeepCopy()
@@ -179,6 +181,16 @@ func (t *T) setPostTimeout(cfg *collector.Config) {
 		t.log.Infof("feeder post timeout: %s", n)
 		t.postTimeout = n
 	}
+}
+
+// onNodeMonitorUpdated chooses the speaker again when a node comes back: the
+// monitor of a peer rejoining, which tells its liveness, comes after its node
+// status and its collector state.
+func (t *T) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
+	if c.Node == t.localhost {
+		return
+	}
+	t.updateSpeaker()
 }
 
 func (t *T) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
@@ -227,8 +239,14 @@ func (t *T) speakerNode() string {
 			return nodename
 		}
 	}
-	for nodename, isLeader := range t.nodeIsLeader {
-		if isLeader {
+	// The leader is taken among the live nodes, in their order: the leader
+	// flag of a node gone stays set, beside the one of the leader elected
+	// after it.
+	for _, nodename := range clusternode.Get() {
+		if nodename != t.localhost && node.MonitorData.GetByNode(nodename) == nil {
+			continue
+		}
+		if t.nodeIsLeader[nodename] {
 			return nodename
 		}
 	}
@@ -276,6 +294,10 @@ func (t *T) updateSpeaker() {
 	}
 	t.isSpeaker = isSpeaker
 	if isSpeaker {
+		// A node not speaker drops the changes it sees: the new speaker
+		// sends the full dataset, the changes the former speaker failed
+		// to send included.
+		t.initChanges()
 		t.seedResInfoToSend()
 	} else {
 		t.newFeedEpoch()
