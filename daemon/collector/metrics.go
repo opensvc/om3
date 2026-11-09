@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -18,6 +20,14 @@ type (
 	// collectorRequestsTotal, by feed and status code.
 	instrumentedRequester struct {
 		requester
+
+		// unauthorizedSince is the unix nano time of the first 401 of the
+		// current run of 401 answers, 0 when the last answer was another.
+		// The sends run off the loop, which reads it.
+		unauthorizedSince atomic.Int64
+
+		// acceptedAt is the unix nano time of the last answer not a 401.
+		acceptedAt atomic.Int64
 	}
 )
 
@@ -102,9 +112,22 @@ func (t *instrumentedRequester) Do(req *http.Request) (*http.Response, error) {
 	code := "error"
 	if err == nil && resp != nil {
 		code = strconv.Itoa(resp.StatusCode)
+		t.observe(resp.StatusCode, time.Now())
 	}
 	collectorRequestsTotal.WithLabelValues(feedOf(req.URL.Path), code).Inc()
 	return resp, err
+}
+
+// observe records an answer of the collector: a 401 starts or extends the run
+// of credentials refused, any other answer ends it. A request without answer,
+// as one timing out, tells nothing of the credentials.
+func (t *instrumentedRequester) observe(code int, now time.Time) {
+	if code == http.StatusUnauthorized {
+		t.unauthorizedSince.CompareAndSwap(0, now.UnixNano())
+		return
+	}
+	t.unauthorizedSince.Store(0)
+	t.acceptedAt.Store(now.UnixNano())
 }
 
 func (t *instrumentedRequester) NewRequestWithContext(ctx context.Context, method string, relPath string, body io.Reader) (*http.Request, error) {

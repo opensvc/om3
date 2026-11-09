@@ -19,6 +19,7 @@ var (
 )
 
 func (t *T) onRefreshTicker() {
+	t.checkCredentials(time.Now())
 	if time.Since(t.actionAnnounceCheckAt) >= actionAnnounceInterval {
 		t.actionAnnounceCheckAt = time.Now()
 		t.announceActionPending(false)
@@ -147,6 +148,11 @@ func (t *T) applyConfig(cfg *collector.Config) {
 		// they were cut with.
 		t.newFeedEpoch()
 	}
+	if cfg == nil || t.appliedConfig == nil || cfg.Password != t.appliedConfig.Password {
+		// A new node.uuid is offered at once, whatever the collector
+		// refused of the former one.
+		t.resetCredsRefused()
+	}
 	t.appliedConfig = cfg.DeepCopy()
 	t.setPostTimeout(cfg)
 	t.setThrottle(cfg)
@@ -230,11 +236,11 @@ func (t *T) speakerNode() string {
 }
 
 // canSpeak says whether the collector of nodename can speak: configured,
-// with a client. A peer whose collector state is not known yet is taken for
+// with a client whose credentials the collector does not refuse. A peer whose collector state is not known yet is taken for
 // one that can, so no node behind it speaks at once in its place.
 func (t *T) canSpeak(nodename string) bool {
 	if nodename == t.localhost {
-		return !t.disable && t.client != nil
+		return !t.disable && t.client != nil && !t.credsRefused()
 	}
 	c := daemonsubsystem.DataCollector.Get(nodename)
 	if c == nil || c.State == "" {

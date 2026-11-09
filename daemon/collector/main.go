@@ -114,6 +114,16 @@ type (
 		// speakerNode.
 		speaker string
 
+		// credsRefusedUntil is the end of the backoff of credentials the
+		// collector refuses, zero when it does not: the node leaves the
+		// speech to the others until then. credsRefusedBackoff is the
+		// duration of that backoff, doubling at each refusal until the
+		// collector accepts them, and credsOfferedAt when the node last
+		// offered them again. See checkCredentials.
+		credsRefusedUntil   time.Time
+		credsRefusedBackoff time.Duration
+		credsOfferedAt      time.Time
+
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
 		disable bool
 
@@ -554,21 +564,23 @@ func (t *T) publish() {
 //
 //	disable: node has no collector configuration
 //	speaker: node is collector speaker
-//	speaker-warning: node is collector speaker, but has client errors, as
-//	                 no node can speak
+//	speaker-warning: node is collector speaker, but has no client or its
+//	                 credentials are refused, as no node can speak
 //	speaker-candidate: node is collector speaker candidate
-//	warning: node is collector speaker candidate, but has client errors
+//	warning: node is collector speaker candidate, but has no client or its
+//	         credentials are refused
 func (t *T) getState() string {
+	usable := t.client != nil && !t.credsRefused()
 	if t.disable {
 		return "disabled"
 	} else if t.isSpeaker {
-		if t.client != nil {
+		if usable {
 			return "speaker"
 		} else {
 			return "speaker-warning"
 		}
 	} else {
-		if t.client != nil {
+		if usable {
 			return "speaker-candidate"
 		} else {
 			return "warning"
