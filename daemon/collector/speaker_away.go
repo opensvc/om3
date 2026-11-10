@@ -144,8 +144,8 @@ func (t *T) peersWaitFor() bool {
 
 // peersSpeaker returns the speaker the live peers report, other than the node
 // itself, "" when none does: the first peer in the cluster nodes reporting a
-// live speaker whose state is not known yet, or says it speaks. A speaker
-// whose state says it can not speak, or does not speak, is not followed.
+// live speaker whose state says it speaks, or, during the startup hold of the
+// node, is not known yet. Another speaker is not followed.
 func (t *T) peersSpeaker() string {
 	for _, nodename := range clusternode.Get() {
 		if nodename == t.localhost || node.MonitorData.GetByNode(nodename) == nil {
@@ -164,7 +164,14 @@ func (t *T) peersSpeaker() string {
 		if speaker != nodename && node.MonitorData.GetByNode(speaker) == nil {
 			continue
 		}
-		if s := daemonsubsystem.DataCollector.Get(speaker); s != nil && s.State != "" && s.State != "speaker" {
+		switch s := daemonsubsystem.DataCollector.Get(speaker); {
+		case s != nil && s.State == "speaker":
+		case (s == nil || s.State == "") && t.starting():
+			// At its start, the node follows the speaker its peers
+			// report before its state reaches it. Past it, a speaker
+			// never saying its state is not followed: the nodes
+			// reporting it to each other would follow it for ever.
+		default:
 			continue
 		}
 		return speaker

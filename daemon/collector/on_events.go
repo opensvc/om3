@@ -323,15 +323,7 @@ func (t *T) canSpeak(nodename string) bool {
 		return !t.disable && t.client != nil && !t.credsRefused() && !t.starting()
 	}
 	c := daemonsubsystem.DataCollector.Get(nodename)
-	if c == nil || c.State == "" {
-		return false
-	}
-	switch c.State {
-	case "speaker", "speaker-candidate":
-		return true
-	default:
-		return false
-	}
+	return c != nil && (c.State == "speaker" || c.State == "speaker-candidate")
 }
 
 // updateSpeaker sets isSpeaker from the speaker chosen, and applies its
@@ -352,14 +344,17 @@ func (t *T) updateSpeaker() {
 	}
 	if speaker != t.speaker {
 		t.speakerAwaySince = time.Time{}
-		if t.speaker != "" && speaker != "" {
-			// A new speaker has none of the local actions pending:
-			// announce them all again.
+		if speaker != "" && t.speakerChosen {
+			// A new speaker, after another or after none, has none of
+			// the local actions pending: announce them all again. The
+			// first choice of the loop is followed by the announce of
+			// the loop start.
 			t.log.Infof("proposed speaker change %s -> %s", t.speaker, speaker)
 			defer t.announceActionPending(true)
 		}
 		t.speaker = speaker
 	}
+	t.speakerChosen = true
 	isSpeaker := !t.disable && speaker == t.localhost
 	if isSpeaker != t.isSpeaker {
 		t.isSpeaker = isSpeaker

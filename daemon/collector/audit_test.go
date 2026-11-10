@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
@@ -38,4 +39,23 @@ func TestAttachesAnAuditBegunBeforeTheCollector(t *testing.T) {
 			t.Fatal("the collector logs do not reach the audit session")
 		}
 	}
+}
+
+// An audit session attached at the start of the collector, and ended during
+// the delay before its subscription, sent its AuditStop to no collector: the
+// loop detaches it, rather than log to the queue of a session gone.
+func TestAnAuditEndedDuringTheStartDelayIsDetached(t *testing.T) {
+	tr, _ := newTestT(t)
+	reg := &auditstate.Registry{}
+	tr.ctx = daemonctx.WithAuditRegistry(context.Background(), reg)
+	q := make(chan plog.LogMessage, 10)
+	_, err := reg.Begin(context.Background(), q, []string{"collector"}, make(chan struct{}), "root", false, nil)
+	require.NoError(t, err)
+
+	tr.attachActiveAuditIfAny()
+	require.Equal(t, q, tr.log.Q())
+
+	reg.Stop(q)
+	tr.attachActiveAuditIfAny()
+	assert.Nil(t, tr.log.Q(), "the session gone is detached")
 }

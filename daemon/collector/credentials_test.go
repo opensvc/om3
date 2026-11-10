@@ -43,7 +43,8 @@ func newCredsT(t *testing.T, peer3 string) (*T, *instrumentedRequester) {
 }
 
 // The credentials the collector answers 401 to for credsRefusedAfter are
-// refused: the speech goes to the next node able to speak.
+// refused: the speech goes to the next node able to speak. A single 401, no
+// request following it, is no refusal.
 func TestRefusedCredentialsHandTheSpeechOver(t *testing.T) {
 	tr, r := newCredsT(t, "speaker-candidate")
 	t0 := time.Now()
@@ -52,6 +53,7 @@ func TestRefusedCredentialsHandTheSpeechOver(t *testing.T) {
 	tr.checkCredentials(t0.Add(credsRefusedAfter - time.Second))
 	assert.Equal(t, "n2", tr.speaker, "not refused before credsRefusedAfter")
 
+	r.observe(http.StatusUnauthorized, t0.Add(credsRefusedAfter))
 	tr.checkCredentials(t0.Add(credsRefusedAfter))
 	assert.True(t, tr.credsRefused())
 	assert.Equal(t, credsRefusedMin, tr.credsRefusedBackoff)
@@ -84,6 +86,7 @@ func TestAnErrorAnswerTellsNothingOfTheCredentials(t *testing.T) {
 	r.observe(http.StatusForbidden, t0.Add(30*time.Second))
 	assert.True(t, tr.acceptedAt().IsZero())
 
+	r.observe(http.StatusUnauthorized, t0.Add(credsRefusedAfter))
 	tr.checkCredentials(t0.Add(credsRefusedAfter))
 	assert.True(t, tr.credsRefused(), "the run of 401 went on through the errors")
 
@@ -100,6 +103,7 @@ func TestANewNodeUUIDIsOfferedAtOnce(t *testing.T) {
 	tr.appliedConfig = &collector.Config{FeederUrl: "https://collector.example.com", Password: "uuid-old"}
 	t0 := time.Now()
 	r.observe(http.StatusUnauthorized, t0)
+	r.observe(http.StatusUnauthorized, t0.Add(credsRefusedAfter))
 	tr.checkCredentials(t0.Add(credsRefusedAfter))
 	require.Equal(t, "n3", tr.speaker)
 
@@ -119,6 +123,7 @@ func TestAnotherCollectorIsOfferedAtOnce(t *testing.T) {
 	tr.appliedConfig = &collector.Config{FeederUrl: "https://collector.example.com", Password: "uuid-old"}
 	t0 := time.Now()
 	r.observe(http.StatusUnauthorized, t0)
+	r.observe(http.StatusUnauthorized, t0.Add(credsRefusedAfter))
 	tr.checkCredentials(t0.Add(credsRefusedAfter))
 	require.True(t, tr.credsRefused())
 
@@ -133,6 +138,7 @@ func TestRefusedCredentialsAreOfferedAgainAfterTheBackoff(t *testing.T) {
 	tr, r := newCredsT(t, "speaker-candidate")
 	t0 := time.Now()
 	r.observe(http.StatusUnauthorized, t0)
+	r.observe(http.StatusUnauthorized, t0.Add(credsRefusedAfter))
 	tr.checkCredentials(t0.Add(credsRefusedAfter))
 	require.True(t, tr.credsRefused())
 
@@ -142,6 +148,7 @@ func TestRefusedCredentialsAreOfferedAgainAfterTheBackoff(t *testing.T) {
 	assert.Equal(t, "n2", tr.speaker)
 
 	r.observe(http.StatusUnauthorized, t1.Add(time.Second))
+	r.observe(http.StatusUnauthorized, t1.Add(time.Second+credsRefusedAfter))
 	tr.checkCredentials(t1.Add(time.Second + credsRefusedAfter))
 	assert.True(t, tr.credsRefused(), "refused again")
 	assert.Equal(t, 2*credsRefusedMin, tr.credsRefusedBackoff)
@@ -160,9 +167,46 @@ func TestEveryNodeRefusedTheLeaderSpeaks(t *testing.T) {
 	tr, r := newCredsT(t, "warning")
 	t0 := time.Now()
 	r.observe(http.StatusUnauthorized, t0)
+	r.observe(http.StatusUnauthorized, t0.Add(credsRefusedAfter))
 	tr.checkCredentials(t0.Add(credsRefusedAfter))
 	assert.True(t, tr.credsRefused())
 	assert.Equal(t, "n2", tr.speaker)
 	assert.True(t, tr.isSpeaker)
 	assert.Equal(t, "speaker-warning", tr.getState())
+}
+
+// A single 401, no request following it for credsRefusedAfter, as with no
+// data to send, is no refusal: the run of 401 must span credsRefusedAfter.
+func TestASingle401IsNoRefusal(t *testing.T) {
+	tr, r := newCredsT(t, "speaker-candidate")
+	t0 := time.Now()
+	r.observe(http.StatusUnauthorized, t0)
+	tr.checkCredentials(t0.Add(2 * credsRefusedAfter))
+	assert.False(t, tr.credsRefused())
+	assert.Equal(t, "n2", tr.speaker)
+}
+
+// A configuration change keeps the client, and the 401 answers it tracks,
+// while the settings it is built from are the same: a change of another
+// collector keyword does not restart the refusal clock. A new feeder url
+// builds a new client.
+func TestAConfigChangeKeepsTheClient(t *testing.T) {
+	tr, _ := newCredsT(t, "speaker-candidate")
+	cfg := collector.Config{FeederUrl: "https://collector.example.com", Password: "uuid"}
+	tr.applyConfig(&cfg)
+	client := tr.client
+	r, ok := client.(*instrumentedRequester)
+	require.True(t, ok)
+	t0 := time.Now()
+	r.observe(http.StatusUnauthorized, t0)
+
+	other := cfg
+	other.PingInterval = 2 * time.Minute
+	tr.applyConfig(&other)
+	assert.Same(t, client, tr.client, "the client is kept")
+	assert.True(t, tr.unauthorizedSince().Equal(time.Unix(0, t0.UnixNano())), "the 401 run is kept")
+
+	other.FeederUrl = "https://other.example.com"
+	tr.applyConfig(&other)
+	assert.NotSame(t, client, tr.client, "a new feeder url builds a new client")
 }

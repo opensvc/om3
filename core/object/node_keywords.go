@@ -2388,8 +2388,12 @@ func validSpeakerGracePeriod(value string) error {
 
 // validMinDuration refuses a duration value below minimum. It reads it with
 // the converter the duration keywords are read with: a number without unit
-// is a number of seconds.
+// is a number of seconds. An empty value is the default, and accepted.
 func validMinDuration(value string, minimum time.Duration) error {
+	if strings.TrimSpace(value) == "" {
+		// unset: the default
+		return nil
+	}
 	v, err := converters.Duration.Convert(strings.TrimSpace(value))
 	if err != nil {
 		return err

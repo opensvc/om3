@@ -306,6 +306,11 @@ func TestARestartingSpeakerFollowsTheSpeakerItsPeersReport(t *testing.T) {
 			n1.nodeIsLeader = map[string]bool{"n1": true}
 			n1.markSpeaker()
 			n1.readSpeakerMark(time.Now())
+			if tc.want != "n1" {
+				// n1 starting: it follows the speaker its peers report,
+				// before the state of n3 reaches it.
+				n1.startHold(false)
+			}
 			n1.updateSpeaker()
 			assert.Equal(t, tc.want, n1.speaker)
 			assert.Equal(t, tc.want == "n1", n1.isSpeaker)
@@ -389,4 +394,50 @@ func TestARemovedNodeIsNoSpeaker(t *testing.T) {
 		assert.Equal(t, "n1", n1.speaker)
 		assert.True(t, n1.isSpeaker)
 	})
+}
+
+// Past the startup hold of the node, a speaker its peers report is followed
+// only when its state says it speaks: a speaker never saying its state, the
+// nodes reporting it to each other, would be followed for ever.
+func TestAReportedSpeakerNeverSayingItsStateIsNotFollowed(t *testing.T) {
+	setCluster(t, []string{"n1", "n2", "n3"}, nil)
+	node.MonitorData.Set("n2", &node.Monitor{})
+	node.MonitorData.Set("n3", &node.Monitor{})
+	c := daemonsubsystem.Collector{}
+	c.State = "speaker-candidate"
+	c.Speaker = "n3"
+	daemonsubsystem.DataCollector.Set("n2", &c)
+	// The state of n3 is never published.
+
+	n1 := newSpeakerT(t, &fakeRequester{})
+	n1.localhost = "n1"
+	n1.isSpeaker = false
+	n1.nodeIsLeader = map[string]bool{"n1": true}
+	n1.updateSpeaker()
+	assert.Equal(t, "n1", n1.speaker)
+	assert.True(t, n1.isSpeaker)
+}
+
+// A speaker chosen after none, as at the end of the startup hold of the
+// node, gets the local pending actions announced, as any new speaker.
+func TestAFirstSpeakerAfterNoneGetsTheActionsAnnounced(t *testing.T) {
+	setCluster(t, []string{"n1", "n2"}, map[string]string{"n2": ""})
+	pub := &fakePublisher{}
+	n1 := newStartingT(t, "n1")
+	n1.publisher = pub
+	require.NoError(t, n1.actionPendingDir.Write(newTestCollectorAction()))
+	n1.updateSpeaker()
+	require.Empty(t, n1.speaker, "n1 holds, the state of n2 is not known")
+
+	setPeerState("n2", "speaker")
+	pub.msgs = nil
+	n1.updateSpeaker()
+	require.Equal(t, "n2", n1.speaker)
+	announced := 0
+	for _, m := range pub.msgs {
+		if _, ok := m.(*msgbus.InstanceActionPending); ok {
+			announced++
+		}
+	}
+	assert.Equal(t, 1, announced, "the pending action is announced to the new speaker")
 }

@@ -30,8 +30,19 @@ func (t *T) unauthorizedSince() time.Time {
 	return time.Time{}
 }
 
-// acceptedAt returns when the collector last answered the node otherwise
-// than 401, zero when it never did.
+// unauthorizedLast returns the time of the last 401 of the current run of
+// 401 answers to the node, zero when the last answer was another.
+func (t *T) unauthorizedLast() time.Time {
+	if r, ok := t.client.(*instrumentedRequester); ok {
+		if n := r.unauthorizedLast.Load(); n != 0 {
+			return time.Unix(0, n)
+		}
+	}
+	return time.Time{}
+}
+
+// acceptedAt returns when the collector last accepted a request of the node,
+// answering a 2xx, zero when it never did.
 func (t *T) acceptedAt() time.Time {
 	if r, ok := t.client.(*instrumentedRequester); ok {
 		if n := r.acceptedAt.Load(); n != 0 {
@@ -70,6 +81,7 @@ func (t *T) checkCredentials(now time.Time) {
 			// The 401 run before the backoff is no evidence anymore:
 			// the node is judged on the answers to come.
 			r.unauthorizedSince.Store(0)
+			r.unauthorizedLast.Store(0)
 		}
 		t.log.Infof("offer to speak to the collector again, %s after its refusal of node.uuid", t.credsRefusedBackoff)
 		t.updateSpeaker()
@@ -82,8 +94,10 @@ func (t *T) checkCredentials(now time.Time) {
 		t.log.Infof("the collector accepts node.uuid again")
 		t.credsRefusedBackoff = 0
 	}
-	since := t.unauthorizedSince()
-	if since.IsZero() || now.Sub(since) < credsRefusedAfter {
+	// The run of 401 spans credsRefusedAfter: a single 401, followed by a
+	// time with no request, as with no data to send, is no refusal.
+	since, last := t.unauthorizedSince(), t.unauthorizedLast()
+	if since.IsZero() || last.Sub(since) < credsRefusedAfter {
 		// not unauthorized, or too early unauthorized
 		return
 	}
@@ -94,7 +108,7 @@ func (t *T) checkCredentials(now time.Time) {
 	}
 	t.credsRefusedUntil = now.Add(t.credsRefusedBackoff)
 	t.log.Warnf("node.uuid refused by the collector (401) for %s: the speech goes to the next node able to speak until %s,"+
-		" register this node again with 'om node register'", now.Sub(since).Round(time.Second), t.credsRefusedUntil.Format(time.RFC3339))
+		" register this node again with 'om node register'", last.Sub(since).Round(time.Second), t.credsRefusedUntil.Format(time.RFC3339))
 	t.updateSpeaker()
 	t.publishOnChange(t.getState())
 }

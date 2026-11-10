@@ -111,8 +111,14 @@ type (
 		isSpeaker bool
 
 		// speaker is the node speaking to the collector, chosen by
-		// speakerNode.
-		speaker string
+		// speakerNode. speakerChosen is set once the speaker was chosen
+		// a first time.
+		speaker       string
+		speakerChosen bool
+
+		// requesterKey is the settings client was built from, see
+		// requesterKey.
+		requesterKey string
 
 		// credsRefusedUntil is the end of the backoff of credentials the
 		// collector refuses, zero when it does not: the node leaves the
@@ -302,17 +308,31 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	return t
 }
 
+// requesterKey returns the settings of c the client of the feeder is built
+// from: the feeder url, the node.uuid and the tls verification.
+func requesterKey(c *collector.Config) string {
+	return fmt.Sprintf("%s\x00%s\x00%t", c.FeederUrl, c.Password, c.Insecure)
+}
+
 func (t *T) setupRequester(c *collector.Config) error {
 	// TODO: pickup dbopensvc, auth, insecure from config update message
 	//       to create requester from core/collector.NewRequester
 	t.status.ConfiguredAt = time.Now()
 	if c == nil {
 		t.client = nil
+		t.requesterKey = ""
 		t.disable = true
 		t.status.Url = ""
 		return nil
+	} else if key := requesterKey(c); t.client != nil && key == t.requesterKey {
+		// The settings the client is built from are the same, as on a
+		// change of another collector keyword: the client, and the 401
+		// answers it tracks, are kept.
+		t.disable = false
+		return nil
 	} else if cli, err := c.NewFeedRequester(); err != nil {
 		t.client = nil
+		t.requesterKey = ""
 		if errors.Is(err, collector.ErrConfig) {
 			t.disable = true
 			t.status.Url = ""
@@ -325,6 +345,7 @@ func (t *T) setupRequester(c *collector.Config) error {
 		return err
 	} else {
 		t.client = newInstrumentedRequester(cli)
+		t.requesterKey = key
 		t.status.Url = cli.URL()
 		// It is now enabled, clear previous disable state
 		t.disable = false
@@ -675,6 +696,12 @@ func (t *T) attachActiveAuditIfAny() {
 	}
 	sess, ok := reg.Snapshot()
 	if !ok {
+		// A session attached at the start, and ended during the delay
+		// before the subscription, sent its AuditStop to no collector:
+		// detach it.
+		if q := t.log.Q(); q != nil {
+			t.log.HandleAuditStop(q, nil, "collector")
+		}
 		return
 	}
 	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "collector")

@@ -26,7 +26,12 @@ type (
 		// The sends run off the loop, which reads it.
 		unauthorizedSince atomic.Int64
 
-		// acceptedAt is the unix nano time of the last answer not a 401.
+		// unauthorizedLast is the unix nano time of the last 401 of the
+		// current run, 0 when the last answer was another.
+		unauthorizedLast atomic.Int64
+
+		// acceptedAt is the unix nano time of the last accepted answer, a
+		// 2xx.
 		acceptedAt atomic.Int64
 	}
 )
@@ -126,8 +131,10 @@ func (t *instrumentedRequester) observe(code int, now time.Time) {
 	switch {
 	case code == http.StatusUnauthorized:
 		t.unauthorizedSince.CompareAndSwap(0, now.UnixNano())
+		t.unauthorizedLast.Store(now.UnixNano())
 	case code >= 200 && code < 300:
 		t.unauthorizedSince.Store(0)
+		t.unauthorizedLast.Store(0)
 		t.acceptedAt.Store(now.UnixNano())
 	}
 }
