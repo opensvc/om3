@@ -565,7 +565,7 @@ var (
 		Example:   "1m",
 		Option:    "speaker_grace_period",
 		Section:   "collector",
-		Since:     "v3.0.0-rc60",
+		Since:     "v3.0.0-rc61",
 		Converter: converters.Duration,
 		Default:   "30s",
 		Text:      keywords.NewText(fs, "text/kw/node/collector.speaker_grace_period"),
@@ -671,7 +671,7 @@ var (
 		Example:   "5m",
 		Option:    "load_pool_interval",
 		Section:   "node",
-		Since:     "v3.0.0-rc60",
+		Since:     "v3.0.0-rc61",
 		Text:      keywords.NewText(fs, "text/kw/node/node.load_pool_interval"),
 		Validate:  validLoadPoolInterval,
 	}
