@@ -294,9 +294,14 @@ func (t Node) pushAsset(data asset.Data) error {
 		return l
 	}
 
+	properties, err := data.Properties.FeedMap()
+	if err != nil {
+		return fmt.Errorf("encode properties: %w", err)
+	}
+
 	gen := make(map[string]any)
 
-	gen["properties"] = data.Properties
+	gen["properties"] = properties
 	gen["hardware"] = data.Hardware
 	gen["lan"] = data.LAN
 	gen["uids"] = data.UIDS
