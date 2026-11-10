@@ -137,6 +137,15 @@ func TestCmdClusterEnrollWaitCollector(t *testing.T) {
 			},
 			want: "Node node2 is alive\nNode node2 is registered on the collector\n",
 		},
+		"registered, starting first": {
+			msgs: []any{
+				&msgbus.NodeAlive{Node: "node2"},
+				collectorUpdated("node2", "starting"),
+				collectorUpdated("node2", "speaker-candidate"),
+			},
+			want: "Node node2 is alive\nNode node2 is registered on the collector\n",
+			not:  "starting",
+		},
 		"registered, state before alive": {
 			msgs: []any{
 				collectorUpdated("node2", "speaker"),

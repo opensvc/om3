@@ -1,6 +1,7 @@
 package object
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -514,4 +515,39 @@ secrets_environment@n1 =
 	v, ok = setOf(m, "app#1.environment")
 	require.True(t, ok)
 	assert.Equal(t, "T from ./sec/tok key k", v)
+}
+
+// The presnap_trigger and postsnap_trigger of v2 are dropped, in any section
+// and for any scope, the migration saying om runs no hook around the
+// snapshots of the sync resources: kept, they would be unknown keywords.
+func TestTheSnapTriggersAreDropped(t *testing.T) {
+	m := migrationOf(t, `
+[DEFAULT]
+nodes = `+hostname.Hostname()+`
+presnap_trigger = /bin/true
+postsnap_trigger@`+hostname.Hostname()+` = /bin/true
+pre_start = /bin/true
+
+[sync#1]
+type = zfs
+src = pool/src
+dst = pool/dst
+postsnap_trigger = /bin/true
+`)
+	for _, k := range []string{
+		// A key of DEFAULT says no section.
+		"presnap_trigger",
+		"postsnap_trigger@" + hostname.Hostname(),
+		"sync#1.postsnap_trigger",
+	} {
+		assert.True(t, unset(m, k), "%s is dropped", k)
+	}
+	assert.False(t, unset(m, "pre_start"), "the other triggers are kept")
+	notes := 0
+	for _, n := range m.Notes {
+		if strings.Contains(n, "no hook around the snapshots") {
+			notes++
+		}
+	}
+	assert.Equal(t, 3, notes, "%v", m.Notes)
 }

@@ -107,8 +107,46 @@ type (
 		// the collector, keyed by instance key (<path>@<node>).
 		resInfoSent map[string]resInfoSent
 
-		// isSpeaker is true when localhost NodeStatus.IsLeader is true
+		// isSpeaker is true when localhost is the speaker node.
 		isSpeaker bool
+
+		// speaker is the node speaking to the collector, chosen by
+		// speakerNode. speakerChosen is set once the speaker was chosen
+		// a first time.
+		speaker       string
+		speakerChosen bool
+
+		// requesterKey is the settings client was built from, see
+		// requesterKey.
+		requesterKey string
+
+		// credsRefusedUntil is the end of the backoff of credentials the
+		// collector refuses, zero when it does not: the node leaves the
+		// speech to the others until then. credsRefusedBackoff is the
+		// duration of that backoff, doubling at each refusal until the
+		// collector accepts them, and credsOfferedAt when the node last
+		// offered them again. See checkCredentials.
+		credsRefusedUntil   time.Time
+		credsRefusedBackoff time.Duration
+		credsOfferedAt      time.Time
+
+		// startingUntil is the deadline of the startup hold, zero once
+		// it ended: the collector does not speak until it knows the
+		// collector state of the live peers, so a node starting does not
+		// speak beside the node speaking. holdOnEnable is set for the
+		// hold of a collector a configuration change enables. See
+		// checkStarting.
+		startingUntil time.Time
+		holdOnEnable  bool
+
+		// speakerAwaySince is when the speaker, a peer, went away, as with
+		// its daemon restarting: the node waits for it, for
+		// collector.speaker_grace_period, before another speaks.
+		// wasSpeakerUntil is set at the start of a node that was the
+		// speaker before its stop, until the end of the grace the peers
+		// wait for it. See awaySpeaker.
+		speakerAwaySince time.Time
+		wasSpeakerUntil  time.Time
 
 		// disable is true when collector is disabled (example ErrNodeCollectorConfig)
 		disable bool
@@ -270,17 +308,31 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	return t
 }
 
+// requesterKey returns the settings of c the client of the feeder is built
+// from: the feeder url, the node.uuid and the tls verification.
+func requesterKey(c *collector.Config) string {
+	return fmt.Sprintf("%s\x00%s\x00%t", c.FeederUrl, c.Password, c.Insecure)
+}
+
 func (t *T) setupRequester(c *collector.Config) error {
 	// TODO: pickup dbopensvc, auth, insecure from config update message
 	//       to create requester from core/collector.NewRequester
 	t.status.ConfiguredAt = time.Now()
 	if c == nil {
 		t.client = nil
+		t.requesterKey = ""
 		t.disable = true
 		t.status.Url = ""
 		return nil
+	} else if key := requesterKey(c); t.client != nil && key == t.requesterKey {
+		// The settings the client is built from are the same, as on a
+		// change of another collector keyword: the client, and the 401
+		// answers it tracks, are kept.
+		t.disable = false
+		return nil
 	} else if cli, err := c.NewFeedRequester(); err != nil {
 		t.client = nil
+		t.requesterKey = ""
 		if errors.Is(err, collector.ErrConfig) {
 			t.disable = true
 			t.status.Url = ""
@@ -293,6 +345,7 @@ func (t *T) setupRequester(c *collector.Config) error {
 		return err
 	} else {
 		t.client = newInstrumentedRequester(cli)
+		t.requesterKey = key
 		t.status.Url = cli.URL()
 		// It is now enabled, clear previous disable state
 		t.disable = false
@@ -310,6 +363,9 @@ func (t *T) Start(ctx context.Context) error {
 
 	go func(errC chan<- error) {
 		defer t.wg.Done()
+		// An audit session active already gets the logs of the setup.
+		// The loop attaches again the one begun during the delay.
+		t.attachActiveAuditIfAny()
 		initialNodeConfig := node.ConfigData.GetByNode(t.localhost)
 		if initialNodeConfig == nil {
 			errC <- fmt.Errorf("unexpected nil node config data")
@@ -369,11 +425,13 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
 
 	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, pubsub.Label{"changed", "true"})
+	sub.AddFilter(&msgbus.DaemonCollectorUpdated{})
 
 	sub.Start()
 	return sub
@@ -394,19 +452,29 @@ func (t *T) catchUpConfig() {
 }
 
 func (t *T) loop() {
+	// Subscribe first: the events coming during the init wait in the queue,
+	// and an audit session begun before the subscription, as one
+	// reconnecting to a daemon restarting, published its AuditStart to no
+	// collector: attach it now, before the first log of the loop. One begun
+	// after comes as an event.
+	sub := t.startSubscriptions()
+	t.attachActiveAuditIfAny()
+
 	// TODO: dbopensvc value, isSpeaker should enable/disable collector
 	t.log.Infof("loop started")
-	t.isSpeaker = !t.disable && node.StatusData.GetByNode(t.localhost).IsLeader
-	t.publishOnChange(t.getState())
 
 	t.initChanges()
 	t.initActions()
-	if t.isSpeaker {
-		// onNodeStatusUpdated fires no transition when the daemon starts while
-		// already speaker, so seed here too.
-		t.seedResInfoToSend()
-	}
-	sub := t.startSubscriptions()
+	t.startHold(false)
+	// A node that was the speaker before its stop takes the speech back:
+	// the peers wait for it. The mark is read once.
+	t.readSpeakerMark(time.Now())
+	t.unmarkSpeaker()
+	// The speaker is chosen as on any event, not taken from the leader flag:
+	// a node leader may not be able to speak, and a node starting may join
+	// a cluster another node speaks for. A start as speaker seeds the feeds.
+	t.updateSpeaker()
+	t.publishOnChange(t.getState())
 
 	t.catchUpConfig()
 
@@ -415,7 +483,7 @@ func (t *T) loop() {
 	// subscription, for a speaker to queue its own.
 	t.announceActionPending(true)
 	defer func() {
-		t.status.State = "disabled"
+		t.status.State = t.stopState()
 		t.publish()
 
 		if err := sub.Stop(); err != nil {
@@ -454,8 +522,12 @@ func (t *T) loop() {
 				t.onNodeConfigUpdated(c)
 			case *msgbus.DaemonHeartbeatUpdated:
 				t.daemonStatusChange[c.Node] = struct{}{}
+			case *msgbus.DaemonCollectorUpdated:
+				t.onDaemonCollectorUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
 				t.onNodeMonitorDeleted(c)
+			case *msgbus.NodeMonitorUpdated:
+				t.onNodeMonitorUpdated(c)
 			case *msgbus.NodeStatusUpdated:
 				t.onNodeStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:
@@ -542,23 +614,34 @@ func (t *T) publish() {
 //
 //	disable: node has no collector configuration
 //	speaker: node is collector speaker
-//	speaker-warning: node is collector speaker, but has client errors
+//	speaker-warning: node is collector speaker, but has no client or its
+//	                 credentials are refused, as no node can speak
+//	starting: node is collector speaker candidate, holding its speech until
+//	          it knows the collector state of the live peers
+//	stopping: node collector speaker is stopping, as with its daemon
+//	          restarting: the peers wait for it before another speaks
+//	stopped: node collector not speaker, or not able to speak, is stopping:
+//	         the peers do not wait for it
 //	speaker-candidate: node is collector speaker candidate
-//	warning: node is collector speaker candidate, but has client errors
+//	warning: node is collector speaker candidate, but has no client or its
+//	         credentials are refused
 func (t *T) getState() string {
+	usable := t.client != nil && !t.credsRefused()
 	if t.disable {
 		return "disabled"
 	} else if t.isSpeaker {
-		if t.client != nil {
+		if usable {
 			return "speaker"
 		} else {
 			return "speaker-warning"
 		}
 	} else {
-		if t.client != nil {
-			return "speaker-candidate"
-		} else {
+		if !usable {
 			return "warning"
+		} else if t.starting() {
+			return "starting"
+		} else {
+			return "speaker-candidate"
 		}
 	}
 }
@@ -568,9 +651,12 @@ func (t *T) getState() string {
 // UpdatedAt is the time of last publication (updated each time publication is
 // done).
 func (t *T) publishOnChange(state string) {
-	if state != t.status.State {
-		t.log.Infof("state change %s -> %s", t.status.State, state)
+	if state != t.status.State || t.speaker != t.status.Speaker {
+		if state != t.status.State {
+			t.log.Infof("state change %s -> %s", t.status.State, state)
+		}
 		t.status.State = state
+		t.status.Speaker = t.speaker
 		t.status.UpdatedAt = time.Now()
 		t.publish()
 	} else if t.status.ConfiguredAt.After(t.status.UpdatedAt) {
@@ -610,6 +696,12 @@ func (t *T) attachActiveAuditIfAny() {
 	}
 	sess, ok := reg.Snapshot()
 	if !ok {
+		// A session attached at the start, and ended during the delay
+		// before the subscription, sent its AuditStop to no collector:
+		// detach it.
+		if q := t.log.Q(); q != nil {
+			t.log.HandleAuditStop(q, nil, "collector")
+		}
 		return
 	}
 	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "collector")

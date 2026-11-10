@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -21,6 +22,9 @@ func TestSpeakerFollowsCollectorConfig(t *testing.T) {
 	p := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "s1"}
 	instance.StatusData.Set(p, "node1", &instance.Status{})
 	defer instance.StatusData.Unset(p, "node1")
+	// The speaker is chosen among the cluster nodes.
+	clusternode.Set([]string{"node1"})
+	defer clusternode.Set(nil)
 
 	tr, _ := newTestT(t)
 	tr.resInfoToSend = make(map[string]*msgbus.InstanceResourceInfoUpdated)

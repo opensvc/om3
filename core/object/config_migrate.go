@@ -79,6 +79,32 @@ var ObjectMigrationRules = MigrationRules{
 			"and sec1/pattern becomes * from ./sec/sec1 key pattern, the variables named after the keys.",
 		apply: migrateEnvironmentKeywords,
 	},
+	{
+		Doc: "The presnap_trigger and postsnap_trigger keywords are removed: " +
+			"om runs no hook around the snapshots the sync resources take, as with sync.zfs " +
+			"or sync.rsync with snap set.",
+		apply: migrateSnapTriggers,
+	},
+}
+
+// removedSnapTriggers are the keywords of the commands v2 ran before and
+// after the snapshots of the sync resources of an object. om runs no hook
+// around them.
+var removedSnapTriggers = []string{"presnap_trigger", "postsnap_trigger"}
+
+// migrateSnapTriggers removes the presnap_trigger and postsnap_trigger
+// keywords, in any section and for any scope, saying no hook runs around the
+// snapshots anymore: kept, they would only be reported as unknown keywords.
+func migrateSnapTriggers(cfg *xconfig.T, m *Migration) {
+	for _, section := range cfg.SectionStrings() {
+		for _, option := range cfg.Keys(section) {
+			if base, _ := cutScope(option); slices.Contains(removedSnapTriggers, base) {
+				k := key.New(section, option)
+				m.Unsets = append(m.Unsets, k)
+				m.Notes = append(m.Notes, fmt.Sprintf("%s is dropped: om runs no hook around the snapshots of the sync resources", k))
+			}
+		}
+	}
 }
 
 // environmentKeywords are the keywords of the variables read from the keys of

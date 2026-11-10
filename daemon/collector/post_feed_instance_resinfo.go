@@ -152,6 +152,8 @@ func (r resInfoResult) apply(t *T) {
 		return
 	}
 	var failErr error
+	refused := warnSeries{log: t.log}
+	skipped := warnSeries{log: t.log}
 	for _, item := range r.items {
 		i, v := item.key, item.queued
 		switch item.outcome {
@@ -166,9 +168,9 @@ func (r resInfoResult) apply(t *T) {
 			if errors.Is(item.err, errCollectorRefused) {
 				// refused for good, as the info of a node the collector
 				// does not know in the cluster
-				t.log.Warnf("post resource info %s: %s", i, item.err)
+				refused.add("post resource info %s: %s", i, item.err)
 			} else if !errors.Is(item.err, os.ErrNotExist) {
-				t.log.Warnf("skip send resource info %s: %s", i, item.err)
+				skipped.add("skip send resource info %s: %s", i, item.err)
 			}
 		}
 		if queued, ok := t.resInfoToSend[i]; !ok || queued != v {
@@ -184,6 +186,8 @@ func (r resInfoResult) apply(t *T) {
 			t.resInfoSent[i] = sent
 		}
 	}
+	refused.done("post resource info refused by the collector")
+	skipped.done("skip send resource info")
 	t.resInfoFailure.update(t.log, time.Now(), failErr, len(t.resInfoToSend))
 }
 

@@ -167,6 +167,7 @@ func (r objectConfigResult) apply(t *T) {
 		return
 	}
 	var failErr error
+	skipped := warnSeries{log: t.log}
 	for _, item := range r.items {
 		p := item.path
 		switch item.outcome {
@@ -177,7 +178,7 @@ func (r objectConfigResult) apply(t *T) {
 		case sendDropped:
 			// skip os.ErrNotExist, path may be deleted
 			if !errors.Is(item.err, os.ErrNotExist) {
-				t.log.Warnf("skip send instance config %s: %s", p, item.err)
+				skipped.add("skip send instance config %s: %s", p, item.err)
 			}
 		case sendSkipped:
 			t.log.Debugf("skip already sent instance config %s with checksum %s", p, item.sentChecksum)
@@ -195,6 +196,7 @@ func (r objectConfigResult) apply(t *T) {
 			t.objectConfigSent[p] = sent
 		}
 	}
+	skipped.done("skip send instance config")
 	t.objectConfigFailure.update(t.log, time.Now(), failErr, len(t.objectConfigToSend))
 }
 

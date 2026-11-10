@@ -2257,6 +2257,7 @@ type NodeConfig struct {
 	// to correct, as the cluster configuration has its own.
 	Issues                 *[]string         `json:"issues,omitempty"`
 	Labels                 map[string]string `json:"labels"`
+	LoadPoolInterval       time.Duration     `json:"load_pool_interval"`
 	MaintenanceGracePeriod time.Duration     `json:"maintenance_grace_period"`
 	MaxParallel            int               `json:"max_parallel"`
 	MinAvailMemPct         int               `json:"min_avail_mem_pct"`

@@ -259,8 +259,18 @@ func (t *Logger) SetAuditQ(q chan LogMessage) error {
 	if t == nil {
 		return nil
 	}
+	t.swapAuditQ(q)
+	return nil
+}
+
+// swapAuditQ sets the audit queue to q, and says whether it changed: it was
+// not q already.
+func (t *Logger) swapAuditQ(q chan LogMessage) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.q == q {
+		return false
+	}
 	t.q = q
 	if t.head != nil {
 		t.head.q = q
@@ -268,7 +278,7 @@ func (t *Logger) SetAuditQ(q chan LogMessage) error {
 		// unexpected
 		t.head = t
 	}
-	return nil
+	return true
 }
 
 func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
@@ -300,7 +310,10 @@ func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string
 	if !t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
-	if err := t.SetAuditQ(q); err != nil {
+	// A session attached already, as one a subsystem starting attaches from
+	// the audit registry, then from its AuditStart event, is left as it is:
+	// it says start auditing once.
+	if !t.swapAuditQ(q) {
 		return
 	}
 	t.Debugf("start auditing")

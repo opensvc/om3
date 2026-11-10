@@ -20,6 +20,7 @@ type (
 		Env                    string            `json:"env"`
 		Hooks                  Hooks             `json:"hooks"`
 		Labels                 label.M           `json:"labels"`
+		LoadPoolInterval       time.Duration     `json:"load_pool_interval"`
 		MaintenanceGracePeriod time.Duration     `json:"maintenance_grace_period"`
 		MaxParallel            int               `json:"max_parallel"`
 		MaxKeySize             int64             `json:"max_key_size"`
@@ -49,6 +50,30 @@ type (
 	}
 )
 
+const (
+	// DefaultLoadPoolInterval is the interval between 2 loads of the pools
+	// status of a node when node.load_pool_interval sets none.
+	DefaultLoadPoolInterval = 60 * time.Second
+
+	// MinLoadPoolInterval is the least node.load_pool_interval.
+	MinLoadPoolInterval = time.Second
+)
+
+// EffectiveLoadPoolInterval returns the interval the node loads its pools
+// status at: the default when the config holds none, as the config of a node
+// of a version before the keyword, or of a daemon starting, and the minimum
+// when it holds a lower one.
+func (cfg Config) EffectiveLoadPoolInterval() time.Duration {
+	switch {
+	case cfg.LoadPoolInterval <= 0:
+		return DefaultLoadPoolInterval
+	case cfg.LoadPoolInterval < MinLoadPoolInterval:
+		return MinLoadPoolInterval
+	default:
+		return cfg.LoadPoolInterval
+	}
+}
+
 func (cfg *Config) DeepCopy() *Config {
 	newCfg := *cfg
 	newCfg.Issues = append([]string{}, cfg.Issues...)
@@ -62,6 +87,7 @@ func (cfg *Config) DeepCopy() *Config {
 
 func (c Config) Equal(other Config) bool {
 	if c.Env != other.Env ||
+		c.LoadPoolInterval != other.LoadPoolInterval ||
 		c.MaintenanceGracePeriod != other.MaintenanceGracePeriod ||
 		c.MaxParallel != other.MaxParallel ||
 		c.MaxKeySize != other.MaxKeySize ||

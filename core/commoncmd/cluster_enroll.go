@@ -293,8 +293,9 @@ func (t *CmdClusterEnroll) waitResult(ctx context.Context, evReader event.ReadCl
 			}
 			alive = true
 		case *msgbus.DaemonCollectorUpdated:
-			// A state not published yet is empty.
-			if m.Node != node || m.Value.State == "" {
+			// A state not published yet is empty, and a collector starting
+			// says starting: neither tells the registration.
+			if m.Node != node || !collectorStateKnown(m.Value.State) {
 				continue
 			}
 			collectorState = m.Value.State
@@ -334,7 +335,7 @@ func (t *CmdClusterEnroll) waitCollectorState(node string) error {
 	deadline := time.Now().Add(collectorStateTimeout)
 	for {
 		state, err := t.collectorState(node)
-		if err == nil && state != "" {
+		if err == nil && collectorStateKnown(state) {
 			printCollectorState(node, state)
 			return nil
 		}
@@ -394,6 +395,18 @@ func isBeating(data clusterdump.Data, node string) bool {
 		}
 	}
 	return false
+}
+
+// collectorStateKnown says whether a collector state tells the registration
+// of its node: not empty, as not published yet, nor starting, stopping or
+// stopped.
+func collectorStateKnown(state string) bool {
+	switch state {
+	case "", "starting", "stopping", "stopped":
+		return false
+	default:
+		return true
+	}
 }
 
 // printCollectorState reports the collector registration of the enrolled

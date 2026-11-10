@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -86,10 +87,16 @@ type (
 		state         node.Monitor
 		previousState node.Monitor
 
-		ctx          context.Context
-		cancel       context.CancelFunc
-		cmdC         chan any
-		poolC        chan any
+		ctx    context.Context
+		cancel context.CancelFunc
+		cmdC   chan any
+		poolC  chan any
+
+		// loadPoolInterval is the node.load_pool_interval the pool worker
+		// loads the pools at, set by loadConfig and read by the worker,
+		// which a config change wakes through poolC.
+		loadPoolInterval atomic.Int64
+
 		databus      *daemondata.T
 		publisher    pubsub.Publisher
 		log          *plog.Logger
@@ -488,8 +495,12 @@ func (t *Manager) touchLastShutdown() {
 	}
 }
 
+// poolWorker loads the pools status every node.load_pool_interval, and on
+// demand through poolC, as on a config change, which also applies a new
+// interval.
 func (t *Manager) poolWorker() {
-	ticker := time.NewTicker(60 * time.Second)
+	interval := t.getLoadPoolInterval()
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -500,7 +511,21 @@ func (t *Manager) poolWorker() {
 		case <-ticker.C:
 			t.loadPools()
 		}
+		if d := t.getLoadPoolInterval(); d != interval {
+			t.log.Infof("load pool interval changed %s -> %s", interval, d)
+			interval = d
+			ticker.Reset(interval)
+		}
 	}
+}
+
+// getLoadPoolInterval returns the node.load_pool_interval, the default one
+// before the config is loaded.
+func (t *Manager) getLoadPoolInterval() time.Duration {
+	if d := time.Duration(t.loadPoolInterval.Load()); d > 0 {
+		return d
+	}
+	return node.DefaultLoadPoolInterval
 }
 
 // worker watch for local nmon updates
@@ -949,6 +974,7 @@ func (t *Manager) loadConfig() error {
 	}
 	t.config = n.MergedConfig()
 	t.nodeConfig = t.getNodeConfig()
+	t.loadPoolInterval.Store(int64(t.nodeConfig.LoadPoolInterval))
 	t.checkCert()
 	t.nodeConfig.Issues = t.nodeIssues(t.nodeConfig)
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
