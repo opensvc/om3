@@ -19,11 +19,12 @@ var (
 )
 
 func (t *T) onRefreshTicker() {
-	if t.starting() || !t.speakerAwaySince.IsZero() {
-		// The startup hold and the wait for a speaker away end at their
-		// deadline, whatever the peers say.
-		t.updateSpeaker()
-	}
+	// The speaker is chosen again at each tick, whatever the events: the
+	// startup hold and the wait for a speaker away end at their deadline,
+	// and a choice made from a state a later event did not change, as of a
+	// peer gone quiet, lasts a tick at most. Nothing changing, nothing is
+	// published.
+	t.updateSpeaker()
 	t.checkCredentials(time.Now())
 	if time.Since(t.actionAnnounceCheckAt) >= actionAnnounceInterval {
 		t.actionAnnounceCheckAt = time.Now()
@@ -341,11 +342,11 @@ func (t *T) updateSpeaker() {
 	t.checkStarting(time.Now())
 	speaker := t.speakerNode()
 	if speaker == t.localhost && !t.isSpeaker && !(t.wasSpeaker(time.Now()) && t.peersWaitFor()) {
-		// Nodes starting together each see the others starting, or
-		// stopping, unable to speak yet: the first of them in the cluster
-		// nodes takes the speech, the others leave it to it. A node
-		// speaking already keeps it, as from a peer rejoining.
-		if peer := t.startingPeerBefore(t.speaker == ""); peer != "" {
+		// Nodes starting together each see the others starting, unable to
+		// speak yet: the first of them in the cluster nodes takes the
+		// speech, the others leave it to it. A node speaking already keeps
+		// it, as from a peer rejoining.
+		if peer := t.startingPeerBefore(); peer != "" {
 			speaker = peer
 		}
 	}

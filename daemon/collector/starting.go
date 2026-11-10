@@ -78,11 +78,10 @@ func isStopState(state string) bool {
 }
 
 // startingPeerBefore returns the first live peer before the node in the
-// cluster nodes whose collector is starting, "" when none is. withStopped
-// takes a peer stopping or stopped for one starting again, as for the first
-// choice of a node restarting with it: a node choosing again has a speaker,
-// and waits for it gone for collector.speaker_grace_period only.
-func (t *T) startingPeerBefore(withStopped bool) string {
+// cluster nodes whose collector is starting, "" when none is. A peer stopping
+// or stopped is not waited for here: the startup hold waits for the state of
+// its new daemon, and past the hold it is likely gone.
+func (t *T) startingPeerBefore() string {
 	for _, nodename := range clusternode.Get() {
 		if nodename == t.localhost {
 			return ""
@@ -91,7 +90,7 @@ func (t *T) startingPeerBefore(withStopped bool) string {
 			continue
 		}
 		c := daemonsubsystem.DataCollector.Get(nodename)
-		if c != nil && (c.State == "starting" || (withStopped && isStopState(c.State))) {
+		if c != nil && c.State == "starting" {
 			return nodename
 		}
 	}

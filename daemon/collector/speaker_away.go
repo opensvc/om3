@@ -54,7 +54,8 @@ func isAway(nodename string) bool {
 // speaker grace period, "" when it waits for none: the speaker is the node
 // itself, or is not away, or is away for longer.
 func (t *T) awaySpeaker(now time.Time) string {
-	if t.speaker == "" || t.speaker == t.localhost || !isAway(t.speaker) {
+	if t.speaker == "" || t.speaker == t.localhost || !clusternode.Has(t.speaker) || !isAway(t.speaker) {
+		// A speaker removed from the cluster nodes is not waited for.
 		t.speakerAwaySince = time.Time{}
 		return ""
 	}
@@ -134,7 +135,7 @@ func (t *T) peersWaitFor() bool {
 			continue
 		}
 		c := daemonsubsystem.DataCollector.Get(nodename)
-		if c != nil && c.Speaker != "" && c.Speaker != t.localhost {
+		if c != nil && c.Speaker != "" && c.Speaker != t.localhost && clusternode.Has(c.Speaker) {
 			return false
 		}
 	}
@@ -155,6 +156,11 @@ func (t *T) peersSpeaker() string {
 			continue
 		}
 		speaker := c.Speaker
+		if !clusternode.Has(speaker) {
+			// A speaker removed from the cluster nodes, the cache of its
+			// data not dropped yet.
+			continue
+		}
 		if speaker != nodename && node.MonitorData.GetByNode(speaker) == nil {
 			continue
 		}

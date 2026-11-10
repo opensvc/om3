@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -318,4 +319,74 @@ func TestTheSpeakerIsPublished(t *testing.T) {
 	trs := newClusterTs(t, map[string]string{"n1": "speaker", "n3": "speaker-candidate"})
 	trs["n2"].updateSpeaker()
 	assert.Equal(t, "n1", daemonsubsystem.DataCollector.Get("n2").Speaker)
+}
+
+// A node choosing past its startup hold does not leave the speech to a peer
+// before it saying stopped or stopping: a peer that did not start again
+// within the hold is likely gone, and would leave the cluster without speaker.
+func TestAStoppedPeerIsNotWaitedForPastTheHold(t *testing.T) {
+	for _, stale := range []string{"stopped", "stopping"} {
+		t.Run(stale, func(t *testing.T) {
+			setCluster(t, []string{"n1", "n2"}, map[string]string{"n1": stale})
+			n2 := newStartingT(t, "n2")
+			n2.startingUntil = time.Now().Add(-time.Second)
+			n2.updateSpeaker()
+			assert.Equal(t, "n2", n2.speaker)
+			assert.True(t, n2.isSpeaker)
+		})
+	}
+}
+
+// The refresh ticker chooses the speaker again, whatever the events: a
+// choice made from a state no event came to change lasts a tick at most.
+func TestTheTickerChoosesTheSpeakerAgain(t *testing.T) {
+	trs := newClusterTs(t, map[string]string{"n1": "speaker", "n3": "speaker-candidate"})
+	n2 := trs["n2"]
+	n2.client = &fakeRequester{respond: func(*http.Request) *http.Response {
+		return response(http.StatusAccepted, "{}")
+	}}
+	n2.updateSpeaker()
+	require.Equal(t, "n1", n2.speaker)
+
+	// The state changes in the cache, no event telling it.
+	setPeerState("n1", "speaker-warning")
+	n2.onRefreshTicker()
+	assert.Equal(t, "n2", n2.speaker)
+	assert.True(t, n2.isSpeaker)
+}
+
+// A node removed from the cluster nodes, its cached data not dropped yet, is
+// neither followed as the speaker its peers report nor waited for away.
+func TestARemovedNodeIsNoSpeaker(t *testing.T) {
+	t.Run("reported by a peer", func(t *testing.T) {
+		setCluster(t, []string{"n1", "n2"}, nil)
+		node.MonitorData.Set("n2", &node.Monitor{})
+		node.MonitorData.Set("n3", &node.Monitor{})
+		setPeerState("n3", "speaker")
+		c := daemonsubsystem.Collector{}
+		c.State = "speaker-candidate"
+		c.Speaker = "n3"
+		daemonsubsystem.DataCollector.Set("n2", &c)
+
+		n1 := newSpeakerT(t, &fakeRequester{})
+		n1.localhost = "n1"
+		n1.isSpeaker = false
+		n1.nodeIsLeader = map[string]bool{"n1": true}
+		n1.updateSpeaker()
+		assert.Equal(t, "n1", n1.speaker)
+		assert.True(t, n1.isSpeaker)
+	})
+	t.Run("away", func(t *testing.T) {
+		setCluster(t, []string{"n1", "n2"}, map[string]string{"n2": "speaker-candidate"})
+		node.MonitorData.Set("n3", &node.Monitor{})
+		setPeerState("n3", "stopping")
+		n1 := newSpeakerT(t, &fakeRequester{})
+		n1.localhost = "n1"
+		n1.isSpeaker = false
+		n1.speaker = "n3"
+		n1.nodeIsLeader = map[string]bool{"n1": true}
+		n1.updateSpeaker()
+		assert.Equal(t, "n1", n1.speaker)
+		assert.True(t, n1.isSpeaker)
+	})
 }
