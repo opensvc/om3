@@ -1,0 +1,3 @@
+How the driver reaches the api of the provider: its url, and the sec
+holding the credentials, both defaulting to the sgcp configuration file of
+the node.

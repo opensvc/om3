@@ -1,0 +1,2 @@
+The policy routing rule the resource adds, as the ip rule command takes it,
+and the container whose network namespace it is added in.

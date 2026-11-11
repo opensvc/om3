@@ -60,6 +60,7 @@ var (
 		Converter:     converters.Duration,
 		DefaultOption: "sync_max_delay",
 		Option:        "max_delay",
+		Group:         GroupStatus.ID,
 		Text:          keywords.NewText(fs, "text/kw/max_delay"),
 	}
 	KWSchedule = keywords.Keyword{
@@ -67,6 +68,7 @@ var (
 		DefaultOption: "sync_schedule",
 		Example:       "00:00-01:00 mon",
 		Option:        "schedule",
+		Group:         GroupScheduling.ID,
 		Scopable:      true,
 		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
@@ -76,6 +78,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "log",
+		Group:     GroupScheduling.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/log"),
 	}

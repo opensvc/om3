@@ -22,6 +22,7 @@ var (
 			Attr:    "DiskID",
 			Example: "6589cfc00000097484f0728d8b2118a6",
 			Option:  "disk_id",
+			Group:   resdisk.GroupDevice.ID,
 			// Written by the provision, for the disk it created: a
 			// clone keeping it would take the disk of its source,
 			// as its provision creates none once it is set.
@@ -38,6 +39,7 @@ var (
 			// size to every resource that does not name one of its own.
 			Inherit:              keywords.InheritLeaf,
 			Option:               "size",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -47,6 +49,7 @@ var (
 			Attr:     "Pool",
 			Example:  "fcpool1",
 			Option:   "pool",
+			Group:    resdisk.GroupCreation.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/pool"),
 		},
@@ -54,6 +57,7 @@ var (
 			Attr:     "Name",
 			Example:  "myfcdisk1",
 			Option:   "name",
+			Group:    resdisk.GroupDevice.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
@@ -61,6 +65,7 @@ var (
 			Attr:     "Array",
 			Example:  "xtremio-prod1",
 			Option:   "array",
+			Group:    resdisk.GroupCreation.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/array"),
 		},
@@ -68,6 +73,7 @@ var (
 			Attr:     "DiskGroup",
 			Example:  "default",
 			Option:   "diskgroup",
+			Group:    resdisk.GroupCreation.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/diskgroup"),
 		},
@@ -75,6 +81,7 @@ var (
 			Attr:     "SLO",
 			Example:  "Optimized",
 			Option:   "slo",
+			Group:    resdisk.GroupCreation.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/slo"),
 		},
@@ -100,5 +107,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

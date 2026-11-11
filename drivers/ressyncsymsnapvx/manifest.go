@@ -22,6 +22,7 @@ var (
 			Attr:     "Name",
 			Example:  "prod_db1_weekly",
 			Option:   "name",
+			Group:    ressync.GroupSnapshots.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
@@ -29,6 +30,7 @@ var (
 			Attr:     "SymID",
 			Example:  "0000001234",
 			Option:   "symid",
+			Group:    ressync.GroupArray.ID,
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/symid"),
@@ -38,6 +40,7 @@ var (
 			Converter: converters.List,
 			Example:   "012a 012b",
 			Option:    "devs",
+			Group:     ressync.GroupArray.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/devs"),
 		},
@@ -46,6 +49,7 @@ var (
 			Converter:  converters.List,
 			Example:    "disk#0 disk#1",
 			Option:     "devs_from",
+			Group:      ressync.GroupArray.ID,
 			References: &keywords.References{Groups: []string{"disk", "fs", "volume", "container"}, Shape: keywords.ReferencesRIDs},
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/devs_from"),
@@ -54,6 +58,7 @@ var (
 			Attr:      "Secure",
 			Converter: converters.Bool,
 			Option:    "secure",
+			Group:     ressync.GroupSnapshots.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/secure"),
 		},
@@ -61,6 +66,7 @@ var (
 			Attr:     "Absolute",
 			Example:  "12:15",
 			Option:   "absolute",
+			Group:    ressync.GroupSnapshots.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/absolute"),
 		},
@@ -68,6 +74,7 @@ var (
 			Attr:     "Delta",
 			Example:  "00:15",
 			Option:   "delta",
+			Group:    ressync.GroupSnapshots.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/delta"),
 		},
@@ -91,5 +98,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectFQDN)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(Keywords...)
+	m.AddGroups(ressync.GroupArray, ressync.GroupSnapshots, ressync.GroupScheduling, ressync.GroupStatus)
 	return m
 }

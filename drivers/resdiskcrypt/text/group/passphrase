@@ -1,0 +1,3 @@
+The passphrase opening the device: the sec object keeping it, and whether
+the provision generates it and the unprovision forgets it, or the user
+supplies it in the sec before the provision.

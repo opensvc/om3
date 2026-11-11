@@ -1,0 +1,4 @@
+The records the cluster DNS serves for the address: the SRV records of the
+services it exposes, the suffix the name of the record takes where the
+driver has one, and how long a start waits for the records to be served
+before the next resource starts.

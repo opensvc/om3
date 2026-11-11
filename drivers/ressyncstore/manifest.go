@@ -22,6 +22,7 @@ var (
 			Attr:     "Store",
 			Example:  "store1",
 			Option:   "store",
+			Group:    ressync.GroupEndpoints.ID,
 			Required: true,
 			Text:     keywords.NewText(fs, "text/kw/store"),
 		},
@@ -30,6 +31,7 @@ var (
 			Converter:  converters.List,
 			Example:    "fs#1 volume#1",
 			Option:     "rids",
+			Group:      ressync.GroupEndpoints.ID,
 			References: &keywords.References{Groups: []string{"fs", "volume"}, Shape: keywords.ReferencesRIDs},
 			Text:       keywords.NewText(fs, "text/kw/rids"),
 		},
@@ -38,6 +40,7 @@ var (
 			Converter: converters.List,
 			Example:   "fs#1:/tmp *.log",
 			Option:    "exclude",
+			Group:     ressync.GroupEndpoints.ID,
 			Text:      keywords.NewText(fs, "text/kw/exclude"),
 		},
 		{
@@ -45,6 +48,7 @@ var (
 			Converter: converters.Bool,
 			Default:   "false",
 			Option:    "include_refs",
+			Group:     ressync.GroupEndpoints.ID,
 			Text:      keywords.NewText(fs, "text/kw/include_refs"),
 		},
 		{
@@ -52,12 +56,14 @@ var (
 			Candidates: []string{"auto", "none"},
 			Default:    "auto",
 			Option:     "snapshot",
+			Group:      ressync.GroupTransfer.ID,
 			Text:       keywords.NewText(fs, "text/kw/snapshot"),
 		},
 		{
 			Attr:    "Keep",
 			Example: "24h 7d 4w 6m",
 			Option:  "keep",
+			Group:   ressync.GroupRetention.ID,
 			Text:    keywords.NewText(fs, "text/kw/keep"),
 		},
 	}
@@ -82,5 +88,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(ressync.GroupEndpoints, ressync.GroupTransfer, ressync.GroupScheduling, ressync.GroupStatus, ressync.GroupRetention)
 	return m
 }

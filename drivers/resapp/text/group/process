@@ -1,0 +1,5 @@
+The commands the app runs to start and stop, and to feed the info of its
+instance: each its own command, or the launcher script given the action as
+its argument. The user, group, umask and directory they run as and in, and
+the network namespace of another resource they run in. A simple app also
+says the processes its stop terminates.

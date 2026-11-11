@@ -24,6 +24,7 @@ var (
 			Attr:         "Res",
 			Example:      "r1",
 			Option:       "res",
+			Group:        resdisk.GroupDevice.ID,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/res"),
 		},
@@ -31,6 +32,7 @@ var (
 			Attr:                 "Disk",
 			Example:              "/dev/vg1/lv1",
 			Option:               "disk",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -41,6 +43,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/addr.default"),
 			Example:      "1.2.3.4",
 			Option:       "addr",
+			Group:        resdisk.GroupReplication.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/addr"),
@@ -50,6 +53,7 @@ var (
 			Converter:    converters.Int,
 			Example:      "1234",
 			Option:       "port",
+			Group:        resdisk.GroupReplication.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/port"),
@@ -60,6 +64,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/max_peers.default"),
 			Example:      "8",
 			Option:       "max_peers",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/max_peers"),
 		},
@@ -67,6 +72,7 @@ var (
 			Attr:         "Network",
 			Example:      "benet1",
 			Option:       "network",
+			Group:        resdisk.GroupReplication.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/network"),
 		},
@@ -74,6 +80,7 @@ var (
 			Attr:         "Template",
 			Example:      "default",
 			Option:       "template",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/template"),
 		},
@@ -99,5 +106,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupReplication, resdisk.GroupAccess)
 	return m
 }

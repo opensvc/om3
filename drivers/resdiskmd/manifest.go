@@ -24,6 +24,7 @@ var (
 			Attr:         "UUID",
 			Example:      "dev1",
 			Option:       "uuid",
+			Group:        resdisk.GroupDevice.ID,
 			Recorded:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -34,6 +35,7 @@ var (
 			Converter:            converters.List,
 			Example:              "/dev/mapper/23 /dev/mapper/24",
 			Option:               "devs",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -43,6 +45,7 @@ var (
 			Attr:         "Name",
 			Example:      "prettyname",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/name"),
@@ -52,6 +55,7 @@ var (
 			Attr:                 "Level",
 			Example:              "raid1",
 			Option:               "level",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -62,6 +66,7 @@ var (
 			Converter:    converters.Size,
 			Example:      "128k",
 			Option:       "chunk",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/chunk"),
@@ -72,6 +77,7 @@ var (
 			Default:      "0",
 			Example:      "1",
 			Option:       "spares",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/spares"),
@@ -80,6 +86,7 @@ var (
 			Attr:         "Bitmap",
 			Example:      "internal",
 			Option:       "bitmap",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/bitmap"),
@@ -106,5 +113,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

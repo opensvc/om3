@@ -21,6 +21,7 @@ var (
 		{
 			Attr:     "StartCmd",
 			Option:   "start",
+			Group:    resapp.GroupProcess.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/start"),
 			Minimal:  true,
@@ -30,6 +31,7 @@ var (
 			Attr:     "StopCmd",
 			Example:  "/usr/local/bin/stop",
 			Option:   "stop",
+			Group:    resapp.GroupProcess.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/stop"),
 		},
@@ -37,6 +39,7 @@ var (
 			Attr:     "CheckCmd",
 			Example:  "/usr/local/bin/check",
 			Option:   "check",
+			Group:    resapp.GroupStatus.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/check"),
 		},
@@ -45,6 +48,7 @@ var (
 			Candidates: []string{killParent, killTree},
 			Default:    killTree,
 			Option:     "kill",
+			Group:      resapp.GroupProcess.ID,
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/kill"),
 		},
@@ -72,5 +76,6 @@ func (t *T) Manifest() *manifest.T {
 	m.AddKeywords(resapp.BaseKeywords...)
 	m.AddKeywords(resapp.UnixKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resapp.Groups...)
 	return m
 }

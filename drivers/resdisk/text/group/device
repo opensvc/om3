@@ -1,0 +1,3 @@
+The device the resource activates, and what names it on the node or on its
+storage: the volume, the pool, the file or the array disk, and the devices
+it is made of when its start needs them.

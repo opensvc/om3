@@ -23,6 +23,7 @@ var (
 			Attr:         "Name",
 			Default:      "{name}-vol-{rindex}",
 			Option:       "name",
+			Group:        GroupVolume.ID,
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/name"),
@@ -30,6 +31,7 @@ var (
 		{
 			Attr:         "PoolType",
 			Option:       "type",
+			Group:        GroupPool.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/type"),
@@ -39,6 +41,7 @@ var (
 			Converter:    converters.Bool,
 			Default:      "false",
 			Option:       "volatile",
+			Group:        GroupPool.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/volatile"),
@@ -48,6 +51,7 @@ var (
 			Converter:    converters.Bool,
 			Default:      "false",
 			Option:       "snap",
+			Group:        GroupPool.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/snap"),
@@ -57,6 +61,7 @@ var (
 			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "exclusive",
+			Group:     GroupVolume.ID,
 			Text:      keywords.NewText(fs, "text/kw/exclusive"),
 		},
 		{
@@ -64,6 +69,7 @@ var (
 			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
 			Default:      "rwo",
 			Option:       "access",
+			Group:        GroupPool.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/access"),
@@ -76,6 +82,7 @@ var (
 			// size to every resource that does not name one of its own.
 			Inherit:              keywords.InheritLeaf,
 			Option:               "size",
+			Group:                GroupVolume.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -84,6 +91,7 @@ var (
 		{
 			Attr:         "Pool",
 			Option:       "pool",
+			Group:        GroupPool.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/pool"),
@@ -93,6 +101,7 @@ var (
 			Converter:    xconfig.NodesConverter,
 			Default:      "{.nodes}",
 			Option:       "nodes",
+			Group:        GroupVolume.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/nodes"),
@@ -102,6 +111,7 @@ var (
 			Converter:    converters.Bool,
 			Default:      "true",
 			Option:       "format",
+			Group:        GroupPool.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/format"),
@@ -130,5 +140,7 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextTopology,
 	)
 	m.AddKeywords(kws...)
+	m.AddGroups(GroupVolume, GroupPool)
+	m.AddGroups(datarecv.Groups...)
 	return m
 }

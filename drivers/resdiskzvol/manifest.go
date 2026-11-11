@@ -22,6 +22,7 @@ var (
 			Attr:         "Name",
 			Example:      "tank/zvol1",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -32,6 +33,7 @@ var (
 			Converter:    converters.Shlex,
 			Example:      "-o dedup=on",
 			Option:       "create_options",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_options"),
@@ -45,6 +47,7 @@ var (
 			// size to every resource that does not name one of its own.
 			Inherit:              keywords.InheritLeaf,
 			Option:               "size",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -55,6 +58,7 @@ var (
 			Converter:    converters.Size,
 			Example:      "256k",
 			Option:       "blocksize",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/blocksize"),
@@ -77,5 +81,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

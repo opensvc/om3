@@ -1,0 +1,4 @@
+How the node accesses the devices the resource exposes: whether the start
+promotes them read-write, the configuration and the credentials the node
+reaches the storage with, the zone they are given to, and the owner, group
+and mode of their device files.

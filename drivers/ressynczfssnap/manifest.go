@@ -22,6 +22,7 @@ var (
 			Attr:     "Name",
 			Example:  "weekly",
 			Option:   "name",
+			Group:    ressync.GroupSnapshots.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
@@ -30,6 +31,7 @@ var (
 			Converter: converters.List,
 			Example:   "svc1fs/data svc1fs/log",
 			Option:    "dataset",
+			Group:     ressync.GroupSnapshots.ID,
 			Required:  true,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/dataset"),
@@ -40,6 +42,7 @@ var (
 			Default:   "3",
 			Example:   "3",
 			Option:    "keep",
+			Group:     ressync.GroupRetention.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/keep"),
 		},
@@ -48,6 +51,7 @@ var (
 			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "recursive",
+			Group:     ressync.GroupSnapshots.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/recursive"),
 		},
@@ -69,5 +73,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(Keywords...)
+	m.AddGroups(ressync.GroupSnapshots, ressync.GroupScheduling, ressync.GroupStatus, ressync.GroupRetention)
 	return m
 }

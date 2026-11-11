@@ -24,6 +24,7 @@ var (
 			Attr:         "LVName",
 			Example:      "lv1",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -33,6 +34,7 @@ var (
 			Attr:         "VGName",
 			Example:      "vg1",
 			Option:       "vg",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -53,6 +55,7 @@ var (
 			// size to every resource that does not name one of its own.
 			Inherit:              keywords.InheritLeaf,
 			Option:               "size",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -63,6 +66,7 @@ var (
 			Converter:    converters.Shlex,
 			Example:      "--contiguous y",
 			Option:       "create_options",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_options"),
@@ -71,6 +75,7 @@ var (
 			Attr:         "ThinPool",
 			Example:      "pool1",
 			Option:       "thin_pool",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Since:        "v3.0.0-rc54",
@@ -94,5 +99,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

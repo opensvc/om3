@@ -1,0 +1,3 @@
+How the driver reaches the sgcp api managing the alias: its url, and the
+secret holding the credentials it authenticates with. Both default to the
+ones of the sgcp configuration file of the node.

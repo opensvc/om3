@@ -17,6 +17,7 @@ var (
 		Default:   "0",
 		Example:   "10s",
 		Option:    "wait_dns",
+		Group:     GroupDNS.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/wait_dns"),
 	}
@@ -57,5 +58,17 @@ var (
 				Excludes: []string{"name"},
 			},
 		},
+	}
+
+	// GroupDNS is the group of the keywords saying the records the cluster
+	// DNS serves for the address of the ip drivers handing one to the
+	// daemon, ip.host, ip.netns and ip.cni: the SRV records of the
+	// services it exposes, the suffix of its name, and whether a start
+	// waits for them.
+	GroupDNS = keywords.Group{
+		ID:    "dns",
+		Name:  "DNS",
+		Text:  keywords.NewText(fs, "text/group/dns"),
+		Order: 40,
 	}
 )

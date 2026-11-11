@@ -23,6 +23,7 @@ var (
 			Converter: converters.Duration,
 			Example:   "180",
 			Option:    "start_timeout",
+			Group:     resapp.GroupTimeouts.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/start_timeout"),
 		},
@@ -30,6 +31,7 @@ var (
 			Attr:     "StartCmd",
 			Example:  "/usr/bin/touch /tmp/{fqdn}.{rindex}",
 			Option:   "start",
+			Group:    resapp.GroupProcess.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/start"),
 			Minimal:  true,
@@ -38,6 +40,7 @@ var (
 			Attr:     "StopCmd",
 			Example:  "/usr/bin/rm -f /tmp/{fqdn}.{rindex}",
 			Option:   "stop",
+			Group:    resapp.GroupProcess.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/stop"),
 			Minimal:  true,
@@ -46,6 +49,7 @@ var (
 			Attr:     "CheckCmd",
 			Example:  "/usr/bin/test -f /tmp/{fqdn}.{rindex}",
 			Option:   "check",
+			Group:    resapp.GroupStatus.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/check"),
 			Minimal:  true,
@@ -74,5 +78,6 @@ func (t *T) Manifest() *manifest.T {
 	m.AddKeywords(resapp.BaseKeywords...)
 	m.AddKeywords(resapp.UnixKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resapp.Groups...)
 	return m
 }

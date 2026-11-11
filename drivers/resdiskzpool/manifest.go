@@ -23,6 +23,7 @@ var (
 			Attr:         "Name",
 			Example:      "tank",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -33,6 +34,7 @@ var (
 			Converter: converters.Tristate,
 			Example:   "yes",
 			Option:    "multihost",
+			Group:     manifest.GroupReservation.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/multihost"),
 		},
@@ -41,6 +43,7 @@ var (
 			Converter:            converters.List,
 			Example:              "/dev/mapper/23 /dev/mapper/24",
 			Option:               "vdev",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -51,6 +54,7 @@ var (
 			Converter:    converters.Shlex,
 			Example:      "-O dedup=on",
 			Option:       "create_options",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_options"),
@@ -58,6 +62,7 @@ var (
 		{
 			Attr:     "Zone",
 			Option:   "zone",
+			Group:    resdisk.GroupAccess.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/zone"),
 		},
@@ -80,5 +85,6 @@ func (t *T) Manifest() *manifest.T {
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
 	m.Add(manifest.ContextObjectPath)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

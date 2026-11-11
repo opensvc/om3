@@ -1,0 +1,3 @@
+The owner and the permissions of the files and directories installed in the
+head of the resource, and of its root, applied at each install: an install
+line naming its own wins.

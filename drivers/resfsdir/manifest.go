@@ -21,6 +21,7 @@ var (
 		{
 			Attr:     "DirPath",
 			Option:   "path",
+			Group:    GroupDirectory.ID,
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/path"),
@@ -34,6 +35,7 @@ var (
 			// and fail on a filesystem that cannot hold one.
 			Inherit:  keywords.InheritLeaf,
 			Option:   "size",
+			Group:    GroupSize.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/size"),
 		},
@@ -42,6 +44,7 @@ var (
 			Converter: converters.Int,
 			Inherit:   keywords.InheritLeaf,
 			Option:    "project_id",
+			Group:     GroupSize.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/project_id"),
 		},
@@ -72,5 +75,7 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(kws...)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
+	m.AddGroups(GroupDirectory, GroupSize)
+	m.AddGroups(datarecv.Groups...)
 	return m
 }

@@ -21,6 +21,7 @@ var (
 		Attr:         "File",
 		Example:      "/srv/{fqdn}-loop-{rindex}",
 		Option:       "file",
+		Group:        resdisk.GroupDevice.ID,
 		Required:     true,
 		Scopable:     true,
 		StopToChange: true,
@@ -35,6 +36,7 @@ var (
 		// size to every resource that does not name one of its own.
 		Inherit:              keywords.InheritLeaf,
 		Option:               "size",
+		Group:                resdisk.GroupCreation.ID,
 		Provisioning:         true,
 		ProvisioningRequired: true,
 		Scopable:             true,
@@ -60,5 +62,6 @@ func (t *T) Manifest() *manifest.T {
 		&kwFile,
 		&kwSize,
 	)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

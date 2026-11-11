@@ -1,0 +1,3 @@
+What the resource keeps of what it made: how many snapshots or runs, and
+how long, or how much, the source keeps the base snapshot of a peer missing
+the updates before it stops sending to it.

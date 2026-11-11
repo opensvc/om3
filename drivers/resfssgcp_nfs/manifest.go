@@ -22,6 +22,7 @@ var (
 		{
 			Attr:         "UUID",
 			Option:       "uuid",
+			Group:        GroupAccess.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -30,6 +31,7 @@ var (
 		{
 			Attr:         "Host",
 			Option:       "host",
+			Group:        GroupAccess.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -38,6 +40,7 @@ var (
 		{
 			Attr:       "Permission",
 			Option:     "permission",
+			Group:      GroupAccess.ID,
 			Candidates: []string{"read-only", "read-write"},
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/permission"),
@@ -45,6 +48,7 @@ var (
 		{
 			Attr:      "Exclusive",
 			Option:    "exclusive",
+			Group:     GroupAccess.ID,
 			Converter: converters.Tristate,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/exclusive"),
@@ -52,6 +56,7 @@ var (
 		{
 			Attr:       "Protocol",
 			Option:     "protocol",
+			Group:      GroupAccess.ID,
 			Candidates: []string{"nfs4.1"},
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/protocol"),
@@ -59,12 +64,14 @@ var (
 		{
 			Attr:     "Secret",
 			Option:   "secret",
+			Group:    GroupAPI.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/secret"),
 		},
 		{
 			Attr:     "Endpoint",
 			Option:   "endpoint",
+			Group:    GroupAPI.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/endpoint"),
 		},
@@ -73,6 +80,7 @@ var (
 			Converter: converters.Duration,
 			Example:   "1m5s",
 			Option:    "start_timeout",
+			Group:     GroupTimeouts.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/start_timeout"),
 		},
@@ -102,5 +110,7 @@ func (t *T) Manifest() *manifest.T {
 		&resfshost.KeywordCheckReadEnabled,
 	)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
+	m.AddGroups(Groups...)
+	m.AddGroups(datarecv.Groups...)
 	return m
 }

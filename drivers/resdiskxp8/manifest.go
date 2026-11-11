@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/converters"
 )
 
@@ -22,6 +23,7 @@ var Keywords = []*keywords.Keyword{
 		Converter: converters.Int,
 		Example:   "0",
 		Option:    "instance",
+		Group:     resdisk.GroupReplication.ID,
 		Required:  true,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/instance"),
@@ -30,6 +32,7 @@ var Keywords = []*keywords.Keyword{
 		Attr:     "Group",
 		Example:  "orasvc1",
 		Option:   "group",
+		Group:    resdisk.GroupReplication.ID,
 		Required: true,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/group"),
@@ -37,6 +40,7 @@ var Keywords = []*keywords.Keyword{
 	{
 		Attr:      "SplitStart",
 		Option:    "split_start",
+		Group:     resdisk.GroupReplication.ID,
 		Converter: converters.Bool,
 		Default:   "false",
 		Scopable:  true,
@@ -47,6 +51,7 @@ var Keywords = []*keywords.Keyword{
 		Converter: converters.Duration,
 		Default:   "10s",
 		Option:    "timeout",
+		Group:     resdisk.GroupTimeouts.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/timeout"),
 	},
@@ -55,6 +60,7 @@ var Keywords = []*keywords.Keyword{
 		Converter: converters.Duration,
 		Default:   "5m",
 		Option:    "start_timeout",
+		Group:     resdisk.GroupTimeouts.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/start_timeout"),
 	},
@@ -68,6 +74,7 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectPath,
 	)
 	m.AddKeywords(Keywords...)
+	m.AddGroups(resdisk.GroupReplication, resdisk.GroupTimeouts)
 	return m
 }
 

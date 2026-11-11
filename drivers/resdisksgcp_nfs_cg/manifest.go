@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/converters"
 )
 
@@ -20,6 +21,7 @@ var (
 		{
 			Attr:     "UUID",
 			Option:   "uuid",
+			Group:    resdisk.GroupReplication.ID,
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/uuid"),
@@ -27,6 +29,7 @@ var (
 		{
 			Attr:     "AZ",
 			Option:   "az",
+			Group:    resdisk.GroupReplication.ID,
 			Default:  "{node.labels.az}",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/az"),
@@ -34,18 +37,21 @@ var (
 		{
 			Attr:     "Secret",
 			Option:   "secret",
+			Group:    resdisk.GroupReplication.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/secret"),
 		},
 		{
 			Attr:     "Endpoint",
 			Option:   "endpoint",
+			Group:    resdisk.GroupReplication.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/endpoint"),
 		},
 		{
 			Attr:      "Timeout",
 			Option:    "timeout",
+			Group:     resdisk.GroupTimeouts.ID,
 			Converter: converters.Duration,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
@@ -53,6 +59,7 @@ var (
 		{
 			Attr:      "Failover",
 			Option:    "failover",
+			Group:     resdisk.GroupReplication.ID,
 			Converter: converters.Bool,
 			Default:   "true",
 			Scopable:  true,
@@ -75,5 +82,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupReplication, resdisk.GroupTimeouts)
 	return m
 }

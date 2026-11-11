@@ -1,0 +1,4 @@
+How the provision derives the key of the LUKS header from the passphrase:
+the key derivation function, the memory and threads it may use, and the
+time it takes. The header keeps the derivation it was formatted with, so a
+change applies to the volumes provisioned after it.

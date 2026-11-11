@@ -16,6 +16,7 @@ var (
 	UnixKeywordScriptPath = keywords.Keyword{
 		Attr:     "ScriptPath",
 		Option:   "script",
+		Group:    GroupProcess.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/script"),
 	}
@@ -23,6 +24,7 @@ var (
 		Attr:     "InfoCmd",
 		Default:  "false",
 		Option:   "info",
+		Group:    GroupProcess.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/info"),
 	}
@@ -30,6 +32,7 @@ var (
 		Attr:     "QuiesceCmd",
 		Example:  "/usr/local/bin/app-flush --lock",
 		Option:   "quiesce",
+		Group:    GroupQuiesce.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/quiesce"),
 	}
@@ -37,6 +40,7 @@ var (
 		Attr:     "ResumeCmd",
 		Example:  "/usr/local/bin/app-flush --unlock",
 		Option:   "resume",
+		Group:    GroupQuiesce.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/resume"),
 	}
@@ -45,6 +49,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "status_log",
+		Group:     GroupStatus.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/status_log"),
 	}
@@ -53,6 +58,7 @@ var (
 		Converter: converters.Duration,
 		Example:   "180",
 		Option:    "check_timeout",
+		Group:     GroupTimeouts.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/check_timeout"),
 	}
@@ -61,24 +67,28 @@ var (
 		Converter: converters.Duration,
 		Example:   "180",
 		Option:    "info_timeout",
+		Group:     GroupTimeouts.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/info_timeout"),
 	}
 	UnixKeywordCwd = keywords.Keyword{
 		Attr:     "Cwd",
 		Option:   "cwd",
+		Group:    GroupProcess.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/cwd"),
 	}
 	UnixKeywordUser = keywords.Keyword{
 		Attr:     "User",
 		Option:   "user",
+		Group:    GroupProcess.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/user"),
 	}
 	UnixKeywordGroup = keywords.Keyword{
 		Attr:     "Group",
 		Option:   "group",
+		Group:    GroupProcess.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/group"),
 	}
@@ -87,6 +97,7 @@ var (
 		Converter: converters.Duration,
 		Example:   "30s",
 		Option:    "limit_cpu",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_cpu"),
 	}
@@ -94,6 +105,7 @@ var (
 		Attr:      "Limit.Core",
 		Converter: converters.Size,
 		Option:    "limit_core",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_core"),
 	}
@@ -101,6 +113,7 @@ var (
 		Attr:      "Limit.Data",
 		Converter: converters.Size,
 		Option:    "limit_data",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_data"),
 	}
@@ -108,6 +121,7 @@ var (
 		Attr:      "Limit.FSize",
 		Converter: converters.Size,
 		Option:    "limit_fsize",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_fsize"),
 	}
@@ -115,6 +129,7 @@ var (
 		Attr:      "Limit.MemLock",
 		Converter: converters.Size,
 		Option:    "limit_memlock",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_memlock"),
 	}
@@ -122,6 +137,7 @@ var (
 		Attr:      "Limit.NoFile",
 		Converter: converters.Size,
 		Option:    "limit_nofile",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_nofile"),
 	}
@@ -129,6 +145,7 @@ var (
 		Attr:      "Limit.NProc",
 		Converter: converters.Size,
 		Option:    "limit_nproc",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_nproc"),
 	}
@@ -136,6 +153,7 @@ var (
 		Attr:      "Limit.RSS",
 		Converter: converters.Size,
 		Option:    "limit_rss",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_rss"),
 	}
@@ -143,6 +161,7 @@ var (
 		Attr:      "Limit.Stack",
 		Converter: converters.Size,
 		Option:    "limit_stack",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_stack"),
 	}
@@ -150,6 +169,7 @@ var (
 		Attr:      "Limit.VMem",
 		Converter: converters.Size,
 		Option:    "limit_vmem",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_vmem"),
 	}
@@ -157,6 +177,7 @@ var (
 		Attr:      "Limit.AS",
 		Converter: converters.Size,
 		Option:    "limit_as",
+		Group:     GroupLimits.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_as"),
 	}
@@ -164,6 +185,7 @@ var (
 		Attr:       "NetNS",
 		Example:    "ip#0",
 		Option:     "netns",
+		Group:      GroupProcess.ID,
 		References: &keywords.References{Groups: []string{"ip", "container", "app"}, Shape: keywords.ReferencesRID},
 		Scopable:   true,
 		Text:       keywords.NewText(fs, "text/kw/netns"),

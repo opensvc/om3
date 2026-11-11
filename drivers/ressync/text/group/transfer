@@ -1,0 +1,3 @@
+How an update copies the data: from a snapshot or from the data itself,
+the nested datasets or subvolumes included or not, the intermediate
+snapshots sent, the options of the copy command, and its bandwidth.
