@@ -60,6 +60,19 @@ type (
 	}
 )
 
+// RunTimeLimit returns how long a run may last: run_timeout, which takes
+// precedence, or the timeout of the driver, and zero for no limit.
+func (t *BaseTask) RunTimeLimit(timeout *time.Duration) time.Duration {
+	switch {
+	case t.RunTimeout != nil:
+		return *t.RunTimeout
+	case timeout != nil:
+		return *timeout
+	default:
+		return 0
+	}
+}
+
 func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
 		Action:              "run",

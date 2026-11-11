@@ -93,9 +93,9 @@ func (t *T) lockedRun(ctx context.Context) error {
 	if err := t.RunInstall(ctx); err != nil {
 		return err
 	}
-	if t.Timeout != nil && *t.Timeout > 0 {
+	if timeout := t.RunTimeLimit(t.Timeout); timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *t.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 	provider, closeProvider, err := t.http01(ctx)

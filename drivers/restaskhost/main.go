@@ -138,7 +138,7 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		)
 	}
 	opts = append(opts,
-		command.WithTimeout(app.GetTimeout("run")),
+		command.WithTimeout(t.RunTimeLimit(t.Timeout)),
 		command.WithIgnoredExitCodes(),
 		// A signal the run receives is passed on to the command.
 		command.WithSignalRelay(ctx),
@@ -153,7 +153,9 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		return err
 	}
 	if err != nil {
-		t.Log().Errorf("write last run: %s", err)
+		// The error of the command, as its timeout: the last run is
+		// written already.
+		t.Log().Errorf("run: %s", err)
 		if err := t.onError(ctx); err != nil {
 			t.Log().Warnf("on error: %s", err)
 		}
@@ -196,7 +198,7 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if timeout := app.GetTimeout("run"); timeout > 0 {
+	if timeout := t.RunTimeLimit(t.Timeout); timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
