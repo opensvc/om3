@@ -247,9 +247,7 @@ func (t *T) startMode(ctx context.Context) error {
 		return t.startBridge(ctx)
 	case "dedicated":
 		return t.startDedicated(ctx)
-	case "ipvlan-l2":
-		return t.startIPVLAN(ctx)
-	case "ipvlan-l3":
+	case "ipvlan-l2", "ipvlan-l3", "ipvlan-l3s":
 		return t.startIPVLAN(ctx)
 	case "macvlan":
 		return t.startMACVLAN(ctx)
@@ -555,9 +553,7 @@ func (t *T) stopMode(ctx context.Context) error {
 		return t.stopBridge(ctx)
 	case "dedicated":
 		return t.stopDedicated(ctx)
-	case "ipvlan-l2":
-		return t.stopIPVLAN(ctx)
-	case "ipvlan-l3":
+	case "ipvlan-l2", "ipvlan-l3", "ipvlan-l3s":
 		return t.stopIPVLAN(ctx)
 	case "macvlan":
 		return t.stopMACVLAN(ctx)
