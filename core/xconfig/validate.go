@@ -588,8 +588,10 @@ func (t T) Validate() (Alerts, error) {
 		}
 		// written are the options of the keywords the section sets, in
 		// any scope, by their name or an alias, each with the name it is
-		// written by.
+		// written by. emptied are the options it writes with an empty
+		// value, which overrides the one of DEFAULT.
 		written := make(map[string]string)
+		emptied := make(map[string]bool)
 		for option, raw := range s.KeysHash() {
 			k, err := key.ParseStrict(section + "." + option)
 			if err != nil {
@@ -623,6 +625,8 @@ func (t T) Validate() (Alerts, error) {
 				if _, ok := written[kw.Option]; !ok || k.BaseOption() == kw.Option {
 					written[kw.Option] = k.BaseOption()
 				}
+			} else {
+				emptied[kw.Option] = true
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
 				alerts = append(alerts, t.NewAlertScoping(k, did))
@@ -675,7 +679,7 @@ func (t T) Validate() (Alerts, error) {
 		// The sections of a driver: a resource, or a section of a type
 		// of the node configuration, as an array.
 		if did.Group.IsValid() {
-			alerts = append(alerts, t.strategyAlerts(section, did, written)...)
+			alerts = append(alerts, t.strategyAlerts(section, did, written, emptied)...)
 		}
 	}
 	if i, ok := t.Referrer.(sectionsValidator); ok {
@@ -710,7 +714,7 @@ type keywordGrouper interface {
 // A keyword a strategy uses is set next to the keyword of another strategy
 // when that other strategy does not exclude it: the netmask of a static
 // address also overrides the one of the network an address is drawn from.
-func (t T) strategyAlerts(section string, did driver.ID, written map[string]string) Alerts {
+func (t T) strategyAlerts(section string, did driver.ID, written map[string]string, emptied map[string]bool) Alerts {
 	i, ok := t.Referrer.(keywordGrouper)
 	if !ok {
 		return nil
@@ -729,7 +733,7 @@ func (t T) strategyAlerts(section string, did driver.ID, written map[string]stri
 		return true
 	}
 	for _, group := range i.DriverKeywordGroups(did) {
-		alerts = append(alerts, t.requiredStrategyAlerts(section, did, group, written, active)...)
+		alerts = append(alerts, t.requiredStrategyAlerts(section, did, group, written, emptied, active)...)
 		for _, strategy := range group.Strategies {
 			if !active(strategy) {
 				continue
@@ -837,19 +841,19 @@ func (t *T) sameValue(k key.T, v1, v2 string) bool {
 // A section follows a strategy when it sets a keyword the strategy uses,
 // itself in any scope or by inheriting it from DEFAULT, and the selector
 // values choosing the strategy hold.
-func (t T) requiredStrategyAlerts(section string, did driver.ID, group keywords.Group, written map[string]string, active func(keywords.Strategy) bool) Alerts {
+func (t T) requiredStrategyAlerts(section string, did driver.ID, group keywords.Group, written map[string]string, emptied map[string]bool, active func(keywords.Strategy) bool) Alerts {
 	if len(group.Strategies) == 0 {
 		return nil
 	}
 	var alerts Alerts
 	followed := false
 	for _, strategy := range group.Strategies {
-		if !active(strategy) || !slices.ContainsFunc(strategy.Uses, func(o string) bool { return t.sectionSets(section, did, o, written) }) {
+		if !active(strategy) || !slices.ContainsFunc(strategy.Uses, func(o string) bool { return t.sectionSets(section, did, o, written, emptied) }) {
 			continue
 		}
 		followed = true
 		for _, required := range strategy.Requires {
-			if t.sectionSets(section, did, required, written) {
+			if t.sectionSets(section, did, required, written, emptied) {
 				continue
 			}
 			comment := fmt.Sprintf("%s is not set, but the %s %s strategy requires it", required, strategy.ID, group.ID)
@@ -871,12 +875,15 @@ func (t T) requiredStrategyAlerts(section string, did driver.ID, group keywords.
 
 // sectionSets says a section sets an option, in any scope, or inherits it
 // from the DEFAULT section, which sets it by its name or an alias. An empty
-// value sets nothing, in the section as in DEFAULT.
-func (t T) sectionSets(section string, did driver.ID, option string, written map[string]string) bool {
+// value sets nothing, in the section as in DEFAULT, and one the section
+// writes overrides the one of DEFAULT, as the evaluation reads it: the
+// section writing the option empty, and in no scope with a value, does not
+// inherit it.
+func (t T) sectionSets(section string, did driver.ID, option string, written map[string]string, emptied map[string]bool) bool {
 	if _, ok := written[option]; ok {
 		return true
 	}
-	if section == "DEFAULT" {
+	if section == "DEFAULT" || emptied[option] {
 		return false
 	}
 	s, err := t.file.GetSection("DEFAULT")

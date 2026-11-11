@@ -113,4 +113,13 @@ func TestValidateRequiredAddressing(t *testing.T) {
 		missing("[DEFAULT]\ndev =\n[ip#1]\ntype = host\nname = 1.2.3.4\n"), "an empty dev in DEFAULT")
 	assert.Empty(t, missing("[ip#1]\ntype = host\nname =\nnetwork = default\n"), "an empty name follows no static strategy")
 	assert.Empty(t, strategyAlerts(t, "[ip#1]\ntype = host\nname =\nnetwork = default\n"), "an empty name conflicts with no network")
+
+	// A value the section writes overrides the one of DEFAULT, an empty one
+	// too: the section does not inherit it.
+	assert.Equal(t,
+		[]string{"error ip#1.: no addressing strategy is followed: set name (static), or network or addr (ipam)"},
+		missing("[DEFAULT]\nname = 1.2.3.4\ndev = lo\n[ip#1]\ntype = host\nname =\n"), "a DEFAULT name the section empties")
+	assert.Equal(t,
+		[]string{"error ip#1.dev: dev is not set, but the static addressing strategy requires it"},
+		missing("[DEFAULT]\ndev = lo\n[ip#1]\ntype = host\nname = 1.2.3.4\ndev =\n"), "a DEFAULT dev the section empties")
 }
