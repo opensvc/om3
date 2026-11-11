@@ -12,12 +12,13 @@ var (
 	fs embed.FS
 
 	KWPromoteRW = keywords.Keyword{
-		Attr:      "PromoteRW",
-		Converter: converters.Bool,
-		Group:     GroupStorage.ID,
-		Option:    "promote_rw",
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
+		Attr:       "PromoteRW",
+		Converter:  converters.Bool,
+		Deprecated: "v3.0.0-rc62",
+		Group:      GroupStorage.ID,
+		Option:     "promote_rw",
+		Scopable:   true,
+		Text:       keywords.NewText(fs, "text/kw/promote_rw"),
 	}
 	KWOsvcRootPath = keywords.Keyword{
 		Attr:     "OsvcRootPath",

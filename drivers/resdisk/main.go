@@ -23,11 +23,12 @@ var (
 	fs embed.FS
 
 	KWPromoteRW = keywords.Keyword{
-		Attr:      "PromoteRW",
-		Converter: converters.Bool,
-		Option:    "promote_rw",
-		Group:     GroupAccess.ID,
-		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
+		Attr:       "PromoteRW",
+		Converter:  converters.Bool,
+		Deprecated: "v3.0.0-rc62",
+		Option:     "promote_rw",
+		Group:      GroupAccess.ID,
+		Text:       keywords.NewText(fs, "text/kw/promote_rw"),
 	}
 
 	BaseKeywords = append(

@@ -49,6 +49,7 @@ var (
 		},
 		{
 			Attr:         "Gateway",
+			Deprecated:   "v3.0.0-rc62",
 			Option:       "gateway",
 			Group:        GroupRouting.ID,
 			Provisioning: true,
