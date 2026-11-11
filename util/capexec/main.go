@@ -41,6 +41,10 @@ type (
 		LimitVMem       *string
 		User            *string
 		Group           *string
+
+		// Umask is the umask of the command, in octal, as 022. Not set,
+		// the command inherits the one of om exec.
+		Umask *string
 	}
 )
 
@@ -114,6 +118,9 @@ func (t T) Argv() []string {
 	}
 	if t.Group != nil {
 		argv = append(argv, "--group", *t.Group)
+	}
+	if t.Umask != nil {
+		argv = append(argv, "--umask", *t.Umask)
 	}
 	return argv
 }
@@ -317,6 +324,7 @@ func (t *T) FlagSet(flags *pflag.FlagSet) {
 	t.LimitVMem = flags.String("limit-vmem", "", "the largest area of mapped memory which the process may occupy")
 	t.User = flags.String("user", "", "execute the command as user")
 	t.Group = flags.String("group", "", "execute the command as group")
+	t.Umask = flags.String("umask", "", "the umask of the command, in octal, as 022")
 }
 
 func (t T) demote() error {
@@ -369,6 +377,22 @@ func readyFile() *os.File {
 	return os.NewFile(uintptr(fd), "ready")
 }
 
+// setUmask sets the umask the command inherits, as v2 did before running
+// it. A umask of 0 is set too: it is how a configuration asks for files
+// readable and writable by all, which only an unset umask leaves to the
+// one inherited.
+func (t T) setUmask() error {
+	if t.Umask == nil || *t.Umask == "" {
+		return nil
+	}
+	i, err := strconv.ParseUint(*t.Umask, 8, 32)
+	if err != nil || i > 0o777 {
+		return fmt.Errorf("invalid umask %q: an octal number of at most 777", *t.Umask)
+	}
+	syscall.Umask(int(i))
+	return nil
+}
+
 func (t T) Exec(args []string) {
 	ready := readyFile()
 	fail := func(err error) {
@@ -383,6 +407,9 @@ func (t T) Exec(args []string) {
 	}
 	prog, err := exec.LookPath(args[0])
 	if err != nil {
+		fail(err)
+	}
+	if err := t.setUmask(); err != nil {
 		fail(err)
 	}
 	if err := t.toLimit().Apply(); err != nil {

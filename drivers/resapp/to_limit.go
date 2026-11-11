@@ -1,6 +1,8 @@
 package resapp
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/v3/util/capexec"
 )
 
@@ -20,6 +22,10 @@ func (t *T) toCaps(cred execCredential) capexec.T {
 	}
 	if cred.Group != "" {
 		xo.Group = &cred.Group
+	}
+	if t.Umask != nil {
+		umask := fmt.Sprintf("%03o", uint32(*t.Umask))
+		xo.Umask = &umask
 	}
 	xo.LoadLimit(t.Limit)
 	return xo
