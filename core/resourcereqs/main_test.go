@@ -17,3 +17,8 @@ func TestResourceRequirements(t *testing.T) {
 	assert.Equal(t, status.List(status.Up, status.StandbyUp), o.Requirements()["ip#2"])
 	assert.Equal(t, status.List(status.Up, status.StandbyUp), o.Requirements()["ip#3"])
 }
+
+func TestRIDs(t *testing.T) {
+	assert.Equal(t, []string{"ip#0", "fs#0", "app#1"}, RIDs("ip#0 fs#0(down,stdby down) app#1(up) ip#0"))
+	assert.Nil(t, RIDs(""))
+}

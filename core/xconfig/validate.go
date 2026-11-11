@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/resourcereqs"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
@@ -48,6 +49,8 @@ const (
 	alertKindConfigure
 	alertKindKeySource
 	alertKindStrategies
+	alertKindUnknownResource
+	alertKindReferenceGroup
 )
 
 var (
@@ -75,6 +78,8 @@ var (
 	alertKindConfigureStr       = "resource configuration error"
 	alertKindKeySourceStr       = "key source error"
 	alertKindStrategiesStr      = "conflicting strategies"
+	alertKindUnknownResourceStr = "unknown resource"
+	alertKindReferenceGroupStr  = "unsupported resource group"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -90,6 +95,8 @@ var (
 		alertKindConfigure:       alertKindConfigureStr,
 		alertKindKeySource:       alertKindKeySourceStr,
 		alertKindStrategies:      alertKindStrategiesStr,
+		alertKindUnknownResource: alertKindUnknownResourceStr,
+		alertKindReferenceGroup:  alertKindReferenceGroupStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -106,6 +113,8 @@ var (
 		alertKindConfigureStr:       alertKindConfigure,
 		alertKindKeySourceStr:       alertKindKeySource,
 		alertKindStrategiesStr:      alertKindStrategies,
+		alertKindUnknownResourceStr: alertKindUnknownResource,
+		alertKindReferenceGroupStr:  alertKindReferenceGroup,
 	}
 )
 
@@ -304,6 +313,37 @@ func (t T) NewAlertStrategies(k key.T, did driver.ID, comment string) Alert {
 	}
 }
 
+// NewAlertUnknownResource says a keyword names a resource the configuration
+// has no section of, as a netns naming a container not configured: the
+// resource using it fails its action.
+//
+// It is a warning, as a configuration may be written in steps, the resource
+// named added after the one naming it.
+func (t T) NewAlertUnknownResource(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindUnknownResource,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertReferenceGroup says a keyword names a resource of a driver group
+// it does not take, as a netns naming a fs: no section of that name can ever
+// be what the keyword asks for.
+func (t T) NewAlertReferenceGroup(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindReferenceGroup,
+		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
 func (t T) NewAlertDeprecated(k key.T, did driver.ID, release, replacedBy string) Alert {
 	comment := fmt.Sprintf("since %s", release)
 	if replacedBy != "" {
@@ -446,6 +486,12 @@ func (t Alerts) has(lvl AlertLevel) bool {
 
 func (t T) Validate() (Alerts, error) {
 	alerts := make(Alerts, 0)
+	// sections are the names of the sections of the configuration, the
+	// resources a keyword value may name.
+	sections := make(map[string]bool)
+	for _, s := range t.file.Sections() {
+		sections[s.Name()] = true
+	}
 	for _, s := range t.file.Sections() {
 		var did driver.ID
 		section := s.Name()
@@ -527,10 +573,15 @@ func (t T) Validate() (Alerts, error) {
 				alerts = append(alerts, t.NewAlertEval(k, did, fmt.Sprint(err)))
 				continue
 			}
+			refused := false
 			if kw.Validate != nil {
 				if err := t.validateLine(k, kw, raw); err != nil {
 					alerts = append(alerts, t.NewAlertCandidates(k, did, err.Error()))
+					refused = true
 				}
+			}
+			if kw.References != nil && !refused {
+				alerts = append(alerts, t.referenceAlerts(k, kw, did, raw, sections)...)
 			}
 			if kw.Deprecated != "" {
 				alerts = append(alerts, t.NewAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
@@ -541,14 +592,19 @@ func (t T) Validate() (Alerts, error) {
 				}
 			}
 			if len(kw.Candidates) > 0 {
+				// A keyword naming resources takes a resource id
+				// besides its candidates, which the references check.
+				accepted := func(s string) bool {
+					return slices.Contains(kw.Candidates, s) || kw.References != nil && isRIDShape(s)
+				}
 				switch kw.Converter {
 				case nil, converters.String, converters.Int:
-					if !slices.Contains(kw.Candidates, v) {
+					if !accepted(v) {
 						alerts = append(alerts, t.NewAlertCandidates(k, did, v))
 					}
 				case converters.List:
 					for _, e := range strings.Fields(v) {
-						if !slices.Contains(kw.Candidates, e) {
+						if !accepted(e) {
 							alerts = append(alerts, t.NewAlertCandidates(k, did, e))
 						}
 					}
@@ -663,17 +719,84 @@ func (t T) hasResourceSections() bool {
 	return ok && i.HasResourceSections()
 }
 
-// validateLine says whether the value a line of the configuration holds is
-// one its keyword takes.
+// referenceAlerts says of the resources a line of the configuration names,
+// by a keyword whose value names resources, the ones of a driver group the
+// keyword does not take, an error, and the ones no section of the
+// configuration is, a warning.
 //
-// It is the value of the line that is checked, and not the one the key
-// evaluates to: a scoped line is the value of the nodes it names, which the
-// local node may not be, and a line the local node does not see is still
-// what those nodes will use. It is evaluated as the node the scope names, if
-// it names one, so the references it holds are the ones that node resolves.
-// A value naming something not built yet is not the value it will be, so it
-// is checked when it is.
-func (t *T) validateLine(k key.T, kw *keywords.Keyword, raw string) error {
+// The value read is the one of the line, as validateLine does. A value
+// naming no resource, empty, a candidate or a value the engine takes as it
+// is, as the podman userns modes, is not checked: a resource id has a '#'.
+//
+// The DEFAULT section is not the section of a resource: the keyword a value
+// set there is inherited by is the one of each resource not setting it, of
+// any driver, so the groups are not judged there, only that the resources
+// named exist.
+func (t *T) referenceAlerts(k key.T, kw *keywords.Keyword, did driver.ID, raw string, sections map[string]bool) Alerts {
+	v, ok, err := t.lineValue(k, kw, raw)
+	if err != nil || !ok {
+		return nil
+	}
+	var alerts Alerts
+	for _, rid := range referencedRIDs(*kw.References, v, kw.Candidates) {
+		group, _, _ := strings.Cut(rid, "#")
+		if k.Section != "DEFAULT" && !kw.References.HasGroup(group) {
+			comment := fmt.Sprintf("%s is no %s resource", rid, kw.References.GroupsText())
+			alerts = append(alerts, t.NewAlertReferenceGroup(k, did, comment))
+			continue
+		}
+		if !sections[rid] {
+			comment := fmt.Sprintf("%s names no section of the configuration", rid)
+			alerts = append(alerts, t.NewAlertUnknownResource(k, did, comment))
+		}
+	}
+	return alerts
+}
+
+// referencedRIDs returns the ids of the resources a value names, read in the
+// shape of the references, leaving out the candidates of the keyword and the
+// words that are no resource id, having no '#'.
+//
+// None of the shapes takes a pattern: the resources named are looked up by
+// their id, so a pattern names a section only if one is named so.
+func referencedRIDs(refs keywords.References, value string, candidates []string) []string {
+	var words []string
+	switch refs.Shape {
+	case keywords.ReferencesRID:
+		words = []string{strings.TrimSpace(value)}
+	case keywords.ReferencesRIDs:
+		words = strings.Fields(value)
+	case keywords.ReferencesRequires:
+		words = resourcereqs.RIDs(value)
+	}
+	l := make([]string, 0, len(words))
+	for _, word := range words {
+		if !strings.Contains(word, "#") || slices.Contains(candidates, word) {
+			continue
+		}
+		l = append(l, word)
+	}
+	return l
+}
+
+// isRIDShape reports whether s is written as the id of a resource,
+// <group>#<name>, which a keyword naming resources takes besides its
+// candidates.
+func isRIDShape(s string) bool {
+	group, name, ok := strings.Cut(s, "#")
+	return ok && group != "" && name != "" && resourceid.CheckName(s) == nil
+}
+
+// lineValue returns the value a line of the configuration holds, evaluated,
+// and false when it names something not built yet, which is not the value
+// it will be.
+//
+// It is the value of the line, and not the one the key evaluates to: a
+// scoped line is the value of the nodes it names, which the local node may
+// not be, and a line the local node does not see is still what those nodes
+// will use. It is evaluated as the node the scope names, if it names one, so
+// the references it holds are the ones that node resolves.
+func (t *T) lineValue(k key.T, kw *keywords.Keyword, raw string) (string, bool, error) {
 	var impersonate string
 	switch scope := k.Scope(); scope {
 	case "", "nodes", "drpnodes", "encapnodes":
@@ -682,14 +805,25 @@ func (t *T) validateLine(k key.T, kw *keywords.Keyword, raw string) error {
 	}
 	v, err := t.replaceReferences(raw, k.Section, impersonate, false, newDereferenceTrace())
 	if isPostponedRef(err) {
-		return nil
+		return "", false, nil
 	} else if err != nil {
-		return err
+		return "", false, err
 	}
 	if v, err = evalArithmetic(v, kw); err != nil {
+		return "", false, err
+	}
+	return v, true, nil
+}
+
+// validateLine says whether the value a line of the configuration holds is
+// one its keyword takes, the value lineValue reads. A value naming something
+// not built yet is not the value it will be, so it is checked when it is.
+func (t *T) validateLine(k key.T, kw *keywords.Keyword, raw string) error {
+	v, ok, err := t.lineValue(k, kw, raw)
+	if err != nil {
 		return err
 	}
-	if v == "" {
+	if !ok || v == "" {
 		return nil
 	}
 	return kw.Validate(v)

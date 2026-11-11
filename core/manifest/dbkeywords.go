@@ -226,11 +226,12 @@ var (
 	}
 
 	KWProvisionRequires = keywords.Keyword{
-		Attr:    "ProvisionRequires",
-		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "provision_requires",
-		Text:    keywords.NewText(fs, "text/kw/provision_requires"),
-		Group:   GroupRequirements.ID,
+		Attr:       "ProvisionRequires",
+		Example:    "ip#0 fs#0(down,stdby down)",
+		Option:     "provision_requires",
+		References: &keywords.References{Shape: keywords.ReferencesRequires},
+		Text:       keywords.NewText(fs, "text/kw/provision_requires"),
+		Group:      GroupRequirements.ID,
 	}
 
 	KWRestart = keywords.Keyword{
@@ -254,11 +255,12 @@ var (
 	}
 
 	KWRunRequires = keywords.Keyword{
-		Attr:    "RunRequires",
-		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "run_requires",
-		Text:    keywords.NewText(fs, "text/kw/run_requires"),
-		Group:   GroupRequirements.ID,
+		Attr:       "RunRequires",
+		Example:    "ip#0 fs#0(down,stdby down)",
+		Option:     "run_requires",
+		References: &keywords.References{Shape: keywords.ReferencesRequires},
+		Text:       keywords.NewText(fs, "text/kw/run_requires"),
+		Group:      GroupRequirements.ID,
 	}
 
 	KWSCSIPersistentReservationEnabled = keywords.Keyword{
@@ -306,19 +308,21 @@ var (
 	}
 
 	KWStartRequires = keywords.Keyword{
-		Attr:    "StartRequires",
-		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "start_requires",
-		Text:    keywords.NewText(fs, "text/kw/start_requires"),
-		Group:   GroupRequirements.ID,
+		Attr:       "StartRequires",
+		Example:    "ip#0 fs#0(down,stdby down)",
+		Option:     "start_requires",
+		References: &keywords.References{Shape: keywords.ReferencesRequires},
+		Text:       keywords.NewText(fs, "text/kw/start_requires"),
+		Group:      GroupRequirements.ID,
 	}
 
 	KWStopRequires = keywords.Keyword{
-		Attr:    "StopRequires",
-		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "stop_requires",
-		Text:    keywords.NewText(fs, "text/kw/stop_requires"),
-		Group:   GroupRequirements.ID,
+		Attr:       "StopRequires",
+		Example:    "ip#0 fs#0(down,stdby down)",
+		Option:     "stop_requires",
+		References: &keywords.References{Shape: keywords.ReferencesRequires},
+		Text:       keywords.NewText(fs, "text/kw/stop_requires"),
+		Group:      GroupRequirements.ID,
 	}
 
 	KWSubset = keywords.Keyword{
@@ -333,12 +337,13 @@ var (
 	// after the update, the action a sync is scheduled for. The aliases
 	// are its v3 name before, and the v2 names of the actions it gates.
 	KWUpdateRequires = keywords.Keyword{
-		Aliases: []string{"sync_requires", "sync_update_requires", "sync_nodes_requires", "sync_drp_requires"},
-		Attr:    "UpdateRequires",
-		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "update_requires",
-		Text:    keywords.NewText(fs, "text/kw/update_requires"),
-		Group:   GroupRequirements.ID,
+		Aliases:    []string{"sync_requires", "sync_update_requires", "sync_nodes_requires", "sync_drp_requires"},
+		Attr:       "UpdateRequires",
+		Example:    "ip#0 fs#0(down,stdby down)",
+		Option:     "update_requires",
+		References: &keywords.References{Shape: keywords.ReferencesRequires},
+		Text:       keywords.NewText(fs, "text/kw/update_requires"),
+		Group:      GroupRequirements.ID,
 	}
 
 	KWTags = keywords.Keyword{
@@ -351,11 +356,12 @@ var (
 	}
 
 	KWUnprovisionRequires = keywords.Keyword{
-		Attr:    "UnprovisionRequires",
-		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "unprovision_requires",
-		Text:    keywords.NewText(fs, "text/kw/unprovision_requires"),
-		Group:   GroupRequirements.ID,
+		Attr:       "UnprovisionRequires",
+		Example:    "ip#0 fs#0(down,stdby down)",
+		Option:     "unprovision_requires",
+		References: &keywords.References{Shape: keywords.ReferencesRequires},
+		Text:       keywords.NewText(fs, "text/kw/unprovision_requires"),
+		Group:      GroupRequirements.ID,
 	}
 
 	SCSIPersistentReservationKeywords = []*keywords.Keyword{

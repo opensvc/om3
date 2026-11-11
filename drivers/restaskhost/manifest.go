@@ -25,11 +25,12 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/command"),
 		},
 		{
-			Option:   "container",
-			Attr:     "Container",
-			Example:  "container#1",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/container"),
+			Option:     "container",
+			Attr:       "Container",
+			Example:    "container#1",
+			References: &keywords.References{Groups: []string{"container"}, Shape: keywords.ReferencesRID},
+			Scopable:   true,
+			Text:       keywords.NewText(fs, "text/kw/container"),
 		},
 		{
 			Attr:     "StopCmd",

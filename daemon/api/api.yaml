@@ -9092,6 +9092,8 @@ components:
             under, as "addressing". Never empty: a keyword not grouped yet is
             of the "other" group. The groups of the keywords of a list are
             described in its groups.
+        references:
+          $ref: '#/components/schemas/KeywordReferences'
         grant:
           type: string
           description: >
@@ -9196,6 +9198,36 @@ components:
           type: boolean
         minimal:
           type: boolean
+
+    KeywordReferences:
+      type: object
+      description: >
+        Set when the value of the keyword names resources of the object, by
+        their section name, for a designer to offer the sections of the
+        configuration. Absent when the keyword names none.
+      required:
+        - groups
+        - shape
+      properties:
+        groups:
+          type: array
+          description: >
+            The driver groups of the resources the value may name, as
+            "container". Empty when it may name a resource of any group.
+          items:
+            type: string
+        shape:
+          type: string
+          description: >
+            How the value writes the resources it names. rid is one resource
+            id, as "container#1". rids is a list of resource ids separated by
+            whitespaces, as "fs#1 volume#1". requires is the form of the
+            *_requires keywords, resource ids each followed by the states it
+            is required in, as "ip#0 fs#0(down,stdby down)".
+          enum:
+            - rid
+            - rids
+            - requires
 
     KeywordDefinitionItems:
       type: array

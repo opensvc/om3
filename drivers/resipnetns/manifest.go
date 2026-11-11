@@ -36,6 +36,7 @@ var (
 			Attr:         "NetNS",
 			Example:      "container#0",
 			Option:       "netns",
+			References:   &keywords.References{Groups: []string{"container"}, Shape: keywords.ReferencesRID},
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,

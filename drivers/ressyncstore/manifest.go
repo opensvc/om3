@@ -26,11 +26,12 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/store"),
 		},
 		{
-			Attr:      "RIDs",
-			Converter: converters.List,
-			Example:   "fs#1 volume#1",
-			Option:    "rids",
-			Text:      keywords.NewText(fs, "text/kw/rids"),
+			Attr:       "RIDs",
+			Converter:  converters.List,
+			Example:    "fs#1 volume#1",
+			Option:     "rids",
+			References: &keywords.References{Groups: []string{"fs", "volume"}, Shape: keywords.ReferencesRIDs},
+			Text:       keywords.NewText(fs, "text/kw/rids"),
 		},
 		{
 			Attr:      "Exclude",
