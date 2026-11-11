@@ -1,0 +1,2 @@
+When the task runs on its own: at the times its schedule says, and on the
+events of the node it waits for, the runs these events ask for paced.

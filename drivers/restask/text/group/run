@@ -1,0 +1,3 @@
+How a run of the task goes: the confirmation it asks for, how many runs go
+at once, whether its outputs are logged, the command run when it fails, and
+the snooze of the object before it.

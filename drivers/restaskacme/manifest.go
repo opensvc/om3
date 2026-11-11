@@ -23,6 +23,7 @@ var (
 			Converter: converters.List,
 			Example:   "web ./sec/api ns2/sec/shared ./sec/web-*",
 			Option:    "secs",
+			Group:     GroupCertificates.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/secs"),
 			Validate:  validateSecs,
@@ -31,6 +32,7 @@ var (
 			Attr:     "Directory",
 			Example:  "letsencrypt",
 			Option:   "directory",
+			Group:    GroupCertificates.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/directory"),
 		},
@@ -38,6 +40,7 @@ var (
 			Attr:     "Email",
 			Example:  "admin@example.com",
 			Option:   "email",
+			Group:    GroupCertificates.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/email"),
 		},
@@ -45,6 +48,7 @@ var (
 			Attr:     "DomainsFrom",
 			Example:  "volume#1:/haproxy/conf.d/*.cfg",
 			Option:   "domains_from",
+			Group:    GroupCertificates.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/domains_from"),
 			Validate: validateDomainsFrom,
@@ -53,6 +57,7 @@ var (
 			Attr:     "DomainsTo",
 			Example:  "./sec/{name}-*",
 			Option:   "domains_to",
+			Group:    GroupCertificates.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/domains_to"),
 			Validate: validateDomainsTo,
@@ -61,6 +66,7 @@ var (
 			Attr:     "Webroot",
 			Example:  "volume#1:/haproxy/acme-challenges",
 			Option:   "webroot",
+			Group:    GroupCertificates.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/webroot"),
 		},
@@ -85,5 +91,7 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(restask.Groups...)
+	m.AddGroups(GroupCertificates)
 	return m
 }

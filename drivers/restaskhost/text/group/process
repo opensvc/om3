@@ -1,0 +1,4 @@
+The command the task runs, on the node or in a container resource of the
+object, the command stopping a running task, and the user, group and
+directory a command run on the node runs as and in, the on_error and stop
+commands included.
