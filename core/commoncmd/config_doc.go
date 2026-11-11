@@ -46,6 +46,12 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 		kw.Aliases = append(kw.Aliases, item.Aliases...)
 		kw.Candidates = append(kw.Candidates, item.Candidates...)
 		kw.Types = append(kw.Types, item.Types...)
+		if item.References != nil {
+			kw.References = &keywords.References{
+				Groups: append([]string{}, item.References.Groups...),
+				Shape:  string(item.References.Shape),
+			}
+		}
 		store = append(store, kw)
 	}
 	return

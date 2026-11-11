@@ -24,11 +24,12 @@ var (
 		&rescontainer.KWOsvcRootPath,
 		&rescontainer.KWGuestOS,
 		{
-			Option:   "userns",
-			Attr:     "UserNS",
-			Scopable: true,
-			Example:  "container#0",
-			Text:     keywords.NewText(fs, "text/kw/userns"),
+			Option:     "userns",
+			Attr:       "UserNS",
+			Scopable:   true,
+			References: &keywords.References{Groups: []string{"container"}, Shape: keywords.ReferencesRID},
+			Example:    "container#0",
+			Text:       keywords.NewText(fs, "text/kw/userns"),
 		},
 		{
 			Option:   "rootless_user",

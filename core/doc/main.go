@@ -188,6 +188,13 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			item.Depends = append(item.Depends, d.String())
 		}
 
+		if kw.References != nil {
+			item.References = &api.KeywordReferences{
+				Groups: append([]string{}, kw.References.Groups...),
+				Shape:  api.KeywordReferencesShape(kw.References.Shape),
+			}
+		}
+
 		// The kinds a keyword is limited to are held as a set, whose values
 		// are nil and whose keys are the kinds: reading the values, as this
 		// did, documented every such keyword as scoped to "<nil>". The keys

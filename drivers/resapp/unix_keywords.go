@@ -161,11 +161,12 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/limit_as"),
 	}
 	UnixKeywordNetNS = keywords.Keyword{
-		Attr:     "NetNS",
-		Example:  "ip#0",
-		Option:   "netns",
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/netns"),
+		Attr:       "NetNS",
+		Example:    "ip#0",
+		Option:     "netns",
+		References: &keywords.References{Groups: []string{"ip", "container", "app"}, Shape: keywords.ReferencesRID},
+		Scopable:   true,
+		Text:       keywords.NewText(fs, "text/kw/netns"),
 	}
 
 	UnixKeywords = []*keywords.Keyword{

@@ -426,6 +426,27 @@ func (e KeywordListKind) Valid() bool {
 	}
 }
 
+// Defines values for KeywordReferencesShape.
+const (
+	Requires KeywordReferencesShape = "requires"
+	Rid      KeywordReferencesShape = "rid"
+	Rids     KeywordReferencesShape = "rids"
+)
+
+// Valid indicates whether the value is a known member of the KeywordReferencesShape enum.
+func (e KeywordReferencesShape) Valid() bool {
+	switch e {
+	case Requires:
+		return true
+	case Rid:
+		return true
+	case Rids:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NetworkIPListKind.
 const (
 	NetworkIPListKindNetworkIPList NetworkIPListKind = "NetworkIPList"
@@ -2041,6 +2062,9 @@ type KeywordDefinitionItem struct {
 	// RedactSecret True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
 	RedactSecret bool `json:"redactSecret"`
 
+	// References Set when the value of the keyword names resources of the object, by their section name, for a designer to offer the sections of the configuration. Absent when the keyword names none.
+	References *KeywordReferences `json:"references,omitempty"`
+
 	// ReplacedBy The name of the keyword to use instead of this deprecated one.
 	ReplacedBy string `json:"replacedBy"`
 	Required   bool   `json:"required"`
@@ -2120,6 +2144,18 @@ type KeywordList struct {
 
 // KeywordListKind defines model for KeywordList.Kind.
 type KeywordListKind string
+
+// KeywordReferences Set when the value of the keyword names resources of the object, by their section name, for a designer to offer the sections of the configuration. Absent when the keyword names none.
+type KeywordReferences struct {
+	// Groups The driver groups of the resources the value may name, as "container". Empty when it may name a resource of any group.
+	Groups []string `json:"groups"`
+
+	// Shape How the value writes the resources it names. rid is one resource id, as "container#1". rids is a list of resource ids separated by whitespaces, as "fs#1 volume#1". requires is the form of the *_requires keywords, resource ids each followed by the states it is required in, as "ip#0 fs#0(down,stdby down)".
+	Shape KeywordReferencesShape `json:"shape"`
+}
+
+// KeywordReferencesShape How the value writes the resources it names. rid is one resource id, as "container#1". rids is a list of resource ids separated by whitespaces, as "fs#1 volume#1". requires is the form of the *_requires keywords, resource ids each followed by the states it is required in, as "ip#0 fs#0(down,stdby down)".
+type KeywordReferencesShape string
 
 // KeywordStrategyItem One way to configure a group among its alternatives. A configuration setting a keyword the strategy excludes next to one it uses is warned of by the validation.
 type KeywordStrategyItem struct {

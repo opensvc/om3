@@ -177,6 +177,23 @@ type (
 		// two sources, or a key of a datastore of another namespace, and
 		// to seed the keys missing at its provision and its start.
 		KeySources func(value []string, namespace string) ([]KeySource, error)
+
+		// References, when set, says the value names resources of the object:
+		// the sections of the groups it lists, in the shape it says.
+		References *References
+	}
+
+	// References says what a keyword value names of the resources of its
+	// object, for a designer to offer the sections the configuration has,
+	// and for the validation to warn of a value naming none.
+	References struct {
+		// Groups are the driver groups of the resources the value may name,
+		// as "container". Empty is any resource group.
+		Groups []string
+
+		// Shape is how the value writes the resources it names:
+		// ReferencesRID, ReferencesRIDs or ReferencesRequires.
+		Shape string
 	}
 
 	// KeySource is a key of a sec or a cfg a keyword names with the source
@@ -199,6 +216,21 @@ type (
 
 	Index   [2]string
 	Indices []Index
+)
+
+const (
+	// ReferencesRID is the shape of a value naming one resource, as
+	// "container#1".
+	ReferencesRID = "rid"
+
+	// ReferencesRIDs is the shape of a value naming resources separated by
+	// whitespaces, as "fs#1 volume#1".
+	ReferencesRIDs = "rids"
+
+	// ReferencesRequires is the shape of the value of a *_requires keyword,
+	// naming resources each followed by the states it requires them in, as
+	// "ip#0 fs#0(down,stdby down)".
+	ReferencesRequires = "requires"
 )
 
 // SourceRandom is the source of a key generated: a random password the
@@ -612,7 +644,46 @@ func (t *Keyword) Clone() *Keyword {
 	clone.Types = slices.Clone(t.Types)
 	clone.Aliases = slices.Clone(t.Aliases)
 	clone.Kind = t.Kind.Clone()
+	clone.References = t.References.Clone()
 	return &clone
+}
+
+// Clone returns a copy of the references sharing no slice with t.
+func (t *References) Clone() *References {
+	if t == nil {
+		return nil
+	}
+	return &References{
+		Groups: slices.Clone(t.Groups),
+		Shape:  t.Shape,
+	}
+}
+
+// String says what the value names, as "container rid", "fs|volume rids" or
+// "requires", the groups left out when any resource is named.
+func (t References) String() string {
+	if len(t.Groups) == 0 {
+		return t.Shape
+	}
+	return strings.Join(t.Groups, "|") + " " + t.Shape
+}
+
+// HasGroup reports whether the value may name a resource of the driver group.
+func (t References) HasGroup(group string) bool {
+	return len(t.Groups) == 0 || slices.Contains(t.Groups, group)
+}
+
+// GroupsText says the groups the value may name a resource of, as "ip or
+// container".
+func (t References) GroupsText() string {
+	switch n := len(t.Groups); n {
+	case 0:
+		return ""
+	case 1:
+		return t.Groups[0]
+	default:
+		return strings.Join(t.Groups[:n-1], ", ") + " or " + t.Groups[n-1]
+	}
 }
 
 func (t *Keyword) DefaultKey() key.T {
@@ -724,6 +795,9 @@ func (t *Keyword) doc(w io.Writer, depth int, kind naming.Kind, section, of stri
 	}
 	if len(t.Candidates) > 0 {
 		fprintProp("candidates", strings.Join(t.Candidates, ", "))
+	}
+	if t.References != nil {
+		fprintProp("references", t.References.String())
 	}
 	if len(t.Depends) > 0 {
 		l := make([]string, len(t.Depends))
