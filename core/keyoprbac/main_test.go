@@ -292,7 +292,12 @@ func TestIPDrawnFromAClusterNetwork(t *testing.T) {
 	// What the object does with the address it was given stays open, which is
 	// every keyword an ip.cni resource needs.
 	for _, option := range []string{"network", "netns", "nsdev", "expose", "dns_name_suffix"} {
-		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", none), "option %s", option)
+		value := "x"
+		if option == "netns" {
+			// A namespace is one of a container of the object.
+			value = "container#0"
+		}
+		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, value, none), "option %s", option)
 	}
 }
 

@@ -1037,10 +1037,19 @@ which share the same executor.
 
 * **Changed rbac, what of the node a container reaches:**
     As in v2, a user holding no root grant may not set, on a container or a
-    task, `privileged` to a true value, `netns` to `host`, `devices`, or a
-    `volume_mounts` source that is a path of the node, nor `netns` to `host`
-    on an ip resource. Tasks were not held to the host path mounts rule
-    before.
+    task, `privileged` to a true value, `devices`, or a `volume_mounts`
+    source that is a path of the node. Tasks were not held to the host path
+    mounts rule before.
+
+    The namespaces a container or a task joins, `netns`, `pidns`, `ipcns`,
+    `utsns` and `userns`, are for a user holding no root grant the engine's
+    private ones, empty or `none`, or the ones of a container of the object,
+    `container#<n>`, as the `netns` of an ip resource. Any other value goes
+    to the engine as it is, and needs the root grant: `host`, a container of
+    another object, `container:<name>`, a namespace of the node by its path,
+    `ns:/proc/1/ns/net` with podman, and the podman `userns` modes, as
+    `auto` or `keep-id`. Only `netns = host` was refused before, and the
+    other namespace keywords were open.
 
 ### Driver: container.docker
 

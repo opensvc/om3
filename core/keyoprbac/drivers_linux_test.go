@@ -56,7 +56,12 @@ func TestIPCNIKeepsEveryKeywordItHad(t *testing.T) {
 				"trigger %s must stay refused", option)
 			continue
 		}
-		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", section("network")),
+		value := "x"
+		if option == "netns" {
+			// A namespace is one of a container of the object.
+			value = "container#0"
+		}
+		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, value, section("network")),
 			"ip.cni keyword %s was writable before the ip group had a default", option)
 	}
 }
