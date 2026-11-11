@@ -198,22 +198,25 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// The run has its own context, bound by its timeout: the on_error
+	// command of a run that timed out runs under the one of the task.
+	runCtx := ctx
 	if timeout := t.RunTimeLimit(t.Timeout); timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		runCtx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 	// A commander other than a process, as the one of a kvm guest agent,
 	// stops when its context is cancelled, which a signal the run
 	// receives does.
-	cmdCtx, cancelCmd := context.WithCancel(ctx)
+	cmdCtx, cancelCmd := context.WithCancel(runCtx)
 	defer cancelCmd()
 	cmd, err := encaper.EncapCmd(cmdCtx, args, env, strings.NewReader(""))
 	if err != nil {
 		return err
 	}
 	t.Log().Attr("cmd", t.RunCmd).Infof("run %s in %s", t.RunCmd, t.Container)
-	out, signaled, err := t.runEncapCmd(ctx, cmd, cancelCmd)
+	out, signaled, err := t.runEncapCmd(runCtx, cmd, cancelCmd)
 	if t.LogOutputs {
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			if line != "" {
@@ -221,18 +224,12 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 			}
 		}
 	}
-	exitCode := 0
-	var exitErr interface{ ExitCode() int }
-	if sig, ok := signaled.(syscall.Signal); ok {
-		// The signal reached the command while it ran: whatever the
-		// process entering the container exited with, docker exec
-		// exiting 0 on the signal, the run ended as the signal made it,
-		// as a host task does.
-		exitCode = 128 + int(sig)
-	} else if errors.As(err, &exitErr) {
-		exitCode = exitErr.ExitCode()
-	} else if err != nil {
+	exitCode, err := runExitCode(runCtx, signaled, err)
+	if err != nil {
 		return fmt.Errorf("run in %s: %w", t.Container, err)
+	}
+	if errors.Is(runCtx.Err(), context.DeadlineExceeded) && signaled == nil {
+		t.Log().Errorf("run in %s: timed out", t.Container)
 	}
 	if err := t.WriteLastRun(exitCode); err != nil {
 		return err
@@ -246,6 +243,33 @@ func (t *T) lockedRunInContainer(ctx context.Context) error {
 		return fmt.Errorf("command exited with code %d", exitCode)
 	}
 	return nil
+}
+
+// runExitCode returns the exit code a run in a container ended with, from
+// the signal that reached its command, the error the command returned, and
+// the context of the run, and the error of a run that ended with none.
+//
+// A signal that reached the command while it ran is the end of the run, as
+// it is of a host task, whatever the process entering the container exited
+// with, docker exec exiting 0 on it. A command that exited says its code.
+// A run that outlasted its timeout, its commander other than a process, as
+// the one of a kvm guest agent, ending with the error of its context and no
+// exit code, ended killed, as the command of a host task on the node does.
+func runExitCode(runCtx context.Context, signaled os.Signal, err error) (int, error) {
+	if sig, ok := signaled.(syscall.Signal); ok {
+		return 128 + int(sig), nil
+	}
+	var exitErr interface{ ExitCode() int }
+	switch {
+	case errors.As(err, &exitErr):
+		return exitErr.ExitCode(), nil
+	case err != nil && errors.Is(runCtx.Err(), context.DeadlineExceeded):
+		return 128 + int(syscall.SIGKILL), nil
+	case err != nil:
+		return 0, err
+	default:
+		return 0, nil
+	}
 }
 
 // runEncapCmd runs the command entering the container, and returns its
