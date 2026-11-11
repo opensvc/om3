@@ -597,8 +597,13 @@ func (t T) Validate() (Alerts, error) {
 					continue
 				}
 			}
-			if _, ok := written[kw.Option]; !ok || k.BaseOption() == kw.Option {
-				written[kw.Option] = k.BaseOption()
+			// A keyword written with an empty value sets nothing a
+			// strategy reads, as a field a designer adds to be filled
+			// in: it is not written for the strategies.
+			if strings.TrimSpace(raw) != "" {
+				if _, ok := written[kw.Option]; !ok || k.BaseOption() == kw.Option {
+					written[kw.Option] = k.BaseOption()
+				}
 			}
 			if strings.Contains(k.Option, "@") && !kw.Scopable {
 				alerts = append(alerts, t.NewAlertScoping(k, did))
@@ -789,7 +794,8 @@ func (t T) requiredStrategyAlerts(section string, did driver.ID, group keywords.
 }
 
 // sectionSets says a section sets an option, in any scope, or inherits it
-// from the DEFAULT section, which sets it by its name or an alias.
+// from the DEFAULT section, which sets it by its name or an alias. An empty
+// value sets nothing, in the section as in DEFAULT.
 func (t T) sectionSets(section string, did driver.ID, option string, written map[string]string) bool {
 	if _, ok := written[option]; ok {
 		return true
@@ -805,9 +811,9 @@ func (t T) sectionSets(section string, did driver.ID, option string, written map
 	if kw, err := getKeyword(key.T{Section: section, Option: option}, did.Name, t.Referrer); err == nil {
 		names = append(names, kw.Aliases...)
 	}
-	for _, k := range s.KeyStrings() {
+	for k, raw := range s.KeysHash() {
 		base, _, _ := strings.Cut(k, "@")
-		if slices.Contains(names, base) {
+		if slices.Contains(names, base) && strings.TrimSpace(raw) != "" {
 			return true
 		}
 	}
