@@ -141,3 +141,21 @@ func TestKeywordStrategiesOfNodeConfigValidate(t *testing.T) {
 		assert.Equalf(t, conflicting, found, "%s: %s", conf, alerts)
 	}
 }
+
+// TestHP3PARProxyMethodIsRefused verifies the validation of the cluster
+// configuration refuses the proxy method of v2 once, naming what replaces it,
+// rather than as one more value among the candidates.
+func TestHP3PARProxyMethodIsRefused(t *testing.T) {
+	o, err := object.NewCluster(object.WithConfigData([]byte("[array#a1]\ntype = hp3par\nmanager = m\nmethod = proxy\n")), object.WithVolatile(true))
+	require.NoError(t, err)
+	alerts, err := o.Config().Validate()
+	require.NoError(t, err)
+	l := make([]string, 0)
+	for _, a := range alerts {
+		if a.Key.Option == "method" {
+			l = append(l, a.Level.String()+": "+a.Comment)
+		}
+	}
+	require.Len(t, l, 1, "one alert")
+	assert.Contains(t, l[0], "error: the proxy method of v2 is not supported: use method ssh")
+}

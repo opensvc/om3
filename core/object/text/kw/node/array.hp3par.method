@@ -1,1 +1,11 @@
 The connection method to use.
+
+* `ssh`
+
+  Run the commands on the array over ssh, as the `username` with the private `key`. The ssh client never prompts and gives up a `manager` it can not reach in 10 seconds.
+
+* `cli`
+
+  Run the commands through the 3PAR cli installed on this node, with the password file `pwf`.
+
+The `proxy` method of v2, which served the commands of the nodes of a dmz from a node of the zone of the array, is not supported. Use the `ssh` method, its `manager` a bastion of the zone of the array whose authorized key forces a command passing on to the array the remote copy commands it allows.

@@ -1,6 +1,7 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -2296,7 +2297,7 @@ var (
 		Types:    []string{"hds"},
 	}
 	kwNodeArrayHP3PARMethod = keywords.Keyword{
-		Candidates: []string{"proxy", "cli", "ssh"},
+		Candidates: []string{"cli", "ssh"},
 		Default:    "ssh",
 		Example:    "ssh",
 		Option:     "method",
@@ -2304,6 +2305,7 @@ var (
 		Section:    "array",
 		Text:       keywords.NewText(fs, "text/kw/node/array.hp3par.method"),
 		Types:      []string{"hp3par"},
+		Validate:   validateHP3PARMethod,
 	}
 	kwNodeArrayHP3PARManager = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/array.hp3par.manager.default"),
@@ -2697,4 +2699,15 @@ func validShare(value string) error {
 
 func (t Node) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(NodeKeywordStore, k, naming.KindInvalid, sectionType)
+}
+
+// validateHP3PARMethod refuses the proxy method of v2, which v3 does not
+// serve, naming what replaces it: the ssh method, its manager a bastion of
+// the inner zone whose forced command passes on to the array only the
+// commands it allows.
+func validateHP3PARMethod(value string) error {
+	if value == "proxy" {
+		return errors.New("the proxy method of v2 is not supported: use method ssh, its manager a bastion of the zone of the array whose authorized key forces a command passing on the remote copy commands it allows, as the hp3par dmz howto of the book shows")
+	}
+	return nil
 }
