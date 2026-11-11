@@ -301,6 +301,17 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Cluster and Node Configuration
 
+* **hp3par `method = proxy` removed:**
+    The proxy method of v2, a node of the zone of the array serving the
+    commands of the nodes of a dmz, is not ported. The validation refuses it,
+    saying what replaces it: the `ssh` method, its `manager` a bastion of the
+    zone of the array whose authorized key forces a command passing on to the
+    array the remote copy commands it allows. The hp3par dmz howto of the book
+    shows the key line and the command. The ssh client of the `ssh` method
+    never prompts and gives up a `manager` it can not reach in 10 seconds,
+    `-o BatchMode=yes -o ConnectTimeout=10`, so a failover fails rather than
+    hangs.
+
 * **Hook**
     The event is no longer passed via stdin.
     The om3 daemon feeds the event as a json-formatted EVENT environment variable instead.

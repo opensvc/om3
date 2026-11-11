@@ -24,7 +24,7 @@ func TestSSHCommandIsTheTestedShape(t *testing.T) {
 	args, err := config.Command("showsys -csvtable -nohdtot")
 	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"ssh", "-i", "/root/.ssh/id_3par", "svcuser@3par1", "showsys -csvtable -nohdtot",
+		"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-i", "/root/.ssh/id_3par", "svcuser@3par1", "showsys -csvtable -nohdtot",
 	}, args)
 }
 
@@ -34,15 +34,15 @@ func TestSSHCommandIsTheTestedShape(t *testing.T) {
 func TestSSHCommandLeavesOutWhatIsNotConfigured(t *testing.T) {
 	args, err := Config{Method: MethodSSH, Manager: "3par1"}.Command("showsys")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"ssh", "3par1", "showsys"}, args)
+	assert.Equal(t, []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "3par1", "showsys"}, args)
 
 	args, err = Config{Method: MethodSSH, Manager: "3par1", Username: "svcuser"}.Command("showsys")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"ssh", "svcuser@3par1", "showsys"}, args)
+	assert.Equal(t, []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "svcuser@3par1", "showsys"}, args)
 
 	args, err = Config{Method: MethodSSH, Manager: "3par1", KeyFile: "/k"}.Command("showsys")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"ssh", "-i", "/k", "3par1", "showsys"}, args)
+	assert.Equal(t, []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-i", "/k", "3par1", "showsys"}, args)
 }
 
 // TestCLICommandIsTheTestedShape pins the cli command line: the array is named
@@ -124,4 +124,12 @@ func TestCleanNormalisesWhatTheArrayPrints(t *testing.T) {
 	assert.Equal(t, "a\nb", Clean("a\r\nb\r\n\r\n"))
 	assert.Equal(t, "a\nb", Clean("a\rb\n\n"))
 	assert.Equal(t, "", Clean("\n\n"))
+}
+
+// TestProxyMethodIsRefusedWithItsReplacement pins that the proxy method of v2
+// is refused by name, saying what replaces it, rather than as an unknown one.
+func TestProxyMethodIsRefusedWithItsReplacement(t *testing.T) {
+	_, err := Config{Method: "proxy", Manager: "3par1"}.Command("showsys")
+	require.ErrorIs(t, err, ErrBuildCommand)
+	assert.ErrorContains(t, err, "use method ssh, its manager a bastion")
 }

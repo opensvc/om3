@@ -651,7 +651,8 @@ func (t T) Validate() (Alerts, error) {
 					alerts = append(alerts, t.NewAlertDeprecatedValue(k, did, kw.DeprecatedValueText))
 				}
 			}
-			if len(kw.Candidates) > 0 {
+			// A value the keyword's own check refused is said once.
+			if len(kw.Candidates) > 0 && !refused {
 				// A keyword naming resources takes a resource id
 				// besides its candidates, which the references check.
 				accepted := func(s string) bool {

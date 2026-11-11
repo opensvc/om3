@@ -1,1 +1,1 @@
-The array manager host name.
+The host name the commands are sent to: the array manager, or, with the `ssh` method, a bastion of the zone of the array whose authorized key forces a command passing the commands on to the array.

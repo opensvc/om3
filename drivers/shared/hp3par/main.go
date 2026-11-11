@@ -67,21 +67,30 @@ func (t Config) Command(cmd string) ([]string, error) {
 		return t.cliCommand(cmd)
 	case "":
 		return nil, fmt.Errorf("%w: the method keyword is required: %s or %s", ErrBuildCommand, MethodSSH, MethodCLI)
+	case "proxy":
+		return nil, fmt.Errorf("%w: the proxy method of v2 is not supported: use method %s, its manager a bastion forcing a command that passes on the commands it allows", ErrBuildCommand, MethodSSH)
 	default:
 		return nil, fmt.Errorf("%w: unknown method %s", ErrBuildCommand, t.Method)
 	}
 }
 
-// sshCommand returns "ssh [-i key] [user@]manager <command>".
+// sshCommand returns "ssh -o BatchMode=yes -o ConnectTimeout=10 [-i key]
+// [user@]manager <command>".
 //
 // The command is an argument rather than a session written on the standard
 // input: the array runs it and closes, which is what a recent firmware
-// answers to.
+// answers to. The manager may be the array, or a bastion of its zone whose
+// forced command passes the command on.
+//
+// ssh never prompts, as for a password or a host key it does not know, and
+// gives up a manager it can not reach in 10 seconds: a failover running the
+// command has no one to answer a prompt, and would hang on it, or on a
+// connection, rather than fail.
 func (t Config) sshCommand(cmd string) ([]string, error) {
 	if t.Manager == "" {
 		return nil, fmt.Errorf("%w: the manager keyword is required", ErrBuildCommand)
 	}
-	args := []string{"ssh"}
+	args := []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"}
 	if t.KeyFile != "" {
 		args = append(args, "-i", t.KeyFile)
 	}
