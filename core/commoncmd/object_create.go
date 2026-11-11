@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/keyop"
@@ -62,8 +63,13 @@ func DataFromTemplate(template string) ([]byte, error) {
 // With dryRun, the daemon runs every check of the create and writes nothing,
 // and the alerts it answers with are printed: the problems the create would
 // be refused for, and the warnings of the validation.
-func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force bool, dryRun *DryRun) error {
-	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore, dryRun != nil), force, restore, dryRun)
+//
+// With wait, the daemon holds the answer that long at most for every node of
+// the object to have the configuration, and for itself to know the object,
+// which lasts as long as the first status of its instance: without, it holds
+// it CreateKnownHold at most for itself to know the object.
+func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byte, keywords []string, restore, force bool, wait time.Duration, dryRun *DryRun) error {
+	return postObjectConfig(ctx, c, p, b, createParams(keywords, restore, wait, dryRun != nil), force, restore, dryRun)
 }
 
 // CreateObjectConfigFromStore creates the object at p from the snapshot of
@@ -71,14 +77,29 @@ func CreateObjectConfig(ctx context.Context, c *client.T, p naming.Path, b []byt
 // object the snapshot is of, creates the keys of the sec and cfg it
 // references that the namespace of p lacks, and names the snapshot the
 // provision restores the heads from.
-func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force bool, dryRun *DryRun) error {
-	params := createParams(keywords, restore, dryRun != nil)
+func CreateObjectConfigFromStore(ctx context.Context, c *client.T, p naming.Path, store, snapshot string, keywords []string, restore, force bool, wait time.Duration, dryRun *DryRun) error {
+	params := createParams(keywords, restore, wait, dryRun != nil)
 	params.Store = &store
 	params.Snapshot = &snapshot
 	return postObjectConfig(ctx, c, p, nil, params, force, restore, dryRun)
 }
 
-func createParams(keywords []string, restore, dryRun bool) api.PostObjectConfigFileParams {
+// CreateKnownHold is how long the daemon holds the answer of a create asked
+// with no wait for it to know the object, its objectKnownTimeout.
+const CreateKnownHold = 30 * time.Second
+
+// createAnswerMargin is how much longer than the daemon holds a create the
+// client waits for its answer: the 408 the daemon answers past its hold says
+// the object is created, and a client giving up first says nothing of it.
+const createAnswerMargin = 10 * time.Second
+
+// CreateClientTimeout is the timeout of the client posting a create asked
+// with wait, zero for none, for the answer of the daemon to reach it.
+func CreateClientTimeout(wait time.Duration) time.Duration {
+	return max(wait, CreateKnownHold) + createAnswerMargin
+}
+
+func createParams(keywords []string, restore bool, wait time.Duration, dryRun bool) api.PostObjectConfigFileParams {
 	params := api.PostObjectConfigFileParams{}
 	if dryRun {
 		// Nothing is written for the daemon to learn of.
@@ -86,6 +107,13 @@ func createParams(keywords []string, restore, dryRun bool) api.PostObjectConfigF
 	} else {
 		waitLocal := true
 		params.WaitLocal = &waitLocal
+		if wait > 0 {
+			// The daemon holds the create as long as the caller
+			// waits: the first status of the instance, which it knows
+			// the object after, may last longer than CreateKnownHold.
+			w := api.Wait(wait.String())
+			params.Wait = &w
+		}
 	}
 	if restore {
 		params.Restore = &restore

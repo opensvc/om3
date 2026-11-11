@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,11 +46,11 @@ func TestCreateRestoreReplacesAnExistingObject(t *testing.T) {
 	c, err := client.New(client.WithURL(srv.URL), client.WithBearer("x"), client.WithInsecureSkipVerify(true))
 	require.NoError(t, err)
 
-	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, nil)
+	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, 0, nil)
 	assert.ErrorContains(t, err, "already exists", "a plain create")
 	assert.False(t, forced)
 
-	require.NoError(t, CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, true, false, nil), "a restore")
+	require.NoError(t, CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, true, false, 0, nil), "a restore")
 	assert.True(t, forced)
 }
 
@@ -74,7 +75,7 @@ func TestCreateObjectConfigDryRun(t *testing.T) {
 	c, err := client.New(client.WithURL(srv.URL), client.WithBearer("x"), client.WithInsecureSkipVerify(true))
 	require.NoError(t, err)
 
-	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, &DryRun{})
+	err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, 0, &DryRun{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "denied: a\ndenied: b", "every refusal reported")
 	assert.Equal(t, []string{"true"}, query["dry_run"])
@@ -110,7 +111,7 @@ func TestCreateObjectConfigDryRunAlerts(t *testing.T) {
 		srv := alertsServer(t, []map[string]any{alert(level)})
 		c, err := client.New(client.WithURL(srv.URL), client.WithBearer("x"), client.WithInsecureSkipVerify(true))
 		require.NoError(t, err)
-		err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, &DryRun{Output: "json"})
+		err = CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, 0, &DryRun{Output: "json"})
 		if fails {
 			assert.ErrorContains(t, err, "1 error(s)", level)
 		} else {
@@ -118,4 +119,34 @@ func TestCreateObjectConfigDryRunAlerts(t *testing.T) {
 		}
 		srv.Close()
 	}
+}
+
+// A create asked to wait asks the daemon to hold it as long, and a plain one
+// leaves the hold to the daemon: the daemon knows the object once the first
+// status of its instance is in, which may last longer than its hold of a
+// create with no wait. The client waits longer than the daemon holds, for the
+// 408 past the hold, saying the object is created, to reach it.
+func TestCreateAsksTheDaemonToHoldItAsLongAsItWaits(t *testing.T) {
+	p := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "s1"}
+	var query map[string][]string
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	defer srv.Close()
+	c, err := client.New(client.WithURL(srv.URL), client.WithBearer("x"), client.WithInsecureSkipVerify(true))
+	require.NoError(t, err)
+
+	require.NoError(t, CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, 2*time.Minute, nil))
+	assert.Equal(t, []string{"true"}, query["wait_local"])
+	assert.Equal(t, []string{"2m0s"}, query["wait"])
+
+	require.NoError(t, CreateObjectConfig(context.Background(), c, p, []byte("[DEFAULT]\n"), nil, false, false, 0, nil))
+	assert.Equal(t, []string{"true"}, query["wait_local"])
+	assert.Empty(t, query["wait"])
+
+	assert.Greater(t, CreateClientTimeout(0), CreateKnownHold, "the client outlasts the hold of a plain create")
+	assert.Greater(t, CreateClientTimeout(2*time.Minute), 2*time.Minute, "the client outlasts the wait")
 }

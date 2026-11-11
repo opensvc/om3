@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
@@ -54,7 +55,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	for _, e := range t.Env {
 		t.Keywords = append(t.Keywords, "env."+e)
 	}
-	if c, err := client.New(); err != nil {
+	// The client outlasts the hold of the create by the daemon, for its
+	// answer to say the object is created when the hold expires.
+	if c, err := client.New(client.WithTimeout(commoncmd.CreateClientTimeout(t.createWait()))); err != nil {
 		return err
 	} else {
 		t.client = c
@@ -185,8 +188,19 @@ func (t *CmdObjectCreate) do() error {
 // api, which checks it as any configuration it writes, and leaves behind
 // what a copied configuration recorded of itself, unless --restore, the
 // keyword operations applying after.
+// createWait is how long the daemon is asked to hold the create: as long as
+// the command waits, with --wait or --provision. The daemon knows the object
+// once the first status of its instance is in, which may outlast the hold of
+// a create with no wait.
+func (t *CmdObjectCreate) createWait() time.Duration {
+	if t.Wait || t.Provision {
+		return t.Time
+	}
+	return 0
+}
+
 func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
+	return commoncmd.CreateObjectConfig(context.Background(), t.client, p, b, t.Keywords, t.Restore, t.Force, t.createWait(), commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
 }
 
 // fromStore creates the object from a snapshot: the configuration of the
@@ -202,7 +216,7 @@ func (t *CmdObjectCreate) fromStore() error {
 	case t.path.IsZero():
 		return fmt.Errorf("need a target object path")
 	}
-	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
+	return commoncmd.CreateObjectConfigFromStore(context.Background(), t.client, t.path, t.Store, t.Snapshot, t.Keywords, t.Restore, t.Force, t.createWait(), commoncmd.NewDryRun(t.DryRun, t.Output, t.Color))
 }
 
 func (t *CmdObjectCreate) fromPath(p naming.Path) error {
