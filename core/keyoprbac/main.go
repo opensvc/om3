@@ -377,7 +377,11 @@ var rules = map[string]Group{
 		"volume_mounts": hostPathMountRule,
 		"devices":       devicesRule,
 		"privileged":    privilegedRule,
-		"netns":         hostNetnsRule,
+		"netns":         namespaceRule,
+		"pidns":         namespaceRule,
+		"ipcns":         namespaceRule,
+		"utsns":         namespaceRule,
+		"userns":        namespaceRule,
 		"environment":   environmentSourceRule,
 	}},
 	"container": {Rules: map[string]Rule{
@@ -409,7 +413,11 @@ var rules = map[string]Group{
 		"volume_mounts": hostPathMountRule,
 		"devices":       devicesRule,
 		"privileged":    privilegedRule,
-		"netns":         hostNetnsRule,
+		"netns":         namespaceRule,
+		"pidns":         namespaceRule,
+		"ipcns":         namespaceRule,
+		"utsns":         namespaceRule,
+		"userns":        namespaceRule,
 		"environment":   environmentSourceRule,
 		// The environment of the creation of a lxc container, whose type
 		// requires the root grant already, is held to the same rule as
@@ -552,7 +560,7 @@ var rules = map[string]Group{
 			// object: which of its containers holds the namespace, what the
 			// device is called in it, which ports it serves, and how the
 			// record is named.
-			"netns":           hostNetnsRule,
+			"netns":           namespaceRule,
 			"nsdev":           {},
 			"expose":          {},
 			"dns_name_suffix": {},
@@ -758,10 +766,19 @@ var (
 		Reason: "a privileged container requires the root grant",
 		Denies: valueOnly(isTrue),
 	}
-	hostNetnsRule = Rule{
+	// namespaceRule is the rule of the keywords choosing the namespaces a
+	// container or a task joins: netns, pidns, ipcns, utsns and userns.
+	// A user holding no root grant may leave the namespace the engine's
+	// own, empty, private with none, or join the one of a container of the
+	// same object, container#<n>. Any other value is passed to the engine
+	// as it is, and reaches what the object does not own: host is the
+	// namespace of the node, container:<name> the one of a container of
+	// any object, and podman takes ns:<path> as well, as the ones of the
+	// node under /proc/1/ns.
+	namespaceRule = Rule{
 		Grant:  rbac.GrantRoot,
-		Reason: "the host network namespace requires the root grant",
-		Denies: valueOnly(func(s string) bool { return strings.TrimSpace(s) == "host" }),
+		Reason: "a namespace other than none or a container#<n> of the object requires the root grant",
+		Denies: valueOnly(func(s string) bool { return !isOwnNamespace(s) }),
 	}
 
 	// environmentSourceRule refuses a reference of an environment seeding
@@ -876,6 +893,22 @@ func isNoName(s string) bool {
 }
 
 // valueOnly adapts a check that only reads the value to the rule signature.
+// isOwnNamespace reports whether a value of a namespace keyword leaves the
+// container in a namespace of the object: the engine's private one, empty or
+// none, or the one of a container section of the object.
+func isOwnNamespace(value string) bool {
+	switch s := strings.TrimSpace(value); s {
+	case "", "none":
+		return true
+	default:
+		return containerRIDRegexp.MatchString(s)
+	}
+}
+
+// containerRIDRegexp matches the id of one container section, never a pattern
+// of them: the characters of a resource id, the wildcards out.
+var containerRIDRegexp = regexp.MustCompile(`^container#[A-Za-z0-9_.-]+$`)
+
 func valueOnly(f func(value string) bool) func(string, Section) bool {
 	return func(value string, _ Section) bool {
 		return f(value)
