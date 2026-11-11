@@ -35,6 +35,9 @@ var (
 		Name:  "Addressing",
 		Text:  keywords.NewText(fs, "text/group/addressing"),
 		Order: 10,
+		// An ip naming neither an address nor a network to draw one from
+		// has nothing a start can build.
+		Required: true,
 		Strategies: []keywords.Strategy{
 			{
 				ID:       "static",
@@ -42,6 +45,9 @@ var (
 				Text:     keywords.NewText(fs, "text/strategy/addressing/static"),
 				Uses:     []string{"name"},
 				Excludes: []string{"network", "addr"},
+				// The device of the node the address is plumbed
+				// on, which a network says otherwise.
+				Requires: []string{"dev"},
 			},
 			{
 				ID:       "ipam",

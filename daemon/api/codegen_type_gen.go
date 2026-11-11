@@ -2104,7 +2104,10 @@ type KeywordGroupItem struct {
 	Name string `json:"name"`
 
 	// Order The rank of the group among the groups of a section, the lowest first.
-	Order      int                   `json:"order"`
+	Order int `json:"order"`
+
+	// Required A section of the driver follows one of the strategies of the group: the validation refuses one setting none of the keywords the strategies use, as an ip naming neither an address nor a network to draw one from.
+	Required   bool                  `json:"required"`
 	Strategies []KeywordStrategyItem `json:"strategies"`
 	Text       string                `json:"text"`
 }
@@ -2165,7 +2168,10 @@ type KeywordStrategyItem struct {
 	// Id The id of the strategy, as "static".
 	Id   string `json:"id"`
 	Name string `json:"name"`
-	Text string `json:"text"`
+
+	// Requires The options of the keywords a section following the strategy sets too, as the dev of a static address: the validation refuses the section missing one. They may be of another group.
+	Requires []string `json:"requires"`
+	Text     string   `json:"text"`
 
 	// Uses The options of the keywords the strategy sets.
 	Uses []string `json:"uses"`

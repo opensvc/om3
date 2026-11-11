@@ -190,6 +190,9 @@ func (t *T) Start(ctx context.Context) error {
 	if t.netErr != nil {
 		return t.netErr
 	}
+	if err := t.startRefusal(); err != nil {
+		return err
+	}
 	var allocated net.IP
 	switch {
 	case t.keeps():
@@ -661,6 +664,23 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 	}
 	return s
+}
+
+// startRefusal says why the configuration gives a start nothing to build,
+// as the status says it: no address and no network to draw one from, or no
+// device of the node to plumb it on. The start would otherwise go on, and
+// fail on the device of an empty name, as "mtu: route ip+net: invalid network
+// interface name", which says nothing of the keyword missing.
+func (t *T) startRefusal() error {
+	if t.Name == "" {
+		if nw, _ := t.resolveNetwork(); nw == nil {
+			return errors.New("no name, and no network to draw an address from: set the name of the address, or the network om draws one from")
+		}
+	}
+	if t.Dev == "" {
+		return errors.New("dev not set: set the device of the node the address is plumbed on, or a network providing one")
+	}
+	return nil
 }
 
 func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {

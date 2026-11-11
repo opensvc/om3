@@ -51,6 +51,8 @@ const (
 	alertKindStrategies
 	alertKindUnknownResource
 	alertKindReferenceGroup
+	alertKindMissingStrategy
+	alertKindMissingKeyword
 )
 
 var (
@@ -80,6 +82,8 @@ var (
 	alertKindStrategiesStr      = "conflicting strategies"
 	alertKindUnknownResourceStr = "unknown resource"
 	alertKindReferenceGroupStr  = "unsupported resource group"
+	alertKindMissingStrategyStr = "missing strategy"
+	alertKindMissingKeywordStr  = "missing keyword"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -97,6 +101,8 @@ var (
 		alertKindStrategies:      alertKindStrategiesStr,
 		alertKindUnknownResource: alertKindUnknownResourceStr,
 		alertKindReferenceGroup:  alertKindReferenceGroupStr,
+		alertKindMissingStrategy: alertKindMissingStrategyStr,
+		alertKindMissingKeyword:  alertKindMissingKeywordStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -115,6 +121,8 @@ var (
 		alertKindStrategiesStr:      alertKindStrategies,
 		alertKindUnknownResourceStr: alertKindUnknownResource,
 		alertKindReferenceGroupStr:  alertKindReferenceGroup,
+		alertKindMissingStrategyStr: alertKindMissingStrategy,
+		alertKindMissingKeywordStr:  alertKindMissingKeyword,
 	}
 )
 
@@ -337,6 +345,33 @@ func (t T) NewAlertReferenceGroup(k key.T, did driver.ID, comment string) Alert 
 	return Alert{
 		Path:    t.Path,
 		Kind:    alertKindReferenceGroup,
+		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertMissingStrategy says a section follows none of the strategies of a
+// group it must follow one of, as an ip naming neither an address nor a
+// network: no start can build it.
+func (t T) NewAlertMissingStrategy(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindMissingStrategy,
+		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertMissingKeyword says a section following a strategy misses a keyword
+// the strategy requires, as a static address naming no device of the node.
+func (t T) NewAlertMissingKeyword(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindMissingKeyword,
 		Level:   alertLevelError,
 		Key:     k,
 		Driver:  did,
@@ -665,6 +700,7 @@ func (t T) strategyAlerts(section string, did driver.ID, written map[string]stri
 		return true
 	}
 	for _, group := range i.DriverKeywordGroups(did) {
+		alerts = append(alerts, t.requiredStrategyAlerts(section, did, group, written, active)...)
 		for _, strategy := range group.Strategies {
 			if !active(strategy) {
 				continue
@@ -709,6 +745,73 @@ func (t T) strategyAlerts(section string, did driver.ID, written map[string]stri
 		}
 	}
 	return alerts
+}
+
+// requiredStrategyAlerts says of a section, for a group of its driver, that
+// it follows none of the strategies of a required group, an error, and that
+// it misses a keyword a strategy it follows requires, an error too: an ip
+// naming neither an address nor a network, or a static address naming no
+// device of the node, has nothing a start can build.
+//
+// A section follows a strategy when it sets a keyword the strategy uses,
+// itself in any scope or by inheriting it from DEFAULT, and the selector
+// values choosing the strategy hold.
+func (t T) requiredStrategyAlerts(section string, did driver.ID, group keywords.Group, written map[string]string, active func(keywords.Strategy) bool) Alerts {
+	if len(group.Strategies) == 0 {
+		return nil
+	}
+	var alerts Alerts
+	followed := false
+	for _, strategy := range group.Strategies {
+		if !active(strategy) || !slices.ContainsFunc(strategy.Uses, func(o string) bool { return t.sectionSets(section, did, o, written) }) {
+			continue
+		}
+		followed = true
+		for _, required := range strategy.Requires {
+			if t.sectionSets(section, did, required, written) {
+				continue
+			}
+			comment := fmt.Sprintf("%s is not set, but the %s %s strategy requires it", required, strategy.ID, group.ID)
+			alerts = append(alerts, t.NewAlertMissingKeyword(key.T{Section: section, Option: required}, did, comment))
+		}
+	}
+	if group.Required && !followed {
+		ways := make([]string, 0, len(group.Strategies))
+		for _, strategy := range group.Strategies {
+			if active(strategy) && len(strategy.Uses) > 0 {
+				ways = append(ways, fmt.Sprintf("%s (%s)", strings.Join(strategy.Uses, " or "), strategy.ID))
+			}
+		}
+		comment := fmt.Sprintf("no %s strategy is followed: set %s", group.ID, strings.Join(ways, ", or "))
+		alerts = append(alerts, t.NewAlertMissingStrategy(key.T{Section: section}, did, comment))
+	}
+	return alerts
+}
+
+// sectionSets says a section sets an option, in any scope, or inherits it
+// from the DEFAULT section, which sets it by its name or an alias.
+func (t T) sectionSets(section string, did driver.ID, option string, written map[string]string) bool {
+	if _, ok := written[option]; ok {
+		return true
+	}
+	if section == "DEFAULT" {
+		return false
+	}
+	s, err := t.file.GetSection("DEFAULT")
+	if err != nil {
+		return false
+	}
+	names := []string{option}
+	if kw, err := getKeyword(key.T{Section: section, Option: option}, did.Name, t.Referrer); err == nil {
+		names = append(names, kw.Aliases...)
+	}
+	for _, k := range s.KeyStrings() {
+		base, _, _ := strings.Cut(k, "@")
+		if slices.Contains(names, base) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasResourceSections reports whether the sections of the configuration are

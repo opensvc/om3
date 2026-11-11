@@ -35,6 +35,13 @@ type (
 		// alternatives that are not to be set together: an ip addressed
 		// statically, or drawn from a network.
 		Strategies []Strategy
+
+		// Required says a section of a driver declaring the group follows
+		// one of its strategies: one setting none of the keywords the
+		// strategies use is refused by the validation, as an ip naming
+		// neither an address nor a network to draw one from, which no
+		// start can build.
+		Required bool
 	}
 
 	// Strategy is one way to configure a group among its alternatives: the
@@ -57,6 +64,12 @@ type (
 		// Excludes are the options of the keywords the strategy leaves
 		// unset, as they belong to another strategy.
 		Excludes []string
+
+		// Requires are the options of the keywords a section following
+		// the strategy sets too, as the device of the node a static
+		// address is plumbed on: the validation refuses the section
+		// missing one. They may be of another group.
+		Requires []string
 
 		// When are the conditions on a selector keyword choosing the
 		// strategy, as "topology=flex", written as the Depends of a
