@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
@@ -53,6 +54,7 @@ const (
 	alertKindReferenceGroup
 	alertKindMissingStrategy
 	alertKindMissingKeyword
+	alertKindIgnoredKeyword
 )
 
 var (
@@ -84,6 +86,7 @@ var (
 	alertKindReferenceGroupStr  = "unsupported resource group"
 	alertKindMissingStrategyStr = "missing strategy"
 	alertKindMissingKeywordStr  = "missing keyword"
+	alertKindIgnoredKeywordStr  = "ignored keyword"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -103,6 +106,7 @@ var (
 		alertKindReferenceGroup:  alertKindReferenceGroupStr,
 		alertKindMissingStrategy: alertKindMissingStrategyStr,
 		alertKindMissingKeyword:  alertKindMissingKeywordStr,
+		alertKindIgnoredKeyword:  alertKindIgnoredKeywordStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -123,6 +127,7 @@ var (
 		alertKindReferenceGroupStr:  alertKindReferenceGroup,
 		alertKindMissingStrategyStr: alertKindMissingStrategy,
 		alertKindMissingKeywordStr:  alertKindMissingKeyword,
+		alertKindIgnoredKeywordStr:  alertKindIgnoredKeyword,
 	}
 )
 
@@ -379,6 +384,20 @@ func (t T) NewAlertMissingKeyword(k key.T, did driver.ID, comment string) Alert 
 	}
 }
 
+// NewAlertIgnoredKeyword says a keyword is set where a condition it depends
+// on does not hold, as a flex_min of a failover service: what reads it does
+// not, and the value is ignored.
+func (t T) NewAlertIgnoredKeyword(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindIgnoredKeyword,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
 func (t T) NewAlertDeprecated(k key.T, did driver.ID, release, replacedBy string) Alert {
 	comment := fmt.Sprintf("since %s", release)
 	if replacedBy != "" {
@@ -626,6 +645,7 @@ func (t T) Validate() (Alerts, error) {
 			if kw.Deprecated != "" {
 				alerts = append(alerts, t.NewAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
 			}
+			alerts = append(alerts, t.dependsAlerts(k, kw, did, raw)...)
 			if kw.DeprecatedValue != "" && v != "" {
 				if ok, err := regexp.MatchString(kw.DeprecatedValue, v); err == nil && ok {
 					alerts = append(alerts, t.NewAlertDeprecatedValue(k, did, kw.DeprecatedValueText))
@@ -753,6 +773,58 @@ func (t T) strategyAlerts(section string, did driver.ID, written map[string]stri
 		}
 	}
 	return alerts
+}
+
+// dependsAlerts warns of a keyword set, to a value, in a section where a
+// condition of its Depends does not hold, as a flex_min of a service whose
+// topology is failover: what reads the keyword reads it only where the
+// condition holds, and the value is ignored.
+//
+// The key of the condition is evaluated as the configuration reads it, in
+// the section of the keyword, inherited from DEFAULT and defaulted. A key
+// with no value, set nowhere and with no default, as the mode of an ip.netns
+// a network chooses when the address starts, is not known here, and the
+// condition is not judged. The equal and not equal conditions alone are.
+func (t T) dependsAlerts(k key.T, kw *keywords.Keyword, did driver.ID, raw string) Alerts {
+	if len(kw.Depends) == 0 || strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var alerts Alerts
+	for _, dep := range kw.Depends {
+		equal := dep.Op.Is(keyop.Equal)
+		if !equal && !dep.Op.Is(keyop.NotEqual) {
+			continue
+		}
+		dk := key.New(k.Section, dep.Key.Option)
+		if dep.Key.Section != "" {
+			dk.Section = dep.Key.Section
+		}
+		v, err := t.EvalNoConv(dk)
+		if err != nil || v == "" {
+			continue
+		}
+		if t.sameValue(dk, v, dep.Value) == equal {
+			continue
+		}
+		// A condition naming no section reads ".<option>".
+		cond := strings.TrimPrefix(dep.String(), ".")
+		comment := fmt.Sprintf("%s is set, but it applies only where %s, and %s is %s: it is ignored", k.BaseOption(), cond, dep.Key.Option, v)
+		alerts = append(alerts, t.NewAlertIgnoredKeyword(k, did, comment))
+	}
+	return alerts
+}
+
+// sameValue says whether two values of a key are the same once its keyword
+// converts them, as yes and true of a boolean.
+func (t *T) sameValue(k key.T, v1, v2 string) bool {
+	if kw, err := t.getKeyword(k); err == nil && kw.Converter != nil {
+		c1, err1 := kw.Converter.Convert(v1)
+		c2, err2 := kw.Converter.Convert(v2)
+		if err1 == nil && err2 == nil {
+			return fmt.Sprint(c1) == fmt.Sprint(c2)
+		}
+	}
+	return v1 == v2
 }
 
 // requiredStrategyAlerts says of a section, for a group of its driver, that
