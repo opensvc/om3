@@ -1,0 +1,3 @@
+The asset the node pushes to the collector, where a discovery probe is not
+to be trusted: the memory, the operating system, the cpu, the hardware, the
+time zone, and the address the collector connects to.

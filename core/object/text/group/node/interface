@@ -1,0 +1,2 @@
+The device of the node the network is on, and how an address drawn from it
+joins the segment: the mode, and the VLAN of its port.

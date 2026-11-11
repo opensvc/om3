@@ -1,0 +1,3 @@
+How the traffic of the network reaches the other nodes and the outside:
+the gateways, the routing tables, the tunnels to the peer nodes, and the
+masquerading of a private network.

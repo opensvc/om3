@@ -1,0 +1,2 @@
+How the nodes log in to one another over ssh: the remote user, and the key
+the node serves to be trusted with.

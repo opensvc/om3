@@ -9279,9 +9279,11 @@ components:
         driver:
           type: string
           description: >
-            The driver declaring the group, as "ip.host". Empty for a group
-            every resource has, and for the "other" group of the keywords not
-            grouped yet.
+            The driver declaring the group, as "ip.host", or the section type
+            of the node or cluster configuration, as "array.hp3par". Empty for
+            a group declared by no driver: a group every resource has, a group
+            of the object, node or cluster configurations, and the "other"
+            group of a keyword naming none.
         name:
           type: string
         text:

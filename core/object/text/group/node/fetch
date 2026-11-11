@@ -1,0 +1,3 @@
+The urls the node fetches from, on top of what the node policy on urls
+allows, the address ranges they may resolve in, and whether a fetch
+verifies the certificate of the server.

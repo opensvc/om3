@@ -1,0 +1,3 @@
+What happens when the cluster splits: whether the nodes vote, the votes of
+an arbitrator, what a node losing the vote does, and the command fencing a
+node.

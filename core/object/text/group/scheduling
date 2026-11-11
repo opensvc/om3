@@ -1,0 +1,3 @@
+When the instance runs its periodic actions: the status evaluations, the
+info refresh, the compliance runs, and the default schedule of its syncs
+and tasks.

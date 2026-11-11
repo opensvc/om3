@@ -1,0 +1,2 @@
+The rate the listener lets the requests of a client pass, the burst it
+allows, and how long it remembers a client.

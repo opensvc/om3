@@ -94,9 +94,10 @@ const GroupOtherID = "other"
 //go:embed text
 var fs embed.FS
 
-// GroupOther holds the keywords not grouped yet: the ones of the drivers
-// declaring no group of their own, and the ones of the DEFAULT section, of
-// the node and of the cluster configurations. It comes after the others.
+// GroupOther is the group of a keyword naming none. Every keyword of the
+// drivers, of the object kinds, of the node and of the cluster names one, as
+// a test of the driverdb package verifies, so it holds none: it is what the
+// api says of a keyword added without a group. It comes after the others.
 var GroupOther = Group{
 	ID:    GroupOtherID,
 	Name:  "Other",

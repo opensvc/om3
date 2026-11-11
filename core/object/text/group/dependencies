@@ -1,0 +1,2 @@
+The objects that must be up before the daemon starts this one, and the ones
+that must be down before it stops this one.

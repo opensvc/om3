@@ -1,0 +1,2 @@
+Whether the actions run in a process group, and the cpu, memory, io and pids
+caps of the process group of the object, of a subset or of a resource.

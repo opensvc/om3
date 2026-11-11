@@ -1,0 +1,4 @@
+Who the api accepts, and what it grants them: the authorities of the client
+certificates, the openid issuer, the group connecting through the user
+socket, the grants of a unix group, and the metrics served with no
+authentication.

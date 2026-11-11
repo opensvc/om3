@@ -1,0 +1,3 @@
+How long the actions of the object may take before they are declared failed:
+all of them, or the one of each action, the status evaluation, the stat
+calls of the filesystems, and the wait for the running syncs.

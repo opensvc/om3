@@ -1,0 +1,3 @@
+The cluster nameservers: the nodes serving them, the reverse lookups they
+answer, the owner of the socket of their backend, and the nameservers a
+network offers its containers.

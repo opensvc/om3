@@ -1,0 +1,2 @@
+The environment codes, as PRD or DEV: the one of the node, the ones of the
+objects it runs, and the ones the cluster offers to choose from.

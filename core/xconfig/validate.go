@@ -651,7 +651,9 @@ func (t T) Validate() (Alerts, error) {
 				}
 			}
 		}
-		if did.Group.IsResource() {
+		// The sections of a driver: a resource, or a section of a type
+		// of the node configuration, as an array.
+		if did.Group.IsValid() {
 			alerts = append(alerts, t.strategyAlerts(section, did, written)...)
 		}
 	}
@@ -669,13 +671,14 @@ type sectionsValidator interface {
 }
 
 // keywordGrouper is a referrer knowing the groups of the keywords of a
-// resource driver, whose strategies say which keywords are ways to configure
-// a group that exclude each other.
+// driver, of a resource or of a section type of the node configuration,
+// whose strategies say which keywords are ways to configure a group that
+// exclude each other.
 type keywordGrouper interface {
 	DriverKeywordGroups(driver.ID) []keywords.Group
 }
 
-// strategyAlerts warns of the keywords a resource section sets that belong to
+// strategyAlerts warns of the keywords a driver section sets that belong to
 // strategies excluding each other: a keyword a strategy excludes set next to
 // one the strategy uses, as an address and the network to draw one from.
 //

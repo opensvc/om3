@@ -1,0 +1,4 @@
+What the node, the cluster, or the item a section configures is: its id
+or its name, the driver its type names, as the heartbeat or the pool
+driver, and a comment saying its role. The persistent reservation key of
+the node is the id the disks know it by.

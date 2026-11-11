@@ -1,0 +1,3 @@
+The certificates the listener presents, the revocation list it checks the
+client certificates against, and the port it answers the ACME challenges
+on to get its certificates.

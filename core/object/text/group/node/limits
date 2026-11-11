@@ -1,0 +1,4 @@
+The bounds the node holds itself to: the memory and swap left below which
+it stops orchestrating, the actions it runs in parallel, the size of a
+datastore key or of a file fetched, and the actions the collector speaker
+sends per batch.

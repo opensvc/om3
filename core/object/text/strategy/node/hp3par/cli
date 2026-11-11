@@ -1,0 +1,5 @@
+The driver runs the commands through the 3par cli installed on the node,
+authenticated by the password file `pwf` points to. The ssh user and key
+are not read.
+
+Choose it for a node with the 3par cli installed.

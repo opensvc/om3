@@ -1,0 +1,2 @@
+Which node the daemon prefers to run an instance on: the placement policy,
+and the objects the instances must or should run next to, or apart from.

@@ -1,0 +1,3 @@
+A claim of the namespace on a cluster resource: the pool, network, cpu or
+memory it is against, the most the objects of the namespace may take, and
+what an object claiming nothing is counted for.

@@ -1,0 +1,3 @@
+What the daemon does when a monitored resource of a started instance goes
+down and can not be restarted, and whether the surviving node fences the
+unreachable peer it takes the instance over from.
