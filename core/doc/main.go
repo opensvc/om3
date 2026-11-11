@@ -236,6 +236,7 @@ func ConvertKeywordGroups(groups []keywords.DriverGroup) api.KeywordGroupItems {
 			Name:       g.Name,
 			Text:       g.Text,
 			Order:      g.Order,
+			Required:   g.Required,
 			Strategies: make([]api.KeywordStrategyItem, 0, len(g.Strategies)),
 		}
 		for _, s := range g.Strategies {
@@ -245,6 +246,7 @@ func ConvertKeywordGroups(groups []keywords.DriverGroup) api.KeywordGroupItems {
 				Text:     s.Text,
 				Uses:     append([]string{}, s.Uses...),
 				Excludes: append([]string{}, s.Excludes...),
+				Requires: append([]string{}, s.Requires...),
 				When:     make([]string, 0, len(s.When)),
 			}
 			for _, kop := range s.When {

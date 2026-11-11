@@ -101,7 +101,7 @@ func TestKeywordStrategyOptionsExist(t *testing.T) {
 				continue
 			}
 			for _, s := range g.Strategies {
-				for _, option := range append(slices.Clone(s.Uses), s.Excludes...) {
+				for _, option := range slices.Concat(s.Uses, s.Excludes, s.Requires) {
 					assert.Containsf(t, options, option, "%s: group %s strategy %s names %q, no keyword of the driver", drvID, g.ID, s.ID, option)
 				}
 				for _, kop := range s.When {

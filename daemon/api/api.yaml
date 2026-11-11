@@ -9270,6 +9270,7 @@ components:
         - name
         - text
         - order
+        - required
         - strategies
       properties:
         id:
@@ -9288,6 +9289,13 @@ components:
         order:
           type: integer
           description: The rank of the group among the groups of a section, the lowest first.
+        required:
+          type: boolean
+          description: >
+            A section of the driver follows one of the strategies of the
+            group: the validation refuses one setting none of the keywords
+            the strategies use, as an ip naming neither an address nor a
+            network to draw one from.
         strategies:
           type: array
           items:
@@ -9305,6 +9313,7 @@ components:
         - text
         - uses
         - excludes
+        - requires
         - when
       properties:
         id:
@@ -9322,6 +9331,14 @@ components:
         excludes:
           type: array
           description: The options of the keywords the strategy leaves unset.
+          items:
+            type: string
+        requires:
+          type: array
+          description: >
+            The options of the keywords a section following the strategy sets
+            too, as the dev of a static address: the validation refuses the
+            section missing one. They may be of another group.
           items:
             type: string
         when:
