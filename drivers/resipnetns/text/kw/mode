@@ -22,7 +22,7 @@ The ip link mode.
 
 - `ipvlan-l3s`
 
-  A variant of ipvlan-l3 that keeps traffic in the kernel's netfilter/iptables path (s = symmetric routing). Used when you still need NAT, firewalling, or policy routing rules to apply to ipvlan traffic, unlike pure l3 mode.
+  A variant of ipvlan-l3 that keeps traffic in the kernel's netfilter/iptables path (s = symmetric routing). Used when you still need NAT, firewalling, or policy routing rules to apply to ipvlan traffic, unlike pure l3 mode. As in every ipvlan mode, the host and the container do not reach each other through the parent interface.
 
 - `ovs` (Open vSwitch)
 
@@ -38,5 +38,5 @@ The ip link mode.
 | macvlan    |                  |                  | ok                    |
 | ipvlan-l2  |                  |                  | ok                    |
 | ipvlan-l3  |                  |                  | ok                    |
-| ipvlan-l3s | ok               | ok               | ok                    |
+| ipvlan-l3s |                  |                  | ok                    |
 | ovs        | ok               | ok               | ok                    |
