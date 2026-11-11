@@ -99,4 +99,18 @@ func TestValidateRequiredAddressing(t *testing.T) {
 	assert.Empty(t, missing("[ip#1]\ntype = host\nipname@"+hostname.Hostname()+" = 1.2.3.4\nipdev = lo\n"), "a scoped alias")
 	assert.Empty(t, missing("[DEFAULT]\ndev = lo\n[ip#1]\ntype = host\nname = 1.2.3.4\n"), "a device inherited from DEFAULT")
 	assert.Empty(t, missing("[DEFAULT]\nipdev@"+hostname.Hostname()+" = lo\n[ip#1]\ntype = host\nname = 1.2.3.4\n"), "a device inherited from DEFAULT by a scoped alias")
+
+	// A keyword written with an empty value sets nothing, as the field a
+	// designer adds for a strategy picked, to be filled in.
+	assert.Equal(t,
+		[]string{"error ip#1.: no addressing strategy is followed: set name (static), or network or addr (ipam)"},
+		missing("[ip#1]\ntype = host\nnetwork =\n"), "an empty network")
+	assert.Equal(t,
+		[]string{"error ip#1.dev: dev is not set, but the static addressing strategy requires it"},
+		missing("[ip#1]\ntype = host\nname = 1.2.3.4\ndev =  \n"), "an empty dev")
+	assert.Equal(t,
+		[]string{"error ip#1.dev: dev is not set, but the static addressing strategy requires it"},
+		missing("[DEFAULT]\ndev =\n[ip#1]\ntype = host\nname = 1.2.3.4\n"), "an empty dev in DEFAULT")
+	assert.Empty(t, missing("[ip#1]\ntype = host\nname =\nnetwork = default\n"), "an empty name follows no static strategy")
+	assert.Empty(t, strategyAlerts(t, "[ip#1]\ntype = host\nname =\nnetwork = default\n"), "an empty name conflicts with no network")
 }
