@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -36,9 +35,9 @@ import (
 //
 // With waitKnown, as a creation asks with wait_local, the answer is held
 // until this daemon knows the object, so the request that follows finds it:
-// the daemon learns of an object a moment after its configuration is
-// written, and a provision asked in that moment was told the object did not
-// exist.
+// the daemon learns of an object once the first status of its instance is
+// in, and a provision asked before was told the object did not exist. It is
+// held as long as the wait with one, objectKnownTimeout without.
 //
 // With flagStopped, as a creation asks of an object the daemon would start
 // on its own, the instance is flagged stopped on this node before the
@@ -134,12 +133,11 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, check *configCheck, 
 	}
 	a.announceConfigFileWritten(p)
 	if waitKnown {
-		knownCtx, knownCancel := context.WithTimeout(ctx.Request().Context(), objectKnownTimeout)
-		known := a.waitObjectKnown(knownCtx, knownSub, p)
-		knownCancel()
-		if !known {
+		knownCtx, knownCancel, bound := objectKnownContext(ctx.Request().Context(), waitCtx, waiting)
+		defer knownCancel()
+		if !a.waitObjectKnown(knownCtx, knownSub, p) {
 			return JSONProblemf(ctx, http.StatusRequestTimeout, "Object not known yet",
-				"%s is created, and not known to this daemon after %s", p, objectKnownTimeout)
+				"%s is created, and not known to this daemon after %s", p, bound)
 		}
 	}
 	warnSharedRootlessAccounts(ctx, p)

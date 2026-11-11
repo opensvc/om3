@@ -5353,11 +5353,12 @@ type PostObjectConfigFileParams struct {
 
 	// WaitLocal Hold the answer of the creation of an object until this daemon knows
 	// the object, listed and watched by an instance monitor, for the request
-	// that follows to find it. The daemon learns of an object a moment after
-	// its configuration is written.
+	// that follows to find it. The daemon learns of an object once the first
+	// status of its instance is in, which lasts as long as its drivers take.
 	//
-	// The hold is bounded: past it, the request is answered 408, the object
-	// created all the same, as a wait that expires.
+	// The hold is bounded by wait when given, by 30 seconds otherwise: past
+	// it, the request is answered 408, the object created all the same, as a
+	// wait that expires.
 	WaitLocal *WaitLocal `form:"wait_local,omitempty" json:"wait_local,omitempty"`
 
 	// Restore Keep what the configuration recorded of the thing it was made for:
