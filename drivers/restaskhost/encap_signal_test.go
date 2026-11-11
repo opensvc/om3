@@ -141,6 +141,18 @@ func TestRunExitCode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 137, code, "a timed out process says its code")
 
+	// A process the timeout of the run killed has no exit code, -1: the
+	// run ended killed.
+	short, cancelShort := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancelShort()
+	killedErr := exec.CommandContext(short, "sleep", "5").Run()
+	var ee *exec.ExitError
+	require.ErrorAs(t, killedErr, &ee)
+	require.Equal(t, -1, ee.ExitCode(), "a killed process has no exit code")
+	code, err = runExitCode(short, nil, killedErr)
+	require.NoError(t, err)
+	assert.Equal(t, 128+int(syscall.SIGKILL), code, "a process killed on timeout")
+
 	_, err = runExitCode(live, nil, errors.New("agent unreachable"))
 	assert.Error(t, err, "another error")
 
