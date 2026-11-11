@@ -107,3 +107,44 @@ func TestACommanderSignalingItsCommandGetsTheSignal(t *testing.T) {
 	assert.Equal(t, syscall.SIGWINCH, signaled)
 	assert.False(t, cancelled, "waited on, not cancelled")
 }
+
+// exitCodeError is the error of a command exiting with a code.
+type exitCodeError int
+
+func (e exitCodeError) Error() string { return "exit status" }
+func (e exitCodeError) ExitCode() int { return int(e) }
+
+// A run in a container ends with the signal that reached its command, the
+// code its command exited with, or, its timeout expired and its commander
+// ending with the error of its context and no code, killed: the run is
+// recorded so, rather than left unrecorded. Another error is the error of
+// the run.
+func TestRunExitCode(t *testing.T) {
+	live := context.Background()
+	expired, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
+	defer cancel()
+	<-expired.Done()
+
+	code, err := runExitCode(live, syscall.SIGTERM, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 128+int(syscall.SIGTERM), code, "a signal")
+
+	code, err = runExitCode(live, nil, exitCodeError(3))
+	require.NoError(t, err)
+	assert.Equal(t, 3, code, "an exit code")
+
+	code, err = runExitCode(expired, nil, errors.New("cancelled"))
+	require.NoError(t, err)
+	assert.Equal(t, 128+int(syscall.SIGKILL), code, "a timed out commander")
+
+	code, err = runExitCode(expired, nil, exitCodeError(137))
+	require.NoError(t, err)
+	assert.Equal(t, 137, code, "a timed out process says its code")
+
+	_, err = runExitCode(live, nil, errors.New("agent unreachable"))
+	assert.Error(t, err, "another error")
+
+	code, err = runExitCode(live, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 0, code, "success")
+}
