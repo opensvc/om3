@@ -1,15 +1,19 @@
 package driverdb_test
 
 import (
+	"context"
 	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 // nodeConfigStores returns the keyword stores of the node and of the cluster
@@ -116,7 +120,19 @@ func TestKeywordStrategiesOfNodeConfig(t *testing.T) {
 // TestKeywordStrategiesOfNodeConfigValidate verifies the validation of the
 // cluster configuration warns of a hp3par array setting the credentials of
 // the method it does not use, and only then.
+// withHP3PARCapability isolates the test from the capabilities of the host,
+// and gives it the one of the hp3par array driver: the validation judges the
+// keywords of a typed section only where its driver is usable.
+func withHP3PARCapability(t *testing.T) {
+	t.Helper()
+	testhelper.Setup(t)
+	caps := []string{driver.NewID(driver.GroupArray, "hp3par").Cap()}
+	capabilities.Register(func(context.Context) ([]string, error) { return caps, nil })
+	require.NoError(t, capabilities.Scan(t.Context()))
+}
+
 func TestKeywordStrategiesOfNodeConfigValidate(t *testing.T) {
+	withHP3PARCapability(t)
 	for conf, conflicting := range map[string]bool{
 		"method = ssh\nusername = u\nkey = /k\n":            false,
 		"method = cli\npwf = /p\n":                          false,
@@ -146,6 +162,7 @@ func TestKeywordStrategiesOfNodeConfigValidate(t *testing.T) {
 // configuration refuses the proxy method of v2 once, naming what replaces it,
 // rather than as one more value among the candidates.
 func TestHP3PARProxyMethodIsRefused(t *testing.T) {
+	withHP3PARCapability(t)
 	o, err := object.NewCluster(object.WithConfigData([]byte("[array#a1]\ntype = hp3par\nmanager = m\nmethod = proxy\n")), object.WithVolatile(true))
 	require.NoError(t, err)
 	alerts, err := o.Config().Validate()
