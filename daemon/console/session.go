@@ -31,6 +31,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/console"
 	"github.com/opensvc/om3/v3/core/vpath"
+	"github.com/opensvc/om3/v3/util/httpclientcache"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/volfile"
 )
@@ -662,7 +663,7 @@ func (cfg Config) peerConsole(ticket *console.Ticket, signed string) (string, *h
 	if tlsConfig != nil && tlsConfig.ServerName == "" {
 		tlsConfig.ServerName = ticket.Target.Node
 	}
-	return u.String(), &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}, nil
+	return u.String(), &http.Client{Transport: httpclientcache.NewTransport(tlsConfig)}, nil
 }
 
 // relayUpload sends a transfer on to the console of the node of the ticket, and

@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -42,6 +43,31 @@ type (
 )
 
 var (
+	// dialTimeout bounds the TCP connect of a client. Without it the
+	// connect to an unreachable node waits for the kernel to give up
+	// (about 2 minutes with the default 6 SYN retries), and it is not
+	// abandoned when the request context ends: the transport completes
+	// the dial in the background to pool the connection.
+	dialTimeout = 5 * time.Second
+
+	// dialKeepAlive is the period of the TCP keepalive probes of a
+	// connection, which end a connection to a node that went away while
+	// a request waits on it.
+	dialKeepAlive = 30 * time.Second
+
+	// tlsHandshakeTimeout bounds the TLS handshake of a new connection,
+	// to a node that accepts the connection and does not complete the
+	// handshake. It does not bound the wait for the response: a request
+	// asking the api to wait, as for the end of an orchestration, is held
+	// until then, and only the timeout of the client or of the request
+	// context bounds it.
+	tlsHandshakeTimeout = 10 * time.Second
+
+	// idleConnTimeout drops a pooled connection unused that long: without
+	// it, the connections to a node gone stay pooled for ever, and so do
+	// the ones of a transport made for one request.
+	idleConnTimeout = 90 * time.Second
+
 	getClientChan   = make(chan getClient)
 	purgeClientChan = make(chan bool)
 )
@@ -157,12 +183,30 @@ func TLSConfig(o Options) (*tls.Config, error) {
 	return config, nil
 }
 
+// NewTransport returns a transport to the nodes, or to the services the
+// daemon reaches, as an arbitrator or the collector, trusting what config
+// says: its connect and its TLS handshake are bounded, and its idle
+// connections dropped. Every client of the nodes is made of one, for a node
+// unreachable not to hold them longer than another.
+//
+// It speaks HTTP/1.1, as a transport given a TLS configuration does: unlike
+// a clone of http.DefaultTransport, which would attempt HTTP/2. It uses no
+// proxy.
+func NewTransport(config *tls.Config) *http.Transport {
+	return &http.Transport{
+		TLSClientConfig:     config,
+		DialContext:         (&net.Dialer{Timeout: dialTimeout, KeepAlive: dialKeepAlive}).DialContext,
+		TLSHandshakeTimeout: tlsHandshakeTimeout,
+		IdleConnTimeout:     idleConnTimeout,
+	}
+}
+
 func newClient(o Options) (cli *http.Client, err error) {
 	config, err := TLSConfig(o)
 	if err != nil {
 		return nil, err
 	}
-	cli = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+	cli = &http.Client{Transport: NewTransport(config)}
 	if o.Timeout > 0 {
 		cli.Timeout = o.Timeout
 	}

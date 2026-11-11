@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"maps"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/httpclientcache"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -193,20 +195,29 @@ func (t *Manager) arbitratorCheck(ctx context.Context, a arbitratorConfig) error
 	return fmt.Errorf("invalid arbitrator uri")
 }
 
+// arbitratorClients are the clients of the http arbitrators, verifying the
+// certificate of the arbitrator or not, made once: a client made for each
+// check pooled the connections of a transport no check used again.
+var arbitratorClients = map[bool]*http.Client{
+	false: {Transport: httpclientcache.NewTransport(&tls.Config{})},
+	true:  {Transport: httpclientcache.NewTransport(&tls.Config{InsecureSkipVerify: true})},
+}
+
+// checkURL says whether the http arbitrator answers. Any answer is one: the
+// arbitrator is reachable.
 func (a *arbitratorConfig) checkURL(ctx context.Context) error {
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: a.Insecure,
-			},
-		},
-	}
 	req, err := http.NewRequestWithContext(ctx, "GET", a.URI, nil)
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(req)
-	return err
+	resp, err := arbitratorClients[a.Insecure].Do(req)
+	if err != nil {
+		return err
+	}
+	// The body is drained for the connection to serve the next check, and
+	// closed for it not to be held open.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+	return resp.Body.Close()
 }
 
 func (a *arbitratorConfig) checkDial(ctx context.Context) error {

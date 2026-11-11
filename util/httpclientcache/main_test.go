@@ -9,10 +9,12 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -112,4 +114,89 @@ func TestClientCachedByAuthorityContent(t *testing.T) {
 	require.NoError(t, os.WriteFile(caFile1, b, 0o600))
 	require.NoError(t, get(t, o, srv2.URL))
 	require.Error(t, get(t, o, srv1.URL))
+}
+
+// silentListener accepts the connections and never answers on them, as a
+// node whose daemon is stuck. The connections are closed with the listener.
+func silentListener(t *testing.T) net.Listener {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	var (
+		mu    sync.Mutex
+		conns []net.Conn
+		done  = make(chan struct{})
+	)
+	go func() {
+		defer close(done)
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			conns = append(conns, c)
+			mu.Unlock()
+		}
+	}()
+	t.Cleanup(func() {
+		_ = ln.Close()
+		<-done
+		for _, c := range conns {
+			_ = c.Close()
+		}
+	})
+	return ln
+}
+
+// A node that accepts the connection and never answers the handshake: the
+// request ends at tlsHandshakeTimeout, not at the client timeout, which is
+// zero here.
+func TestClientTLSHandshakeTimeout(t *testing.T) {
+	ln := silentListener(t)
+
+	saved := tlsHandshakeTimeout
+	tlsHandshakeTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { tlsHandshakeTimeout = saved })
+
+	cli, err := newClient(Options{InsecureSkipVerify: true})
+	require.NoError(t, err)
+
+	begin := time.Now()
+	_, err = cli.Get("https://" + ln.Addr().String())
+	require.Error(t, err)
+	require.Less(t, time.Since(begin), 2*time.Second)
+	require.Contains(t, err.Error(), "TLS handshake timeout")
+}
+
+// The connect of a client is bounded by dialTimeout, not by the kernel. A
+// timeout already elapsed fails the connect to any address, a reachable one
+// included, which an unreachable one would need minutes to show.
+func TestClientDialTimeout(t *testing.T) {
+	ln := silentListener(t)
+
+	saved := dialTimeout
+	dialTimeout = time.Nanosecond
+	t.Cleanup(func() { dialTimeout = saved })
+
+	cli, err := newClient(Options{InsecureSkipVerify: true})
+	require.NoError(t, err)
+
+	_, err = cli.Get("https://" + ln.Addr().String())
+	require.Error(t, err)
+	var netErr net.Error
+	require.ErrorAs(t, err, &netErr)
+	require.True(t, netErr.Timeout(), "%s", err)
+	require.Contains(t, err.Error(), "dial", "the connect times out")
+}
+
+// The transport of the nodes drops its idle connections, and speaks
+// HTTP/1.1 as before: no clone of http.DefaultTransport attempting HTTP/2.
+func TestNewTransport(t *testing.T) {
+	tp := NewTransport(&tls.Config{})
+	require.NotNil(t, tp.DialContext, "the connect is bounded")
+	require.Equal(t, tlsHandshakeTimeout, tp.TLSHandshakeTimeout)
+	require.Equal(t, idleConnTimeout, tp.IdleConnTimeout)
+	require.False(t, tp.ForceAttemptHTTP2)
+	require.Nil(t, tp.Proxy, "the nodes are reached with no proxy")
 }
