@@ -1,0 +1,2 @@
+How long a request to the collector or to an array may take before it is
+declared failed, and how a failed one is retried.

@@ -1,0 +1,3 @@
+Whether the provision and unprovision actions may run on the object, the
+snapshot a provision restores the heads of its resources from, and whether
+its resources are provisioned once, by the leader instance.

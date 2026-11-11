@@ -229,3 +229,15 @@ func TestKeywordGroupsOfTaskDrivers(t *testing.T) {
 		}
 	}
 }
+
+// TestNoKeywordIsLeftUngrouped verifies every keyword of the node, of the
+// cluster, of every object kind and of every driver names a group: the other
+// group is for none. A keyword added without a group fails here, rather than
+// reach a wizard under no topic.
+func TestNoKeywordIsLeftUngrouped(t *testing.T) {
+	for name, store := range allKeywordStores(t) {
+		for _, kw := range store {
+			assert.NotEqualf(t, keywords.GroupOtherID, kw.GroupID(), "%s: keyword %s has no group", name, kwID(kw))
+		}
+	}
+}

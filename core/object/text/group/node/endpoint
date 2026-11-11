@@ -1,0 +1,4 @@
+Where the service the section talks to is reached, as the collector, an
+arbitrator, an array, a switch, a syslog server or a store: its url, its
+address and port, the method connecting to it, the proxies on the way, and
+whether its certificate or its key is verified.

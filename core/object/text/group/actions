@@ -1,0 +1,3 @@
+How the actions act on the object: whether it is disabled, whether a failed
+start is rolled back, and whether the resources of a subset are acted upon
+in parallel.

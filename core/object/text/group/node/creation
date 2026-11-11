@@ -1,0 +1,4 @@
+How the pool creates the device of a volume on its storage: the options
+of the array, as the compression, the deduplication, the replication or the
+label, the options of the command creating it, and whether its unprovision
+deletes it at once.

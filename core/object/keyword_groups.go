@@ -10,12 +10,17 @@ import (
 // KeywordGroups returns the groups the keywords of the store belong to, each
 // once per driver declaring it, in the order a wizard shows them.
 //
-// A group every resource has, and the one of the keywords not grouped yet,
+// A group every resource has, the one of the keywords not grouped yet, and
+// a group of the keywords of the objects, as the DEFAULT section holds them,
 // are returned once, with no driver. A group a driver declares is returned
 // with the driver of each keyword naming it: the drivers its section and
 // types name, as the store of an object kind says them, or else the drivers
 // holding the keyword, as a keyword looked up in a section of a
 // configuration is the one of the driver manifest.
+//
+// A keyword of the node or cluster configuration names a group of these
+// configurations, returned with no driver, or with the section type
+// declaring one of its id, as array.hp3par.
 func KeywordGroups(store keywords.Store) []keywords.DriverGroup {
 	l := make([]keywords.DriverGroup, 0)
 	seen := make(map[[2]string]bool)
@@ -28,8 +33,18 @@ func KeywordGroups(store keywords.Store) []keywords.DriverGroup {
 		l = append(l, keywords.DriverGroup{Driver: drv, Group: g})
 	}
 	for _, kw := range store {
+		if l, ok := nodeKeywordGroups(kw); ok {
+			for _, dg := range l {
+				add(dg.Driver, dg.Group)
+			}
+			continue
+		}
 		id := kw.GroupID()
 		if g, ok := manifest.SharedGroup(id); ok {
+			add("", g)
+			continue
+		}
+		if g, ok := objectKeywordGroup(kw); ok {
 			add("", g)
 			continue
 		}

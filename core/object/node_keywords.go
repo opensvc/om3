@@ -32,6 +32,7 @@ var (
 	kwNodeID = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/id.default"),
 		Option:      "id",
+		Group:       nodeGroupIdentity.ID,
 		Scopable:    false,
 		Section:     "DEFAULT",
 		Text:        keywords.NewText(fs, "text/kw/node/id"),
@@ -39,11 +40,13 @@ var (
 	kwNodeOCI = keywords.Keyword{
 		Candidates: []string{"podman", "docker"},
 		Option:     "oci",
+		Group:      nodeGroupContainers.ID,
 		Section:    "node",
 		Text:       keywords.NewText(fs, "text/kw/node/node.oci"),
 	}
 	kwNodeUUID = keywords.Keyword{
 		Option:       "uuid",
+		Group:        nodeGroupCredentials.ID,
 		Section:      "node",
 		Text:         keywords.NewText(fs, "text/kw/node/node.uuid"),
 		RedactSecret: true,
@@ -51,12 +54,14 @@ var (
 	kwNodePRKey = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.prkey.default"),
 		Option:      "prkey",
+		Group:       nodeGroupIdentity.ID,
 		Section:     "node",
 		Text:        keywords.NewText(fs, "text/kw/node/node.prkey"),
 	}
 	kwNodeConnectTo = keywords.Keyword{
 		Example: "1.2.3.4",
 		Option:  "connect_to",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.connect_to"),
 	}
@@ -64,6 +69,7 @@ var (
 		Converter: converters.Size,
 		Example:   "256mb",
 		Option:    "mem_bytes",
+		Group:     nodeGroupAsset.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_bytes"),
 	}
@@ -71,6 +77,7 @@ var (
 		Converter: converters.Int,
 		Example:   "4",
 		Option:    "mem_banks",
+		Group:     nodeGroupAsset.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_banks"),
 	}
@@ -78,36 +85,42 @@ var (
 		Converter: converters.Int,
 		Example:   "4",
 		Option:    "mem_slots",
+		Group:     nodeGroupAsset.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_slots"),
 	}
 	kwNodeOSVendor = keywords.Keyword{
 		Example: "Digital",
 		Option:  "os_vendor",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.os_vendor"),
 	}
 	kwNodeOSRelease = keywords.Keyword{
 		Example: "5",
 		Option:  "os_release",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.os_release"),
 	}
 	kwNodeOSKernel = keywords.Keyword{
 		Example: "5.1234",
 		Option:  "os_kernel",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.os_kernel"),
 	}
 	kwNodeOSArch = keywords.Keyword{
 		Example: "5.1234",
 		Option:  "os_arch",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.os_arch"),
 	}
 	kwNodeCPUFreq = keywords.Keyword{
 		Example: "3.2 Ghz",
 		Option:  "cpu_freq",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.cpu_freq"),
 	}
@@ -115,6 +128,7 @@ var (
 		Converter: converters.Int,
 		Example:   "4",
 		Option:    "cpu_threads",
+		Group:     nodeGroupAsset.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_threads"),
 	}
@@ -122,6 +136,7 @@ var (
 		Converter: converters.Int,
 		Example:   "2",
 		Option:    "cpu_cores",
+		Group:     nodeGroupAsset.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_cores"),
 	}
@@ -129,77 +144,90 @@ var (
 		Converter: converters.Int,
 		Example:   "1",
 		Option:    "cpu_dies",
+		Group:     nodeGroupAsset.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_dies"),
 	}
 	kwNodeCPUModel = keywords.Keyword{
 		Example: "Alpha EV5",
 		Option:  "cpu_model",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.cpu_model"),
 	}
 	kwNodeSerial = keywords.Keyword{
 		Example: "abcdef0123456",
 		Option:  "serial",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.serial"),
 	}
 	kwNodeBIOSVersion = keywords.Keyword{
 		Example: "1.025",
 		Option:  "bios_version",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.bios_version"),
 	}
 	kwNodeSPVersion = keywords.Keyword{
 		Example: "1.026",
 		Option:  "sp_version",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.sp_version"),
 	}
 	kwNodeEnclosure = keywords.Keyword{
 		Example: "1",
 		Option:  "enclosure",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.enclosure"),
 	}
 	kwNodeTZ = keywords.Keyword{
 		Example: "+0200",
 		Option:  "tz",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.tz"),
 	}
 	kwNodeManufacturer = keywords.Keyword{
 		Example: "Digital",
 		Option:  "manufacturer",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.manufacturer"),
 	}
 	kwNodeModel = keywords.Keyword{
 		Example: "ds20e",
 		Option:  "model",
+		Group:   nodeGroupAsset.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.model"),
 	}
 	kwNodeArraySchedule = keywords.Keyword{
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.schedule"),
 	}
 	kwNodeArrayXtremioName = keywords.Keyword{
 		Example: "array1",
 		Option:  "name",
+		Group:   nodeGroupIdentity.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.xtremio.name"),
 		Types:   []string{"xtremio"},
 	}
 	kwNodeStoreSchedule = keywords.Keyword{
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "store",
 		Text:    keywords.NewText(fs, "text/kw/node/store.schedule"),
 	}
 	kwNodeStoreType = keywords.Keyword{
 		Candidates: []string{"tar"},
 		Option:     "type",
+		Group:      nodeGroupIdentity.ID,
 		Required:   true,
 		Section:    "store",
 		Text:       keywords.NewText(fs, "text/kw/node/store.type"),
@@ -207,6 +235,7 @@ var (
 	kwNodeStoreHostKey = keywords.Keyword{
 		Example: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBc1nVQ6Ck8M6zKQ1dHoRcgYzBH9Cf2rBG7aJ1LGq2xp",
 		Option:  "host_key",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "store",
 		Text:    keywords.NewText(fs, "text/kw/node/store.tar.host_key"),
 		Types:   []string{"tar"},
@@ -215,6 +244,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "shared",
+		Group:     nodeGroupEndpoint.ID,
 		Section:   "store",
 		Text:      keywords.NewText(fs, "text/kw/node/store.tar.shared"),
 		Types:     []string{"tar"},
@@ -222,6 +252,7 @@ var (
 	kwNodeStoreSSHPrivateKey = keywords.Keyword{
 		Example:      "from system/sec/backup key ssh_private_key",
 		Option:       "ssh_private_key",
+		Group:        nodeGroupCredentials.ID,
 		RedactSecret: true,
 		Section:      "store",
 		Text:         keywords.NewText(fs, "text/kw/node/store.tar.ssh_private_key"),
@@ -230,6 +261,7 @@ var (
 	kwNodeStoreURL = keywords.Keyword{
 		Example:  "/srv/backups",
 		Option:   "url",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "store",
 		Text:     keywords.NewText(fs, "text/kw/node/store.tar.url"),
@@ -238,6 +270,7 @@ var (
 	kwNodeStoreKeep = keywords.Keyword{
 		Example: "24h 7d 4w 6m",
 		Option:  "keep",
+		Group:   nodeGroupRetention.ID,
 		Section: "store",
 		Text:    keywords.NewText(fs, "text/kw/node/store.keep"),
 	}
@@ -245,12 +278,14 @@ var (
 		Converter: converters.ListLowercase,
 		Example:   "operator:ns1 guest:ns2",
 		Option:    "grant",
+		Group:     nodeGroupAuthentication.ID,
 		Scopable:  true,
 		Section:   "uxgroup",
 		Text:      keywords.NewText(fs, "text/kw/node/uxgroup.grant"),
 	}
 	kwNodeSwitchSchedule = keywords.Keyword{
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "switch",
 		Text:    keywords.NewText(fs, "text/kw/node/switch.schedule"),
 	}
@@ -285,6 +320,7 @@ var (
 	// node and cluster configurations, like the core objects counterpart.
 	kwNodeComment = keywords.Keyword{
 		Option: "comment",
+		Group:  nodeGroupIdentity.ID,
 		Text:   keywords.NewText(fs, "text/kw/core/comment"),
 	}
 
@@ -292,6 +328,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "secure_fetch",
+		Group:     nodeGroupFetch.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.secure_fetch"),
 	}
@@ -301,6 +338,7 @@ var (
 		Default:   "2%",
 		Example:   "2Gi",
 		Option:    "min_avail_mem",
+		Group:     nodeGroupLimits.ID,
 		Section:   "node",
 		Validate:  validShare,
 		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_mem"),
@@ -311,6 +349,7 @@ var (
 		Default:   "10%",
 		Example:   "4Gi",
 		Option:    "min_avail_swap",
+		Group:     nodeGroupLimits.ID,
 		Section:   "node",
 		Validate:  validShare,
 		Text:      keywords.NewText(fs, "text/kw/node/node.min_avail_swap"),
@@ -318,6 +357,7 @@ var (
 	kwNodeEnv = keywords.Keyword{
 		Default: "TST",
 		Option:  "env",
+		Group:   nodeGroupEnv.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	}
@@ -325,12 +365,14 @@ var (
 		Converter: converters.List,
 		Example:   "PRD PPRD",
 		Option:    "allow_envs",
+		Group:     nodeGroupEnv.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.allow_envs"),
 	}
 	kwNodeAIAgentURL = keywords.Keyword{
 		Example:  "https://ai.example.com:8090",
 		Option:   "agent_url",
+		Group:    nodeGroupEndpoint.ID,
 		Section:  "ai",
 		Since:    "v3.0.0-rc56",
 		Text:     keywords.NewText(fs, "text/kw/node/ai.agent_url"),
@@ -339,6 +381,7 @@ var (
 	kwNodeConsolePort = keywords.Keyword{
 		Converter: converters.Int,
 		Option:    "port",
+		Group:     nodeGroupListener.ID,
 		Section:   "console",
 		Default:   "1216",
 		Text:      keywords.NewText(fs, "text/kw/node/console.port"),
@@ -347,6 +390,7 @@ var (
 		Converter: converters.List,
 		Example:   "https://cloud-images.ubuntu.com/* https://images.example.com/*",
 		Option:    "allowed_urls",
+		Group:     nodeGroupFetch.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.allowed_urls"),
 	}
@@ -354,11 +398,13 @@ var (
 		Converter: converters.List,
 		Example:   "10.0.5.0/24",
 		Option:    "allowed_cidrs",
+		Group:     nodeGroupFetch.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.allowed_cidrs"),
 	}
 	kwNodeConsoleURL = keywords.Keyword{
 		Option:  "url",
+		Group:   nodeGroupListener.ID,
 		Section: "console",
 		Example: "wss://access.example.com/opensvc-console/",
 		Text:    keywords.NewText(fs, "text/kw/node/console.url"),
@@ -367,6 +413,7 @@ var (
 		Converter: converters.Int,
 		Default:   fmt.Sprintf("%d", DefaultNodeMaxParallel),
 		Option:    "max_parallel",
+		Group:     nodeGroupLimits.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_parallel"),
 		Validate:  validMaxParallel,
@@ -375,6 +422,7 @@ var (
 		Converter: converters.Size,
 		Default:   "1mb",
 		Option:    "max_key_size",
+		Group:     nodeGroupLimits.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_key_size"),
 	}
@@ -382,6 +430,7 @@ var (
 		Converter: converters.Size,
 		Default:   "64mb",
 		Option:    "max_install_size",
+		Group:     nodeGroupLimits.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_install_size"),
 	}
@@ -389,78 +438,91 @@ var (
 		Converter: converters.List,
 		Default:   "10.0.0.0/8 172.16.0.0/24 192.168.0.0/16",
 		Option:    "allowed_networks",
+		Group:     nodeGroupAddressing.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.allowed_networks"),
 	}
 	kwNodeLocCountry = keywords.Keyword{
 		Example: "fr",
 		Option:  "loc_country",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_country"),
 	}
 	kwNodeLocCity = keywords.Keyword{
 		Example: "Paris",
 		Option:  "loc_city",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_city"),
 	}
 	kwNodeLocZIP = keywords.Keyword{
 		Example: "75017",
 		Option:  "loc_zip",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_zip"),
 	}
 	kwNodeLocAddr = keywords.Keyword{
 		Example: "7 rue blanche",
 		Option:  "loc_addr",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_addr"),
 	}
 	kwNodeLocBuilding = keywords.Keyword{
 		Example: "Crystal",
 		Option:  "loc_building",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_building"),
 	}
 	kwNodeLocFloor = keywords.Keyword{
 		Example: "21",
 		Option:  "loc_floor",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_floor"),
 	}
 	kwNodeLocRoom = keywords.Keyword{
 		Example: "102",
 		Option:  "loc_room",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_room"),
 	}
 	kwNodeLocRack = keywords.Keyword{
 		Example: "R42",
 		Option:  "loc_rack",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.loc_rack"),
 	}
 	kwNodeSecZone = keywords.Keyword{
 		Example: "dmz1",
 		Option:  "sec_zone",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.sec_zone"),
 	}
 	kwNodeTeamInteg = keywords.Keyword{
 		Example: "TINT",
 		Option:  "team_integ",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.team_integ"),
 	}
 	kwNodeTeamSupport = keywords.Keyword{
 		Example: "TSUP",
 		Option:  "team_support",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.team_support"),
 	}
 	kwNodeAssetEnv = keywords.Keyword{
 		Example: "Production",
 		Option:  "asset_env",
+		Group:   nodeGroupLocation.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.asset_env"),
 	}
@@ -469,6 +531,7 @@ var (
 		ReplacedBy: "collector.url",
 		Example:    "https://collector.opensvc.com",
 		Option:     "dbopensvc",
+		Group:      nodeGroupEndpoint.ID,
 		Section:    "node",
 		Text:       keywords.NewText(fs, "text/kw/node/node.dbopensvc"),
 	}
@@ -477,6 +540,7 @@ var (
 		ReplacedBy: "collector.url",
 		Example:    "https://collector.opensvc.com",
 		Option:     "collector",
+		Group:      nodeGroupEndpoint.ID,
 		Section:    "node",
 		Text:       keywords.NewText(fs, "text/kw/node/node.collector"),
 	}
@@ -485,6 +549,7 @@ var (
 		ReplacedBy:  "collector.server",
 		Example:     "https://collector.opensvc.com/server",
 		Option:      "collector_server",
+		Group:       nodeGroupEndpoint.ID,
 		Section:     "node",
 		Text:        keywords.NewText(fs, "text/kw/node/node.collector_server"),
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.collector_server.default"),
@@ -494,6 +559,7 @@ var (
 		ReplacedBy:  "collector.feeder",
 		Example:     "https://collector.opensvc.com/feeder",
 		Option:      "collector_feeder",
+		Group:       nodeGroupEndpoint.ID,
 		Section:     "node",
 		Text:        keywords.NewText(fs, "text/kw/node/node.collector_feeder"),
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.collector_feeder.default"),
@@ -503,6 +569,7 @@ var (
 		ReplacedBy: "collector.ping_interval",
 		Example:    "120s",
 		Option:     "collector_ping_interval",
+		Group:      nodeGroupTiming.ID,
 		Aliases:    []string{"db_min_ping_interval"},
 		Section:    "node",
 		Converter:  converters.Duration,
@@ -514,6 +581,7 @@ var (
 		ReplacedBy: "collector.status_delay",
 		Example:    "30s",
 		Option:     "collector_status_delay",
+		Group:      nodeGroupTiming.ID,
 		Aliases:    []string{"db_min_update_interval"},
 		Section:    "node",
 		Converter:  converters.Duration,
@@ -524,6 +592,7 @@ var (
 		Deprecated: "v3.0.0-rc44",
 		ReplacedBy: "collector.timeout",
 		Option:     "collector_timeout",
+		Group:      nodeGroupTimeouts.ID,
 		Section:    "node",
 		Converter:  converters.Duration,
 		Default:    "5s",
@@ -532,6 +601,7 @@ var (
 	kwCollectorURL = keywords.Keyword{
 		Example: "https://collector.opensvc.com",
 		Option:  "url",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "collector",
 		Since:   "v3.0.0-rc44",
 		Text:    keywords.NewText(fs, "text/kw/node/collector.url"),
@@ -539,6 +609,7 @@ var (
 	kwCollectorServer = keywords.Keyword{
 		Example:     "https://collector.opensvc.com/server",
 		Option:      "server",
+		Group:       nodeGroupEndpoint.ID,
 		Section:     "collector",
 		Since:       "v3.0.0-rc44",
 		Text:        keywords.NewText(fs, "text/kw/node/collector.server"),
@@ -547,6 +618,7 @@ var (
 	kwCollectorFeeder = keywords.Keyword{
 		Example:     "https://collector.opensvc.com/feeder",
 		Option:      "feeder",
+		Group:       nodeGroupEndpoint.ID,
 		Section:     "collector",
 		Since:       "v3.0.0-rc44",
 		Text:        keywords.NewText(fs, "text/kw/node/collector.feeder"),
@@ -555,6 +627,7 @@ var (
 	kwCollectorPingInterval = keywords.Keyword{
 		Example:   "120s",
 		Option:    "ping_interval",
+		Group:     nodeGroupTiming.ID,
 		Section:   "collector",
 		Since:     "v3.0.0-rc44",
 		Converter: converters.Duration,
@@ -564,6 +637,7 @@ var (
 	kwCollectorSpeakerGracePeriod = keywords.Keyword{
 		Example:   "1m",
 		Option:    "speaker_grace_period",
+		Group:     nodeGroupTiming.ID,
 		Section:   "collector",
 		Since:     "v3.0.0-rc61",
 		Converter: converters.Duration,
@@ -574,6 +648,7 @@ var (
 	kwCollectorStatusDelay = keywords.Keyword{
 		Example:   "30s",
 		Option:    "status_delay",
+		Group:     nodeGroupTiming.ID,
 		Section:   "collector",
 		Since:     "v3.0.0-rc44",
 		Converter: converters.Duration,
@@ -583,6 +658,7 @@ var (
 	kwCollectorTimeout = keywords.Keyword{
 		Example:   "10s",
 		Option:    "timeout",
+		Group:     nodeGroupTimeouts.ID,
 		Section:   "collector",
 		Since:     "v3.0.0-rc44",
 		Converter: converters.Duration,
@@ -592,6 +668,7 @@ var (
 	kwCollectorActionBatch = keywords.Keyword{
 		Example:   "200",
 		Option:    "action_batch",
+		Group:     nodeGroupLimits.ID,
 		Section:   "collector",
 		Since:     "v3.0.0-rc44",
 		Converter: converters.Int,
@@ -601,6 +678,7 @@ var (
 	kwCollectorActionLogTimeout = keywords.Keyword{
 		Example:   "30s",
 		Option:    "action_log_timeout",
+		Group:     nodeGroupTimeouts.ID,
 		Section:   "collector",
 		Since:     "v3.0.0-rc44",
 		Converter: converters.Duration,
@@ -610,6 +688,7 @@ var (
 	kwNodeDBInsecure = keywords.Keyword{
 		Converter: converters.Bool,
 		Option:    "dbinsecure",
+		Group:     nodeGroupEndpoint.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.dbinsecure"),
 	}
@@ -617,6 +696,7 @@ var (
 		Deprecated: "v3.0.0-rc58",
 		Example:    "https://collector.opensvc.com",
 		Option:     "dbcompliance",
+		Group:      nodeGroupEndpoint.ID,
 		Section:    "node",
 		Text:       keywords.NewText(fs, "text/kw/node/node.dbcompliance"),
 	}
@@ -624,30 +704,35 @@ var (
 		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "dblog",
+		Group:     nodeGroupFeed.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.dblog"),
 	}
 	kwNodeBranch = keywords.Keyword{
 		Example: "uat",
 		Option:  "branch",
+		Group:   nodeGroupRepositories.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.branch"),
 	}
 	kwNodeRepo = keywords.Keyword{
 		Example: "http://opensvc.repo.corp",
 		Option:  "repo",
+		Group:   nodeGroupRepositories.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.repo"),
 	}
 	kwNodeRepoPkg = keywords.Keyword{
 		Example: "https://packages.opensvc.com",
 		Option:  "repopkg",
+		Group:   nodeGroupRepositories.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.repopkg"),
 	}
 	kwNodeRepoComp = keywords.Keyword{
 		Example: "http://compliance.repo.corp",
 		Option:  "repocomp",
+		Group:   nodeGroupRepositories.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.repocomp"),
 	}
@@ -655,6 +740,7 @@ var (
 		Default: "root",
 		Example: "root opensvc@node1",
 		Option:  "ruser",
+		Group:   nodeGroupRemote.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.ruser"),
 	}
@@ -662,6 +748,7 @@ var (
 		Default:   "60",
 		Converter: converters.Duration,
 		Option:    "maintenance_grace_period",
+		Group:     nodeGroupTiming.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.maintenance_grace_period"),
 	}
@@ -670,6 +757,7 @@ var (
 		Default:   "60s",
 		Example:   "5m",
 		Option:    "load_pool_interval",
+		Group:     nodeGroupTiming.ID,
 		Section:   "node",
 		Since:     "v3.0.0-rc61",
 		Text:      keywords.NewText(fs, "text/kw/node/node.load_pool_interval"),
@@ -679,6 +767,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "90s",
 		Option:    "rejoin_grace_period",
+		Group:     nodeGroupTiming.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.rejoin_grace_period"),
 	}
@@ -686,18 +775,21 @@ var (
 		Converter: converters.Duration,
 		Default:   "5s",
 		Option:    "ready_period",
+		Group:     nodeGroupTiming.ID,
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.ready_period"),
 	}
 	kwNodeSysreportSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "sysreport",
 		Text:    keywords.NewText(fs, "text/kw/node/sysreport.schedule"),
 	}
 	kwNodeComplianceSchedule = keywords.Keyword{
 		Default: "02:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "compliance",
 		Text:    keywords.NewText(fs, "text/kw/node/compliance.schedule"),
 	}
@@ -705,24 +797,28 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "auto_update",
+		Group:     nodeGroupScheduling.ID,
 		Section:   "compliance",
 		Text:      keywords.NewText(fs, "text/kw/node/compliance.auto_update"),
 	}
 	kwNodeChecksSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "checks",
 		Text:    keywords.NewText(fs, "text/kw/node/checks.schedule"),
 	}
 	kwNodePackagesSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "packages",
 		Text:    keywords.NewText(fs, "text/kw/node/packages.schedule"),
 	}
 	kwNodeStatsSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "stats",
 		Text:    keywords.NewText(fs, "text/kw/node/stats.schedule"),
 	}
@@ -730,18 +826,21 @@ var (
 		Converter: converters.List,
 		Example:   "blockdev mem_u",
 		Option:    "disable",
+		Group:     nodeGroupFeed.ID,
 		Section:   "stats",
 		Text:      keywords.NewText(fs, "text/kw/node/stats.disable"),
 	}
 	kwNodeAssetSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "asset",
 		Text:    keywords.NewText(fs, "text/kw/node/asset.schedule"),
 	}
 	kwNodeDisksSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
+		Group:   nodeGroupScheduling.ID,
 		Section: "disks",
 		Text:    keywords.NewText(fs, "text/kw/node/disks.schedule"),
 	}
@@ -749,18 +848,21 @@ var (
 		Default: rawconfig.Paths.CACRL,
 		Example: "https://crl.opensvc.com",
 		Option:  "crl",
+		Group:   nodeGroupCertificates.ID,
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.crl"),
 	}
 	kwNodeListenerDNSSockUID = keywords.Keyword{
 		Default: "953",
 		Option:  "dns_sock_uid",
+		Group:   nodeGroupDNS.ID,
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.dns_sock_uid"),
 	}
 	kwNodeListenerDNSSockGID = keywords.Keyword{
 		Default: "953",
 		Option:  "dns_sock_gid",
+		Group:   nodeGroupDNS.ID,
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.dns_sock_gid"),
 	}
@@ -768,6 +870,7 @@ var (
 		Default: "opensvc",
 		Example: "osvc-users",
 		Option:  "ux_owner_group",
+		Group:   nodeGroupAuthentication.ID,
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.ux_owner_group"),
 	}
@@ -775,6 +878,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "public_metrics",
+		Group:     nodeGroupAuthentication.ID,
 		Section:   "listener",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.public_metrics"),
 	}
@@ -782,6 +886,7 @@ var (
 		Converter: converters.Int,
 		Example:   "1215",
 		Option:    "vsock_port",
+		Group:     nodeGroupListener.ID,
 		Section:   "listener",
 		Since:     "v3.0.0-rc56",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.vsock_port"),
@@ -791,6 +896,7 @@ var (
 		Default:  "",
 		Example:  "1.2.3.4",
 		Option:   "addr",
+		Group:    nodeGroupListener.ID,
 		Scopable: true,
 		Section:  "listener",
 		Text:     keywords.NewText(fs, "text/kw/node/listener.addr"),
@@ -800,6 +906,7 @@ var (
 		Converter: converters.Int,
 		Default:   fmt.Sprintf("%d", daemonenv.HTTPPort),
 		Option:    "port",
+		Group:     nodeGroupListener.ID,
 		Scopable:  true,
 		Section:   "listener",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
@@ -808,12 +915,14 @@ var (
 		Aliases: []string{"openid_authority"},
 		Example: "https://keycloak.opensvc.com/auth/realms/clusters",
 		Option:  "openid_issuer",
+		Group:   nodeGroupAuthentication.ID,
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_issuer"),
 	}
 	kwNodeListenerOpenIDClientID = keywords.Keyword{
 		Default: "om3",
 		Option:  "openid_client_id",
+		Group:   nodeGroupAuthentication.ID,
 		Section: "listener",
 		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_client_id"),
 	}
@@ -821,6 +930,7 @@ var (
 		Converter: converters.List,
 		Example:   "system/sec/public",
 		Option:    "tls_secs",
+		Group:     nodeGroupCertificates.ID,
 		Section:   "listener",
 		Since:     "v3.0.0-rc44",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.tls_secs"),
@@ -829,6 +939,7 @@ var (
 		Converter: converters.Int,
 		Example:   "80",
 		Option:    "acme_port",
+		Group:     nodeGroupCertificates.ID,
 		Section:   "listener",
 		Since:     "v3.0.0-rc44",
 		Text:      keywords.NewText(fs, "text/kw/node/listener.acme_port"),
@@ -838,6 +949,7 @@ var (
 		Default:   "20",
 		Converter: converters.Int,
 		Option:    "throttle_rate",
+		Group:     nodeGroupThrottling.ID,
 		Section:   "listener",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/node/listener.throttle_rate"),
@@ -847,6 +959,7 @@ var (
 		Default:   "100",
 		Converter: converters.Int,
 		Option:    "throttle_burst",
+		Group:     nodeGroupThrottling.ID,
 		Section:   "listener",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/node/listener.throttle_burst"),
@@ -856,6 +969,7 @@ var (
 		Default:   "60s",
 		Converter: converters.Duration,
 		Option:    "throttle_expires",
+		Group:     nodeGroupThrottling.ID,
 		Section:   "listener",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/node/listener.throttle_expires"),
@@ -863,6 +977,7 @@ var (
 	kwNodeSyslogFacility = keywords.Keyword{
 		Default: "daemon",
 		Option:  "facility",
+		Group:   nodeGroupLogging.ID,
 		Section: "syslog",
 		Text:    keywords.NewText(fs, "text/kw/node/syslog.facility"),
 	}
@@ -870,24 +985,28 @@ var (
 		Candidates: []string{"critical", "error", "warning", "info", "debug"},
 		Default:    "info",
 		Option:     "level",
+		Group:      nodeGroupLogging.ID,
 		Section:    "syslog",
 		Text:       keywords.NewText(fs, "text/kw/node/syslog.level"),
 	}
 	kwNodeSyslogHost = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/syslog.host.default"),
 		Option:      "host",
+		Group:       nodeGroupEndpoint.ID,
 		Section:     "syslog",
 		Text:        keywords.NewText(fs, "text/kw/node/syslog.host"),
 	}
 	kwNodeSyslogPort = keywords.Keyword{
 		Default: "514",
 		Option:  "port",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "syslog",
 		Text:    keywords.NewText(fs, "text/kw/node/syslog.port"),
 	}
 	kwNodeClusterDNS = keywords.Keyword{
 		Converter: converters.List,
 		Option:    "dns",
+		Group:     nodeGroupDNS.ID,
 		Scopable:  true,
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.dns"),
@@ -896,6 +1015,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "dns_reverse",
+		Group:     nodeGroupDNS.ID,
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.dns_reverse"),
 	}
@@ -903,18 +1023,21 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.ca.default"),
 		Converter:   converters.List,
 		Option:      "ca",
+		Group:       nodeGroupAuthentication.ID,
 		Section:     "cluster",
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.ca"),
 	}
 	kwNodeClusterCert = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.cert.default"),
 		Option:      "cert",
+		Group:       nodeGroupCertificates.ID,
 		Section:     "cluster",
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.cert"),
 	}
 	kwNodeClusterID = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.id.default"),
 		Option:      "id",
+		Group:       nodeGroupIdentity.ID,
 		Scopable:    true,
 		Section:     "cluster",
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.id"),
@@ -922,12 +1045,14 @@ var (
 	kwNodeClusterName = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.name.default"),
 		Option:      "name",
+		Group:       nodeGroupIdentity.ID,
 		Section:     "cluster",
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.name"),
 	}
 	kwNodeClusterSecret = keywords.Keyword{
 		DefaultText:  keywords.NewText(fs, "text/kw/node/cluster.secret.default"),
 		Option:       "secret",
+		Group:        nodeGroupCredentials.ID,
 		Scopable:     true,
 		Section:      "cluster",
 		Text:         keywords.NewText(fs, "text/kw/node/cluster.secret"),
@@ -936,18 +1061,21 @@ var (
 	kwNodeClusterNodes = keywords.Keyword{
 		Converter: converters.List,
 		Option:    "nodes",
+		Group:     nodeGroupNodes.ID,
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.nodes"),
 	}
 	kwNodeClusterDRPNodes = keywords.Keyword{
 		Converter: converters.List,
 		Option:    "drpnodes",
+		Group:     nodeGroupNodes.ID,
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.drpnodes"),
 	}
 	kwNodeClusterEnvs = keywords.Keyword{
 		Converter: converters.List,
 		Option:    "envs",
+		Group:     nodeGroupEnv.ID,
 		Default:   "CERT DEV DRP FOR INT PRA PRD PRJ PPRD QUAL REC STG TMP TST UAT",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.envs"),
@@ -956,12 +1084,14 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "quorum",
+		Group:     nodeGroupQuorum.ID,
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.quorum"),
 	}
 	kwNodeSSHKey = keywords.Keyword{
 		Default: "opensvc",
 		Option:  "sshkey",
+		Group:   nodeGroupRemote.ID,
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.sshkey"),
 	}
@@ -969,6 +1099,7 @@ var (
 		Candidates: []string{"crash", "reboot", "disabled"},
 		Default:    "crash",
 		Option:     "split_action",
+		Group:      nodeGroupQuorum.ID,
 		Scopable:   true,
 		Section:    "node",
 		Text:       keywords.NewText(fs, "text/kw/node/node.split_action"),
@@ -977,6 +1108,7 @@ var (
 		Aliases:  []string{"name"},
 		Example:  "http://www.opensvc.com",
 		Option:   "uri",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "arbitrator",
 		Text:     keywords.NewText(fs, "text/kw/node/arbitrator.uri"),
@@ -985,6 +1117,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",
+		Group:     nodeGroupEndpoint.ID,
 		Section:   "arbitrator",
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.insecure"),
 	}
@@ -992,6 +1125,7 @@ var (
 		Converter: converters.Int,
 		Default:   "1",
 		Option:    "weight",
+		Group:     nodeGroupQuorum.ID,
 		Section:   "arbitrator",
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.weight"),
 	}
@@ -999,6 +1133,7 @@ var (
 		Converter: converters.Shlex,
 		Example:   "/bin/true",
 		Option:    "command",
+		Group:     nodeGroupQuorum.ID,
 		Aliases:   []string{"cmd"},
 		Required:  true,
 		Scopable:  true,
@@ -1008,6 +1143,7 @@ var (
 	kwNodeHBType = keywords.Keyword{
 		Candidates: []string{"unicast", "multicast", "disk", "relay"},
 		Option:     "type",
+		Group:      nodeGroupIdentity.ID,
 		Required:   true,
 		Section:    "hb",
 		Text:       keywords.NewText(fs, "text/kw/node/hb.type"),
@@ -1016,6 +1152,7 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/hb.unicast.addr.default"),
 		Example:     "1.2.3.4",
 		Option:      "addr",
+		Group:       nodeGroupTransport.ID,
 		Scopable:    true,
 		Section:     "hb",
 		Text:        keywords.NewText(fs, "text/kw/node/hb.unicast.addr"),
@@ -1025,6 +1162,7 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/hb.unicast.intf.default"),
 		Example:     "eth0",
 		Option:      "intf",
+		Group:       nodeGroupTransport.ID,
 		Scopable:    true,
 		Section:     "hb",
 		Text:        keywords.NewText(fs, "text/kw/node/hb.unicast.intf"),
@@ -1034,6 +1172,7 @@ var (
 		Converter: converters.Int,
 		Default:   "10000",
 		Option:    "port",
+		Group:     nodeGroupTransport.ID,
 		Scopable:  true,
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.unicast.port"),
@@ -1043,6 +1182,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "15s",
 		Option:    "timeout",
+		Group:     nodeGroupTiming.ID,
 		Scopable:  true,
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.timeout"),
@@ -1051,6 +1191,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "5s",
 		Option:    "interval",
+		Group:     nodeGroupTiming.ID,
 		Scopable:  true,
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.interval"),
@@ -1058,6 +1199,7 @@ var (
 	kwNodeHBMulticastAddr = keywords.Keyword{
 		Default:  "224.3.29.71",
 		Option:   "addr",
+		Group:    nodeGroupTransport.ID,
 		Scopable: true,
 		Section:  "hb",
 		Text:     keywords.NewText(fs, "text/kw/node/hb.multicast.addr"),
@@ -1067,6 +1209,7 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/hb.multicast.intf.default"),
 		Example:     "eth0",
 		Option:      "intf",
+		Group:       nodeGroupTransport.ID,
 		Scopable:    true,
 		Section:     "hb",
 		Text:        keywords.NewText(fs, "text/kw/node/hb.multicast.intf"),
@@ -1076,6 +1219,7 @@ var (
 		Converter: converters.Int,
 		Default:   "10000",
 		Option:    "port",
+		Group:     nodeGroupTransport.ID,
 		Scopable:  true,
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.multicast.port"),
@@ -1085,6 +1229,7 @@ var (
 		Converter:   converters.List,
 		DefaultText: keywords.NewText(fs, "text/kw/node/hb.unicast.nodes.default"),
 		Option:      "nodes",
+		Group:       nodeGroupNodes.ID,
 		Scopable:    true,
 		Section:     "hb",
 		Text:        keywords.NewText(fs, "text/kw/node/hb.unicast.nodes"),
@@ -1093,6 +1238,7 @@ var (
 	kwNodeHBDiskDev = keywords.Keyword{
 		Example:  "/dev/mapper/36589cfc000000e03957c51dabab8373a",
 		Option:   "dev",
+		Group:    nodeGroupTransport.ID,
 		Required: true,
 		Scopable: true,
 		Section:  "hb",
@@ -1104,6 +1250,7 @@ var (
 		Example:   "1024",
 		Default:   "1024",
 		Option:    "max_slots",
+		Group:     nodeGroupTransport.ID,
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.disk.max_slots"),
 		Types:     []string{"disk"},
@@ -1112,6 +1259,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",
+		Group:     nodeGroupTransport.ID,
 		Section:   "hb",
 		Text:      keywords.NewText(fs, "text/kw/node/hb.relay.insecure"),
 		Types:     []string{"relay"},
@@ -1119,6 +1267,7 @@ var (
 	kwNodeHBRelayRelay = keywords.Keyword{
 		Example:  "https://relay.acme.com:1215",
 		Option:   "relay",
+		Group:    nodeGroupTransport.ID,
 		Required: true,
 		Section:  "hb",
 		Text:     keywords.NewText(fs, "text/kw/node/hb.relay.relay"),
@@ -1127,6 +1276,7 @@ var (
 	kwNodeHBRelayUsername = keywords.Keyword{
 		Default: "relay",
 		Option:  "username",
+		Group:   nodeGroupCredentials.ID,
 		Section: "hb",
 		Text:    keywords.NewText(fs, "text/kw/node/hb.relay.username"),
 		Types:   []string{"relay"},
@@ -1134,6 +1284,7 @@ var (
 	kwNodeHBRelayPassword = keywords.Keyword{
 		Default: naming.NsSys + "/sec/relay",
 		Option:  "password",
+		Group:   nodeGroupCredentials.ID,
 		Section: "hb",
 		Example: "from system/sec/relays key relay.acme.com/user1/password",
 		Text:    keywords.NewText(fs, "text/kw/node/hb.relay.password"),
@@ -1143,6 +1294,7 @@ var (
 		Default: "/usr/lib/cni",
 		Example: "/var/lib/opensvc/cni/bin",
 		Option:  "plugins",
+		Group:   nodeGroupContainers.ID,
 		Section: "cni",
 		Text:    keywords.NewText(fs, "text/kw/node/cni.plugins"),
 	}
@@ -1150,6 +1302,7 @@ var (
 		Default: "/var/lib/opensvc/cni/net.d",
 		Example: "/var/lib/opensvc/cni/net.d",
 		Option:  "config",
+		Group:   nodeGroupContainers.ID,
 		Section: "cni",
 		Text:    keywords.NewText(fs, "text/kw/node/cni.config"),
 	}
@@ -1157,22 +1310,26 @@ var (
 		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "dorado", "hoc", "drbd", "pure", "rados"},
 		Default:    "loop",
 		Option:     "type",
+		Group:      nodeGroupIdentity.ID,
 		Section:    "pool",
 		Text:       keywords.NewText(fs, "text/kw/node/pool.type"),
 	}
 	kwNodePoolSchedule = keywords.Keyword{
 		Option:  kwoption.ScheduleStatus,
+		Group:   nodeGroupVolumes.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.status_schedule"),
 	}
 	kwNodePoolMntOpt = keywords.Keyword{
 		Option:   "mnt_opt",
+		Group:    nodeGroupFilesystem.ID,
 		Scopable: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.mnt_opt"),
 	}
 	kwNodePoolArray = keywords.Keyword{
 		Option:   "array",
+		Group:    nodeGroupSource.ID,
 		Required: true,
 		Scopable: true,
 		Section:  "pool",
@@ -1181,6 +1338,7 @@ var (
 	}
 	kwNodePoolRadosRBDPool = keywords.Keyword{
 		Option:   "rbd_pool",
+		Group:    nodeGroupSource.ID,
 		Section:  "pool",
 		Required: true,
 		Text:     "The ceph pool where to create images.",
@@ -1188,12 +1346,14 @@ var (
 	}
 	kwNodePoolRadosRBDNamespace = keywords.Keyword{
 		Option:  "rbd_namespace",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    "The ceph pool namespace where to create images.",
 		Types:   []string{"rados"},
 	}
 	kwNodePoolLabelPrefix = keywords.Keyword{
 		Option:  "label_prefix",
+		Group:   nodeGroupCreation.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.label_prefix"),
 		Types:   []string{"hoc", "pure"},
@@ -1202,36 +1362,42 @@ var (
 		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "delete_now",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/delete_now.pure.pod"),
 		Types:     []string{"pure"},
 	}
 	kwNodePoolPurePod = keywords.Keyword{
 		Option:  "pod",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.pure.pod"),
 		Types:   []string{"pure"},
 	}
 	kwNodePoolPureVolumeGroup = keywords.Keyword{
 		Option:  "volumegroup",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.pure.volumegroup"),
 		Types:   []string{"pure"},
 	}
 	kwNodePoolHOCWWIDPrefix = keywords.Keyword{
 		Option:  "wwid_prefix",
+		Group:   nodeGroupIdentity.ID,
 		Section: "array",
 		Types:   []string{"hoc"},
 		Text:    keywords.NewText(fs, "text/kw/node/array.hoc.wwid_prefix"),
 	}
 	kwNodePoolHOCPool = keywords.Keyword{
 		Option:  "volume_id_range_from",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.volume_id_range_from"),
 		Types:   []string{"hoc"},
 	}
 	kwNodePoolVolumeIDRangeTo = keywords.Keyword{
 		Option:  "volume_id_range_to",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.volume_id_range_to"),
 		Types:   []string{"hoc"},
@@ -1239,12 +1405,14 @@ var (
 	kwNodePoolHOCVSMID = keywords.Keyword{
 		Default: "",
 		Option:  "vsm_id",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.vsm_id"),
 		Types:   []string{"hoc"},
 	}
 	kwNodePoolSymmetrixSRP = keywords.Keyword{
 		Option:   "srp",
+		Group:    nodeGroupSource.ID,
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.symmetrix.srp"),
@@ -1252,6 +1420,7 @@ var (
 	}
 	kwNodePoolSymmetrixSLO = keywords.Keyword{
 		Option:  "slo",
+		Group:   nodeGroupCreation.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.symmetrix.slo"),
 		Types:   []string{"symmetrix"},
@@ -1260,18 +1429,21 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "srdf",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.symmetrix.srdf"),
 		Types:     []string{"symmetrix"},
 	}
 	kwNodePoolSymmetrixRDFG = keywords.Keyword{
 		Option:  "rdfg",
+		Group:   nodeGroupCreation.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.symmetrix.rdfg"),
 		Types:   []string{"symmetrix"},
 	}
 	kwNodePoolDiskGroup = keywords.Keyword{
 		Option:   "diskgroup",
+		Group:    nodeGroupSource.ID,
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.diskgroup"),
@@ -1281,6 +1453,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure_tpc",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.insecure_tpc"),
 		Types:     []string{"freenas", "truenas"},
@@ -1289,6 +1462,7 @@ var (
 		Candidates: []string{"inherit", "none", "lz4", "gzip-1", "gzip-2", "gzip-3", "gzip-4", "gzip-5", "gzip-6", "gzip-7", "gzip-8", "gzip-9", "zle", "lzjb"},
 		Default:    "inherit",
 		Option:     "compression",
+		Group:      nodeGroupCreation.ID,
 		Section:    "pool",
 		Text:       keywords.NewText(fs, "text/kw/node/pool.freenas.compression"),
 		Types:      []string{"freenas", "truenas"},
@@ -1297,6 +1471,7 @@ var (
 		Default:   "false",
 		Converter: converters.Bool,
 		Option:    "sparse",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.sparse"),
 		Types:     []string{"freenas", "truenas"},
@@ -1305,12 +1480,14 @@ var (
 		Converter: converters.Size,
 		Default:   "512",
 		Option:    "blocksize",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.blocksize"),
 		Types:     []string{"freenas", "truenas"},
 	}
 	kwNodePoolName = keywords.Keyword{
 		Option:   "name",
+		Group:    nodeGroupSource.ID,
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.vg.name"),
@@ -1319,6 +1496,7 @@ var (
 	kwNodePoolVGThinPool = keywords.Keyword{
 		Example: "pool1",
 		Option:  "thin_pool",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Since:   "v3.0.0-rc54",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.vg.thin_pool"),
@@ -1328,6 +1506,7 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/pool.drbd.addr.default"),
 		Example:     "1.2.3.4",
 		Option:      "addr",
+		Group:       nodeGroupVolumes.ID,
 		Section:     "pool",
 		Scopable:    true,
 		Text:        keywords.NewText(fs, "text/kw/node/pool.drbd.addr"),
@@ -1339,6 +1518,7 @@ var (
 		DefaultText:  keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers.default"),
 		Example:      "8",
 		Option:       "max_peers",
+		Group:        nodeGroupCreation.ID,
 		Provisioning: true,
 		Section:      "pool",
 		Text:         keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers"),
@@ -1347,6 +1527,7 @@ var (
 	kwNodePoolDRBDNetwork = keywords.Keyword{
 		Example: "backend1",
 		Option:  "network",
+		Group:   nodeGroupVolumes.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.network"),
 		Types:   []string{"drbd"},
@@ -1355,18 +1536,21 @@ var (
 		Attr:    "Template",
 		Example: "live-migration",
 		Option:  "template",
+		Group:   nodeGroupVolumes.ID,
 		Section: "pool",
 		Text:    "The value of the template keyword to set in the drbd resource of the created volumes",
 		Types:   []string{"drbd"},
 	}
 	kwNodePoolDRBDVG = keywords.Keyword{
 		Option:  "vg",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.vg"),
 		Types:   []string{"drbd"},
 	}
 	kwNodePoolZpoolName = keywords.Keyword{
 		Option:   "name",
+		Group:    nodeGroupSource.ID,
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.zpool.name"),
@@ -1374,12 +1558,14 @@ var (
 	}
 	kwNodePoolZpoolPool = keywords.Keyword{
 		Option:  "zpool",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.zpool"),
 		Types:   []string{"drbd"},
 	}
 	kwNodePoolZpoolPath = keywords.Keyword{
 		Option:  "path",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.path"),
 		Types:   []string{"drbd"},
@@ -1389,6 +1575,7 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/pool.shm.mode.default"),
 		Example:     "750",
 		Option:      "mode",
+		Group:       nodeGroupFilesystem.ID,
 		Section:     "pool",
 		Since:       "v3.0.0-rc42",
 		Text:        keywords.NewText(fs, "text/kw/node/pool.shm.mode"),
@@ -1397,6 +1584,7 @@ var (
 	kwNodePoolSharePath = keywords.Keyword{
 		Default: "{var}/pool/share",
 		Option:  "path",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.share.path"),
 		Types:   []string{"share"},
@@ -1404,6 +1592,7 @@ var (
 	kwNodePoolDirectoryPath = keywords.Keyword{
 		Default: "{var}/pool/directory",
 		Option:  "path",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.directory.path"),
 		Types:   []string{"directory"},
@@ -1412,6 +1601,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "quota",
+		Group:     nodeGroupFilesystem.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.directory.quota"),
 		Types:     []string{"directory"},
@@ -1419,6 +1609,7 @@ var (
 	kwNodePoolVirtualTemplate = keywords.Keyword{
 		Example:  "templates/vol/mpool-over-loop",
 		Option:   "template",
+		Group:    nodeGroupSource.ID,
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.virtual.template"),
@@ -1428,6 +1619,7 @@ var (
 		Converter: converters.List,
 		Example:   "container#1.name:container_name env.foo:foo",
 		Option:    "volume_env",
+		Group:     nodeGroupVolumes.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.virtual.volume_env"),
 		Types:     []string{"virtual"},
@@ -1436,6 +1628,7 @@ var (
 		Converter: converters.List,
 		Example:   "container#1.name:container_name env.foo:foo",
 		Option:    "optional_volume_env",
+		Group:     nodeGroupVolumes.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.virtual.optional_volume_env"),
 		Types:     []string{"virtual"},
@@ -1444,6 +1637,7 @@ var (
 		Converter: converters.List,
 		Default:   "file roo rwo rox rwx",
 		Option:    "capabilities",
+		Group:     nodeGroupSource.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.virtual.capabilities"),
 		Types:     []string{"virtual"},
@@ -1451,6 +1645,7 @@ var (
 	kwNodePoolLoopPath = keywords.Keyword{
 		Default: "{var}/pool/loop",
 		Option:  "path",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.loop.path"),
 		Types:   []string{"loop"},
@@ -1458,6 +1653,7 @@ var (
 	kwNodePoolHOCPoolID = keywords.Keyword{
 		Default: "",
 		Option:  "pool_id",
+		Group:   nodeGroupSource.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.hoc.pool_id"),
 		Types:   []string{"hoc"},
@@ -1465,6 +1661,7 @@ var (
 	kwNodePoolFSType = keywords.Keyword{
 		Default: "xfs",
 		Option:  "fs_type",
+		Group:   nodeGroupFilesystem.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
 		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "vg", "pure", "truenas", "rados"},
@@ -1474,6 +1671,7 @@ var (
 	kwNodePoolLoopFSType = keywords.Keyword{
 		Default: "ext4",
 		Option:  "fs_type",
+		Group:   nodeGroupFilesystem.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
 		Types:   []string{"loop"},
@@ -1481,24 +1679,28 @@ var (
 	kwNodePoolMkfsOpt = keywords.Keyword{
 		Example: "-O largefile",
 		Option:  "mkfs_opt",
+		Group:   nodeGroupFilesystem.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.mkfs_opt"),
 	}
 	kwNodePoolMkblkOpt = keywords.Keyword{
 		Example: "-b 16k",
 		Option:  "mkblk_opt",
+		Group:   nodeGroupCreation.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.mkblk_opt"),
 	}
 	kwNodeHookEvents = keywords.Keyword{
 		Converter: converters.List,
 		Option:    "events",
+		Group:     nodeGroupHook.ID,
 		Section:   "hook",
 		Text:      keywords.NewText(fs, "text/kw/node/hook.events"),
 	}
 	kwNodeHookCommand = keywords.Keyword{
 		Converter: converters.Shlex,
 		Option:    "command",
+		Group:     nodeGroupHook.ID,
 		Section:   "hook",
 		Text:      keywords.NewText(fs, "text/kw/node/hook.command"),
 	}
@@ -1506,11 +1708,13 @@ var (
 		Candidates: []string{"bridge", "routed_bridge", "lan"},
 		Default:    "bridge",
 		Option:     "type",
+		Group:      nodeGroupIdentity.ID,
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.type"),
 	}
 	kwNodeNetworkRoutedBridgeSubnet = keywords.Keyword{
 		Option:   "subnet",
+		Group:    nodeGroupAddressing.ID,
 		Section:  "network",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/node/network.routed_bridge.subnet"),
@@ -1518,6 +1722,7 @@ var (
 	}
 	kwNodeNetworkRoutedBridgeGateway = keywords.Keyword{
 		Option:   "gateway",
+		Group:    nodeGroupRouting.ID,
 		Scopable: true,
 		Section:  "network",
 		Text:     keywords.NewText(fs, "text/kw/node/network.routed_bridge.gateway"),
@@ -1529,6 +1734,7 @@ var (
 		Deprecated: "3.0.0",
 		ReplacedBy: "mask_per_node",
 		Option:     "ips_per_node",
+		Group:      nodeGroupAddressing.ID,
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.routed_bridge.ips_per_node"),
 		Types:      []string{"routed_bridge"},
@@ -1537,6 +1743,7 @@ var (
 		Converter: converters.Int,
 		Default:   "0",
 		Option:    "mask_per_node",
+		Group:     nodeGroupAddressing.ID,
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.routed_bridge.mask_per_node"),
 	}
@@ -1545,6 +1752,7 @@ var (
 		Default:   "main",
 		Example:   "main custom1 custom2",
 		Option:    "tables",
+		Group:     nodeGroupRouting.ID,
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.routed_bridge.tables"),
 		Types:     []string{"routed_bridge"},
@@ -1552,6 +1760,7 @@ var (
 	kwNodeNetworkRoutedBridgeAddr = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/network.routed_bridge.addr.default"),
 		Option:      "addr",
+		Group:       nodeGroupRouting.ID,
 		Section:     "network",
 		Scopable:    true,
 		Text:        keywords.NewText(fs, "text/kw/node/network.routed_bridge.addr"),
@@ -1561,6 +1770,7 @@ var (
 		Candidates: []string{"auto", "always", "never"},
 		Default:    "auto",
 		Option:     "tunnel",
+		Group:      nodeGroupRouting.ID,
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.routed_bridge.tunnel"),
 		Types:      []string{"routed_bridge"},
@@ -1569,12 +1779,14 @@ var (
 		Candidates: []string{"gre", "ipip", "ip6ip6"},
 		Default:    "ipip",
 		Option:     "tunnel_mode",
+		Group:      nodeGroupRouting.ID,
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.routed_bridge.tunnel_mode"),
 		Types:      []string{"routed_bridge"},
 	}
 	kwNodeNetworkBridgeNetwork = keywords.Keyword{
 		Option:   "network",
+		Group:    nodeGroupAddressing.ID,
 		Section:  "network",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/node/network.network"),
@@ -1582,6 +1794,7 @@ var (
 	}
 	kwNodeNetworkRoutedBridgeNetwork = keywords.Keyword{
 		Option:  "network",
+		Group:   nodeGroupAddressing.ID,
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.network"),
 		Types:   []string{"routed_bridge"},
@@ -1589,6 +1802,7 @@ var (
 	kwNodeNetworkLANNetwork = keywords.Keyword{
 		Example: "192.168.10.0/24",
 		Option:  "network",
+		Group:   nodeGroupAddressing.ID,
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.lan.network"),
 		Types:   []string{"lan"},
@@ -1597,6 +1811,7 @@ var (
 		Converter: converters.List,
 		Example:   "192.168.10.100-192.168.10.149 192.168.10.151-192.168.10.199",
 		Option:    "ranges",
+		Group:     nodeGroupAddressing.ID,
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.lan.ranges"),
 		Types:     []string{"lan"},
@@ -1604,6 +1819,7 @@ var (
 	kwNodeNetworkLANDev = keywords.Keyword{
 		Example:  "eth1",
 		Option:   "dev",
+		Group:    nodeGroupInterface.ID,
 		Scopable: true,
 		Section:  "network",
 		Text:     keywords.NewText(fs, "text/kw/node/network.lan.dev"),
@@ -1614,6 +1830,7 @@ var (
 		Converter:  converters.List,
 		Example:    "macvlan ipvlan-l2",
 		Option:     "modes",
+		Group:      nodeGroupInterface.ID,
 		Scopable:   true,
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.lan.modes"),
@@ -1622,6 +1839,7 @@ var (
 	kwNodeNetworkLANVLANTag = keywords.Keyword{
 		Example:  "44",
 		Option:   "vlan_tag",
+		Group:    nodeGroupInterface.ID,
 		Scopable: true,
 		Section:  "network",
 		Text:     keywords.NewText(fs, "text/kw/node/network.lan.vlan_tag"),
@@ -1631,6 +1849,7 @@ var (
 		Candidates: []string{"access", "native-tagged", "native-untagged"},
 		Example:    "access",
 		Option:     "vlan_mode",
+		Group:      nodeGroupInterface.ID,
 		Scopable:   true,
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.lan.vlan_mode"),
@@ -1640,6 +1859,7 @@ var (
 		Converter: converters.List,
 		Example:   "2001:db8::53 192.0.2.53",
 		Option:    "dns",
+		Group:     nodeGroupDNS.ID,
 		Scopable:  true,
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.dns"),
@@ -1648,6 +1868,7 @@ var (
 	kwNodeNetworkLANGateway = keywords.Keyword{
 		Example:  "192.168.10.254",
 		Option:   "gateway",
+		Group:    nodeGroupRouting.ID,
 		Scopable: true,
 		Section:  "network",
 		Text:     keywords.NewText(fs, "text/kw/node/network.lan.gateway"),
@@ -1655,6 +1876,7 @@ var (
 	}
 	kwNodeNetworkDev = keywords.Keyword{
 		Option:  "dev",
+		Group:   nodeGroupInterface.ID,
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.dev"),
 		Types:   []string{"bridge", "routed_bridge"},
@@ -1662,6 +1884,7 @@ var (
 	kwNodeNetworkPublic = keywords.Keyword{
 		Converter: converters.Bool,
 		Option:    "public",
+		Group:     nodeGroupRouting.ID,
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.public"),
 		Types:     []string{"bridge", "routed_bridge"},
@@ -1669,6 +1892,7 @@ var (
 	kwNodeSwitchType = keywords.Keyword{
 		Candidates: []string{"brocade"},
 		Option:     "type",
+		Group:      nodeGroupIdentity.ID,
 		Required:   true,
 		Section:    "switch",
 		Text:       keywords.NewText(fs, "text/kw/node/switch.type"),
@@ -1676,6 +1900,7 @@ var (
 	kwNodeSwitchName = keywords.Keyword{
 		Example: "sansw1.my.corp",
 		Option:  "name",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "switch",
 		Text:    keywords.NewText(fs, "text/kw/node/switch.brocade.name"),
 		Types:   []string{"brocade"},
@@ -1685,6 +1910,7 @@ var (
 		Default:    "ssh",
 		Example:    "ssh",
 		Option:     "method",
+		Group:      nodeGroupEndpoint.ID,
 		Section:    "switch",
 		Text:       keywords.NewText(fs, "text/kw/node/switch.brocade.method"),
 		Types:      []string{"brocade"},
@@ -1692,6 +1918,7 @@ var (
 	kwNodeSwitchUsername = keywords.Keyword{
 		Example:  "admin",
 		Option:   "username",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "switch",
 		Text:     keywords.NewText(fs, "text/kw/node/switch.brocade.username"),
@@ -1700,6 +1927,7 @@ var (
 	kwNodeSwitchPassword = keywords.Keyword{
 		Example: "mysec/password",
 		Option:  "password",
+		Group:   nodeGroupCredentials.ID,
 		Section: "switch",
 		Text:    keywords.NewText(fs, "text/kw/node/switch.brocade.password"),
 		Types:   []string{"brocade"},
@@ -1707,6 +1935,7 @@ var (
 	kwNodeSwitchKey = keywords.Keyword{
 		Example: "/path/to/key",
 		Option:  "key",
+		Group:   nodeGroupCredentials.ID,
 		Section: "switch",
 		Text:    keywords.NewText(fs, "text/kw/node/switch.brocade.key"),
 		Types:   []string{"brocade"},
@@ -1714,6 +1943,7 @@ var (
 	kwNodeArrayType = keywords.Keyword{
 		Candidates: []string{"freenas", "hds", "eva", "nexenta", "vioserver", "centera", "symmetrix", "emcvnx", "netapp", "hp3par", "ibmds", "ibmsvc", "xtremio", "dorado", "hoc", "truenas"},
 		Option:     "type",
+		Group:      nodeGroupIdentity.ID,
 		Required:   true,
 		Section:    "array",
 		Text:       keywords.NewText(fs, "text/kw/node/array.type"),
@@ -1722,6 +1952,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "compression",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.compression"),
 		Types:     []string{"dorado", "hoc"},
@@ -1729,6 +1960,7 @@ var (
 	kwNodePoolTruenasDedup = keywords.Keyword{
 		Default: "off",
 		Option:  "dedup",
+		Group:   nodeGroupCreation.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.freenas.dedup"),
 		Types:   []string{"freenas", "truenas"},
@@ -1737,12 +1969,14 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "dedup",
+		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.dedup"),
 		Types:     []string{"dorado", "hoc"},
 	}
 	kwNodePoolDoradoHypermetroDomain = keywords.Keyword{
 		Option:   "hypermetrodomain",
+		Group:    nodeGroupCreation.ID,
 		Example:  "HyperMetroDomain_000",
 		Required: false,
 		Section:  "pool",
@@ -1752,6 +1986,7 @@ var (
 	kwNodePoolAPI = keywords.Keyword{
 		Example:  "https://array.opensvc.com/api/v1.0",
 		Option:   "api",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.api"),
@@ -1760,6 +1995,7 @@ var (
 	kwNodePoolHOCHTTPProxy = keywords.Keyword{
 		Example: "http://proxy.mycorp:3158",
 		Option:  "http_proxy",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hoc.http_proxy"),
 		Types:   []string{"hoc"},
@@ -1767,6 +2003,7 @@ var (
 	kwNodePoolHOCHTTPSProxy = keywords.Keyword{
 		Example: "https://proxy.mycorp:3158",
 		Option:  "https_proxy",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hoc.https_proxy"),
 		Types:   []string{"hoc"},
@@ -1775,6 +2012,7 @@ var (
 		Converter: converters.Int,
 		Default:   "30",
 		Option:    "retry",
+		Group:     nodeGroupTimeouts.ID,
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.hoc.retry"),
 		Types:     []string{"hoc"},
@@ -1783,6 +2021,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "10s",
 		Option:    "delay",
+		Group:     nodeGroupTimeouts.ID,
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.hoc.delay"),
 		Types:     []string{"hoc"},
@@ -1791,6 +2030,7 @@ var (
 		Candidates: []string{"VSP G370", "VSP G700", "VSP G900", "VSP F370", "VSP F700", "VSP F900", "VSP G350", "VSP F350", "VSP G800", "VSP F800", "VSP G400", "VSP G600", "VSP F400", "VSP F600", "VSP G200", "VSP G1000", "VSP G1500", "VSP F1500", "Virtual Storage Platform", "HUS VM"},
 		Example:    "VSP G350",
 		Option:     "model",
+		Group:      nodeGroupIdentity.ID,
 		Required:   true,
 		Section:    "array",
 		Text:       keywords.NewText(fs, "text/kw/node/array.hoc.model"),
@@ -1799,6 +2039,7 @@ var (
 	kwNodeArrayUsernameRequired = keywords.Keyword{
 		Example:  "root",
 		Option:   "username",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.username,required"),
@@ -1807,6 +2048,7 @@ var (
 	kwNodeArrayUsername = keywords.Keyword{
 		Example: "root",
 		Option:  "username",
+		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.username,optional"),
 		Types:   []string{"emcvnx", "hp3par", "symmetrix"},
@@ -1814,6 +2056,7 @@ var (
 	kwNodeArrayPureClientID = keywords.Keyword{
 		Example:  "bd2c75d0-f0d5-11ee-a362-8b0f2d1b83d7",
 		Option:   "client_id",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.pure.client_id"),
@@ -1822,6 +2065,7 @@ var (
 	kwNodeArrayPureKeyID = keywords.Keyword{
 		Example:  "df80ae3a-f0d5-11ee-94c9-b7c8d2f57c4f",
 		Option:   "key_id",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.pure.key_id"),
@@ -1831,6 +2075,7 @@ var (
 		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",
+		Group:     nodeGroupEndpoint.ID,
 		Example:   "true",
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.pure.insecure"),
@@ -1839,6 +2084,7 @@ var (
 	kwNodeArrayPureIssuer = keywords.Keyword{
 		Example:  "opensvc",
 		Option:   "issuer",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.pure.issuer"),
@@ -1847,6 +2093,7 @@ var (
 	kwNodeArrayPurePrivateKey = keywords.Keyword{
 		Example:  "from " + naming.NsSys + "/sec/array1 key private_key",
 		Option:   "private_key",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.pure.private_key"),
@@ -1859,6 +2106,7 @@ var (
 		Deprecated: "3.0.0",
 		Example:    naming.NsSys + "/sec/array1",
 		Option:     "secret",
+		Group:      nodeGroupCredentials.ID,
 		ReplacedBy: "private_key",
 		Section:    "array",
 		Text:       keywords.NewText(fs, "text/kw/node/array.pure.secret"),
@@ -1867,6 +2115,7 @@ var (
 	kwNodeArrayPureUsername = keywords.Keyword{
 		Example:  "opensvc",
 		Option:   "username",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.pure.username"),
@@ -1875,6 +2124,7 @@ var (
 	kwNodeArrayPasswordRequired = keywords.Keyword{
 		Example:  "from system/sec/array1 key password",
 		Option:   "password",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.password,required"),
@@ -1883,6 +2133,7 @@ var (
 	kwNodeArrayPasswordOptional = keywords.Keyword{
 		Example: naming.NsSys + "/sec/array1",
 		Option:  "password",
+		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.password,optional"),
 		Types:   []string{"emcvnx", "symmetrix"},
@@ -1892,6 +2143,7 @@ var (
 		Default:   "120s",
 		Example:   "10s",
 		Option:    "timeout",
+		Group:     nodeGroupTimeouts.ID,
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.timeout"),
 		Types:     []string{"freenas", "dorado", "hoc", "truenas"},
@@ -1899,6 +2151,7 @@ var (
 	kwNodeArrayName = keywords.Keyword{
 		Example: "a09",
 		Option:  "name",
+		Group:   nodeGroupIdentity.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.name"),
 		Types:   []string{"dorado", "hoc"},
@@ -1906,6 +2159,7 @@ var (
 	kwNodeArraySymmetrixName = keywords.Keyword{
 		Example: "00012345",
 		Option:  "name",
+		Group:   nodeGroupIdentity.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.symmetrix.name"),
 		Types:   []string{"symmetrix"},
@@ -1914,6 +2168,7 @@ var (
 		Default: "/usr/symcli",
 		Example: "/opt/symcli",
 		Option:  "symcli_path",
+		Group:   nodeGroupTools.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.symmetrix.symcli_path"),
 		Types:   []string{"symmetrix"},
@@ -1921,6 +2176,7 @@ var (
 	kwNodeArraySymmetrixSymcliConnect = keywords.Keyword{
 		Example: "MY_SYMAPI_SERVER",
 		Option:  "symcli_connect",
+		Group:   nodeGroupEndpoint.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.symmetrix.symcli_connect"),
 		Types:   []string{"symmetrix"},
@@ -1928,6 +2184,7 @@ var (
 	kwNodeArrayServer = keywords.Keyword{
 		Example:  "centera1",
 		Option:   "server",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.server"),
@@ -1936,6 +2193,7 @@ var (
 	kwNodeArrayCenteraJavaBin = keywords.Keyword{
 		Example:  "/opt/java/bin/java",
 		Option:   "java_bin",
+		Group:    nodeGroupTools.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.centera.java_bin"),
@@ -1944,6 +2202,7 @@ var (
 	kwNodeArrayCenteraJcassDir = keywords.Keyword{
 		Example:  "/opt/centera/LIB",
 		Option:   "jcass_dir",
+		Group:    nodeGroupTools.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.centera.jcass_dir"),
@@ -1954,6 +2213,7 @@ var (
 		Candidates: []string{"secfile", "credentials"},
 		Default:    "secfile",
 		Option:     "method",
+		Group:      nodeGroupCredentials.ID,
 		Section:    "array",
 		Text:       keywords.NewText(fs, "text/kw/node/array.emcvnx.secfile"),
 		Types:      []string{"emcvnx"},
@@ -1961,6 +2221,7 @@ var (
 	kwNodeArrayEMCVNXSPA = keywords.Keyword{
 		Example:  "array1-a",
 		Option:   "spa",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.emcvnx.spa"),
@@ -1969,6 +2230,7 @@ var (
 	kwNodeArrayEMCVNXSPB = keywords.Keyword{
 		Example:  "array1-b",
 		Option:   "spb",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.emcvnx.spb"),
@@ -1978,6 +2240,7 @@ var (
 		Default: "0",
 		Example: "1",
 		Option:  "scope",
+		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.emcvnx.scope"),
 		Types:   []string{"emcvnx"},
@@ -1985,6 +2248,7 @@ var (
 	kwNodeArrayEVAManager = keywords.Keyword{
 		Example:  "evamanager.mycorp",
 		Option:   "manager",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.eva.manager"),
@@ -1993,6 +2257,7 @@ var (
 	kwNodeArrayEVABin = keywords.Keyword{
 		Example: "/opt/sssu/bin/sssu",
 		Option:  "bin",
+		Group:   nodeGroupTools.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.eva.bin"),
 		Types:   []string{"eva"},
@@ -2000,6 +2265,7 @@ var (
 	kwNodeArrayHDSBin = keywords.Keyword{
 		Example: "/opt/hds/bin/HiCommandCLI",
 		Option:  "bin",
+		Group:   nodeGroupTools.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hds.bin"),
 		Types:   []string{"hds"},
@@ -2007,12 +2273,14 @@ var (
 	kwNodeArrayHDSJREPath = keywords.Keyword{
 		Example: "/opt/java",
 		Option:  "jre_path",
+		Group:   nodeGroupTools.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hds.jre_path"),
 		Types:   []string{"hds"},
 	}
 	kwNodeArrayHDSName = keywords.Keyword{
 		Option:  "name",
+		Group:   nodeGroupIdentity.ID,
 		Example: "HUSVM.1234",
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hds.name"),
@@ -2021,6 +2289,7 @@ var (
 	kwNodeArrayHDSURL = keywords.Keyword{
 		Example:  "https://hdsmanager/",
 		Option:   "url",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.hds.url"),
@@ -2031,6 +2300,7 @@ var (
 		Default:    "ssh",
 		Example:    "ssh",
 		Option:     "method",
+		Group:      nodeGroupEndpoint.ID,
 		Section:    "array",
 		Text:       keywords.NewText(fs, "text/kw/node/array.hp3par.method"),
 		Types:      []string{"hp3par"},
@@ -2039,6 +2309,7 @@ var (
 		DefaultText: keywords.NewText(fs, "text/kw/node/array.hp3par.manager.default"),
 		Example:     "mymanager.mycorp",
 		Option:      "manager",
+		Group:       nodeGroupEndpoint.ID,
 		Section:     "array",
 		Text:        keywords.NewText(fs, "text/kw/node/array.hp3par.manager"),
 		Types:       []string{"hp3par"},
@@ -2046,6 +2317,7 @@ var (
 	kwNodeArrayHP3PARKey = keywords.Keyword{
 		Example: "/path/to/key",
 		Option:  "key",
+		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hp3par.key"),
 		Types:   []string{"hp3par"},
@@ -2053,6 +2325,7 @@ var (
 	kwNodeArrayHP3PARPwf = keywords.Keyword{
 		Example: "/path/to/pwf",
 		Option:  "pwf",
+		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hp3par.pwf"),
 		Types:   []string{"hp3par"},
@@ -2061,6 +2334,7 @@ var (
 		Default: "3parcli",
 		Example: "/path/to/pwf",
 		Option:  "cli",
+		Group:   nodeGroupTools.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hp3par.cli"),
 		Types:   []string{"hp3par"},
@@ -2068,6 +2342,7 @@ var (
 	kwNodeArrayIBMDSHMC1 = keywords.Keyword{
 		Example:  "hmc1.mycorp",
 		Option:   "hmc1",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.ibmds.hmc1"),
@@ -2076,6 +2351,7 @@ var (
 	kwNodeArrayIBMDSHMC2 = keywords.Keyword{
 		Example:  "hmc2.mycorp",
 		Option:   "hmc2",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.ibmds.hmc2"),
@@ -2084,6 +2360,7 @@ var (
 	kwNodeArrayKeyRequired = keywords.Keyword{
 		Example:  "/path/to/key",
 		Option:   "key",
+		Group:    nodeGroupCredentials.ID,
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.key,required"),
@@ -2094,6 +2371,7 @@ var (
 		Default:   "2000",
 		Example:   "2000",
 		Option:    "port",
+		Group:     nodeGroupEndpoint.ID,
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.nexenta.port"),
 		Types:     []string{"nexenta"},

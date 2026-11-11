@@ -1,0 +1,3 @@
+What the pool sets in the volumes it makes: the keywords of the vol
+objects, as their status schedule, the template, network and address of
+their drbd resource, and the keywords of the consumer mapped into them.

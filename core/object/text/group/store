@@ -1,0 +1,3 @@
+A store the sec declares, which the sync.store resources of the objects of
+the namespaces it shares with back up into: its type, its url, the keys
+reaching it, and how long the runs are kept.

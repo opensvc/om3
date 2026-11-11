@@ -1,0 +1,2 @@
+Whether the daemon keeps the object up, starting it or moving it, and which
+objects it serves first when it can not serve them all at once.

@@ -1,0 +1,3 @@
+The intervals, delays and grace periods of the daemon: how often it sends
+a heartbeat or a status, how long it waits for a node, a collector speaker
+or a starting daemon before it decides, and how often it loads the pools.

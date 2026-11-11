@@ -1,0 +1,2 @@
+The storage the volume is: the pool it is allocated from, its size, its
+access mode, and the resources exposing its devices.

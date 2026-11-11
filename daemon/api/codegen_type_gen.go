@@ -2096,7 +2096,7 @@ type KeywordDefinitionListKind string
 
 // KeywordGroupItem A topic of the keywords of a section: the keywords a wizard shows together. A group with strategies has alternative ways to be configured, whose keywords are not to be set together.
 type KeywordGroupItem struct {
-	// Driver The driver declaring the group, as "ip.host". Empty for a group every resource has, and for the "other" group of the keywords not grouped yet.
+	// Driver The driver declaring the group, as "ip.host", or the section type of the node or cluster configuration, as "array.hp3par". Empty for a group declared by no driver: a group every resource has, a group of the object, node or cluster configurations, and the "other" group of a keyword naming none.
 	Driver string `json:"driver"`
 
 	// Id The id the group field of a keyword names, as "addressing".

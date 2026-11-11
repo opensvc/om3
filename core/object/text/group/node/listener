@@ -1,0 +1,2 @@
+The addresses and ports the daemon serves the api and the console on, and
+the url the clients reach the console by.

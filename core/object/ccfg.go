@@ -32,6 +32,7 @@ var (
 	kwCcfgID = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
 		Option:      "id",
+		Group:       nodeGroupIdentity.ID,
 		Scopable:    false,
 		Section:     "DEFAULT",
 		Text:        keywords.NewText(fs, "text/kw/ccfg/id"),

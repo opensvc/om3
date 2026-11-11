@@ -1,0 +1,2 @@
+The nodes the instances of the object run on: the primary ones, the
+disaster recovery ones, and the ones hosting its encapsulated instances.

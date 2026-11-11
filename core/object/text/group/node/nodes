@@ -1,0 +1,2 @@
+The nodes the cluster spans, the disaster recovery ones apart, and the
+nodes a heartbeat runs between.

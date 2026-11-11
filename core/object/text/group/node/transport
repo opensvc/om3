@@ -1,0 +1,3 @@
+How the heartbeat reaches the other nodes: the addresses, the interface and
+the port it sends to and listens on, the disk it writes to, or the relay it
+goes through.

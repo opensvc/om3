@@ -1,0 +1,3 @@
+Where the pool takes the storage of its volumes: the array and its disk
+group or storage pool, the volume group, the zpool, the ceph pool, or the
+directory, and what the pool can serve.

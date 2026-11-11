@@ -1,0 +1,5 @@
+The driver runs the commands on the array over ssh, the default method,
+logging in to its manager as `username` with the private key `key` points
+to. The password file is not read.
+
+Choose it for an array whose manager accepts ssh logins with a key.

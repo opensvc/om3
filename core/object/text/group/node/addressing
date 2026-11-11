@@ -1,0 +1,3 @@
+The addresses a network hands out: its subnet, the share of it each node
+draws from, and the ranges it hands out, with the subnets a backend
+network may be created in.

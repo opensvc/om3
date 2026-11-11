@@ -1,0 +1,2 @@
+The syslog facility the node logs to, and the minimum level of the
+messages it sends.

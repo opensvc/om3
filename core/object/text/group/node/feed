@@ -1,0 +1,2 @@
+What the node sends the collector besides its status: the action logs of
+the objects, and the statistics groups.
