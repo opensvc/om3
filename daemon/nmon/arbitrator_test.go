@@ -2,8 +2,10 @@ package nmon
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -85,4 +87,35 @@ func TestASplitCheckIsNotOverwrittenByAnOlderBackgroundCheck(t *testing.T) {
 	m.onArbitratorsChecked(arbitratorCheck{gen: 1, status: map[string]node.ArbitratorStatus{"a1": {Status: status.Down}}})
 	assert.Equal(t, status.Up, m.nodeStatus.Arbitrators["a1"].Status, "the older background result is dropped")
 	<-m.arbitratorC
+}
+
+// The checks of an http arbitrator share one connection: the response of
+// each is read and closed, and the client is not made again for each. A
+// response left open held its connection, and a client made for each check
+// pooled the ones it closed, so every check opened a connection that stayed.
+func TestTheArbitratorChecksReuseTheirConnection(t *testing.T) {
+	var (
+		mu    sync.Mutex
+		conns int
+	)
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	srv.Config.ConnState = func(_ net.Conn, s http.ConnState) {
+		if s == http.StateNew {
+			mu.Lock()
+			conns++
+			mu.Unlock()
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+
+	a := arbitratorConfig{Name: "a", URI: srv.URL}
+	for i := 0; i < 5; i++ {
+		require.NoError(t, a.checkURL(context.Background()))
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, 1, conns, "the checks reuse their connection")
 }
