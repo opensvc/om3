@@ -262,6 +262,22 @@ func runExitCode(runCtx context.Context, signaled os.Signal, err error) (int, er
 	var exitErr interface{ ExitCode() int }
 	switch {
 	case errors.As(err, &exitErr):
+		if code := exitErr.ExitCode(); code >= 0 {
+			return code, nil
+		}
+		// A process ended by a signal has no exit code, -1: it ended as
+		// the signal made it, 128 + the signal, as the shell reports it
+		// and the command of a host task on the node does, the kill of a
+		// timeout among them.
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			if ws, ok := ee.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+				return 128 + int(ws.Signal()), nil
+			}
+		}
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			return 128 + int(syscall.SIGKILL), nil
+		}
 		return exitErr.ExitCode(), nil
 	case err != nil && errors.Is(runCtx.Err(), context.DeadlineExceeded):
 		return 128 + int(syscall.SIGKILL), nil
