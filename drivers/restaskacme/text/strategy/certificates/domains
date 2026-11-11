@@ -1,0 +1,1 @@
+Renew a certificate for each domain read from the files of domains_from, in a sec domains_to creates for it and deletes once the domain is gone. Both keywords are required.
