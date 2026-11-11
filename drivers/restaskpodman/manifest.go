@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/drivers/restask"
 	"github.com/opensvc/om3/v3/drivers/restaskocibase"
 )
@@ -25,6 +26,7 @@ var (
 		&rescontainer.KWGuestOS,
 		{
 			Option:     "userns",
+			Group:      rescontainerocibase.GroupIsolation.ID,
 			Attr:       "UserNS",
 			Scopable:   true,
 			References: &keywords.References{Groups: []string{"container"}, Shape: keywords.ReferencesRID},
@@ -33,6 +35,7 @@ var (
 		},
 		{
 			Option:   "rootless_user",
+			Group:    rescontainerocibase.GroupIsolation.ID,
 			Attr:     "RootlessUser",
 			Scopable: true,
 			Example:  "opensvc",
@@ -41,6 +44,7 @@ var (
 		},
 		{
 			Option:   "rootless_group",
+			Group:    rescontainerocibase.GroupIsolation.ID,
 			Attr:     "RootlessGroup",
 			Scopable: true,
 			Example:  "opensvc",
@@ -73,7 +77,6 @@ func (t *T) Manifest() *manifest.T {
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(restaskocibase.Keywords...)
 	m.AddKeywords(kws...)
-	// The guest keywords the container drivers share name their group.
-	m.AddGroups(rescontainer.GroupGuest)
+	m.AddGroups(restaskocibase.Groups...)
 	return m
 }

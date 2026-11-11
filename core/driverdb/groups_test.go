@@ -194,3 +194,38 @@ func TestKeywordGroupsOfContainerDrivers(t *testing.T) {
 	}
 	assert.Equal(t, []string{"image", "cdrom", "virtinst"}, ids)
 }
+
+// TestKeywordGroupsOfTaskDrivers verifies no keyword of a task driver is left
+// in the group of the keywords not grouped yet, and that the groups an oci
+// task shares with the oci container of its engine are the same declarations.
+func TestKeywordGroupsOfTaskDrivers(t *testing.T) {
+	n := 0
+	for drvID, m := range driverManifests() {
+		if drvID.Group != driver.GroupTask {
+			continue
+		}
+		n++
+		for _, kw := range m.Keywords() {
+			assert.NotEqualf(t, keywords.GroupOtherID, kw.GroupID(), "%s.%s is not grouped", drvID, kw.Option)
+		}
+	}
+	if n == 0 {
+		t.Skip("no task driver on this os")
+	}
+	for _, name := range []string{"docker", "podman"} {
+		taskFactory := resource.NewResourceFunc(driver.NewID(driver.GroupTask, name))
+		containerFactory := resource.NewResourceFunc(driver.NewID(driver.GroupContainer, name))
+		if taskFactory == nil || containerFactory == nil {
+			continue
+		}
+		task := manifest.Get(taskFactory())
+		container := manifest.Get(containerFactory())
+		for _, id := range []string{"identity", "image", "process", "environment", "storage", "network", "isolation", "guest"} {
+			tg, ok := task.OwnGroup(id)
+			require.Truef(t, ok, "task.%s declares the %s group", name, id)
+			cg, ok := container.OwnGroup(id)
+			require.Truef(t, ok, "container.%s declares the %s group", name, id)
+			assert.Equalf(t, cg, tg, "task.%s and container.%s declare the same %s group", name, name, id)
+		}
+	}
+}

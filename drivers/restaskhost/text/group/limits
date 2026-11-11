@@ -1,0 +1,3 @@
+The limits on the resources of the node a command run on the node may use,
+as its cpu time, its memory and its open files, which om exec sets before
+it runs the command. A command run in a container is not limited by them.

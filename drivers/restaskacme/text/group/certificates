@@ -1,0 +1,4 @@
+The certificates the task renews: the ones of the secs it names, and the
+ones of the domains it reads from the files of a volume, in secs it creates
+with the ACME directory and contact of their account, and the directory the
+http server of the domains answers the http-01 challenge from.
