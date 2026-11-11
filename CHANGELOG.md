@@ -426,6 +426,22 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
         for the new name and refreshes its resource info once, shortly after
         the upgrade.
 
+* **Keywords deprecated** (still accepted, the validation warns of them):
+
+    * `configs`, `secrets`, `directories` and `signal` of the fs and volume
+        resources, replaced by `install`, which installs the keys of the
+        datastores, makes the directories and sends the signals with one
+        line per item.
+
+    * `promote_rw` of the disk and container resources, which no disk or
+        container driver reads. The fs resources still read theirs.
+
+    * `alias` of `ip.netns`, which the driver does not read. The one of
+        `ip.host` stays.
+
+    * `gateway` of `ip.host`, a provisioning parameter of the solaris zones
+        of v2, which the driver does not read.
+
 * **Keywords removed:**
     * `svc_flex_cpu_low_threshold`
     
