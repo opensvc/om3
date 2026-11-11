@@ -33,6 +33,7 @@ var (
 			// size to every resource that does not name one of its own.
 			Inherit:      keywords.InheritLeaf,
 			Option:       "size",
+			Group:        resfshost.GroupSize.ID,
 			Provisioning: true,
 			Required:     false,
 			Scopable:     true,
@@ -42,6 +43,7 @@ var (
 			Attr:         "RefQuota",
 			DefaultText:  keywords.NewText(fs, "text/kw/refquota.default"),
 			Option:       "refquota",
+			Group:        resfshost.GroupSize.ID,
 			Provisioning: true,
 			Required:     false,
 			Scopable:     true,
@@ -51,6 +53,7 @@ var (
 		{
 			Attr:         "Quota",
 			Option:       "quota",
+			Group:        resfshost.GroupSize.ID,
 			Provisioning: true,
 			Required:     false,
 			Scopable:     true,
@@ -59,6 +62,7 @@ var (
 		{
 			Attr:         "RefReservation",
 			Option:       "refreservation",
+			Group:        resfshost.GroupSize.ID,
 			Provisioning: true,
 			Required:     false,
 			Scopable:     true,
@@ -67,6 +71,7 @@ var (
 		{
 			Attr:         "Reservation",
 			Option:       "reservation",
+			Group:        resfshost.GroupSize.ID,
 			Provisioning: true,
 			Required:     false,
 			Scopable:     true,
@@ -90,5 +95,8 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(kws...)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
+	m.AddGroups(resfshost.Groups...)
+	m.AddGroups(resfshost.GroupSize)
+	m.AddGroups(datarecv.Groups...)
 	return m
 }

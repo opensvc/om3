@@ -1,0 +1,5 @@
+The container whose network namespace the address is plumbed in, the
+interface the address is on there, and how that interface is linked to the
+device of the node: the mode, the hardware address, the vlan of the port of
+an openvswitch bridge, and whether the carrier of the device counts in the
+status of the resource.

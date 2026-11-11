@@ -19,6 +19,7 @@ var (
 		Attr:         "SharePath",
 		Example:      "volume#1:/",
 		Option:       "path",
+		Group:        GroupExport.ID,
 		Required:     true,
 		Scopable:     true,
 		StopToChange: true,
@@ -28,6 +29,7 @@ var (
 		Attr:         "ShareOpts",
 		Example:      "*(ro)",
 		Option:       "opts",
+		Group:        GroupExport.ID,
 		Required:     true,
 		Scopable:     true,
 		StopToChange: true,
@@ -53,5 +55,6 @@ func (t *T) Manifest() *manifest.T {
 		&kwSharePath,
 		&kwShareOpts,
 	)
+	m.AddGroups(GroupExport)
 	return m
 }

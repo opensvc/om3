@@ -1,0 +1,2 @@
+The space the directory may hold, bounded by a project quota of the xfs
+holding it, and the project id the quota is set on.

@@ -23,6 +23,7 @@ var (
 			Converter: converters.Duration,
 			Example:   "5m",
 			Option:    "timeout",
+			Group:     ressync.GroupTimeouts.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
 		},
@@ -30,6 +31,7 @@ var (
 			Attr:     "Src",
 			Example:  "{fs#1.label}:{fs#1.subvol}",
 			Option:   "src",
+			Group:    ressync.GroupEndpoints.ID,
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/src"),
@@ -38,6 +40,7 @@ var (
 			Attr:     "Dst",
 			Example:  "svc1fs:data",
 			Option:   "dst",
+			Group:    ressync.GroupEndpoints.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/dst"),
 		},
@@ -46,6 +49,7 @@ var (
 			Candidates: []string{"nodes", "drpnodes", "local"},
 			Converter:  converters.List,
 			Option:     "target",
+			Group:      ressync.GroupEndpoints.ID,
 			Required:   true,
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/target"),
@@ -55,6 +59,7 @@ var (
 			Converter: converters.Bool,
 			Default:   "false",
 			Option:    "recursive",
+			Group:     ressync.GroupTransfer.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/recursive"),
 		},
@@ -64,6 +69,7 @@ var (
 			Default:   "24h",
 			Example:   "3d",
 			Option:    "max_lag_age",
+			Group:     ressync.GroupRetention.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/max_lag_age"),
 		},
@@ -94,5 +100,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(ressync.GroupEndpoints, ressync.GroupTransfer, ressync.GroupScheduling, ressync.GroupStatus, ressync.GroupRetention, ressync.GroupTimeouts)
 	return m
 }

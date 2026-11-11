@@ -1,0 +1,2 @@
+The route the resource adds: its destination, its gateway and the link it
+goes through, and the container whose network namespace it is added in.

@@ -63,25 +63,20 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextNodes,
 		manifest.ContextObjectID,
 	)
-	m.AddKeywords(grouped(restask.GroupTimeouts,
+	// The keywords borrowed from the app drivers name their groups by the
+	// ids a host task declares: the timeouts and status of every task, its
+	// own process, and the environment and limits of the app drivers.
+	m.AddKeywords(
 		&resapp.BaseKeywordTimeout,
 		&resapp.BaseKeywordStopTimeout,
-	)...)
-	m.AddKeywords(grouped(GroupEnvironment,
 		&resapp.BaseKeywordSecretsEnv,
 		&resapp.BaseKeywordConfigsEnv,
 		&resapp.BaseKeywordEnv,
-	)...)
-	m.AddKeywords(grouped(restask.GroupStatus,
 		&resapp.BaseKeywordRetCodes,
-	)...)
-	m.AddKeywords(grouped(GroupProcess,
 		&resapp.BaseKeywordUmask,
 		&resapp.UnixKeywordCwd,
 		&resapp.UnixKeywordUser,
 		&resapp.UnixKeywordGroup,
-	)...)
-	m.AddKeywords(grouped(GroupLimits,
 		&resapp.UnixKeywordLimitCPU,
 		&resapp.UnixKeywordLimitCore,
 		&resapp.UnixKeywordLimitData,
@@ -93,23 +88,10 @@ func (t *T) Manifest() *manifest.T {
 		&resapp.UnixKeywordLimitStack,
 		&resapp.UnixKeywordLimitVmem,
 		&resapp.UnixKeywordLimitAS,
-	)...)
+	)
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(kws...)
-	m.AddGroups(GroupProcess, GroupEnvironment, GroupLimits)
+	m.AddGroups(GroupProcess, resapp.GroupEnvironment, resapp.GroupLimits)
 	m.AddGroups(restask.Groups...)
 	return m
-}
-
-// grouped returns copies of keywords the app drivers share, in the group of
-// a host task they are in: the app drivers group none of their keywords yet,
-// and a keyword naming a group its driver does not declare is in none.
-func grouped(group keywords.Group, l ...*keywords.Keyword) []*keywords.Keyword {
-	copies := make([]*keywords.Keyword, len(l))
-	for i, kw := range l {
-		c := *kw
-		c.Group = group.ID
-		copies[i] = &c
-	}
-	return copies
 }

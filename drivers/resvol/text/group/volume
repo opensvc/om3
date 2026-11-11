@@ -1,0 +1,3 @@
+The vol object of the namespace the resource uses: its name, the size it
+is claimed with from its pool, the nodes it is on, and whether other
+objects use it too.

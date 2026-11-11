@@ -1,0 +1,4 @@
+The files and directories installed in the head of the resource from the
+keys of cfgs and secs, or fetched from a url, at its start, its provision
+and its install, and the signals sent to the resources reading them when
+they change.

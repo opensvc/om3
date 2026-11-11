@@ -26,6 +26,7 @@ var (
 		Attr:      "PromoteRW",
 		Converter: converters.Bool,
 		Option:    "promote_rw",
+		Group:     GroupAccess.ID,
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
 

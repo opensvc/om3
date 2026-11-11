@@ -25,6 +25,7 @@ var (
 			Attr:     "DNSNameSuffix",
 			Example:  "-backup",
 			Option:   "dns_name_suffix",
+			Group:    resip.GroupDNS.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/dns_name_suffix"),
 		},
@@ -33,6 +34,7 @@ var (
 			Converter: converters.List,
 			Example:   "443/tcp:8443 53/udp",
 			Option:    "expose",
+			Group:     resip.GroupDNS.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/expose"),
 		},
@@ -41,6 +43,7 @@ var (
 			Default:      "default",
 			Example:      "mynet",
 			Option:       "network",
+			Group:        GroupAddressing.ID,
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/network"),
@@ -50,6 +53,7 @@ var (
 			Attr:     "NSDev",
 			Example:  "front",
 			Option:   "nsdev",
+			Group:    GroupInterface.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/nsdev"),
 		},
@@ -58,6 +62,7 @@ var (
 			Attr:         "NetNS",
 			Example:      "container#0",
 			Option:       "netns",
+			Group:        GroupInterface.ID,
 			References:   &keywords.References{Groups: []string{"container"}, Shape: keywords.ReferencesRID},
 			Scopable:     true,
 			StopToChange: true,
@@ -88,5 +93,6 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(kws...)
+	m.AddGroups(GroupAddressing, GroupInterface, resip.GroupDNS)
 	return m
 }

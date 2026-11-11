@@ -1,0 +1,3 @@
+What the resource copies, and where to: the source paths, datasets or
+resources, the destination on the peers or the store the runs are written
+into, and the nodes receiving the copies.

@@ -1,0 +1,3 @@
+How the writes of the app are suspended during a run of a sync resource of
+the object, for the data it saves to be consistent: the command suspending
+them, as a flush and a lock, and the one resuming them.

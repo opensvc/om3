@@ -22,6 +22,7 @@ var (
 			Attr:     "SymDG",
 			Example:  "prod_db1",
 			Option:   "symdg",
+			Group:    ressync.GroupArray.ID,
 			Required: true,
 			Scopable: false,
 			Text:     keywords.NewText(fs, "text/kw/symdg"),
@@ -30,6 +31,7 @@ var (
 			Attr:     "SymID",
 			Example:  "0000001234",
 			Option:   "symid",
+			Group:    ressync.GroupArray.ID,
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/symid"),
@@ -39,6 +41,7 @@ var (
 			Converter: converters.Int,
 			Example:   "5",
 			Option:    "rdfg",
+			Group:     ressync.GroupArray.ID,
 			Scopable:  false,
 			Text:      keywords.NewText(fs, "text/kw/rdfg"),
 		},
@@ -65,5 +68,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(ressync.GroupArray, ressync.GroupScheduling, ressync.GroupStatus)
 	return m
 }

@@ -22,6 +22,7 @@ var (
 			Attr:         "Name",
 			Example:      "pool1/cluster1/svc1",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -36,6 +37,7 @@ var (
 			// size to every resource that does not name one of its own.
 			Inherit:              keywords.InheritLeaf,
 			Option:               "size",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -54,6 +56,7 @@ var (
 		{
 			Attr:     "Keyring",
 			Option:   "keyring",
+			Group:    resdisk.GroupAccess.ID,
 			Scopable: true,
 			Example:  "from ./sec/ceph key eu1.keyring",
 			Text:     keywords.NewText(fs, "text/kw/keyring"),
@@ -61,6 +64,7 @@ var (
 		{
 			Attr:     "Config",
 			Option:   "config",
+			Group:    resdisk.GroupAccess.ID,
 			Scopable: true,
 			Example:  "from ./cfg/ceph key ceph.conf",
 			Text:     keywords.NewText(fs, "text/kw/config"),
@@ -68,6 +72,7 @@ var (
 		{
 			Attr:     "Group",
 			Option:   "group",
+			Group:    resdisk.GroupDevice.ID,
 			Scopable: true,
 			Example:  "mygroup",
 			Text:     keywords.NewText(fs, "text/kw/group"),
@@ -93,5 +98,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

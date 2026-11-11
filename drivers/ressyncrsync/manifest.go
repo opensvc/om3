@@ -23,6 +23,7 @@ var (
 			Converter: converters.Duration,
 			Example:   "5m",
 			Option:    "timeout",
+			Group:     ressync.GroupTimeouts.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
 		},
@@ -30,6 +31,7 @@ var (
 			Attr:    "Src",
 			Example: "/srv/{fqdn}/",
 			Option:  "src",
+			Group:   ressync.GroupEndpoints.ID,
 			//Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/src"),
@@ -38,6 +40,7 @@ var (
 			Attr:     "Dst",
 			Example:  "/srv/{fqdn}",
 			Option:   "dst",
+			Group:    ressync.GroupEndpoints.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/dst"),
 		},
@@ -45,6 +48,7 @@ var (
 			Attr:     "DstFS",
 			Example:  "/srv/{fqdn}",
 			Option:   "dstfs",
+			Group:    ressync.GroupEndpoints.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/dstfs"),
 		},
@@ -53,6 +57,7 @@ var (
 			Converter: converters.Shlex,
 			Example:   "--acls --xattrs --exclude foo/bar",
 			Option:    "options",
+			Group:     ressync.GroupTransfer.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/options"),
 		},
@@ -60,6 +65,7 @@ var (
 			Attr:      "ResetOptions",
 			Converter: converters.Bool,
 			Option:    "reset_options",
+			Group:     ressync.GroupTransfer.ID,
 			Text:      keywords.NewText(fs, "text/kw/reset_options"),
 		},
 		{
@@ -67,6 +73,7 @@ var (
 			Candidates: []string{"nodes", "drpnodes", "local"},
 			Converter:  converters.List,
 			Option:     "target",
+			Group:      ressync.GroupEndpoints.ID,
 			//Required:   true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/target"),
@@ -75,11 +82,13 @@ var (
 			Attr:      "Snap",
 			Converter: converters.Bool,
 			Option:    "snap",
+			Group:     ressync.GroupTransfer.ID,
 			Text:      keywords.NewText(fs, "text/kw/snap"),
 		},
 		{
 			Attr:   "BandwidthLimit",
 			Option: "bwlimit",
+			Group:  ressync.GroupTransfer.ID,
 			Text:   keywords.NewText(fs, "text/kw/bwlimit"),
 		},
 	}
@@ -109,5 +118,6 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(ressync.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(ressync.GroupEndpoints, ressync.GroupTransfer, ressync.GroupScheduling, ressync.GroupStatus, ressync.GroupTimeouts)
 	return m
 }

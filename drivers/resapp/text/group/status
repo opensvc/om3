@@ -1,0 +1,3 @@
+How the app makes the status of its resource: the command checking it, the
+status each exit code of the check means, and whether the outputs of the
+check go to the status logs.

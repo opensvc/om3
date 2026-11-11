@@ -1,0 +1,4 @@
+How the provision chooses the pool the vol is allocated from: among the
+pools of the name and of the type given, if any, the ones offering the
+access mode, the filesystem or block device, the snapshots and the volatile
+storage the vol asks for, the one with the most free space.

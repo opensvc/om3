@@ -1,0 +1,2 @@
+The DNS alias the resource points to the node: the zone holding it, its
+uuid or its name, and the record it points to.

@@ -22,6 +22,7 @@ var (
 		Default:      "none",
 		Example:      "/dev/disk/by-id/nvme-eui.002538ba11b75ec8",
 		Option:       "dev",
+		Group:        GroupDevice.ID,
 		Scopable:     true,
 		StopToChange: true,
 		Text:         keywords.NewText(fs, "text/kw/dev"),
@@ -31,6 +32,7 @@ var (
 		Converter:    converters.Shlex,
 		Default:      "",
 		Option:       "mkfs_opt",
+		Group:        GroupCreation.ID,
 		Provisioning: true,
 		Scopable:     true,
 		Text:         keywords.NewText(fs, "text/kw/mkfs_opt"),
@@ -40,6 +42,7 @@ var (
 		Converter: converters.Duration,
 		Default:   "5s",
 		Option:    "stat_timeout",
+		Group:     GroupStatus.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/stat_timeout"),
 	}
@@ -47,6 +50,7 @@ var (
 		Attr:         "MountPoint",
 		Example:      "/srv/{fqdn}",
 		Option:       "mnt",
+		Group:        GroupMount.ID,
 		Required:     true,
 		Scopable:     true,
 		StopToChange: true,
@@ -56,6 +60,7 @@ var (
 	KeywordMountOptions = keywords.Keyword{
 		Attr:     "MountOptions",
 		Option:   "mnt_opt",
+		Group:    GroupMount.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/mnt_opt"),
 	}
@@ -63,11 +68,13 @@ var (
 		Attr:      "PromoteRW",
 		Converter: converters.Bool,
 		Option:    "promote_rw",
+		Group:     GroupDevice.ID,
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
 	KeywordZone = keywords.Keyword{
 		Attr:     "Zone",
 		Option:   "zone",
+		Group:    GroupMount.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/zone"),
 	}
@@ -75,6 +82,7 @@ var (
 		Attr:      "CheckRead",
 		Converter: converters.Bool,
 		Option:    "check_read",
+		Group:     GroupStatus.ID,
 		Default:   "false",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
@@ -84,6 +92,7 @@ var (
 		Attr:      "CheckRead",
 		Converter: converters.Bool,
 		Option:    "check_read",
+		Group:     GroupStatus.ID,
 		Scopable:  true,
 		Default:   "true",
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
@@ -104,6 +113,7 @@ var (
 		// without saying so.
 		Inherit:      keywords.InheritLeaf,
 		Option:       "size",
+		Group:        GroupSize.ID,
 		Provisioning: true,
 		Scopable:     true,
 		Since:        "v3.0.0-rc42",
@@ -117,6 +127,7 @@ var (
 		Example:   "700",
 		Inherit:   keywords.InheritLeaf,
 		Option:    "mode",
+		Group:     datarecv.GroupPermissions.ID,
 		Scopable:  true,
 		Since:     "v3.0.0-rc42",
 		Text:      keywords.NewText(fs, "text/kw/tmpfs.mode"),
@@ -127,6 +138,7 @@ var (
 		Attr:     "Subvol",
 		Example:  "data",
 		Option:   "subvol",
+		Group:    GroupMount.ID,
 		Scopable: true,
 		Since:    "v3.0.0-rc47",
 		Text:     keywords.NewText(fs, "text/kw/btrfs.subvol"),
@@ -137,6 +149,7 @@ var (
 		Attr:         "BtrfsLabel",
 		Example:      "{name}.fs1",
 		Option:       "label",
+		Group:        GroupCreation.ID,
 		Provisioning: true,
 		Scopable:     true,
 		Since:        "v3.0.0-rc47",
@@ -224,13 +237,16 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(KeywordsBase...)
+	m.AddGroups(Groups...)
 	if t.isTmpfs() {
 		m.AddKeywords(&KeywordTmpfsSize, &KeywordTmpfsMode)
+		m.AddGroups(GroupSize)
 	}
 	if t.isBtrfs() {
 		m.AddKeywords(&KeywordBtrfsSubvol, &KeywordBtrfsLabel)
 	}
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
+	m.AddGroups(datarecv.Groups...)
 	return m
 }

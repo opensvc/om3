@@ -26,6 +26,7 @@ var (
 			Attr:         "VGName",
 			Example:      "vg1",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -36,6 +37,7 @@ var (
 			Converter:            converters.List,
 			Example:              "/dev/mapper/23 /dev/mapper/24",
 			Option:               "pvs",
+			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
 			Scopable:             true,
@@ -46,6 +48,7 @@ var (
 			Converter:    converters.Shlex,
 			Example:      "--zero=y",
 			Option:       "options",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/options"),
@@ -70,5 +73,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, resdisk.GroupAccess)
 	return m
 }

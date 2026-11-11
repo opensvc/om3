@@ -1,0 +1,3 @@
+The filesystem of the sgcp provider the resource mounts, and the access to
+it the start grants the node: the client address granted, its permission,
+the protocol, and whether the grants of the other hosts are dropped.

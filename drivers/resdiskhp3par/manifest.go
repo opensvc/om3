@@ -21,6 +21,7 @@ var kws = []*keywords.Keyword{
 		Attr:     "Array",
 		Example:  "myarray",
 		Option:   "array",
+		Group:    resdisk.GroupReplication.ID,
 		Required: true,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/array"),
@@ -30,6 +31,7 @@ var kws = []*keywords.Keyword{
 		Attr:     "Group",
 		Example:  "u",
 		Option:   "group",
+		Group:    resdisk.GroupReplication.ID,
 		Required: true,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/rcg"),
@@ -38,6 +40,7 @@ var kws = []*keywords.Keyword{
 		Attr:     "Mode",
 		Example:  "sync",
 		Option:   "mode",
+		Group:    resdisk.GroupReplication.ID,
 		Default:  "sync",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/mode"),
@@ -46,6 +49,7 @@ var kws = []*keywords.Keyword{
 		Attr:      "AutoTakeover",
 		Converter: converters.Bool,
 		Option:    "auto_takeover",
+		Group:     resdisk.GroupReplication.ID,
 		Default:   "false",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/auto_takeover"),
@@ -54,6 +58,7 @@ var kws = []*keywords.Keyword{
 		Attr:      "ForceSync",
 		Converter: converters.Bool,
 		Option:    "force_sync",
+		Group:     resdisk.GroupReplication.ID,
 		Default:   "false",
 		Scopable:  false,
 		Text:      keywords.NewText(fs, "text/kw/force_sync"),
@@ -62,6 +67,7 @@ var kws = []*keywords.Keyword{
 		Attr:      "SwapRoles",
 		Converter: converters.Bool,
 		Option:    "swap_roles",
+		Group:     resdisk.GroupReplication.ID,
 		Default:   "false",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/swap_roles"),
@@ -71,6 +77,7 @@ var kws = []*keywords.Keyword{
 		Converter:    converters.Duration,
 		Example:      "10s",
 		Option:       "timeout",
+		Group:        resdisk.GroupTimeouts.ID,
 		Default:      "10s",
 		Provisioning: true,
 		Scopable:     true,
@@ -81,6 +88,7 @@ var kws = []*keywords.Keyword{
 		Converter:    converters.Duration,
 		Example:      "5m",
 		Option:       "start_timeout",
+		Group:        resdisk.GroupTimeouts.ID,
 		Default:      "5m",
 		Provisioning: true,
 		Scopable:     true,
@@ -93,6 +101,7 @@ var kws = []*keywords.Keyword{
 		DefaultOption: "sync_max_delay",
 		DefaultText:   "Two times the rcg sync period.",
 		Option:        "max_delay",
+		Group:         resdisk.GroupReplication.ID,
 		Text:          keywords.NewText(fs, "text/kw/max_delay"),
 	},
 }
@@ -113,5 +122,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupReplication, resdisk.GroupAccess, resdisk.GroupTimeouts)
 	return m
 }

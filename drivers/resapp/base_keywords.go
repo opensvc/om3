@@ -11,6 +11,7 @@ var (
 		Attr:     "Desc",
 		Example:  "rpc.idmapd",
 		Option:   "desc",
+		Group:    GroupIdentity.ID,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/desc"),
 	}
@@ -19,6 +20,7 @@ var (
 		Converter: converters.Duration,
 		Example:   "180",
 		Option:    "timeout",
+		Group:     GroupTimeouts.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/timeout"),
 	}
@@ -27,6 +29,7 @@ var (
 		Converter: converters.Duration,
 		Example:   "180",
 		Option:    "stop_timeout",
+		Group:     GroupTimeouts.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/stop_timeout"),
 	}
@@ -37,6 +40,7 @@ var (
 		Deprecated: "v3.0.0-rc57",
 		ReplacedBy: "environment",
 		Option:     "secrets_environment",
+		Group:      GroupEnvironment.ID,
 		Scopable:   true,
 		Text:       keywords.NewText(fs, "text/kw/secrets_environment"),
 	}
@@ -47,6 +51,7 @@ var (
 		Deprecated: "v3.0.0-rc57",
 		ReplacedBy: "environment",
 		Option:     "configs_environment",
+		Group:      GroupEnvironment.ID,
 		Scopable:   true,
 		Text:       keywords.NewText(fs, "text/kw/configs_environment"),
 	}
@@ -54,6 +59,7 @@ var (
 		Attr:       "Env",
 		Example:    "SLIP=slob OC3_DB_PASSWORD from ./sec/oc3 key db_password source random",
 		Option:     "environment",
+		Group:      GroupEnvironment.ID,
 		Converter:  converters.Shlex,
 		Scopable:   true,
 		Text:       keywords.NewText(fs, "text/kw/environment"),
@@ -64,6 +70,7 @@ var (
 		Default:  "0:up 1:down",
 		Example:  "0:up 1:down 3:warn 4: n/a 5:undef",
 		Option:   "retcodes",
+		Group:    GroupStatus.ID,
 		Required: false,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/retcodes"),
@@ -73,6 +80,7 @@ var (
 		Converter: converters.Umask,
 		Example:   "022",
 		Option:    "umask",
+		Group:     GroupProcess.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/umask"),
 	}

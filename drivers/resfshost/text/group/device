@@ -1,0 +1,4 @@
+What the filesystem is mounted from: the block device or image file holding
+it, the device of a vol or of a resource of the object, the dataset of a
+zfs, the export of a network filesystem, or the directory a bind mount
+shows, and whether the devices are made writable at start.

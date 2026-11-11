@@ -34,6 +34,7 @@ var (
 			Attr:         "Dev",
 			Example:      "eth0",
 			Option:       "dev",
+			Group:        GroupInterface.ID,
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/dev"),
@@ -49,6 +50,7 @@ var (
 		{
 			Attr:         "Gateway",
 			Option:       "gateway",
+			Group:        GroupRouting.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/gateway"),
@@ -77,6 +79,7 @@ var (
 			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "check_carrier",
+			Group:     GroupInterface.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/check_carrier"),
 		},
@@ -85,6 +88,7 @@ var (
 			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "alias",
+			Group:     GroupInterface.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/alias"),
 		},
@@ -93,6 +97,7 @@ var (
 			Converter: converters.List,
 			Example:   "443/tcp:8443 53/udp",
 			Option:    "expose",
+			Group:     resip.GroupDNS.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/expose"),
 		},
@@ -118,6 +123,6 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(kws...)
-	m.AddGroups(resip.GroupAddressing)
+	m.AddGroups(resip.GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS)
 	return m
 }

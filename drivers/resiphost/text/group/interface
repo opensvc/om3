@@ -1,0 +1,4 @@
+The interface of the node the address is plumbed on, whether the address
+is stacked on it with a label of its own, and whether the carrier of the
+interface counts in the status of the resource and is required by its
+start.

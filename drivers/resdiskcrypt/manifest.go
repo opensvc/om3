@@ -25,6 +25,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/name.default"),
 			Example:      "{fqdn}-crypt",
 			Option:       "name",
+			Group:        resdisk.GroupDevice.ID,
 			Scopable:     true,
 			StopToChange: true,
 			Text:         keywords.NewText(fs, "text/kw/name"),
@@ -33,6 +34,7 @@ var (
 			Attr:         "Dev",
 			Example:      "/dev/{fqdn}/lv1",
 			Option:       "dev",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -43,6 +45,7 @@ var (
 			Converter:    converters.Bool,
 			Default:      "true",
 			Option:       "manage_passphrase",
+			Group:        GroupPassphrase.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/manage_passphrase"),
@@ -51,6 +54,7 @@ var (
 			Attr:     "Secret",
 			Default:  "{name}",
 			Option:   "secret",
+			Group:    GroupPassphrase.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/secret"),
 		},
@@ -58,6 +62,7 @@ var (
 			Attr:         "FormatLabel",
 			Default:      "{fqdn}",
 			Option:       "label",
+			Group:        resdisk.GroupCreation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/label"),
@@ -68,6 +73,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/pbkdf.default"),
 			Example:      "argon2id",
 			Option:       "pbkdf",
+			Group:        GroupKeyDerivation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/pbkdf"),
@@ -77,6 +83,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/pbkdf_memory.default"),
 			Example:      "64m",
 			Option:       "pbkdf_memory",
+			Group:        GroupKeyDerivation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/pbkdf_memory"),
@@ -88,6 +95,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/pbkdf_parallel.default"),
 			Example:      "1",
 			Option:       "pbkdf_parallel",
+			Group:        GroupKeyDerivation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/pbkdf_parallel"),
@@ -99,6 +107,7 @@ var (
 			DefaultText:  keywords.NewText(fs, "text/kw/iter_time.default"),
 			Example:      "2000",
 			Option:       "iter_time",
+			Group:        GroupKeyDerivation.ID,
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/iter_time"),
@@ -123,5 +132,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupCreation, GroupPassphrase, GroupKeyDerivation, resdisk.GroupAccess)
 	return m
 }

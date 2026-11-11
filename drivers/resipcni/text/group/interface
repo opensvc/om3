@@ -1,0 +1,3 @@
+The container whose network namespace the address is plumbed in, or a
+namespace of its own named after the object, and the interface the address
+is on there.

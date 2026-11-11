@@ -1,0 +1,3 @@
+The space the filesystem holds: the memory a tmpfs may use, set at each
+mount, or the size of a zfs dataset and the quotas and reservations of its
+pool derived from it, set at its provision and moved by a resize.

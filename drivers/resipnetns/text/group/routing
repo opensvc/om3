@@ -1,0 +1,3 @@
+The routes the resource sets in the network namespace: the gateway of its
+default route, and whether the route to the network of the address the
+kernel adds along with it is removed, the gateway then reached on the link.

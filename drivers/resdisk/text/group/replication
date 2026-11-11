@@ -1,0 +1,4 @@
+How the devices are replicated between the nodes or the sites, and how the
+start takes the replica over: the replication group and its mode, the
+addresses the replication traffic goes to, the api driving a switchover,
+and what the start does with a replica split or late.

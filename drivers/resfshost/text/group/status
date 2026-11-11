@@ -1,0 +1,3 @@
+How the status of the resource checks the mounted filesystem answers: the
+read check of a filesystem whose write is not checked, as a network one,
+and how long a check may wait for an answer before the status warns.

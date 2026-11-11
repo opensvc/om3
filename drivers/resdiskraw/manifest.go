@@ -23,6 +23,7 @@ var (
 			Converter:    converters.List,
 			Example:      "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
 			Option:       "devs",
+			Group:        resdisk.GroupDevice.ID,
 			Required:     true,
 			Scopable:     true,
 			StopToChange: true,
@@ -34,6 +35,7 @@ var (
 			Default:   "true",
 			Example:   "false",
 			Option:    "create_char_devices",
+			Group:     resdisk.GroupAccess.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/create_char_devices"),
 		},
@@ -42,6 +44,7 @@ var (
 			Converter: converters.User,
 			Example:   "root",
 			Option:    "user",
+			Group:     resdisk.GroupAccess.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/user"),
 		},
@@ -50,6 +53,7 @@ var (
 			Converter: converters.Group,
 			Example:   "sys",
 			Option:    "group",
+			Group:     resdisk.GroupAccess.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/group"),
 		},
@@ -58,6 +62,7 @@ var (
 			Converter: converters.FileMode,
 			Example:   "600",
 			Option:    "perm",
+			Group:     resdisk.GroupAccess.ID,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/perm"),
 		},
@@ -65,6 +70,7 @@ var (
 			Attr:     "Zone",
 			Example:  "zone1",
 			Option:   "zone",
+			Group:    resdisk.GroupAccess.ID,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/zone"),
 		},
@@ -87,5 +93,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
 	m.AddKeywords(kws...)
+	m.AddGroups(resdisk.GroupDevice, resdisk.GroupAccess)
 	return m
 }
