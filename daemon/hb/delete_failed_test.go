@@ -150,7 +150,7 @@ func TestAStreamFailingItsStartGoesWithItsSection(t *testing.T) {
 				return !tx && !rx
 			})
 			assert.Empty(t, h.knownRids())
-			assert.Empty(t, h.failed)
+			assert.Empty(t, h.idle)
 			assert.Empty(t, h.txs)
 			assert.Empty(t, h.rxs)
 		})
@@ -166,11 +166,11 @@ func TestAStreamStartingAtARetryIsNoMoreFailed(t *testing.T) {
 
 	require.Error(t, h.startHb(newStartFailingConfer("hb#u8", nil, inUse)))
 	require.Error(t, h.startHb(newStartFailingConfer("hb#u8", nil, inUse)))
-	require.Len(t, h.failed, 1, "a retry failing again replaces the failed stream")
+	require.Len(t, h.idle, 1, "a retry failing again replaces the failed stream")
 	require.NoError(t, h.stopHbRid("hb#u8"))
 
 	require.NoError(t, h.startHb(newStartFailingConfer("hb#u8", nil, nil)))
-	assert.Empty(t, h.failed)
+	assert.Empty(t, h.idle)
 	streams(t, func(m map[string]daemonsubsystem.HeartbeatStream) bool {
 		rx, ok := m["hb#u8.rx"]
 		_, tx := m["hb#u8.tx"]
@@ -178,4 +178,52 @@ func TestAStreamStartingAtARetryIsNoMoreFailed(t *testing.T) {
 	})
 	require.NoError(t, h.stopHbRid("hb#u8"))
 	assert.Empty(t, h.knownRids())
+}
+
+// A stream failing its start carries its error as an alert, which a start
+// that works clears: the error was in the journal only, the stream listed
+// failed with no reason.
+func TestAStreamFailingItsStartSaysWhy(t *testing.T) {
+	h := newTestManager(t)
+	inUse := errors.New("listen tcp :10000: bind: address already in use")
+
+	require.Error(t, h.startHb(newStartFailingConfer("hb#u9", nil, inUse)))
+	streams(t, func(m map[string]daemonsubsystem.HeartbeatStream) bool {
+		rx := m["hb#u9.rx"]
+		return rx.State == "failed" && len(rx.Alerts) == 1 && rx.Alerts[0].Message == inUse.Error() && rx.Alerts[0].Severity == "error"
+	})
+
+	require.NoError(t, h.stopHbRid("hb#u9"))
+	require.NoError(t, h.startHb(newStartFailingConfer("hb#u9", nil, nil)))
+	streams(t, func(m map[string]daemonsubsystem.HeartbeatStream) bool {
+		rx, ok := m["hb#u9.rx"]
+		return ok && rx.State == "running" && len(rx.Alerts) == 0
+	})
+	require.NoError(t, h.stopHbRid("hb#u9"))
+}
+
+// A stream stopped by "om daemon hb stop" stays listed, stopped, while its
+// section stays, and goes with its section: it stayed listed until the
+// daemon restarted.
+func TestAStreamStoppedGoesWithItsSection(t *testing.T) {
+	h := newTestManager(t)
+
+	require.NoError(t, h.startHb(newStartFailingConfer("hb#u10", nil, nil)))
+	h.daemonCtlStop("hb#u10.rx", "stop")
+	streams(t, func(m map[string]daemonsubsystem.HeartbeatStream) bool {
+		return m["hb#u10.rx"].State == "stopped"
+	})
+	assert.Equal(t, []string{"hb#u10"}, h.knownRids())
+
+	h.daemonCtlStop("hb#u10.tx", "stop")
+	assert.Equal(t, []string{"hb#u10"}, h.knownRids(), "a heartbeat with its streams stopped is known, to go with its section")
+
+	require.NoError(t, h.stopHbRid("hb#u10"))
+	streams(t, func(m map[string]daemonsubsystem.HeartbeatStream) bool {
+		_, tx := m["hb#u10.tx"]
+		_, rx := m["hb#u10.rx"]
+		return !tx && !rx
+	})
+	assert.Empty(t, h.knownRids())
+	assert.Empty(t, h.idle)
 }

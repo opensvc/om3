@@ -72,7 +72,7 @@ func TestAHeartbeatFailingToConfigureIsListedFailed(t *testing.T) {
 
 	// a retry failing again replaces the streams, rather than adding some
 	require.Error(t, h.startHb(hb))
-	assert.Len(t, h.failed, 2)
+	assert.Len(t, h.idle, 2)
 
 	// the section removed
 	require.NoError(t, h.stopHbRid("hb#v6"))

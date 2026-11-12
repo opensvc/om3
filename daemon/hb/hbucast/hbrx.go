@@ -164,6 +164,10 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	}
 
 	if listener == nil {
+		// The port still in use after the tries: the context ends with
+		// the start, or the audit it enabled leaks, at every retry of
+		// the failed heartbeat.
+		cancel()
 		return err
 	}
 
