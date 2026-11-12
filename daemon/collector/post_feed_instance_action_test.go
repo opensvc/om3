@@ -668,7 +668,7 @@ func TestNextActionJobsPutsTheBeginsFirst(t *testing.T) {
 
 func TestNewActionTunables(t *testing.T) {
 	d := newActionTunables(nil)
-	assert.Equal(t, actionTunables{batch: 100, postTimeout: 5 * time.Second, logTimeout: 10 * time.Second}, d, "the defaults")
+	assert.Equal(t, actionTunables{batch: 100, postTimeout: 10 * time.Second, logTimeout: 10 * time.Second}, d, "the defaults")
 	assert.Equal(t, d, newActionTunables(&collector.Config{}), "a config setting none")
 
 	got := newActionTunables(&collector.Config{ActionBatch: 20, Timeout: 8 * time.Second, ActionLogTimeout: 30 * time.Second})

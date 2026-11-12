@@ -27,7 +27,7 @@ func TestCollectorRawConfig(t *testing.T) {
 				assert.Empty(t, cfg.FeederUrl)
 				assert.Equal(t, 60*time.Second, cfg.PingInterval)
 				assert.Equal(t, 10*time.Second, cfg.StatusDelay)
-				assert.Equal(t, 5*time.Second, cfg.Timeout)
+				assert.Equal(t, 10*time.Second, cfg.Timeout)
 				assert.Equal(t, 100, cfg.ActionBatch)
 				assert.Equal(t, 10*time.Second, cfg.ActionLogTimeout)
 				assert.Equal(t, collector.DefaultSpeakerGracePeriod, cfg.SpeakerGracePeriod)

@@ -4,12 +4,10 @@ package httphelper
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/opensvc/om3/v3/util/httpclientcache"
 	"github.com/opensvc/om3/v3/util/requestfactory"
 )
 
@@ -58,11 +56,14 @@ func New(cli *http.Client, factory *requestfactory.T) *T {
 // NewHttpsClient returns a client of the transport of the nodes, its connect
 // and its TLS handshake bounded, verifying the certificate of the server
 // unless insecure.
+//
+// The transport is shared by the clients: a request reuses the connection of
+// the previous ones. A request with no connection by half the time its
+// context leaves it, nothing sent, is sent again once, and a request failing
+// says the phase it was in, as a PhaseError.
 func NewHttpsClient(insecure bool) *http.Client {
 	return &http.Client{
-		Transport: httpclientcache.NewTransport(&tls.Config{
-			InsecureSkipVerify: insecure,
-		}),
+		Transport: &retryUnsent{base: sharedTransport(insecure)},
 	}
 }
 

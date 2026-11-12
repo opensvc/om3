@@ -663,7 +663,7 @@ var (
 		Section:   "collector",
 		Since:     "v3.0.0-rc44",
 		Converter: converters.Duration,
-		Default:   "5s",
+		Default:   "10s",
 		Text:      keywords.NewText(fs, "text/kw/node/collector.timeout"),
 	}
 	kwCollectorActionBatch = keywords.Keyword{
