@@ -230,7 +230,7 @@ func (t T) Exists(ctx context.Context) (bool, error) {
 // this node blkid reads, and would be taken for an array to adopt. Status
 // does not pay the price of the flushes.
 func (t T) ExistsFresh(ctx context.Context) (bool, error) {
-	buff, err := t.blkidOutput(ctx)
+	buff, err := t.blkidScan(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -324,7 +324,7 @@ func (t T) reAdd(ctx context.Context, devpath string) error {
 		}),
 	)
 	cmd.Run()
-	sessioncache.Clear("mdadm-E-scan-v")
+	forgetProbes()
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -346,7 +346,7 @@ func (t T) wipeDevice(ctx context.Context, devpath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	sessioncache.Clear("mdadm-E-scan-v")
+	forgetProbes()
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -387,7 +387,7 @@ func (t T) Deactivate(ctx context.Context) error {
 		command.WithOnStderrLine(filterStderrFunc),
 	)
 	cmd.Run()
-	sessioncache.Clear("mdadm-E-scan-v")
+	forgetProbes()
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -420,7 +420,7 @@ func (t T) Activate(ctx context.Context) error {
 		command.WithOnStderrLine(filterStderrFunc),
 	)
 	cmd.Run()
-	sessioncache.Clear("mdadm-E-scan-v")
+	forgetProbes()
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -487,7 +487,7 @@ func (t *T) Create(ctx context.Context, level string, devs []string, spares int,
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	sessioncache.Clear("mdadm-E-scan-v")
+	forgetProbes()
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -558,10 +558,45 @@ func (t T) DisableAutoActivation() error {
 	return nil
 }
 
-// blkidOutput lists the md members of the node. The blkid cache is not used:
-// it answers what a device held when last probed.
+// blkidCacheSig is the session cache entry of the md members of the node.
+const blkidCacheSig = "md-blkid-members"
+
+// forgetProbes drops the md members of the node the session cache holds, for
+// the next caller to probe the devices again: a create, a wipe or a re-add
+// changes them.
+func forgetProbes() {
+	_ = sessioncache.Clear(blkidCacheSig)
+	_ = sessioncache.Clear("mdadm-E-scan-v")
+}
+
+// blkidOutput lists the md members of the node, as blkidScan probes them,
+// once per session: the status of each md resource of an object, evaluated
+// before and after an action, asked it 3 times a resource, 27 times for an
+// ingest of 3 arrays, each probe reading every device of the node, its paths
+// included. The arrays the session creates, wipes or re-adds a device to
+// forget it. ExistsFresh, a provision making sure of what it adopts, probes
+// again.
 func (t T) blkidOutput(ctx context.Context) (string, error) {
-	cmd := command.New(
+	out, err := sessioncache.Output(t.blkidCommand(ctx), blkidCacheSig)
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+// blkidScan probes the md members of the node, bypassing the session cache.
+// The blkid cache is not used either: it answers what a device held when
+// last probed.
+func (t T) blkidScan(ctx context.Context) (string, error) {
+	out, err := t.blkidCommand(ctx).Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+func (t T) blkidCommand(ctx context.Context) *command.T {
+	return command.New(
 		command.WithContext(ctx),
 		command.WithName(blkid),
 		command.WithVarArgs("-c", "/dev/null", "-t", "TYPE=linux_raid_member"),
@@ -572,11 +607,6 @@ func (t T) blkidOutput(ctx context.Context) (string, error) {
 		command.WithIgnoredExitCodes(0, 2), // 2 is the exit code of blkid when no match is found
 		command.WithBufferedStdout(),
 	)
-	if out, err := cmd.Output(); err != nil {
-		return "", err
-	} else {
-		return string(out), nil
-	}
 }
 
 // blkidProbe probes devpath for its superblocks, bypassing the blkid cache.
