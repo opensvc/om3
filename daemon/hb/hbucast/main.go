@@ -7,7 +7,9 @@ Example:
 	n := clusterhb.New()
 	registeredDataC := make([]chan []byte, 0) // list send data chan where tx can send data
 	for _, h := range n.Hbs() {
-		h.Configure(ctx) // configure tx and rx
+		if err := h.Configure(ctx); err != nil { // configure tx and rx
+			return err
+		}
 		if err := h.Rx().Start(data.Cmd(), msgC); err != nil {
 			return err
 		}
@@ -23,6 +25,7 @@ package hbucast
 import (
 	"context"
 	"fmt"
+	"net"
 	"slices"
 	"strconv"
 	"strings"
@@ -52,7 +55,7 @@ func init() {
 }
 
 // Configure implements the Configure function of Confer interface for T
-func (t *T) Configure(ctx context.Context) {
+func (t *T) Configure(ctx context.Context) error {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbucast").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: ucast: " + t.Name() + ": configure: ")
 	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	interval := t.GetDuration("interval", 5*time.Second)
@@ -73,14 +76,11 @@ func (t *T) Configure(ctx context.Context) {
 	peerList := hostname.OtherNodes(nodes)
 	nodeMap := make(map[string]string)
 	for _, node := range nodes {
-		if s := t.GetStringAs("addr", node); s != "" {
-			nodeMap[node] = s
-		} else {
-			nodeMap[node] = node
+		s := t.GetStringAs("addr", node)
+		if err := hbcfg.CheckUnicastAddr(s); err != nil {
+			return fmt.Errorf("%w, on node %s", err, node)
 		}
-		if port := t.GetIntAs("port", node); port != 0 {
-			nodeMap[node] = fmt.Sprintf("%s:%d", nodeMap[node], port)
-		}
+		nodeMap[node] = peerAddr(node, s, t.GetIntAs("port", node))
 	}
 	nodesSig := func() string {
 		l := make([]string, len(peerList))
@@ -107,4 +107,18 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetTx(tx)
 	rx := newRx(ctx, name, nodeMap, addr, port, intf, timeout)
 	t.SetRx(rx)
+	return nil
+}
+
+// peerAddr returns the address the tx dials to reach node: its addr, or its
+// name when it has none, joined to its port the way an IPv6 address needs, in
+// brackets.
+func peerAddr(node, addr string, port int) string {
+	if addr == "" {
+		addr = node
+	}
+	if port == 0 {
+		return addr
+	}
+	return net.JoinHostPort(addr, strconv.Itoa(port))
 }

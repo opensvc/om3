@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
@@ -48,6 +49,12 @@ type (
 		// whose start failed, by rid, logged when it changes.
 		retryErr map[string]string
 
+		// failed are the streams registered to the controller as failed,
+		// by id, as "hb#1.tx", by the rid of their heartbeat: listed,
+		// they are unregistered with their heartbeat section, which
+		// leaves no stream running to unregister them.
+		failed map[string]string
+
 		// janitorDone is closed when the janitor loop returned: Stop
 		// waits for it before it reads the heartbeats running, which the
 		// loop starts.
@@ -59,6 +66,13 @@ type (
 		// cancel is the cancel function for msgToTx, msgFromRx, janitor
 		cancel context.CancelFunc
 		wg     sync.WaitGroup
+	}
+
+	// confer is a heartbeat configured, with the error its driver
+	// configured it with, if any.
+	confer struct {
+		hbcfg.Confer
+		err error
 	}
 
 	registerTxQueue struct {
@@ -80,6 +94,7 @@ func New(_ context.Context, opts ...funcopt.O) *T {
 	t.readMsgQueue = make(chan *hbtype.Msg)
 	t.ridSignature = make(map[string]string)
 	t.retryErr = make(map[string]string)
+	t.failed = make(map[string]string)
 	return t
 }
 
@@ -182,7 +197,7 @@ func (t *T) stopHb(hb hbtype.IDStopper) error {
 	return hb.Stop()
 }
 
-func (t *T) startHb(hb hbcfg.Confer) error {
+func (t *T) startHb(hb confer) error {
 	var errs error
 	if err := t.startHbTx(hb); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("start %s.tx failed: %w", hb.Name(), err))
@@ -193,12 +208,17 @@ func (t *T) startHb(hb hbcfg.Confer) error {
 	return errs
 }
 
-func (t *T) startHbTx(hb hbcfg.Confer) error {
+func (t *T) startHbTx(hb confer) error {
+	if hb.err != nil {
+		t.registerFailed(hb.Name(), hb.Name()+".tx", hb.Type(), hb.err)
+		return hb.err
+	}
 	tx := hb.Tx()
 	if tx == nil {
 		return fmt.Errorf("nil tx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{ID: tx.ID(), Type: hb.Type()}
+	delete(t.failed, tx.ID())
 
 	// start debounce msg goroutine to ensure non-blocking write to msgToSendQ:
 	// the msgToTxCtx goroutine multiplexes data messages to all hb tx drivers.
@@ -208,6 +228,7 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 
 	if err := tx.Start(t.ctrlC, debouncedMsgQ); err != nil {
 		t.ctrlC <- hbctrl.CmdSetState{ID: tx.ID(), State: "failed"}
+		t.failed[tx.ID()] = hb.Name()
 		return err
 	}
 	go func(ctx context.Context) {
@@ -229,18 +250,52 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	return nil
 }
 
-func (t *T) startHbRx(hb hbcfg.Confer) error {
+func (t *T) startHbRx(hb confer) error {
+	if hb.err != nil {
+		t.registerFailed(hb.Name(), hb.Name()+".rx", hb.Type(), hb.err)
+		return hb.err
+	}
 	rx := hb.Rx()
 	if rx == nil {
 		return fmt.Errorf("nil rx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{ID: rx.ID(), Type: hb.Type()}
+	delete(t.failed, rx.ID())
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
 		t.ctrlC <- hbctrl.CmdSetState{ID: rx.ID(), State: "failed"}
+		t.failed[rx.ID()] = hb.Name()
 		return err
 	}
 	t.rxs[hb.Name()] = rx
 	return nil
+}
+
+// registerFailed lists the stream id of the heartbeat rid failed, with the
+// error that keeps it from running as an alert: a heartbeat whose driver
+// refused its configuration has no stream to register, and was not listed.
+//
+// The registration replaces the one of a previous try, and is replaced by
+// the one of the stream once it starts.
+func (t *T) registerFailed(rid, id, hbType string, err error) {
+	t.ctrlC <- hbctrl.CmdRegister{ID: id, Type: hbType}
+	t.ctrlC <- hbctrl.CmdSetState{ID: id, State: "failed"}
+	t.ctrlC <- hbctrl.CmdSetAlert{
+		HbID:  id,
+		Alert: []daemonsubsystem.Alert{{Severity: "error", Message: err.Error()}},
+	}
+	t.failed[id] = rid
+}
+
+// unregisterFailed unregisters the streams of the heartbeat rid listed
+// failed, which no running stream stands for.
+func (t *T) unregisterFailed(rid string) {
+	for id, failedRid := range t.failed {
+		if failedRid != rid {
+			continue
+		}
+		t.ctrlC <- hbctrl.CmdUnregister{ID: id}
+		delete(t.failed, id)
+	}
 }
 
 // knownRids returns the heartbeats this manager knows of: the ones recorded
@@ -254,6 +309,9 @@ func (t *T) knownRids() []string {
 		m[rid] = true
 	}
 	for rid := range t.rxs {
+		m[rid] = true
+	}
+	for _, rid := range t.failed {
 		m[rid] = true
 	}
 	l := make([]string, 0, len(m))
@@ -293,6 +351,7 @@ func (t *T) stopHbRid(rid string) error {
 	if len(failures) > 0 {
 		return fmt.Errorf("stop hb rid %s error for %s", rid, strings.Join(failures, ", "))
 	}
+	t.unregisterFailed(rid)
 	return nil
 }
 
@@ -752,21 +811,23 @@ func (t *T) daemonCtlStop(hbID string, action string) {
 	}
 }
 
-func (t *T) getHbConfigured(ctx context.Context) (ridHb map[string]hbcfg.Confer, err error) {
+// getHbConfigured returns the heartbeats the configuration defines, by rid,
+// each configured. One whose configuration is refused is returned with the
+// error: its start lists it failed with it.
+func (t *T) getHbConfigured(ctx context.Context) (ridHb map[string]confer, err error) {
 	var node *clusterhb.T
-	ridHb = make(map[string]hbcfg.Confer)
+	ridHb = make(map[string]confer)
 	node, err = clusterhb.New()
 	if err != nil {
 		return ridHb, err
 	}
 	for _, h := range node.Hbs() {
-		h.Configure(ctx)
-		ridHb[h.Name()] = h
+		ridHb[h.Name()] = confer{Confer: h, err: h.Configure(ctx)}
 	}
 	return ridHb, nil
 }
 
-func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.Confer, err error) {
+func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c confer, err error) {
 	var node *clusterhb.T
 	node, err = clusterhb.New()
 	if err != nil {
@@ -774,9 +835,8 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 		return
 	}
 	for _, h := range node.Hbs() {
-		h.Configure(ctx)
 		if h.Name() == rid {
-			c = h
+			c = confer{Confer: h, err: h.Configure(ctx)}
 			return
 		}
 	}

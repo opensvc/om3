@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -204,7 +205,7 @@ func init() {
 }
 
 // Configure implements the Configure function of Confer interface for T
-func (t *T) Configure(ctx context.Context) {
+func (t *T) Configure(ctx context.Context) error {
 	log := plog.NewDefaultLogger().Attr("ctx", "daemon/hb/hbmcast").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: mcast: " + t.Name() + ": configure: ")
 	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	interval := t.GetDuration("interval", 5*time.Second)
@@ -218,21 +219,20 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Tracef("timeout=%s interval= %s port=%d nodes=%s onodes=%s", timeout, interval,
-		port, nodes, oNodes)
+	log.Tracef("timeout=%s interval= %s addr=%s port=%d nodes=%s onodes=%s", timeout, interval,
+		addr, port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.mcast, port: %d nodes: %s timeout: %s intf: %s interval: %s",
-		port, nodes, timeout, intf, interval)
+	signature := fmt.Sprintf("type: hb.mcast, addr: %s port: %d nodes: %s timeout: %s intf: %s interval: %s",
+		addr, port, nodes, timeout, intf, interval)
 	t.SetSignature(signature)
 	log.Debugf("signature: [%s]", signature)
 	name := t.Name()
 
-	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
+	udpAddr, err := groupAddr(addr, port, intf)
 	if err != nil {
-		log.Errorf("resolve udp addr: %s", err)
-		return
+		return fmt.Errorf("%w, on node %s", err, hostname.Hostname())
 	}
 
 	var ifi *net.Interface
@@ -240,8 +240,7 @@ func (t *T) Configure(ctx context.Context) {
 	if intf != "" {
 		ifi, err = net.InterfaceByName(intf)
 		if err != nil {
-			log.Errorf("can't get interface by name: %s", err)
-			return
+			return fmt.Errorf("can't get interface by name: %w", err)
 		}
 		// The sockets name the interface by its index, so the heartbeat
 		// works once the interface gets its address, but until then
@@ -259,4 +258,26 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetTx(tx)
 	rx := newRx(ctx, name, oNodes, udpAddr, ifi, timeout, sent)
 	t.SetRx(rx)
+	return nil
+}
+
+// groupAddr returns the address of the multicast group addr, port port, to
+// join on the interface intf.
+//
+// The address is joined to the port the way an IPv6 one needs, in brackets,
+// so an IPv6 group resolves. The group is refused when it names a zone, which
+// is the interface intf names, when it is not a multicast one, and when it is
+// an IPv6 one with no interface to join it on.
+func groupAddr(addr string, port int, intf string) (*net.UDPAddr, error) {
+	if err := hbcfg.CheckMulticastGroup(addr, intf); err != nil {
+		return nil, err
+	}
+	udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(addr, strconv.Itoa(port)))
+	if err != nil {
+		return nil, fmt.Errorf("resolve udp addr: %w", err)
+	}
+	if err := hbcfg.CheckMulticastIP(udpAddr.IP, intf); err != nil {
+		return nil, err
+	}
+	return udpAddr, nil
 }

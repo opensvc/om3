@@ -23,13 +23,14 @@ Usage example on hb unicast driver
 	func NewTx(..., timeout time.Duration) *tx { ... }
 	func NewRx(..., timeout time.Duration) *rx { ... }
 
-	func (t *T) Configure(ctx context.Context) {
+	func (t *T) Configure(ctx context.Context) error {
 		...
 		timeout := t.GetDuration("timeout", 5*time.Second)
 		rx := NewRx(..., timeout)
 		tx := NewTx(..., timeout)
 		t.SetTx(rx)
 		t.SetRx(tx)
+		return nil
 	}
 */
 package hbcfg
@@ -67,7 +68,11 @@ type (
 
 		// Configure prepare Receiver and Transmitter concrete objects
 		// composed hb driver struct have to implement Configure
-		Configure(ctx context.Context)
+		//
+		// It returns why the heartbeat can not run as configured, its
+		// Receiver and Transmitter left unset then: the heartbeat is
+		// listed failed with the error, rather than not at all.
+		Configure(ctx context.Context) error
 	}
 
 	// TConfer interface hold getter and setter for hb configuration

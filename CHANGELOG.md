@@ -1835,6 +1835,14 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     sum by (feed) (opensvc_collector_pending)
     ```
 
+* The multicast and unicast heartbeats run on IPv6.
+
+    An IPv6 multicast group, as `ff02::1:4141`, did not resolve, and an IPv6 unicast address was dialed, listened on and allowed as `addr:port`, which only an IPv4 address can be written as: the heartbeat never started, or refused all its peers. The addresses are now written `[addr]:port`, and a peer address written in any of its forms, as `FD01:0:0:0::12`, is allowed.
+
+    An IPv6 multicast group is joined on the interface `intf` names, which it requires on every node of the heartbeat: a cluster configuration setting one without, or naming a zone in the group (`ff02::1:4141%eth0`), is refused. An IPv6 link-local unicast address, as `fe80::12%eth0`, is not supported and is refused too.
+
+    A heartbeat whose configuration its driver refuses is listed by `om daemon hb list` as failed, with the error as an alert of its streams, and is tried again every 30 seconds. It was not listed at all.
+
 ### sec
 
 * Add "o[mx] key rename --name old --to new" commands

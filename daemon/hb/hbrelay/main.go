@@ -58,7 +58,7 @@ func init() {
 }
 
 // Configure implements the Configure function of Confer interface for T
-func (t *T) Configure(ctx context.Context) {
+func (t *T) Configure(ctx context.Context) error {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: relay: " + t.Name() + ": configure: ")
 	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	timeout := t.GetDuration("timeout", 9*time.Second)
@@ -76,15 +76,13 @@ func (t *T) Configure(ctx context.Context) {
 	}
 	relay := t.GetString("relay")
 	if relay == "" {
-		log.Errorf("no %s.relay is not set in node.conf", t.Name())
-		return
+		return fmt.Errorf("%s.relay is not set", t.Name())
 	}
 	username := t.GetString("username")
 	passwordLine := t.GetString("password")
 	passKM, err := datarecv.ParseKeyMetaRelWithFallback(passwordLine, naming.NsSys, "password")
 	if err != nil {
-		log.Errorf("no %s.password parsing: %s", t.Name(), err)
-		return
+		return fmt.Errorf("%s.password: %w", t.Name(), err)
 	}
 
 	insecure := t.GetBool("insecure")
@@ -113,6 +111,7 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetTx(tx)
 	rx := newRx(ctx, name, oNodes, cfg)
 	t.SetRx(rx)
+	return nil
 }
 
 // drain reads and discards all data from the provided ReadCloser and closes

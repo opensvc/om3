@@ -1,1 +1,5 @@
-The multicast address to send to and listen on.
+The multicast group to send to and listen on, IPv4 or IPv6.
+
+An IPv6 group, as `ff02::1:4141`, requires `intf` on every node of the
+heartbeat. The group names no zone, as `ff02::1:4141%eth0`: name the
+interface with `intf`.
