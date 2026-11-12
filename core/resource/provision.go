@@ -447,24 +447,34 @@ func setProvisionRecorded(v bool, r Driver) error {
 	return os.WriteFile(p, []byte(time.Now().Format(time.RFC3339Nano)+"\n"), 0644)
 }
 
+// setProvisionedValue writes the provisioned flag of the resource. The flag
+// is written aside and renamed in place: a reader never finds the file
+// truncated, which it took for no flag, asking the driver and writing its
+// answer over the one being written.
 func setProvisionedValue(v bool, r Driver) error {
 	p := provisionedFile(r)
 	d := filepath.Dir(p)
-	if _, err := os.Stat(d); errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(d, os.ModePerm); err != nil {
-			return err
-		}
+	if err := os.MkdirAll(d, os.ModePerm); err != nil {
+		return err
 	}
-	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.CreateTemp(d, ".provisioned.*")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	enc := json.NewEncoder(f)
-	if err := enc.Encode(v); err != nil {
+	tmp := f.Name()
+	defer func() { _ = os.Remove(tmp) }()
+	if err := json.NewEncoder(f).Encode(v); err != nil {
+		_ = f.Close()
 		return err
 	}
-	return nil
+	if err := f.Chmod(0644); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, p)
 }
 
 // SetProvisioned creates a flag file in the resource var dir to remember that the provision is done.
@@ -477,6 +487,55 @@ func SetProvisioned(ctx context.Context, r Driver) error {
 	}
 	r.Log().Infof("set provisioned")
 	return nil
+}
+
+// ProvisionedFlag is the provisioned flag of a resource as its file holds it,
+// read before a status evaluation of the resource: a found up the evaluation
+// records holds only for a flag that did not change meanwhile.
+type ProvisionedFlag struct {
+	value bool
+	read  bool
+	info  os.FileInfo
+}
+
+// ReadProvisionedFlag returns the provisioned flag of the resource as its file
+// holds it now.
+func ReadProvisionedFlag(r Driver) ProvisionedFlag {
+	v, err := getProvisionedValue(r)
+	info, _ := os.Stat(provisionedFile(r))
+	return ProvisionedFlag{value: v, read: err == nil, info: info}
+}
+
+// sameAs says the flag file is the one read in before, not written since: a
+// write renames a new file in place, a file of its own, whatever the
+// granularity of the modification times.
+func (t ProvisionedFlag) sameAs(before ProvisionedFlag) bool {
+	if t.info == nil || before.info == nil {
+		return t.info == nil && before.info == nil
+	}
+	return os.SameFile(t.info, before.info) && t.info.ModTime().Equal(before.info.ModTime())
+}
+
+// SetProvisionedFoundSince records the resource provisioned, found up by a
+// status evaluation, when its flag was false before the evaluation began and
+// is still the same, and says whether it did.
+//
+// The evaluation reads the status of the resource first, and its flag last,
+// with no lock an action takes: an unprovision removing the resource and
+// writing false between the two left a status read up, and a flag read
+// false, which the evaluation turned back to true. The resource, removed,
+// stayed provisioned, and the unprovision orchestration waited for ever. A
+// flag true before the evaluation, or rewritten during it, is no flag the
+// evaluation may answer for.
+func SetProvisionedFoundSince(ctx context.Context, r Driver, before ProvisionedFlag) (bool, error) {
+	now := ReadProvisionedFlag(r)
+	if !before.read || before.value || !now.read || now.value || !now.sameAs(before) {
+		if before.read && (before.value || !now.sameAs(before)) {
+			r.Log().Infof("not set provisioned: found up, the provisioned flag changed during the status evaluation")
+		}
+		return false, nil
+	}
+	return true, SetProvisionedFound(ctx, r)
 }
 
 // SetProvisionedFound records the resource provisioned because its status

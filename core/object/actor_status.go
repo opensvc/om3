@@ -302,6 +302,9 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 			return nil
 		}
 
+		// The flag a found up may answer for is the one before the
+		// status is read.
+		flagBefore := resource.ReadProvisionedFlag(r)
 		if monitoredOnly && !r.IsMonitored() {
 			resourceStatus = data.Resources[r.RID()]
 			sb.Post(r.RID(), resourceStatus.Status, false)
@@ -316,12 +319,14 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		}
 
 		// If the resource is up but the provisioned flag is unset, set
-		// the provisioned flag.
+		// the provisioned flag, unless an action changed the flag while
+		// the status was read: see SetProvisionedFoundSince.
 		if resourceStatus.IsProvisioned.State == provisioned.False {
 			switch resourceStatus.Status {
 			case status.Up, status.StandbyUp:
-				resource.SetProvisionedFound(ctx, r)
-				resourceStatus.IsProvisioned.State = provisioned.True
+				if ok, _ := resource.SetProvisionedFoundSince(ctx, r, flagBefore); ok {
+					resourceStatus.IsProvisioned.State = provisioned.True
+				}
 			}
 		}
 
