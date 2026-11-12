@@ -39,6 +39,10 @@ type fakeLun struct {
 	// onUnregister, if set, runs after an unregistration, as a peer
 	// reserving the lun meanwhile.
 	onUnregister func()
+
+	// onRegister, if set, runs after a registration, as a peer reserving
+	// the lun meanwhile.
+	onRegister func()
 }
 
 var errConflict = errors.New("reservation conflict")
@@ -63,6 +67,10 @@ func (t *fakeLun) ReadReservation(device.T) (string, error)     { return t.holde
 func (t *fakeLun) Register(_ device.T, key string) error {
 	for _, p := range t.paths {
 		t.registered[p] = key
+	}
+	if f := t.onRegister; f != nil {
+		t.onRegister = nil
+		f()
 	}
 	return nil
 }
@@ -341,4 +349,24 @@ func TestAStopFailsWhenAPathIsLeftRegistered(t *testing.T) {
 	lun.paths = []string{"c", "d"}
 	lun.onUnregister = func() { lun.unregisterErr = errConflict }
 	assert.ErrorContains(t, newHandle(t, lun).Stop(), "spr unregister")
+}
+
+// A peer reserving the lun between the read of the reservation and the
+// registration of the drop of the registrations of before: no preempt, and
+// the current paths unregistered at once.
+func TestTheDropOfTheRegistrationsOfBeforeYieldsToAPeerReservingMeanwhile(t *testing.T) {
+	lun := newFakeLun("a", "b")
+	_ = lun.Register(device.T{}, ourKey)
+	lun.paths = []string{"c", "d"}
+	lun.onUnregister = func() {
+		lun.onRegister = func() {
+			lun.registered["x"] = foreignKey
+			lun.holder, lun.holderKey = "x", foreignKey
+		}
+	}
+	require.NoError(t, newHandle(t, lun).Stop())
+	assert.Equal(t, foreignKey, lun.holderKey)
+	assert.Empty(t, lun.preempts, "no preempt")
+	assert.NotContains(t, lun.registered, "c")
+	assert.NotContains(t, lun.registered, "d")
 }
