@@ -1,9 +1,13 @@
-//go:build !linux
+//go:build !linux && !darwin
 
 package poolshare
 
-// checkShared does not judge the filesystem of path on the operating systems
-// whose statfs says no type.
-func checkShared(string) error {
-	return nil
+import "fmt"
+
+// checkShared refuses the share on the operating systems om can not tell the
+// filesystem type of a path on: a share not mounted there would report the
+// usage of the local filesystem holding its mount point, and serve volumes
+// the other nodes do not see.
+func checkShared(path string) error {
+	return fmt.Errorf("the share %s can not be told mounted on this operating system", path)
 }
