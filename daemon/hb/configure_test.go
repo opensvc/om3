@@ -9,13 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/hbcfg"
-	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
-	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // refusedConfer is a heartbeat whose driver refuses its configuration.
@@ -49,20 +45,8 @@ func streams(t *testing.T, want func(map[string]daemonsubsystem.HeartbeatStream)
 // alert: it was not listed at all, and nothing said why it did not run. Its
 // streams go with its section.
 func TestAHeartbeatFailingToConfigureIsListedFailed(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	bus := pubsub.NewBus("daemon")
-	bus.Start(ctx)
-	ctx = pubsub.ContextWithBus(ctx, bus)
-	require.NoError(t, hbcache.New(10*time.Millisecond).Start(ctx))
-	cluster.ConfigData.Set(&cluster.Config{})
-	dataCmd, _, _ := daemondata.Start(ctx, 10*time.Millisecond, pubsub.WithQueueSize(100))
-	ctx = daemondata.ContextWithBus(ctx, dataCmd)
-
-	h := New(ctx)
-	h.ctrl = hbctrl.New()
-	h.ctrlC = h.ctrl.Start(ctx)
-	defer func() { _ = h.ctrl.Stop() }()
+	h := newTestManager(t)
+	ctx := h.msgToTxCtx
 
 	refused := &refusedConfer{err: errors.New("the IPv6 group ff02::1:4141 needs intf, on node n1")}
 	refused.SetName("hb#v6")
