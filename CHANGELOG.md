@@ -1054,6 +1054,13 @@ the warning `the <driver> driver is not supported by this agent`, which makes
 the overall status of the instance warn. The availability status is not
 changed, so no monitor action is triggered by a resource that never runs.
 
+A write setting the `type` of a section to a driver this agent does not know,
+as `om cluster config update --set pool#x.type=bogus`, is refused, where it was
+accepted with a warning and the section ignored, missing from `om pool ls`. A
+type the keyword offers is accepted, as one of a driver of another operating
+system, and a section already holding an unknown type leaves the configuration
+writable.
+
 ### Driver: container
 
 These changes apply to the `container.docker`, `container.podman` and

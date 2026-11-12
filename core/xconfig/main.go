@@ -20,10 +20,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
 
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/arithmetic"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/file"
@@ -712,6 +714,9 @@ func (t *T) DriverGroupSet(op keyop.T) error {
 }
 
 func (t *T) set(op keyop.T) error {
+	if err := t.checkTypeSet(op); err != nil {
+		return err
+	}
 	setSet := func(op keyop.T) error {
 		current := t.file.Section(op.Key.Section).Key(op.Key.Option)
 		if current == nil {
@@ -1939,4 +1944,52 @@ func (t *T) Update(deleteSections []string, unsetKeys []key.T, keyOps []keyop.T)
 		return err
 	}
 	return t.Commit()
+}
+
+// ErrUnknownType is the error of a write setting the type of a section to a
+// driver om does not know.
+var ErrUnknownType = errors.New("unknown type")
+
+// checkTypeSet refuses a write setting the type of a driver section, as
+// "pool#x.type = bogus", to a driver neither registered nor offered by the
+// type keyword: the section was accepted with a warning, and ignored, as a
+// pool missing from "om pool ls" with nothing saying why. A type the
+// keyword offers is accepted, as one registered on other operating systems
+// only. The sections a configuration already holds are warned of by the
+// validation, so a configuration upgraded keeps loading and writable.
+//
+// The type of a volume is the type of its pool.
+func (t *T) checkTypeSet(op keyop.T) error {
+	if op.Op != keyop.Set || op.Key.BaseOption() != "type" || op.Value == "" {
+		return nil
+	}
+	rid, err := resourceid.Parse(op.Key.Section)
+	if err != nil {
+		return nil
+	}
+	group := rid.DriverGroup()
+	if group == driver.GroupUnknown {
+		return nil
+	}
+	if group == driver.GroupVolume {
+		group = driver.GroupPool
+	}
+	if driver.Exists(driver.NewID(group, op.Value)) {
+		return nil
+	}
+	known := driver.NamesByGroup()[group]
+	if len(known) == 0 {
+		// A program knowing no driver of the group, as one with no
+		// driver loaded, can not tell.
+		return nil
+	}
+	if kw, err := getKeyword(key.New(op.Key.Section, "type"), "", t.Referrer); err == nil && kw != nil {
+		if slices.Contains(kw.Candidates, op.Value) {
+			return nil
+		}
+		known = append(known, kw.Candidates...)
+	}
+	slices.Sort(known)
+	known = slices.Compact(known)
+	return fmt.Errorf("%w: %s: no %s driver is named %s, the known ones are %s", ErrUnknownType, op.Key, group, op.Value, strings.Join(known, ", "))
 }
