@@ -100,6 +100,11 @@ var (
 	// holding a signature not of a heartbeat.
 	ErrForeignSignature = errors.New("the disk holds a signature not of a heartbeat")
 
+	// ErrNotProbed is the error of a sign refused on a disk no tool could
+	// tell the signatures of, blkid not installed: the sign would erase
+	// what it holds unseen.
+	ErrNotProbed = errors.New("the signatures of the disk can not be read")
+
 	// ErrTooSmall is the error of a sign refused on a disk too small for
 	// the slots of the heartbeat.
 	ErrTooSmall = errors.New("the disk is too small for the heartbeat")
@@ -237,11 +242,13 @@ func zeroPages(f *os.File, from, to int, size int64) error {
 }
 
 // blkidProbe returns the signature blkid finds on the disk at path, as
-// "TYPE=ext4" or "PTTYPE=gpt", empty when it finds none or is not installed.
+// "TYPE=ext4" or "PTTYPE=gpt", empty when it finds none. With no blkid
+// installed, it says the disk could not be probed, rather than none found: a
+// sign not forced would erase the disk unseen.
 func blkidProbe(path string) (string, error) {
 	blkid, err := exec.LookPath("blkid")
 	if err != nil {
-		return "", nil
+		return "", fmt.Errorf("%w: %s: blkid is not installed", ErrNotProbed, path)
 	}
 	out, err := exec.Command(blkid, "-p", "-o", "export", path).Output()
 	var exitErr *exec.ExitError

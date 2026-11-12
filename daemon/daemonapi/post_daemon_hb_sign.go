@@ -62,7 +62,7 @@ func localPostDaemonHeartbeatSign(ctx echo.Context, name api.InPathHeartbeatName
 	log.Infof("sign heartbeat disk %s dev %s", section, devPath)
 	err = sign.Sign(devPath, opts)
 	switch {
-	case errors.Is(err, sign.ErrForeignSignature):
+	case errors.Is(err, sign.ErrForeignSignature), errors.Is(err, sign.ErrNotProbed):
 		log.Infof("refuse to sign heartbeat disk %s dev %s: %s", section, devPath, err)
 		return JSONProblemf(ctx, http.StatusConflict, "Heartbeat disk holds a signature", "refuse to sign heartbeat %s dev %s: %s. Check the dev, or sign with --force", section, devPath, err)
 	case errors.Is(err, sign.ErrTooSmall):

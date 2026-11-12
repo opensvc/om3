@@ -281,3 +281,18 @@ func TestWipeErasesTheMetadata(t *testing.T) {
 func TestMinSize(t *testing.T) {
 	require.Equal(t, int64(4*1024*1024+3*1024*1024), MinSize(1024, 2), "4 MiB of metadata, slot 0 unused, 2 nodes")
 }
+
+// A disk whose signatures no tool can read, blkid not installed, is not
+// signed unless forced: it was signed as holding none, its first pages erased
+// unseen.
+func TestSignRefusesADiskNotProbed(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	p := newDisk(t, 64*PageSizeInt64, 40)
+	err := Sign(p, SignOptions{MaxSlots: 32})
+	require.ErrorIs(t, err, ErrNotProbed)
+	require.ErrorContains(t, err, "blkid is not installed")
+	require.NotZero(t, pageFirstByte(t, p, 5), "nothing erased")
+
+	require.NoError(t, Sign(p, SignOptions{MaxSlots: 32, Force: true}))
+	require.Zero(t, pageFirstByte(t, p, 5))
+}

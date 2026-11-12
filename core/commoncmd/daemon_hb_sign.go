@@ -26,7 +26,7 @@ func NewCmdHeartbeatSign() *cobra.Command {
 		Long: ForProgram("Write the signature the nodes of a disk heartbeat claim their slot with.\n\n" +
 			HeartbeatNameHelp + "\n\nThe heartbeat must be of type disk: this action writes to its dev.\n\n" +
 			"A disk with no heartbeat signature gets its metadata area, max_slots pages of 4 KiB, zeroed first, so its nodes start from free slots. " +
-			"One holding another signature, as a filesystem or a lvm physical volume, is refused, as the sign would erase it: --force signs it anyway. " +
+			"One holding another signature, as a filesystem or a lvm physical volume, is refused, as the sign would erase it, and so is one on a node with no blkid to read them: --force signs it anyway. " +
 			"A disk already signed keeps the slots of its nodes, and of the other clusters sharing it.\n\n" +
 			"A disk too small for the metadata area and a data slot of 1 MiB per node, after an unused one, is refused.\n\n" +
 			"The streams of the heartbeat suspended on a disk not signed, on every node, resume within an interval, with no restart."),
