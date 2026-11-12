@@ -486,6 +486,11 @@ func (t *PersistentReservationHandle) dropRegistrationsOfBefore(dev device.T) er
 	var errs error
 	if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
 		errs = fmt.Errorf("%s spr register, to drop the registrations of paths of before: %w", dev.Path(), err)
+	} else if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil || reservation != "" {
+		// A peer reserved the lun between the read and the registration:
+		// the current paths are unregistered at once, below, and the
+		// registrations of before left to the holder.
+		errs = fmt.Errorf("%s reserved by %q, or not read (%v), since the registration to drop the registrations of paths of before", dev, reservation, err)
 	} else if err := t.preempt(dev, t.Key); err != nil {
 		errs = fmt.Errorf("preempt the own key, to drop the registrations of paths of before: %w", err)
 	}
