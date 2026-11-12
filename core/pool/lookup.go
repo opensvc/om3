@@ -269,15 +269,26 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 		// read too.
 		return t.localRoomCause(ctx, p, need)
 	}
+	return roomCauseOf(p.Name(), nodes, byNode, need)
+}
+
+// roomCauseOf says why the pool name has no room for need bytes on the
+// nodes, by the usage each node reports of it, and nothing when it has.
+func roomCauseOf(name string, nodes []string, byNode map[string]map[string]Usage, need int64) string {
 	for _, nodename := range nodes {
 		byPool, ok := byNode[nodename]
 		if !ok || len(byPool) == 0 {
 			// Nothing heard from that node yet.
 			continue
 		}
-		usage, ok := byPool[p.Name()]
+		usage, ok := byPool[name]
 		if !ok {
-			return fmt.Sprintf("[%s] node %s has no such pool", p.Name(), nodename)
+			return fmt.Sprintf("[%s] node %s has no such pool", name, nodename)
+		}
+		if len(usage.Errors) > 0 {
+			// A pool whose status failed has a usage of zero, which is
+			// not the one of a pool with no size of its own.
+			return fmt.Sprintf("[%s] node %s: %s", name, nodename, strings.Join(usage.Errors, ", "))
 		}
 		if usage.Size <= 0 {
 			// A pool with no size of its own, a virtual one, says nothing
@@ -286,7 +297,7 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 		}
 		if usage.Free < need {
 			return fmt.Sprintf("[%s] not enough free space on %s: %s free, %s requested",
-				p.Name(), nodename, sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(need)))
+				name, nodename, sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(need)))
 		}
 		if usage.Shared {
 			// One storage, seen from every node. Asking one of them is

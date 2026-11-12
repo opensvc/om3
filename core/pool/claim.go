@@ -169,6 +169,11 @@ func UsageByNode(ctx context.Context) (map[string]map[string]Usage, error) {
 			LogicalUsed: item.LogicalUsed,
 			LogicalSize: item.LogicalSize,
 		}
+		if item.Errors != nil {
+			u := byPool[item.Name]
+			u.Errors = *item.Errors
+			byPool[item.Name] = u
+		}
 	}
 	return m, nil
 }

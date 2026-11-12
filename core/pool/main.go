@@ -52,6 +52,11 @@ type (
 		LogicalUsed int64 `json:"logical_used"`
 		// LogicalSize unit is Bytes
 		LogicalSize int64 `json:"logical_size"`
+
+		// Errors are the errors of the status of the pool on the node
+		// it was read from, as a share not mounted: its usage, zero
+		// then, says nothing of its room.
+		Errors []string `json:"-"`
 	}
 
 	Status struct {
