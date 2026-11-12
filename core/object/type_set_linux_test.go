@@ -52,4 +52,8 @@ func TestAWriteSettingAnUnknownTypeIsRefused(t *testing.T) {
 	require.ErrorIs(t, set(cfg, "fs#1.type=bogus"), xconfig.ErrUnknownType)
 	require.ErrorIs(t, set(cfg, "volume#1.type=bogus"), xconfig.ErrUnknownType, "the type of a volume is the one of its pool")
 	require.NoError(t, set(cfg, "fs#1.type=flag", "volume#1.type=directory"))
+	err = set(cfg, "fs#1.type+=bogus")
+	require.ErrorIs(t, err, xconfig.ErrUnknownType, "a type is not appended to")
+	assert.ErrorContains(t, err, "the type of a section is set with =, to one driver")
+	require.ErrorIs(t, set(cfg, "fs#1.type|=flag"), xconfig.ErrUnknownType, "nor merged")
 }
