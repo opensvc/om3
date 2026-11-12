@@ -1862,6 +1862,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     The rx of the second could not bind, and its tx was seen beating, its frames received by the rx of the first: `om daemon hb list` showed a heartbeat half healthy while the cluster had one network path less. Give the second another `port`, or another `addr` on each node. A cluster configuration already holding such a pair refuses the next writes until it is fixed.
 
+* A disk heartbeat beats on a disk that held something else before it was signed.
+
+    `om daemon hb sign` wrote the header page only: the metadata area kept what the disk held, as a filesystem, and the nodes took any page not starting with a zero as a slot held, claiming slots past the end of the disk, every write failing, with no alert. The sign now zeroes the metadata area, `max_slots` pages of 4 KiB, of a disk with no heartbeat header, and refuses one holding another signature, as a filesystem or a lvm physical volume, unless `--force`: the `force` parameter of `POST /api/node/name/{nodename}/daemon/hb/name/{name}/action/sign`, which answers 409. A disk with a heartbeat header keeps its slots, and the ones of the other clusters sharing it. `om daemon hb wipe` zeroes the metadata area with the header, so a sign after it starts from free slots. A disk smaller than the metadata area and 1 MiB per node, plus 1 MiB, is refused by the sign.
+
 ### sec
 
 * Add "o[mx] key rename --name old --to new" commands

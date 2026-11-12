@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -12,21 +13,21 @@ import (
 	"github.com/opensvc/om3/v3/util/sign"
 )
 
-func (a *DaemonAPI) PostDaemonHeartbeatSign(ctx echo.Context, nodename api.InPathNodeName, name api.InPathHeartbeatName) error {
+func (a *DaemonAPI) PostDaemonHeartbeatSign(ctx echo.Context, nodename api.InPathNodeName, name api.InPathHeartbeatName, params api.PostDaemonHeartbeatSignParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 
 	if nodename == a.localhost || nodename == "localhost" {
-		return localPostDaemonHeartbeatSign(ctx, name)
+		return localPostDaemonHeartbeatSign(ctx, name, params)
 	}
 	return a.proxy(ctx, nodename, func(t *client.T) (*http.Response, error) {
-		return t.PostDaemonHeartbeatSign(ctx.Request().Context(), nodename, name)
+		return t.PostDaemonHeartbeatSign(ctx.Request().Context(), nodename, name, &params)
 	})
 }
 
-func localPostDaemonHeartbeatSign(ctx echo.Context, name api.InPathHeartbeatName) error {
+func localPostDaemonHeartbeatSign(ctx echo.Context, name api.InPathHeartbeatName, params api.PostDaemonHeartbeatSignParams) error {
 	log := LogHandler(ctx, "postDaemonHeartbeatSign")
 	section, err := heartbeatName(name)
 	if err != nil {
@@ -52,9 +53,22 @@ func localPostDaemonHeartbeatSign(ctx echo.Context, name api.InPathHeartbeatName
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "sign heartbeat disk refused: unexpected empty %s.dev", section)
 	}
 
+	maxSlots := config.GetInt(key.New(section, "max_slots"))
+	opts := sign.SignOptions{
+		MaxSlots: maxSlots,
+		MinSize:  sign.MinSize(maxSlots, len(heartbeatNodes(config, section))),
+		Force:    params.Force != nil && *params.Force,
+	}
 	log.Infof("sign heartbeat disk %s dev %s", section, devPath)
-	err = sign.CreateAndFillDisk(devPath)
-	if err != nil {
+	err = sign.Sign(devPath, opts)
+	switch {
+	case errors.Is(err, sign.ErrForeignSignature):
+		log.Infof("refuse to sign heartbeat disk %s dev %s: %s", section, devPath, err)
+		return JSONProblemf(ctx, http.StatusConflict, "Heartbeat disk holds a signature", "refuse to sign heartbeat %s dev %s: %s. Check the dev, or sign with --force", section, devPath, err)
+	case errors.Is(err, sign.ErrTooSmall):
+		log.Infof("refuse to sign heartbeat disk %s dev %s: %s", section, devPath, err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Heartbeat disk too small", "refuse to sign heartbeat %s dev %s: %s. Use a larger disk, or lower max_slots", section, devPath, err)
+	case err != nil:
 		log.Warnf("sign heartbeat disk %s dev %s: %s", section, devPath, err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Heartbeat disk sign error", "sign heartbeat disk %s dev %s: %s", section, devPath, err)
 	}
