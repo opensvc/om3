@@ -34,7 +34,7 @@ type (
 const (
 	// DefaultTimeout bounds a request to the collector, unless
 	// collector.timeout says otherwise.
-	DefaultTimeout = 5 * time.Second
+	DefaultTimeout = 10 * time.Second
 
 	// MinTimeout and MaxTimeout bound collector.timeout.
 	MinTimeout = time.Second

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -164,10 +165,19 @@ func (t *Node) collectorRequestContext(ctx context.Context) (context.Context, co
 
 // collectorRequestError returns the error err of the request method path to
 // the collector, saying the request timed out after timeout, the value of
-// collector.timeout, when it did.
+// collector.timeout, when it did, and the phase it was in: resolving the
+// host name, connecting, negotiating tls, sending the request or waiting for
+// the answer.
 func collectorRequestError(err error, method, path string, timeout time.Duration) error {
+	var phase string
+	if pe := (*httphelper.PhaseError)(nil); errors.As(err, &pe) {
+		phase = " while " + pe.Phase
+	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return fmt.Errorf("collector %s %s: no answer within %s (collector.timeout): %w", method, path, timeout, err)
+		return fmt.Errorf("collector %s %s: timed out after %s (collector.timeout)%s: %w", method, path, timeout, phase, err)
+	}
+	if ne := net.Error(nil); phase != "" && errors.As(err, &ne) && ne.Timeout() {
+		return fmt.Errorf("collector %s %s: timed out%s: %w", method, path, phase, err)
 	}
 	return fmt.Errorf("collector %s %s: %w", method, path, err)
 }
