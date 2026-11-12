@@ -811,22 +811,22 @@ func (t *T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger
 	default:
 		return nil
 	}
-	if cmd == "" {
-		return nil
-	}
 	// The command was evaluated as the action reached the resource, before
 	// it acted. Evaluated again now, it reads what the action made, and a
 	// reference not available fails it rather than run it with a hole: a
 	// blocking trigger fails the action, a non-blocking one is skipped with
-	// a warning.
+	// a warning. The command evaluated before is no proof the trigger is
+	// not set: a command made of a reference not available then evaluates
+	// empty, or fails an evaluation that leaves it unset.
 	if o, ok := t.object.(TriggerCommander); ok {
 		s, err := o.TriggerCommand(t.RID(), hookID)
 		if err != nil {
 			return fmt.Errorf("trigger %s %s %s not run: %w", blocking, hook, action, err)
 		}
-		if cmd = s; cmd == "" {
-			return nil
-		}
+		cmd = s
+	}
+	if cmd == "" {
+		return nil
 	}
 	t.Log().Infof("trigger %s %s %s: %s", blocking, hook, action, cmd)
 	return t.trigger(ctx, cmd)

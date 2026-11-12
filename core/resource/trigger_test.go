@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,7 +56,7 @@ type fakeTriggerCommander struct {
 }
 
 func (t fakeTriggerCommander) TriggerCommand(rid, hook string) (string, error) {
-	if hook != "post_provision" || rid != "volume#1" {
+	if !strings.HasSuffix(hook, "post_provision") || rid != "volume#1" {
 		return "", fmt.Errorf("unexpected trigger %s %s", rid, hook)
 	}
 	return t.cmd, t.err
@@ -82,4 +83,19 @@ func TestATriggerRunsTheCommandEvaluatedAsItRuns(t *testing.T) {
 	assert.ErrorContains(t, err, "{volume#1.mnt} evaluates empty")
 	assert.NoFileExists(t, fresh)
 	assert.NoFileExists(t, stale)
+}
+
+// A trigger whose command evaluated empty as the action reached the resource,
+// a reference not available then, is evaluated again as it runs: it was
+// taken for a trigger not set, and skipped.
+func TestATriggerEvaluatedEmptyBeforeTheActionRuns(t *testing.T) {
+	fresh := filepath.Join(t.TempDir(), "fresh")
+	r := &T{}
+	require.NoError(t, r.SetRID("volume#1"))
+	r.object = fakeTriggerCommander{cmd: "/usr/bin/touch " + fresh}
+	require.NoError(t, r.Trigger(context.Background(), trigger.NoBlock, trigger.Post, trigger.Provision))
+	assert.FileExists(t, fresh)
+
+	r.object = fakeTriggerCommander{err: errors.New("volume#1.post_provision: reference not available: {volume#1.mnt} evaluates empty")}
+	assert.ErrorContains(t, r.Trigger(context.Background(), trigger.Block, trigger.Post, trigger.Provision), "evaluates empty", "a blocking trigger fails")
 }
