@@ -45,6 +45,11 @@ type (
 		// ForeignReserved are the devices another key holds the
 		// reservation of, as the last Status found them.
 		ForeignReserved []string
+
+		// expectedRegistrationCount, set by a test, replaces
+		// DeviceExpectedRegistrationCount, which reads the sysfs of the
+		// device.
+		expectedRegistrationCount func(device.T) (int, error)
 	}
 
 	PersistentReservationStatus struct {
@@ -298,7 +303,11 @@ func (t *PersistentReservationHandle) Start() error {
 		if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
 			return err
 		} else if reservation == t.Key {
-			// already reserved
+			// Already reserved, maybe by a path of the node registered
+			// before it restarted: see dropStaleRegistrations.
+			if err := t.dropStaleRegistrations(dev); err != nil {
+				return err
+			}
 		} else if reservation == "" {
 			// not reserved or preempt not allowed => Reserve action
 			if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
@@ -337,21 +346,163 @@ func (t *PersistentReservationHandle) checkForeign(dev device.T, reservation str
 	return fmt.Errorf("%s is already reserved by the foreign key %s: use --force to preempt if you are sure the key owner can be fenced", dev, reservation)
 }
 
+// Stop releases the reservation the node holds on the devices, and
+// unregisters the paths of the node.
+//
+// A registration, and a reservation, belong to a path, an I_T nexus, and the
+// nexus of an iscsi path changes when the node restarts, its initiator
+// session ids given in login order: after a restart, the paths of the node
+// are not the ones registered, and a release from them was refused, failing
+// the stop and the unprovision of every instance not started since. The paths
+// are registered before the release, and a reservation of our key still held
+// after it, by a path of before, is preempted from a current path, which
+// takes it and drops the registrations of our key the other paths hold, so
+// the release works.
+//
+// A reservation another key holds is left alone, and no path is registered
+// then: a registration would give the node the write access to a device
+// another node holds. The registrations of our key left there are the ones
+// of paths of before, or the holder took them away.
 func (t *PersistentReservationHandle) Stop() error {
 	if err := t.setup(); err != nil {
 		return err
 	}
 	for _, dev := range t.Devices {
-		if s := t.DeviceStatus(dev); s == status.Down {
-			t.Log.Infof("%s is already unregistered and unreserved", dev)
-			continue
+		if err := t.stopDevice(dev); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *PersistentReservationHandle) stopDevice(dev device.T) error {
+	reservation, err := t.persistentReservationDriver.ReadReservation(dev)
+	if err != nil {
+		return fmt.Errorf("%s read reservation: %w", dev, err)
+	}
+	if reservation != "" && reservation != t.Key {
+		t.Log.Infof("%s is reserved by the foreign key %s: the reservation is left, the paths unregistered", dev, reservation)
+		if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
+			t.Log.Warnf("%s spr unregister, under the reservation of another key: %s", dev.Path(), err)
+		}
+		return nil
+	}
+	local, err := t.localRegistrations(dev)
+	if err != nil {
+		return err
+	}
+	if reservation == "" && local == 0 {
+		t.Log.Infof("%s is already unregistered and unreserved", dev)
+		return nil
+	}
+	if reservation == t.Key {
+		// The paths of the node may not be the ones registered, after
+		// it restarted: a release from a path not registered is refused.
+		if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
+			return fmt.Errorf("%s spr register, to release: %w", dev.Path(), err)
 		}
 		if err := t.persistentReservationDriver.Release(dev, t.Key); err != nil {
-			return fmt.Errorf("%s spr release: %w", dev.Path(), err)
+			t.Log.Infof("%s spr release: %s", dev.Path(), err)
 		}
-		if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
-			return fmt.Errorf("%s spr unregister: %w", dev.Path(), err)
+		if reservation, err = t.persistentReservationDriver.ReadReservation(dev); err != nil {
+			return fmt.Errorf("%s read reservation, after the release: %w", dev, err)
 		}
+		if reservation == t.Key {
+			// Held by a path registered before the node restarted,
+			// which a release from a current path leaves.
+			t.Log.Infof("%s is still reserved by %s, held by a path of before: preempt the own key to release it", dev, t.Key)
+			if err := t.persistentReservationDriver.Preempt(dev, t.Key, t.Key); err != nil {
+				return fmt.Errorf("%s spr preempt of the own key, to release: %w", dev.Path(), err)
+			}
+			if err := t.persistentReservationDriver.Release(dev, t.Key); err != nil {
+				return fmt.Errorf("%s spr release, after the preempt of the own key: %w", dev.Path(), err)
+			}
+			if reservation, err = t.persistentReservationDriver.ReadReservation(dev); err != nil {
+				return fmt.Errorf("%s read reservation, after the release: %w", dev, err)
+			} else if reservation == t.Key {
+				return fmt.Errorf("%s is still reserved by %s after a preempt and a release", dev, t.Key)
+			}
+		}
+	}
+	if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
+		// Another node took the device meanwhile, as one starting,
+		// whose preempt removed the registrations of our key: there is
+		// nothing left to unregister.
+		if t.releasedByAnother(dev) {
+			t.Log.Infof("%s spr unregister: %s: the device is reserved by another key and holds no registration of ours", dev.Path(), err)
+			return nil
+		}
+		return fmt.Errorf("%s spr unregister: %w", dev.Path(), err)
+	}
+	if reservation == "" {
+		// Not reserved, but registered by paths of before the restart,
+		// which the unregistration of the current paths leaves: a
+		// preempt of the own key from a current path drops them.
+		if n, err := t.localRegistrations(dev); err == nil && n > 0 {
+			t.Log.Infof("%s holds %d registrations of %s after the unregistration, of paths of before: preempt them", dev, n, t.Key)
+			if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
+				t.Log.Warnf("%s spr register, to drop the registrations of paths of before: %s", dev.Path(), err)
+			} else if err := t.persistentReservationDriver.Preempt(dev, t.Key, t.Key); err != nil {
+				t.Log.Warnf("%s spr preempt of the own key, to drop the registrations of paths of before: %s", dev.Path(), err)
+			} else if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
+				t.Log.Warnf("%s spr unregister: %s", dev.Path(), err)
+			}
+		}
+	}
+	return nil
+}
+
+// releasedByAnother says the device is reserved by another key and holds no
+// registration of ours: what the stop was to reach, another node having
+// taken the device.
+func (t *PersistentReservationHandle) releasedByAnother(dev device.T) bool {
+	reservation, err := t.persistentReservationDriver.ReadReservation(dev)
+	if err != nil || reservation == "" || reservation == t.Key {
+		return false
+	}
+	n, err := t.localRegistrations(dev)
+	return err == nil && n == 0
+}
+
+// localRegistrations returns the count of the registrations of our key.
+func (t *PersistentReservationHandle) localRegistrations(dev device.T) (int, error) {
+	registrations, err := t.persistentReservationDriver.ReadRegistrations(dev)
+	if err != nil {
+		return 0, fmt.Errorf("%s read registrations: %w", dev, err)
+	}
+	return t.countHandledRegistrations(registrations), nil
+}
+
+// dropStaleRegistrations moves the reservation of our key to a current path,
+// and drops the registrations of our key the paths of the node no longer
+// use, when there are more of them than the node has paths, as after a
+// restart that changed the nexus of its iscsi paths: the reservation stayed
+// held by a path of before, the device warned of the registrations in excess
+// for good, and a stop then left it reserved.
+//
+// A preempt of our own key, from a current path, removes every registration
+// of our key but the one of that path, and moves our reservation to it. The
+// other current paths are registered again after it. A reservation of
+// another key is never touched: the preempt names our key.
+func (t *PersistentReservationHandle) dropStaleRegistrations(dev device.T) error {
+	local, err := t.localRegistrations(dev)
+	if err != nil {
+		return err
+	}
+	countExpected := t.DeviceExpectedRegistrationCount
+	if t.expectedRegistrationCount != nil {
+		countExpected = t.expectedRegistrationCount
+	}
+	expected, err := countExpected(dev)
+	if err != nil || expected <= 0 || local <= expected {
+		return nil
+	}
+	t.Log.Infof("%s holds %d registrations of %s for %d paths: preempt the own key to drop the ones of paths of before", dev, local, t.Key, expected)
+	if err := t.persistentReservationDriver.Preempt(dev, t.Key, t.Key); err != nil {
+		return fmt.Errorf("%s spr preempt of the own key, to drop the registrations of paths of before: %w", dev.Path(), err)
+	}
+	if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
+		return fmt.Errorf("%s spr register, after the preempt of the own key: %w", dev.Path(), err)
 	}
 	return nil
 }
