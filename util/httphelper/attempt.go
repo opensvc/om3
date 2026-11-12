@@ -79,7 +79,14 @@ func (t *retryUnsent) RoundTrip(req *http.Request) (*http.Response, error) {
 	if !ok {
 		return t.attempt(req, req.Context(), 0)
 	}
-	resp, err := t.attempt(req, req.Context(), time.Until(deadline)/2)
+	// A body that can not be read again can not be sent again: the request
+	// then has the whole of its time, rather than be cut at half of it for
+	// a retry it would not get.
+	abortAfter := time.Until(deadline) / 2
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		abortAfter = 0
+	}
+	resp, err := t.attempt(req, req.Context(), abortAfter)
 	var pe *PhaseError
 	if err == nil || !errors.As(err, &pe) || !isUnsent(pe) || req.Context().Err() != nil {
 		return resp, err

@@ -187,3 +187,21 @@ func TestNewHttpsClientSharesTheTransport(t *testing.T) {
 	}
 	assert.Equal(t, []bool{false, true}, reused)
 }
+
+// A request whose body can not be read again has the whole of its time: cut
+// at half of it for a retry it would not get, a status post of the daemon had
+// 5 of the 10 seconds of collector.timeout.
+func TestRetryUnsentLeavesAllTheTimeToABodyNotRereadable(t *testing.T) {
+	base := &fakeTransport{attempts: []fakeAttempt{
+		{events: []func(*httptrace.ClientTrace){resolving}},
+	}}
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://collector/", io.NopCloser(strings.NewReader("x")))
+	require.NoError(t, err)
+	begin := time.Now()
+	_, err = (&retryUnsent{base: base}).RoundTrip(req)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.GreaterOrEqual(t, time.Since(begin), 280*time.Millisecond)
+	assert.Equal(t, int32(1), base.calls.Load())
+}
