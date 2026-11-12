@@ -152,6 +152,10 @@ type (
 		waitFilesTimer *time.Timer
 		waitFilesSince time.Time
 
+		// fetchHoldTimer fires when the orchestration has held its actions
+		// for the resource files fetch and ingest long enough.
+		fetchHoldTimer *time.Timer
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -518,6 +522,8 @@ func (t *Manager) worker(initialNodes []string) {
 	t.waitDestinationTimer.Stop()
 	t.waitFilesTimer = time.NewTimer(time.Hour)
 	t.waitFilesTimer.Stop()
+	t.fetchHoldTimer = time.NewTimer(time.Hour)
+	t.fetchHoldTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
@@ -651,6 +657,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onWaitDestinationTimer()
 		case <-t.waitFilesTimer.C:
 			t.onWaitFilesTimer()
+		case <-t.fetchHoldTimer.C:
+			t.onChange()
 		}
 	}
 }

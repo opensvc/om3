@@ -46,13 +46,29 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 		}
 		t.log.Infof("wait for the %s of the syncs (pid %d, running for %s) to end, %s at most: --interrupt-syncs ends them instead",
 			syncHolder.Intent, syncHolder.PID, time.Since(syncHolder.At).Round(time.Second), timeout)
+	} else if ingestHolder := t.ingestHoldingLock(lock); ingestHolder != nil {
+		// The ingest of the resource files the daemon fetched from a
+		// peer holds the lock for the time its resources take, longer
+		// than a lock is usually waited for: an action meeting it, as
+		// the provision of the instance the daemon starts as the
+		// peer comes up, waits for it rather than fail.
+		if !actioncontext.IsLockTimeoutSet(ctx) && ingestWaitTimeout > timeout {
+			timeout = ingestWaitTimeout
+		}
+		t.log.Infof("wait for the ingest of the resource files (pid %d, running for %s) to end, %s at most",
+			ingestHolder.PID, time.Since(ingestHolder.At).Round(time.Second), timeout)
 	}
 	err := lock.Lock(timeout, props.Name)
 	if err != nil {
 		err = ulock.Explain(lock, timeout, err)
 		if syncHolder != nil {
-			return unlock, fmt.Errorf("the syncs still hold the object lock after %s, --interrupt-syncs ends them: %w", timeout, err)
+			err = fmt.Errorf("the syncs still hold the object lock after %s, --interrupt-syncs ends them: %w", timeout, err)
 		}
+		// Said in the log of the action too: the daemon running the
+		// action keeps its log, not its standard error, and an
+		// action failing on the lock would end with an exit code and
+		// nothing saying why.
+		t.log.Errorf("%s: %s", props.Name, err)
 		return unlock, err
 	}
 	unlock = func() { _ = lock.UnLock() }
@@ -108,6 +124,20 @@ func (t *core) syncHoldingLock(ctx context.Context, lock *flock.T) *flock.Meta {
 	default:
 		return nil
 	}
+}
+
+// ingestWaitTimeout is how long an action waits for the ingest of resource
+// files holding the object lock, unless --waitlock says how long.
+const ingestWaitTimeout = 5 * time.Minute
+
+// ingestHoldingLock is the holder of the object lock when it is the ingest of
+// the resource files the daemon fetched from a peer.
+func (t *core) ingestHoldingLock(lock *flock.T) *flock.Meta {
+	holder, err := lock.Probe()
+	if err != nil || holder.PID == 0 || holder.Intent != actioncontext.SyncIngest.Name {
+		return nil
+	}
+	return &holder
 }
 
 // waitSyncsTimeout is how long a stop waits for the syncs running:

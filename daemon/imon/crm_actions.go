@@ -197,9 +197,11 @@ func (t *Manager) crmStartStandby() error {
 	return t.crmAction("start", t.path.String(), "instance", "startstandby")
 }
 
+// crmResourceIngest ingests the resource files fetched from a peer: a step the
+// monitor decided on by itself, of no orchestration, as the fetch it follows.
 func (t *Manager) crmResourceIngest(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmAction("ingest", t.path.String(), "instance", "ingest", "--rid", s)
+	return t.crmMaintenanceAction("ingest", t.path.String(), "instance", "ingest", "--rid", s)
 }
 
 func (t *Manager) crmResourceStartStandby(rids []string) error {
