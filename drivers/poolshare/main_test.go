@@ -1,6 +1,8 @@
 package poolshare
 
 import (
+	"context"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,11 +39,11 @@ func TestTranslate(t *testing.T) {
 	p := newShare(t)
 	l, err := p.Translate("v1", 0, true)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"fs#0.type=flag", "fs#1.type=directory", "fs#1.path=/srv/share/v1"}, l)
+	assert.Equal(t, []string{"fs#0.type=flag", "fs#1.type=directory", "fs#1.path=/srv/share/v1", "fs#1.shared=true"}, l)
 
 	l, err = p.Translate("v1", 0, false)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"fs#0.type=flag", "fs#1.type=directory", "fs#1.path=/srv/share/v1.{nodename}"}, l)
+	assert.Equal(t, []string{"fs#0.type=flag", "fs#1.type=directory", "fs#1.path=/srv/share/v1.{nodename}", "fs#1.shared=false"}, l)
 }
 
 // A block volume is a loop file of the share.
@@ -49,7 +51,7 @@ func TestBlkTranslate(t *testing.T) {
 	p := newShare(t)
 	l, err := p.BlkTranslate("v1", 1024, true)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"disk#0.type=loop", "disk#0.file=/srv/share/v1.img", "disk#0.size={DEFAULT.size}"}, l)
+	assert.Equal(t, []string{"disk#0.type=loop", "disk#0.file=/srv/share/v1.img", "disk#0.size={DEFAULT.size}", "disk#0.shared=true"}, l)
 }
 
 // The pool has the capabilities of v2, and not the quota one: it bounds no
@@ -61,4 +63,22 @@ func TestCapabilities(t *testing.T) {
 		assert.True(t, pool.HasCapability(p, c), c)
 	}
 	assert.False(t, pool.HasCapability(p, pool.CapQuota))
+}
+
+// A share not mounted, its path missing or on a local filesystem, has no
+// usage: the one of the filesystem holding its mount point had the pool serve
+// volumes the other nodes do not see.
+func TestUsageOfAShareNotMounted(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("statfs types of linux")
+	}
+	p := New()
+	p.SetName("nfs")
+	p.SetConfig(poolConfig{"path": t.TempDir()})
+	_, err := p.Usage(context.Background())
+	assert.ErrorContains(t, err, "is not mounted: it is on a local filesystem")
+
+	p.SetConfig(poolConfig{"path": "/nonexistent/share"})
+	_, err = p.Usage(context.Background())
+	assert.ErrorContains(t, err, "is not mounted")
 }
