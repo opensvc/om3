@@ -1856,6 +1856,8 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     A heartbeat whose configuration its driver refuses is listed by `om daemon hb list` as failed, with the error as an alert of its streams, and is tried again every 30 seconds. It was not listed at all.
 
+* A heartbeat stream failing its start is listed failed with the error as an alert, and a stream stopped by `om daemon hb stop` is listed stopped while its section stays: both stayed listed after their section was deleted, until the daemon restarted.
+
 ### sec
 
 * Add "o[mx] key rename --name old --to new" commands

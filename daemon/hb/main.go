@@ -49,11 +49,12 @@ type (
 		// whose start failed, by rid, logged when it changes.
 		retryErr map[string]string
 
-		// failed are the streams registered to the controller as failed,
-		// by id, as "hb#1.tx", by the rid of their heartbeat: listed,
-		// they are unregistered with their heartbeat section, which
-		// leaves no stream running to unregister them.
-		failed map[string]string
+		// idle are the streams registered to the controller with no
+		// stream running, failed or stopped, by id, as "hb#1.tx", by the
+		// rid of their heartbeat: listed, to report their state and their
+		// error, they are unregistered with their heartbeat section,
+		// which leaves no stream running to unregister them.
+		idle map[string]string
 
 		// janitorDone is closed when the janitor loop returned: Stop
 		// waits for it before it reads the heartbeats running, which the
@@ -94,7 +95,7 @@ func New(_ context.Context, opts ...funcopt.O) *T {
 	t.readMsgQueue = make(chan *hbtype.Msg)
 	t.ridSignature = make(map[string]string)
 	t.retryErr = make(map[string]string)
-	t.failed = make(map[string]string)
+	t.idle = make(map[string]string)
 	return t
 }
 
@@ -218,7 +219,7 @@ func (t *T) startHbTx(hb confer) error {
 		return fmt.Errorf("nil tx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{ID: tx.ID(), Type: hb.Type()}
-	delete(t.failed, tx.ID())
+	delete(t.idle, tx.ID())
 
 	// start debounce msg goroutine to ensure non-blocking write to msgToSendQ:
 	// the msgToTxCtx goroutine multiplexes data messages to all hb tx drivers.
@@ -227,8 +228,7 @@ func (t *T) startHbTx(hb confer) error {
 	msgToSendQ := make(chan []byte)
 
 	if err := tx.Start(t.ctrlC, debouncedMsgQ); err != nil {
-		t.ctrlC <- hbctrl.CmdSetState{ID: tx.ID(), State: "failed"}
-		t.failed[tx.ID()] = hb.Name()
+		t.setFailed(hb.Name(), tx.ID(), err)
 		return err
 	}
 	go func(ctx context.Context) {
@@ -260,10 +260,9 @@ func (t *T) startHbRx(hb confer) error {
 		return fmt.Errorf("nil rx for %s", hb.Name())
 	}
 	t.ctrlC <- hbctrl.CmdRegister{ID: rx.ID(), Type: hb.Type()}
-	delete(t.failed, rx.ID())
+	delete(t.idle, rx.ID())
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
-		t.ctrlC <- hbctrl.CmdSetState{ID: rx.ID(), State: "failed"}
-		t.failed[rx.ID()] = hb.Name()
+		t.setFailed(hb.Name(), rx.ID(), err)
 		return err
 	}
 	t.rxs[hb.Name()] = rx
@@ -278,23 +277,31 @@ func (t *T) startHbRx(hb confer) error {
 // the one of the stream once it starts.
 func (t *T) registerFailed(rid, id, hbType string, err error) {
 	t.ctrlC <- hbctrl.CmdRegister{ID: id, Type: hbType}
+	t.setFailed(rid, id, err)
+}
+
+// setFailed says the stream id of the heartbeat rid registered failed, with
+// the error as an alert: the error of a start, as a unicast rx on a port
+// another heartbeat listens on, was in the journal only. A start that works
+// registers the stream again, with no alert.
+func (t *T) setFailed(rid, id string, err error) {
 	t.ctrlC <- hbctrl.CmdSetState{ID: id, State: "failed"}
 	t.ctrlC <- hbctrl.CmdSetAlert{
 		HbID:  id,
 		Alert: []daemonsubsystem.Alert{{Severity: "error", Message: err.Error()}},
 	}
-	t.failed[id] = rid
+	t.idle[id] = rid
 }
 
-// unregisterFailed unregisters the streams of the heartbeat rid listed
-// failed, which no running stream stands for.
-func (t *T) unregisterFailed(rid string) {
-	for id, failedRid := range t.failed {
-		if failedRid != rid {
+// unregisterIdle unregisters the streams of the heartbeat rid listed with no
+// stream running, failed or stopped.
+func (t *T) unregisterIdle(rid string) {
+	for id, idleRid := range t.idle {
+		if idleRid != rid {
 			continue
 		}
 		t.ctrlC <- hbctrl.CmdUnregister{ID: id}
-		delete(t.failed, id)
+		delete(t.idle, id)
 	}
 }
 
@@ -311,7 +318,7 @@ func (t *T) knownRids() []string {
 	for rid := range t.rxs {
 		m[rid] = true
 	}
-	for _, rid := range t.failed {
+	for _, rid := range t.idle {
 		m[rid] = true
 	}
 	l := make([]string, 0, len(m))
@@ -351,7 +358,7 @@ func (t *T) stopHbRid(rid string) error {
 	if len(failures) > 0 {
 		return fmt.Errorf("stop hb rid %s error for %s", rid, strings.Join(failures, ", "))
 	}
-	t.unregisterFailed(rid)
+	t.unregisterIdle(rid)
 	return nil
 }
 
@@ -774,17 +781,20 @@ func (t *T) daemonCtlStart(ctx context.Context, hbID string, action string) {
 }
 
 func (t *T) daemonCtlStop(hbID string, action string) {
-	var hbI interface{}
-	var found bool
+	var (
+		hbI   interface{}
+		found bool
+		rid   string
+	)
 	if strings.HasSuffix(hbID, ".rx") {
-		rid := strings.TrimSuffix(hbID, ".rx")
+		rid = strings.TrimSuffix(hbID, ".rx")
 		if hbI, found = t.rxs[rid]; !found {
 			t.log.Infof("daemonctl %s %s found no %s.rx component", action, hbID, rid)
 			return
 		}
 		defer delete(t.rxs, rid)
 	} else if strings.HasSuffix(hbID, ".tx") {
-		rid := strings.TrimSuffix(hbID, ".tx")
+		rid = strings.TrimSuffix(hbID, ".tx")
 		if hbI, found = t.txs[rid]; !found {
 			t.log.Infof("daemonctl %s %s found no %s.tx component", action, hbID, rid)
 			return
@@ -807,7 +817,11 @@ func (t *T) daemonCtlStop(hbID string, action string) {
 	if err := hbI.(hbtype.IDStopper).Stop(); err != nil {
 		t.log.Errorf("daemonctl %s %s stop failed: %s", action, hbID, err)
 	} else {
-		t.ctrlC <- hbctrl.CmdSetState{ID: hbI.(hbtype.IDStopper).ID(), State: "stopped"}
+		// listed stopped while its section stays, and unregistered with
+		// it: it stayed listed until the daemon restarted.
+		id := hbI.(hbtype.IDStopper).ID()
+		t.ctrlC <- hbctrl.CmdSetState{ID: id, State: "stopped"}
+		t.idle[id] = rid
 	}
 }
 
