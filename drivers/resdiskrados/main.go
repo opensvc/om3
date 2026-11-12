@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -18,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
@@ -95,7 +98,22 @@ type (
 const (
 	DefaultCommandTimeout = 30 * time.Second
 	DefaultQueryTimeout   = 10 * time.Second
+
+	// mountTimeoutQuery and mountTimeoutAction are the times a rbd
+	// command waits for the monitors of the cluster, below the timeouts
+	// of the commands. A client tries the monitors in turn, 3s apart: an
+	// action allows a monitor down and the next one to answer.
+	mountTimeoutQuery  = 5 * time.Second
+	mountTimeoutAction = 10 * time.Second
+
+	// notConnected is what rbd says of a cluster whose monitors did not
+	// answer within the connect timeout.
+	notConnected = "couldn't connect to the cluster"
 )
+
+// unreachableClusters are the clusters, by their configuration, a rbd command
+// of this process could not connect to, with when.
+var unreachableClusters sync.Map
 
 func New() resource.Driver {
 	t := &T{}
@@ -136,7 +154,7 @@ func (t *T) mapDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already mapped", t.Name)
 		return nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -145,6 +163,7 @@ func (t *T) mapDevice(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -168,7 +187,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		return err
 	}
 	udevadm.Settle()
-	args, err := t.rbdArgs()
+	args, err := t.rbdLocalArgs()
 	if err != nil {
 		return err
 	}
@@ -177,6 +196,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -194,7 +214,7 @@ func (t *T) createDevice(ctx context.Context) error {
 		return fmt.Errorf("a rados image is created with a size, and none is configured")
 	}
 	bytes := *t.Size
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -203,6 +223,7 @@ func (t *T) createDevice(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -217,7 +238,7 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) removeDevice(ctx context.Context) error {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -226,6 +247,7 @@ func (t *T) removeDevice(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -245,7 +267,7 @@ func (t *T) lockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already locked", t.Name)
 		return nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -259,6 +281,7 @@ func (t *T) lockDevice(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -278,7 +301,7 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already unlocked", t.Name)
 		return nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -292,6 +315,7 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -337,7 +361,7 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 	if err != nil {
 		return err
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -351,6 +375,7 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -365,7 +390,7 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 }
 
 func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +399,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -394,7 +420,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 }
 
 func (t *T) imageGroup(ctx context.Context) (string, error) {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutQuery)
 	if err != nil {
 		return "", err
 	}
@@ -403,6 +429,7 @@ func (t *T) imageGroup(ctx context.Context) (string, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -439,7 +466,7 @@ func (t *T) imageGroup(ctx context.Context) (string, error) {
 }
 
 func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -448,6 +475,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -465,7 +493,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 }
 
 func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
-	args, err := t.rbdArgs()
+	args, err := t.rbdLocalArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -474,6 +502,7 @@ func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -741,7 +770,7 @@ func (t *T) PreMove(ctx context.Context, to string) error {
 }
 
 func (t *T) disableFeature(ctx context.Context, feature string) error {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -750,6 +779,7 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -763,7 +793,7 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 }
 
 func (t *T) enableFeature(ctx context.Context, feature string) error {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -772,6 +802,7 @@ func (t *T) enableFeature(ctx context.Context, feature string) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -861,7 +892,30 @@ func (t *T) configArgs() ([]string, error) {
 	return t.configArgsCache, nil
 }
 
-func (t *T) rbdArgs() ([]string, error) {
+// rbdArgs returns the arguments of a rbd command asking the cluster: the
+// keyring and the configuration, and the time the client waits for the
+// monitors, mountTimeout, rather than the 300s of ceph, which the command
+// timeout ended with nothing saying why.
+//
+// A cluster a command of this process could not connect to is not asked
+// again: the other commands, as the ones of the other rados resources of the
+// object, would each wait for it as long, a status of 4 disks of a cluster
+// down lasting 40s.
+func (t *T) rbdArgs(mountTimeout time.Duration) ([]string, error) {
+	if _, ok := unreachableClusters.Load(t.clusterKey()); ok {
+		return nil, fmt.Errorf("the ceph cluster did not answer a previous command within the connect timeout: not asked again")
+	}
+	args, err := t.rbdLocalArgs()
+	if err != nil {
+		return nil, err
+	}
+	return append(args, "--client_mount_timeout", strconv.Itoa(int(mountTimeout.Seconds()))), nil
+}
+
+// rbdLocalArgs returns the arguments of a rbd command acting on this node
+// alone, as listing or unmapping the devices, which a cluster down must not
+// keep from running: the keyring and the configuration.
+func (t *T) rbdLocalArgs() ([]string, error) {
 	var args []string
 	keyringArgs, err := t.keyringArgs()
 	if err != nil {
@@ -880,7 +934,7 @@ func (t *T) groupExists(ctx context.Context) (bool, error) {
 	if t.Group == "" {
 		return false, nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutQuery)
 	if err != nil {
 		return false, err
 	}
@@ -889,6 +943,7 @@ func (t *T) groupExists(ctx context.Context) (bool, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -914,7 +969,7 @@ func (t *T) imageInGroup(ctx context.Context) (bool, error) {
 	if t.Group == "" {
 		return false, nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutQuery)
 	if err != nil {
 		return false, err
 	}
@@ -923,6 +978,7 @@ func (t *T) imageInGroup(ctx context.Context) (bool, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -948,7 +1004,7 @@ func (t *T) groupCreate(ctx context.Context) error {
 	if t.Group == "" {
 		return nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -957,6 +1013,7 @@ func (t *T) groupCreate(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -984,7 +1041,7 @@ func (t *T) groupImageAdd(ctx context.Context) error {
 	}
 
 	// Try to add the image to the group
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -993,6 +1050,7 @@ func (t *T) groupImageAdd(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -1037,7 +1095,7 @@ func (t *T) moveImageToGroup(ctx context.Context) error {
 }
 
 func (t *T) groupImageRemoveFromGroup(ctx context.Context, group string) error {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -1046,6 +1104,7 @@ func (t *T) groupImageRemoveFromGroup(ctx context.Context, group string) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -1059,7 +1118,7 @@ func (t *T) groupImageRemoveFromGroup(ctx context.Context, group string) error {
 }
 
 func (t *T) addImageToGroup(ctx context.Context) error {
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -1068,6 +1127,7 @@ func (t *T) addImageToGroup(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -1084,7 +1144,7 @@ func (t *T) groupImageRemove(ctx context.Context) error {
 	if t.Group == "" {
 		return nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -1093,6 +1153,7 @@ func (t *T) groupImageRemove(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -1109,7 +1170,7 @@ func (t *T) groupRemove(ctx context.Context) error {
 	if t.Group == "" {
 		return nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutAction)
 	if err != nil {
 		return err
 	}
@@ -1118,6 +1179,7 @@ func (t *T) groupRemove(ctx context.Context) error {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -1134,7 +1196,7 @@ func (t *T) groupIsEmpty(ctx context.Context) (bool, error) {
 	if t.Group == "" {
 		return false, nil
 	}
-	args, err := t.rbdArgs()
+	args, err := t.rbdArgs(mountTimeoutQuery)
 	if err != nil {
 		return false, err
 	}
@@ -1143,6 +1205,7 @@ func (t *T) groupIsEmpty(ctx context.Context) (bool, error) {
 		command.WithContext(ctx),
 		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
+		t.watchConnect(),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
@@ -1157,4 +1220,21 @@ func (t *T) groupIsEmpty(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("group image list unmarshal: %v", err)
 	}
 	return len(images) == 0, nil
+}
+
+// clusterKey names the cluster the commands of the resource ask: its
+// configuration, the same for the resources of a cluster.
+func (t *T) clusterKey() string {
+	args, _ := t.configArgs()
+	return strings.Join(args, " ")
+}
+
+// watchConnect marks the cluster unreachable when the command says it could
+// not connect to it.
+func (t *T) watchConnect() funcopt.O {
+	return command.WithOnStderrLine(func(line string) {
+		if strings.Contains(line, notConnected) {
+			unreachableClusters.Store(t.clusterKey(), time.Now())
+		}
+	})
 }
