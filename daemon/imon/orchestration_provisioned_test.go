@@ -347,3 +347,51 @@ func TestAProvisionChecksOnce(t *testing.T) {
 		})
 	}
 }
+
+// Only the leader of a provision waits for the parents, as it is the one
+// starting: a node whose parent is down, as the parent of a failover object
+// is on every node but one, checks and provisions all the same. It used to
+// wait for its parents, and the leader for it to have checked, for ever.
+func TestANonLeaderDoesNotWaitItsParentsToProvision(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateIdle)
+	m.instMonitor["node2"] = instance.Monitor{IsLeader: true, OrchestrationID: m.state.OrchestrationID}
+	m.state.Parents = map[string]status.T{"parent@node1": status.Down}
+	queued := queuedActions(t)
+
+	m.orchestrateProvisioned()
+	require.NotEqual(t, instance.MonitorStateWaitParents, m.state.State)
+	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
+}
+
+// The leader of a provision waits for its parents before it checks, and goes
+// on once they are up.
+func TestTheLeaderWaitsItsParentsToProvision(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateIdle)
+	m.state.IsLeader = true
+	m.state.Parents = map[string]status.T{"parent@node1": status.Down}
+	queued := queuedActions(t)
+
+	m.orchestrateProvisioned()
+	require.Equal(t, instance.MonitorStateWaitParents, m.state.State)
+	require.Empty(t, *queued)
+
+	m.state.Parents["parent@node1"] = status.Up
+	m.orchestrateProvisioned()
+	require.Equal(t, instance.MonitorStateIdle, m.state.State)
+	m.orchestrateProvisioned()
+	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
+}
+
+// A node waiting for its parents as the leader of a provision stops waiting
+// once the leadership moved to another node, its parents down or not.
+func TestANodeWaitingParentsStopsWaitingWhenTheLeadershipMoved(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateWaitParents)
+	m.state.Parents = map[string]status.T{"parent@node1": status.Down}
+	m.instMonitor["node2"] = instance.Monitor{IsLeader: true, OrchestrationID: m.state.OrchestrationID}
+	queued := queuedActions(t)
+
+	m.orchestrateProvisioned()
+	require.Equal(t, instance.MonitorStateIdle, m.state.State)
+	m.orchestrateProvisioned()
+	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
+}

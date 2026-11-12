@@ -43,7 +43,7 @@ func (t *Manager) orchestrateProvisioned() {
 	case instance.MonitorStateStartFailure:
 		t.provisionedFromProvisionFailed()
 	case instance.MonitorStateWaitParents:
-		t.setWaitParents()
+		t.provisionedFromWaitParents()
 	}
 }
 
@@ -56,6 +56,19 @@ func (t *Manager) provisionedFromProvisioned() {
 	t.doneAndIdle()
 }
 
+// provisionedFromWaitParents goes on once the parents are up, or as soon as
+// the node no longer leads the provision: only the leader starts, so only it
+// waits for the parents.
+func (t *Manager) provisionedFromWaitParents() {
+	if t.isProvisioningLeader() {
+		t.setWaitParents()
+		return
+	}
+	t.log.Infof("stop waiting parents: not the provisioning leader")
+	t.state.State = instance.MonitorStateIdle
+	t.change = true
+}
+
 func (t *Manager) provisionedFromProvisionFailed() {
 	if t.provisionedClearIfReached() {
 		return
@@ -63,7 +76,11 @@ func (t *Manager) provisionedFromProvisionFailed() {
 }
 
 func (t *Manager) provisionedFromIdle() {
-	if t.setWaitParents() {
+	// The parents gate the start, which only the leader does: a non-leader
+	// checks and provisions with its parent down, as the parent of a
+	// failover object is on every node but one, and the leader waits for
+	// every node to have checked.
+	if t.isProvisioningLeader() && t.setWaitParents() {
 		return
 	}
 	// Every node checks, before any provisions or starts, that nothing on
