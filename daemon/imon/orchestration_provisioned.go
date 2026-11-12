@@ -28,7 +28,6 @@ func (t *Manager) orchestrateProvisioned() {
 	switch t.state.State {
 	case instance.MonitorStateIdle,
 		instance.MonitorStateStopFailure,
-		instance.MonitorStateUnfreezeSuccess,
 		instance.MonitorStateUnprovisionFailure:
 		t.provisionedFromIdle()
 	case instance.MonitorStateStartSuccess:
@@ -43,20 +42,18 @@ func (t *Manager) orchestrateProvisioned() {
 		t.provisionedFromProvisionFailed()
 	case instance.MonitorStateStartFailure:
 		t.provisionedFromProvisionFailed()
-	case instance.MonitorStateUnfreezeProgress:
-	case instance.MonitorStateUnfreezeFailure:
-		// TODO: clear ?
 	case instance.MonitorStateWaitParents:
 		t.setWaitParents()
 	}
 }
 
+// provisionedFromProvisioned ends the orchestration once the leader
+// provisioned or started the instance, frozen or not: the frozen flag is the
+// operator's, a provision does not clear it. Going back to idle would also
+// check again what the start of this orchestration made, and refuse a
+// shared resource of the object as held.
 func (t *Manager) provisionedFromProvisioned() {
-	if t.instStatus[t.localhost].IsFrozen() {
-		t.doTransitionAction(t.unfreeze, instance.MonitorStateUnfreezeProgress, instance.MonitorStateUnfreezeSuccess, instance.MonitorStateUnfreezeFailure)
-	} else {
-		t.doneAndIdle()
-	}
+	t.doneAndIdle()
 }
 
 func (t *Manager) provisionedFromProvisionFailed() {
