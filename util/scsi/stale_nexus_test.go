@@ -399,7 +399,7 @@ func TestRegistrationsUnderAForeignReservationAreReported(t *testing.T) {
 	saved := readCurrentNexus
 	t.Cleanup(func() { readCurrentNexus = saved })
 	current := nexus{TransportID: "iqn.x:n1,i,0x00023d000002", RelativeTargetPort: 0xa}
-	readCurrentNexus = func(device.T) ([]nexus, error) { return []nexus{current}, nil }
+	readCurrentNexus = func(device.T) ([]nexus, int, error) { return []nexus{current}, 0, nil }
 
 	check := func(entries ...FullStatusEntry) *recordStatus {
 		h := newHandle(t, newFakeLun("c"))
@@ -423,4 +423,27 @@ func TestRegistrationsUnderAForeignReservationAreReported(t *testing.T) {
 	rec = check(holder)
 	assert.Empty(t, rec.errors)
 	assert.Empty(t, rec.warnings)
+}
+
+// Paths of the node not told, as a fibre channel one beside an iscsi one, do
+// not silence the check: the registrations of the told ones are classified,
+// the fibre channel ones left out, and the stale ones said maybe of an
+// unknown path.
+func TestRegistrationsUnderAForeignReservationWithPathsUnknown(t *testing.T) {
+	saved := readCurrentNexus
+	t.Cleanup(func() { readCurrentNexus = saved })
+	readCurrentNexus = func(device.T) ([]nexus, int, error) {
+		return []nexus{{TransportID: "iqn.x:n1,i,0x00023d000002", RelativeTargetPort: 0xa}}, 1, nil
+	}
+	h := newHandle(t, newFakeLun("c"))
+	rec := &recordStatus{}
+	h.StatusLogger = rec
+	h.persistentReservationDriver = fullStatusLun{fakeLun: newFakeLun("c"), entries: []FullStatusEntry{
+		{Key: ourKey, RelativeTargetPort: 0xb, TransportID: "iqn.x:n1,i,0x00023d000009"},
+		{Key: ourKey, RelativeTargetPort: 0x2},
+	}}
+	h.checkRegistrationsUnderForeign(h.Devices[0], foreignKey)
+	assert.Empty(t, rec.errors)
+	require.Len(t, rec.warnings, 1)
+	assert.Contains(t, rec.warnings[0], "1 registrations of "+ourKey+" on no path of this node it can tell, 1 of its paths being unknown")
 }

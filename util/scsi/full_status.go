@@ -143,7 +143,7 @@ func (t *PersistentReservationHandle) checkRegistrationsUnderForeign(dev device.
 		t.StatusLogger.Info("%s read full status, to tell the paths of the registrations of %s: %s", dev, t.Key, err)
 		return
 	}
-	paths, err := readCurrentNexus(dev)
+	paths, unknown, err := readCurrentNexus(dev)
 	if err != nil {
 		if !errors.Is(err, ErrNoNexus) {
 			t.StatusLogger.Info("%s current paths, to tell the paths of the registrations of %s: %s", dev, t.Key, err)
@@ -152,7 +152,9 @@ func (t *PersistentReservationHandle) checkRegistrationsUnderForeign(dev device.
 	}
 	var current, stale int
 	for _, e := range entries {
-		if e.Key != t.Key {
+		if e.Key != t.Key || !strings.Contains(e.TransportID, ",i,") {
+			// another key, or a registration of a transport whose
+			// nexus a restart does not change, as fibre channel
 			continue
 		}
 		if e.isCurrent(paths) {
@@ -164,6 +166,8 @@ func (t *PersistentReservationHandle) checkRegistrationsUnderForeign(dev device.
 	switch {
 	case current > 0:
 		t.StatusLogger.Error("%s is reserved by %s and %d current paths of this node are registered with %s: the node has write access to a device another node holds", dev, reservation, current, t.Key)
+	case stale > 0 && unknown > 0:
+		t.StatusLogger.Warn("%s is reserved by %s and holds %d registrations of %s on no path of this node it can tell, %d of its paths being unknown: of paths of before a restart, a relogin given their session id would have write access to it, of an unknown path, it has", dev, reservation, stale, t.Key, unknown)
 	case stale > 0:
 		t.StatusLogger.Warn("%s is reserved by %s and holds %d registrations of %s of paths of before a restart: a relogin given their session id would have write access to it", dev, reservation, stale, t.Key)
 	}

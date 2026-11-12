@@ -45,7 +45,7 @@ func TestPathNexus(t *testing.T) {
 	require.NoError(t, os.MkdirAll(session, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(session, "initiatorname"), []byte("iqn.2009-11.com.opensvc.srv:dev2n1.storage.initiator\n"), 0o644))
 
-	n, err := pathNexus("sda")
+	n, err := pathNexus("/dev/sda")
 	require.NoError(t, err)
 	assert.Equal(t, nexus{TransportID: "iqn.2009-11.com.opensvc.srv:dev2n1.storage.initiator,i,0x00023d000002", RelativeTargetPort: 0xa}, n)
 	assert.True(t, parseFullStatus([]byte(sgFullStatus))[0].isCurrent([]nexus{n}), "the registration of session2 by port 0xa is the one of the path")
@@ -54,7 +54,7 @@ func TestPathNexus(t *testing.T) {
 	require.NoError(t, os.MkdirAll(fc, 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "block/sdz"), 0o755))
 	require.NoError(t, os.Symlink(fc, filepath.Join(root, "block/sdz/device")))
-	_, err = pathNexus("sdz")
+	_, err = pathNexus("/dev/sdz")
 	assert.ErrorIs(t, err, ErrNoNexus, "a fibre channel path, whose nexus a restart does not change")
 }
 
@@ -65,10 +65,40 @@ func TestPathNexusOfThisNode(t *testing.T) {
 		if _, err := os.Stat(filepath.Join("/sys/block", name, "device/vpd_pg83")); err != nil {
 			t.Skip("no scsi disk")
 		}
-		n, err := pathNexus(name)
+		n, err := pathNexus("/dev/" + name)
 		if err != nil {
 			t.Skipf("%s: %s", name, err)
 		}
 		t.Logf("%s: %+v", name, n)
 	}
+}
+
+// A path given by a link, as /dev/disk/by-id/<id>, is the one of the kernel
+// device it links to, and a name not a kernel one is refused.
+func TestPathNexusOfALink(t *testing.T) {
+	root := t.TempDir()
+	saved := sysRoot
+	sysRoot = root
+	t.Cleanup(func() { sysRoot = saved })
+	dev := filepath.Join(root, "devices/platform/host7/session2/target7:0:0/7:0:0:10")
+	require.NoError(t, os.MkdirAll(dev, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dev, "vpd_pg83"), pg83, 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "block/sdq"), 0o755))
+	require.NoError(t, os.Symlink(dev, filepath.Join(root, "block/sdq/device")))
+	session := filepath.Join(root, "class/iscsi_session/session2")
+	require.NoError(t, os.MkdirAll(session, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(session, "initiatorname"), []byte("iqn.x:n1\n"), 0o644))
+
+	devDir := filepath.Join(root, "dev")
+	require.NoError(t, os.MkdirAll(filepath.Join(devDir, "disk/by-id"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(devDir, "sdq"), nil, 0o644))
+	link := filepath.Join(devDir, "disk/by-id/scsi-3600140550b8e30ad")
+	require.NoError(t, os.Symlink(filepath.Join(devDir, "sdq"), link))
+
+	n, err := pathNexus(link)
+	require.NoError(t, err)
+	assert.Equal(t, 0xa, n.RelativeTargetPort)
+
+	_, err = pathNexus(filepath.Join(devDir, "disk/by-id"))
+	assert.ErrorIs(t, err, ErrNoNexus, "not a block device name")
 }

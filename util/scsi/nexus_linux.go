@@ -17,6 +17,9 @@ import (
 var (
 	regexpISCSISession = regexp.MustCompile(`/session([0-9]+)/`)
 
+	// regexpBlockName is a kernel block device name, as sda.
+	regexpBlockName = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
 	// sysRoot is the root of the sysfs paths, set by the tests.
 	sysRoot = "/sys"
 )
@@ -24,25 +27,40 @@ var (
 // currentNexus returns the current paths of the node to the device, as
 // their nexus: the transport id of the initiator port, from the iscsi
 // session of the path, and the relative target port, from the device
-// identification page of the path.
-func currentNexus(dev device.T) ([]nexus, error) {
+// identification page of the path. It returns the count of the paths it can
+// not tell the nexus of too, as a fibre channel or an unreadable one: each is
+// skipped, rather than the device, whose iscsi paths still tell.
+func currentNexus(dev device.T) ([]nexus, int, error) {
 	paths, err := dev.SCSIPaths()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	l := make([]nexus, 0, len(paths))
+	unknown := 0
 	for _, p := range paths {
-		n, err := pathNexus(filepath.Base(p.Path()))
+		n, err := pathNexus(p.Path())
 		if err != nil {
-			return nil, err
+			unknown++
+			continue
 		}
 		l = append(l, n)
 	}
-	return l, nil
+	if len(l) == 0 {
+		return nil, unknown, fmt.Errorf("%w: none of the %d paths of %s", ErrNoNexus, len(paths), dev)
+	}
+	return l, unknown, nil
 }
 
-// pathNexus returns the nexus of the scsi disk name, as sda.
-func pathNexus(name string) (nexus, error) {
+// pathNexus returns the nexus of the scsi disk at path, as /dev/sda or a
+// /dev/disk/by-id link to it.
+func pathNexus(path string) (nexus, error) {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	name := filepath.Base(path)
+	if !regexpBlockName.MatchString(name) {
+		return nexus{}, fmt.Errorf("%w: %s is not a block device name", ErrNoNexus, name)
+	}
 	devicePath, err := filepath.EvalSymlinks(filepath.Join(sysRoot, "block", name, "device"))
 	if err != nil {
 		return nexus{}, err
