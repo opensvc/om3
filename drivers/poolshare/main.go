@@ -61,7 +61,14 @@ func (t T) Capabilities() pool.Capabilities {
 	}
 }
 
+// Usage is the one of the filesystem of the share. A path on a local
+// filesystem, the share not mounted on the node, has none: the usage of the
+// filesystem holding the mount point would have the pool serve volumes the
+// other nodes do not see.
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {
+	if err := checkShared(t.path()); err != nil {
+		return pool.Usage{}, err
+	}
 	entries, err := df.ContainingMountUsage(ctx, t.path())
 	if err != nil {
 		return pool.Usage{}, err
@@ -86,11 +93,15 @@ func (t *T) volumePath(name string, shared bool) string {
 	return filepath.Join(t.path(), name+".{nodename}")
 }
 
+// Translate makes the volume a directory of the share. A volume shared by the
+// nodes has its directory shared: one node provisions and unprovisions it,
+// the others leaving alone what another node uses.
 func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	return []string{
 		"fs#0.type=flag",
 		"fs#1.type=directory",
 		"fs#1.path=" + t.volumePath(name, shared),
+		"fs#1.shared=" + fmt.Sprint(shared),
 	}, nil
 }
 
@@ -99,6 +110,7 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 		"disk#0.type=loop",
 		"disk#0.file=" + t.volumePath(name, shared) + ".img",
 		"disk#0.size={DEFAULT.size}",
+		"disk#0.shared=" + fmt.Sprint(shared),
 	}, nil
 }
 
