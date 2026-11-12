@@ -1960,7 +1960,7 @@ var ErrUnknownType = errors.New("unknown type")
 //
 // The type of a volume is the type of its pool.
 func (t *T) checkTypeSet(op keyop.T) error {
-	if op.Op != keyop.Set || op.Key.BaseOption() != "type" || op.Value == "" {
+	if op.Key.BaseOption() != "type" || op.Value == "" {
 		return nil
 	}
 	rid, err := resourceid.Parse(op.Key.Section)
@@ -1970,6 +1970,11 @@ func (t *T) checkTypeSet(op keyop.T) error {
 	group := rid.DriverGroup()
 	if group == driver.GroupUnknown {
 		return nil
+	}
+	// A type is one driver: an append, a merge or a toggle would make it
+	// a list of them, as "loop bogus", which no check above would see.
+	if op.Op != keyop.Set {
+		return fmt.Errorf("%w: %s: the type of a section is set with =, to one driver", ErrUnknownType, op.Key)
 	}
 	if group == driver.GroupVolume {
 		group = driver.GroupPool
