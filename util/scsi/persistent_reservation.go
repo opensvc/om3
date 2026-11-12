@@ -321,19 +321,38 @@ func (t *PersistentReservationHandle) Start() error {
 				return errors.Join(err, fmt.Errorf("%s spr unregister: %w", dev.Path(), unregErr))
 			}
 			return err
-		} else if t.NoPreemptAbort {
-			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
-				return fmt.Errorf("%s spr preempt (no_preempt_abort kw): %w", dev.Path(), err)
-			}
-		} else if vendor, _ := dev.Vendor(); vendor == "VMware" {
-			if err := t.persistentReservationDriver.Preempt(dev, reservation, t.Key); err != nil {
-				return fmt.Errorf("%s spr preempt (VMware vdisk quirk): %w", dev.Path(), err)
-			}
-		} else {
-			if err := t.persistentReservationDriver.PreemptAbort(dev, reservation, t.Key); err != nil {
-				return fmt.Errorf("%s spr preempt-abort: %w", dev.Path(), err)
-			}
+		} else if err := t.preempt(dev, reservation); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// preempt takes the reservation of the device from the key holding it, and
+// drops the registrations of that key but the issuing path's: a preempt and
+// abort, which also aborts the commands the preempted paths still have
+// pending on the device, so a node taken over can not write after the
+// takeover. A plain preempt where no_preempt_abort says so, and on the
+// VMware vdisks, which refuse the abort.
+//
+// The own key is preempted the same way, to take the reservation and drop
+// the registrations of the paths of before a node restart: see Stop and
+// dropStaleRegistrations.
+func (t *PersistentReservationHandle) preempt(dev device.T, holder string) error {
+	if t.NoPreemptAbort {
+		if err := t.persistentReservationDriver.Preempt(dev, holder, t.Key); err != nil {
+			return fmt.Errorf("%s spr preempt of %s (no_preempt_abort kw): %w", dev.Path(), holder, err)
+		}
+		return nil
+	}
+	if vendor, _ := dev.Vendor(); vendor == "VMware" {
+		if err := t.persistentReservationDriver.Preempt(dev, holder, t.Key); err != nil {
+			return fmt.Errorf("%s spr preempt of %s (VMware vdisk quirk): %w", dev.Path(), holder, err)
+		}
+		return nil
+	}
+	if err := t.persistentReservationDriver.PreemptAbort(dev, holder, t.Key); err != nil {
+		return fmt.Errorf("%s spr preempt-abort of %s: %w", dev.Path(), holder, err)
 	}
 	return nil
 }
@@ -411,8 +430,8 @@ func (t *PersistentReservationHandle) stopDevice(dev device.T) error {
 			// Held by a path registered before the node restarted,
 			// which a release from a current path leaves.
 			t.Log.Infof("%s is still reserved by %s, held by a path of before: preempt the own key to release it", dev, t.Key)
-			if err := t.persistentReservationDriver.Preempt(dev, t.Key, t.Key); err != nil {
-				return fmt.Errorf("%s spr preempt of the own key, to release: %w", dev.Path(), err)
+			if err := t.preempt(dev, t.Key); err != nil {
+				return fmt.Errorf("preempt the own key, to release: %w", err)
 			}
 			if err := t.persistentReservationDriver.Release(dev, t.Key); err != nil {
 				return fmt.Errorf("%s spr release, after the preempt of the own key: %w", dev.Path(), err)
@@ -442,8 +461,8 @@ func (t *PersistentReservationHandle) stopDevice(dev device.T) error {
 			t.Log.Infof("%s holds %d registrations of %s after the unregistration, of paths of before: preempt them", dev, n, t.Key)
 			if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
 				t.Log.Warnf("%s spr register, to drop the registrations of paths of before: %s", dev.Path(), err)
-			} else if err := t.persistentReservationDriver.Preempt(dev, t.Key, t.Key); err != nil {
-				t.Log.Warnf("%s spr preempt of the own key, to drop the registrations of paths of before: %s", dev.Path(), err)
+			} else if err := t.preempt(dev, t.Key); err != nil {
+				t.Log.Warnf("preempt the own key, to drop the registrations of paths of before: %s", err)
 			} else if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
 				t.Log.Warnf("%s spr unregister: %s", dev.Path(), err)
 			}
@@ -498,8 +517,8 @@ func (t *PersistentReservationHandle) dropStaleRegistrations(dev device.T) error
 		return nil
 	}
 	t.Log.Infof("%s holds %d registrations of %s for %d paths: preempt the own key to drop the ones of paths of before", dev, local, t.Key, expected)
-	if err := t.persistentReservationDriver.Preempt(dev, t.Key, t.Key); err != nil {
-		return fmt.Errorf("%s spr preempt of the own key, to drop the registrations of paths of before: %w", dev.Path(), err)
+	if err := t.preempt(dev, t.Key); err != nil {
+		return fmt.Errorf("preempt the own key, to drop the registrations of paths of before: %w", err)
 	}
 	if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
 		return fmt.Errorf("%s spr register, after the preempt of the own key: %w", dev.Path(), err)
