@@ -54,6 +54,13 @@ type (
 		Setenv()
 	}
 
+	// TriggerCommander is an object evaluating the command of a trigger
+	// of its resources at the time the trigger runs, as a post trigger
+	// reads what the action made.
+	TriggerCommander interface {
+		TriggerCommand(rid, hook string) (string, error)
+	}
+
 	StatusLogger interface {
 		Info(string, ...any)
 		Warn(string, ...any)
@@ -806,6 +813,20 @@ func (t *T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger
 	}
 	if cmd == "" {
 		return nil
+	}
+	// The command was evaluated as the action reached the resource, before
+	// it acted. Evaluated again now, it reads what the action made, and a
+	// reference not available fails it rather than run it with a hole: a
+	// blocking trigger fails the action, a non-blocking one is skipped with
+	// a warning.
+	if o, ok := t.object.(TriggerCommander); ok {
+		s, err := o.TriggerCommand(t.RID(), hookID)
+		if err != nil {
+			return fmt.Errorf("trigger %s %s %s not run: %w", blocking, hook, action, err)
+		}
+		if cmd = s; cmd == "" {
+			return nil
+		}
 	}
 	t.Log().Infof("trigger %s %s %s: %s", blocking, hook, action, cmd)
 	return t.trigger(ctx, cmd)

@@ -78,7 +78,17 @@ type (
 
 	dereferenceTrace struct {
 		m map[string]any
+
+		// judge, set by a strict evaluation, refuses a reference it
+		// can not act on.
+		judge RefJudge
 	}
+
+	// RefJudge judges a reference a strict evaluation resolved: ref is the
+	// reference, without its braces, modifier or index, and val and err
+	// what it evaluated to. It returns the reason the evaluation must fail,
+	// or nil to go on with val, or err.
+	RefJudge func(ref, val string, err error) error
 
 	ErrPostponedRef struct {
 		Ref string
@@ -95,6 +105,10 @@ var (
 	ErrNoKeyword                  = errors.New("keyword does not exist")
 	ErrType                       = errors.New("type error")
 	ErrUnknownReference           = errors.New("unknown reference")
+
+	// ErrRefNotAvailable is the error of a strict evaluation naming a
+	// reference its RefJudge refused.
+	ErrRefNotAvailable = errors.New("reference not available")
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
@@ -1031,6 +1045,27 @@ func (t *T) SectionType(k key.T) string {
 	return t.GetString(key.New(k.Section, "type"))
 }
 
+// EvalStrictAs returns the value of the key k as EvalAs does, and fails with
+// ErrRefNotAvailable where judge refuses a reference the value names, rather
+// than leave the reference, or what it evaluated to, in the value: a command
+// is not run with a path left empty.
+func (t *T) EvalStrictAs(k key.T, impersonate string, judge RefJudge) (interface{}, error) {
+	if t == nil {
+		return nil, errors.New("unreadable config")
+	}
+	kw, err := t.getKeyword(k)
+	if err != nil {
+		return nil, err
+	}
+	trace := newDereferenceTrace()
+	trace.judge = judge
+	v, err := t.evalStringAs(k, kw, impersonate, false, trace)
+	if err != nil {
+		return nil, err
+	}
+	return t.convert(v, kw)
+}
+
 func (t *T) EvalKeywordAs(k key.T, kw *keywords.Keyword, impersonate string) (interface{}, error) {
 	v, err := t.evalStringAs(k, kw, impersonate, false, newDereferenceTrace())
 	if err != nil {
@@ -1106,6 +1141,8 @@ func (t *T) evalReferencesAs(k key.T, kw *keywords.Keyword, impersonate string, 
 	case keywords.InheritLeaf2Head:
 		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
 			return v, postponed, nil
+		} else if errors.Is(err, ErrRefNotAvailable) {
+			return "", false, err
 		}
 		firstKey := kw.DefaultKey()
 		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
@@ -1115,6 +1152,8 @@ func (t *T) evalReferencesAs(k key.T, kw *keywords.Keyword, impersonate string, 
 		firstKey := kw.DefaultKey()
 		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
 			return v, postponed, nil
+		} else if errors.Is(err, ErrRefNotAvailable) {
+			return "", false, err
 		}
 		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
 			return v, postponed, nil
@@ -1245,6 +1284,9 @@ func (t *T) replaceReferences(v string, section string, impersonate string, coun
 			errs = errors.Join(errs, err)
 		}
 		if _, ok := err.(ErrPostponedRef); ok {
+			errs = errors.Join(errs, err)
+		}
+		if errors.Is(err, ErrRefNotAvailable) {
 			errs = errors.Join(errs, err)
 		}
 		return ref
@@ -1479,13 +1521,17 @@ func (t T) dereference(ref string, section string, impersonate string, count boo
 
 	switch {
 	case strings.HasPrefix(ref, "node."):
-		if val, err = t.dereferenceNodeKey(ref, impersonate, count); err != nil {
-			return ref, err
-		}
+		val, err = t.dereferenceNodeKey(ref, impersonate, count)
 	default:
-		if val, err = t.dereferenceWellKnown(ref, section, impersonate, count, trace); err != nil {
-			return ref, err
+		val, err = t.dereferenceWellKnown(ref, section, impersonate, count, trace)
+	}
+	if trace != nil && trace.judge != nil {
+		if refused := trace.judge(ref, val, err); refused != nil {
+			return ref, fmt.Errorf("%w: %w", ErrRefNotAvailable, refused)
 		}
+	}
+	if err != nil {
+		return ref, err
 	}
 	if index != nil {
 		l := strings.Fields(val)
@@ -1570,7 +1616,7 @@ func (t *dereferenceTrace) Unset(doneKey string) {
 }
 
 func (t *dereferenceTrace) Clone() *dereferenceTrace {
-	trace := dereferenceTrace{m: make(map[string]any)}
+	trace := dereferenceTrace{m: make(map[string]any), judge: t.judge}
 	for k := range t.m {
 		trace.m[k] = nil
 	}

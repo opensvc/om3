@@ -2,9 +2,11 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -45,4 +47,39 @@ func TestAHangingTriggerEndsAtTheActionDeadline(t *testing.T) {
 	}
 	_ = exec.Command("pkill", "-f", marker).Run()
 	require.Fail(t, "a command the trigger started outlived it")
+}
+
+type fakeTriggerCommander struct {
+	cmd string
+	err error
+}
+
+func (t fakeTriggerCommander) TriggerCommand(rid, hook string) (string, error) {
+	if hook != "post_provision" || rid != "volume#1" {
+		return "", fmt.Errorf("unexpected trigger %s %s", rid, hook)
+	}
+	return t.cmd, t.err
+}
+
+// A trigger runs the command its object evaluates at the time it runs, not
+// the one evaluated as the action reached the resource, before it acted, and
+// runs nothing when the object can not evaluate it: a blocking trigger fails
+// its action on it.
+func TestATriggerRunsTheCommandEvaluatedAsItRuns(t *testing.T) {
+	dir := t.TempDir()
+	stale, fresh := filepath.Join(dir, "stale"), filepath.Join(dir, "fresh")
+	r := &T{PostProvision: "/usr/bin/touch " + stale}
+	require.NoError(t, r.SetRID("volume#1"))
+
+	r.object = fakeTriggerCommander{cmd: "/usr/bin/touch " + fresh}
+	require.NoError(t, r.Trigger(context.Background(), trigger.NoBlock, trigger.Post, trigger.Provision))
+	assert.FileExists(t, fresh)
+	assert.NoFileExists(t, stale)
+
+	require.NoError(t, os.Remove(fresh))
+	r.object = fakeTriggerCommander{err: errors.New("volume#1.post_provision: reference not available: {volume#1.mnt} evaluates empty")}
+	err := r.Trigger(context.Background(), trigger.NoBlock, trigger.Post, trigger.Provision)
+	assert.ErrorContains(t, err, "{volume#1.mnt} evaluates empty")
+	assert.NoFileExists(t, fresh)
+	assert.NoFileExists(t, stale)
 }

@@ -640,6 +640,19 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     `key add --from /dev/urandom` keeps generating a password, deprecated in
     favor of `--from random`.
 
+* **A trigger is evaluated as it runs, and not run with a reference not available**
+
+    The command of a trigger, as `post_provision`, is evaluated when the
+    trigger runs, so a post trigger reads what the action made: the
+    `{volume#1.mnt}` of the volume it provisioned. It used to be evaluated
+    before the action, and ran with the mount point empty. A reference that
+    evaluates only at run time, `{volume#<n>.mnt}`, `{<rid>.exposed_devs}`,
+    `{<rid>.capacity}`, `{<rid>.free}` or `{dnsnodes}`, and is not available,
+    empty or failing, stops the trigger: a blocking trigger fails its action,
+    a non-blocking one is not run, with a warning. A `blocking_pre_provision`
+    naming the mount point of the volume it provisions now fails the
+    provision, where it ran with an empty path.
+
 ### Commands
 
 * **Configuration updates and queries use the daemon api by default:**
