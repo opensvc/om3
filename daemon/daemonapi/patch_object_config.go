@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
@@ -196,7 +197,7 @@ func configUpdateProblem(ctx echo.Context, err error) error {
 	switch {
 	case errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun):
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
-	case errors.Is(err, ErrInvalidConfig):
+	case errors.Is(err, ErrInvalidConfig), errors.Is(err, xconfig.ErrUnknownType):
 		return JSONProblemf(ctx, http.StatusBadRequest, "Update config", "%s", err)
 	case errors.Is(err, ErrHoldConflict):
 		return JSONProblemf(ctx, http.StatusConflict, api.ProblemTitleHeld, "%s", err)

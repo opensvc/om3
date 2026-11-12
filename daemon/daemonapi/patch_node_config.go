@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -8,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -55,7 +57,9 @@ func (a *DaemonAPI) patchLocalNodeConfig(ctx echo.Context, params api.PatchNodeC
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "NewNode", "%s", err)
 	}
-	if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
+	if err := oc.Config().PrepareUpdate(deletes, unsets, sets); errors.Is(err, xconfig.ErrUnknownType) {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Update config", "%s", err)
+	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
 	}
 
