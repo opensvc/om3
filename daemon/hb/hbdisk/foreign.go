@@ -36,7 +36,7 @@ func BeatingForeignNodes(ctx context.Context, dev string, maxSlots int, nodes []
 	d := device{path: dev, file: f, metaSize: metaSize(maxSlots)}
 
 	foreign := make(map[int]string)
-	for slot := minimumSlot; slot < maxSlots; slot++ {
+	for slot := minimumSlot; slot < d.slotBound(maxSlots); slot++ {
 		b, err := d.readMetaSlot(slot)
 		if err != nil {
 			return nil, err

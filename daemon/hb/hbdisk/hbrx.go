@@ -59,6 +59,10 @@ type (
 		rescanMetadataReason string
 
 		alert []daemonsubsystem.Alert
+
+		// descs are the descriptions of the peers the watchers show, as
+		// the slot read, by node.
+		descs map[string]string
 	}
 
 	decryptWithNoder interface {
@@ -110,6 +114,9 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		cancel()
 		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
 	}
+	if w := devPathWarning(t.base.path); w != "" {
+		t.log.Warnf("%s", w)
+	}
 	if openErr := t.base.device.open(); openErr != nil {
 		if err := t.base.startWith(openErr); err != nil {
 			err = fmt.Errorf("device %s: %w", t.base.path, err)
@@ -117,6 +124,12 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 			cancel()
 			return err
 		}
+	}
+	if err := t.base.device.checkSize(t.base.maxSlots, nodeCount); err != nil {
+		t.log.Warnf("startup failed: %s", err)
+		t.base.device.close()
+		cancel()
+		return err
 	}
 	if err := t.initialScan(); err != nil {
 		cancel()
@@ -127,13 +140,16 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.cmdC = cmdC
 	t.msgC = msgC
 
+	t.descs = make(map[string]string)
 	for _, node := range t.nodes {
+		desc := t.streamPeerDesc(node)
+		t.descs[node] = desc
 		cmdC <- hbctrl.CmdAddWatcher{
 			HbID:     t.id,
 			Nodename: node,
 			Ctx:      ctx,
 			Timeout:  t.timeout,
-			Desc:     t.streamPeerDesc(node),
+			Desc:     desc,
 		}
 	}
 
@@ -291,6 +307,24 @@ func (t *rx) rescanMetadata(reason string) {
 	}
 	t.updateAlertWithSlots()
 	t.sendAlert()
+	t.updateDescs()
+}
+
+// updateDescs tells the watchers of the stream the slot of their peer, once
+// read, or read elsewhere: they were added with the slots of the start, or
+// none on a disk not signed then.
+func (t *rx) updateDescs() {
+	if t.descs == nil {
+		t.descs = make(map[string]string)
+	}
+	for _, node := range t.nodes {
+		desc := t.streamPeerDesc(node)
+		if t.descs[node] == desc {
+			continue
+		}
+		t.descs[node] = desc
+		t.cmdC <- hbctrl.CmdSetDesc{HbID: t.id, Nodename: node, Desc: desc}
+	}
 }
 
 func (t *rx) updateAlertWithSlots() {

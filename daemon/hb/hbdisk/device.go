@@ -96,6 +96,45 @@ func (t *device) writeMetaSlot(slot int, b []byte) error {
 	return nil
 }
 
+// size returns the size of the device, zero when it can not say, as a char
+// device: read at each call, it follows a device resized online.
+func (t *device) size() int64 {
+	if t.file == nil {
+		return 0
+	}
+	size, err := t.file.Seek(0, io.SeekEnd)
+	if err != nil || size < 0 {
+		return 0
+	}
+	return size
+}
+
+// slotBound returns the first slot whose data slot does not fit on the
+// device, maxSlots when the device size is unknown or holds them all: the
+// slots of a node are below it.
+func (t *device) slotBound(maxSlots int) int {
+	size := t.size()
+	if size <= 0 {
+		return maxSlots
+	}
+	fit := (size - t.metaSize) / sign.SlotSizeInt64
+	if fit < 0 {
+		return 0
+	}
+	return int(min(int64(maxSlots), fit))
+}
+
+// checkSize returns an error when the device, its size known, is smaller
+// than the metadata area and a data slot per node, after the unused slot 0.
+func (t *device) checkSize(maxSlots, nodes int) error {
+	size := t.size()
+	need := sign.MinSize(maxSlots, nodes)
+	if size > 0 && size < need {
+		return fmt.Errorf("%s is %d bytes, under the %d bytes of %d metadata pages and a %d bytes data slot for each of the %d nodes: use a larger disk, or lower max_slots", t.path, size, need, maxSlots, sign.SlotSize, nodes)
+	}
+	return nil
+}
+
 // calculateDataSlotOffset calculates the byte offset of a data slot within the storage device.
 func (t *device) calculateDataSlotOffset(slot int) int64 {
 	return t.metaSize + sign.SlotSizeInt64*int64(slot)

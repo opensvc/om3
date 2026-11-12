@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -447,4 +448,37 @@ func TestSendLatestKeepsTheOrder(t *testing.T) {
 	sendLatest(c, false)
 	sendLatest(c, true)
 	require.True(t, <-c)
+}
+
+// The description of a peer set after its watcher was added, as the slot a
+// disk stream claimed once started, is the one listed, and the watcher's
+// updates of the peer status keep it: the slot of a disk stream was listed
+// as the one of its start, slot 0 or [?], for ever.
+func TestTheDescriptionOfAPeerSetAfterItsWatcherStays(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = bootstrapDaemon(ctx, t)
+	testCtrl := setupCtrl(ctx)
+
+	hbID, peer := "hb#8.tx", "node11"
+	peerStatus := func() daemonsubsystem.HeartbeatStreamPeerStatus {
+		result := make(chan map[string]daemonsubsystem.HeartbeatStreamPeerStatus, 1)
+		testCtrl.cmd <- GetPeerStatus{HbID: hbID, result: result}
+		return (<-result)[peer]
+	}
+	testCtrl.cmd <- CmdRegister{ID: hbID, Type: "disk"}
+	testCtrl.cmd <- CmdAddWatcher{HbID: hbID, Nodename: peer, Ctx: ctx, Timeout: time.Second, Desc: "→ /dev/dm-20 slot 0"}
+	require.Equal(t, "→ /dev/dm-20 slot 0", peerStatus().Desc)
+
+	testCtrl.cmd <- CmdSetDesc{HbID: hbID, Nodename: peer, Desc: "→ /dev/dm-20 slot 7"}
+	require.Equal(t, "→ /dev/dm-20 slot 7", peerStatus().Desc)
+
+	testCtrl.cmd <- CmdSetPeerStatus{HbID: hbID, Nodename: peer, PeerStatus: daemonsubsystem.HeartbeatStreamPeerStatus{Desc: "→ /dev/dm-20 slot 0", IsBeating: true}}
+	st := peerStatus()
+	require.Equal(t, "→ /dev/dm-20 slot 7", st.Desc, "the watcher's update keeps the description set")
+	require.True(t, st.IsBeating)
+
+	testCtrl.cmd <- CmdDelWatcher{HbID: hbID, Nodename: peer}
+	testCtrl.cmd <- CmdAddWatcher{HbID: hbID, Nodename: peer, Ctx: ctx, Timeout: time.Second, Desc: "→ /dev/dm-20 slot 3"}
+	require.Equal(t, "→ /dev/dm-20 slot 3", peerStatus().Desc, "a new watcher brings its description")
 }
