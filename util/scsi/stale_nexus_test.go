@@ -25,6 +25,10 @@ type fakeLun struct {
 	holderKey    string
 	releaseCalls int
 
+	// preempts are the service actions of the preempts, "preempt" or
+	// "preempt-abort".
+	preempts []string
+
 	// onRelease, if set, runs before a release, as a peer taking the lun
 	// meanwhile.
 	onRelease func()
@@ -112,7 +116,12 @@ func (t *fakeLun) Clear(device.T, string) error { return errors.New("not expecte
 // Preempt, from the first current path registered with newKey, removes the
 // registrations of oldKey but its own, and takes the reservation if oldKey
 // holds it.
-func (t *fakeLun) Preempt(_ device.T, oldKey, newKey string) error {
+func (t *fakeLun) Preempt(dev device.T, oldKey, newKey string) error {
+	t.preempts = append(t.preempts, "preempt")
+	return t.preempt(oldKey, newKey)
+}
+
+func (t *fakeLun) preempt(oldKey, newKey string) error {
 	issuer := ""
 	for _, p := range t.paths {
 		if t.registered[p] == newKey {
@@ -134,8 +143,11 @@ func (t *fakeLun) Preempt(_ device.T, oldKey, newKey string) error {
 	return nil
 }
 
-func (t *fakeLun) PreemptAbort(dev device.T, oldKey, newKey string) error {
-	return t.Preempt(dev, oldKey, newKey)
+// PreemptAbort is a preempt also aborting the commands the preempted paths
+// have pending, which the fake has none of.
+func (t *fakeLun) PreemptAbort(_ device.T, oldKey, newKey string) error {
+	t.preempts = append(t.preempts, "preempt-abort")
+	return t.preempt(oldKey, newKey)
 }
 
 const (
@@ -279,4 +291,18 @@ func TestAStopIsDoneWhenAPeerTookTheLunMeanwhile(t *testing.T) {
 		lun.unregisterErr = errConflict
 	}
 	assert.ErrorContains(t, newHandle(t, lun).Stop(), "spr unregister")
+}
+
+// The own key is preempted as another key is, with an abort, unless
+// no_preempt_abort says otherwise.
+func TestTheOwnKeyIsPreemptedWithAnAbort(t *testing.T) {
+	lun := restarted()
+	require.NoError(t, newHandle(t, lun).Stop())
+	assert.Equal(t, []string{"preempt-abort"}, lun.preempts)
+
+	lun = restarted()
+	h := newHandle(t, lun)
+	h.NoPreemptAbort = true
+	require.NoError(t, h.Start())
+	assert.Equal(t, []string{"preempt"}, lun.preempts)
 }
