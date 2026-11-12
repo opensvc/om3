@@ -81,7 +81,7 @@ func init() {
 }
 
 // Configure implements the Configure function of Confer interface for T
-func (t *T) Configure(ctx context.Context) {
+func (t *T) Configure(ctx context.Context) error {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbdisk").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: disk: " + t.Name() + ": configure:")
 	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	timeout := t.GetDuration("timeout", DefaultTimeout)
@@ -113,6 +113,7 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetTx(tx)
 	rx := newRx(ctx, name, oNodes, dev, timeout, interval, maxSlots)
 	t.SetRx(rx)
+	return nil
 }
 
 func (t *base) scanMetadata(searchedNodes ...string) error {

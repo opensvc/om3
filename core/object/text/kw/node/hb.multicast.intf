@@ -1,1 +1,4 @@
-The interface to bind.
+The interface to join the multicast group on, and to send from.
+
+Required for an IPv6 group, on every node of the heartbeat: use the scoping
+syntax when the interface name differs between nodes.

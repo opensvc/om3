@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"slices"
 	"strings"
@@ -82,20 +83,40 @@ func (t *rx) Stop() error {
 }
 
 func (t *rx) streamPeerDesc(addr string) string {
-	addr, _, _ = strings.Cut(addr, ":")
-	if len(t.addr) > 0 {
-		if t.intf != "" {
-			return fmt.Sprintf("%s:%s@%s ← %s", t.addr, t.port, t.intf, addr)
-		} else {
-			return fmt.Sprintf("%s:%s ← %s", t.addr, t.port, addr)
-		}
-	} else {
-		if t.intf != "" {
-			return fmt.Sprintf(":%s@%s ← %s", t.port, t.intf, addr)
-		} else {
-			return fmt.Sprintf(":%s ← %s", t.port, addr)
-		}
+	peer := hostOf(addr)
+	listen := t.listenAddr()
+	if t.intf != "" {
+		return fmt.Sprintf("%s@%s ← %s", listen, t.intf, peer)
 	}
+	return fmt.Sprintf("%s ← %s", listen, peer)
+}
+
+// listenAddr returns the address the rx listens on, all the addresses of
+// the node when its addr is not set, joined to its port the way an IPv6
+// address needs, in brackets.
+func (t *rx) listenAddr() string {
+	return net.JoinHostPort(t.addr, t.port)
+}
+
+// hostOf returns the host of a peer address, which is its name or its address
+// when it is joined to no port.
+func hostOf(addr string) string {
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+	return addr
+}
+
+// canonicalIP returns an IP address the way Go writes it, IPv4 for an
+// IPv4-mapped IPv6 one, so the address of a connection and the address of a
+// peer compare as text. A name, or anything else not an address, is returned
+// as is.
+func canonicalIP(s string) string {
+	ip, err := netip.ParseAddr(s)
+	if err != nil {
+		return s
+	}
+	return ip.Unmap().String()
 }
 
 // Start implements the Start function of the Receiver interface for rx
@@ -128,7 +149,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	)
 
 	for i := 1; i < 5; i++ {
-		listener, err = listenConfig.Listen(t.ctx, "tcp", t.addr+":"+t.port)
+		listener, err = listenConfig.Listen(t.ctx, "tcp", t.listenAddr())
 		if err != nil {
 			if strings.Contains(err.Error(), "address already in use") {
 				delay := time.Duration(int(time.Millisecond) * 100 * i)
@@ -179,14 +200,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Infof("closing listener %s for %s", t.addr+":"+t.port, peerIPL)
+				t.log.Infof("closing listener %s for %s", t.listenAddr(), peerIPL)
 				_ = listener.Close()
 				time.Sleep(100 * time.Millisecond)
 				t.cancel()
 				return
 			}
 		}(otherNodeIPL)
-		t.log.Infof("listen to %s for %s", t.addr+":"+t.port, otherNodeIPL)
+		t.log.Infof("listen to %s for %s", t.listenAddr(), otherNodeIPL)
 		started <- true
 		// Decrypt through a loader, not through a snapshot of the crypto:
 		// a connection outlives heartbeat secret rotations.
@@ -208,6 +229,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				conn.Close()
 				continue
 			}
+			connAddr = canonicalIP(connAddr)
 			if _, ok := otherNodeIPM[connAddr]; !ok {
 				// A connection from an unknown address is the signal that a
 				// peer may have moved: the tx dials from the address its own
@@ -275,8 +297,7 @@ func (t *rx) resolvePeerIPs(ctx context.Context, previous map[string][]string) m
 	resolver := net.Resolver{}
 	peerIPs := make(map[string][]string, len(t.nodes))
 	for node, addr := range t.nodes {
-		addr, _, _ := strings.Cut(addr, ":")
-		addrs, err := resolver.LookupHost(ctx, addr)
+		addrs, err := resolver.LookupHost(ctx, hostOf(addr))
 		if err != nil {
 			if kept, ok := previous[node]; ok {
 				t.log.Debugf("lookup %s: %s: keep the known addresses %s", node, err, kept)
@@ -286,8 +307,13 @@ func (t *rx) resolvePeerIPs(ctx context.Context, previous map[string][]string) m
 			}
 			continue
 		}
+		// A literal is returned as it is written, and a connection
+		// address as Go writes it: FD01::11 would not be fd01::11.
+		for i, a := range addrs {
+			addrs[i] = canonicalIP(a)
+		}
 		slices.Sort(addrs)
-		peerIPs[node] = addrs
+		peerIPs[node] = slices.Compact(addrs)
 	}
 	return peerIPs
 }

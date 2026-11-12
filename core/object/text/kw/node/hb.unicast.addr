@@ -1,4 +1,9 @@
+The address to listen on, and the address the peers send to. An IPv4 or
+IPv6 address, as `fd01::11`, or a name.
+
 Use the scoping syntax to assign non-default ip addresses nodes.
 
 > **Warning**: Using the unscoped syntax would assign the same address to
   all nodes and the heartbeat would go down.
+
+IPv6 link-local addresses, as `fe80::11%eth0`, are not supported.
