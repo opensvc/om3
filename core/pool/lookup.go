@@ -274,7 +274,12 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 
 // roomCauseOf says why the pool name has no room for need bytes on the
 // nodes, by the usage each node reports of it, and nothing when it has.
+//
+// Every node is looked at for the pool missing or its status failing: the
+// room of a pool shared by the nodes is checked once, but a node whose share
+// is not mounted can not serve the volume however much room the others see.
 func roomCauseOf(name string, nodes []string, byNode map[string]map[string]Usage, need int64) string {
+	sharedChecked := false
 	for _, nodename := range nodes {
 		byPool, ok := byNode[nodename]
 		if !ok || len(byPool) == 0 {
@@ -295,14 +300,18 @@ func roomCauseOf(name string, nodes []string, byNode map[string]map[string]Usage
 			// about room. What its volumes take is taken of other pools.
 			continue
 		}
+		if usage.Shared && sharedChecked {
+			// One storage, seen from every node: its room is checked.
+			continue
+		}
 		if usage.Free < need {
 			return fmt.Sprintf("[%s] not enough free space on %s: %s free, %s requested",
 				name, nodename, sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(need)))
 		}
 		if usage.Shared {
 			// One storage, seen from every node. Asking one of them is
-			// asking all of them.
-			break
+			// asking all of them about room.
+			sharedChecked = true
 		}
 	}
 	return ""
