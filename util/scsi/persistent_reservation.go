@@ -454,19 +454,48 @@ func (t *PersistentReservationHandle) stopDevice(dev device.T) error {
 		return fmt.Errorf("%s spr unregister: %w", dev.Path(), err)
 	}
 	if reservation == "" {
-		// Not reserved, but registered by paths of before the restart,
-		// which the unregistration of the current paths leaves: a
-		// preempt of the own key from a current path drops them.
-		if n, err := t.localRegistrations(dev); err == nil && n > 0 {
-			t.Log.Infof("%s holds %d registrations of %s after the unregistration, of paths of before: preempt them", dev, n, t.Key)
-			if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
-				t.Log.Warnf("%s spr register, to drop the registrations of paths of before: %s", dev.Path(), err)
-			} else if err := t.preempt(dev, t.Key); err != nil {
-				t.Log.Warnf("preempt the own key, to drop the registrations of paths of before: %s", err)
-			} else if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
-				t.Log.Warnf("%s spr unregister: %s", dev.Path(), err)
-			}
-		}
+		return t.dropRegistrationsOfBefore(dev)
+	}
+	return nil
+}
+
+// dropRegistrationsOfBefore drops the registrations of our key a device not
+// reserved holds after the unregistration of the current paths, the ones of
+// paths of before a restart: a preempt of the own key from a current path
+// drops them, and the current path is unregistered after it.
+//
+// The reservation is read again first: a peer may have reserved the device
+// since, and a path registered under its reservation would have the write
+// access to it. The registrations of paths of before are left then, harmless,
+// and the holder drops them when it preempts our key. A failure leaving a
+// current path registered fails the stop.
+func (t *PersistentReservationHandle) dropRegistrationsOfBefore(dev device.T) error {
+	n, err := t.localRegistrations(dev)
+	if err != nil || n == 0 {
+		return err
+	}
+	reservation, err := t.persistentReservationDriver.ReadReservation(dev)
+	if err != nil {
+		return fmt.Errorf("%s read reservation, to drop the registrations of paths of before: %w", dev, err)
+	}
+	if reservation != "" {
+		t.Log.Infof("%s holds %d registrations of %s of paths of before, and is reserved by %s since: left", dev, n, t.Key, reservation)
+		return nil
+	}
+	t.Log.Infof("%s holds %d registrations of %s after the unregistration, of paths of before: preempt them", dev, n, t.Key)
+	var errs error
+	if err := t.persistentReservationDriver.Register(dev, t.Key); err != nil {
+		errs = fmt.Errorf("%s spr register, to drop the registrations of paths of before: %w", dev.Path(), err)
+	} else if err := t.preempt(dev, t.Key); err != nil {
+		errs = fmt.Errorf("preempt the own key, to drop the registrations of paths of before: %w", err)
+	}
+	// The current paths are unregistered whatever failed before: none is
+	// to stay registered.
+	if err := t.persistentReservationDriver.Unregister(dev, t.Key); err != nil {
+		return errors.Join(errs, fmt.Errorf("%s spr unregister: %w", dev.Path(), err))
+	}
+	if errs != nil {
+		t.Log.Warnf("%s: the registrations of paths of before are left: %s", dev, errs)
 	}
 	return nil
 }

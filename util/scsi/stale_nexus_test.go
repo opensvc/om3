@@ -35,6 +35,10 @@ type fakeLun struct {
 
 	// unregisterErr, if set, fails the unregistrations.
 	unregisterErr error
+
+	// onUnregister, if set, runs after an unregistration, as a peer
+	// reserving the lun meanwhile.
+	onUnregister func()
 }
 
 var errConflict = errors.New("reservation conflict")
@@ -74,6 +78,10 @@ func (t *fakeLun) Unregister(_ device.T, _ string) error {
 		if t.holder == p {
 			t.holder, t.holderKey = "", ""
 		}
+	}
+	if f := t.onUnregister; f != nil {
+		t.onUnregister = nil
+		f()
 	}
 	return nil
 }
@@ -305,4 +313,32 @@ func TestTheOwnKeyIsPreemptedWithAnAbort(t *testing.T) {
 	h.NoPreemptAbort = true
 	require.NoError(t, h.Start())
 	assert.Equal(t, []string{"preempt"}, lun.preempts)
+}
+
+// The registrations of paths of before are left when a peer reserved the lun
+// since the unregistration: a path registered to drop them would have the
+// write access to the lun the peer holds.
+func TestAStopLeavesTheRegistrationsOfBeforeUnderAPeerReservingMeanwhile(t *testing.T) {
+	lun := newFakeLun("a", "b")
+	_ = lun.Register(device.T{}, ourKey)
+	lun.paths = []string{"c", "d"}
+	lun.onUnregister = func() {
+		lun.registered["x"] = foreignKey
+		lun.holder, lun.holderKey = "x", foreignKey
+	}
+	require.NoError(t, newHandle(t, lun).Stop())
+	assert.Equal(t, foreignKey, lun.holderKey)
+	assert.NotContains(t, lun.registered, "c", "no current path registered under the peer's reservation")
+	assert.NotContains(t, lun.registered, "d")
+	assert.Empty(t, lun.preempts)
+}
+
+// A stop whose drop of the registrations of before can not unregister the
+// current paths fails: a path is left registered.
+func TestAStopFailsWhenAPathIsLeftRegistered(t *testing.T) {
+	lun := newFakeLun("a", "b")
+	_ = lun.Register(device.T{}, ourKey)
+	lun.paths = []string{"c", "d"}
+	lun.onUnregister = func() { lun.unregisterErr = errConflict }
+	assert.ErrorContains(t, newHandle(t, lun).Stop(), "spr unregister")
 }
