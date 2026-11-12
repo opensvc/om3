@@ -14,12 +14,13 @@ import (
 // openDevice opens the specified block device in Direct IO mode.
 // It validates that the path follows a static naming convention for safety and
 // returns an error on failure.
+//
+// A /dev/dm-<n> path is refused, as in v2: the number of a device-mapper
+// device changes across reboots, and the heartbeat would write on another
+// device. The checks had their arguments swapped, and accepted any path.
 func (t *device) openDevice(newDev string) error {
-	if strings.HasPrefix("/dev/dm-", t.path) {
-		return fmt.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path", t.path)
-	}
-	if strings.HasPrefix("/dev/sd", t.path) {
-		return fmt.Errorf("%s is not a static name. using a /dev/mapper/<name> or /dev/by-<attr>/<value> dev path is safer", t.path)
+	if strings.HasPrefix(t.path, "/dev/dm-") {
+		return fmt.Errorf("%s is not static enough a name to allow. please use a /dev/mapper/<name> or /dev/disk/by-<attr>/<value> dev path", t.path)
 	}
 
 	err := t.ensureBlockDevice(newDev)

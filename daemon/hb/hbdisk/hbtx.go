@@ -34,6 +34,10 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 		alert  []daemonsubsystem.Alert
+
+		// failing is why the stream can not write its frames, empty
+		// while it writes them.
+		failing string
 	}
 )
 
@@ -78,6 +82,9 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		cancel()
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}
+	if w := devPathWarning(t.base.path); w != "" {
+		t.log.Warnf("%s", w)
+	}
 	if openErr := t.base.device.open(); openErr != nil {
 		if err := t.base.startWith(openErr); err != nil {
 			err = fmt.Errorf("device %s: %w", t.base.path, err)
@@ -85,6 +92,12 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			cancel()
 			return err
 		}
+	}
+	if err := t.base.device.checkSize(t.base.maxSlots, len(t.nodes)+1); err != nil {
+		t.log.Warnf("startup failed: %s", err)
+		t.base.device.close()
+		cancel()
+		return err
 	}
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
 	t.cmdC = cmdC
@@ -99,11 +112,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			// one once it is signed.
 			t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
 			cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+			t.sendAlert()
+		} else if err := t.claimSlot(); err != nil {
+			t.fail(fmt.Sprintf("can't allocate a slot: %s", err))
 		} else {
-			t.claimSlot()
 			t.updateAlertWithSlot()
+			t.sendAlert()
 		}
-		t.sendAlert()
 
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
@@ -197,23 +212,28 @@ func (t *tx) send(b []byte) {
 		needAllocateReason = fmt.Sprintf("slot %d stolen by node %s", t.slot, nodename)
 	}
 	if len(needAllocateReason) > 0 {
-		t.log.Infof("%s", needAllocateReason)
+		if t.failing == "" {
+			t.log.Infof("%s", needAllocateReason)
+		}
 		t.alert = make([]daemonsubsystem.Alert, 0)
-		defer t.sendAlert()
-		t.claimSlot()
-		if t.slot < minimumSlot {
-			t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: needAllocateReason})
+		if err := t.claimSlot(); err != nil {
+			t.fail(fmt.Sprintf("%s, and can't allocate a new one: %s", needAllocateReason, err))
 			return
 		}
 		t.updateAlertWithSlot()
+		t.updateDesc()
+		if t.failing == "" {
+			t.sendAlert()
+		}
 	}
 
 	if err := t.base.writeDataSlot(t.slot, b); err != nil { // TODO write timeout?
-		t.log.Errorf("write data slot %d: %s", t.slot, err)
+		t.fail(fmt.Sprintf("write data slot %d: %s", t.slot, err))
 		return
 	} else {
 		t.log.Tracef("written data slot %d len %d", t.slot, len(b))
 	}
+	t.writesAgain()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdSetPeerSuccess{
 			Nodename: node,
@@ -227,21 +247,67 @@ func (t *tx) updateAlertWithSlot() {
 	t.alert = append(t.alert, getSlotAlert(t.base.localhost, t.slot))
 }
 
+// fail reports the stream can not write its frames, for reason. The first
+// failure of a reason logs it, reports the stream failed with the reason as
+// an error alert, and its peers not beating at once, rather than one timeout
+// later: a write failing was logged at each interval, the stream listed
+// running and its alerts empty. The next failures of the reason say nothing,
+// as v2 logged the first only.
+func (t *tx) fail(reason string) {
+	if reason == t.failing {
+		t.log.Tracef("%s", reason)
+		return
+	}
+	t.failing = reason
+	t.log.Errorf("%s", reason)
+	t.alert = []daemonsubsystem.Alert{{Severity: "error", Message: reason}}
+	t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
+	t.base.stopBeating(t.cmdC, t.id, t.nodes)
+	t.sendAlert()
+}
+
+// writesAgain reports a stream failing writes its frames again.
+func (t *tx) writesAgain() {
+	if t.failing == "" {
+		return
+	}
+	t.log.Infof("writes again in slot %d, after: %s", t.slot, t.failing)
+	t.failing = ""
+	t.alert = []daemonsubsystem.Alert{getSlotAlert(t.base.localhost, t.slot)}
+	t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
+	t.updateDesc()
+	t.sendAlert()
+}
+
+// updateDesc tells the watchers of the stream the slot it writes in, which
+// they were added before it was claimed, or before it moved.
+func (t *tx) updateDesc() {
+	for _, node := range t.nodes {
+		t.cmdC <- hbctrl.CmdSetDesc{HbID: t.id, Nodename: node, Desc: t.streamPeerDesc()}
+	}
+}
+
 // onSignatureChange reports the stream suspended or resumed. Suspended, it
 // stops beating at once, rather than one timeout later. Resumed, it claims
 // its slot again before it writes: a wipe and a sign keep the metadata, and
 // the slot this node holds there.
 func (t *tx) onSignatureChange() {
+	t.failing = ""
 	if t.base.invalidSig {
 		t.alert = []daemonsubsystem.Alert{t.base.invalidSigAlert()}
 		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "failed"}
 		t.base.stopBeating(t.cmdC, t.id, t.nodes)
-	} else {
-		t.alert = make([]daemonsubsystem.Alert, 0)
-		t.claimSlot()
-		t.updateAlertWithSlot()
-		t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
+		t.sendAlert()
+		return
 	}
+	t.alert = make([]daemonsubsystem.Alert, 0)
+	if err := t.claimSlot(); err != nil {
+		t.fail(fmt.Sprintf("can't allocate a slot: %s", err))
+		return
+	}
+	t.updateAlertWithSlot()
+	t.updateDesc()
+	t.cmdC <- hbctrl.CmdSetState{ID: t.id, State: "running"}
 	t.sendAlert()
 }
 
@@ -249,10 +315,10 @@ func (t *tx) onSignatureChange() {
 // else a free one. A slot is never allocated without this look first, which
 // would leave the node twice in the metadata, its peers reading the slot
 // found first. A disk not signed holds no slot of this node: it gets one
-// once signed.
-func (t *tx) claimSlot() {
+// once signed. It returns the error of an allocation failing.
+func (t *tx) claimSlot() error {
 	if t.base.invalidSig {
-		return
+		return nil
 	}
 	t.slot = 0
 	if err := t.base.scanMetadata(t.base.localhost); err != nil {
@@ -260,14 +326,12 @@ func (t *tx) claimSlot() {
 		t.log.Infof("%s", msg)
 		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "info", Message: msg})
 	}
+	t.base.clearSlotsPastEnd(t.base.localhost)
 	if slot := t.base.nodeSlot[t.base.localhost]; slot >= minimumSlot {
 		t.slot = slot
-		return
+		return nil
 	}
-	if err := t.allocateSlot(); err != nil {
-		t.log.Infof("can't allocate new slot: %s", err)
-		t.alert = append(t.alert, daemonsubsystem.Alert{Severity: "warning", Message: fmt.Sprintf("can't allocate new slot: %s", err)})
-	}
+	return t.allocateSlot()
 }
 
 func (t *tx) sendAlert() {

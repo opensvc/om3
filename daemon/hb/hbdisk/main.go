@@ -133,21 +133,20 @@ func (t *base) scanMetadata(searchedNodes ...string) error {
 		t.nodeSlotUnknown[node] = true
 	}
 
-	// Process each metadata slot.
-	for slot := minimumSlot; slot < t.maxSlots; slot++ {
+	// Process each metadata slot whose data slot fits on the device: a slot
+	// past its end, held on a disk that shrank or that a node claimed when
+	// its metadata area held what a filesystem left, is never written.
+	bound := t.device.slotBound(t.maxSlots)
+	for slot := minimumSlot; slot < bound; slot++ {
 		b, err := t.device.readMetaSlot(slot)
 		if err != nil {
 			return fmt.Errorf("read meta slot %d: %w", slot, errors.Join(errs, err))
 		}
-		index := bytes.IndexRune(b, endOfDataMarker)
-		if index < 0 {
-			// ignore corrupted meta slot
-			continue
-		} else if index == 0 {
-			// ignore unallocated meta slot, b2.1 abort here
+		nodename := nodeFromMetadata(b)
+		if nodename == "" {
+			// unallocated, or not a slot: ignored
 			continue
 		}
-		nodename := string(b[:index])
 		initialSlot, ok := t.nodeSlot[nodename]
 		if !ok {
 			// ignore non searched node: perhaps a non cluster node, or a cluster node that we are not searching.
@@ -172,30 +171,83 @@ func (t *base) scanMetadata(searchedNodes ...string) error {
 
 // freeSlot scans available slots on the device and returns the first free slot
 // index or an error if no free slot is found.
+//
+// A slot is free when its page names no node: blank, or holding what no node
+// writes, as what a filesystem left on a disk signed before the sign zeroed
+// the metadata area. Only the slots whose data slot fits on the device are
+// looked at.
 func (t *base) freeSlot() (int, error) {
-	for slot := minimumSlot; slot < t.maxSlots; slot++ {
+	bound := t.device.slotBound(t.maxSlots)
+	for slot := minimumSlot; slot < bound; slot++ {
 		b, err := t.device.readMetaSlot(slot)
 		if err != nil {
 			return 0, fmt.Errorf("read meta slot %d: %w", slot, err)
 		}
-		if len(b) == 0 {
-			break
-		} else if b[0] != endOfDataMarker {
+		if nodeFromMetadata(b) != "" {
 			continue
 		}
 		return slot, nil
 	}
-	return 0, fmt.Errorf("no free slot on dev")
+	return 0, fmt.Errorf("no free slot among the %d slots fitting on %s (%d bytes, max_slots %d)", max(bound-minimumSlot, 0), t.path, t.device.size(), t.maxSlots)
 }
 
+// clearSlotsPastEnd blanks the pages naming node past the slots fitting on
+// the device, as a node claimed on a disk whose metadata area held what a
+// filesystem left, or on a disk that shrank: found again once the disk
+// grows, they would name the node twice.
+func (t *base) clearSlotsPastEnd(node string) {
+	for slot := t.device.slotBound(t.maxSlots); slot < t.maxSlots; slot++ {
+		b, err := t.device.readMetaSlot(slot)
+		if err != nil {
+			return
+		}
+		if nodeFromMetadata(b) != node {
+			continue
+		}
+		if err := t.device.writeMetaSlot(slot, nil); err != nil {
+			t.log.Warnf("clear the slot %d past the end of %s: %s", slot, t.path, err)
+			return
+		}
+		t.log.Infof("cleared the slot %d past the end of %s", slot, t.path)
+	}
+}
+
+// devPathWarning says why the dev path of a heartbeat is unsafe though
+// accepted, as v2 warned: a /dev/sd<x> name may name another disk after a
+// reboot.
+func devPathWarning(path string) string {
+	if strings.HasPrefix(path, "/dev/sd") {
+		return fmt.Sprintf("%s is not a static name: a /dev/mapper/<name> or /dev/disk/by-<attr>/<value> dev path is safer", path)
+	}
+	return ""
+}
+
+// maxNodenameLen is the longest node name a metadata page holds.
+const maxNodenameLen = 255
+
+// nodeFromMetadata returns the node a metadata page names, empty when it
+// names none: blank, or not as a node writes it, a node name then zeroes
+// to its end. What a filesystem left on the disk is no node.
 func nodeFromMetadata(b []byte) string {
 	index := bytes.IndexRune(b, endOfDataMarker)
-	if index < 0 {
-		return ""
-	} else if index == 0 {
+	if index <= 0 || index > maxNodenameLen {
 		return ""
 	}
+	for _, c := range b[:index] {
+		if !isNodenameChar(c) {
+			return ""
+		}
+	}
+	for _, c := range b[index:] {
+		if c != endOfDataMarker {
+			return ""
+		}
+	}
 	return string(b[:index])
+}
+
+func isNodenameChar(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '.' || c == '_'
 }
 
 func metaSize(maxSlots int) int64 {

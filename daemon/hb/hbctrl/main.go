@@ -135,6 +135,15 @@ type (
 		Timeout  time.Duration
 	}
 
+	// CmdSetDesc is a command to set the description of the peer of a hb
+	// stream, as the slot a disk stream writes or reads, which the stream
+	// knows once claimed or read, after it added its watchers.
+	CmdSetDesc struct {
+		HbID     string
+		Nodename string
+		Desc     string
+	}
+
 	// CmdDelWatcher is a command to stop one instance of a hb watcher for a remote
 	CmdDelWatcher struct {
 		HbID     string
@@ -204,6 +213,12 @@ func (c *C) run() {
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	heartbeat := make(map[string]daemonsubsystem.HeartbeatStream)
+
+	// descs are the descriptions of the peers of the streams set after
+	// their watchers were added, by stream id and node: a watcher keeps the
+	// description it was added with, and its updates of the peer status
+	// would put it back.
+	descs := make(map[string]map[string]string)
 	pub := pubsub.PubFromContext(c.ctx)
 	defer c.log.Infof("stopped: %v", events)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
@@ -305,6 +320,7 @@ func (c *C) run() {
 				}
 				changed = true
 			case CmdUnregister:
+				delete(descs, o.ID)
 				if _, ok := heartbeat[o.ID]; ok {
 					for peerNode := range remotes {
 						delWatcher(o.ID, peerNode)
@@ -392,9 +408,24 @@ func (c *C) run() {
 					foundHeartbeat.Alerts = append([]daemonsubsystem.Alert(nil), o.Alert...)
 					heartbeat[hbID] = foundHeartbeat
 				}
+			case CmdSetDesc:
+				if foundHeartbeat, ok := heartbeat[o.HbID]; ok {
+					if peer, ok := foundHeartbeat.Peers[o.Nodename]; ok {
+						if descs[o.HbID] == nil {
+							descs[o.HbID] = make(map[string]string)
+						}
+						descs[o.HbID][o.Nodename] = o.Desc
+						peer.Desc = o.Desc
+						foundHeartbeat.Peers[o.Nodename] = peer
+						changed = true
+					}
+				}
 			case CmdSetPeerStatus:
 				hbID := o.HbID
 				peerNode := o.Nodename
+				if desc, ok := descs[hbID][peerNode]; ok {
+					o.PeerStatus.Desc = desc
+				}
 				if foundHeartbeat, ok := heartbeat[hbID]; ok {
 					foundHeartbeat.Peers[peerNode] = o.PeerStatus
 					heartbeat[hbID] = foundHeartbeat
@@ -433,6 +464,7 @@ func (c *C) run() {
 					c.log.Warnf("watcher skipped: called before register %s -> %s", hbID, peerNode)
 					continue
 				}
+				delete(descs[hbID], peerNode)
 				c.log.Infof("watcher starting %s -> %s", hbID, peerNode)
 				beatingC := make(chan bool, 1)
 				beatingCtx, cancel := context.WithCancel(o.Ctx)
@@ -450,6 +482,7 @@ func (c *C) run() {
 			case CmdDelWatcher:
 				hbID := o.HbID
 				peerNode := o.Nodename
+				delete(descs[hbID], peerNode)
 				if _, ok := heartbeat[hbID]; ok {
 					delete(heartbeat[hbID].Peers, peerNode)
 				}
