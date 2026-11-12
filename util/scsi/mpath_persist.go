@@ -37,6 +37,20 @@ func (t MpathPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
 	return l, nil
 }
 
+// ReadFullStatus reads the full status of the reservation of the device.
+func (t MpathPersistDriver) ReadFullStatus(dev device.T) ([]FullStatusEntry, error) {
+	cmd := command.New(
+		command.WithName("mpathpersist"),
+		command.WithVarArgs("--in", "--read-full-status", dev.Path()),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	return parseFullStatus(b), nil
+}
+
 func (t MpathPersistDriver) Register(dev device.T, key string) error {
 	cmd := command.New(
 		command.WithName("mpathpersist"),
