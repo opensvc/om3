@@ -112,10 +112,14 @@ type unicastListen struct {
 	port int
 }
 
-// checkUnicastListens says the unicast heartbeats listening, on a node of
-// both, on the same port of an address both listen on: the rx of the second
-// can not bind, and its tx is seen beating, as the rx of the first receives
-// its frames, while the cluster has one network path less than it shows.
+// checkUnicastListens says the unicast heartbeats listening, on a node, on
+// the same port of an address both listen on: the rx of the second can not
+// bind, and its tx is seen beating, as the rx of the first receives its
+// frames, while the cluster has one network path less than it shows.
+//
+// Every node runs the rx of every heartbeat, its nodes naming the peers it
+// beats with only, so every node of the cluster or of the heartbeats is
+// checked.
 func checkUnicastListens(cfg *xconfig.T) xconfig.Alerts {
 	var alerts xconfig.Alerts
 	sections := make([]string, 0)
@@ -126,16 +130,15 @@ func checkUnicastListens(cfg *xconfig.T) xconfig.Alerts {
 	}
 	sort.Strings(sections)
 	did := driver.NewID(driver.GroupHeartbeat, "unicast")
+	clusterNodes := cfg.GetStrings(key.New("cluster", "nodes"))
 	for i, section := range sections {
-		nodes := heartbeatNodes(cfg, section)
 		for _, other := range sections[:i] {
-			otherNodes := heartbeatNodes(cfg, other)
+			nodes := append(append(append([]string{}, clusterNodes...), heartbeatNodes(cfg, section)...), heartbeatNodes(cfg, other)...)
+			slices.Sort(nodes)
+			nodes = slices.Compact(nodes)
 			conflictNodes := make([]string, 0)
 			port := 0
 			for _, node := range nodes {
-				if !slices.Contains(otherNodes, node) {
-					continue
-				}
 				a, ok := unicastListenOf(cfg, section, node)
 				if !ok {
 					continue

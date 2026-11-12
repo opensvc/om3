@@ -254,7 +254,8 @@ addr@n2 = 10.0.1.2
 `,
 			want: []string{"hb#u5.port: hb#u5: the port 10000 is the one hb#1 listens on, on nodes n1, n2: use another port, or another addr on each node"},
 		},
-		"heartbeats sharing no node": {
+		"heartbeats beating with no common peer": {
+			// every node runs the rx of every heartbeat
 			conf: `
 [hb#1]
 type = unicast
@@ -264,7 +265,7 @@ nodes = n1
 type = unicast
 nodes = n2
 `,
-			want: []string{},
+			want: []string{"hb#u5.port: hb#u5: the port 10000 is the one hb#1 listens on, on nodes n1, n2: use another port, or another addr on each node"},
 		},
 		"a multicast heartbeat on the port": {
 			conf: `
