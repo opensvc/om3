@@ -54,7 +54,7 @@ type (
 		// rid of their heartbeat: listed, to report their state and their
 		// error, they are unregistered with their heartbeat section,
 		// which leaves no stream running to unregister them.
-		idle map[string]string
+		idle map[string]idleStream
 
 		// janitorDone is closed when the janitor loop returned: Stop
 		// waits for it before it reads the heartbeats running, which the
@@ -67,6 +67,14 @@ type (
 		// cancel is the cancel function for msgToTx, msgFromRx, janitor
 		cancel context.CancelFunc
 		wg     sync.WaitGroup
+	}
+
+	// idleStream is a stream registered with no stream running: the rid of
+	// its heartbeat, and whether it failed, to be started again, or was
+	// stopped, by "om daemon hb stop", to be left so.
+	idleStream struct {
+		rid    string
+		failed bool
 	}
 
 	// confer is a heartbeat configured, with the error its driver
@@ -95,7 +103,7 @@ func New(_ context.Context, opts ...funcopt.O) *T {
 	t.readMsgQueue = make(chan *hbtype.Msg)
 	t.ridSignature = make(map[string]string)
 	t.retryErr = make(map[string]string)
-	t.idle = make(map[string]string)
+	t.idle = make(map[string]idleStream)
 	return t
 }
 
@@ -290,14 +298,14 @@ func (t *T) setFailed(rid, id string, err error) {
 		HbID:  id,
 		Alert: []daemonsubsystem.Alert{{Severity: "error", Message: err.Error()}},
 	}
-	t.idle[id] = rid
+	t.idle[id] = idleStream{rid: rid, failed: true}
 }
 
 // unregisterIdle unregisters the streams of the heartbeat rid listed with no
 // stream running, failed or stopped.
 func (t *T) unregisterIdle(rid string) {
-	for id, idleRid := range t.idle {
-		if idleRid != rid {
+	for id, stream := range t.idle {
+		if stream.rid != rid {
 			continue
 		}
 		t.ctrlC <- hbctrl.CmdUnregister{ID: id}
@@ -318,8 +326,8 @@ func (t *T) knownRids() []string {
 	for rid := range t.rxs {
 		m[rid] = true
 	}
-	for _, rid := range t.idle {
-		m[rid] = true
+	for _, stream := range t.idle {
+		m[stream.rid] = true
 	}
 	l := make([]string, 0, len(m))
 	for rid := range m {
@@ -459,7 +467,7 @@ func (t *T) retryFailedHb(ctx context.Context) {
 	}
 	for rid, hb := range ridHb {
 		if _, ok := t.ridSignature[rid]; ok {
-			delete(t.retryErr, rid)
+			t.retryFailedStreams(rid, hb)
 			continue
 		}
 		_, tx := t.txs[rid]
@@ -484,6 +492,43 @@ func (t *T) retryFailedHb(ctx context.Context) {
 		}
 		t.log.Infof("heartbeat %s started on retry", rid)
 		t.ridSignature[rid] = hb.Signature()
+		delete(t.retryErr, rid)
+	}
+}
+
+// retryFailedStreams starts again the streams failed of the heartbeat rid
+// recorded as started, as one whose restart by "om daemon hb restart"
+// failed: the heartbeat recorded, its retry was skipped, and the stream
+// stayed failed until the daemon restarted. A stream stopped by "om daemon
+// hb stop" is left stopped.
+func (t *T) retryFailedStreams(rid string, hb confer) {
+	// The ids are collected first: a start failing again registers its
+	// stream anew, which a range over the map could visit again.
+	ids := make([]string, 0)
+	for id, stream := range t.idle {
+		if stream.rid == rid && stream.failed {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		var err error
+		if strings.HasSuffix(id, ".tx") {
+			err = t.startHbTx(hb)
+		} else {
+			err = t.startHbRx(hb)
+		}
+		if err != nil {
+			if msg := err.Error(); msg != t.retryErr[id] {
+				t.log.Warnf("heartbeat stream %s start failed, retried every %s: %s", id, retryFailedInterval, err)
+				t.retryErr[id] = msg
+			}
+			continue
+		}
+		t.log.Infof("heartbeat stream %s started on retry", id)
+		delete(t.retryErr, id)
+	}
+	if len(ids) == 0 {
 		delete(t.retryErr, rid)
 	}
 }
@@ -821,7 +866,7 @@ func (t *T) daemonCtlStop(hbID string, action string) {
 		// it: it stayed listed until the daemon restarted.
 		id := hbI.(hbtype.IDStopper).ID()
 		t.ctrlC <- hbctrl.CmdSetState{ID: id, State: "stopped"}
-		t.idle[id] = rid
+		t.idle[id] = idleStream{rid: rid}
 	}
 }
 

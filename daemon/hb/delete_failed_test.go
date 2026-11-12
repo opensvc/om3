@@ -227,3 +227,32 @@ func TestAStreamStoppedGoesWithItsSection(t *testing.T) {
 	assert.Empty(t, h.knownRids())
 	assert.Empty(t, h.idle)
 }
+
+// A stream failed of a heartbeat recorded as started, as one whose restart by
+// "om daemon hb restart" failed, is started again by the retry, and a stream
+// stopped by "om daemon hb stop" is left stopped: the heartbeat recorded, its
+// retry was skipped, and the stream stayed failed until the daemon restarted.
+func TestTheRetryStartsAgainTheFailedStreamsOfAHeartbeatStarted(t *testing.T) {
+	h := newTestManager(t)
+	inUse := errors.New("listen tcp :10000: bind: address already in use")
+
+	require.NoError(t, h.startHb(newStartFailingConfer("hb#u11", nil, nil)))
+	h.ridSignature["hb#u11"] = "sig"
+	h.daemonCtlStop("hb#u11.tx", "stop")
+	// a restart of the rx: its stop, then its start failing
+	h.daemonCtlStop("hb#u11.rx", "restart")
+	require.Error(t, h.startHbRx(newStartFailingConfer("hb#u11", nil, inUse)))
+	require.NotContains(t, h.rxs, "hb#u11")
+	require.Len(t, h.idle, 2)
+
+	h.retryFailedStreams("hb#u11", newStartFailingConfer("hb#u11", nil, inUse))
+	assert.Len(t, h.idle, 2, "failing again, the rx stays failed")
+	assert.Equal(t, inUse.Error(), h.retryErr["hb#u11.rx"], "the failure logged once")
+
+	h.retryFailedStreams("hb#u11", newStartFailingConfer("hb#u11", nil, nil))
+	assert.Equal(t, map[string]idleStream{"hb#u11.tx": {rid: "hb#u11"}}, h.idle, "the rx started, the tx stopped by hand left so")
+	assert.Contains(t, h.rxs, "hb#u11")
+	assert.NotContains(t, h.txs, "hb#u11")
+	assert.Empty(t, h.retryErr)
+	require.NoError(t, h.stopHbRid("hb#u11"))
+}
