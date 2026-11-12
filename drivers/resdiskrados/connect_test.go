@@ -38,3 +38,17 @@ func TestAClusterNotAnsweringIsNotAskedAgain(t *testing.T) {
 	_, err = r.rbdLocalArgs()
 	assert.NoError(t, err, "the commands acting on the node alone still run")
 }
+
+// The error of a rbd command that could not connect to the cluster says so,
+// rbd exiting 110, rather than the exit code alone. Another error is left as
+// it is.
+func TestTheErrorOfACommandNotConnectedSaysSo(t *testing.T) {
+	notConnected := command.New(command.WithName("sh"), command.WithVarArgs("-c", "exit 110")).Run()
+	require.Error(t, notConnected)
+	assert.ErrorContains(t, rbdError(notConnected), "couldn't connect to the ceph cluster within the connect timeout")
+
+	other := command.New(command.WithName("sh"), command.WithVarArgs("-c", "exit 2")).Run()
+	require.Error(t, other)
+	assert.NotContains(t, rbdError(other).Error(), "couldn't connect")
+	assert.NoError(t, rbdError(nil))
+}

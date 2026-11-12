@@ -3,6 +3,7 @@ package resdiskrados
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -171,7 +172,7 @@ func (t *T) mapDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("map: %v", err)
+		return fmt.Errorf("map: %v", rbdError(err))
 	}
 	return nil
 }
@@ -204,7 +205,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("unmap: %v", err)
+		return fmt.Errorf("unmap: %v", rbdError(err))
 	}
 	return nil
 }
@@ -231,7 +232,7 @@ func (t *T) createDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("create: %v", err)
+		return fmt.Errorf("create: %v", rbdError(err))
 	}
 	udevadm.Settle()
 	return nil
@@ -255,7 +256,7 @@ func (t *T) removeDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("remove: %v", err)
+		return fmt.Errorf("remove: %v", rbdError(err))
 	}
 	return nil
 }
@@ -289,7 +290,7 @@ func (t *T) lockDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("lock: %v", err)
+		return fmt.Errorf("lock: %v", rbdError(err))
 	}
 	return nil
 }
@@ -323,7 +324,7 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("unlock: %v", err)
+		return fmt.Errorf("unlock: %v", rbdError(err))
 	}
 	return nil
 }
@@ -383,7 +384,7 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("resize: %v", err)
+		return fmt.Errorf("resize: %v", rbdError(err))
 	}
 	udevadm.Settle()
 	return nil
@@ -410,7 +411,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("info: %v", err)
+		return nil, fmt.Errorf("info: %v", rbdError(err))
 	}
 	var data RBDInfo
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -448,7 +449,7 @@ func (t *T) imageGroup(ctx context.Context) (string, error) {
 		if info != nil {
 			return info.Group, nil
 		}
-		return "", fmt.Errorf("group image info: %v", err)
+		return "", fmt.Errorf("group image info: %v", rbdError(err))
 	}
 	var data map[string]string
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -483,7 +484,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("lock list: %v", err)
+		return nil, fmt.Errorf("lock list: %v", rbdError(err))
 	}
 	var data []RBDLock
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -510,7 +511,7 @@ func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("device list: %v", err)
+		return nil, fmt.Errorf("device list: %v", rbdError(err))
 	}
 	var data []RBDMap
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -787,7 +788,7 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("feature disable: %v", err)
+		return fmt.Errorf("feature disable: %v", rbdError(err))
 	}
 	return nil
 }
@@ -810,7 +811,7 @@ func (t *T) enableFeature(ctx context.Context, feature string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("feature enable: %v", err)
+		return fmt.Errorf("feature enable: %v", rbdError(err))
 	}
 	return nil
 
@@ -951,7 +952,7 @@ func (t *T) groupExists(ctx context.Context) (bool, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return false, fmt.Errorf("group list: %v", err)
+		return false, fmt.Errorf("group list: %v", rbdError(err))
 	}
 	var groups []string
 	if err := json.Unmarshal(b, &groups); err != nil {
@@ -986,7 +987,7 @@ func (t *T) imageInGroup(ctx context.Context) (bool, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return false, fmt.Errorf("group image list: %v", err)
+		return false, fmt.Errorf("group image list: %v", rbdError(err))
 	}
 	var images []RBDGroupImage
 	if err := json.Unmarshal(b, &images); err != nil {
@@ -1021,7 +1022,7 @@ func (t *T) groupCreate(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("group create: %v", err)
+		return fmt.Errorf("group create: %v", rbdError(err))
 	}
 	return nil
 }
@@ -1061,7 +1062,7 @@ func (t *T) groupImageAdd(ctx context.Context) error {
 	err = cmd.Run()
 	if err != nil {
 		// Any error other than exit code 17 (which we ignored) should be propagated
-		return fmt.Errorf("group image add: %v", err)
+		return fmt.Errorf("group image add: %v", rbdError(err))
 	}
 	// Check exit code for 17 (File exists) - image is in another group
 	if cmd.ExitCode() == 17 {
@@ -1135,7 +1136,7 @@ func (t *T) addImageToGroup(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("group image add: %v", err)
+		return fmt.Errorf("group image add: %v", rbdError(err))
 	}
 	return nil
 }
@@ -1161,7 +1162,7 @@ func (t *T) groupImageRemove(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("group image remove: %v", err)
+		return fmt.Errorf("group image remove: %v", rbdError(err))
 	}
 	return nil
 }
@@ -1187,7 +1188,7 @@ func (t *T) groupRemove(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("group remove: %v", err)
+		return fmt.Errorf("group remove: %v", rbdError(err))
 	}
 	return nil
 }
@@ -1213,7 +1214,7 @@ func (t *T) groupIsEmpty(ctx context.Context) (bool, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return false, fmt.Errorf("group image list: %v", err)
+		return false, fmt.Errorf("group image list: %v", rbdError(err))
 	}
 	var images []RBDGroupImage
 	if err := json.Unmarshal(b, &images); err != nil {
@@ -1237,4 +1238,15 @@ func (t *T) watchConnect() funcopt.O {
 			unreachableClusters.Store(t.clusterKey(), time.Now())
 		}
 	})
+}
+
+// rbdError is the error of a rbd command, saying so when the command could
+// not connect to the cluster within the connect timeout, rbd exiting 110,
+// rather than the exit code alone.
+func rbdError(err error) error {
+	var exitErr *command.ErrExitCode
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 110 {
+		return fmt.Errorf("couldn't connect to the ceph cluster within the connect timeout: %w", err)
+	}
+	return err
 }
