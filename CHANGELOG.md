@@ -1858,6 +1858,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * A heartbeat stream failing its start is listed failed with the error as an alert, and a stream stopped by `om daemon hb stop` is listed stopped while its section stays: both stayed listed after their section was deleted, until the daemon restarted.
 
+* Two unicast heartbeats listening on the same port of an address both listen on, on a node of both, are refused by the cluster configuration check, as `hb#1` and `hb#u5` both on the default port 10000.
+
+    The rx of the second could not bind, and its tx was seen beating, its frames received by the rx of the first: `om daemon hb list` showed a heartbeat half healthy while the cluster had one network path less. Give the second another `port`, or another `addr` on each node. A cluster configuration already holding such a pair refuses the next writes until it is fixed.
+
 ### sec
 
 * Add "o[mx] key rename --name old --to new" commands

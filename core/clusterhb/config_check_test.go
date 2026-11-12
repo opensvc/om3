@@ -183,3 +183,103 @@ addr@n2 = fe80::12%eth0
 		})
 	}
 }
+
+// Two unicast heartbeats listening on the same port of an address both listen
+// on, on a node of both, are refused: the rx of the second could not bind,
+// and its tx was seen beating, its frames received by the rx of the first.
+func TestClusterConfigUnicastSamePort(t *testing.T) {
+	for name, tc := range map[string]struct {
+		conf string
+		want []string
+	}{
+		"the default port twice": {
+			conf: `
+[hb#1]
+type = unicast
+
+[hb#u5]
+type = unicast
+`,
+			want: []string{"hb#u5.port: hb#u5: the port 10000 is the one hb#1 listens on, on nodes n1, n2: use another port, or another addr on each node"},
+		},
+		"another port": {
+			conf: `
+[hb#1]
+type = unicast
+
+[hb#u5]
+type = unicast
+port = 10001
+`,
+			want: []string{},
+		},
+		"the same port on another address of each node": {
+			conf: `
+[hb#1]
+type = unicast
+addr@n1 = 10.0.0.1
+addr@n2 = 10.0.0.2
+
+[hb#u5]
+type = unicast
+addr@n1 = 10.0.1.1
+addr@n2 = 10.0.1.2
+`,
+			want: []string{},
+		},
+		"the same address written otherwise on one node": {
+			conf: `
+[hb#1]
+type = unicast
+addr@n1 = fd01::12
+addr@n2 = 10.0.0.2
+
+[hb#u5]
+type = unicast
+addr@n1 = FD01:0:0:0::12
+addr@n2 = 10.0.1.2
+`,
+			want: []string{"hb#u5.port: hb#u5: the port 10000 is the one hb#1 listens on, on node n1: use another port, or another addr on each node"},
+		},
+		"an address and every address": {
+			conf: `
+[hb#1]
+type = unicast
+addr = 0.0.0.0
+
+[hb#u5]
+type = unicast
+addr@n1 = 10.0.1.1
+addr@n2 = 10.0.1.2
+`,
+			want: []string{"hb#u5.port: hb#u5: the port 10000 is the one hb#1 listens on, on nodes n1, n2: use another port, or another addr on each node"},
+		},
+		"heartbeats sharing no node": {
+			conf: `
+[hb#1]
+type = unicast
+nodes = n1
+
+[hb#u5]
+type = unicast
+nodes = n2
+`,
+			want: []string{},
+		},
+		"a multicast heartbeat on the port": {
+			conf: `
+[hb#1]
+type = unicast
+
+[hb#m]
+type = multicast
+port = 10000
+`,
+			want: []string{},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.want, clusterAlerts(t, clusterConf+tc.conf))
+		})
+	}
+}
