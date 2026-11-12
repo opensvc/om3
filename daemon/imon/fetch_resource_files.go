@@ -52,6 +52,15 @@ type (
 		// running
 		fetching bool
 
+		// fetchingSince is when the fetches running one after the other
+		// began, zero when none runs: the orchestration holds its
+		// actions for them up to fetchHoldTimeout from then.
+		fetchingSince time.Time
+
+		// held is true when the orchestration held its actions for the
+		// fetch, which resumes it when it ends.
+		held bool
+
 		// sources stores, by peer node, the orchestration a peer instance
 		// was seen up under: the source of a placement, which stays the
 		// authority for its files once the orchestration stopped it.
@@ -107,6 +116,9 @@ func (t *Manager) handleResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 func (t *Manager) handlePeerResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 	t.files.attention = nil
 	t.files.fetching = true
+	if t.files.fetchingSince.IsZero() {
+		t.files.fetchingSince = time.Now()
+	}
 	// A peer not up is an authority only as the source the orchestration
 	// stopped (see needFetchResourceFiles): its resources are down there.
 	fromStopped := !ev.Value.Avail.Is(status.Up)
@@ -564,8 +576,13 @@ func (t *Manager) onFetchDone(c cmdFetchDone) {
 	if t.files.attention != nil {
 		t.handlePeerResourceFiles(t.files.attention)
 	}
-	if t.state.State == instance.MonitorStateWaitFiles {
-		// The start of a placement waits for these files.
+	if !t.files.fetching {
+		t.files.fetchingSince = time.Time{}
+	}
+	if t.state.State == instance.MonitorStateWaitFiles || (t.files.held && !t.files.fetching) {
+		// The start of a placement waits for these files, and an
+		// orchestration held its actions for the fetch.
+		t.files.held = false
 		t.onChange()
 	}
 }

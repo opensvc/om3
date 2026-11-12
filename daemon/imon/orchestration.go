@@ -79,6 +79,10 @@ func (t *Manager) orchestrate() {
 		return
 	}
 
+	if t.holdForFetch() {
+		return
+	}
+
 	t.clearStoppedFlagOnRequest()
 
 	t.orchestrateResourceRestart()
