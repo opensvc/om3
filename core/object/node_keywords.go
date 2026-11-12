@@ -1308,7 +1308,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/cni.config"),
 	}
 	kwNodePoolType = keywords.Keyword{
-		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "dorado", "hoc", "drbd", "pure", "rados"},
+		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "hoc", "drbd", "pure", "rados"},
 		Default:    "loop",
 		Option:     "type",
 		Group:      nodeGroupIdentity.ID,
@@ -1335,7 +1335,7 @@ var (
 		Scopable: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.array"),
-		Types:    []string{"freenas", "symmetrix", "dorado", "hoc", "pure", "truenas"},
+		Types:    []string{"freenas", "symmetrix", "hoc", "pure", "truenas"},
 	}
 	kwNodePoolRadosRBDPool = keywords.Keyword{
 		Option:   "rbd_pool",
@@ -1448,7 +1448,7 @@ var (
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.diskgroup"),
-		Types:    []string{"freenas", "dorado", "hoc", "pure", "truenas"},
+		Types:    []string{"freenas", "hoc", "pure", "truenas"},
 	}
 	kwNodePoolTruenasInsecureTPC = keywords.Keyword{
 		Converter: converters.Bool,
@@ -1665,7 +1665,7 @@ var (
 		Group:   nodeGroupFilesystem.ID,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
-		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "vg", "pure", "truenas", "rados"},
+		Types:   []string{"freenas", "hoc", "symmetrix", "drbd", "vg", "pure", "truenas", "rados"},
 	}
 	// No minimum, for the pool a node has with no configuration: xfs refuses a
 	// device under 300m.
@@ -1942,7 +1942,7 @@ var (
 		Types:   []string{"brocade"},
 	}
 	kwNodeArrayType = keywords.Keyword{
-		Candidates: []string{"freenas", "hds", "eva", "nexenta", "vioserver", "centera", "symmetrix", "emcvnx", "netapp", "hp3par", "ibmds", "ibmsvc", "xtremio", "dorado", "hoc", "truenas"},
+		Candidates: []string{"freenas", "hds", "symmetrix", "hp3par", "xtremio", "hoc", "pure", "truenas"},
 		Option:     "type",
 		Group:      nodeGroupIdentity.ID,
 		Required:   true,
@@ -1956,7 +1956,7 @@ var (
 		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.compression"),
-		Types:     []string{"dorado", "hoc"},
+		Types:     []string{"hoc"},
 	}
 	kwNodePoolTruenasDedup = keywords.Keyword{
 		Default: "off",
@@ -1973,16 +1973,7 @@ var (
 		Group:     nodeGroupCreation.ID,
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.dedup"),
-		Types:     []string{"dorado", "hoc"},
-	}
-	kwNodePoolDoradoHypermetroDomain = keywords.Keyword{
-		Option:   "hypermetrodomain",
-		Group:    nodeGroupCreation.ID,
-		Example:  "HyperMetroDomain_000",
-		Required: false,
-		Section:  "pool",
-		Text:     keywords.NewText(fs, "text/kw/node/pool.dorado.hypermetrodomain"),
-		Types:    []string{"dorado"},
+		Types:     []string{"hoc"},
 	}
 	kwNodePoolAPI = keywords.Keyword{
 		Example:  "https://array.opensvc.com/api/v1.0",
@@ -1991,7 +1982,7 @@ var (
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.api"),
-		Types:    []string{"dorado", "freenas", "hoc", "pure", "truenas", "xtremio"},
+		Types:    []string{"freenas", "hoc", "pure", "truenas", "xtremio"},
 	}
 	kwNodePoolHOCHTTPProxy = keywords.Keyword{
 		Example: "http://proxy.mycorp:3158",
@@ -2044,7 +2035,7 @@ var (
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.username,required"),
-		Types:    []string{"centera", "eva", "hds", "ibmds", "ibmsvc", "freenas", "netapp", "nexenta", "vioserver", "xtremio", "dorado", "hoc", "truenas"},
+		Types:    []string{"hds", "freenas", "xtremio", "hoc", "truenas"},
 	}
 	kwNodeArrayUsername = keywords.Keyword{
 		Example: "root",
@@ -2052,7 +2043,7 @@ var (
 		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.username,optional"),
-		Types:   []string{"emcvnx", "hp3par", "symmetrix"},
+		Types:   []string{"hp3par", "symmetrix"},
 	}
 	kwNodeArrayPureClientID = keywords.Keyword{
 		Example:  "bd2c75d0-f0d5-11ee-a362-8b0f2d1b83d7",
@@ -2129,7 +2120,7 @@ var (
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.password,required"),
-		Types:    []string{"centera", "eva", "hds", "freenas", "nexenta", "xtremio", "truenas", "dorado", "hoc"},
+		Types:    []string{"hds", "freenas", "xtremio", "truenas", "hoc"},
 	}
 	kwNodeArrayPasswordOptional = keywords.Keyword{
 		Example: naming.NsSys + "/sec/array1",
@@ -2137,7 +2128,7 @@ var (
 		Group:   nodeGroupCredentials.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.password,optional"),
-		Types:   []string{"emcvnx", "symmetrix"},
+		Types:   []string{"symmetrix"},
 	}
 	kwNodeArrayTimeout = keywords.Keyword{
 		Converter: converters.Duration,
@@ -2147,7 +2138,7 @@ var (
 		Group:     nodeGroupTimeouts.ID,
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.timeout"),
-		Types:     []string{"freenas", "dorado", "hoc", "truenas"},
+		Types:     []string{"freenas", "hoc", "truenas"},
 	}
 	kwNodeArrayName = keywords.Keyword{
 		Example: "a09",
@@ -2155,7 +2146,7 @@ var (
 		Group:   nodeGroupIdentity.ID,
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.name"),
-		Types:   []string{"dorado", "hoc"},
+		Types:   []string{"hoc"},
 	}
 	kwNodeArraySymmetrixName = keywords.Keyword{
 		Example: "00012345",
@@ -2181,87 +2172,6 @@ var (
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.symmetrix.symcli_connect"),
 		Types:   []string{"symmetrix"},
-	}
-	kwNodeArrayServer = keywords.Keyword{
-		Example:  "centera1",
-		Option:   "server",
-		Group:    nodeGroupEndpoint.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.server"),
-		Types:    []string{"centera", "netapp"},
-	}
-	kwNodeArrayCenteraJavaBin = keywords.Keyword{
-		Example:  "/opt/java/bin/java",
-		Option:   "java_bin",
-		Group:    nodeGroupTools.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.centera.java_bin"),
-		Types:    []string{"centera"},
-	}
-	kwNodeArrayCenteraJcassDir = keywords.Keyword{
-		Example:  "/opt/centera/LIB",
-		Option:   "jcass_dir",
-		Group:    nodeGroupTools.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.centera.jcass_dir"),
-		Types:    []string{"centera"},
-	}
-	kwNodeArrayEMCVNXSecFile = keywords.Keyword{
-		Example:    "secfile",
-		Candidates: []string{"secfile", "credentials"},
-		Default:    "secfile",
-		Option:     "method",
-		Group:      nodeGroupCredentials.ID,
-		Section:    "array",
-		Text:       keywords.NewText(fs, "text/kw/node/array.emcvnx.secfile"),
-		Types:      []string{"emcvnx"},
-	}
-	kwNodeArrayEMCVNXSPA = keywords.Keyword{
-		Example:  "array1-a",
-		Option:   "spa",
-		Group:    nodeGroupEndpoint.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.emcvnx.spa"),
-		Types:    []string{"emcvnx"},
-	}
-	kwNodeArrayEMCVNXSPB = keywords.Keyword{
-		Example:  "array1-b",
-		Option:   "spb",
-		Group:    nodeGroupEndpoint.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.emcvnx.spb"),
-		Types:    []string{"emcvnx"},
-	}
-	kwNodeArrayEMCVNXScope = keywords.Keyword{
-		Default: "0",
-		Example: "1",
-		Option:  "scope",
-		Group:   nodeGroupCredentials.ID,
-		Section: "array",
-		Text:    keywords.NewText(fs, "text/kw/node/array.emcvnx.scope"),
-		Types:   []string{"emcvnx"},
-	}
-	kwNodeArrayEVAManager = keywords.Keyword{
-		Example:  "evamanager.mycorp",
-		Option:   "manager",
-		Group:    nodeGroupEndpoint.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.eva.manager"),
-		Types:    []string{"eva"},
-	}
-	kwNodeArrayEVABin = keywords.Keyword{
-		Example: "/opt/sssu/bin/sssu",
-		Option:  "bin",
-		Group:   nodeGroupTools.ID,
-		Section: "array",
-		Text:    keywords.NewText(fs, "text/kw/node/array.eva.bin"),
-		Types:   []string{"eva"},
 	}
 	kwNodeArrayHDSBin = keywords.Keyword{
 		Example: "/opt/hds/bin/HiCommandCLI",
@@ -2340,43 +2250,6 @@ var (
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.hp3par.cli"),
 		Types:   []string{"hp3par"},
-	}
-	kwNodeArrayIBMDSHMC1 = keywords.Keyword{
-		Example:  "hmc1.mycorp",
-		Option:   "hmc1",
-		Group:    nodeGroupEndpoint.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.ibmds.hmc1"),
-		Types:    []string{"ibmds"},
-	}
-	kwNodeArrayIBMDSHMC2 = keywords.Keyword{
-		Example:  "hmc2.mycorp",
-		Option:   "hmc2",
-		Group:    nodeGroupEndpoint.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.ibmds.hmc2"),
-		Types:    []string{"ibmds"},
-	}
-	kwNodeArrayKeyRequired = keywords.Keyword{
-		Example:  "/path/to/key",
-		Option:   "key",
-		Group:    nodeGroupCredentials.ID,
-		Required: true,
-		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.key,required"),
-		Types:    []string{"netapp", "ibmsvc", "vioserver"},
-	}
-	kwNodeArrayNexentaPort = keywords.Keyword{
-		Converter: converters.Int,
-		Default:   "2000",
-		Example:   "2000",
-		Option:    "port",
-		Group:     nodeGroupEndpoint.ID,
-		Section:   "array",
-		Text:      keywords.NewText(fs, "text/kw/node/array.nexenta.port"),
-		Types:     []string{"nexenta"},
 	}
 
 	nodeCommonKeywords = []*keywords.Keyword{
@@ -2588,7 +2461,6 @@ var (
 		&kwNodePoolCompression,
 		&kwNodePoolTruenasDedup,
 		&kwNodePoolDedup,
-		&kwNodePoolDoradoHypermetroDomain,
 		&kwNodePoolAPI,
 		&kwNodePoolHOCHTTPProxy,
 		&kwNodePoolHOCHTTPSProxy,
@@ -2611,15 +2483,6 @@ var (
 		&kwNodeArraySymmetrixName,
 		&kwNodeArraySymmetrixSymcliPath,
 		&kwNodeArraySymmetrixSymcliConnect,
-		&kwNodeArrayServer,
-		&kwNodeArrayCenteraJavaBin,
-		&kwNodeArrayCenteraJcassDir,
-		&kwNodeArrayEMCVNXSecFile,
-		&kwNodeArrayEMCVNXSPA,
-		&kwNodeArrayEMCVNXSPB,
-		&kwNodeArrayEMCVNXScope,
-		&kwNodeArrayEVAManager,
-		&kwNodeArrayEVABin,
 		&kwNodeArrayHDSBin,
 		&kwNodeArrayHDSJREPath,
 		&kwNodeArrayHDSName,
@@ -2629,10 +2492,6 @@ var (
 		&kwNodeArrayHP3PARKey,
 		&kwNodeArrayHP3PARPwf,
 		&kwNodeArrayHP3PARCLI,
-		&kwNodeArrayIBMDSHMC1,
-		&kwNodeArrayIBMDSHMC2,
-		&kwNodeArrayKeyRequired,
-		&kwNodeArrayNexentaPort,
 	}
 )
 
