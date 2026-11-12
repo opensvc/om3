@@ -2,7 +2,9 @@ package imon
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -284,4 +286,64 @@ func TestTheFirstInstanceOfThePlacementLeadsWhenNoneIsACandidate(t *testing.T) {
 	m.scopeNodes = []string{"node2", m.localhost}
 	require.Equal(t, "node2", m.provisioningLeader(), "the placement decides")
 	require.False(t, m.isUnprovisionLeader())
+}
+
+// queuedActions records the states of the actions the manager queues from
+// now on.
+func queuedActions(t *testing.T) *[]instance.MonitorState {
+	t.Helper()
+	queued := make([]instance.MonitorState, 0)
+	testQueueAction = func(newState instance.MonitorState) {
+		queued = append(queued, newState)
+	}
+	t.Cleanup(func() { testQueueAction = nil })
+	return &queued
+}
+
+// A provision of a frozen instance leaves it frozen, the frozen flag is the
+// operator's, and ends once started or provisioned. It used to unfreeze the
+// instance, then go back to idle and check again what its start made: a
+// shared container of the object was found held, and the orchestration
+// failed with the instance up.
+func TestAProvisionLeavesAFrozenInstanceFrozen(t *testing.T) {
+	for _, state := range []instance.MonitorState{instance.MonitorStateStartSuccess, instance.MonitorStateProvisionSuccess} {
+		t.Run(state.String(), func(t *testing.T) {
+			m := newProvisionedTestManager(state)
+			frozenAt := time.Now()
+			m.instStatus[m.localhost] = instance.Status{Avail: status.Up, Provisioned: provisioned.NotApplicable, FrozenAt: frozenAt}
+			queued := queuedActions(t)
+
+			m.orchestrateProvisioned()
+			require.Equal(t, instance.MonitorStateIdle, m.state.State)
+			require.True(t, m.state.OrchestrationIsDone, "the orchestration must end")
+			require.Empty(t, *queued, "nothing must be queued, no unfreeze, no second check")
+			require.Equal(t, frozenAt, m.instStatus[m.localhost].FrozenAt)
+		})
+	}
+}
+
+// A provision checks once: the leader checks, starts what needs no
+// provision, and is done, frozen or not.
+func TestAProvisionChecksOnce(t *testing.T) {
+	for _, frozen := range []bool{false, true} {
+		t.Run(fmt.Sprintf("frozen=%v", frozen), func(t *testing.T) {
+			m := newProvisionedTestManager(instance.MonitorStateIdle)
+			m.state.IsLeader = true
+			queued := queuedActions(t)
+
+			m.orchestrateProvisioned()
+			m.state.State = instance.MonitorStatePreflightSuccess
+			m.orchestrateProvisioned()
+			st := instance.Status{Avail: status.Up, Provisioned: provisioned.NotApplicable}
+			if frozen {
+				st.FrozenAt = time.Now()
+			}
+			m.instStatus[m.localhost] = st
+			m.state.State = instance.MonitorStateStartSuccess
+			m.orchestrateProvisioned()
+
+			require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress, instance.MonitorStateStartProgress}, *queued)
+			require.True(t, m.state.OrchestrationIsDone)
+		})
+	}
 }
