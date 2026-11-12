@@ -18,7 +18,9 @@ func (t *Manager) orchestrateUnprovisioned() {
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
 	case instance.MonitorStateUnprovisionSuccess:
-		t.unprovisionedClearIfReached()
+		if !t.unprovisionedClearIfReached() {
+			t.unprovisionedFromUnprovisionSuccess()
+		}
 	case instance.MonitorStateUnprovisionFailure:
 		t.unprovisionedFromUnprovisionFailed()
 	}
@@ -41,6 +43,38 @@ func (t *Manager) unprovisionedFromUnprovisionFailed() {
 	}
 	t.loggerWithState().Infof("local instance unprovision failed -> set done")
 	t.done()
+}
+
+// unprovisionedFromUnprovisionSuccess ends the orchestration as an
+// unprovision failure when the unprovision succeeded and a status taken after
+// it still reads the instance provisioned: a resource flagged provisioned
+// that the unprovision removed, as a status evaluation running beside the
+// unprovision wrote back, held the orchestration for ever, nothing left to
+// run it again. The failure lingers, so an operator sees what is left.
+//
+// A status taken before the end of the unprovision says nothing of it, as the
+// one the unprovision command posted, dated before the monitor changed state:
+// a status refresh is asked, once, and its result decides.
+func (t *Manager) unprovisionedFromUnprovisionSuccess() {
+	if !t.isLocalStatusCurrent() {
+		return
+	}
+	st := t.instStatus[t.localhost]
+	if !st.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {
+		return
+	}
+	endedAt := t.state.StateUpdatedAt
+	if !st.UpdatedAt.After(endedAt) {
+		if !t.unprovisionStatusAskedFor.Equal(endedAt) {
+			t.unprovisionStatusAskedFor = endedAt
+			t.log.Infof("unprovisioned orchestration: the instance is %s, wait for a status taken after the unprovision", st.Provisioned)
+			t.requestStatusRefresh(t.instConfig.Priority)
+		}
+		return
+	}
+	t.loggerWithState().Warnf("unprovisioned orchestration: the unprovision succeeded, but a status taken after it says the instance is %s -> unprovision failed", st.Provisioned)
+	t.transitionTo(instance.MonitorStateUnprovisionFailure)
+	t.unprovisionedFromUnprovisionFailed()
 }
 
 func (t *Manager) UnprovisionedFromIdle() {

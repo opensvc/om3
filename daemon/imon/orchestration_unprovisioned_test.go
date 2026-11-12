@@ -3,6 +3,7 @@ package imon
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -68,4 +69,49 @@ func TestAnUnprovisionSuccessWaitsForTheStatus(t *testing.T) {
 
 	m.orchestrateUnprovisioned()
 	require.False(t, m.state.OrchestrationIsDone, "the orchestration must not be marked done")
+}
+
+// An unprovision that succeeded with the instance still read provisioned
+// waits for a status taken after it, asking a refresh once. A status taken
+// after it that still reads the instance provisioned, as a resource flagged
+// provisioned the unprovision removed, ends the orchestration as an
+// unprovision failure, rather than wait for ever.
+func TestAnUnprovisionSucceededLeavingTheInstanceProvisionedFails(t *testing.T) {
+	m := newUnprovisionedTestManager(instance.MonitorStateUnprovisionSuccess)
+	endedAt := time.Now()
+	m.state.StateUpdatedAt = endedAt
+	m.instStatus[m.localhost] = instance.Status{
+		Avail:       status.Down,
+		Provisioned: provisioned.Mixed,
+		UpdatedAt:   endedAt.Add(-time.Second),
+	}
+
+	m.orchestrateUnprovisioned()
+	require.Equal(t, instance.MonitorStateUnprovisionSuccess, m.state.State, "a status taken before the end decides nothing")
+	require.False(t, m.state.OrchestrationIsDone)
+	require.True(t, m.unprovisionStatusAskedFor.Equal(endedAt), "a status refresh asked")
+
+	m.instStatus[m.localhost] = instance.Status{
+		Avail:       status.Down,
+		Provisioned: provisioned.Mixed,
+		UpdatedAt:   endedAt.Add(time.Second),
+	}
+	m.orchestrateUnprovisioned()
+	require.Equal(t, instance.MonitorStateUnprovisionFailure, m.state.State)
+	require.True(t, m.state.OrchestrationIsDone, "the orchestration ends")
+}
+
+// An unprovision that succeeded and left the instance unprovisioned ends the
+// orchestration as before.
+func TestAnUnprovisionSucceededLeavingTheInstanceUnprovisionedEnds(t *testing.T) {
+	m := newUnprovisionedTestManager(instance.MonitorStateUnprovisionSuccess)
+	m.state.StateUpdatedAt = time.Now()
+	m.instStatus[m.localhost] = instance.Status{
+		Avail:       status.Down,
+		Provisioned: provisioned.False,
+		UpdatedAt:   time.Now().Add(time.Second),
+	}
+	m.orchestrateUnprovisioned()
+	require.True(t, m.state.OrchestrationIsDone)
+	require.Equal(t, instance.MonitorStateIdle, m.state.State)
 }

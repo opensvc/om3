@@ -156,6 +156,11 @@ type (
 		// for the resource files fetch and ingest long enough.
 		fetchHoldTimer *time.Timer
 
+		// unprovisionStatusAskedFor is the end of the unprovision a status
+		// refresh was asked for, the status of the instance read
+		// provisioned after it succeeded: asked once.
+		unprovisionStatusAskedFor time.Time
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
