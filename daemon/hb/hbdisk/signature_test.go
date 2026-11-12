@@ -26,7 +26,7 @@ func TestCheckSignature(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = f.Close() })
 	require.NoError(t, f.Truncate(metaSize(maxSlots)+maxSlots*sign.SlotSizeInt64))
-	require.NoError(t, sign.CreateAndFillDisk(dev))
+	require.NoError(t, sign.Sign(dev, sign.SignOptions{Force: true}))
 	b := base{
 		device: device{path: dev, file: f, metaSize: metaSize(maxSlots)},
 		log:    plog.NewDefaultLogger(),
@@ -35,12 +35,12 @@ func TestCheckSignature(t *testing.T) {
 	assert.False(t, b.checkSignature(), "signed: no change")
 	assert.False(t, b.invalidSig)
 
-	require.NoError(t, sign.RemoveHeaderFromDisk(dev))
+	require.NoError(t, sign.Wipe(dev, 0))
 	assert.True(t, b.checkSignature(), "wiped: suspended")
 	assert.True(t, b.invalidSig)
 	assert.False(t, b.checkSignature(), "still wiped: no change")
 
-	require.NoError(t, sign.CreateAndFillDisk(dev))
+	require.NoError(t, sign.Sign(dev, sign.SignOptions{Force: true}))
 	assert.True(t, b.checkSignature(), "signed again: resumed")
 	assert.False(t, b.invalidSig)
 
@@ -83,7 +83,7 @@ func TestInitialScan(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = f.Close() })
 	require.NoError(t, f.Truncate(metaSize(maxSlots)+maxSlots*sign.SlotSizeInt64))
-	require.NoError(t, sign.CreateAndFillDisk(dev))
+	require.NoError(t, sign.Sign(dev, sign.SignOptions{Force: true}))
 	newBase := func(localhost string) base {
 		return base{
 			device:    device{path: dev, file: f, metaSize: metaSize(maxSlots)},
@@ -125,7 +125,7 @@ func signedDisk(t *testing.T, maxSlots int) func(localhost string) base {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = f.Close() })
 	require.NoError(t, f.Truncate(metaSize(maxSlots)+int64(maxSlots)*sign.SlotSizeInt64))
-	require.NoError(t, sign.CreateAndFillDisk(dev))
+	require.NoError(t, sign.Sign(dev, sign.SignOptions{Force: true}))
 	return func(localhost string) base {
 		return base{
 			device:    device{path: dev, file: f, metaSize: metaSize(maxSlots)},

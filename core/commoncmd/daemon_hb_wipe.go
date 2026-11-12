@@ -23,7 +23,7 @@ func NewCmdHeartbeatWipe() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "wipe NAME...",
 		Short: "wipe a heartbeat disk",
-		Long: ForProgram("Remove the signature the nodes of a disk heartbeat claim their slot with.\n\n" +
+		Long: ForProgram("Remove the signature the nodes of a disk heartbeat claim their slot with, then the metadata area of their slots, max_slots pages of 4 KiB: a sign after the wipe starts from free slots.\n\n" +
 			HeartbeatNameHelp + "\n\nThe heartbeat must be of type disk: this action writes to its dev.\n\n" +
 			"A disk can hold the heartbeats of several clusters under one signature, which a wipe takes from them all. " +
 			"So the wipe first watches the disk for a heartbeat timeout, at most 20s, and is refused when nodes outside the heartbeat write to it. " +

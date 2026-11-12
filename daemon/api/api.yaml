@@ -2214,11 +2214,19 @@ paths:
   /api/node/name/{nodename}/daemon/hb/name/{name}/action/sign:
     post:
       description: |
-        Sign a heartbeat disk
+        Sign a heartbeat disk.
+
+        A disk with no heartbeat header gets its metadata area, `max_slots`
+        pages, zeroed before the header is written. One holding a signature
+        not of a heartbeat, as a filesystem, is refused with a 409, as the
+        sign would erase it: the `force` parameter signs anyway. A disk too
+        small for the metadata area and a data slot per node is refused with
+        a 400. A disk already signed keeps its slots.
       operationId: PostDaemonHeartbeatSign
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathHeartbeatName'
+        - $ref: '#/components/parameters/inQueryForce'
       tags:
         - node / daemon
       security:
@@ -2233,6 +2241,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
 

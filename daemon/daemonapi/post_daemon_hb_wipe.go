@@ -83,7 +83,7 @@ func localPostDaemonHeartbeatWipe(ctx echo.Context, name api.InPathHeartbeatName
 	}
 
 	log.Infof("wipe heartbeat %s dev %s", section, devPath)
-	err = sign.RemoveHeaderFromDisk(devPath)
+	err = sign.Wipe(devPath, config.GetInt(key.New(section, "max_slots")))
 	if err != nil {
 		log.Warnf("wipe heartbeat disk %s dev %s failed: remove header: %s", section, devPath, err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveHeaderFromDisk", "wipe heartbeat disk %s dev %s failed: remove header: %s", section, devPath, err)
