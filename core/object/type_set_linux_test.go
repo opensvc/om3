@@ -36,6 +36,9 @@ func TestAWriteSettingAnUnknownTypeIsRefused(t *testing.T) {
 	assert.ErrorContains(t, err, "pool#x.type: no pool driver is named bogus, the known ones are ")
 	assert.ErrorContains(t, err, "directory")
 
+	require.ErrorIs(t, set(cluster("[cluster]\nnodes = n1\n"), "pool#x.type=dorado"), xconfig.ErrUnknownType, "dorado is not ported")
+	require.ErrorIs(t, set(cluster("[cluster]\nnodes = n1\n"), "array#x.type=eva"), xconfig.ErrUnknownType, "eva is not ported")
+	require.NoError(t, set(cluster("[cluster]\nnodes = n1\n"), "array#x.type=pure"))
 	require.NoError(t, set(cluster("[cluster]\nnodes = n1\n"), "pool#x.type=directory"))
 	require.NoError(t, set(cluster("[cluster]\nnodes = n1\n"), "pool#x.type=share"), "a type the keyword offers")
 	require.NoError(t, set(cluster("[cluster]\nnodes = n1\n[pool#old]\ntype = bogus\n"), "pool#x.type=directory", "cluster.name=c1"),

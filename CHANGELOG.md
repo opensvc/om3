@@ -1046,6 +1046,8 @@ These drivers of v2.1 have no v3 counterpart:
 * sync: `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
 * the `certificate`, `expose`, `hashpolicy`, `route` and `vhost` sections, which
   described the routes of an object to the envoy ingress gateway of v2.
+* the node configuration array: `centera`, `dorado`, `emcvnx`, `eva`, `ibmds`, `ibmsvc`, `netapp`, `nexenta`, `vioserver`, and their keywords
+* the node configuration pool: `dorado`, and its `hypermetrodomain` keyword
 
 A section of one of them in an upgraded configuration is not a resource: the
 object runs without it, and no action touches it. The configuration validation
@@ -1053,6 +1055,9 @@ warns about it, and the instance status lists it as an optional resource with
 the warning `the <driver> driver is not supported by this agent`, which makes
 the overall status of the instance warn. The availability status is not
 changed, so no monitor action is triggered by a resource that never runs.
+
+A pool or array section of one of them in an upgraded node or cluster
+configuration is ignored, and the validation warns about it.
 
 A write setting the `type` of a section to a driver this agent does not know,
 as `om cluster config update --set pool#x.type=bogus`, is refused, where it was
