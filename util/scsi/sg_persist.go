@@ -48,6 +48,24 @@ func (t SGPersistDriver) readRegistrations(dev device.T) ([]string, error) {
 	return l, nil
 }
 
+// ReadFullStatus reads the full status of the reservation of the device on
+// the first path answering.
+func (t SGPersistDriver) ReadFullStatus(dev device.T) ([]FullStatusEntry, error) {
+	paths, err := dev.SCSIPaths()
+	if err != nil {
+		return nil, err
+	}
+	var errs error
+	for _, path := range paths {
+		b, err := t.readIn(path, "--read-full-status")
+		if err == nil {
+			return parseFullStatus(b), nil
+		}
+		errs = errors.Join(errs, err)
+	}
+	return nil, fmt.Errorf("no %s path answered the full status: %w", dev, errs)
+}
+
 func (t SGPersistDriver) Register(dev device.T, key string) error {
 	paths, err := dev.SCSIPaths()
 	if err != nil {

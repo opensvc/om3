@@ -2,6 +2,7 @@ package scsi
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -369,4 +370,57 @@ func TestTheDropOfTheRegistrationsOfBeforeYieldsToAPeerReservingMeanwhile(t *tes
 	assert.Empty(t, lun.preempts, "no preempt")
 	assert.NotContains(t, lun.registered, "c")
 	assert.NotContains(t, lun.registered, "d")
+}
+
+// fullStatusLun is a fake lun answering the full status of its reservation.
+type fullStatusLun struct {
+	*fakeLun
+	entries []FullStatusEntry
+}
+
+func (t fullStatusLun) ReadFullStatus(device.T) ([]FullStatusEntry, error) { return t.entries, nil }
+
+// recordStatus records the messages of a status.
+type recordStatus struct{ errors, warnings []string }
+
+func (t *recordStatus) Info(string, ...any) {}
+func (t *recordStatus) Warn(s string, args ...any) {
+	t.warnings = append(t.warnings, fmt.Sprintf(s, args...))
+}
+func (t *recordStatus) Error(s string, args ...any) {
+	t.errors = append(t.errors, fmt.Sprintf(s, args...))
+}
+
+// A registration of our key on a current path under the reservation of
+// another key is an error: the node has write access to a lun another node
+// holds, as a registration of a path of before made live again by a relogin
+// given its session id. Registrations of paths of before only are a warning.
+func TestRegistrationsUnderAForeignReservationAreReported(t *testing.T) {
+	saved := readCurrentNexus
+	t.Cleanup(func() { readCurrentNexus = saved })
+	current := nexus{TransportID: "iqn.x:n1,i,0x00023d000002", RelativeTargetPort: 0xa}
+	readCurrentNexus = func(device.T) ([]nexus, error) { return []nexus{current}, nil }
+
+	check := func(entries ...FullStatusEntry) *recordStatus {
+		h := newHandle(t, newFakeLun("c"))
+		rec := &recordStatus{}
+		h.StatusLogger = rec
+		h.persistentReservationDriver = fullStatusLun{fakeLun: newFakeLun("c"), entries: entries}
+		h.checkRegistrationsUnderForeign(h.Devices[0], foreignKey)
+		return rec
+	}
+	holder := FullStatusEntry{Key: foreignKey, RelativeTargetPort: 0x1, Holder: true, TransportID: "iqn.x:n2,i,0x00023d000001"}
+
+	rec := check(holder, FullStatusEntry{Key: ourKey, RelativeTargetPort: 0xa, TransportID: "iqn.x:n1,i,0x00023d000002"})
+	require.Len(t, rec.errors, 1)
+	assert.Contains(t, rec.errors[0], "the node has write access to a device another node holds")
+
+	rec = check(holder, FullStatusEntry{Key: ourKey, RelativeTargetPort: 0xa, TransportID: "iqn.x:n1,i,0x00023d000001"})
+	assert.Empty(t, rec.errors)
+	require.Len(t, rec.warnings, 1)
+	assert.Contains(t, rec.warnings[0], "1 registrations of "+ourKey+" of paths of before")
+
+	rec = check(holder)
+	assert.Empty(t, rec.errors)
+	assert.Empty(t, rec.warnings)
 }

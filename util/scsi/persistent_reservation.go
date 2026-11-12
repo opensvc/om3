@@ -207,6 +207,9 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 		} else if reservation != t.Key {
 			reservationMsg = fmt.Sprintf("%s is reserved by %s", dev, reservation)
 			t.ForeignReserved = append(t.ForeignReserved, dev.String())
+			if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err == nil && t.countHandledRegistrations(registrations) > 0 {
+				t.checkRegistrationsUnderForeign(dev, reservation)
+			}
 		} else {
 			reservationMsg = fmt.Sprintf("%s is reserved", dev)
 			s = status.Up
