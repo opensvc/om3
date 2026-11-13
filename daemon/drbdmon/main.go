@@ -284,6 +284,12 @@ func (t *source) Check(ctx context.Context) error {
 		return nil
 	}
 	if err := t.probe(ctx); err != nil {
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			// A probe timed out, or that could not run, says nothing of
+			// the installed drbd: it is tried again.
+			return err
+		}
 		return fmt.Errorf("events2 is not supported by the installed drbd: %s: the drbd state changes are seen at the scheduled status only: %w", err, evwatch.ErrUnsupported)
 	}
 	return nil
@@ -350,6 +356,11 @@ func (t *source) probe(ctx context.Context) error {
 	// A child holding the output open does not hold the probe longer.
 	cmd.WaitDelay = probeWaitDelay
 	b, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		// Killed for its timeout: an exit error that says nothing of
+		// the installed drbd.
+		return fmt.Errorf("events2 --now: %w", ctx.Err())
+	}
 	if err != nil {
 		if msg := strings.TrimSpace(string(b)); msg != "" {
 			return fmt.Errorf("%w: %s", err, firstLine(msg))

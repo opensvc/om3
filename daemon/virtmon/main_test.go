@@ -51,6 +51,10 @@ func TestParseEvent(t *testing.T) {
 }
 
 // installVirsh puts a virsh script first in the PATH, or none at all.
+// systemPath is the PATH the tests start with, which the scripts of a test
+// run their commands from, whatever an earlier test case set.
+var systemPath = os.Getenv("PATH")
+
 func installVirsh(t *testing.T, body string) {
 	t.Helper()
 	d := t.TempDir()
@@ -59,7 +63,7 @@ func installVirsh(t *testing.T, body string) {
 		return
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(d, "virsh"), []byte("#!/bin/sh\n"+body+"\n"), 0o755))
-	t.Setenv("PATH", d+":"+os.Getenv("PATH"))
+	t.Setenv("PATH", d+":"+systemPath)
 }
 
 // A node with no virsh, or one too old to print the events, can not run the
