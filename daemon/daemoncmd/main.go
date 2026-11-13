@@ -83,6 +83,13 @@ type (
 		daemonsys Manager
 		api       daemonAPI
 		procs     processes
+
+		// apiDaemonPid is the pid of the daemon which asked for its
+		// restart through its api, and forked this command. Set, the
+		// restart is queued to systemd from outside of the unit, and
+		// returns, and it is done only if that daemon still runs: a stop
+		// requested meanwhile wins.
+		apiDaemonPid int
 	}
 
 	// Manager is the service manager running the daemon, systemd.
@@ -98,8 +105,12 @@ type (
 		// Start, Restart and Stop return when the job of the unit
 		// ended, and an error when its result is not "done".
 		Start(ctx context.Context) error
-		Restart() error
+		Restart(ctx context.Context) error
 		Stop(context.Context) error
+
+		// RestartDetached queues a restart of the unit, if it runs, from
+		// outside of the unit, and returns.
+		RestartDetached() error
 
 		IsSystemStopping() (bool, error)
 	}
@@ -291,6 +302,12 @@ func New(c *client.T) *T {
 	}
 }
 
+// SetAPIDaemonPid says the command was forked by the daemon of pid, to
+// serve a restart its api received.
+func (t *T) SetAPIDaemonPid(pid int) {
+	t.apiDaemonPid = pid
+}
+
 func (t *T) LoadManager(ctx context.Context) error {
 	var i any
 	i, err := daemonsys.New(ctx)
@@ -307,9 +324,12 @@ func (t *T) LoadManager(ctx context.Context) error {
 	return nil
 }
 
-// Restart restarts the daemon.
+// Restart restarts the daemon, and returns when it runs again.
 //
-// Under systemd, the restart is forwarded to systemd.
+// Under systemd, the restart is a job of the unit, which a stop requested
+// meanwhile replaces: the restart then fails, and the stop wins. A restart
+// the api asked for, see SetAPIDaemonPid, is queued from outside of the
+// unit, and returns at once.
 //
 // Without systemd, the restart stops then starts the daemon, holding the
 // cli lock: a stop requested meanwhile waits for the restart to end, then
@@ -327,7 +347,7 @@ func (t *T) Restart(ctx context.Context, profile string) error {
 	// note: always ask manager for restart (during POST /daemon/restart handler
 	// the server api is probably CalledFromManager). And systemd unit doesn't define
 	// restart command.
-	return t.restartWithManager()
+	return t.restartWithManager(ctx)
 }
 
 func (t *T) SetNode(node string) {
@@ -575,6 +595,11 @@ func (t *T) startWithManager(ctx context.Context) error {
 	} else if isRunning {
 		return ErrAlreadyRunning
 	}
+	return t.startUnit(ctx)
+}
+
+// startUnit starts the unit, and waits for the daemon to run.
+func (t *T) startUnit(ctx context.Context) error {
 	if err := t.daemonsys.Start(ctx); err != nil {
 		return fmt.Errorf("daemonsys start: %w", err)
 	}
@@ -597,9 +622,20 @@ func (t *T) restartWithoutManager(profile string) error {
 
 // restartLocked stops the daemon, then calls start, holding the cli lock:
 // a stop requested meanwhile, which takes it too, waits for the restart to
-// end, then stops.
+// end, then stops. A restart the api asked for, which a stop took the lock
+// before, finds the daemon which asked for it stopped, and does nothing: the
+// stop wins either way.
 func (t *T) restartLocked(start func() error) error {
+	log := logger("restart: ")
 	return lock.Func(cliLockPath, lockTimeout, "daemon restart", func() error {
+		if t.apiDaemonPid > 0 {
+			if stopped, err := t.stopped(t.apiDaemonPid); err != nil {
+				return err
+			} else if stopped {
+				log.Infof("daemon pid %d, which asked for the restart, stopped meanwhile: no restart", t.apiDaemonPid)
+				return nil
+			}
+		}
 		if err := t.stopMainLocked(false); err != nil {
 			return err
 		}
@@ -618,9 +654,39 @@ func unitRunsDaemon(state string) bool {
 	}
 }
 
-func (t *T) restartWithManager() error {
-	if err := t.daemonsys.Restart(); err != nil {
+// restartWithManager restarts the unit.
+//
+// From the command line, it waits for the end of the restart job, which must
+// be done, as a restart a stop replaced is canceled, and for the daemon to
+// run. Forked by the daemon to serve its api, it lives in the unit control
+// group, and queues the restart through systemd-run.
+//
+// When the unit is not running, a daemon answering was started outside of it,
+// and a start of the unit would fail on it: as v2 did, it is stopped, then the
+// unit is started.
+func (t *T) restartWithManager(ctx context.Context) error {
+	log := logger("restart: ")
+	state, err := t.daemonsys.ActiveState(ctx)
+	if err != nil {
+		return fmt.Errorf("can't detect the unit active state: %w", err)
+	}
+	if !unitRunsDaemon(state) {
+		return t.restartLocked(func() error {
+			return t.startUnit(ctx)
+		})
+	}
+	if t.apiDaemonPid > 0 {
+		log.Infof("queue the restart of the unit")
+		if err := t.daemonsys.RestartDetached(); err != nil {
+			return fmt.Errorf("daemonsys restart detached: %w", err)
+		}
+		return nil
+	}
+	if err := t.daemonsys.Restart(ctx); err != nil {
 		return fmt.Errorf("daemonsys restart: %w", err)
+	}
+	if err := t.WaitRunning(); err != nil {
+		return fmt.Errorf("wait running: %w", err)
 	}
 	return nil
 }
