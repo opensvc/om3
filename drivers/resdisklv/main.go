@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/lvm2"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
@@ -356,16 +357,55 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 
 // ResizePlan implements resource.Resizer.
 //
-// A logical volume holds what it is given, so it asks the volume group below
-// it for the same size.
+// A logical volume takes what it grows by from the free space of its volume
+// group, which holds other volumes too: it asks the group for the space the
+// group has taken, plus that growth, rounded up to whole extents. A group
+// with the free space holds that already, and is not asked to grow. Asking
+// it for the size of the volume alone said a group of other volumes held it,
+// with no free space left.
+//
+// A thin volume is carved from its thin pool, which over-commits: it asks
+// the size it is given. So does a volume whose group can not be read.
 func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
-	if _, err := t.resizer(); err != nil {
+	lv, err := t.resizer()
+	if err != nil {
 		return 0, err
 	}
 	if err := t.refuseShareSize(); err != nil {
 		return 0, err
 	}
-	return to, nil
+	if t.ThinPool != "" {
+		return to, nil
+	}
+	from, err := lv.Size(ctx)
+	if err != nil {
+		return to, nil
+	}
+	vg := lvm2.NewVG(t.VGName, lvm2.WithLogger(t.Log()))
+	size, err := vg.Size(ctx)
+	if err != nil {
+		return to, nil
+	}
+	free, err := vg.Free(ctx)
+	if err != nil {
+		return to, nil
+	}
+	extent, _ := vg.ExtentSize(ctx)
+	return vgNeed(size, free, from, to, extent), nil
+}
+
+// vgNeed is the size a volume group of size, with free bytes unused, has to
+// hold for a volume of it to grow from from to to: what it has taken, plus
+// the growth, rounded up to whole extents.
+func vgNeed(size, free, from, to, extent int64) int64 {
+	grow := to - from
+	if grow < 0 {
+		grow = 0
+	}
+	if extent > 0 && grow%extent != 0 {
+		grow = (grow/extent + 1) * extent
+	}
+	return size - free + grow
 }
 
 // refuseShareSize stops a resize of a logical volume whose size is written as
