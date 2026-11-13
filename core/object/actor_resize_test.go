@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -158,10 +159,12 @@ func TestALinkTranslatesTheSizeItAsksBelow(t *testing.T) {
 // error names both the link that cannot and the resource the size was asked
 // of, so nothing is left half resized and the answer is about what was asked.
 func TestAChainWithALinkThatCannotResizeIsRefused(t *testing.T) {
+	// A link that has to grow, and cannot, refuses the chain: nothing is
+	// grown under a link that would refuse once reached.
 	chain := []resource.Driver{
 		&fakeLink{rid: "fs#1", has: 10 * g},
 		&fakeLink{rid: "disk#1", has: 10 * g},
-		&sizerOnly{rid: "disk#vg", has: 100 * g},
+		&sizerOnly{rid: "disk#vg", has: 10 * g},
 	}
 	change, err := sizeconv.ParseChange("+1g")
 	require.NoError(t, err)
@@ -170,6 +173,59 @@ func TestAChainWithALinkThatCannotResizeIsRefused(t *testing.T) {
 	assert.Contains(t, err.Error(), "disk#vg")
 	assert.Contains(t, err.Error(), "cannot resize")
 	assert.Contains(t, err.Error(), "fs#1")
+}
+
+// refusingLink cannot grow, as a raid0 array, and says so when asked.
+type refusingLink struct {
+	fakeLink
+}
+
+func (t *refusingLink) ResizePlan(context.Context, int64) (int64, error) {
+	return 0, fmt.Errorf("a raid0 array cannot be grown onto members that grew")
+}
+
+// The walk stops at a level holding what is asked of it: a logical volume
+// growing into the free space of its volume group asks nothing of the raid0
+// under the group, which cannot grow, and the levels below are listed, not
+// asked.
+func TestTheWalkStopsAtALevelHoldingWhatIsAsked(t *testing.T) {
+	chain := []resource.Driver{
+		&fakeLink{rid: "fs#1", has: 12 * g},
+		&fakeLink{rid: "disk#lv", has: 12 * g},
+		&sizerOnly{rid: "disk#vg", has: 16 * g},
+		&refusingLink{fakeLink{rid: "disk#md", has: 16 * g}},
+	}
+	p := plan(t, chain, "+2g")
+	require.Len(t, p.Steps, 4)
+	assert.Equal(t, []string{"disk#md", "disk#vg", "disk#lv", "fs#1"}, rids(p))
+	assert.True(t, p.Steps[0].Skip)
+	assert.Contains(t, p.Steps[0].Comment, "not asked")
+	assert.True(t, p.Steps[1].Skip)
+	assert.Contains(t, p.Steps[1].Comment, "already holds")
+	assert.False(t, p.Steps[2].Skip)
+	assert.Equal(t, int64(14*g), p.Steps[2].To)
+
+	// Where the level has to grow, the link below it is asked, and refuses.
+	chain[2] = &fakeLink{rid: "disk#vg", has: 12 * g}
+	chain[3] = &refusingLink{fakeLink{rid: "disk#md", has: 12 * g}}
+	change, err := sizeconv.ParseChange("+2g")
+	require.NoError(t, err)
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
+	assert.ErrorContains(t, err, "raid0")
+}
+
+// A link asking more of a device no resource handles than it holds is
+// refused, beyond the tolerance of the formulas rounding up.
+func TestADeviceNothingGrowsRefusesANeedItDoesNotHold(t *testing.T) {
+	former := deviceSize
+	defer func() { deviceSize = former }()
+	deviceSize = func(string) (int64, error) { return 16 * 1024 * 1024, nil }
+	err := refuseShortDevices(36*1024*1024, []string{"/dev/sda"})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "/dev/sda")
+	assert.ErrorContains(t, err, "nothing below it can grow")
+	assert.NoError(t, refuseShortDevices(16*1024*1024+512*1024, []string{"/dev/sda"}), "within the tolerance")
+	assert.NoError(t, refuseShortDevices(36*1024*1024, nil), "no device unmanaged")
 }
 
 // A size that leaves nothing is refused rather than applied.

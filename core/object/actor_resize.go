@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
 	"github.com/opensvc/om3/v3/core/xerrors"
+	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -510,10 +511,14 @@ func resizeLinkKey(p naming.Path, rid string) string {
 // ResizePlan works out what resizing rid to the given size would do, and
 // changes nothing.
 //
-// Every link is asked, so a chain holding one link that cannot do it is
-// refused whole. A link answers the size it needs from the link below, which
-// is not always the size it was asked for: a raid6 md holding n devices needs
-// to(n-2) from each.
+// Every link that has to grow is asked, so a chain holding one link that
+// cannot do it is refused whole. A link answers the size it needs from the
+// link below, which is not always the size it was asked for: a raid6 md
+// holding n devices needs to/(n-2) from each, and a logical volume needs the
+// space its volume group has taken plus its growth. The walk stops at a level
+// holding what it is asked: the links below it are not asked, and are listed.
+// A link asking more than a device no resource handles holds is refused:
+// nothing below it grows.
 func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Change, opts ResizeOptions) (ResizePlan, error) {
 	var plan ResizePlan
 
@@ -638,6 +643,20 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 
 	levelSteps := make([][]ResizeStep, 0, len(chain))
 	for levelIndex, level := range chain {
+		if levelIndex > 0 && levelHolds(ctx, level, to) {
+			// A level holding what the level above asks of it is not asked
+			// anything, and neither is what is below it: a logical volume
+			// growing into the free space of its volume group asks nothing
+			// of the array under the group, which may not be able to grow.
+			//
+			// The head is always asked: asking a chain for the size its head
+			// holds is how a chain a resize left uneven is finished.
+			levelSteps = append(levelSteps, notAskedSteps(ctx, level, stages[levelIndex], "already holds what the link above needs"))
+			for i, rest := range chain[levelIndex+1:] {
+				levelSteps = append(levelSteps, notAskedSteps(ctx, rest, stages[levelIndex+1+i], "not asked: a link above holds what is needed"))
+			}
+			break
+		}
 		// Every resource of a level is asked for the same size, and the
 		// level below has to satisfy the most demanding of them.
 		var needBelow int64
@@ -647,16 +666,36 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 			if !ok {
 				return plan, resizeRefusal(link, head, home, "reports no size")
 			}
-			resizer, ok := link.r.(resource.Resizer)
-			if !ok {
-				return plan, resizeRefusal(link, head, home, "cannot resize")
-			}
 			linkFrom, err := sizer.CurrentSize(ctx)
 			if err != nil {
 				return plan, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
 			}
+			if levelIndex > 0 && linkFrom >= to {
+				// A link holding the size is not asked how it would grow:
+				// it does not, and one that cannot is no reason to refuse.
+				steps = append(steps, ResizeStep{
+					Path:    link.path.String(),
+					RID:     link.r.RID(),
+					Driver:  driverOf(link.r),
+					From:    linkFrom,
+					To:      linkFrom,
+					Stage:   stages[levelIndex],
+					Skip:    true,
+					Comment: "already holds what the link above needs",
+					r:       link.r,
+					owner:   link.owner,
+				})
+				continue
+			}
+			resizer, ok := link.r.(resource.Resizer)
+			if !ok {
+				return plan, resizeRefusal(link, head, home, "cannot resize")
+			}
 			linkNeedBelow, err := resizer.ResizePlan(ctx, to)
 			if err != nil {
+				return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
+			}
+			if err := checkUnmanagedBelow(ctx, link, linkNeedBelow); err != nil {
 				return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
 			}
 			if linkNeedBelow > needBelow {
@@ -702,6 +741,111 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 	}
 	unskipSpansBelow(&plan)
 	return plan, nil
+}
+
+// levelHolds says every link of a level holds the size asked of it.
+func levelHolds(ctx context.Context, level resizeLevel, to int64) bool {
+	for _, link := range level {
+		sizer, ok := link.r.(resource.Sizer)
+		if !ok {
+			return false
+		}
+		from, err := sizer.CurrentSize(ctx)
+		if err != nil || from < to {
+			return false
+		}
+	}
+	return true
+}
+
+// notAskedSteps lists the links of a level a resize asks nothing of, a level
+// above holding what is needed, so a plan shows the whole chain.
+func notAskedSteps(ctx context.Context, level resizeLevel, stage int, comment string) []ResizeStep {
+	steps := make([]ResizeStep, 0, len(level))
+	for _, link := range level {
+		var from int64
+		if sizer, ok := link.r.(resource.Sizer); ok {
+			from, _ = sizer.CurrentSize(ctx)
+		}
+		steps = append(steps, ResizeStep{
+			Path:    link.path.String(),
+			RID:     link.r.RID(),
+			Driver:  driverOf(link.r),
+			From:    from,
+			To:      from,
+			Stage:   stage,
+			Skip:    true,
+			Comment: comment,
+			r:       link.r,
+			owner:   link.owner,
+		})
+	}
+	return steps
+}
+
+// unmanagedDevices returns the devices a link rests on that no resource of
+// its object handles: nothing a resize walks grows them.
+func unmanagedDevices(ctx context.Context, link resizeLink) []string {
+	if link.owner == nil {
+		return nil
+	}
+	if namer, ok := link.r.(resource.ResizeRestsOn); ok {
+		if link.owner.resizeProvider(ctx, namer.ResizeRestsOn(ctx)) != nil {
+			return nil
+		}
+	}
+	sub, ok := link.r.(resource.SubDeviceser)
+	if !ok {
+		return nil
+	}
+	l := make([]string, 0)
+	for _, dev := range sub.SubDevices(ctx) {
+		if below, err := link.owner.ResourceHandlingDevice(ctx, dev); err == nil && below == nil {
+			l = append(l, dev.Path())
+		}
+	}
+	return l
+}
+
+// deviceSize reads the size of a device, and is replaced by the tests.
+var deviceSize = func(p string) (int64, error) {
+	return device.New(p).Size()
+}
+
+// checkUnmanagedBelow refuses a link asking of a device no resource handles
+// more than it holds: nothing grows it, so the resize would fail once the
+// links above are grown, as mdadm does on members that are disks.
+//
+// What a link asks below is worked out by formulas rounding up, to chunks
+// and extents, or adding the overhead of a member read from another, so a
+// device a little short of it may still do: the resize tool decides then.
+func checkUnmanagedBelow(ctx context.Context, link resizeLink, need int64) error {
+	return refuseShortDevices(need, unmanagedDevices(ctx, link))
+}
+
+// refuseShortDevices refuses a need larger than what one of the devices
+// holds, beyond the tolerance of the formulas.
+func refuseShortDevices(need int64, paths []string) error {
+	for _, p := range paths {
+		size, err := deviceSize(p)
+		if err != nil || size <= 0 {
+			continue
+		}
+		if need > size+unmanagedTolerance(size) {
+			return fmt.Errorf("it asks %s of %s, which holds %s, and nothing below it can grow", sizeconv.BSizeCompact(float64(need)), p, sizeconv.BSizeCompact(float64(size)))
+		}
+	}
+	return nil
+}
+
+// unmanagedTolerance is how much more than a device holds a link may ask of
+// it before the plan refuses: 1% of the device, 1MiB at the least.
+func unmanagedTolerance(size int64) int64 {
+	t := size / 100
+	if t < 1024*1024 {
+		t = 1024 * 1024
+	}
+	return t
 }
 
 // unskipSpansBelow puts back the steps that were skipped for holding the size

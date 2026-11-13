@@ -643,10 +643,22 @@ func (t *actor) EncapNodes() ([]string, error) {
 	return l.([]string), nil
 }
 
+// ResourceHandlingDevice returns the resource exposing the device p, nil for
+// none.
+//
+// Several can: a volume group exposes the devices of its logical volumes, and
+// each logical volume its own. The one exposing the fewest devices is the one
+// handling p: a filesystem on a logical volume rests on the volume, not on
+// its group, which a resize walking down from the filesystem would grow
+// instead of the volume.
 func (t *actor) ResourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error) {
 	type exposedDevicer interface {
 		ExposedDevices(context.Context) device.L
 	}
+	var (
+		found  resource.Driver
+		fewest int
+	)
 	for _, r := range t.Resources() {
 		h, ok := r.(exposedDevicer)
 		if !ok {
@@ -657,13 +669,15 @@ func (t *actor) ResourceHandlingDevice(ctx context.Context, p device.T) (resourc
 		} else if v == provisioned.False {
 			continue
 		}
-		if v, err := h.ExposedDevices(ctx).Contains(p); err != nil {
+		exposed := h.ExposedDevices(ctx)
+		if v, err := exposed.Contains(p); err != nil {
 			return nil, err
-		} else if v {
-			return r, nil
+		} else if v && (found == nil || len(exposed) < fewest) {
+			found = r
+			fewest = len(exposed)
 		}
 	}
-	return nil, nil
+	return found, nil
 }
 
 // ResourceHandlingFile returns the resource hosting a filename.
