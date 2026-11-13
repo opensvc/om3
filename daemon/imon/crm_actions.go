@@ -387,11 +387,20 @@ func (t *Manager) crmActionWithEnv(orchestration uuid.UUID, title string, expect
 		cmdEnv = append(cmdEnv, v)
 	}
 
+	// The error the command ends on is the last line it writes as one: an
+	// exit code alone says it failed, not why, which an orchestration
+	// failing on every node has to say where it is followed.
+	var lastError string
 	cmdOptions := []funcopt.O{
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(t.log),
 		command.WithVarEnv(cmdEnv...),
+		command.WithOnStderrLine(func(s string) {
+			if after, ok := strings.CutPrefix(strings.TrimSpace(s), "Error: "); ok {
+				lastError = after
+			}
+		}),
 	}
 	if len(expectExitCodes) > 0 {
 		cmdOptions = append(cmdOptions, command.WithIgnoredExitCodes(append([]int{0}, expectExitCodes...)...))
@@ -437,6 +446,9 @@ func (t *Manager) crmActionWithEnv(orchestration uuid.UUID, title string, expect
 	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
 	err := cmd.Wait()
 	proc.Unregister(pid)
+	if err != nil && lastError != "" {
+		err = fmt.Errorf("%w: %s", err, lastError)
+	}
 	if err != nil {
 		duration := time.Now().Sub(startTime)
 		t.publisher.Pub(&msgbus.ExecFailed{

@@ -103,6 +103,8 @@ var (
 	keySize             = key.New("DEFAULT", "size")
 	keyTopology         = key.New("DEFAULT", "topology")
 	keyStonith          = key.New("DEFAULT", "stonith")
+	keyProvision        = key.New("DEFAULT", "provision")
+	keyUnprovision      = key.New("DEFAULT", "unprovision")
 
 	keyHardAffinity     = key.New("DEFAULT", "hard_affinity")
 	keyHardAntiAffinity = key.New("DEFAULT", "hard_anti_affinity")
@@ -403,24 +405,26 @@ func (t *Manager) configFileCheck() error {
 	}
 	if actor, ok := any(t.configure).(object.Actor); ok {
 		cfg.ActorConfig = &instance.ActorConfig{
-			App:              cf.GetString(keyApp),
-			Children:         t.getChildren(cf),
-			Env:              cf.GetString(keyEnv),
-			IsDisabled:       cf.GetBool(keyDisable),
-			MonitorAction:    t.getMonitorAction(cf),
-			Orchestrate:      t.getOrchestrate(cf),
-			Parents:          t.getParents(cf),
-			PreMonitorAction: cf.GetString(keyPreMonitorAction),
-			PlacementPolicy:  t.getPlacementPolicy(cf),
-			Resources:        t.getResources(cf),
-			Schedules:        make([]schedule.Config, 0),
-			Subsets:          t.getSubsets(cf),
-			Topology:         t.getTopology(cf),
-			Stonith:          cf.GetBool(keyStonith),
-			HardAffinity:     t.getPaths(cf, keyHardAffinity),
-			HardAntiAffinity: t.getPaths(cf, keyHardAntiAffinity),
-			SoftAffinity:     t.getPaths(cf, keySoftAffinity),
-			SoftAntiAffinity: t.getPaths(cf, keySoftAntiAffinity),
+			App:                 cf.GetString(keyApp),
+			Children:            t.getChildren(cf),
+			Env:                 cf.GetString(keyEnv),
+			IsDisabled:          cf.GetBool(keyDisable),
+			MonitorAction:       t.getMonitorAction(cf),
+			Orchestrate:         t.getOrchestrate(cf),
+			Parents:             t.getParents(cf),
+			PreMonitorAction:    cf.GetString(keyPreMonitorAction),
+			PlacementPolicy:     t.getPlacementPolicy(cf),
+			Resources:           t.getResources(cf),
+			Schedules:           make([]schedule.Config, 0),
+			Subsets:             t.getSubsets(cf),
+			Topology:            t.getTopology(cf),
+			Stonith:             cf.GetBool(keyStonith),
+			ProvisionDisabled:   !cf.GetBool(keyProvision),
+			UnprovisionDisabled: !cf.GetBool(keyUnprovision),
+			HardAffinity:        t.getPaths(cf, keyHardAffinity),
+			HardAntiAffinity:    t.getPaths(cf, keyHardAntiAffinity),
+			SoftAffinity:        t.getPaths(cf, keySoftAffinity),
+			SoftAntiAffinity:    t.getPaths(cf, keySoftAntiAffinity),
 		}
 		if d := cf.GetDuration(keyWaitSyncsTimeout); d != nil {
 			cfg.ActorConfig.WaitSyncsTimeout = *d

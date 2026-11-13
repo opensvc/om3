@@ -5,12 +5,13 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"github.com/opensvc/om3/v3/core/network"
 	"net"
 	"slices"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/opensvc/om3/v3/core/network"
 
 	"github.com/google/uuid"
 
@@ -675,6 +676,13 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 					globalExpectRefused()
 					return err
 				}
+			}
+		case instance.MonitorGlobalExpectUnprovisioned, instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectProvisioned:
+			if reason := t.provisionDisabledRefusal(*c.Value.GlobalExpect); reason != "" {
+				err := fmt.Errorf("%s", reason)
+				t.log.Infof("set instance monitor: %s", err)
+				globalExpectRefused()
+				return err
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isRequestedStartable(); !v {
@@ -1999,4 +2007,40 @@ func (t *Manager) releaseRemovedAddresses(prev, next instance.Config) {
 			t.log.Infof("released %d address(es) of the resources removed from the configuration", n)
 		}
 	}()
+}
+
+// provisionDisabledRefusal says why an orchestration provisioning or freeing
+// the instances is refused upfront, empty when it is not: a node evaluating
+// provision=false, or unprovision=false, leaves its instance to the
+// sysadmin, and the action would fail there, an exit code alone saying so.
+//
+// An instance the sysadmin already made, or freed, and declared so with
+// --state-only, has nothing left to do: a purge of an object freed by hand
+// goes on to its delete.
+func (t *Manager) provisionDisabledRefusal(globalExpect instance.MonitorGlobalExpect) string {
+	nodes := make([]string, 0)
+	for node, cfg := range instance.ConfigData.GetByPath(t.path) {
+		if cfg == nil || cfg.ActorConfig == nil {
+			continue
+		}
+		st := instance.StatusData.GetByPathAndNode(t.path, node)
+		switch globalExpect {
+		case instance.MonitorGlobalExpectProvisioned:
+			if cfg.ProvisionDisabled && (st == nil || st.Provisioned != provisioned.True) {
+				nodes = append(nodes, node)
+			}
+		default:
+			if cfg.UnprovisionDisabled && (st == nil || st.Provisioned != provisioned.False) {
+				nodes = append(nodes, node)
+			}
+		}
+	}
+	if len(nodes) == 0 {
+		return ""
+	}
+	sort.Strings(nodes)
+	if globalExpect == instance.MonitorGlobalExpectProvisioned {
+		return fmt.Sprintf("provision is disabled (provision=false) on %s: provision the resources by hand there, then declare it with 'instance provision --state-only'", strings.Join(nodes, ", "))
+	}
+	return fmt.Sprintf("unprovision is disabled (unprovision=false) on %s, where the instance is provisioned: unprovision the resources by hand there, then declare it with 'instance unprovision --state-only'", strings.Join(nodes, ", "))
 }

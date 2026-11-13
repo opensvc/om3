@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -17,7 +18,14 @@ func (t *actor) Unprovision(ctx context.Context) error {
 	}
 	unprovision := t.config.GetBool(key.New("", "unprovision"))
 	if !unprovision {
-		return fmt.Errorf("unprovision is disabled: make sure all resources have been unprovisioned by a sysadmin and execute 'instance unprovision --state-only")
+		// An instance a sysadmin unprovisioned, and declared so, has
+		// nothing left to free: the purge of the object goes on to its
+		// delete.
+		if st, err := t.FreshStatus(ctx); err == nil && st.Provisioned == provisioned.False {
+			t.log.Infof("unprovision is disabled (unprovision=false), and the instance is not provisioned: nothing to do")
+			return nil
+		}
+		return fmt.Errorf("unprovision is disabled (unprovision=false): unprovision the resources by hand, then declare it with 'instance unprovision --state-only'")
 	}
 
 	t.setenv("unprovision", actioncontext.IsLeader(ctx))

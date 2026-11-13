@@ -45,9 +45,16 @@ type (
 		Resources        ResourceConfigs   `json:"resources"`
 		Schedules        []schedule.Config `json:"schedules"`
 		Stonith          bool              `json:"stonith"`
-		Subsets          SubsetConfigs     `json:"subsets"`
-		Topology         topology.T        `json:"topology,omitempty"`
-		Flex             *FlexConfig       `json:"flex,omitempty"`
+
+		// ProvisionDisabled and UnprovisionDisabled say provision=false and
+		// unprovision=false, as the node evaluates them: the resources are
+		// the sysadmin's to make, or to free, which an orchestration asking
+		// for it is refused for upfront.
+		ProvisionDisabled   bool          `json:"provision_disabled,omitempty"`
+		UnprovisionDisabled bool          `json:"unprovision_disabled,omitempty"`
+		Subsets             SubsetConfigs `json:"subsets"`
+		Topology            topology.T    `json:"topology,omitempty"`
+		Flex                *FlexConfig   `json:"flex,omitempty"`
 
 		// Claims is what the object claims of each compute type of its
 		// namespace, cluster-wide: thousandths of a cpu, and bytes of memory,
