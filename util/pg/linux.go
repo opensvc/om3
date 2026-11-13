@@ -179,9 +179,11 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 				if v, err := sizeconv.FromSize(c.VMemLimit); err != nil {
 					errs = errors.Join(errs, fmt.Errorf("pg_vmem_limit: %w", err))
 				} else {
-					swap := v - n
-					r.Memory.Swap = &swap
-					write("memory.swap.max", strconv.FormatInt(swap, 10))
+					// The v1 memsw file holds the memory and the swap
+					// together, the kernel refusing it below the memory
+					// limit, where the v2 swap.max holds the swap alone.
+					r.Memory.Swap = &v
+					write("memory.swap.max", strconv.FormatInt(v-n, 10))
 				}
 			}
 		}
