@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/doc"
+	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -27,7 +28,7 @@ func (a *DaemonAPI) GetNodeConfigKeywords(ctx echo.Context, nodename string, par
 		}
 		return i.(doc.ConfigProvider), nil
 	})
-	if errors.Is(err, doc.ErrBadRequest) {
+	if errors.Is(err, doc.ErrBadRequest) || errors.Is(err, keywords.ErrDriverNotFound) {
 		status := http.StatusBadRequest
 		return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
 	} else if err != nil {

@@ -63,7 +63,7 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 		drvGroup, _, _ := strings.Cut(*section, "#")
 		store, err = store.DriverKeywords(drvGroup, sectionType, path.Kind)
 		if err != nil {
-			return nil, fmt.Errorf("%s.%s: %s", drvGroup, sectionType, err)
+			return nil, fmt.Errorf("%s.%s: %w", drvGroup, sectionType, err)
 		}
 	case driver == nil && section != nil && option != nil && isGlob(*option):
 		// An option pattern matches the options of the keywords of the
@@ -77,7 +77,7 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 		drvGroup, _, _ := strings.Cut(*section, "#")
 		l, err := store.DriverKeywords(drvGroup, sectionType, path.Kind)
 		if err != nil {
-			return nil, fmt.Errorf("%s.%s: %s", drvGroup, sectionType, err)
+			return nil, fmt.Errorf("%s.%s: %w", drvGroup, sectionType, err)
 		}
 		store = keywords.Store(l).MatchingOption(*option)
 	case driver == nil && section != nil && option != nil:
