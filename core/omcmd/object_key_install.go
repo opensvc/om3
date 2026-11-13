@@ -26,6 +26,7 @@ func (t *CmdObjectKeyInstall) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithRemoteFunc(commoncmd.ObjectKeyInstallRemote(t.Name)),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			store, err := object.NewDataStore(p)
 			if err != nil {

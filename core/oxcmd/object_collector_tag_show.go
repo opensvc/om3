@@ -2,7 +2,6 @@ package oxcmd
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
 type (
@@ -12,13 +11,8 @@ type (
 	}
 )
 
+// Run shows the tags attached to the selected objects.
 func (t *CmdObjectCollectorTagShow) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	return objectaction.New(
-		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithSort(t.Sort),
-		objectaction.WithColor(t.Color),
-		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
-	).Do()
+	return commoncmd.ObjectsAPIDo(mergedSelector, t.OptsGlobal.OptsGlobal, commoncmd.ObjectCollectorTagShow(t.Verbose))
 }

@@ -2,10 +2,8 @@ package omcmd
 
 import (
 	"context"
-
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
@@ -25,16 +23,14 @@ func (t *CmdObjectComplianceShowRuleset) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			if o, err := object.NewSvc(p); err != nil {
+		objectaction.WithDefaultOutput(""),
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
+			comp, err := newObjectCompliance(p)
+			if err != nil {
 				return nil, err
-			} else {
-				comp, err := o.NewCompliance()
-				if err != nil {
-					return nil, err
-				}
-				return comp.GetRulesets()
 			}
+			return comp.GetRulesets()
 		}),
+		objectaction.WithRemoteFunc(commoncmd.ObjectComplianceRulesRemote()),
 	).Do()
 }

@@ -1,13 +1,7 @@
 package oxcmd
 
 import (
-	"fmt"
-
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/objectdevice"
-	"github.com/opensvc/om3/v3/core/output"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
 type (
@@ -18,32 +12,13 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
-	return t.extractFromDaemon(selector, c)
-}
-
-func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
-	data := objectdevice.NewList()
-	return data, fmt.Errorf("TODO")
-}
-
+// Run lists the devices of the instances of the selected objects, on the
+// nodes selected or on all of them, each asked of its node.
 func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	c, err := client.New()
-	if err != nil {
-		return err
+	selector := t.NodeSelector
+	if selector == "" {
+		selector = "*"
 	}
-	data, err := t.extract(mergedSelector, c)
-	if err != nil {
-		return err
-	}
-
-	return output.Renderer{
-		DefaultOutput: "tab=OBJECT:path,RESOURCE:rid,DRIVER_GROUP:driver.group,DRIVER_NAME:driver.name,ROLE:role,DEVICE:device",
-		Output:        t.Output,
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          data,
-		Colorize:      rawconfig.Colorize,
-	}.Print()
+	return commoncmd.InstanceDeviceList(mergedSelector, selector, t.Roles, t.OptsGlobal.OptsGlobal)
 }

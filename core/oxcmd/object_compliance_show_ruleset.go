@@ -21,5 +21,7 @@ func (t *CmdObjectComplianceShowRuleset) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithDefaultOutput(""),
+		objectaction.WithRemoteFunc(commoncmd.ObjectComplianceRulesRemote()),
 	).Do()
 }

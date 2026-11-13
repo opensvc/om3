@@ -22,12 +22,26 @@ type (
 	}
 )
 
+// Run lists the schedules of the instances of the selected objects: of the
+// nodes selected, each asked of its node, or of all their nodes without a
+// node selector.
 func (t *CmdObjectScheduleList) Run(kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	if t.NodeSelector != "" {
+		data, err := commoncmd.InstanceSchedules(c, mergedSelector, t.NodeSelector)
+		return errors.Join(err, output.Renderer{
+			DefaultOutput: commoncmd.ScheduleListOutput,
+			Output:        t.Output,
+			Sort:          t.Sort,
+			Color:         t.Color,
+			Data:          data,
+			Colorize:      rawconfig.Colorize,
+		}.Print())
+	}
 	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return err
@@ -97,7 +111,7 @@ func (t *CmdObjectScheduleList) Run(kind string) error {
 out:
 
 	errs = errors.Join(errs, output.Renderer{
-		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule,ON:data.on[*],PACE:data.pace",
+		DefaultOutput: commoncmd.ScheduleListOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,

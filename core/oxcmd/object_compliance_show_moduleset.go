@@ -2,7 +2,6 @@ package oxcmd
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
 type (
@@ -12,13 +11,9 @@ type (
 	}
 )
 
+// Run shows the modulesets attached to the selected objects, with their
+// modules.
 func (t *CmdObjectComplianceShowModuleset) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	return objectaction.New(
-		objectaction.WithColor(t.Color),
-		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithSort(t.Sort),
-		objectaction.WithObjectSelector(mergedSelector),
-	).Do()
+	return commoncmd.ObjectsAPIDo(mergedSelector, t.OptsGlobal.OptsGlobal, commoncmd.ObjectComplianceModulesetTree(t.Moduleset))
 }
