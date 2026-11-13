@@ -3,12 +3,13 @@ package daemonapi
 import (
 	"testing"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestACapIsTheSetOfPGKeywords(t *testing.T) {
-	l, err := capOps([]string{
+	l, err := capOps(naming.KindSvc, []string{
 		"pg_cpus=0-1",
 		"container#1.pg_cpu_quota=80%",
 		"subset#web.pg_mem_high=3g",
@@ -23,7 +24,7 @@ func TestACapIsTheSetOfPGKeywords(t *testing.T) {
 	assert.Equal(t, "pg_mem_limit@n1", l[3].Key.Option)
 	assert.Equal(t, "default", l[4].Value)
 
-	l, err = capOps(nil)
+	l, err = capOps(naming.KindSvc, nil)
 	require.NoError(t, err)
 	assert.Empty(t, l, "no cap is the caps the configuration holds, applied again")
 }
@@ -38,8 +39,19 @@ func TestACapRefusesWhatIsNotACap(t *testing.T) {
 		"env.pg_cpus=0",
 		"pg_cpus",
 		"container#1.pg_cpu_quota=50%\n[app#1]",
+		"pg_bogus=1",
+		"pg_mem_limt@n1=4g",
 	} {
-		_, err := capOps([]string{s})
+		_, err := capOps(naming.KindSvc, []string{s})
 		assert.Error(t, err, s)
 	}
+}
+
+// A mistyped cap is refused with the caps there are, rather than written to
+// cap nothing.
+func TestACapOfAKeywordTheKindDoesNotHaveIsRefused(t *testing.T) {
+	_, err := capOps(naming.KindSvc, []string{"pg_mem_limt=4g"})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "pg_mem_limt is not a cap of a svc")
+	assert.ErrorContains(t, err, "pg_mem_limit")
 }

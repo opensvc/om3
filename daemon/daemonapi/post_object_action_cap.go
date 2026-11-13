@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -53,7 +54,7 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 	if params.Set != nil {
 		sets = *params.Set
 	}
-	ops, err := capOps(sets)
+	ops, err := capOps(kind, sets)
 	if err != nil {
 		return JSONProblemf(eCtx, http.StatusBadRequest, "Cap", "%s", err)
 	}
@@ -164,7 +165,17 @@ func (a *DaemonAPI) abortObjectOrchestration(ctx context.Context, p naming.Path)
 // nothing a configuration update does not: a keyword of another name, or a
 // section holding no caps, is refused rather than written, and so is an
 // operator other than "=", a cap holding one value.
-func capOps(sets []string) (keyop.L, error) {
+//
+// A pg_ keyword the objects of the kind do not have is refused too: written,
+// as a configuration update would, a mistyped cap would cap nothing, and say
+// so only to a validation of the configuration.
+func capOps(kind naming.Kind, sets []string) (keyop.L, error) {
+	caps := make(map[string]bool)
+	names := make([]string, 0)
+	for _, kw := range object.PGKeywords(kind) {
+		caps[kw.Option] = true
+		names = append(names, kw.Option)
+	}
 	l := make(keyop.L, 0, len(sets))
 	for _, s := range sets {
 		op := keyop.Parse(s)
@@ -176,6 +187,9 @@ func capOps(sets []string) (keyop.L, error) {
 		}
 		if !strings.HasPrefix(op.Key.BaseOption(), "pg_") {
 			return nil, fmt.Errorf("%s: %s is not a process group cap, only the pg_* keywords are set here", s, op.Key.BaseOption())
+		}
+		if !caps[op.Key.BaseOption()] {
+			return nil, fmt.Errorf("%s: %s is not a cap of a %s (%s)", s, op.Key.BaseOption(), kind, strings.Join(names, ", "))
 		}
 		if err := validCapSection(op.Key.Section); err != nil {
 			return nil, fmt.Errorf("%s: %w", s, err)

@@ -240,3 +240,19 @@ memory = 1g
 	m = computeClaims(t, "ci", nsClaims, config+"pg_mem_limit = 2g\n")
 	assert.Equal(t, int64(2*1024*1024*1024), m[claim.TypeMemory], "a cap it says is the one counted")
 }
+
+// A cap set to "default" is lifted: the claim counts no cap, where it refused
+// the value as a size or a cpu cap.
+func TestACapSetToDefaultIsNoCap(t *testing.T) {
+	m := computeClaims(t, "ci", "", `[DEFAULT]
+nodes = n1 n2
+pg_cpu_quota = default
+pg_mem_limit = default
+
+[app#1]
+type = simple
+start = /bin/true
+`)
+	assert.Equal(t, claim.Unbounded, m[claim.TypeCPU])
+	assert.Equal(t, claim.Unbounded, m[claim.TypeMemory])
+}

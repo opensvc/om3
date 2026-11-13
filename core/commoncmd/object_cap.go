@@ -91,7 +91,9 @@ instance not running applies the caps when it starts.
 
 A cap is set as [<section>.]pg_<name>[@<node>]=<value>. The section is the
 object when not named, a subset#<name>, or a resource id. A value of "default"
-lifts the cap: removing the keyword would leave the cap in place.
+lifts the cap: removing the keyword would leave the cap in place. The
+pg_mem_swappiness and pg_mem_oom_control settings are not caps, and take a
+value: "pg reset" puts them back where the kernel leaves them.
 
 Without --set, the caps the configuration holds are applied again, which puts
 back caps changed or lifted by hand.

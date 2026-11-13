@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/pg"
 )
 
 // capOptions is the pg keyword capping each compute claim type.
@@ -57,6 +58,12 @@ func (t *core) capAs(section, claimType, nodename string) (int64, bool, error) {
 	s, err := t.config.EvalNoConvAs(key.New(section, capOptions[claimType]), nodename)
 	if err != nil || s == "" {
 		return 0, false, nil
+	}
+	if s == pg.DefaultValue {
+		// "default" lifts the cap the section held: it says no cap, which
+		// bounds nothing, where removing the keyword would leave the cap
+		// applied.
+		return claim.Unbounded, true, nil
 	}
 	if claimType == claim.TypeCPU && strings.HasSuffix(s, "@all") {
 		// @all is the cpus of the node the instance runs on, which this node
