@@ -56,7 +56,7 @@ func (t *T) wipeSignatures(ctx context.Context) error {
 	case t.IsShared():
 		t.Log().Infof("skip the wipe of the signatures of %s: the device is shared", t.Device)
 		return nil
-	case t.isBtrfs() && strings.Contains(t.mountOptions(), "subvol="):
+	case t.isBtrfs() && mountsSubvolume(t.mountOptions()):
 		t.Log().Infof("skip the wipe of the signatures of %s: a btrfs subvolume shares its device", t.Device)
 		return nil
 	case !strings.HasPrefix(devpath, "/dev/"):
@@ -134,4 +134,16 @@ func (t *T) removeWipeBackups() {
 		return
 	}
 	t.Log().Infof("removed the signatures the unprovision kept in %s", dir)
+}
+
+// mountsSubvolume says the mount options select a btrfs subvolume, by its
+// path or by its id: the device holds other subvolumes, which a wipe of its
+// signatures would take with it.
+func mountsSubvolume(options string) bool {
+	for _, option := range strings.Split(options, ",") {
+		if strings.HasPrefix(option, "subvol=") || strings.HasPrefix(option, "subvolid=") {
+			return true
+		}
+	}
+	return false
 }
