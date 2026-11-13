@@ -30,7 +30,13 @@ func (t *actor) Provision(ctx context.Context) (err error) {
 	}
 	provision := t.config.GetBool(key.New("", "provision"))
 	if !provision {
-		return fmt.Errorf("provision is disabled: make sure all resources have been provisioned by a sysadmin and execute 'instance provision --state-only")
+		// An instance a sysadmin provisioned, and declared so, has nothing
+		// left to make.
+		if st, err := t.FreshStatus(ctx); err == nil && st.Provisioned == provisioned.True {
+			t.log.Infof("provision is disabled (provision=false), and the instance is provisioned: nothing to do")
+			return nil
+		}
+		return fmt.Errorf("provision is disabled (provision=false): provision the resources by hand, then declare it with 'instance provision --state-only'")
 	}
 	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
 	ctx2, done := t.beginCollectorAction(ctx2, "provision")
