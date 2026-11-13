@@ -32,6 +32,7 @@ var AuditSubsystems = []string{
 	"discover",
 	"dns",
 	"drbdmon",
+	"virtmon",
 	"hb",
 	"hb.ctrl",
 	"hb.main",

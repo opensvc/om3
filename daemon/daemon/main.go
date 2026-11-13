@@ -50,6 +50,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/daemon/scheduler"
 	"github.com/opensvc/om3/v3/daemon/session"
+	"github.com/opensvc/om3/v3/daemon/virtmon"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -296,6 +297,7 @@ func (t *T) Start(ctx context.Context) error {
 		netmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		mntmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		drbdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
+		virtmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		pgmetrics.New(),
