@@ -81,6 +81,14 @@ type (
 		SoftAffinity     naming.Paths `json:"soft_affinity,omitempty"`
 		SoftAntiAffinity naming.Paths `json:"soft_anti_affinity,omitempty"`
 
+		// Uses are the cfg, sec and vol objects the resources of the object
+		// use, as the node evaluates its configuration, sorted: the
+		// datastores they read keys of, and the vol objects their volume
+		// resources are. A datastore named by a pattern of its name, as
+		// "ns1/sec/web-*", is the pattern. An object leaving its unprovision
+		// to the sysadmin keeps the ones it uses from a purge or a delete.
+		Uses []string `json:"uses,omitempty"`
+
 		// StartTimeout is how long a start may take, DEFAULT.start_timeout
 		// or else DEFAULT.timeout: a switch waits that long for the
 		// destination to be ready to start before it stops the source.
@@ -190,11 +198,33 @@ func (cfg *ActorConfig) DeepCopy() *ActorConfig {
 	newCfg.HardAntiAffinity = deepcopy.Slice(cfg.HardAntiAffinity)
 	newCfg.SoftAffinity = deepcopy.Slice(cfg.SoftAffinity)
 	newCfg.SoftAntiAffinity = deepcopy.Slice(cfg.SoftAntiAffinity)
+	newCfg.Uses = deepcopy.Slice(cfg.Uses)
 	if cfg.Flex != nil {
 		flex := *cfg.Flex
 		newCfg.Flex = &flex
 	}
 	return &newCfg
+}
+
+// UsesObject says whether the object uses the object at p, as named or by a
+// pattern of its name.
+func (cfg *ActorConfig) UsesObject(p naming.Path) bool {
+	if cfg == nil {
+		return false
+	}
+	s := p.String()
+	for _, use := range cfg.Uses {
+		if !naming.IsPathPattern(use) {
+			if use == s {
+				return true
+			}
+			continue
+		}
+		if pattern, err := naming.ParsePathPatternRel(use, naming.NsRoot); err == nil && pattern.MatchPath(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // ConfigEqual returns a boolean reporting whether a == b
@@ -251,6 +281,9 @@ func (t Config) Unstructured() map[string]any {
 		m["hard_anti_affinity"] = t.HardAntiAffinity
 		m["soft_affinity"] = t.SoftAffinity
 		m["soft_anti_affinity"] = t.SoftAntiAffinity
+		if len(t.Uses) > 0 {
+			m["uses"] = t.Uses
+		}
 		if t.ActorConfig.Flex != nil {
 			m["max"] = t.ActorConfig.Flex.Max
 			m["min"] = t.ActorConfig.Flex.Min
