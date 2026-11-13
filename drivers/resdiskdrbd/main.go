@@ -1319,9 +1319,50 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	if _, ok := t.drbd(ctx).(DRBDDriverResizer); !ok {
 		return 0, fmt.Errorf("this drbd driver cannot resize")
 	}
-	metadata := 4*1024*1024 + int64(t.maxPeers())*to/32768
+	return drbdAsks(to, int64(t.maxPeers())), nil
+}
+
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A drbd resource given a device of below hands out below less room for its
+// metadata, as ResizePlan counts it: the largest size its plan asks no more
+// than below for. drbd keeps less than that, so the replicated device holds a
+// little more than this says, which is the side to err on: a size a resource
+// hands out is a size the links above are asked to reach.
+func (t *T) ResizeHandsOut(ctx context.Context) (func(below int64) int64, error) {
+	if _, ok := t.drbd(ctx).(DRBDDriverResizer); !ok {
+		return nil, fmt.Errorf("this drbd driver cannot resize")
+	}
+	peers := int64(t.maxPeers())
+	return func(below int64) int64 { return drbdHandsOut(below, peers) }, nil
+}
+
+// drbdAsks is the size of the device a drbd resource of peers peers asks for
+// to hand out to: room for a superblock and an activity log, and a dirty
+// bitmap of one bit per 4k of data for each peer.
+func drbdAsks(to, peers int64) int64 {
+	metadata := 4*1024*1024 + peers*to/32768
 	// A block device holds whole sectors, so that is what it asks for.
-	return sizeconv.RoundUp(to+metadata, 512), nil
+	return sizeconv.RoundUp(to+metadata, 512)
+}
+
+// drbdHandsOut is the largest size a drbd resource of peers peers asks no more
+// than below for: the inverse of drbdAsks, which grows with the size asked, so
+// it is searched for rather than worked out through the roundings it adds.
+func drbdHandsOut(below, peers int64) int64 {
+	if below <= 0 || drbdAsks(0, peers) > below {
+		return 0
+	}
+	lo, hi := int64(0), below
+	for lo < hi {
+		mid := lo + (hi-lo+1)/2
+		if drbdAsks(mid, peers) <= below {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
 }
 
 // Resize implements resource.Resizer.

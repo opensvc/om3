@@ -523,7 +523,35 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return sizeconv.RoundUp(to+offset, 512), nil
+	return cryptAsks(to, offset), nil
+}
+
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A luks volume given a device of below hands out below less the header in
+// front of it, in whole sectors: the inverse of ResizePlan.
+func (t *T) ResizeHandsOut(ctx context.Context) (func(below int64) int64, error) {
+	offset, err := t.headerOffset(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return func(below int64) int64 { return cryptHandsOut(below, offset) }, nil
+}
+
+// cryptAsks is the size of the device a luks volume with a header of offset
+// bytes asks for to hand out to, in whole sectors.
+func cryptAsks(to, offset int64) int64 {
+	return sizeconv.RoundUp(to+offset, 512)
+}
+
+// cryptHandsOut is the largest size, in whole sectors, a luks volume with a
+// header of offset bytes asks no more than below for.
+func cryptHandsOut(below, offset int64) int64 {
+	n := sizeconv.RoundDown(sizeconv.RoundDown(below, 512)-offset, 512)
+	if n < 0 {
+		return 0
+	}
+	return n
 }
 
 // Resize implements resource.Resizer.

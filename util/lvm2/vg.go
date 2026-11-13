@@ -317,6 +317,22 @@ func (t *VG) Free(ctx context.Context) (int64, error) {
 	return free / extent * extent, nil
 }
 
+// PEStart is the offset of the first extent of the physical volume of a group
+// of one: the bytes the group keeps of its device for its metadata, before
+// the extents it hands out.
+//
+// It is what the group keeps for itself whatever the device holds, where the
+// gap between the device and the group counts, once the device has grown and
+// the group has not been grown onto it, the growth itself. lvm reports the
+// size of the physical volume as its extents, so that gap says nothing either.
+func (t *VG) PEStart(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx, "pe_start")
+	if err != nil {
+		return 0, err
+	}
+	return info.PEStartBytes()
+}
+
 // ExtentSize is the bytes of the unit a volume group hands out. A logical
 // volume is a whole number of them, so a group asked for a size that is not
 // has to round up or the volume does not fit.

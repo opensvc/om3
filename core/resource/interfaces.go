@@ -423,6 +423,41 @@ type (
 		Resize(ctx context.Context, to int64) error
 	}
 
+	// ResizeHandsOuter is implemented by a Resizer that can say what it hands
+	// out to the link above it when the link below it holds a given size. It
+	// is the inverse of ResizePlan: a volume group given a physical volume of
+	// below hands out below less its metadata, rounded down to whole extents,
+	// where ResizePlan adds the metadata and rounds up.
+	//
+	// It is what a resize asked of a volume works with. The size of a volume
+	// is the size of the bottom of its chain, which is what its pool and the
+	// claims of its namespace count, so the size its head has to reach is
+	// worked out from it, up the chain, one link at a time. The links are
+	// then asked for that head size from the top down, as a resize of the
+	// head is, and the bottom ends up asked for about the size it was given.
+	//
+	// ResizeHandsOut measures what the answer rests on, an extent size or a
+	// header offset, once, and answers the function working it out for a
+	// size below: a resize refusing a size that grows nothing searches for
+	// the smallest one that does, and asks it of many sizes.
+	//
+	// The function answers no more than the link hands out: ResizePlan asked
+	// for the answer asks no more than below of the link below, give or take
+	// the rounding to the unit of that link, and it never answers less for
+	// more below. A link not implementing it, or with nothing below it, hands
+	// out what is below it.
+	ResizeHandsOuter interface {
+		ResizeHandsOut(ctx context.Context) (func(below int64) int64, error)
+	}
+
+	// ResizeUniter is implemented by a Resizer that grows by whole units, a
+	// logical volume by extents, a zvol by blocks. A size that grows nothing
+	// is refused with the smallest size that does, which is a whole number of
+	// them. A resource not implementing it grows by sectors.
+	ResizeUniter interface {
+		ResizeUnit(ctx context.Context) (int64, error)
+	}
+
 	Commander interface {
 		CombinedOutput() ([]byte, error)
 		Run() error
@@ -454,3 +489,9 @@ type (
 		EncapAPIBearer(ctx context.Context) (string, error)
 	}
 )
+
+// HandsOutWhatIsBelow is what a ResizeHandsOuter hands out when it hands out
+// what is below it, a filesystem counting as its device.
+func HandsOutWhatIsBelow(below int64) int64 {
+	return below
+}

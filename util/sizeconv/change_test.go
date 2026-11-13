@@ -36,3 +36,14 @@ func TestParseChangeRejects(t *testing.T) {
 		assert.Errorf(t, err, "ParseChange(%q) must be refused", s)
 	}
 }
+
+func TestRoundDown(t *testing.T) {
+	assert.Equal(t, int64(8), RoundDown(11, 4))
+	assert.Equal(t, int64(12), RoundDown(12, 4))
+	assert.Equal(t, int64(11), RoundDown(11, 0), "no unit leaves the size alone")
+	for n := int64(0); n < 20; n++ {
+		assert.LessOrEqual(t, RoundDown(n, 4), n)
+		assert.GreaterOrEqual(t, RoundUp(n, 4), n)
+		assert.Equal(t, RoundUp(n, 4), RoundDown(RoundUp(n, 4), 4), "a whole unit is left alone")
+	}
+}

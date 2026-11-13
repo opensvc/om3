@@ -230,6 +230,28 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return to, nil
 }
 
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A volume takes its space from a pool the object does not own, so no resource of a chain is below it: it is the bottom, and is asked
+// for the size a chain is given. It hands out what it is given.
+func (t *T) ResizeHandsOut(_ context.Context) (func(below int64) int64, error) {
+	return resource.HandsOutWhatIsBelow, nil
+}
+
+// ResizeUnit implements resource.ResizeUniter: a volume holds a whole number
+// of blocks.
+func (t *T) ResizeUnit(_ context.Context) (int64, error) {
+	s, err := t.zvol().GetProperty("volblocksize")
+	if err != nil {
+		return 0, err
+	}
+	block, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse volblocksize %s: %w", t.Name, s, err)
+	}
+	return block, nil
+}
+
 // Resize implements resource.Resizer.
 //
 // A volume holds a whole number of blocks, so it is asked for the next one up
