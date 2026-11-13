@@ -315,7 +315,7 @@ func (t *T) Start(ctx context.Context) error {
 		}
 	}
 
-	if t.isStopRequestedDuringStart() {
+	if t.endStartup() {
 		return t.stopDuringStart()
 	}
 	t.logTransition("✅ started")
@@ -402,6 +402,18 @@ func (t *T) isStopRequestedDuringStart() bool {
 	if t.stopRequested {
 		t.starting = false
 	}
+	return t.stopRequested
+}
+
+// endStartup ends the startup, and says a stop was requested during it.
+//
+// Both under the lock: a stop requested after it finds the startup over, and
+// stops the daemon itself. Checking, then ending the startup later, left a
+// window where a request was recorded for a startup that took none after.
+func (t *T) endStartup() bool {
+	t.stopMu.Lock()
+	defer t.stopMu.Unlock()
+	t.starting = false
 	return t.stopRequested
 }
 
