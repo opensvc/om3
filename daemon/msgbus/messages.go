@@ -300,6 +300,8 @@ var (
 		"FSRemounted": func() any { return &FSRemounted{} },
 
 		"DrbdResourceUpdated": func() any { return &DrbdResourceUpdated{} },
+
+		"VirtDomainUpdated": func() any { return &VirtDomainUpdated{} },
 	}
 )
 
@@ -1290,6 +1292,15 @@ type (
 		Node       string `json:"node" yaml:"node"`
 		Res        string `json:"res" yaml:"res"`
 	}
+
+	// VirtDomainUpdated is published when a libvirt domain an instance of
+	// the node holds changed state: started, stopped, shut down by its
+	// guest, crashed, suspended, migrated.
+	VirtDomainUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+	}
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -1950,6 +1961,14 @@ func (e *DrbdResourceUpdated) Kind() string {
 
 func (e *DrbdResourceUpdated) Key() string {
 	return fmt.Sprintf("DrbdResourceUpdated,node=%s,res=%s", e.Node, e.Res)
+}
+
+func (e *VirtDomainUpdated) Kind() string {
+	return "VirtDomainUpdated"
+}
+
+func (e *VirtDomainUpdated) Key() string {
+	return fmt.Sprintf("VirtDomainUpdated,node=%s,name=%s", e.Node, e.Name)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {

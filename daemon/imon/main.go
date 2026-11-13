@@ -444,6 +444,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.FSUmounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.DrbdResourceUpdated{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.VirtDomainUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
 	// A peer lost: its instance writes the data of the object no more.
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelPath)
@@ -626,6 +627,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onNetIPAddrDeleted(c)
 			case *msgbus.DrbdResourceUpdated:
 				t.onDrbdResourceUpdated(c)
+			case *msgbus.VirtDomainUpdated:
+				t.onVirtDomainUpdated(c)
 			case *msgbus.FSMounted:
 				t.onFSMounted(c)
 			case *msgbus.FSUmounted:

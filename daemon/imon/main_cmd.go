@@ -1937,6 +1937,24 @@ func (t *Manager) onDrbdResourceUpdated(c *msgbus.DrbdResourceUpdated) {
 	if c.Node != t.localhost {
 		return
 	}
+	t.refreshOnResourceEvent("disk.drbd", "res", c.Res, "drbd resource")
+}
+
+// onVirtDomainUpdated is called when a libvirt domain changed state on the
+// node, as one its guest shut down or whose qemu died. It refreshes the
+// status when a kvm resource of the instance is that domain.
+func (t *Manager) onVirtDomainUpdated(c *msgbus.VirtDomainUpdated) {
+	if c.Node != t.localhost {
+		return
+	}
+	t.refreshOnResourceEvent("container.kvm", "name", c.Name, "libvirt domain")
+}
+
+// refreshOnResourceEvent schedules a status refresh when a resource of the
+// instance of driverType is the one an event of the node names, by the value
+// of its status info infoKey, as the drbd resource of a disk.drbd. what names
+// the thing in the log.
+func (t *Manager) refreshOnResourceEvent(driverType, infoKey, value, what string) {
 	if !t.canRefreshOnEvent() {
 		return
 	}
@@ -1945,12 +1963,12 @@ func (t *Manager) onDrbdResourceUpdated(c *msgbus.DrbdResourceUpdated) {
 		return
 	}
 	for rid, rstat := range instStatus.Resources {
-		if rstat.Type != "disk.drbd" {
+		if rstat.Type != driverType {
 			continue
 		}
-		if res, ok := rstat.Info["res"].(string); ok && res == c.Res {
-			t.log.Infof("drbd resource %s changed, matching resource %s - schedule a status refresh", c.Res, rid)
-			t.scheduleEventRefresh("drbd resource " + c.Res + " changed")
+		if v, ok := rstat.Info[infoKey].(string); ok && v == value {
+			t.log.Infof("%s %s changed, matching resource %s - schedule a status refresh", what, value, rid)
+			t.scheduleEventRefresh(what + " " + value + " changed")
 			return
 		}
 	}
