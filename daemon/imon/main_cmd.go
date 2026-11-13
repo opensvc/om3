@@ -1950,6 +1950,16 @@ func (t *Manager) onVirtDomainUpdated(c *msgbus.VirtDomainUpdated) {
 	t.refreshOnResourceEvent("container.kvm", "name", c.Name, "libvirt domain")
 }
 
+// onContainerUpdated is called when a podman or docker container changed
+// state on the node, as one whose process exited. It refreshes the status
+// when a container resource of the engine of the instance is that container.
+func (t *Manager) onContainerUpdated(c *msgbus.ContainerUpdated) {
+	if c.Node != t.localhost {
+		return
+	}
+	t.refreshOnResourceEvent(c.Type, "name", c.Name, "container")
+}
+
 // refreshOnResourceEvent schedules a status refresh when a resource of the
 // instance of driverType is the one an event of the node names, by the value
 // of its status info infoKey, as the drbd resource of a disk.drbd. what names

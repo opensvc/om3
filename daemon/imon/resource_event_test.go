@@ -19,6 +19,7 @@ func newResourceEventTestManager() *Manager {
 		instStatus: map[string]instance.Status{"n1": {Resources: instance.ResourceStatuses{
 			"container#1": resource.Status{Type: "container.kvm", Info: map[string]any{"name": "vm1"}},
 			"disk#1":      resource.Status{Type: "disk.drbd", Info: map[string]any{"res": "r1"}},
+			"container#2": resource.Status{Type: "container.podman", Info: map[string]any{"name": "c1"}},
 		}}},
 		eventRefreshTimer: time.NewTimer(time.Hour),
 	}
@@ -56,4 +57,15 @@ func TestAResourceEventDuringAnActionRefreshesNothing(t *testing.T) {
 	m.instMonitor = map[string]instance.Monitor{"n2": {State: instance.MonitorStateStopProgress}}
 	m.onVirtDomainUpdated(&msgbus.VirtDomainUpdated{Node: "n1", Name: "vm1"})
 	assert.False(t, m.eventRefreshScheduled)
+}
+
+// A podman or docker container changing on the node refreshes the status of
+// the instance holding it, a container of the same name of the other engine
+// none.
+func TestAContainerEventRefreshesTheInstanceHoldingIt(t *testing.T) {
+	m := newResourceEventTestManager()
+	m.onContainerUpdated(&msgbus.ContainerUpdated{Node: "n1", Type: "container.docker", Name: "c1"})
+	assert.False(t, m.eventRefreshScheduled, "another engine")
+	m.onContainerUpdated(&msgbus.ContainerUpdated{Node: "n1", Type: "container.podman", Name: "c1"})
+	assert.True(t, m.eventRefreshScheduled)
 }
