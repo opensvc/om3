@@ -10,16 +10,17 @@
 // not work for a resync, whose length depends on how much data it moves.
 //
 // It reads the event stream "drbdsetup events2" prints, which drbd 9 offers
-// on every distribution the agent supports, down to el7. Where the
-// requirements are not met, the monitor disables itself and says so once:
-// drbdsetup not installed, or an event stream the installed drbd does not
-// support or keeps failing. A node where the drbd kernel module is not loaded
-// yet waits for it, as the first drbd resource brought up loads it. Without
-// the monitor, a drbd state change is seen at the next scheduled status.
+// on every distribution the agent supports, down to el7, while the node holds
+// a drbd resource: a node holding none has no drbd event to wait for (see
+// package evwatch). Where the requirements are not met, the monitor disables
+// itself and says so once, until no drbd resource is left: drbdsetup not
+// installed, or an event stream the installed drbd does not support or keeps
+// failing. A node where the drbd kernel module is not loaded yet waits for
+// it, as the first drbd resource brought up loads it. Without the monitor, a
+// drbd state change is seen at the next scheduled status.
 package drbdmon
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -29,6 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/daemon/evwatch"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -37,7 +40,8 @@ import (
 
 type (
 	// Manager watches the drbd events and publishes a DrbdResourceUpdated
-	// message for each drbd resource whose state changed.
+	// message for each drbd resource of the local instances whose state
+	// changed.
 	Manager struct {
 		drainDuration time.Duration
 
@@ -52,17 +56,28 @@ type (
 		localhost      string
 		labelLocalhost pubsub.Label
 
-		// drbdsetup is the path of the drbdsetup command, empty where drbd
-		// is not installed.
-		drbdsetup string
+		// counter counts the drbd resources of the local instances, by
+		// the name of their drbd resource, which the events name.
+		counter *evwatch.Counter
 
-		// debounced holds the timers publishing the change of a drbd
-		// resource, one per resource, so a state transition, which changes
-		// several objects of a resource at once, is published once.
-		debounced   map[string]*time.Timer
-		debouncedMu sync.Mutex
+		// runner runs the event stream while the node holds a drbd
+		// resource.
+		runner *evwatch.Runner
+
+		// debouncer publishes the change of a drbd resource once, as a
+		// state transition changes several objects of a resource at once.
+		debouncer *evwatch.Debouncer
 
 		wg sync.WaitGroup
+	}
+
+	// source is the "drbdsetup events2" stream.
+	source struct {
+		log *plog.Logger
+
+		// drbdsetup is the path of the drbdsetup command, found at the
+		// check.
+		drbdsetup string
 	}
 )
 
@@ -70,10 +85,6 @@ const (
 	// debounceDelay is how long the changes of a drbd resource settle
 	// before they are published.
 	debounceDelay = 500 * time.Millisecond
-
-	// restartDelay is how long to wait before running the event stream
-	// again when it ended.
-	restartDelay = 5 * time.Second
 
 	// moduleCheckInterval is how often a node where the drbd kernel module
 	// is not loaded checks it again.
@@ -83,16 +94,29 @@ const (
 	// the current state and exits.
 	probeTimeout = 10 * time.Second
 
-	// quickFailureDuration is a run of the event stream short enough to
-	// count as a failure to start it, and maxQuickFailures is how many in a
-	// row disable the monitor.
-	quickFailureDuration = 10 * time.Second
-	maxQuickFailures     = 3
+	// probeWaitDelay bounds the wait for the output of the probe once it
+	// exited or timed out.
+	probeWaitDelay = 3 * time.Second
+
+	// drbdType is the driver type of the drbd resources, and resInfoKey
+	// the status info naming their drbd resource.
+	drbdType   = "disk.drbd"
+	resInfoKey = "res"
 )
 
 var (
 	// procDRBD exists when the drbd kernel module is loaded.
 	procDRBD = "/proc/drbd"
+
+	// policy runs the stream as the other watchers do, but for the quick
+	// failures: a stream ending 3 times in a row right after it started is
+	// not supported by the installed drbd, and is not tried again until no
+	// drbd resource is left.
+	policy = func() evwatch.Policy {
+		p := evwatch.DefaultPolicy
+		p.MaxQuickFailures = 3
+		return p
+	}()
 )
 
 var (
@@ -126,29 +150,30 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		localhost:      localhost,
 		labelLocalhost: pubsub.Label{"node", localhost},
 		subQS:          subQS,
-		debounced:      make(map[string]*time.Timer),
+		counter:        evwatch.NewCounter(),
 	}
 }
 
-// Start launches the drbdmon worker goroutine, where drbdsetup is installed
+// Start starts the drbd monitor, which runs the event stream while the node
+// holds a drbd resource.
 func (t *Manager) Start(parent context.Context) error {
 	t.log.Infof("starting")
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.publisher = pubsub.PubFromContext(t.ctx)
+	t.debouncer = evwatch.NewDebouncer(debounceDelay, t.publish)
+	t.runner = evwatch.NewRunner(&source{log: t.log}, policy, t.log, t.resync, t.onEvent)
+	t.runner.Start(t.ctx)
 
 	t.startSubscriptions()
 
-	if p, err := exec.LookPath("drbdsetup"); err != nil {
-		t.log.Infof("drbdsetup is not installed: no drbd event to watch")
-	} else {
-		t.drbdsetup = p
-		t.wg.Add(1)
-		go func() {
-			defer t.wg.Done()
-			defer t.log.Infof("drbd monitor done")
-			t.watch()
-		}()
+	// The statuses published before the subscription, as on a component
+	// started late, are counted too.
+	for p, st := range instance.StatusData.GetByNode(t.localhost) {
+		if st != nil {
+			t.counter.Set(p.String(), evwatch.KeysOf(*st, resInfoKey, drbdType))
+		}
 	}
+	t.runner.SetDemand(t.counter.Len())
 
 	t.log.Infof("started")
 	return nil
@@ -165,20 +190,25 @@ func (t *Manager) Stop() error {
 		}
 	}
 	t.wg.Wait()
-	t.debouncedMu.Lock()
-	for _, timer := range t.debounced {
-		timer.Stop()
+	if t.runner != nil {
+		t.runner.Stop()
 	}
-	t.debouncedMu.Unlock()
+	if t.debouncer != nil {
+		t.debouncer.Stop()
+	}
 	return nil
 }
 
-// startSubscriptions starts the pubsub subscriptions for control messages like AuditStart/AuditStop
+// startSubscriptions starts the pubsub subscriptions: the control messages
+// like AuditStart/AuditStop, and the status of the local instances, which
+// tell the drbd resources the node holds.
 func (t *Manager) startSubscriptions() {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.drbdmon", t.subQS)
 
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelLocalhost)
 
 	sub.Start()
 	t.sub = sub
@@ -196,56 +226,103 @@ func (t *Manager) startSubscriptions() {
 					t.log.HandleAuditStart(c.Q, c.Subsystems, "drbdmon")
 				case *msgbus.AuditStop:
 					t.log.HandleAuditStop(c.Q, c.Subsystems, "drbdmon")
+				case *msgbus.InstanceStatusUpdated:
+					if c.Node == t.localhost {
+						t.counter.Set(c.Path.String(), evwatch.KeysOf(c.Value, resInfoKey, drbdType))
+						t.runner.SetDemand(t.counter.Len())
+					}
+				case *msgbus.InstanceStatusDeleted:
+					if c.Node == t.localhost {
+						t.counter.Unset(c.Path.String())
+						t.runner.SetDemand(t.counter.Len())
+					}
 				}
 			}
 		}
 	}()
 }
 
-// watch runs the drbd event stream, and runs it again when it ends, until
-// the manager stops, or until the stream proves unusable.
-func (t *Manager) watch() {
-	if !t.waitModule() {
-		return
+// onEvent notifies the change of a drbd resource the local instances hold.
+// The others, as one made by hand, interest no instance.
+func (t *Manager) onEvent(name string) {
+	if t.counter.Has(name) {
+		t.debouncer.Notify(name)
 	}
-	if err := t.probe(); err != nil {
-		t.log.Warnf("disabled: %s events2 is not supported by the installed drbd: %s: drbd state changes are seen at the scheduled status only", t.drbdsetup, err)
-		return
+}
+
+// resync notifies every drbd resource the local instances hold, when the
+// stream starts: what changed before, as the first connect of a drbd
+// resource the provision just made, or while the stream was down, was told
+// by no event.
+func (t *Manager) resync() {
+	for _, name := range t.counter.Keys() {
+		t.debouncer.Notify(name)
 	}
-	quickFailures := 0
-	for {
-		t.log.Infof("watch %s events2", t.drbdsetup)
-		begin := time.Now()
-		err := t.readEvents()
-		if t.ctx.Err() != nil {
+}
+
+// publish publishes the change of the drbd resource name.
+func (t *Manager) publish(name string) {
+	t.log.Debugf("drbd resource %s changed", name)
+	t.publisher.Pub(&msgbus.DrbdResourceUpdated{Node: t.localhost, Res: name}, t.labelLocalhost)
+}
+
+// Name implements evwatch.Source.
+func (t *source) Name() string {
+	return "drbdsetup events2"
+}
+
+// Check implements evwatch.Source: drbdsetup is installed, and, where the
+// drbd kernel module is loaded, the installed drbd supports the event
+// stream. Where it is not loaded yet, the stream checks it once it is.
+func (t *source) Check(ctx context.Context) error {
+	p, err := exec.LookPath("drbdsetup")
+	if err != nil {
+		return fmt.Errorf("drbdsetup is not installed: no drbd event to watch: %w", evwatch.ErrUnsupported)
+	}
+	t.drbdsetup = p
+	if _, err := os.Stat(procDRBD); err != nil {
+		return nil
+	}
+	if err := t.probe(ctx); err != nil {
+		return fmt.Errorf("events2 is not supported by the installed drbd: %s: the drbd state changes are seen at the scheduled status only: %w", err, evwatch.ErrUnsupported)
+	}
+	return nil
+}
+
+// Run implements evwatch.Source: it waits for the drbd kernel module, then
+// reads the event stream, ready once its initial dump of the current state
+// ends.
+func (t *source) Run(ctx context.Context, ready func(), emit func(string)) error {
+	if !t.waitModule(ctx) {
+		return ctx.Err()
+	}
+	t.log.Infof("watch %s events2", t.drbdsetup)
+	states := newEventStates()
+	stderr, err := evwatch.StreamLines(ctx, nil, func(line string) {
+		if line == "exists -" {
+			ready()
 			return
 		}
-		if err != nil {
-			t.log.Warnf("%s events2: %s", t.drbdsetup, err)
-		} else {
-			t.log.Warnf("%s events2 ended", t.drbdsetup)
+		if name, ok := states.parse(line); ok {
+			emit(name)
 		}
-		if time.Since(begin) < quickFailureDuration {
-			quickFailures++
-		} else {
-			quickFailures = 0
-		}
-		if quickFailures >= maxQuickFailures {
-			t.log.Warnf("disabled: %s events2 ended %d times in a row right after it started: drbd state changes are seen at the scheduled status only", t.drbdsetup, quickFailures)
-			return
-		}
-		select {
-		case <-t.ctx.Done():
-			return
-		case <-time.After(restartDelay):
-		}
+	}, t.drbdsetup, "events2")
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
+	if stderr != "" {
+		err = errors.Join(err, errors.New(stderr))
+	}
+	if err == nil {
+		err = fmt.Errorf("ended")
+	}
+	return err
 }
 
 // waitModule waits for the drbd kernel module to be loaded, which the first
 // drbd resource brought up on the node does. It returns false when the
-// manager stops first.
-func (t *Manager) waitModule() bool {
+// context is done first.
+func (t *source) waitModule(ctx context.Context) bool {
 	logged := false
 	for {
 		if _, err := os.Stat(procDRBD); err == nil {
@@ -256,7 +333,7 @@ func (t *Manager) waitModule() bool {
 			logged = true
 		}
 		select {
-		case <-t.ctx.Done():
+		case <-ctx.Done():
 			return false
 		case <-time.After(moduleCheckInterval):
 		}
@@ -266,10 +343,13 @@ func (t *Manager) waitModule() bool {
 // probe checks the installed drbd supports the event stream: "drbdsetup
 // events2 --now" prints the current state and exits, with an error where
 // the command or the kernel module does not know it.
-func (t *Manager) probe() error {
-	ctx, cancel := context.WithTimeout(t.ctx, probeTimeout)
+func (t *source) probe(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
-	b, err := exec.CommandContext(ctx, t.drbdsetup, "events2", "--now").CombinedOutput()
+	cmd := exec.CommandContext(ctx, t.drbdsetup, "events2", "--now")
+	// A child holding the output open does not hold the probe longer.
+	cmd.WaitDelay = probeWaitDelay
+	b, err := cmd.CombinedOutput()
 	if err != nil {
 		if msg := strings.TrimSpace(string(b)); msg != "" {
 			return fmt.Errorf("%w: %s", err, firstLine(msg))
@@ -283,47 +363,6 @@ func (t *Manager) probe() error {
 func firstLine(s string) string {
 	line, _, _ := strings.Cut(s, "\n")
 	return line
-}
-
-// readEvents runs "drbdsetup events2" and notifies the drbd resources whose
-// state changed, until the command ends.
-func (t *Manager) readEvents() error {
-	cmd := exec.CommandContext(t.ctx, t.drbdsetup, "events2")
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	scanner := bufio.NewScanner(stdout)
-	states := newEventStates()
-	for scanner.Scan() {
-		if name, ok := states.parse(scanner.Text()); ok {
-			t.notify(name)
-		}
-	}
-	errScan := scanner.Err()
-	errWait := cmd.Wait()
-	return errors.Join(errScan, errWait)
-}
-
-// notify publishes the change of the drbd resource name once its changes
-// settle.
-func (t *Manager) notify(name string) {
-	t.debouncedMu.Lock()
-	defer t.debouncedMu.Unlock()
-	if timer, ok := t.debounced[name]; ok {
-		timer.Reset(debounceDelay)
-		return
-	}
-	t.debounced[name] = time.AfterFunc(debounceDelay, func() {
-		t.debouncedMu.Lock()
-		delete(t.debounced, name)
-		t.debouncedMu.Unlock()
-		t.log.Debugf("drbd resource %s changed", name)
-		t.publisher.Pub(&msgbus.DrbdResourceUpdated{Node: t.localhost, Res: name}, t.labelLocalhost)
-	})
 }
 
 // eventStates are the values of the state keys of each drbd object, as the
