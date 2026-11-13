@@ -493,6 +493,41 @@ func (t Run) Stat() RunStat {
 	return stat
 }
 
+// ExitCode returns the exit code of the run, in the terms of the exit code
+// of a module: 1 when a module is not compliant or failed, 2 when every
+// module is not applicable to the node, 0 otherwise.
+//
+// A module is judged by its last check, the one a fix ends with, or by its
+// last action when the run checked nothing, as a fixable run or a forced
+// fix.
+func (t Run) ExitCode() int {
+	last := make(map[string]int)
+	checked := make(map[string]bool)
+	for _, ma := range t.ModuleActions {
+		switch {
+		case ma.Action == ActionCheck:
+			last[ma.Module] = ma.ExitCode
+			checked[ma.Module] = true
+		case !checked[ma.Module]:
+			last[ma.Module] = ma.ExitCode
+		}
+	}
+	na := 0
+	for _, code := range last {
+		switch code {
+		case ExitCodeOk:
+		case ExitCodeNA:
+			na++
+		default:
+			return ExitCodeNok
+		}
+	}
+	if len(last) > 0 && na == len(last) {
+		return ExitCodeNA
+	}
+	return ExitCodeOk
+}
+
 func (t Run) Render() string {
 	buff := t.ModuleActions.Render()
 	buff += "\n"
