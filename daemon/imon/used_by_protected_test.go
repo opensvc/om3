@@ -224,4 +224,9 @@ func TestAnObjectWhoseProvisionFailedProtectsNothing(t *testing.T) {
 	instance.MonitorData.Set(user, "n1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectProvisioned, State: instance.MonitorStateProvisionFailure})
 	t.Cleanup(func() { instance.MonitorData.Unset(user, "n1") })
 	assert.Empty(t, m.usedByProtectedRefusal())
+
+	// One a failed stop left running still uses what it names.
+	instance.StatusData.Set(user, "n1", &instance.Status{Avail: status.Up, Provisioned: provisioned.False})
+	instance.MonitorData.Set(user, "n1", &instance.Monitor{State: instance.MonitorStateStopFailure})
+	assert.Contains(t, m.usedByProtectedRefusal(), "repro/svc/failed on n1")
 }
