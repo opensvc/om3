@@ -213,3 +213,15 @@ func TestAnObjectBeingProvisionedProtectsWhatItUses(t *testing.T) {
 	t.Cleanup(func() { instance.MonitorData.Unset(user, "n1") })
 	assert.Contains(t, m.usedByProtectedRefusal(), "repro/svc/coming on n1")
 }
+
+// A failed action is terminal: an unprovisioned instance whose provision
+// failed holds nothing, and blocks no purge for good.
+func TestAnObjectWhoseProvisionFailedProtectsNothing(t *testing.T) {
+	user := mustParsePath(t, "repro/svc/failed")
+	cfg := mustParsePath(t, "repro/cfg/failed")
+	m := &Manager{path: cfg}
+	setUser(t, user, "n1", true, provisioned.False, "repro/cfg/failed")
+	instance.MonitorData.Set(user, "n1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectProvisioned, State: instance.MonitorStateProvisionFailure})
+	t.Cleanup(func() { instance.MonitorData.Unset(user, "n1") })
+	assert.Empty(t, m.usedByProtectedRefusal())
+}
