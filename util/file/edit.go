@@ -59,6 +59,12 @@ func EditCopy(src string) string {
 // or one with --discard to drop it.
 func Edit(src string, mode EditMode, validate func(dst string) error) error {
 	dst := EditCopy(src)
+	// The copy is a file of its own: a link to the installed file, or to
+	// another, would be edited in place of the copy, and judged identical to
+	// the installed file with no validation.
+	if fi, err := os.Lstat(dst); err == nil && !fi.Mode().IsRegular() {
+		return fmt.Errorf("the edit copy %s is not a regular file: remove it", dst)
+	}
 	if Exists(dst) {
 		switch {
 		case mode == EditModeDiscard:
