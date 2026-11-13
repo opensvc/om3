@@ -2800,6 +2800,7 @@ func newCmdObjectGroupProvision(kind, group string) *cobra.Command {
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.HiddenFlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagStateOnly(flags, &options.StateOnly)
+	commoncmd.FlagAdopt(flags, &options.Adopt)
 	return cmd
 }
 
