@@ -5,6 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
@@ -71,6 +76,21 @@ func (a *DaemonAPI) PostObjectActionResize(eCtx echo.Context, namespace string, 
 		}
 		if payload.Size != nil {
 			updatedAt, code, err := writeResizeTarget(eCtx, p, *payload.Size)
+			if errors.Is(err, errGrowthUnknown) {
+				// This node can not read the chain of the volume: a node
+				// holding it up can, and decides.
+				if eCtx.Request().Header.Get(headerResizeGrowthChecked) == "" {
+					if peer := a.resizeCheckPeer(p); peer != "" {
+						return a.proxy(eCtx, peer, func(c *client.T) (*http.Response, error) {
+							return c.PostObjectActionResize(eCtx.Request().Context(), namespace, kind, name, &params, payload, func(_ context.Context, req *http.Request) error {
+								req.Header.Set(headerResizeGrowthChecked, a.localhost)
+								return nil
+							})
+						})
+					}
+				}
+				return JSONProblemf(eCtx, http.StatusConflict, "Resize", "%s", err)
+			}
 			if err != nil {
 				return JSONProblemf(eCtx, code, "Resize", "%s", err)
 			}
@@ -174,47 +194,79 @@ func resizeTarget(p naming.Path, change sizeconv.Change) (int64, int, error) {
 	return to, http.StatusOK, nil
 }
 
-// refuseIdleGrowth refuses a size more than the volume is configured to hold
-// that grows nothing, naming the smallest size that does grow it.
+// refuseIdleGrowth refuses a size above the configured one whose plan grows
+// nothing, the links of the chain handing out whole units of what they rest
+// on, before it is written: written, the configuration would say a size no
+// link holds.
 //
-// The size is of the bottom of the chain of the volume, and the links above it
-// keep a cut of what they rest on and hand out whole units: a bottom grown by
-// less than that leaves the head holding what it holds. Written, the size
-// would be claimed of the pool with nothing holding it, and every node would
-// say the resize is done.
-//
-// It is worked out on this node, from the head of the volume, or from its
-// replicated resource when the head is not up here. A volume this node cannot
-// work it out for is let through: the nodes plan the resize all the same.
+// The plan is asked of "om <vol> instance resize SIZE --dry-run", the check
+// the command line makes, in a process of its own: it reads the chain, lvm,
+// drbd and the devices, which the api is not to wait on, nor run in the
+// daemon. A node where the chain can not be read says so, errGrowthUnknown,
+// for a node holding the volume up to decide.
 func refuseIdleGrowth(ctx context.Context, log *plog.Logger, p naming.Path, to int64) error {
-	type growthChecker interface {
-		HeadRID(context.Context) (string, error)
-		ConfiguredSize() (int64, error)
-		CheckResizeGrows(context.Context, string, int64) error
+	if configured, err := configuredSize(p); err != nil || to <= configured {
+		return nil
 	}
-	o, err := object.New(p, object.WithVolatile(true))
+	execname, err := os.Executable()
 	if err != nil {
-		return nil
+		return fmt.Errorf("%w: %s", errGrowthUnknown, err)
 	}
-	i, ok := o.(growthChecker)
-	if !ok {
-		return nil
-	}
-	if configured, err := i.ConfiguredSize(); err != nil || to <= configured {
-		return nil
-	}
-	rid, err := i.HeadRID(ctx)
+	ctx, cancel := context.WithTimeout(ctx, resizeCheckTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, execname, p.String(), "instance", "resize", strconv.FormatInt(to, 10), "--dry-run")
+	out, err := cmd.CombinedOutput()
 	if err == nil {
-		err = i.CheckResizeGrows(ctx, rid, to)
+		return nil
 	}
-	var idle *object.ResizeGrowsNothingError
-	switch {
-	case errors.As(err, &idle):
-		return err
-	case err != nil:
-		log.Infof("resize to %s: whether it grows anything cannot be worked out here, the nodes will: %s", sizeconv.BSizeCompact(float64(to)), err)
+	msg := lastErrorLine(string(out))
+	if msg == "" {
+		msg = err.Error()
 	}
-	return nil
+	if strings.Contains(msg, " grows nothing") {
+		return errors.New(msg)
+	}
+	log.Infof("resize to %s: whether it grows anything cannot be worked out here: %s", sizeconv.BSizeCompact(float64(to)), msg)
+	return fmt.Errorf("%w: a size of %s: %s", errGrowthUnknown, sizeconv.BSizeCompact(float64(to)), msg)
+}
+
+// resizeCheckTimeout bounds the plan of a resize the api asks for.
+const resizeCheckTimeout = 30 * time.Second
+
+// lastErrorLine returns the last "Error: " line of the output of a command,
+// without its prefix.
+func lastErrorLine(out string) string {
+	var msg string
+	for _, line := range strings.Split(out, "\n") {
+		if after, ok := strings.CutPrefix(strings.TrimSpace(line), "Error: "); ok {
+			msg = after
+		}
+	}
+	return msg
+}
+
+// errGrowthUnknown is the error of a resize whose growth this node can not
+// work out, the chain of the volume not readable here, as on a node holding
+// it down. A size written unchecked could grow nothing, and be recorded all
+// the same.
+var errGrowthUnknown = errors.New("whether the resize grows anything is worked out where the volume is up, which it is on no node able to tell")
+
+// headerResizeGrowthChecked marks a resize passed on to a peer to check its
+// growth: the peer decides, and passes it on no further.
+const headerResizeGrowthChecked = "X-Opensvc-Resize-Growth-Checked-By"
+
+// resizeCheckPeer returns a peer holding the volume up, which reads its
+// chain, empty for none.
+func (a *DaemonAPI) resizeCheckPeer(p naming.Path) string {
+	for node, st := range instance.StatusData.GetByPath(p) {
+		if node == a.localhost || st == nil {
+			continue
+		}
+		if st.Avail == status.Up {
+			return node
+		}
+	}
+	return ""
 }
 
 // configuredSize is the size the object is asked to be.
