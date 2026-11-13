@@ -4,8 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/opensvc/om3/v3/daemon/evwatch"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,14 +88,94 @@ func TestProbe(t *testing.T) {
 		require.NoError(t, os.WriteFile(p, []byte("#!/bin/sh\n"+body+"\n"), 0o755))
 		return p
 	}
-	m := NewManager(0, nil)
-	m.ctx = context.Background()
+	src := &source{log: plog.NewDefaultLogger()}
 
-	m.drbdsetup = script("supported", `echo "exists -"`)
-	require.NoError(t, m.probe())
+	src.drbdsetup = script("supported", `echo "exists -"`)
+	require.NoError(t, src.probe(context.Background()))
 
-	m.drbdsetup = script("unsupported", `echo "drbdsetup: unknown command 'events2'" >&2; exit 20`)
-	err := m.probe()
+	src.drbdsetup = script("unsupported", `echo "drbdsetup: unknown command 'events2'" >&2; exit 20`)
+	err := src.probe(context.Background())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown command 'events2'")
+}
+
+// installDrbdsetup puts a drbdsetup script first in the PATH, and the drbd
+// kernel module loaded or not.
+func installDrbdsetup(t *testing.T, body string, moduleLoaded bool) {
+	t.Helper()
+	d := t.TempDir()
+	if body != "" {
+		require.NoError(t, os.WriteFile(filepath.Join(d, "drbdsetup"), []byte("#!/bin/sh\n"+body+"\n"), 0o755))
+		// The script runs the commands of the node, the drbdsetup of the
+		// test found first.
+		t.Setenv("PATH", d+":"+os.Getenv("PATH"))
+	} else {
+		t.Setenv("PATH", d)
+	}
+	former := procDRBD
+	procDRBD = filepath.Join(d, "proc-drbd")
+	t.Cleanup(func() { procDRBD = former })
+	if moduleLoaded {
+		require.NoError(t, os.WriteFile(procDRBD, nil, 0o644))
+	}
+}
+
+// A node with no drbdsetup, or one whose drbd does not know the event
+// stream, can not run the source; one whose kernel module is not loaded yet
+// is checked by the stream once it is.
+func TestSourceCheck(t *testing.T) {
+	src := &source{log: plog.NewDefaultLogger()}
+	installDrbdsetup(t, "", true)
+	require.ErrorIs(t, src.Check(context.Background()), evwatch.ErrUnsupported)
+
+	installDrbdsetup(t, `echo "drbdsetup: unknown command 'events2'" >&2; exit 20`, true)
+	err := src.Check(context.Background())
+	require.ErrorIs(t, err, evwatch.ErrUnsupported)
+	require.Contains(t, err.Error(), "unknown command 'events2'")
+
+	installDrbdsetup(t, `exit 20`, false)
+	require.NoError(t, src.Check(context.Background()), "the module not loaded, the probe waits for it")
+
+	installDrbdsetup(t, `echo "exists -"`, true)
+	require.NoError(t, src.Check(context.Background()))
+}
+
+// The stream is ready once its initial dump of the state ends, and emits
+// the drbd resources whose state changes after.
+func TestSourceRun(t *testing.T) {
+	installDrbdsetup(t, `[ "$2" = "--now" ] && { echo "exists -"; exit 0; }
+echo "exists resource name:r1 role:Secondary suspended:no"
+echo "exists -"
+echo "change resource name:r1 role:Primary suspended:no"
+sleep 60`, true)
+	src := &source{log: plog.NewDefaultLogger()}
+	require.NoError(t, src.Check(context.Background()))
+	ctx, cancel := context.WithCancel(context.Background())
+	var readies int
+	var names []string
+	done := make(chan error, 1)
+	var mu sync.Mutex
+	go func() {
+		done <- src.Run(ctx, func() {
+			mu.Lock()
+			readies++
+			mu.Unlock()
+		}, func(name string) {
+			mu.Lock()
+			names = append(names, name)
+			mu.Unlock()
+		})
+	}()
+	require.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return readies == 1 && len(names) == 1
+	}, 5*time.Second, 10*time.Millisecond)
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the stream did not stop with its context")
+	}
+	assert.Equal(t, []string{"r1"}, names)
 }
