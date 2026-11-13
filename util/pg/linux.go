@@ -347,7 +347,10 @@ func isIgnored(kw string) bool {
 // unified hierarchy is there with no controller delegated to it, so a value
 // written under it would reach a file that does not exist. It is a v1 node as
 // far as capping goes.
-func isUnified() bool {
+//
+// It is replaced by the tests, which make hierarchies of either kind in a
+// temporary directory.
+var isUnified = func() bool {
 	return cgroups.Mode() == cgroups.Unified
 }
 
