@@ -2,6 +2,7 @@ package keywords
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -495,8 +496,22 @@ func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]*Keyword
 		return maps.Values(m), nil
 	}
 
-	return nil, fmt.Errorf("driver not found")
+	// A section with no type is of the default driver of its group, as the
+	// validation and the resources of the section take it.
+	if typ == "" {
+		if name := driver.NewID(driver.NewGroup(section), "").Name; name != "" {
+			if m, ok := keywordsByDriver[Index{section, name}]; ok {
+				return maps.Values(m), nil
+			}
+		}
+	}
+
+	return nil, ErrDriverNotFound
 }
+
+// ErrDriverNotFound is the error of a lookup of the keywords of a driver
+// that does not exist.
+var ErrDriverNotFound = errors.New("driver not found")
 
 func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind, depth int, rbacDoc RBACDoc) error {
 	section := index[0]
