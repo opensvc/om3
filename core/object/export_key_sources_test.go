@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/opensvc/om3/v3/core/actioncontext"
 )
 
 // SeedKeySources is seedKeySources, for the tests of the package
@@ -15,6 +17,15 @@ func SeedKeySources(ctx context.Context, o any, provision bool) error {
 	})
 	if !ok {
 		return fmt.Errorf("%T seeds no key", o)
+	}
+	if !actioncontext.HasProps(ctx) {
+		// The provision and the start seeding the keys carry their
+		// properties, which the selection of the resources reads.
+		props := actioncontext.Start
+		if provision {
+			props = actioncontext.Provision
+		}
+		ctx = actioncontext.WithProps(ctx, props)
 	}
 	return i.seedKeySources(ctx, provision)
 }
