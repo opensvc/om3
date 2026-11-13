@@ -3194,7 +3194,7 @@ type PostNodeDRBDConfigRequest struct {
 
 // PostObjectActionResize defines model for PostObjectActionResize.
 type PostObjectActionResize struct {
-	// Size The size the object is to hold, as "11g", "11GB" or "12Gi", or the amount to add, as "+1g". The size is written to the object configuration, which is what every node converges to, before the orchestration is queued. Omit it to converge to the size already configured, which is how a resize that stopped part way is finished.
+	// Size The size the object is to hold, as "11g", "11GB" or "12Gi", or the amount to add, as "+1g". The size of a volume is the size its pool and the claims of its namespace count, which is the size of the bottom of its chain: the resources above it keep a cut of what they rest on for their metadata, so its head holds less. The size is written to the object configuration, which is what every node converges to, before the orchestration is queued. Omit it to converge to the size already configured, which is how a resize that stopped part way is finished, and changes nothing once the volume holds it. A size more than the configured one that grows nothing, the links handing out whole units of what they rest on, is refused with a 400 naming the smallest size that does.
 	Size *string `json:"size,omitempty"`
 }
 
