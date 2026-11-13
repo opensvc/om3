@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/ccfg"
 	"github.com/opensvc/om3/v3/daemon/collector"
 	"github.com/opensvc/om3/v3/daemon/cstat"
+	"github.com/opensvc/om3/v3/daemon/ctrmon"
 	"github.com/opensvc/om3/v3/daemon/daemonapi"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
@@ -298,6 +299,7 @@ func (t *T) Start(ctx context.Context) error {
 		mntmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		drbdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		virtmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
+		ctrmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		pgmetrics.New(),
