@@ -21,6 +21,8 @@ func Run(t *testing.T, root *cobra.Command) {
 	t.Run("subsystem commands grouped", func(t *testing.T) { SubsystemCommandsGrouped(t, root) })
 	t.Run("no duplicate command name", func(t *testing.T) { NoDuplicateCommandName(t, root) })
 	t.Run("groups declared by the parent", func(t *testing.T) { GroupsDeclaredByParent(t, root) })
+	t.Run("node selector routed", func(t *testing.T) { NodeSelectorRouted(t, root) })
+	t.Run("actions runnable", func(t *testing.T) { ActionsRunnable(t, root) })
 }
 
 // NoEmptyGroupSection checks that no command prints a section title with
