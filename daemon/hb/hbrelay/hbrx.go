@@ -87,6 +87,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
 	t.msgC = msgC
+	t.ctx = ctx
 	t.cancel = cancel
 	ticker := time.NewTicker(t.interval)
 
@@ -194,10 +195,14 @@ func (t *rx) recv(nodename string) {
 			return
 		}
 		t.log.Tracef("recv: node %s, already delivered by another hb", nodename)
-		t.cmdC <- hbctrl.CmdSetPeerSuccess{
+		select {
+		case <-t.ctx.Done():
+			return
+		case t.cmdC <- hbctrl.CmdSetPeerSuccess{
 			Nodename: msgNodename,
 			HbID:     t.id,
 			Success:  true,
+		}:
 		}
 		return
 	}
@@ -215,10 +220,14 @@ func (t *rx) recv(nodename string) {
 
 	// The message decrypted, from the node that wrote it: the node is
 	// alive, whether or not this agent can read what it says.
-	t.cmdC <- hbctrl.CmdSetPeerSuccess{
+	select {
+	case <-t.ctx.Done():
+		return
+	case t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: nodename,
 		HbID:     t.id,
 		Success:  true,
+	}:
 	}
 	msg := hbtype.Msg{}
 	if err := json.Unmarshal(b, &msg); err != nil {
@@ -227,7 +236,13 @@ func (t *rx) recv(nodename string) {
 	}
 	t.decodeErrors.Succeeded(t.log, nodename)
 	t.log.Tracef("recv: node %s", nodename)
-	t.msgC <- &msg
+	// The daemon stops reading the messages before it stops the
+	// receivers: a send it no longer reads would hold this one for good.
+	select {
+	case <-t.ctx.Done():
+		return
+	case t.msgC <- &msg:
+	}
 	t.dedup.Delivered(key, msg.Nodename)
 }
 
