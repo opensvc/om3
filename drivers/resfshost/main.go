@@ -213,11 +213,19 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if _, err := t.resolveMountPoint(); err != nil {
 		return err
 	}
+	if err := t.wipeSignatures(ctx); err != nil {
+		return err
+	}
 	return t.removeMountPoint()
 }
 
+// UnprovisionAsFollower removes the mount point, and wipes the signatures of
+// a device of the node's own, which the provision of the node formatted.
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 	if _, err := t.resolveMountPoint(); err != nil {
+		return err
+	}
+	if err := t.wipeSignatures(ctx); err != nil {
 		return err
 	}
 	return t.removeMountPoint()
@@ -823,6 +831,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.mkfs(ctx); err != nil {
 		return err
 	}
+	t.removeWipeBackups()
 	// The parts of the filesystem the mount options name, as the
 	// subvolume of a btrfs, are created on a filesystem already formatted
 	// too: the mount needs them.

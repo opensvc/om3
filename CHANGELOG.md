@@ -1309,6 +1309,13 @@ which share the same executor.
 * **`mnt` is an absolute path:**
     A relative mount point is refused by the configuration validation. It resolved against the working directory of whichever process ran the action, and the status never saw it mounted.
 
+* **The unprovision wipes the signatures of the device:**
+    v2 left the filesystem signature on the device, and v3 refuses to provision a filesystem on a device holding one (provision preflight), so a provision, unprovision and provision round trip needed `--adopt`. The unprovision of a filesystem now runs `wipefs --all --backup` on its device, when a provision of the resource made it on the node, on a block device not shared, and not as a btrfs subvolume, which shares its device. A device missing or shared is skipped with a log.
+
+    The signatures wiped are kept in `/var/lib/opensvc/backup/wipefs/<namespace>/<kind>/<name>/<rid>/`, which a purge leaves, and the log names each file with the `dd` command restoring it. The next provision of the resource removes them.
+
+    The group provision commands, as `om <path> fs provision`, take `--adopt`, as `instance provision` does.
+
 ### Driver: sync
 
 * **Removed actions:**
