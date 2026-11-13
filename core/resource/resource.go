@@ -1061,6 +1061,22 @@ func PGUpdate(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// applyPGBeforeStart caps the process groups of a resource about to start.
+//
+// A capping that cannot be applied is said, and does not keep the resource
+// from starting, as with the v2 agent: failing the start on it took the
+// object down, at its next stop, reboot or failover, for a keyword the node
+// could not honor. PGUpdate, which is asked for the capping alone, still
+// fails on it.
+func applyPGBeforeStart(ctx context.Context, r interface {
+	ApplyPG(context.Context) error
+	Log() *plog.Logger
+}) {
+	if err := r.ApplyPG(ctx); err != nil {
+		r.Log().Warnf("%s", err)
+	}
+}
+
 // PGReset lifts the capping of the process group of a resource.
 func PGReset(ctx context.Context, r Driver) error {
 	defer EvalStatus(ctx, r)
@@ -1098,9 +1114,7 @@ func Start(ctx context.Context, r Driver) error {
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("start requires: %w", err)
 	}
-	if err := r.ApplyPG(ctx); err != nil {
-		return err
-	}
+	applyPGBeforeStart(ctx, r)
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Start); err != nil {
 		return fmt.Errorf("pre start trigger: %w", err)
 	}
