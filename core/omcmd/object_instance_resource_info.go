@@ -10,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -134,8 +135,27 @@ func (t *CmdObjectInstanceResourceInfo) filterResInfo(infos resource.Infos) reso
 	return filtered
 }
 
+// Run lists the key-values the resources of the local instances report, or
+// with a node selector the ones of the instances of the nodes selected,
+// through the api. With --refresh, the cache is computed again first, on
+// this node, or by the nodes selected, which the command then lists the
+// execs of.
 func (t *CmdObjectInstanceResourceInfo) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	if t.NodeSelector != "" {
+		if t.Refresh {
+			return objectaction.New(
+				objectaction.WithObjectSelector(mergedSelector),
+				objectaction.WithOutput(t.Output),
+				objectaction.WithSort(t.Sort),
+				objectaction.WithColor(t.Color),
+				objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+				objectaction.WithRemoteNodes(t.NodeSelector),
+				objectaction.WithRemoteFunc(commoncmd.ObjectResourceInfoRefreshRemote(t.RID)),
+			).Do()
+		}
+		return commoncmd.ObjectResourceInfoList(mergedSelector, t.NodeSelector, t.RID, t.OptsGlobal.OptsGlobal)
+	}
 	data, err := t.extractLocal(mergedSelector)
 	if err != nil {
 		return err

@@ -1,12 +1,8 @@
 package omcmd
 
 import (
-	"context"
-
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/objectaction"
+	"github.com/opensvc/om3/v3/util/compliance"
 )
 
 type (
@@ -21,30 +17,11 @@ type (
 )
 
 func (t *CmdObjectComplianceFixable) Run(kind string) error {
-	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	return objectaction.New(
-		objectaction.WithColor(t.Color),
-		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithSort(t.Sort),
-		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			if o, err := object.NewSvc(p); err != nil {
-				return nil, err
-			} else {
-				comp, err := o.NewCompliance()
-				if err != nil {
-					return nil, err
-				}
-				run := comp.NewRun()
-				run.SetModulesetsExpr(t.Moduleset)
-				run.SetModulesExpr(t.Module)
-				run.SetForce(t.Force)
-				run.SetAttach(t.Attach)
-				err = run.Fixable()
-				return run, err
-			}
-		}),
-	).Do()
+	opts := commoncmd.ComplianceRunOptions{
+		Modulesets: t.Moduleset,
+		Modules:    t.Module,
+		Force:      t.Force,
+		Attach:     t.Attach,
+	}
+	return doObjectComplianceRun(kind, compliance.ActionFixable, opts, t.NodeSelector, t.OptsGlobal)
 }

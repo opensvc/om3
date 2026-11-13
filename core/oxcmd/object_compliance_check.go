@@ -2,7 +2,7 @@ package oxcmd
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/objectaction"
+	"github.com/opensvc/om3/v3/util/compliance"
 )
 
 type (
@@ -17,13 +17,11 @@ type (
 )
 
 func (t *CmdObjectComplianceCheck) Run(kind string) error {
-	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	return objectaction.New(
-		objectaction.WithColor(t.Color),
-		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithSort(t.Sort),
-		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-	).Do()
+	opts := commoncmd.ComplianceRunOptions{
+		Modulesets: t.Moduleset,
+		Modules:    t.Module,
+		Force:      t.Force,
+		Attach:     t.Attach,
+	}
+	return doObjectComplianceRun(kind, compliance.ActionCheck, opts, t.NodeSelector, t.OptsGlobal)
 }

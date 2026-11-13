@@ -2,10 +2,8 @@ package omcmd
 
 import (
 	"context"
-
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
@@ -27,19 +25,17 @@ func (t *CmdObjectComplianceEnv) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			if o, err := object.NewSvc(p); err != nil {
+		objectaction.WithDefaultOutput(""),
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
+			comp, err := newObjectCompliance(p)
+			if err != nil {
 				return nil, err
-			} else {
-				comp, err := o.NewCompliance()
-				if err != nil {
-					return nil, err
-				}
-				run := comp.NewRun()
-				run.SetModulesetsExpr(t.Moduleset)
-				run.SetModulesExpr(t.Module)
-				return run.Env()
 			}
+			run := comp.NewRun()
+			run.SetModulesetsExpr(t.Moduleset)
+			run.SetModulesExpr(t.Module)
+			return run.Env()
 		}),
+		objectaction.WithRemoteFunc(commoncmd.ObjectComplianceEnvRemote(t.Moduleset, t.Module)),
 	).Do()
 }

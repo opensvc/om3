@@ -23,5 +23,7 @@ func (t *CmdObjectComplianceEnv) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithDefaultOutput(""),
+		objectaction.WithRemoteFunc(commoncmd.ObjectComplianceEnvRemote(t.Moduleset, t.Module)),
 	).Do()
 }

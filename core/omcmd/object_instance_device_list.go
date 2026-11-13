@@ -2,9 +2,7 @@ package omcmd
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectdevice"
@@ -24,13 +22,6 @@ type (
 		PrintDevices(context.Context, objectdevice.Role) objectdevice.L
 	}
 )
-
-func (t *CmdObjectInstanceDeviceList) extract(ctx context.Context, selector string, c *client.T) (objectdevice.L, error) {
-	if t.NodeSelector == "" {
-		return t.extractLocal(ctx, selector)
-	}
-	return t.extractFromDaemon(ctx, selector, c)
-}
 
 func (t *CmdObjectInstanceDeviceList) extractLocal(ctx context.Context, selector string) (objectdevice.L, error) {
 	data := objectdevice.NewList()
@@ -58,19 +49,16 @@ func (t *CmdObjectInstanceDeviceList) extractLocal(ctx context.Context, selector
 	return data, nil
 }
 
-func (t *CmdObjectInstanceDeviceList) extractFromDaemon(ctx context.Context, selector string, c *client.T) (objectdevice.L, error) {
-	data := objectdevice.NewList()
-	return data, fmt.Errorf("TODO")
-}
-
+// Run lists the devices of the local instances of the selected objects, or
+// with a node selector the ones of their instances of the nodes selected,
+// each asked of its node.
 func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
 	ctx := context.Background()
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	c, err := client.New()
-	if err != nil {
-		return err
+	if t.NodeSelector != "" {
+		return commoncmd.InstanceDeviceList(mergedSelector, t.NodeSelector, t.Roles, t.OptsGlobal.OptsGlobal)
 	}
-	data, err := t.extract(ctx, mergedSelector, c)
+	data, err := t.extractLocal(ctx, mergedSelector)
 	if err != nil {
 		return err
 	}
