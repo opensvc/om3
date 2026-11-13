@@ -130,7 +130,7 @@ func (t *Node) pushStatsRun(ctx context.Context, o PushStatsOptions, send func(c
 	disabled := t.MergedConfig().GetStrings(key.New("stats", "disable"))
 	result := PushStatsResult{Begin: begin, End: begin, Rows: map[string]int{}, Disabled: disabled}
 	if !end.After(begin) {
-		return result, fmt.Errorf("the end %s is not after the begin %s", end, begin)
+		return result, fmt.Errorf("the end %s is not after the begin %s", pushStatsTime(end), pushStatsTime(begin))
 	}
 	batches := pushStatsBatches(begin, end)
 	for i, batch := range batches {

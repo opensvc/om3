@@ -1,11 +1,15 @@
 package nodestats
 
 import (
+	"context"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/opensvc/om3/v3/util/df"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func column(g Group, name string) int {
@@ -117,4 +121,18 @@ func TestSysstatFiles(t *testing.T) {
 	if len(files) != 2 || files[0] != dir+"/sa30" || files[1] != dir+"/sa20261001" {
 		t.Errorf("files: %v", files)
 	}
+}
+
+// The times of a range refused are said as the command says the others, with
+// no monotonic clock reading.
+func TestCollectRefusesAnEndNotAfterTheBegin(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("linux only")
+	}
+	now := time.Now()
+	_, err := Collect(context.Background(), Options{Begin: now.Add(-time.Hour), End: now.Add(-2 * time.Hour)})
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "m=")
+	begin := now.Add(-time.Hour).Local().Truncate(time.Second).Format(time.RFC3339)
+	assert.Contains(t, err.Error(), "is not after the begin "+begin)
 }
