@@ -29,15 +29,6 @@ func (t *actor) Provision(ctx context.Context) (err error) {
 		return err
 	}
 	provision := t.config.GetBool(key.New("", "provision"))
-	if !provision {
-		// An instance a sysadmin provisioned, and declared so, has nothing
-		// left to make.
-		if st, err := t.FreshStatus(ctx); err == nil && st.Provisioned == provisioned.True {
-			t.log.Infof("provision is disabled (provision=false), and the instance is provisioned: nothing to do")
-			return nil
-		}
-		return fmt.Errorf("provision is disabled (provision=false): provision the resources by hand, then declare it with 'instance provision --state-only'")
-	}
 	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
 	ctx2, done := t.beginCollectorAction(ctx2, "provision")
 	defer func() { done(err, recover()) }()
@@ -48,6 +39,18 @@ func (t *actor) Provision(ctx context.Context) (err error) {
 		return err
 	}
 	defer unlock()
+
+	if !provision {
+		// An instance a sysadmin provisioned, and declared so, has nothing
+		// left to make. Judged under the action lock, from the records a
+		// declaration writes, not from what a status finds: a resource made
+		// by something else is found provisioned with no declaration.
+		if t.allProvisionRecorded() {
+			t.log.Infof("provision is disabled (provision=false), and every resource is recorded provisioned: nothing to do")
+			return nil
+		}
+		return fmt.Errorf("provision is disabled (provision=false): provision the resources by hand, then declare it with 'instance provision --state-only'")
+	}
 
 	// A selection naming a resource the object does not have is refused
 	// before the preflight, which would check nothing of it.
