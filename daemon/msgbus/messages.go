@@ -302,6 +302,8 @@ var (
 		"DrbdResourceUpdated": func() any { return &DrbdResourceUpdated{} },
 
 		"VirtDomainUpdated": func() any { return &VirtDomainUpdated{} },
+
+		"ContainerUpdated": func() any { return &ContainerUpdated{} },
 	}
 )
 
@@ -1301,6 +1303,17 @@ type (
 		Node       string `json:"node" yaml:"node"`
 		Name       string `json:"name" yaml:"name"`
 	}
+
+	// ContainerUpdated is published when a podman or docker container an
+	// instance of the node holds changed state: started, exited, killed
+	// for memory, paused, removed, its health changed. Type is the driver
+	// type of the resources of the engine, as "container.podman".
+	ContainerUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Type       string `json:"type" yaml:"type"`
+		Name       string `json:"name" yaml:"name"`
+	}
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -1969,6 +1982,14 @@ func (e *VirtDomainUpdated) Kind() string {
 
 func (e *VirtDomainUpdated) Key() string {
 	return fmt.Sprintf("VirtDomainUpdated,node=%s,name=%s", e.Node, e.Name)
+}
+
+func (e *ContainerUpdated) Kind() string {
+	return "ContainerUpdated"
+}
+
+func (e *ContainerUpdated) Key() string {
+	return fmt.Sprintf("ContainerUpdated,node=%s,type=%s,name=%s", e.Node, e.Type, e.Name)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {
