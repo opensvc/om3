@@ -241,10 +241,14 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		// another hb link delivered this very frame: the peer is alive on
 		// this one too, but the message is already in the daemon
 		t.log.Tracef("recv: msg from %s already delivered by another hb", s)
-		t.cmdC <- hbctrl.CmdSetPeerSuccess{
+		select {
+		case <-t.ctx.Done():
+			return
+		case t.cmdC <- hbctrl.CmdSetPeerSuccess{
 			Nodename: nodename,
 			HbID:     t.id,
 			Success:  true,
+		}:
 		}
 		return
 	}
@@ -271,10 +275,14 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	}
 	// The message decrypted, so the node that encrypted it is alive,
 	// whether or not this agent can read what it says.
-	t.cmdC <- hbctrl.CmdSetPeerSuccess{
+	select {
+	case <-t.ctx.Done():
+		return
+	case t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: nodename,
 		HbID:     t.id,
 		Success:  true,
+	}:
 	}
 	data := hbtype.Msg{}
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -282,7 +290,13 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 	t.decodeErrors.Succeeded(t.log, nodename)
-	t.msgC <- &data
+	// The daemon stops reading the messages before it stops the
+	// receivers: a send it no longer reads would hold this one for good.
+	select {
+	case <-t.ctx.Done():
+		return
+	case t.msgC <- &data:
+	}
 	t.dedup.Delivered(key, data.Nodename)
 }
 
