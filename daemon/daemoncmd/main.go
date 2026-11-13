@@ -46,6 +46,13 @@ var (
 	// to a stop holding it is not starting, but hung or stopping.
 	lockPath = "/tmp/locks/main"
 
+	// cliLockPath is the lock of the lifecycle commands run outside of
+	// systemd: a start holds it from the spawn of the daemon to its
+	// readiness, a restart from the stop of the daemon to the readiness of
+	// the new one, and a stop while it stops. A stop requested during a
+	// restart waits for it to end, then stops: the stop wins.
+	cliLockPath = lockPath + "-cli"
+
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 20 * time.Second
 	WaitRunningDelay   = 500 * time.Millisecond
@@ -304,7 +311,9 @@ func (t *T) LoadManager(ctx context.Context) error {
 //
 // Under systemd, the restart is forwarded to systemd.
 //
-// Without systemd, the restart stops then starts the daemon.
+// Without systemd, the restart stops then starts the daemon, holding the
+// cli lock: a stop requested meanwhile waits for the restart to end, then
+// stops.
 func (t *T) Restart(ctx context.Context, profile string) error {
 	if t.daemonsys == nil {
 		return t.restartWithoutManager(profile)
@@ -450,7 +459,8 @@ func (t *T) startFromManager(profile string) error {
 // Under systemd, the stop is a job of the unit, which replaces a start or a
 // restart in progress: the stop wins. Called by the unit ExecStop, it asks
 // the daemon to stop, and waits for it to exit, systemd escalating when it
-// does not.
+// does not. Without systemd, it holds the cli lock, so a stop requested
+// during a restart waits for it to end, then stops.
 func (t *T) Stop(ctx context.Context) error {
 	if t.daemonsys == nil {
 		return t.StopWithoutManager()
@@ -493,28 +503,18 @@ func getLock(desc string) (func(), error) {
 	return lock.Lock(lockPath, lockTimeout, desc)
 }
 
-// lockCmdCheck starts cmd, then call checker() with cli lock protection
-func lockCmdCheck(cmd *command.T, checker func() error, desc string) error {
-	f := func() error {
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-		if checker != nil {
-			if err := checker(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if err := lock.Func(lockPath+"-cli", 60*time.Second, desc, f); err != nil {
-		return err
-	}
-	return nil
+// stopLockTimeout is how long a stop waits for the cli lock, which a restart
+// holds for its stop and the wait of the new daemon running.
+func stopLockTimeout() time.Duration {
+	return lockTimeout + WaitStoppedTimeout + WaitKilledTimeout + WaitRunningTimeout
 }
 
-// StopWithoutManager stops the daemon run outside of systemd.
+// StopWithoutManager stops the daemon run outside of systemd, holding the
+// cli lock: a stop requested during a restart waits for its end, then stops.
 func (t *T) StopWithoutManager() error {
-	return t.stopMainLocked(false)
+	return lock.Func(cliLockPath, stopLockTimeout(), "daemon stop", func() error {
+		return t.stopMainLocked(false)
+	})
 }
 
 // stopMainLocked stops the daemon holding the main lock, which a starting
@@ -528,18 +528,21 @@ func (t *T) stopMainLocked(fromManager bool) error {
 	return t.stop(fromManager)
 }
 
+// start starts a daemon, holding the cli lock until it runs.
 func (t *T) start(profile string) error {
-	if isRunning, err := t.isRunning(); err != nil {
-		return err
-	} else if isRunning {
-		return ErrAlreadyRunning
-	}
-	checker := func() error {
-		if err := t.WaitRunning(); err != nil {
-			return fmt.Errorf("start checker wait running failed: %w", err)
+	return lock.Func(cliLockPath, lockTimeout, "daemon start", func() error {
+		if isRunning, err := t.isRunning(); err != nil {
+			return err
+		} else if isRunning {
+			return ErrAlreadyRunning
 		}
-		return nil
-	}
+		return t.spawn(profile)
+	})
+}
+
+// spawn runs "om daemon run" in the background, and waits for the daemon to
+// run. The caller holds the cli lock.
+func (t *T) spawn(profile string) error {
 	args := []string{"daemon", "run"}
 	if profile != "" {
 		args = append(args, "--cpuprofile", profile)
@@ -548,7 +551,13 @@ func (t *T) start(profile string) error {
 		command.WithName(os.Args[0]),
 		command.WithArgs(args),
 	)
-	return lockCmdCheck(cmd, checker, "daemon start")
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if err := t.WaitRunning(); err != nil {
+		return fmt.Errorf("start checker wait running failed: %w", err)
+	}
+	return nil
 }
 
 func (t *T) startWithoutManager(profile string) error {
@@ -576,10 +585,26 @@ func (t *T) startWithManager(ctx context.Context) error {
 }
 
 func (t *T) restartWithoutManager(profile string) error {
-	if err := t.StopWithoutManager(); err != nil {
-		return err
-	}
-	return t.startWithoutManager(profile)
+	return t.restartLocked(func() error {
+		if isRunning, err := t.isRunning(); err != nil {
+			return err
+		} else if isRunning {
+			return nil
+		}
+		return t.spawn(profile)
+	})
+}
+
+// restartLocked stops the daemon, then calls start, holding the cli lock:
+// a stop requested meanwhile, which takes it too, waits for the restart to
+// end, then stops.
+func (t *T) restartLocked(start func() error) error {
+	return lock.Func(cliLockPath, lockTimeout, "daemon restart", func() error {
+		if err := t.stopMainLocked(false); err != nil {
+			return err
+		}
+		return start()
+	})
 }
 
 // unitRunsDaemon says a unit in the ActiveState state runs a daemon, or is
