@@ -399,7 +399,7 @@ func (t *T) access() (volaccess.T, error) {
 	if err != nil {
 		return a, err
 	}
-	if t.Topology == topology.Flex {
+	if t.Topology == topology.Flex && !t.perNode() {
 		// translations: roo => rox, rwo => rwx
 		a.SetOnce(false)
 	}
@@ -413,7 +413,7 @@ func (t *T) access() (volaccess.T, error) {
 // before its object turned flex, or before the access of a flex object was
 // opened to several nodes.
 func (t *T) warnVolumeAccess(volume object.Vol) {
-	if t.Topology != topology.Flex {
+	if t.Topology != topology.Flex || t.perNode() {
 		return
 	}
 	topo := topology.Failover
@@ -557,6 +557,51 @@ func (t *T) VolumeList(_ context.Context) naming.Paths {
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
 	return t.Name
+}
+
+// perNode says the volume is the one of this node alone: no other node of
+// the object evaluates its name to the same, as {name}-{nodename} does. Each
+// instance of a flex object then starts a volume of its own, which keeps its
+// access to one node, and is no failover volume started on several nodes.
+//
+// An object of one node is not: a node added to it would evaluate the same
+// name, unless the name says the node.
+func (t *T) perNode() bool {
+	obj, ok := t.GetObject().(object.Configurer)
+	if !ok {
+		return false
+	}
+	k := key.T{Section: t.RID(), Option: "name"}
+	localhost := hostname.Hostname()
+	others := make([]string, 0, len(t.Nodes))
+	for _, nodename := range t.Nodes {
+		if nodename != localhost {
+			others = append(others, nodename)
+		}
+	}
+	return namePerNode(t.Name, others, func(nodename string) (string, error) {
+		v, err := obj.Config().EvalAs(k, nodename)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprint(v), nil
+	})
+}
+
+// namePerNode says no other node evaluates the name of the local node to the
+// same, there being another node at least. A name not evaluated says nothing
+// of it, so it is not one.
+func namePerNode(name string, others []string, eval func(string) (string, error)) bool {
+	if name == "" || len(others) == 0 {
+		return false
+	}
+	for _, nodename := range others {
+		other, err := eval(nodename)
+		if err != nil || other == name {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *T) ValidateNodesAndName() error {
