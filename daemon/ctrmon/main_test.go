@@ -59,6 +59,10 @@ func TestParseDockerEvent(t *testing.T) {
 	assert.False(t, ok, "not a container")
 }
 
+// systemPath is the PATH the tests start with, which the scripts of a test
+// run their commands from, whatever an earlier test case set.
+var systemPath = os.Getenv("PATH")
+
 func installEngine(t *testing.T, name, body string) {
 	t.Helper()
 	d := t.TempDir()
@@ -67,7 +71,7 @@ func installEngine(t *testing.T, name, body string) {
 		return
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(d, name), []byte("#!/bin/sh\n"+body+"\n"), 0o755))
-	t.Setenv("PATH", d+":"+os.Getenv("PATH"))
+	t.Setenv("PATH", d+":"+systemPath)
 }
 
 // An engine not installed, or printing no event stream, can not run.

@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -284,9 +283,10 @@ func (t *source) Check(ctx context.Context) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, helpTimeout)
 	defer cancel()
-	b, err := exec.CommandContext(ctx, p, "events", "--help").CombinedOutput()
-	if err != nil || !strings.Contains(string(b), "--format") {
-		return fmt.Errorf("the installed %s prints no event stream: its container changes are seen at the scheduled status only: %w", t.command, evwatch.ErrUnsupported)
+	if err := evwatch.ProbeHelp(ctx, nil, "--format", p, "events", "--help"); errors.Is(err, evwatch.ErrUnsupported) {
+		return fmt.Errorf("the installed %s prints no event stream: its container changes are seen at the scheduled status only: %w", t.command, err)
+	} else if err != nil {
+		return err
 	}
 	t.path = p
 	return nil

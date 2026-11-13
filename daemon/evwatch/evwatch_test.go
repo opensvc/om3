@@ -296,3 +296,27 @@ func TestSetDemandNeverBlocks(t *testing.T) {
 	}
 	assert.Equal(t, 99, <-r.demandC)
 }
+
+// Only a tool that ran to its end and printed no flag is unsupported: one
+// timing out or not running is retried.
+func TestProbeHelp(t *testing.T) {
+	ok := script(t, `echo "  --loop   loop until interrupted"`)
+	require.NoError(t, ProbeHelp(context.Background(), nil, "--loop", ok))
+
+	noFlag := script(t, `echo "  --domain <string>"`)
+	require.ErrorIs(t, ProbeHelp(context.Background(), nil, "--loop", noFlag), ErrUnsupported)
+
+	noCommand := script(t, `echo "error: command 'event' doesn't exist" >&2; exit 1`)
+	require.ErrorIs(t, ProbeHelp(context.Background(), nil, "--loop", noCommand), ErrUnsupported)
+
+	slow := script(t, `sleep 5; echo "--loop"`)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	err := ProbeHelp(ctx, nil, "--loop", slow)
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrUnsupported, "a timeout says nothing of the tool")
+
+	err = ProbeHelp(context.Background(), nil, "--loop", filepath.Join(t.TempDir(), "missing"))
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrUnsupported, "a tool that could not run says nothing of it")
+}

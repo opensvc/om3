@@ -101,6 +101,10 @@ func TestProbe(t *testing.T) {
 
 // installDrbdsetup puts a drbdsetup script first in the PATH, and the drbd
 // kernel module loaded or not.
+// systemPath is the PATH the tests start with, which the scripts of a test
+// run their commands from, whatever an earlier test case set.
+var systemPath = os.Getenv("PATH")
+
 func installDrbdsetup(t *testing.T, body string, moduleLoaded bool) {
 	t.Helper()
 	d := t.TempDir()
@@ -108,7 +112,7 @@ func installDrbdsetup(t *testing.T, body string, moduleLoaded bool) {
 		require.NoError(t, os.WriteFile(filepath.Join(d, "drbdsetup"), []byte("#!/bin/sh\n"+body+"\n"), 0o755))
 		// The script runs the commands of the node, the drbdsetup of the
 		// test found first.
-		t.Setenv("PATH", d+":"+os.Getenv("PATH"))
+		t.Setenv("PATH", d+":"+systemPath)
 	} else {
 		t.Setenv("PATH", d)
 	}
@@ -132,6 +136,13 @@ func TestSourceCheck(t *testing.T) {
 	err := src.Check(context.Background())
 	require.ErrorIs(t, err, evwatch.ErrUnsupported)
 	require.Contains(t, err.Error(), "unknown command 'events2'")
+
+	installDrbdsetup(t, `sleep 30`, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	err = src.Check(ctx)
+	cancel()
+	require.Error(t, err)
+	require.NotErrorIs(t, err, evwatch.ErrUnsupported, "a probe timing out is tried again")
 
 	installDrbdsetup(t, `exit 20`, false)
 	require.NoError(t, src.Check(context.Background()), "the module not loaded, the probe waits for it")

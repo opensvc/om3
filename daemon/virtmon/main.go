@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -235,11 +234,10 @@ func (t *source) Check(ctx context.Context) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, helpTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, p, "help", "event")
-	cmd.Env = append(cmd.Environ(), env...)
-	b, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(b), "--loop") {
-		return fmt.Errorf("the installed virsh prints no event stream: the libvirt domain changes are seen at the scheduled status only: %w", evwatch.ErrUnsupported)
+	if err := evwatch.ProbeHelp(ctx, env, "--loop", p, "help", "event"); errors.Is(err, evwatch.ErrUnsupported) {
+		return fmt.Errorf("the installed virsh prints no event stream: the libvirt domain changes are seen at the scheduled status only: %w", err)
+	} else if err != nil {
+		return err
 	}
 	t.virsh = p
 	return nil
