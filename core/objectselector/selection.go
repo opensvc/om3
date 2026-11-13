@@ -163,7 +163,13 @@ func (t *Selection) checkFilters() error {
 	return nil
 }
 
+// ErrNoSelector is the error of a command needing an object, given none.
+var ErrNoSelector = errors.New("no object selected: name one, or select some with --selector")
+
 func (t *Selection) MustExpand() (naming.Paths, error) {
+	if t.selectorExpression == "" {
+		return nil, ErrNoSelector
+	}
 	if paths, err := t.Expand(); err != nil {
 		return paths, err
 	} else if len(paths) == 0 {
