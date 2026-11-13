@@ -40,13 +40,31 @@ import (
 )
 
 var (
-	lockPath           = "/tmp/locks/main"
+	// lockPath is the lock a starting daemon holds until it is started,
+	// and a stop holds while it stops the daemon: a stop waits for a
+	// starting daemon to be started, so a daemon whose api does not answer
+	// to a stop holding it is not starting, but hung or stopping.
+	lockPath = "/tmp/locks/main"
+
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 20 * time.Second
 	WaitRunningDelay   = 500 * time.Millisecond
-	WaitStoppedTimeout = 4 * time.Second
+
+	// WaitStoppedTimeout is how long a stop run outside of systemd waits
+	// for the daemon to exit before it kills it. A daemon stops in a few
+	// seconds, but in more than the 4 seconds this wait was on a loaded
+	// node, which had it killed during a restart. A daemon not stopped in
+	// a minute, the time the lifecycle commands wait for their lock, is
+	// hung. Under systemd, the stop of the unit ExecStop has no limit of
+	// its own: the TimeoutStopSec of the unit bounds it.
+	WaitStoppedTimeout = time.Minute
 	WaitStoppedDelay   = 250 * time.Millisecond
-	errGoTest          = errors.New("running from go test")
+
+	// WaitKilledTimeout is how long a stop waits for a daemon it killed
+	// to be gone.
+	WaitKilledTimeout = 5 * time.Second
+
+	errGoTest = errors.New("running from go test")
 
 	ErrAlreadyRunning = errors.New("daemon already running")
 )
@@ -56,22 +74,60 @@ type (
 		client    *client.T
 		node      string
 		daemonsys Manager
+		api       daemonAPI
+		procs     processes
 	}
 
+	// Manager is the service manager running the daemon, systemd.
 	Manager interface {
-		Activated(ctx context.Context) (bool, error)
+		// ActiveState returns the ActiveState of the unit: "active",
+		// "activating", "deactivating", "reloading", "inactive",
+		// "failed".
+		ActiveState(ctx context.Context) (string, error)
 		CalledFromManager() bool
 		Close() error
 		Defined(ctx context.Context) (bool, error)
+
+		// Start, Restart and Stop return when the job of the unit
+		// ended, and an error when its result is not "done".
 		Start(ctx context.Context) error
 		Restart() error
 		Stop(context.Context) error
+
 		IsSystemStopping() (bool, error)
 	}
 
-	starter interface {
-		Start(context.Context) error
+	// daemonAPI is the api of the local daemon, as the lifecycle commands
+	// use it.
+	daemonAPI interface {
+		// Ping says the api answers.
+		Ping(ctx context.Context) bool
+
+		// PostStop asks the daemon to stop, and returns its pid.
+		PostStop(ctx context.Context) (int, error)
 	}
+
+	// processes tells about the daemon process, and signals it.
+	processes interface {
+		// DaemonPid returns the pid the pid file names, when it is the one
+		// of an "om daemon run" process, else -1.
+		DaemonPid() (int, error)
+
+		// PidFileNames says the pid file names pid. The daemon removes it
+		// as it exits.
+		PidFileNames(pid int) bool
+
+		// Alive says the process pid exists, and is not a zombie.
+		Alive(pid int) (bool, error)
+
+		Signal(pid int, sig syscall.Signal) error
+	}
+
+	apiClient struct {
+		c *client.T
+	}
+
+	osProcesses struct{}
 )
 
 func bootStrapCcfg() error {
@@ -221,7 +277,11 @@ func bootStrapSecHb(currentSecret string, currentVersion uint64) error {
 }
 
 func New(c *client.T) *T {
-	return &T{client: c}
+	return &T{
+		client: c,
+		api:    apiClient{c: c},
+		procs:  osProcesses{},
+	}
 }
 
 func (t *T) LoadManager(ctx context.Context) error {
@@ -240,9 +300,11 @@ func (t *T) LoadManager(ctx context.Context) error {
 	return nil
 }
 
-// Restart handle daemon restart from command origin.
+// Restart restarts the daemon.
 //
-// It is used to forward restart control to (systemd) manager (when the origin is not systemd)
+// Under systemd, the restart is forwarded to systemd.
+//
+// Without systemd, the restart stops then starts the daemon.
 func (t *T) Restart(ctx context.Context, profile string) error {
 	if t.daemonsys == nil {
 		return t.restartWithoutManager(profile)
@@ -383,9 +445,12 @@ func (t *T) startFromManager(profile string) error {
 	return t.start(profile)
 }
 
-// Stop handle daemon stop from command origin.
+// Stop stops the daemon.
 //
-// It is used to forward stop control to (systemd) manager (when the origin is not systemd)
+// Under systemd, the stop is a job of the unit, which replaces a start or a
+// restart in progress: the stop wins. Called by the unit ExecStop, it asks
+// the daemon to stop, and waits for it to exit, systemd escalating when it
+// does not.
 func (t *T) Stop(ctx context.Context) error {
 	if t.daemonsys == nil {
 		return t.StopWithoutManager()
@@ -447,33 +512,20 @@ func lockCmdCheck(cmd *command.T, checker func() error, desc string) error {
 	return nil
 }
 
-// lockFuncAndCheck starts cmd, then call checker() with cli lock protection
-func lockFuncAndCheck(ctx context.Context, starter starter, checker func() error, desc string) error {
-	f := func() error {
-		if err := starter.Start(ctx); err != nil {
-			return err
-		}
-		if checker != nil {
-			if err := checker(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if err := lock.Func(lockPath+"-cli", 60*time.Second, desc, f); err != nil {
-		return err
-	}
-	return nil
+// StopWithoutManager stops the daemon run outside of systemd.
+func (t *T) StopWithoutManager() error {
+	return t.stopMainLocked(false)
 }
 
-// StopWithoutManager function will stop daemon with internal lock protection
-func (t *T) StopWithoutManager() error {
+// stopMainLocked stops the daemon holding the main lock, which a starting
+// daemon holds until it is started: no start is in progress during the stop.
+func (t *T) stopMainLocked(fromManager bool) error {
 	release, err := getLock("Stop")
 	if err != nil {
 		return err
 	}
 	defer release()
-	return t.stop()
+	return t.stop(fromManager)
 }
 
 func (t *T) start(profile string) error {
@@ -530,6 +582,17 @@ func (t *T) restartWithoutManager(profile string) error {
 	return t.startWithoutManager(profile)
 }
 
+// unitRunsDaemon says a unit in the ActiveState state runs a daemon, or is
+// starting or stopping one.
+func unitRunsDaemon(state string) bool {
+	switch state {
+	case "inactive", "failed", "":
+		return false
+	default:
+		return true
+	}
+}
+
 func (t *T) restartWithManager() error {
 	if err := t.daemonsys.Restart(); err != nil {
 		return fmt.Errorf("daemonsys restart: %w", err)
@@ -537,21 +600,23 @@ func (t *T) restartWithManager() error {
 	return nil
 }
 
+// stopWithManager stops the unit. The stop job replaces a start or a restart
+// of the unit, running or queued: the stop wins.
+//
+// When the unit was not running, a daemon started outside of it, which
+// systemd can't stop, is stopped without it.
 func (t *T) stopWithManager(ctx context.Context) error {
-	if ok, err := t.daemonsys.Activated(ctx); err != nil {
-		err := fmt.Errorf("can't detect activated state: %w", err)
-		return err
-	} else if !ok {
-		// recover inconsistent manager view not activated, but reality is running
-		if err := t.StopWithoutManager(); err != nil {
-			return fmt.Errorf("failed during recover: %w", err)
-		}
-	} else {
-		if err := t.daemonsys.Stop(ctx); err != nil {
-			return fmt.Errorf("daemonsys stop: %w", err)
-		}
+	state, err := t.daemonsys.ActiveState(ctx)
+	if err != nil {
+		return fmt.Errorf("can't detect the unit active state: %w", err)
 	}
-	return nil
+	if err := t.daemonsys.Stop(ctx); err != nil {
+		return fmt.Errorf("daemonsys stop: %w", err)
+	}
+	if unitRunsDaemon(state) {
+		return nil
+	}
+	return t.StopWithoutManager()
 }
 
 func (t *T) stopFromManager() error {
@@ -570,45 +635,160 @@ func (t *T) stopFromManager() error {
 		cmd.Cmd().Stderr = io.Discard
 		return cmd.Run()
 	}
-	return t.StopWithoutManager()
+	return t.stopMainLocked(true)
 }
 
-func (t *T) stop() error {
+// isAnswerLost says the error of a stop request is the connection the
+// daemon closed as it stopped, after it received the request.
+func isAnswerLost(err error) bool {
+	return errors.Is(err, syscall.ECONNRESET) ||
+		strings.Contains(err.Error(), "unexpected EOF") ||
+		strings.Contains(err.Error(), "unexpected end of JSON input")
+}
+
+// stop asks the daemon to stop through its api, and waits for it to exit.
+// The caller holds the main lock.
+//
+// Called by the unit ExecStop (fromManager), the stop never signals the
+// daemon: it waits for its exit with no limit of its own, as the
+// TimeoutStopSec of the unit bounds the wait, and systemd escalates. When
+// the api does not answer, it returns at once, and systemd sends the daemon
+// the SIGTERM it handles as a stop request.
+//
+// Outside of systemd, when the api does not answer, the daemon process the
+// pid file names is sent a SIGTERM. A daemon still running WaitStoppedTimeout
+// after the request is killed, as a last resort, and the stop returns an
+// error, as it does when it can't confirm the stop.
+func (t *T) stop(fromManager bool) error {
 	log := logger("stop: ")
-	resp, err := t.client.PostDaemonStopWithResponse(context.Background(), hostname.Hostname())
+	ctx := context.Background()
+	pid, err := t.daemonPid()
 	if err != nil {
-		if !errors.Is(err, syscall.ECONNRESET) &&
-			!strings.Contains(err.Error(), "unexpected EOF") &&
-			!strings.Contains(err.Error(), "unexpected end of JSON input") {
-			log.Errorf("post daemon stop: %s, kill", err)
-			return t.kill()
-		}
 		return err
 	}
-	switch {
-	case resp.JSON200 != nil:
-		log.Tracef("wait for stop...")
-		pid := resp.JSON200.Pid
-		hasProcfile := func() (bool, error) {
-			return t.hasProcFile(pid)
-		}
-		if ok, err := waitfor.FalseNoError(WaitStoppedTimeout, WaitStoppedDelay, hasProcfile); err != nil {
-			log.Warnf("daemon pid %d wait not running: %s, kill", pid, err)
-			return t.kill()
-		} else if !ok {
-			log.Warnf("daemon pid %d still running after stop request, kill", pid)
-			return t.kill()
-		}
-		log.Tracef("stopped")
-		// one more delay before return listener not anymore responding
-		time.Sleep(WaitStoppedDelay)
-	default:
-		log.Warnf("unexpected status code: %s body: %s, kill", resp.Status(), string(resp.Body))
-		time.Sleep(WaitStoppedDelay)
-		return t.kill()
+	if pid < 0 && !t.api.Ping(ctx) {
+		log.Debugf("not running")
+		return nil
 	}
+	daemonPid, err := t.api.PostStop(ctx)
+	switch {
+	case err == nil:
+		pid = daemonPid
+	case isAnswerLost(err):
+		log.Debugf("post daemon stop: %s: the daemon is stopping", err)
+		if pid < 0 {
+			return t.waitAPIDown(fromManager)
+		}
+	case fromManager:
+		log.Warnf("post daemon stop: %s: let systemd terminate the daemon", err)
+		return nil
+	case pid < 0:
+		return fmt.Errorf("post daemon stop: %w", err)
+	default:
+		log.Warnf("post daemon stop: %s: send a SIGTERM to the daemon pid %d", err, pid)
+		if err := t.procs.Signal(pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
+			return fmt.Errorf("signal the daemon pid %d: %w", pid, err)
+		}
+	}
+	return t.waitStopped(pid, fromManager)
+}
 
+// daemonPid returns the pid of the daemon process, -1 for none.
+func (t *T) daemonPid() (int, error) {
+	pid, err := t.procs.DaemonPid()
+	if err != nil {
+		return -1, err
+	}
+	if pid <= 0 || pid == os.Getpid() {
+		// os.Getpid(): avoids false positives caused by remnants of a
+		// previous daemon PID after a fast OS reboot.
+		return -1, nil
+	}
+	if alive, err := t.procs.Alive(pid); err != nil {
+		return -1, err
+	} else if !alive {
+		return -1, nil
+	}
+	return pid, nil
+}
+
+// stopped says the daemon of pid stopped: its process is gone, or the pid
+// file it removes as it exits no longer names it.
+func (t *T) stopped(pid int) (bool, error) {
+	if alive, err := t.procs.Alive(pid); err != nil {
+		return false, err
+	} else if !alive {
+		return true, nil
+	}
+	return !t.procs.PidFileNames(pid), nil
+}
+
+// waitStopped waits for the daemon of pid to stop: with no limit when called
+// by the manager, else for WaitStoppedTimeout, then it kills it.
+func (t *T) waitStopped(pid int, fromManager bool) error {
+	isStopped := func() (bool, error) {
+		return t.stopped(pid)
+	}
+	if fromManager {
+		for {
+			if ok, err := isStopped(); err != nil {
+				return err
+			} else if ok {
+				return nil
+			}
+			time.Sleep(WaitStoppedDelay)
+		}
+	}
+	if ok, err := waitfor.TrueNoError(WaitStoppedTimeout, WaitStoppedDelay, isStopped); err != nil {
+		return fmt.Errorf("wait for the daemon pid %d to stop: %w", pid, err)
+	} else if ok {
+		return nil
+	}
+	return t.killLastResort(pid)
+}
+
+// waitAPIDown waits for the api of a daemon stopping, whose pid is unknown,
+// to no longer answer.
+func (t *T) waitAPIDown(fromManager bool) error {
+	isDown := func() (bool, error) {
+		return !t.api.Ping(context.Background()), nil
+	}
+	if fromManager {
+		for t.api.Ping(context.Background()) {
+			time.Sleep(WaitStoppedDelay)
+		}
+		return nil
+	}
+	if ok, _ := waitfor.TrueNoError(WaitStoppedTimeout, WaitStoppedDelay, isDown); !ok {
+		return fmt.Errorf("the daemon api still answers %s after the stop request: stop not confirmed", WaitStoppedTimeout)
+	}
 	return nil
+}
+
+// killLastResort kills the daemon of pid, still running after a stop
+// request, and returns an error saying so. It kills only the "om daemon run"
+// process the pid file names, never a pid the system gave another process.
+func (t *T) killLastResort(pid int) error {
+	log := logger("stop: ")
+	if current, err := t.daemonPid(); err != nil {
+		return fmt.Errorf("daemon pid %d still running %s after the stop request: %w", pid, WaitStoppedTimeout, err)
+	} else if current != pid {
+		return fmt.Errorf("daemon pid %d still running %s after the stop request, and not the daemon the pid file names: not killed, stop not confirmed", pid, WaitStoppedTimeout)
+	}
+	log.Warnf("daemon pid %d still running %s after the stop request: kill", pid, WaitStoppedTimeout)
+	if err := t.procs.Signal(pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("kill the daemon pid %d: %w", pid, err)
+	}
+	isGone := func() (bool, error) {
+		alive, err := t.procs.Alive(pid)
+		return !alive, err
+	}
+	if ok, err := waitfor.TrueNoError(WaitKilledTimeout, WaitStoppedDelay, isGone); err != nil {
+		return fmt.Errorf("daemon pid %d killed: %w", pid, err)
+	} else if !ok {
+		return fmt.Errorf("daemon pid %d still running %s after its kill", pid, WaitKilledTimeout)
+	}
+	return fmt.Errorf("daemon pid %d did not stop within %s after the stop request: killed", pid, WaitStoppedTimeout)
 }
 
 func (t *T) startProfile(profile string) (func(), error) {
@@ -643,25 +823,74 @@ func (t *T) Run(ctx context.Context, profile string) error {
 	return nil
 }
 
-func (t *T) kill() error {
-	pid, err := t.getPid()
-	if errors.Is(err, errGoTest) {
-		return nil
+// Ping says the api of the local daemon answers.
+func (a apiClient) Ping(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	resp, err := a.c.GetNodePing(ctx, hostname.Hostname())
+	if err != nil {
+		return false
 	}
-	if pid <= 0 {
-		return nil
-	}
-	return syscall.Kill(pid, syscall.SIGKILL)
+	_ = resp.Body.Close()
+	return resp.StatusCode == http.StatusNoContent
 }
 
-func (t *T) hasProcFile(pid int) (bool, error) {
-	filename := fmt.Sprintf("/proc/%d", pid)
-	_, err := os.Stat(filename)
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
+// PostStop asks the local daemon to stop, and returns its pid.
+func (a apiClient) PostStop(ctx context.Context) (int, error) {
+	resp, err := a.c.PostDaemonStopWithResponse(ctx, hostname.Hostname())
 	if err != nil {
+		return -1, err
+	}
+	if resp.JSON200 == nil {
+		return -1, fmt.Errorf("unexpected status code: %s body: %s", resp.Status(), string(resp.Body))
+	}
+	return resp.JSON200.Pid, nil
+}
+
+func (osProcesses) DaemonPid() (int, error) {
+	pid, err := getPid()
+	if errors.Is(err, errGoTest) {
+		// The daemon of the go tests runs in the test process: none to
+		// signal.
+		return -1, nil
+	}
+	return pid, err
+}
+
+func (osProcesses) PidFileNames(pid int) bool {
+	v, err := extractPidFromPidFile(daemonPidFile())
+	return err == nil && v == pid
+}
+
+func (osProcesses) Alive(pid int) (bool, error) {
+	return isProcessAlive(pid)
+}
+
+func (osProcesses) Signal(pid int, sig syscall.Signal) error {
+	return syscall.Kill(pid, sig)
+}
+
+// isProcessAlive says the process pid exists and is not a zombie, which a
+// dead daemon is until its parent reaps it.
+func isProcessAlive(pid int) (bool, error) {
+	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
+		return false, nil
+	} else if err != nil {
 		return false, err
+	}
+	// pid (comm) state ...: comm may hold spaces and parentheses.
+	i := bytes.LastIndexByte(b, ')')
+	if i < 0 {
+		return false, fmt.Errorf("/proc/%d/stat: no comm end", pid)
+	}
+	fields := strings.Fields(string(b[i+1:]))
+	if len(fields) == 0 {
+		return false, fmt.Errorf("/proc/%d/stat: no state", pid)
+	}
+	switch fields[0] {
+	case "Z", "X":
+		return false, nil
 	}
 	return true, nil
 }
@@ -669,39 +898,17 @@ func (t *T) hasProcFile(pid int) (bool, error) {
 // isRunning returns true if the daemon api responds or if process id from
 // daemon pid file exists, matching 'daemon run' and is not self pid.
 func (t *T) isRunning() (bool, error) {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	resp, err := t.client.GetNodePing(ctx, hostname.Hostname())
-	if err == nil && resp.StatusCode == http.StatusNoContent {
+	if t.api.Ping(context.Background()) {
 		return true, nil
 	}
-
-	pid, err := t.getPid()
-	if errors.Is(err, errGoTest) {
-		return false, nil
-	}
+	pid, err := t.daemonPid()
 	if err != nil {
 		return false, err
 	}
-	if pid < 0 {
-		return false, nil
-	}
-
-	if os.Getpid() == pid {
-		// avoids false positives caused by remnants of a previous daemon PID
-		// after a fast OS reboot.
-		return false, nil
-	}
-	hasProcFile, err := t.hasProcFile(pid)
-	if err != nil {
-		return false, err
-	}
-	return hasProcFile, err
+	return pid > 0, nil
 }
 
-func (t *T) getPid() (int, error) {
+func getPid() (int, error) {
 	pidFile := daemonPidFile()
 	pid, err := extractPidFromPidFile(pidFile)
 	if errors.Is(err, os.ErrNotExist) {

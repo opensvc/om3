@@ -25,16 +25,20 @@ const (
 	UnitName = "opensvc-server.service"
 )
 
-// Activated detects if opensvc unit is activated
-func (t *T) Activated(ctx context.Context) (bool, error) {
+// ActiveState returns the ActiveState of the opensvc unit: "active",
+// "activating", "deactivating", "reloading", "inactive" or "failed".
+func (t *T) ActiveState(ctx context.Context) (string, error) {
 	prop, err := t.conn.GetUnitPropertyContext(ctx, UnitName, "ActiveState")
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	if prop == nil {
-		return false, nil
+		return "", nil
 	}
-	return prop.Value.String() == "\"active\"", nil
+	if v, ok := prop.Value.Value().(string); ok {
+		return v, nil
+	}
+	return strings.Trim(prop.Value.String(), "\""), nil
 }
 
 // CalledFromManager detects if current process as been launched by systemd:
@@ -145,31 +149,54 @@ func (t *T) Restart() error {
 	).Run()
 }
 
-// Start starts the opensvc systemd unit
+// Start starts the opensvc systemd unit, and returns when systemd ended the
+// job: an error when it is not done.
 func (t *T) Start(ctx context.Context) error {
-	c := make(chan string)
-	_, err := t.conn.StartUnitContext(ctx, UnitName, "replace", c)
-	if err != nil {
+	c := make(chan string, 1)
+	if _, err := t.conn.StartUnitContext(ctx, UnitName, "replace", c); err != nil {
 		return err
 	}
-	<-c
-	return nil
+	return waitJob(ctx, "start", c)
 }
 
-// Stop stops the opensvc systemd unit
+// Stop stops the opensvc systemd unit, and returns when systemd ended the
+// job: an error when it is not done. The "replace" mode makes the stop
+// replace a start or a restart queued or running: the stop wins.
 func (t *T) Stop(ctx context.Context) error {
-	c := make(chan string)
-	_, err := t.conn.StopUnitContext(ctx, UnitName, "replace", c)
-	if err != nil {
+	c := make(chan string, 1)
+	if _, err := t.conn.StopUnitContext(ctx, UnitName, "replace", c); err != nil {
 		return err
 	}
-	<-c
-	return nil
+	return waitJob(ctx, "stop", c)
+}
+
+// waitJob waits for the result systemd gives the job of op, and returns an
+// error when it is not "done": "canceled" when another job replaced it, as a
+// stop replaces a restart, "failed", "timeout", "dependency" or "skipped".
+//
+// The channel must be buffered: go-systemd sends the result holding the lock
+// of its job listener, so a send nobody reads would block the result of every
+// later job of the connection.
+func waitJob(ctx context.Context, op string, c <-chan string) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("%s %s: %w", op, UnitName, ctx.Err())
+	case result := <-c:
+		return jobResultError(op, result)
+	}
+}
+
+// jobResultError returns an error for a job result other than "done".
+func jobResultError(op, result string) error {
+	if result == "done" {
+		return nil
+	}
+	return fmt.Errorf("%s %s: job %s", op, UnitName, result)
 }
 
 // New provides a connected object to dbus systemd that implement following interfaces:
 //
-//	Activated(ctx context.Context) (bool, error)
+//	ActiveState(ctx context.Context) (string, error)
 //	CalledFromManager() bool
 //	Close() error
 //	NotifyWatchdog() (bool, error)

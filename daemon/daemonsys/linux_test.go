@@ -21,3 +21,13 @@ func TestIsUnitPID(t *testing.T) {
 	assert.True(t, isUnitPID(1400, pids), "the daemon stop of ExecStop")
 	assert.False(t, isUnitPID(1200, map[string]uint32{}), "the unit says no pid")
 }
+
+// A job result other than "done" is an error: a restart a stop replaced is
+// canceled, and must not read as a restart done.
+func TestJobResultError(t *testing.T) {
+	assert.NoError(t, jobResultError("restart", "done"))
+	for _, result := range []string{"canceled", "failed", "timeout", "dependency", "skipped"} {
+		err := jobResultError("restart", result)
+		assert.ErrorContains(t, err, "job "+result, result)
+	}
+}
