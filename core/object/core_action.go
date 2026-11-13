@@ -878,6 +878,12 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		t.PGClean(ctxWithTimeout)
 	}
 	err := t.postStartStopStatusEval(ctxWithTimeout)
+	if removesPG(ctx, isActionForMaster) {
+		// After the status evaluation: the check of an app runs in its
+		// process group, which it would make again, uncapped and empty,
+		// to outlive a purge.
+		t.pgRemove()
+	}
 	if err == nil {
 		t.announceIdle(ctxWithTimeout)
 	} else {

@@ -15,3 +15,8 @@ func (c Config) Delete() (bool, error) {
 func isIgnored(_ string) bool {
 	return false
 }
+
+// RemoveTree removes the group and every group under it.
+func (c Config) RemoveTree() error {
+	return nil
+}

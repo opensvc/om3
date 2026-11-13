@@ -32,6 +32,13 @@ type (
 		Rollback        bool
 		PG              bool
 		TimeoutKeywords []string
+
+		// RemovesPG says the action, unscoped, leaves nothing running in
+		// the process groups of the object, which it removes when done,
+		// with the systemd properties of their slices: a capping would
+		// outlive the object otherwise, and cap the next one made under
+		// the same name.
+		RemovesPG bool
 	}
 )
 
@@ -147,6 +154,7 @@ var (
 		Order:           ordering.Desc,
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
+		RemovesPG:       true,
 	}
 	PGUpdate = Properties{
 		Name:     "pg_update",
@@ -188,6 +196,7 @@ var (
 		MarksStopped:    true,
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
+		RemovesPG:       true,
 	}
 	// ProvisionStop is the stop ending a provision off the placement
 	// leader, which leaves stopped what the provision started on an
@@ -202,6 +211,7 @@ var (
 		StepOf:          "provision",
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
+		RemovesPG:       true,
 	}
 	SyncFull = Properties{
 		Name:     "full",
@@ -284,5 +294,6 @@ var (
 		Order:           ordering.Desc,
 		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
 		PG:              true,
+		RemovesPG:       true,
 	}
 )

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/claim"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/key"
@@ -136,6 +137,26 @@ func (t *core) PGClean(ctx context.Context) {
 		return
 	}
 	mgr.Clean()
+}
+
+// removesPG says whether the action ends with the process groups of the
+// object removed: a stop, shutdown or unprovision of the whole instance, as
+// the v2 agent did.
+//
+// A scoped one leaves the other resources running in their groups, and in
+// the group of the object above them, so it removes nothing, and nor does an
+// action done for the encap nodes only, which stops nothing of the host.
+func removesPG(ctx context.Context, isActionForMaster bool) bool {
+	return actioncontext.Props(ctx).RemovesPG && isActionForMaster && !actioncontext.HasResourceSelector(ctx)
+}
+
+// pgRemove removes the process groups of the object, and has systemd forget
+// the properties of their slices. A failure is reported, and fails nothing:
+// the action did what it was asked.
+func (t *core) pgRemove() {
+	if err := t.pgConfig("").WithLogger(t.log).RemoveTree(); err != nil {
+		t.log.Warnf("remove the process groups: %s", err)
+	}
 }
 
 // pgDefaultCaps gives a container the caps its namespace claims by default,

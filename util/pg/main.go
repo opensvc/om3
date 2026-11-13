@@ -255,8 +255,12 @@ func (m *Mgr) Clean() {
 	}
 }
 
+// cgroupMount is where the node mounts its cgroup hierarchies, and is
+// replaced by the tests, which must not reach the ones of the host.
+var cgroupMount = "/sys/fs/cgroup"
+
 func UnifiedPath() string {
-	mnt := "/sys/fs/cgroup"
+	mnt := cgroupMount
 	_, err := os.Stat(mnt + "/cgroup.procs")
 	if err == nil {
 		return mnt

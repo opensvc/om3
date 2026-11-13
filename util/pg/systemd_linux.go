@@ -20,6 +20,9 @@ var systemctl = func(opts ...funcopt.O) *command.T {
 	return command.New(opts...)
 }
 
+// hasSystemd says whether the node runs systemd, and is replaced by the tests.
+var hasSystemd = systemd.HasSystemd
+
 // cpuQuotaPeriod is the period systemd converts a CPUQuota percentage with.
 const cpuQuotaPeriod = uint64(100000)
 
@@ -146,19 +149,28 @@ func (c Config) systemdProperties() ([]string, error) {
 // persist.
 func (c Config) setSystemdProperties() error {
 	unit := c.unit()
-	if unit == "" || !systemd.HasSystemd() {
+	if unit == "" || !hasSystemd() {
 		return nil
 	}
 	props, err := c.systemdProperties()
 	if err != nil || len(props) == 0 {
 		return err
 	}
-	args := []string{"set-property", "--runtime", unit}
+	args := append([]string{"set-property", "--runtime", unit}, props...)
+	if err := runSystemctl(c.Delegation, args); err != nil {
+		return fmt.Errorf("pg %s: %w", c.Path(), err)
+	}
+	return nil
+}
+
+// runSystemctl runs systemctl with args, against the systemd instance of the
+// user a delegated group belongs to, or the one of the system when d is nil.
+func runSystemctl(d *Delegation, args []string) error {
 	opts := []funcopt.O{
 		command.WithName("systemctl"),
 		command.WithBufferedStderr(),
 	}
-	if d := c.Delegation; d != nil {
+	if d != nil {
 		runtimeDir := fmt.Sprintf("/run/user/%d", d.UID)
 		args = append([]string{"--user"}, args...)
 		opts = append(opts,
@@ -171,10 +183,9 @@ func (c Config) setSystemdProperties() error {
 			command.WithCWD("/"),
 		)
 	}
-	args = append(args, props...)
 	cmd := systemctl(append(opts, command.WithArgs(args))...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg %s: systemctl %s: %w: %s", c.Path(), strings.Join(args, " "), err, strings.TrimSpace(string(cmd.Stderr())))
+		return fmt.Errorf("systemctl %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(cmd.Stderr())))
 	}
 	return nil
 }
