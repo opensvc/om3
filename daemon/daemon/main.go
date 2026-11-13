@@ -68,6 +68,22 @@ type (
 
 		stopFuncs []func() error
 		wg        sync.WaitGroup
+
+		// stopMu protects starting and stopRequested, which a stop
+		// requested during the startup reads and sets.
+		stopMu sync.Mutex
+
+		// starting is true while Start runs: a stop requested then is
+		// done by Start, once the starting component is started.
+		starting bool
+
+		// stopRequested is true once a stop is requested, by a signal or
+		// a daemon ctl message: the later requests are ignored.
+		stopRequested bool
+
+		// stopC is closed when a stop is requested, to interrupt the
+		// waits of the startup.
+		stopC chan struct{}
 	}
 
 	startStopper interface {
@@ -81,6 +97,7 @@ type (
 		delay time.Duration
 		desc  string
 		log   *plog.Logger
+		stopC <-chan struct{}
 	}
 )
 
@@ -98,6 +115,11 @@ var (
 	WatchdogMinInterval = 2 * time.Second
 
 	ClusterInitialStatePropagateInterval = 1000 * time.Millisecond
+
+	// ErrStoppedDuringStart is the error Start returns when a stop was
+	// requested during the startup, and done: the daemon is stopped, as
+	// asked.
+	ErrStoppedDuringStart = errors.New("daemon stopped during its startup")
 )
 
 func New() *T {
@@ -124,6 +146,16 @@ func (t *T) Start(ctx context.Context) error {
 	if t.Running() {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
+	t.stopMu.Lock()
+	t.starting = true
+	t.stopRequested = false
+	t.stopC = make(chan struct{})
+	t.stopMu.Unlock()
+	defer func() {
+		t.stopMu.Lock()
+		t.starting = false
+		t.stopMu.Unlock()
+	}()
 	t.logTransition("starting ...")
 
 	// When started by the systemd unit, HOME is empty.
@@ -173,7 +205,12 @@ func (t *T) Start(ctx context.Context) error {
 		}()
 	}()
 
-	defer t.stopWatcher()
+	// Watch the stop requests from the beginning of the startup, as soon
+	// as the bus carrying the daemon ctl messages runs: a SIGTERM systemd
+	// sends to stop the unit while it is activating, or a stop the api
+	// receives once the listener runs, must stop the daemon, rather than
+	// kill it or be lost.
+	t.stopWatcher()
 
 	pubsubWatchDogInterval := 5 * time.Second
 	t.wg.Add(1)
@@ -206,6 +243,9 @@ func (t *T) Start(ctx context.Context) error {
 	// startup ccfg
 	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration, qsSmall)); err != nil {
 		return err
+	}
+	if t.isStopRequestedDuringStart() {
+		return t.stopDuringStart()
 	}
 	initialCcfg := cluster.ConfigData.Get()
 	if initialCcfg.Name == "" {
@@ -270,8 +310,14 @@ func (t *T) Start(ctx context.Context) error {
 		if err := t.startComponent(t.ctx, s); err != nil {
 			return err
 		}
+		if t.isStopRequestedDuringStart() {
+			return t.stopDuringStart()
+		}
 	}
 
+	if t.isStopRequestedDuringStart() {
+		return t.stopDuringStart()
+	}
 	t.logTransition("✅ started")
 	t.publisher.Pub(&msgbus.DaemonStatusUpdated{
 		Node:    localhost,
@@ -322,6 +368,53 @@ func (t *T) Stop() error {
 	return errs
 }
 
+// RequestStop asks the daemon to stop. Only the first request counts.
+//
+// The daemon stops at once when started. During the startup, Start stops it
+// once the starting component is started, and returns
+// ErrStoppedDuringStart: stopping components Start is about to start would
+// race with it.
+func (t *T) RequestStop(reason string) {
+	t.stopMu.Lock()
+	defer t.stopMu.Unlock()
+	if t.stopRequested {
+		t.log.Debugf("stop requested again on %s: already stopping", reason)
+		return
+	}
+	t.stopRequested = true
+	if t.stopC != nil {
+		close(t.stopC)
+	}
+	if t.starting {
+		t.log.Infof("stopping on %s, once the starting component is started", reason)
+		return
+	}
+	t.log.Infof("stopping on %s", reason)
+	go func() { _ = t.Stop() }()
+}
+
+// isStopRequestedDuringStart says a stop was requested during the startup,
+// and makes the startup over, so a later request does not stop the daemon
+// a second time.
+func (t *T) isStopRequestedDuringStart() bool {
+	t.stopMu.Lock()
+	defer t.stopMu.Unlock()
+	if t.stopRequested {
+		t.starting = false
+	}
+	return t.stopRequested
+}
+
+// stopDuringStart stops the components Start started, on a stop requested
+// during the startup.
+func (t *T) stopDuringStart() error {
+	t.log.Infof("stop requested during the startup: stop the started components")
+	if err := t.Stop(); err != nil {
+		return errors.Join(ErrStoppedDuringStart, err)
+	}
+	return ErrStoppedDuringStart
+}
+
 func (t *T) Running() bool {
 	if t.ctx == nil {
 		return false
@@ -343,7 +436,10 @@ func (t *T) logTransition(state string) {
 }
 
 func (t *T) stopWatcher() {
-	sub := pubsub.SubFromContext(t.ctx, "daemon.stop.watcher")
+	// t.ctx is replaced by Start with its children while the watcher runs:
+	// they are all done when it is.
+	ctx := t.ctx
+	sub := pubsub.SubFromContext(ctx, "daemon.stop.watcher")
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"node", hostname.Hostname()}, pubsub.Label{"id", "daemon"})
 	sub.Start()
 
@@ -356,7 +452,7 @@ func (t *T) stopWatcher() {
 	// signal is reset to its default on exec. The channel is never read:
 	// a signal finding it full is dropped.
 	signal.Notify(make(chan os.Signal, 1), syscall.SIGHUP)
-	signalCtx, signalCancel := signal.NotifyContext(t.ctx, os.Interrupt, syscall.SIGTERM)
+	signalCtx, signalCancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 
 	started := make(chan bool)
 	go func() {
@@ -369,19 +465,17 @@ func (t *T) stopWatcher() {
 		started <- true
 		for {
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				t.log.Tracef("stop watcher returns on context done")
 				return
 			case <-signalCtx.Done():
-				t.log.Infof("stopping on signal")
-				go func() { _ = t.Stop() }()
+				t.RequestStop("signal")
 				return
 			case i := <-sub.C:
 				switch m := i.(type) {
 				case *msgbus.DaemonCtl:
 					if m.Action == "stop" {
-						t.log.Infof("stopping on daemon ctl message")
-						go func() { _ = t.Stop() }()
+						t.RequestStop("daemon ctl message")
 						return
 					}
 				}
@@ -573,12 +667,20 @@ func (t *T) newDelay(desc string, delay time.Duration) *delayComponent {
 		log:   t.log,
 		desc:  desc,
 		delay: delay,
+		stopC: t.stopC,
 	}
 }
 
+// Start waits for the delay, or for a stop requested meanwhile.
 func (d *delayComponent) Start(_ context.Context) error {
 	d.log.Infof("%s: delay %s", d.desc, d.delay)
-	time.Sleep(d.delay)
+	timer := time.NewTimer(d.delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-d.stopC:
+		d.log.Infof("%s: delay interrupted by a stop request", d.desc)
+	}
 	return nil
 }
 
