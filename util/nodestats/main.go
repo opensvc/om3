@@ -75,7 +75,7 @@ func Collect(ctx context.Context, o Options) (Stats, error) {
 		return nil, ErrNotSupported
 	}
 	if !o.End.After(o.Begin) {
-		return nil, fmt.Errorf("the end %s is not after the begin %s", o.End, o.Begin)
+		return nil, fmt.Errorf("the end %s is not after the begin %s", o.End.Local().Truncate(time.Second).Format(time.RFC3339), o.Begin.Local().Truncate(time.Second).Format(time.RFC3339))
 	}
 	stats := Stats{}
 	enabled := func(group string) bool { return !slices.Contains(o.Disable, group) }
