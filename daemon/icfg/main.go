@@ -425,6 +425,7 @@ func (t *Manager) configFileCheck() error {
 			HardAntiAffinity:    t.getPaths(cf, keyHardAntiAffinity),
 			SoftAffinity:        t.getPaths(cf, keySoftAffinity),
 			SoftAntiAffinity:    t.getPaths(cf, keySoftAntiAffinity),
+			Uses:                t.getUses(cf),
 		}
 		if d := cf.GetDuration(keyWaitSyncsTimeout); d != nil {
 			cfg.ActorConfig.WaitSyncsTimeout = *d
