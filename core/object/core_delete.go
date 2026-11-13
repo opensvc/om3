@@ -71,6 +71,11 @@ func (t *core) deleteInstanceFiles() error {
 			_ = t.tryDeleteInstanceFile(fpath)
 		}
 	}
+	// An edit left pending would be found by an object made again under
+	// the name, as an edit of its configuration.
+	if editCopy := file.EditCopy(t.ConfigFile()); file.Exists(editCopy) {
+		t.tryDeleteInstanceFile(editCopy)
+	}
 	t.tryDeleteInstanceFile(t.ConfigFile())
 	return nil
 }
