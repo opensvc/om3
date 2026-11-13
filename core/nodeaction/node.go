@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -18,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actionlogs"
 	"github.com/opensvc/om3/v3/core/actionrouter"
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/nodeselector"
@@ -46,6 +48,11 @@ type (
 		// the node that accepted it until it says so: an upgrade of the
 		// packages restarts that node's daemon.
 		WaitFunc func(context.Context, *client.T, uuid.UUID, string) error
+
+		// defaultOutputSet says the command chose its default output, an
+		// empty one included: the listing of the execs started is then not
+		// the default of an action submitted to nodes.
+		defaultOutputSet bool
 	}
 
 	// asyncResult is the answer to an orchestration request, in the shape an
@@ -68,10 +75,24 @@ func (t asyncResult) Unstructured() map[string]any {
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
-	if t.NodeSelector != "" && t.DefaultOutput == "" {
+	if t.NodeSelector != "" && t.DefaultOutput == "" && !t.defaultOutputSet {
 		t.DefaultOutput = "tab=NODE:nodename,SESSION_ID:data.session_id,EXEC_ID:data.exec_id"
 	}
 	return t
+}
+
+// WithDefaultOutput sets the output the results are rendered in when the
+// user asks for none. Empty, a result is rendered as the action run on this
+// node renders it, under the name of its node when there are several: the
+// remote function of the action answers what the action did, not the ids of
+// the execs it started.
+func WithDefaultOutput(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.DefaultOutput = s
+		t.defaultOutputSet = true
+		return nil
+	})
 }
 
 // WithRemoteNodes expands into a selection of nodes to execute the
@@ -471,9 +492,26 @@ func (t T) DoAsync() error {
 	return err
 }
 
+// ErrNoRemoteFunc is the answer of an action asked of a node through the
+// api when the command has no remote form.
+var ErrNoRemoteFunc = errors.New("this command runs on the local node only, the api serves no remote form of it")
+
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
+	if t.RemoteFunc == nil {
+		return ErrNoRemoteFunc
+	}
+	if t.NodeSelector == "" {
+		// With no context, the daemon reached is the one of the node
+		// this runs on, through the root or the user socket: the node
+		// the action is for unless told otherwise. A context names a
+		// cluster, with no node of its own.
+		if clientcontext.IsSet() {
+			return fmt.Errorf("remote execution requires a node selector expression")
+		}
+		t.NodeSelector = hostname.Hostname()
+	}
 	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
 		return err
@@ -527,9 +565,6 @@ func (t T) DoRemote() error {
 		if wait {
 			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSessionID, waitC)
 		}
-		if t.RemoteFunc == nil {
-			return fmt.Errorf("RemoteFunc is nil")
-		}
 		t.nodeDo(ctx, resultQ, nodename, func(ctx context.Context, nodename string) (any, error) {
 			return t.RemoteFunc(ctx, nodename)
 		})
@@ -565,6 +600,7 @@ func (t T) DoRemote() error {
 			Color:         t.Color,
 			Data:          results,
 			Colorize:      rawconfig.Colorize,
+			HumanRenderer: func() string { return humanResults(results) },
 		}.Print())
 	}
 	defer sessionLogs.Stop()
@@ -590,6 +626,31 @@ func (t T) DoRemote() error {
 		}
 	}
 	return errs
+}
+
+// humanResults renders the results of the nodes as the action run on a node
+// renders its own, each under the name of its node when there are several.
+// The results of the nodes that failed are said on stderr already.
+func humanResults(results []actionrouter.Result) string {
+	l := make([]actionrouter.Result, 0, len(results))
+	for _, r := range results {
+		if r.Error == nil && r.Panic == nil {
+			l = append(l, r)
+		}
+	}
+	sort.SliceStable(l, func(i, j int) bool { return l[i].Nodename < l[j].Nodename })
+	s := ""
+	for _, r := range l {
+		var body string
+		if r.HumanRenderer != nil {
+			body = r.HumanRenderer()
+		}
+		if len(results) > 1 {
+			s += rawconfig.Colorize.Bold(r.Nodename) + "\n"
+		}
+		s += body
+	}
+	return s
 }
 
 func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename string, requesterSessionID uuid.UUID, errC chan<- error) {
