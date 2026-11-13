@@ -18,3 +18,12 @@ func TestWipeBackupNameSaysTheOffset(t *testing.T) {
 	assert.Equal(t, "00010040", m[1])
 	assert.Nil(t, wipeBackupName.FindStringSubmatch("notes.txt"))
 }
+
+// A btrfs subvolume is selected by its path or by its id: either shares its
+// device with the other subvolumes.
+func TestMountsSubvolume(t *testing.T) {
+	assert.True(t, mountsSubvolume("rw,subvol=/data"))
+	assert.True(t, mountsSubvolume("subvolid=257,noatime"))
+	assert.False(t, mountsSubvolume("rw,noatime"))
+	assert.False(t, mountsSubvolume(""))
+}
