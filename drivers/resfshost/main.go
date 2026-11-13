@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/filesystems"
 	"github.com/opensvc/om3/v3/util/findmnt"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -975,15 +976,11 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 
 // CurrentSize implements resource.Sizer.
 //
-// It is what the filesystem hands out, which is less than the device under it
-// holds: it keeps metadata and a log for itself.
-//
-// Reporting the device instead would read better on a converged chain, where
-// a 5.49gi device carrying an xfs that hands out 5.43gi looks like 60mi still
-// to grow. It is not worth it: the size would then equal the target the
-// moment the device grew, and the step that grows the filesystem onto it
-// would be skipped as already done. A filesystem short of its device is the
-// case this has to be able to see.
+// A filesystem counts as the device it sits on, mounted: the size of the
+// device, not what the filesystem hands out, which is less, as it keeps
+// metadata and a log for itself, and which a resize would otherwise read as
+// still to grow on a converged chain. A filesystem a grow left short of its
+// device is said by the grow, which reads back the size it reached.
 func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 	if _, ok := t.fs().(filesystems.SelfSizer); ok {
 		// A filesystem holding its own size, a tmpfs, has no device to
@@ -1074,5 +1071,50 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 	}
 	// The device below has been enlarged already, so the filesystem is asked
 	// to take up what is there rather than a size of its own.
-	return grower.Grow(ctx, t.devpath(ctx), t.mountPoint())
+	dev := t.devpath(ctx)
+	before, _ := t.usableSize(ctx)
+	if err := grower.Grow(ctx, dev, t.mountPoint()); err != nil {
+		return err
+	}
+	t.warnGrowShortfall(ctx, fs, dev, before)
+	return nil
 }
+
+// warnGrowShortfall says when a grow left the filesystem short of its device,
+// with the size it reached: resize2fs takes up no device a few blocks short
+// of another block group, and says "Nothing to do!" with a success.
+//
+// The superblock of the filesystem says the size it takes up, where the
+// filesystem says it. Elsewhere, statfs reads less than the device, the
+// filesystem keeping metadata for itself, so only a filesystem that did not
+// grow at all is said. It is a warning: the device grew as asked, and the
+// filesystem holds what it held.
+func (t *T) warnGrowShortfall(ctx context.Context, fs filesystems.I, dev string, before int64) {
+	devSize, err := device.New(dev).Size()
+	if err != nil || devSize <= 0 {
+		return
+	}
+	if i, ok := fs.(filesystems.SizeOnDevicer); ok {
+		reached, err := i.SizeOnDevice(ctx, dev)
+		if err != nil {
+			t.Log().Warnf("read the size the filesystem reached: %s", err)
+			return
+		}
+		if devSize-reached >= extShortfallMin {
+			t.Log().Warnf("the filesystem reached %s of the %s of its device: %s did not take up the rest", sizeconv.BSizeCompact(float64(reached)), sizeconv.BSizeCompact(float64(devSize)), fs.Type())
+		}
+		return
+	}
+	after, err := t.usableSize(ctx)
+	if err != nil || before <= 0 {
+		return
+	}
+	if after <= before {
+		t.Log().Warnf("the filesystem did not grow: it hands out %s, as before, on a device of %s", sizeconv.BSizeCompact(float64(after)), sizeconv.BSizeCompact(float64(devSize)))
+	}
+}
+
+// extShortfallMin is the gap between a filesystem and its device said a
+// shortfall: a filesystem ends on a block boundary, its blocks of 64k at the
+// most, so a gap under one is no grow left undone.
+const extShortfallMin = 64 * 1024

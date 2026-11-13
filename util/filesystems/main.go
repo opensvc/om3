@@ -70,6 +70,12 @@ type (
 		Grow(ctx context.Context, dev, mountPoint string) error
 	}
 
+	// SizeOnDevicer is implemented by a filesystem that says the size it
+	// takes up of its device, which a grow may leave short of the device.
+	SizeOnDevicer interface {
+		SizeOnDevice(ctx context.Context, dev string) (int64, error)
+	}
+
 	// SelfSizer is implemented by a filesystem that holds its own size rather
 	// than taking the size of a device under it. A tmpfs is told how large to
 	// be, and has nothing below it to enlarge first, so it is resized in one
