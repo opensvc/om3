@@ -6,10 +6,12 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/compliance"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -47,15 +49,25 @@ func newNodeCompliance(ctx echo.Context) (*compliance.T, error) {
 
 // newObjectCompliance returns a constructor of the compliance of the object
 // at p, a client of the collector authenticated as the node, asking for the
-// object. The instance must be on this node.
+// object. The instance must be on this node: a configuration file alone is
+// not one, as a node out of the scope of the object keeps it.
+//
+// The object is made of its own kind: one of a kind with no compliance is
+// refused, rather than taken for a service of the same name.
 func newObjectCompliance(p naming.Path) func(echo.Context) (*compliance.T, error) {
 	return func(ctx echo.Context) (*compliance.T, error) {
-		if !p.Exists() {
+		if !p.Exists() || instance.ConfigData.GetByPathAndNode(p, hostname.Hostname()) == nil {
 			return nil, JSONProblemf(ctx, http.StatusNotFound, "No local instance", "%s has no instance on this node", p)
 		}
-		o, err := object.NewSvc(p, object.WithVolatile(true))
+		i, err := object.New(p, object.WithVolatile(true))
 		if err != nil {
 			return nil, JSONProblemf(ctx, http.StatusInternalServerError, "New object", "%s", err)
+		}
+		o, ok := i.(interface {
+			NewCompliance() (*compliance.T, error)
+		})
+		if !ok {
+			return nil, JSONProblemf(ctx, http.StatusBadRequest, "No compliance", "a %s has no compliance", p.Kind)
 		}
 		comp, err := o.NewCompliance()
 		if err != nil {

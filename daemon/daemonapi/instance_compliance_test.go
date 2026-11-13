@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/objectdevice"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -129,6 +130,9 @@ func TestPostInstanceComplianceActionCheck(t *testing.T) {
 	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
 	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
 	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\nnodes = *\n"), 0o600))
+	// The instance is on this node: the daemon published its configuration.
+	instance.ConfigData.Set(p, hostname.Hostname(), &instance.Config{})
+	t.Cleanup(func() { instance.ConfigData.Unset(p, hostname.Hostname()) })
 	modDir := filepath.Join(rawconfig.Paths.Var, "compliance")
 	require.NoError(t, os.MkdirAll(modDir, 0o755))
 	script := "#!/bin/sh\necho checked $OSVC_COMP_MOTD\nexit 0\n"
@@ -169,4 +173,27 @@ func TestInstanceDeviceList(t *testing.T) {
 		Role:   api.InstanceDeviceRoleExposed,
 		Device: "/dev/sda",
 	}, r.Items[0].Data)
+}
+
+// A configuration file is no instance: a node out of the scope of the object
+// keeps it. And an object of a kind with no compliance is not taken for a
+// service of the same name.
+func TestInstanceComplianceNeedsALocalInstanceOfItsKind(t *testing.T) {
+	setupNodeWithCollector(t)
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s2"}
+	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\nnodes = othernode\n"), 0o600))
+	a := &DaemonAPI{localhost: hostname.Hostname()}
+	ctx, rec := newNodeTestContext(http.MethodPost, "/", nil, rbac.Grants{rbac.GrantRoot})
+	require.NoError(t, a.PostInstanceComplianceActionCheck(ctx, "localhost", "root", naming.KindSvc, "s2", api.PostInstanceComplianceActionCheckParams{}))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	c := naming.Path{Namespace: "root", Kind: naming.KindCfg, Name: "s2"}
+	require.NoError(t, os.MkdirAll(filepath.Dir(c.ConfigFile()), 0o755))
+	require.NoError(t, os.WriteFile(c.ConfigFile(), []byte("[DEFAULT]\n"), 0o600))
+	instance.ConfigData.Set(c, hostname.Hostname(), &instance.Config{})
+	t.Cleanup(func() { instance.ConfigData.Unset(c, hostname.Hostname()) })
+	ctx, rec = newNodeTestContext(http.MethodPost, "/", nil, rbac.Grants{rbac.GrantRoot})
+	require.NoError(t, a.PostInstanceComplianceActionCheck(ctx, "localhost", "root", naming.KindCfg, "s2", api.PostInstanceComplianceActionCheckParams{}))
+	assert.NotEqual(t, http.StatusOK, rec.Code, rec.Body.String())
 }
