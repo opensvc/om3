@@ -159,6 +159,11 @@ func daemonAPIExecArgs(t *testing.T) [][]string {
 					return true
 				}
 			}
+			// The key commands are commands of the datastores, which
+			// an argv starting with them is built for.
+			if len(words) > 1 && words[0] == "test/svc/s1" && words[1] == "key" {
+				words[0] = "test/sec/s1"
+			}
 			if len(words) > 0 {
 				out = append(out, words)
 			}

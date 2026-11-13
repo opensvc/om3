@@ -329,6 +329,67 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/collector/tag:
+    get:
+      operationId: GetClusterCollectorTags
+      description: |
+        The names of the tags of the collector, as it answers them to the node
+        serving the request.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorTagNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - cluster
+    post:
+      operationId: PostClusterCollectorTag
+      description: |
+        Create a tag on the collector, as the node serving the request.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectorTagCreate'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorInfo'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - cluster
+
   /api/cluster/config:
     get:
       operationId: GetClusterConfig
@@ -1288,6 +1349,36 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/action/checks:
+    post:
+      operationId: PostNodeActionChecks
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Run the checks of the node, push their results to the collector, and
+        answer them. The results are answered also when the push failed,
+        which push_error then says.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/action/clear:
     post:
       description: |
@@ -1679,6 +1770,544 @@ paths:
         - bearerAuth: []
       tags:
         - node
+
+  /api/node/name/{nodename}/collector/tag/attachment:
+    get:
+      operationId: GetNodeCollectorTagAttachments
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The tags attached to the node, as the collector answers them to the
+        node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorTagAttachments'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/collector/tag/name/{tag}/attachment:
+    post:
+      operationId: PostNodeCollectorTagAttachment
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Attach the tag to the node, on the collector. The tag must exist.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathCollectorTagName'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectorTagAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorInfo'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+    delete:
+      operationId: DeleteNodeCollectorTagAttachment
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Detach the tag from the node, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathCollectorTagName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorInfo'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/action/auto:
+    post:
+      operationId: PostNodeComplianceActionAuto
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Run the compliance modules of the node: a fix of the modules having
+        the autofix property, a check of the others.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a
+        module that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/action/check:
+    post:
+      operationId: PostNodeComplianceActionCheck
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Run the checks of the compliance modules of the node.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a
+        module that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/action/fix:
+    post:
+      operationId: PostNodeComplianceActionFix
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Run the fixes of the compliance modules of the node.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a
+        module that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/action/fixable:
+    post:
+      operationId: PostNodeComplianceActionFixable
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Run the fixable tests of the compliance modules of the node.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a
+        module that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/env:
+    get:
+      operationId: GetNodeComplianceEnv
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The environment variables the compliance modules of the node are
+        executed with, by module.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceEnv'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/module:
+    get:
+      operationId: GetNodeComplianceModules
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The names of the compliance modules installed on the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/moduleset:
+    get:
+      operationId: GetNodeComplianceModulesets
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The names of the modulesets the collector makes available to the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceFilter'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/moduleset/attachment:
+    post:
+      operationId: PostNodeComplianceModulesetAttachment
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Attach the moduleset to the node, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModulesetRequired'
+      responses:
+        204:
+          description: Attached
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+    delete:
+      operationId: DeleteNodeComplianceModulesetAttachment
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Detach the moduleset from the node, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModulesetRequired'
+      responses:
+        204:
+          description: Detached
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/moduleset/tree:
+    get:
+      operationId: GetNodeComplianceModulesetTree
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The modulesets attached to the node, or the ones selected, with their
+        modules and the modulesets they include.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceModulesetTree'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/ruleset:
+    get:
+      operationId: GetNodeComplianceRulesets
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The names of the rulesets the collector makes available to the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceFilter'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/ruleset/attachment:
+    post:
+      operationId: PostNodeComplianceRulesetAttachment
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Attach the ruleset to the node, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceRuleset'
+      responses:
+        204:
+          description: Attached
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+    delete:
+      operationId: DeleteNodeComplianceRulesetAttachment
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Detach the ruleset from the node, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryComplianceRuleset'
+      responses:
+        204:
+          description: Detached
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/compliance/ruleset/rules:
+    get:
+      operationId: GetNodeComplianceRules
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        The rulesets exposed to the modules of the node, with their rules
+        contextualized for the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRulesets'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
 
   /api/node/name/{nodename}/config:
     get:
@@ -4865,6 +5494,314 @@ paths:
         - node / instance / vol
       x-internal: true
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/key/install:
+    post:
+      operationId: PostInstanceActionKeyInstall
+      description: |
+        Install again the keys of the datastore in the volumes of the node that
+        project them, the key named or all of them, as "om <path> key install"
+        does on the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyNameOptional'
+        - $ref: '#/components/parameters/inQuerySessionID'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / sec
+        - node / instance / cfg
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/compliance/action/auto:
+    post:
+      operationId: PostInstanceComplianceActionAuto
+      description: |
+        Run the compliance modules of the object on the node: a fix of the
+        modules having the autofix property, a check of the others.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a module
+        that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/compliance/action/check:
+    post:
+      operationId: PostInstanceComplianceActionCheck
+      description: |
+        Run the checks of the compliance modules of the object on the node.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a module
+        that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/compliance/action/fix:
+    post:
+      operationId: PostInstanceComplianceActionFix
+      description: |
+        Run the fixes of the compliance modules of the object on the node.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a module
+        that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/compliance/action/fixable:
+    post:
+      operationId: PostInstanceComplianceActionFixable
+      description: |
+        Run the fixable tests of the compliance modules of the object on the
+        node.
+        The run is answered when it ends: the actions of the modules, with
+        their exit code and their log. A run that could not start or a module
+        that could not be executed is answered a problem.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+        - $ref: '#/components/parameters/inQueryComplianceForce'
+        - $ref: '#/components/parameters/inQueryComplianceAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRun'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/compliance/env:
+    get:
+      operationId: GetInstanceComplianceEnv
+      description: |
+        The environment variables the compliance modules of the object are
+        executed with on the node, by module.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+        - $ref: '#/components/parameters/inQueryComplianceModule'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceEnv'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/compliance/ruleset/rules:
+    get:
+      operationId: GetInstanceComplianceRules
+      description: |
+        The rulesets exposed to the compliance modules of the object on the
+        node, with their rules contextualized for the object.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRulesets'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/device:
+    get:
+      operationId: GetInstanceDevices
+      description: |
+        The devices of the resources of the object instance on the node: the
+        devices they expose, their sub devices, the base devices they are built
+        on, and the devices they claim.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDeviceRoles'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceDeviceList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/schedule:
     get:
       operationId: GetInstanceSchedule
@@ -6236,6 +7173,354 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/object/path/{namespace}/{kind}/{name}/collector/tag/attachment:
+    get:
+      operationId: GetObjectCollectorTagAttachments
+      description: |
+        The tags attached to the object, as the collector answers them to the
+        node serving the request.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorTagAttachments'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/collector/tag/name/{tag}/attachment:
+    post:
+      operationId: PostObjectCollectorTagAttachment
+      description: |
+        Attach the tag to the object, on the collector. The tag must exist.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inPathCollectorTagName'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectorTagAttach'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorInfo'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+    delete:
+      operationId: DeleteObjectCollectorTagAttachment
+      description: |
+        Detach the tag from the object, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inPathCollectorTagName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorInfo'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/compliance/module:
+    get:
+      operationId: GetObjectComplianceModules
+      description: |
+        The names of the compliance modules installed on the node serving the
+        request, which the object runs there.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/compliance/moduleset:
+    get:
+      operationId: GetObjectComplianceModulesets
+      description: |
+        The names of the modulesets the collector makes available to the object.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceFilter'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/compliance/moduleset/attachment:
+    post:
+      operationId: PostObjectComplianceModulesetAttachment
+      description: |
+        Attach the moduleset to the object, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModulesetRequired'
+      responses:
+        204:
+          description: Done
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+    delete:
+      operationId: DeleteObjectComplianceModulesetAttachment
+      description: |
+        Detach the moduleset from the object, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModulesetRequired'
+      responses:
+        204:
+          description: Done
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/compliance/moduleset/tree:
+    get:
+      operationId: GetObjectComplianceModulesetTree
+      description: |
+        The modulesets attached to the object, or the ones selected, with their
+        modules and the modulesets they include.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceModuleset'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceModulesetTree'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/compliance/ruleset:
+    get:
+      operationId: GetObjectComplianceRulesets
+      description: |
+        The names of the rulesets the collector makes available to the object.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceFilter'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceNames'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
+  /api/object/path/{namespace}/{kind}/{name}/compliance/ruleset/attachment:
+    post:
+      operationId: PostObjectComplianceRulesetAttachment
+      description: |
+        Attach the ruleset to the object, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceRuleset'
+      responses:
+        204:
+          description: Done
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+    delete:
+      operationId: DeleteObjectComplianceRulesetAttachment
+      description: |
+        Detach the ruleset from the object, on the collector.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryComplianceRuleset'
+      responses:
+        204:
+          description: Done
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object
+
   /api/object/path/{namespace}/{kind}/{name}/config:
     get:
       operationId: GetObjectConfig
@@ -7564,6 +8849,308 @@ components:
             - CapabilityList
         items:
           $ref: '#/components/schemas/CapabilityItems'
+
+    CheckItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/CheckResult'
+
+    CheckItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/CheckItem'
+
+    CheckList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - CheckList
+        items:
+          $ref: '#/components/schemas/CheckItems'
+        push_error:
+          type: string
+          description: |
+            Why the results were not pushed to the collector. Absent when
+            they were.
+
+    CheckResult:
+      type: object
+      description: The value a check driver reports for an instance it checks.
+      required:
+        - type
+        - driver
+        - path
+        - instance
+        - unit
+        - value
+      properties:
+        type:
+          type: string
+          description: The group of the check driver, as fs_u.
+        driver:
+          type: string
+        path:
+          type: string
+          description: The object the instance belongs to, if any.
+        instance:
+          type: string
+        unit:
+          type: string
+        value:
+          type: integer
+          format: int64
+
+    CollectorInfo:
+      type: object
+      description: The answer of the collector to a change.
+      required:
+        - info
+      properties:
+        info:
+          type: string
+
+    CollectorTagAttach:
+      type: object
+      properties:
+        attach_data:
+          type: string
+          description: The data stored with the tag attachment.
+
+    CollectorTagAttachment:
+      type: object
+      required:
+        - tag_name
+        - tag_data
+        - tag_attach_data
+      properties:
+        tag_name:
+          type: string
+        tag_data:
+          type: string
+        tag_attach_data:
+          type: string
+
+    CollectorTagCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        data:
+          type: string
+          description: The data stored with the tag.
+        exclude:
+          type: string
+          description: A pattern to prevent the attachment of incompatible tags.
+
+    CollectorTagNames:
+      type: array
+      items:
+        type: string
+
+    CollectorTagAttachments:
+      type: array
+      items:
+        $ref: '#/components/schemas/CollectorTagAttachment'
+
+    ComplianceEnv:
+      type: object
+      description: The environment variables of the modules, by module name.
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    ComplianceLogEntry:
+      type: object
+      required:
+        - level
+        - message
+      properties:
+        level:
+          type: string
+          description: The stream of the module the line was read from.
+          enum:
+            - out
+            - err
+          x-enum-varnames:
+            - ComplianceLogEntryLevelOut
+            - ComplianceLogEntryLevelErr
+        message:
+          type: string
+
+    ComplianceModuleAction:
+      type: object
+      description: An execution of a compliance module.
+      required:
+        - action
+        - module
+        - started_at
+        - ended_at
+        - exit_code
+        - log
+      properties:
+        action:
+          type: string
+          enum:
+            - check
+            - fix
+            - fixable
+        module:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+        exit_code:
+          type: integer
+          description: |
+            0 compliant, 1 not compliant, 2 not applicable to the node.
+            Another code is an error of the module.
+        log:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceLogEntry'
+
+    ComplianceModulesetModule:
+      type: object
+      required:
+        - name
+        - autofix
+      properties:
+        name:
+          type: string
+        autofix:
+          type: boolean
+
+    ComplianceModulesetTree:
+      type: object
+      required:
+        - name
+        - modules
+        - modulesets
+      properties:
+        name:
+          type: string
+          description: The moduleset, empty at the root of the tree.
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceModulesetModule'
+        modulesets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceModulesetTree'
+
+    ComplianceNames:
+      type: array
+      items:
+        type: string
+
+    ComplianceRule:
+      type: object
+      required:
+        - name
+        - value
+        - class
+      properties:
+        name:
+          type: string
+        value:
+          description: The value of the rule, as the collector sets it.
+          x-go-type: interface{}
+        class:
+          type: string
+
+    ComplianceRuleset:
+      type: object
+      required:
+        - name
+        - filter
+        - rules
+      properties:
+        name:
+          type: string
+        filter:
+          type: string
+          description: Why the ruleset is exposed to the node.
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceRule'
+
+    ComplianceRulesets:
+      type: object
+      description: The rulesets, by name.
+      additionalProperties:
+        $ref: '#/components/schemas/ComplianceRuleset'
+
+    ComplianceRun:
+      type: object
+      description: |
+        A run of the compliance modules: the data fetch from the collector,
+        from started_at to fetched_at, then the executions of the modules,
+        until ended_at.
+      required:
+        - action
+        - modulesets
+        - modules
+        - force
+        - attach
+        - started_at
+        - fetched_at
+        - ended_at
+        - module_actions
+      properties:
+        action:
+          type: string
+          enum:
+            - auto
+            - check
+            - fix
+            - fixable
+        modulesets:
+          type: array
+          items:
+            type: string
+        modules:
+          type: array
+          items:
+            type: string
+        force:
+          type: boolean
+        attach:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+        fetched_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+        module_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceModuleAction'
 
     Cluster:
       type: object
@@ -8897,6 +10484,80 @@ components:
       type: object
       additionalProperties:
         $ref: '#/components/schemas/Instance'
+
+    InstanceDevice:
+      type: object
+      required:
+        - path
+        - rid
+        - driver
+        - role
+        - device
+      properties:
+        path:
+          type: string
+        rid:
+          type: string
+        driver:
+          $ref: '#/components/schemas/InstanceDeviceDriver'
+        role:
+          type: string
+          enum:
+            - exposed
+            - sub
+            - base
+            - claimed
+          x-enum-varnames:
+            - InstanceDeviceRoleExposed
+            - InstanceDeviceRoleSub
+            - InstanceDeviceRoleBase
+            - InstanceDeviceRoleClaimed
+        device:
+          type: string
+          description: The path of the device.
+
+    InstanceDeviceDriver:
+      type: object
+      required:
+        - group
+        - name
+      properties:
+        group:
+          type: string
+        name:
+          type: string
+
+    InstanceDeviceItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+        meta:
+          $ref: '#/components/schemas/InstanceMeta'
+        data:
+          $ref: '#/components/schemas/InstanceDevice'
+
+    InstanceDeviceItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/InstanceDeviceItem'
+
+    InstanceDeviceList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - InstanceDeviceList
+        items:
+          $ref: '#/components/schemas/InstanceDeviceItems'
 
     InstanceMeta:
       type: object
@@ -12415,6 +14076,67 @@ components:
         type: string
         example: test
 
+    inPathCollectorTagName:
+      in: path
+      name: tag
+      required: true
+      description: The name of the collector tag.
+      schema:
+        type: string
+
+    inQueryComplianceAttach:
+      in: query
+      name: attach
+      description: Attach the selected modulesets to the node before the run.
+      schema:
+        type: boolean
+
+    inQueryComplianceFilter:
+      in: query
+      name: filter
+      description: Keep the names containing this text.
+      schema:
+        type: string
+
+    inQueryComplianceForce:
+      in: query
+      name: force
+      description: |
+        Run the action asked on every module, even the ones the run would skip
+        or replace: a fix on a compliant module, a check on an autofix module.
+      schema:
+        type: boolean
+
+    inQueryComplianceModule:
+      in: query
+      name: module
+      description: The compliance modules to select, comma separated.
+      schema:
+        type: string
+
+    inQueryComplianceModuleset:
+      in: query
+      name: moduleset
+      description: The modulesets to select, comma separated.
+      schema:
+        type: string
+
+    inQueryComplianceModulesetRequired:
+      in: query
+      name: moduleset
+      required: true
+      description: The moduleset.
+      schema:
+        type: string
+
+    inQueryComplianceRuleset:
+      in: query
+      name: ruleset
+      required: true
+      description: The ruleset.
+      schema:
+        type: string
+
     inPathNodeName:
       in: path
       name: nodename
@@ -12560,6 +14282,22 @@ components:
       schema:
         type: string
         description: A datastore key name
+
+    inQueryDeviceRoles:
+      in: query
+      name: roles
+      description: |
+        The roles of the devices to list, comma separated: exposed, sub, base,
+        claimed, or all. All by default.
+      schema:
+        type: string
+
+    inQueryKeyNameOptional:
+      in: query
+      name: name
+      description: The datastore key name. All the keys when not set.
+      schema:
+        type: string
 
     inQueryKeyNames:
       in: query

@@ -90,6 +90,21 @@ func (e CapabilityListKind) Valid() bool {
 	}
 }
 
+// Defines values for CheckListKind.
+const (
+	CheckListKindCheckList CheckListKind = "CheckList"
+)
+
+// Valid indicates whether the value is a known member of the CheckListKind enum.
+func (e CheckListKind) Valid() bool {
+	switch e {
+	case CheckListKindCheckList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ClusterLockListKind.
 const (
 	ClusterLockListKindClusterLockList ClusterLockListKind = "ClusterLockList"
@@ -99,6 +114,69 @@ const (
 func (e ClusterLockListKind) Valid() bool {
 	switch e {
 	case ClusterLockListKindClusterLockList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ComplianceLogEntryLevel.
+const (
+	ComplianceLogEntryLevelErr ComplianceLogEntryLevel = "err"
+	ComplianceLogEntryLevelOut ComplianceLogEntryLevel = "out"
+)
+
+// Valid indicates whether the value is a known member of the ComplianceLogEntryLevel enum.
+func (e ComplianceLogEntryLevel) Valid() bool {
+	switch e {
+	case ComplianceLogEntryLevelErr:
+		return true
+	case ComplianceLogEntryLevelOut:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ComplianceModuleActionAction.
+const (
+	ComplianceModuleActionActionCheck   ComplianceModuleActionAction = "check"
+	ComplianceModuleActionActionFix     ComplianceModuleActionAction = "fix"
+	ComplianceModuleActionActionFixable ComplianceModuleActionAction = "fixable"
+)
+
+// Valid indicates whether the value is a known member of the ComplianceModuleActionAction enum.
+func (e ComplianceModuleActionAction) Valid() bool {
+	switch e {
+	case ComplianceModuleActionActionCheck:
+		return true
+	case ComplianceModuleActionActionFix:
+		return true
+	case ComplianceModuleActionActionFixable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ComplianceRunAction.
+const (
+	ComplianceRunActionAuto    ComplianceRunAction = "auto"
+	ComplianceRunActionCheck   ComplianceRunAction = "check"
+	ComplianceRunActionFix     ComplianceRunAction = "fix"
+	ComplianceRunActionFixable ComplianceRunAction = "fixable"
+)
+
+// Valid indicates whether the value is a known member of the ComplianceRunAction enum.
+func (e ComplianceRunAction) Valid() bool {
+	switch e {
+	case ComplianceRunActionAuto:
+		return true
+	case ComplianceRunActionCheck:
+		return true
+	case ComplianceRunActionFix:
+		return true
+	case ComplianceRunActionFixable:
 		return true
 	default:
 		return false
@@ -360,6 +438,45 @@ const (
 func (e IPAddressListKind) Valid() bool {
 	switch e {
 	case IDAddressList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InstanceDeviceRole.
+const (
+	InstanceDeviceRoleBase    InstanceDeviceRole = "base"
+	InstanceDeviceRoleClaimed InstanceDeviceRole = "claimed"
+	InstanceDeviceRoleExposed InstanceDeviceRole = "exposed"
+	InstanceDeviceRoleSub     InstanceDeviceRole = "sub"
+)
+
+// Valid indicates whether the value is a known member of the InstanceDeviceRole enum.
+func (e InstanceDeviceRole) Valid() bool {
+	switch e {
+	case InstanceDeviceRoleBase:
+		return true
+	case InstanceDeviceRoleClaimed:
+		return true
+	case InstanceDeviceRoleExposed:
+		return true
+	case InstanceDeviceRoleSub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InstanceDeviceListKind.
+const (
+	InstanceDeviceListKindInstanceDeviceList InstanceDeviceListKind = "InstanceDeviceList"
+)
+
+// Valid indicates whether the value is a known member of the InstanceDeviceListKind enum.
+func (e InstanceDeviceListKind) Valid() bool {
+	switch e {
+	case InstanceDeviceListKindInstanceDeviceList:
 		return true
 	default:
 		return false
@@ -1352,6 +1469,44 @@ type CertificateRenewal struct {
 	Renewed bool `json:"renewed"`
 }
 
+// CheckItem defines model for CheckItem.
+type CheckItem struct {
+	// Data The value a check driver reports for an instance it checks.
+	Data CheckResult `json:"data"`
+	Kind string      `json:"kind"`
+	Meta NodeMeta    `json:"meta"`
+}
+
+// CheckItems defines model for CheckItems.
+type CheckItems = []CheckItem
+
+// CheckList defines model for CheckList.
+type CheckList struct {
+	Items CheckItems    `json:"items"`
+	Kind  CheckListKind `json:"kind"`
+
+	// PushError Why the results were not pushed to the collector. Absent when
+	// they were.
+	PushError *string `json:"push_error,omitempty"`
+}
+
+// CheckListKind defines model for CheckList.Kind.
+type CheckListKind string
+
+// CheckResult The value a check driver reports for an instance it checks.
+type CheckResult struct {
+	Driver   string `json:"driver"`
+	Instance string `json:"instance"`
+
+	// Path The object the instance belongs to, if any.
+	Path string `json:"path"`
+
+	// Type The group of the check driver, as fs_u.
+	Type  string `json:"type"`
+	Unit  string `json:"unit"`
+	Value int64  `json:"value"`
+}
+
 // ClusterEnrollAccepted defines model for ClusterEnrollAccepted.
 type ClusterEnrollAccepted struct {
 	// Node The nodename of the enrolled node, as read from its own
@@ -1476,6 +1631,40 @@ type ClusterRegisterBody struct {
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
+// CollectorInfo The answer of the collector to a change.
+type CollectorInfo struct {
+	Info string `json:"info"`
+}
+
+// CollectorTagAttach defines model for CollectorTagAttach.
+type CollectorTagAttach struct {
+	// AttachData The data stored with the tag attachment.
+	AttachData *string `json:"attach_data,omitempty"`
+}
+
+// CollectorTagAttachment defines model for CollectorTagAttachment.
+type CollectorTagAttachment struct {
+	TagAttachData string `json:"tag_attach_data"`
+	TagData       string `json:"tag_data"`
+	TagName       string `json:"tag_name"`
+}
+
+// CollectorTagAttachments defines model for CollectorTagAttachments.
+type CollectorTagAttachments = []CollectorTagAttachment
+
+// CollectorTagCreate defines model for CollectorTagCreate.
+type CollectorTagCreate struct {
+	// Data The data stored with the tag.
+	Data *string `json:"data,omitempty"`
+
+	// Exclude A pattern to prevent the attachment of incompatible tags.
+	Exclude *string `json:"exclude,omitempty"`
+	Name    string  `json:"name"`
+}
+
+// CollectorTagNames defines model for CollectorTagNames.
+type CollectorTagNames = []string
+
 // Committed defines model for Committed.
 type Committed struct {
 	IsChanged bool `json:"is_changed"`
@@ -1485,6 +1674,91 @@ type Committed struct {
 	// a key write, a service whose install of the keys failed.
 	Warnings *[]string `json:"warnings,omitempty"`
 }
+
+// ComplianceEnv The environment variables of the modules, by module name.
+type ComplianceEnv map[string][]string
+
+// ComplianceLogEntry defines model for ComplianceLogEntry.
+type ComplianceLogEntry struct {
+	// Level The stream of the module the line was read from.
+	Level   ComplianceLogEntryLevel `json:"level"`
+	Message string                  `json:"message"`
+}
+
+// ComplianceLogEntryLevel The stream of the module the line was read from.
+type ComplianceLogEntryLevel string
+
+// ComplianceModuleAction An execution of a compliance module.
+type ComplianceModuleAction struct {
+	Action  ComplianceModuleActionAction `json:"action"`
+	EndedAt time.Time                    `json:"ended_at"`
+
+	// ExitCode 0 compliant, 1 not compliant, 2 not applicable to the node.
+	// Another code is an error of the module.
+	ExitCode  int                  `json:"exit_code"`
+	Log       []ComplianceLogEntry `json:"log"`
+	Module    string               `json:"module"`
+	StartedAt time.Time            `json:"started_at"`
+}
+
+// ComplianceModuleActionAction defines model for ComplianceModuleAction.Action.
+type ComplianceModuleActionAction string
+
+// ComplianceModulesetModule defines model for ComplianceModulesetModule.
+type ComplianceModulesetModule struct {
+	Autofix bool   `json:"autofix"`
+	Name    string `json:"name"`
+}
+
+// ComplianceModulesetTree defines model for ComplianceModulesetTree.
+type ComplianceModulesetTree struct {
+	Modules    []ComplianceModulesetModule `json:"modules"`
+	Modulesets []ComplianceModulesetTree   `json:"modulesets"`
+
+	// Name The moduleset, empty at the root of the tree.
+	Name string `json:"name"`
+}
+
+// ComplianceNames defines model for ComplianceNames.
+type ComplianceNames = []string
+
+// ComplianceRule defines model for ComplianceRule.
+type ComplianceRule struct {
+	Class string `json:"class"`
+	Name  string `json:"name"`
+
+	// Value The value of the rule, as the collector sets it.
+	Value interface{} `json:"value"`
+}
+
+// ComplianceRuleset defines model for ComplianceRuleset.
+type ComplianceRuleset struct {
+	// Filter Why the ruleset is exposed to the node.
+	Filter string           `json:"filter"`
+	Name   string           `json:"name"`
+	Rules  []ComplianceRule `json:"rules"`
+}
+
+// ComplianceRulesets The rulesets, by name.
+type ComplianceRulesets map[string]ComplianceRuleset
+
+// ComplianceRun A run of the compliance modules: the data fetch from the collector,
+// from started_at to fetched_at, then the executions of the modules,
+// until ended_at.
+type ComplianceRun struct {
+	Action        ComplianceRunAction      `json:"action"`
+	Attach        bool                     `json:"attach"`
+	EndedAt       time.Time                `json:"ended_at"`
+	FetchedAt     time.Time                `json:"fetched_at"`
+	Force         bool                     `json:"force"`
+	ModuleActions []ComplianceModuleAction `json:"module_actions"`
+	Modules       []string                 `json:"modules"`
+	Modulesets    []string                 `json:"modulesets"`
+	StartedAt     time.Time                `json:"started_at"`
+}
+
+// ComplianceRunAction defines model for ComplianceRun.Action.
+type ComplianceRunAction string
 
 // ComputeClaim defines model for ComputeClaim.
 type ComputeClaim struct {
@@ -1983,6 +2257,44 @@ type InstanceActionAccepted struct {
 
 // InstanceConfig defines model for InstanceConfig.
 type InstanceConfig = instance.Config
+
+// InstanceDevice defines model for InstanceDevice.
+type InstanceDevice struct {
+	// Device The path of the device.
+	Device string               `json:"device"`
+	Driver InstanceDeviceDriver `json:"driver"`
+	Path   string               `json:"path"`
+	Rid    string               `json:"rid"`
+	Role   InstanceDeviceRole   `json:"role"`
+}
+
+// InstanceDeviceRole defines model for InstanceDevice.Role.
+type InstanceDeviceRole string
+
+// InstanceDeviceDriver defines model for InstanceDeviceDriver.
+type InstanceDeviceDriver struct {
+	Group string `json:"group"`
+	Name  string `json:"name"`
+}
+
+// InstanceDeviceItem defines model for InstanceDeviceItem.
+type InstanceDeviceItem struct {
+	Data InstanceDevice `json:"data"`
+	Kind string         `json:"kind"`
+	Meta InstanceMeta   `json:"meta"`
+}
+
+// InstanceDeviceItems defines model for InstanceDeviceItems.
+type InstanceDeviceItems = []InstanceDeviceItem
+
+// InstanceDeviceList defines model for InstanceDeviceList.
+type InstanceDeviceList struct {
+	Items InstanceDeviceItems    `json:"items"`
+	Kind  InstanceDeviceListKind `json:"kind"`
+}
+
+// InstanceDeviceListKind defines model for InstanceDeviceList.Kind.
+type InstanceDeviceListKind string
 
 // InstanceItem defines model for InstanceItem.
 type InstanceItem struct {
@@ -3620,6 +3932,9 @@ type RidOptional = string
 // Roles defines model for Roles.
 type Roles = []Role
 
+// InPathCollectorTagName defines model for inPathCollectorTagName.
+type InPathCollectorTagName = string
+
 // InPathExecID An exec id.
 type InPathExecID = openapi_types.UUID
 
@@ -3673,6 +3988,27 @@ type InQueryAllSlaves = bool
 // InQueryArrayName defines model for inQueryArrayName.
 type InQueryArrayName = string
 
+// InQueryComplianceAttach defines model for inQueryComplianceAttach.
+type InQueryComplianceAttach = bool
+
+// InQueryComplianceFilter defines model for inQueryComplianceFilter.
+type InQueryComplianceFilter = string
+
+// InQueryComplianceForce defines model for inQueryComplianceForce.
+type InQueryComplianceForce = bool
+
+// InQueryComplianceModule defines model for inQueryComplianceModule.
+type InQueryComplianceModule = string
+
+// InQueryComplianceModuleset defines model for inQueryComplianceModuleset.
+type InQueryComplianceModuleset = string
+
+// InQueryComplianceModulesetRequired defines model for inQueryComplianceModulesetRequired.
+type InQueryComplianceModulesetRequired = string
+
+// InQueryComplianceRuleset defines model for inQueryComplianceRuleset.
+type InQueryComplianceRuleset = string
+
 // InQueryConfigDryRun defines model for inQueryConfigDryRun.
 type InQueryConfigDryRun = bool
 
@@ -3690,6 +4026,9 @@ type InQueryCron = bool
 
 // InQueryDeletes defines model for inQueryDeletes.
 type InQueryDeletes = []string
+
+// InQueryDeviceRoles defines model for inQueryDeviceRoles.
+type InQueryDeviceRoles = string
 
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
@@ -3741,6 +4080,9 @@ type InQueryKeyFilter = string
 
 // InQueryKeyName A datastore key name
 type InQueryKeyName = string
+
+// InQueryKeyNameOptional defines model for inQueryKeyNameOptional.
+type InQueryKeyNameOptional = string
 
 // Names defines model for inQueryKeyNames.
 type Names = []string
@@ -4132,6 +4474,121 @@ type PostPeerActionUnfreezeParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostNodeComplianceActionAutoParams defines parameters for PostNodeComplianceActionAuto.
+type PostNodeComplianceActionAutoParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// PostNodeComplianceActionCheckParams defines parameters for PostNodeComplianceActionCheck.
+type PostNodeComplianceActionCheckParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// PostNodeComplianceActionFixParams defines parameters for PostNodeComplianceActionFix.
+type PostNodeComplianceActionFixParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// PostNodeComplianceActionFixableParams defines parameters for PostNodeComplianceActionFixable.
+type PostNodeComplianceActionFixableParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// GetNodeComplianceEnvParams defines parameters for GetNodeComplianceEnv.
+type GetNodeComplianceEnvParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+}
+
+// GetNodeComplianceModulesetsParams defines parameters for GetNodeComplianceModulesets.
+type GetNodeComplianceModulesetsParams struct {
+	// Filter Keep the names containing this text.
+	Filter *InQueryComplianceFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// DeleteNodeComplianceModulesetAttachmentParams defines parameters for DeleteNodeComplianceModulesetAttachment.
+type DeleteNodeComplianceModulesetAttachmentParams struct {
+	// Moduleset The moduleset.
+	Moduleset InQueryComplianceModulesetRequired `form:"moduleset" json:"moduleset"`
+}
+
+// PostNodeComplianceModulesetAttachmentParams defines parameters for PostNodeComplianceModulesetAttachment.
+type PostNodeComplianceModulesetAttachmentParams struct {
+	// Moduleset The moduleset.
+	Moduleset InQueryComplianceModulesetRequired `form:"moduleset" json:"moduleset"`
+}
+
+// GetNodeComplianceModulesetTreeParams defines parameters for GetNodeComplianceModulesetTree.
+type GetNodeComplianceModulesetTreeParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+}
+
+// GetNodeComplianceRulesetsParams defines parameters for GetNodeComplianceRulesets.
+type GetNodeComplianceRulesetsParams struct {
+	// Filter Keep the names containing this text.
+	Filter *InQueryComplianceFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// DeleteNodeComplianceRulesetAttachmentParams defines parameters for DeleteNodeComplianceRulesetAttachment.
+type DeleteNodeComplianceRulesetAttachmentParams struct {
+	// Ruleset The ruleset.
+	Ruleset InQueryComplianceRuleset `form:"ruleset" json:"ruleset"`
+}
+
+// PostNodeComplianceRulesetAttachmentParams defines parameters for PostNodeComplianceRulesetAttachment.
+type PostNodeComplianceRulesetAttachmentParams struct {
+	// Ruleset The ruleset.
+	Ruleset InQueryComplianceRuleset `form:"ruleset" json:"ruleset"`
+}
+
 // GetNodeConfigParams defines parameters for GetNodeConfig.
 type GetNodeConfigParams struct {
 	// Kw The keywords to answer, all the keys the configuration sets when none. A keyword is [<section>.]<option>. A driver group or a pattern as section, as container or cont*, matches the resource sections it names, the same as a resource selector element, and a pattern as option, as stop_*, matches the keywords of the section, set or not. A pattern filters: a section without the keyword is skipped, and matching nothing is no error. A keyword naming one key that does not exist is an error.
@@ -4509,6 +4966,13 @@ type PostInstanceActionInstallParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
+// PostInstanceActionKeyInstallParams defines parameters for PostInstanceActionKeyInstall.
+type PostInstanceActionKeyInstallParams struct {
+	// Name The datastore key name. All the keys when not set.
+	Name      *InQueryKeyNameOptional `form:"name,omitempty" json:"name,omitempty"`
+	SessionID *SessionID              `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
 // PostInstanceActionPGResetParams defines parameters for PostInstanceActionPGReset.
@@ -5094,6 +5558,79 @@ type PostInstanceActionUpdateParams struct {
 	Note *InQueryRunNote `form:"note,omitempty" json:"note,omitempty"`
 }
 
+// PostInstanceComplianceActionAutoParams defines parameters for PostInstanceComplianceActionAuto.
+type PostInstanceComplianceActionAutoParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// PostInstanceComplianceActionCheckParams defines parameters for PostInstanceComplianceActionCheck.
+type PostInstanceComplianceActionCheckParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// PostInstanceComplianceActionFixParams defines parameters for PostInstanceComplianceActionFix.
+type PostInstanceComplianceActionFixParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// PostInstanceComplianceActionFixableParams defines parameters for PostInstanceComplianceActionFixable.
+type PostInstanceComplianceActionFixableParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+
+	// Force Run the action asked on every module, even the ones the run would skip
+	// or replace: a fix on a compliant module, a check on an autofix module.
+	Force *InQueryComplianceForce `form:"force,omitempty" json:"force,omitempty"`
+
+	// Attach Attach the selected modulesets to the node before the run.
+	Attach *InQueryComplianceAttach `form:"attach,omitempty" json:"attach,omitempty"`
+}
+
+// GetInstanceComplianceEnvParams defines parameters for GetInstanceComplianceEnv.
+type GetInstanceComplianceEnvParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+
+	// Module The compliance modules to select, comma separated.
+	Module *InQueryComplianceModule `form:"module,omitempty" json:"module,omitempty"`
+}
+
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
 type PostInstanceResourceConsoleParams struct {
 	// Rid a resource selector expression
@@ -5115,6 +5652,13 @@ type GetInstanceContainerLogParams struct {
 
 	// Lines report this number of past last log entries
 	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
+// GetInstanceDevicesParams defines parameters for GetInstanceDevices.
+type GetInstanceDevicesParams struct {
+	// Roles The roles of the devices to list, comma separated: exposed, sub, base,
+	// claimed, or all. All by default.
+	Roles *InQueryDeviceRoles `form:"roles,omitempty" json:"roles,omitempty"`
 }
 
 // DeleteInstanceFileParams defines parameters for DeleteInstanceFile.
@@ -5339,6 +5883,48 @@ type PostObjectActionStopParams struct {
 type PostObjectCertificateRenewParams struct {
 	// Force Obtain a certificate even when the current one is not due.
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
+}
+
+// GetObjectComplianceModulesetsParams defines parameters for GetObjectComplianceModulesets.
+type GetObjectComplianceModulesetsParams struct {
+	// Filter Keep the names containing this text.
+	Filter *InQueryComplianceFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// DeleteObjectComplianceModulesetAttachmentParams defines parameters for DeleteObjectComplianceModulesetAttachment.
+type DeleteObjectComplianceModulesetAttachmentParams struct {
+	// Moduleset The moduleset.
+	Moduleset InQueryComplianceModulesetRequired `form:"moduleset" json:"moduleset"`
+}
+
+// PostObjectComplianceModulesetAttachmentParams defines parameters for PostObjectComplianceModulesetAttachment.
+type PostObjectComplianceModulesetAttachmentParams struct {
+	// Moduleset The moduleset.
+	Moduleset InQueryComplianceModulesetRequired `form:"moduleset" json:"moduleset"`
+}
+
+// GetObjectComplianceModulesetTreeParams defines parameters for GetObjectComplianceModulesetTree.
+type GetObjectComplianceModulesetTreeParams struct {
+	// Moduleset The modulesets to select, comma separated.
+	Moduleset *InQueryComplianceModuleset `form:"moduleset,omitempty" json:"moduleset,omitempty"`
+}
+
+// GetObjectComplianceRulesetsParams defines parameters for GetObjectComplianceRulesets.
+type GetObjectComplianceRulesetsParams struct {
+	// Filter Keep the names containing this text.
+	Filter *InQueryComplianceFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// DeleteObjectComplianceRulesetAttachmentParams defines parameters for DeleteObjectComplianceRulesetAttachment.
+type DeleteObjectComplianceRulesetAttachmentParams struct {
+	// Ruleset The ruleset.
+	Ruleset InQueryComplianceRuleset `form:"ruleset" json:"ruleset"`
+}
+
+// PostObjectComplianceRulesetAttachmentParams defines parameters for PostObjectComplianceRulesetAttachment.
+type PostObjectComplianceRulesetAttachmentParams struct {
+	// Ruleset The ruleset.
+	Ruleset InQueryComplianceRuleset `form:"ruleset" json:"ruleset"`
 }
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.
@@ -5626,6 +6212,9 @@ type GetStoreSnapshotsParams struct {
 // GetStoreSnapshotsParamsOrder defines parameters for GetStoreSnapshots.
 type GetStoreSnapshotsParamsOrder string
 
+// PostClusterCollectorTagJSONRequestBody defines body for PostClusterCollectorTag for application/json ContentType.
+type PostClusterCollectorTagJSONRequestBody = CollectorTagCreate
+
 // PostClusterEnrollJSONRequestBody defines body for PostClusterEnroll for application/json ContentType.
 type PostClusterEnrollJSONRequestBody = ClusterEnrollBody
 
@@ -5656,6 +6245,9 @@ type PostNetworkClaimJSONRequestBody = PostNetworkClaim
 // PostNodeActionRegisterJSONRequestBody defines body for PostNodeActionRegister for application/json ContentType.
 type PostNodeActionRegisterJSONRequestBody = PostNodeActionRegisterRequest
 
+// PostNodeCollectorTagAttachmentJSONRequestBody defines body for PostNodeCollectorTagAttachment for application/json ContentType.
+type PostNodeCollectorTagAttachmentJSONRequestBody = CollectorTagAttach
+
 // PostDaemonJoinJSONRequestBody defines body for PostDaemonJoin for application/json ContentType.
 type PostDaemonJoinJSONRequestBody = DaemonJoinBody
 
@@ -5679,6 +6271,9 @@ type PostObjectActionRestartJSONRequestBody = PostObjectActionRestart
 
 // PostObjectActionSwitchJSONRequestBody defines body for PostObjectActionSwitch for application/json ContentType.
 type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
+
+// PostObjectCollectorTagAttachmentJSONRequestBody defines body for PostObjectCollectorTagAttachment for application/json ContentType.
+type PostObjectCollectorTagAttachmentJSONRequestBody = CollectorTagAttach
 
 // PatchObjectDataJSONRequestBody defines body for PatchObjectData for application/json ContentType.
 type PatchObjectDataJSONRequestBody = PatchDataKeys
