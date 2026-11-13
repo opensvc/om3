@@ -135,6 +135,11 @@ func freedInstance(p naming.Path, node string) bool {
 	if mon == nil {
 		return true
 	}
+	if mon.State.IsOneOf(instance.MonitorStatesFailure...) {
+		// A failed action is terminal, nothing retries it: the instance,
+		// unprovisioned, holds nothing until someone acts on it again.
+		return true
+	}
 	switch mon.GlobalExpect {
 	case instance.MonitorGlobalExpectNone, instance.MonitorGlobalExpectInit:
 	default:
