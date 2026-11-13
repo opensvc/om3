@@ -37,6 +37,8 @@ type unifiedWrite struct {
 // hierarchy has no file for either: memory.swappiness and memory.oom_control
 // are of the v1 hierarchy, and setting those keywords already does nothing
 // here.
+//
+// The v1 hierarchy has its own, in v1Resets.
 var unifiedResets = map[string]unifiedWrite{
 	"pg_cpu_quota":    {"cpu.max", "max 100000"},
 	"pg_cpu_burst":    {"cpu.max.burst", "0"},
@@ -86,17 +88,27 @@ func applyUnifiedWrites(id string, writes []unifiedWrite) error {
 // node having no unified hierarchy with a write that went wrong on one, and
 // the second sent the apply down a v1 path that could only fail differently:
 // that is how a missing io.bfq.weight was reported as a missing v1 mountpoint.
+//
+// The errors name the group, which is not always the one of the resource
+// reporting them: a resource applies the groups of its subset, object and
+// namespace before its own, and a keyword of the DEFAULT section failing on
+// the group of the object was blamed on the first resource to start.
 func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	if c.ID == "" {
 		errs = fmt.Errorf("the pg config application requires a non empty pg id")
 		return
 	}
+	defer func() {
+		if errs != nil {
+			errs = fmt.Errorf("pg %s: %w", c.Path(), errs)
+		}
+	}()
 
 	unified := isUnified()
 	writes := make([]unifiedWrite, 0)
-	var hasReset bool
+	resets := make([]string, 0)
 	reset := func(kw string) {
-		hasReset = true
+		resets = append(resets, kw)
 		writes = append(writes, unifiedResets[kw])
 	}
 	write := func(file, value string) {
@@ -253,7 +265,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 
 	if c.Delegation != nil {
 		if !unified {
-			errs = errors.Join(errs, fmt.Errorf("pg %s: a group delegated to a user needs the unified cgroup hierarchy", c.ID))
+			errs = errors.Join(errs, fmt.Errorf("a group delegated to a user needs the unified cgroup hierarchy"))
 			return
 		}
 		var err error
@@ -267,7 +279,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		if pid != 0 {
 			procs := filepath.Join(UnifiedPath(), c.Path(), "cgroup.procs")
 			if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
-				errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.Path(), err))
+				errs = errors.Join(errs, fmt.Errorf("add pid %d: %w", pid, err))
 			}
 		}
 		return
@@ -276,12 +288,12 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	if unified {
 		control, err := cgroup2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
 		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
+			errs = errors.Join(errs, fmt.Errorf("create: %w", err))
 			return
 		}
 		if names := c.valueControllers(); len(names) > 0 {
 			if err := control.ToggleControllers(names, cgroup2.Enable); err != nil {
-				errs = errors.Join(errs, fmt.Errorf("enable %s for pg %s: %w", strings.Join(names, " "), c.ID, err))
+				errs = errors.Join(errs, fmt.Errorf("enable %s: %w", strings.Join(names, " "), err))
 			}
 		}
 		if len(writes) > 0 {
@@ -291,27 +303,50 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		if pid == 0 {
 			// pass
 		} else if err := control.AddProc(uint64(pid)); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
+			errs = errors.Join(errs, fmt.Errorf("add pid %d: %w", pid, err))
 		}
 		return
 	}
 
-	if hasReset {
-		// The v1 hierarchy names these files otherwise and holds other
-		// values in them, and none of that was read from a v1 node.
-		errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
+	if !c.fullReset {
+		c.warnDefaultsIgnoredOnV1(resets)
 	}
+	v1Writes := v1ResetsFor(c.fullReset, resets)
 	control, err := cgroup1.New(cgroup1.StaticPath(c.ID), &r)
 	if err != nil {
-		errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
-	} else if pid == 0 {
-		created = true
+		errs = errors.Join(errs, fmt.Errorf("create: %w", err))
+		return
+	}
+	created = true
+	if len(v1Writes) > 0 {
+		errs = errors.Join(errs, applyV1Resets(cgroupMount, c.ID, v1Writes))
+	}
+	if pid == 0 {
 		// pass
 	} else if err := control.Add(cgroup1.Process{Pid: pid}); err != nil {
-		created = true
-		errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
+		errs = errors.Join(errs, fmt.Errorf("add pid %d: %w", pid, err))
 	}
 	return
+}
+
+// warnDefaultsIgnoredOnV1 says which keywords set to DefaultValue the v1
+// hierarchy has no reset for, and skips: pg_mem_high and pg_cpu_burst, whose
+// files are of the unified hierarchy only. Setting them to a value is warned
+// about the same way.
+func (c Config) warnDefaultsIgnoredOnV1(kws []string) {
+	if c.log == nil {
+		return
+	}
+	for _, kw := range kws {
+		if hasV1Reset(kw) {
+			continue
+		}
+		if file, ok := ignoredOnV1[kw]; ok {
+			c.log.Warnf("pg %s: %s=%s is ignored: the v1 cgroup hierarchy has no %s", c.Path(), kw, DefaultValue, file)
+		} else {
+			c.log.Warnf("pg %s: %s=%s is ignored: the v1 cgroup hierarchy has no reset for it", c.Path(), kw, DefaultValue)
+		}
+	}
 }
 
 // ignoredOnUnified is the keyword whose capping the unified hierarchy has no
@@ -409,7 +444,7 @@ func (c Config) makeDelegated() (created bool, err error) {
 	d := c.Delegation
 	root := filepath.Join(UnifiedPath(), d.Root)
 	if _, err := os.Stat(root); err != nil {
-		return false, fmt.Errorf("pg %s: the delegated cgroup %s does not exist: the systemd instance of uid %d is not running", c.ID, d.Root, d.UID)
+		return false, fmt.Errorf("the delegated cgroup %s does not exist: the systemd instance of uid %d is not running", d.Root, d.UID)
 	}
 	parent := root
 	for _, name := range strings.Split(strings.Trim(c.ID, "/"), "/") {
@@ -417,16 +452,16 @@ func (c Config) makeDelegated() (created bool, err error) {
 			continue
 		}
 		if err := enableControllers(parent); err != nil {
-			return created, fmt.Errorf("pg %s: %w", c.ID, err)
+			return created, err
 		}
 		dir := filepath.Join(parent, name)
 		if err := os.Mkdir(dir, 0755); err == nil {
 			created = true
 		} else if !errors.Is(err, os.ErrExist) {
-			return created, fmt.Errorf("pg %s: %w", c.ID, err)
+			return created, err
 		}
 		if err := chownDelegated(dir, d.UID, d.GID); err != nil {
-			return created, fmt.Errorf("pg %s: %w", c.ID, err)
+			return created, err
 		}
 		parent = dir
 	}
@@ -434,7 +469,7 @@ func (c Config) makeDelegated() (created bool, err error) {
 	// the container under it, and that group has the files of none of them
 	// otherwise.
 	if err := enableControllers(parent); err != nil {
-		return created, fmt.Errorf("pg %s: %w", c.ID, err)
+		return created, err
 	}
 	return created, nil
 }
