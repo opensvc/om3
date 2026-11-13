@@ -3811,6 +3811,13 @@ func newCmdObjectResize(kind string) *cobra.Command {
 		Short: "grow the volume on every node holding an instance",
 		Long: `Grow the volume on every node holding an instance, to SIZE.
 
+SIZE is the size of the volume as its pool and the claims of its namespace
+count it, which is the size of the bottom of its chain: the loop file, the
+logical volume or the zvol the pool made. The resources above it keep a cut
+of what they rest on for their metadata, so the filesystem mounted on the
+volume head holds less, and is grown to what the bottom hands up once it holds
+SIZE.
+
 SIZE is written to the volume configuration, which is the size every node
 converges to, and is what a listing like "ox pool volume list" reports. It can
 be a size to reach, as "11g", "11GB" or "12Gi", or an amount to add, as "+1g".
@@ -3822,9 +3829,17 @@ replicated link and the filesystem resting on it.
 
 A resize that fails is final on the instance it failed on. Nothing is retried,
 and asking again is how it is finished: the size already configured is the
-target, and every link that holds it is left alone.
+target, and every link that holds what it leaves it is left alone. Asking for
+the size already configured changes nothing once the volume holds it.
 
-A resize only grows.`,
+A resize only grows. A SIZE that grows nothing, the links handing out whole
+units of what they rest on, is refused with the smallest SIZE that does grow
+the volume, before anything is written.
+
+The filesystem counts as the device it takes up, so a filesystem left short of
+its device, by a grow that failed or by a device grown by hand, is not seen
+from the size of the volume. It is grown onto its device by a resize of the
+filesystem itself, on the node holding the volume up: "om <path> fs resize fs#1 <its size>".`,
 		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.Size == "" && len(args) > 0 {
@@ -3834,11 +3849,11 @@ A resize only grows.`,
 		},
 	}
 	commoncmd.CmdOrchestrated(cmd)
-	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add.")
+	commoncmd.CmdWithArg(cmd, "SIZE  The size of the bottom of the volume chain to reach, or the amount to add.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add (ex: 11g, +1g)")
+	flags.StringVar(&options.Size, "size", "", "the size of the bottom of the volume chain to reach, or the amount to add (ex: 11g, +1g)")
 	return cmd
 }
 

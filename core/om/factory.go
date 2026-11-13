@@ -3555,22 +3555,35 @@ func newCmdObjectInstanceResize(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceResize
 	cmd := &cobra.Command{
 		Use:   "resize SIZE",
-		Short: "change the size of the volume head, and of what it rests on",
-		Long: `Change the size of the resource the volume exposes to its consumers, and of
-every resource it rests on.
+		Short: "change the size of the volume, and of the resources it rests on",
+		Long: `Change the size of the volume on this node: the resource the volume exposes to
+its consumers, and every resource it rests on.
+
+SIZE is the size of the volume as its pool and the claims of its namespace
+count it, which is the size of the bottom of its chain: the loop file, the
+logical volume or the zvol the pool made. The resources above it keep a cut
+of what they rest on for their metadata, so the filesystem mounted on the
+volume head holds less, and is grown to what the bottom hands up once it holds
+SIZE. It is the size to reach, as "11g", "11GB" or "12Gi", or the amount to
+add to what the bottom holds, as "+1g".
 
 With no SIZE, the volume is resized to the size it is configured to be.
 
 The resized resource is the one the volume exposes: the filesystem mounted on
 the volume head, or, when the volume has no filesystem, the device it exposes.
 Use "om <path> fs resize" or "om <path> disk resize" to name another resource
-of the volume.
+of the volume, whose SIZE is then the size of that resource.
 
-SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add,
-as "+1g".
+A resize only grows. Asking for the size the volume is configured to be
+changes nothing once the volume holds it, and finishes a resize that stopped
+part way. A SIZE above the configured one that grows nothing, the links
+handing out whole units of what they rest on, is refused with the smallest
+SIZE that does grow the volume.
 
-A resize only grows. Asking for a size the chain already holds is nothing to
-do, which is what lets a resize that stopped part way be asked again.
+The filesystem counts as the device it takes up, so a filesystem left short of
+its device, by a grow that failed or by a device grown by hand, is not seen
+from the size of the volume. It is grown onto its device by a resize of the
+filesystem itself: "om <path> fs resize fs#1 <its size>".
 
 A chain grows from the bottom up, so the space exists before anything is
 stretched onto it.
@@ -3586,10 +3599,10 @@ Use --dry-run to see the plan without applying it.`,
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add or remove. Defaults to the configured size.")
+	commoncmd.CmdWithArg(cmd, "SIZE  The size of the bottom of the volume chain to reach, or the amount to add. Defaults to the configured size.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add or remove (ex: 11g, +1g)")
+	flags.StringVar(&options.Size, "size", "", "the size of the bottom of the volume chain to reach, or the amount to add (ex: 11g, +1g)")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "report the plan, and change nothing")
 	flags.IntVar(&options.Stage, "stage", -1, "grow only this stage of the chain, the others being grown on the nodes and in the order the plan says")
 	flags.BoolVar(&options.SkipHeadStage, "skip-head-stage", false, "leave the stage holding the head alone, it growing where the object is up")
@@ -3922,6 +3935,13 @@ func newCmdObjectResize(kind string) *cobra.Command {
 		Short: "grow the volume on every node holding an instance",
 		Long: `Grow the volume on every node holding an instance, to SIZE.
 
+SIZE is the size of the volume as its pool and the claims of its namespace
+count it, which is the size of the bottom of its chain: the loop file, the
+logical volume or the zvol the pool made. The resources above it keep a cut
+of what they rest on for their metadata, so the filesystem mounted on the
+volume head holds less, and is grown to what the bottom hands up once it holds
+SIZE.
+
 SIZE is written to the volume configuration, which is the size every node
 converges to, and is what a listing like "om pool volume list" reports. It can
 be a size to reach, as "11g", "11GB" or "12Gi", or an amount to add, as "+1g".
@@ -3933,9 +3953,17 @@ replicated link and the filesystem resting on it.
 
 A resize that fails is final on the instance it failed on. Nothing is retried,
 and asking again is how it is finished: the size already configured is the
-target, and every link that holds it is left alone.
+target, and every link that holds what it leaves it is left alone. Asking for
+the size already configured changes nothing once the volume holds it.
 
-A resize only grows.`,
+A resize only grows. A SIZE that grows nothing, the links handing out whole
+units of what they rest on, is refused with the smallest SIZE that does grow
+the volume, before anything is written.
+
+The filesystem counts as the device it takes up, so a filesystem left short of
+its device, by a grow that failed or by a device grown by hand, is not seen
+from the size of the volume. It is grown onto its device by a resize of the
+filesystem itself: "om <path> fs resize fs#1 <its size>".`,
 		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.Size == "" && len(args) > 0 {
@@ -3945,11 +3973,11 @@ A resize only grows.`,
 		},
 	}
 	commoncmd.CmdOrchestrated(cmd)
-	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add.")
+	commoncmd.CmdWithArg(cmd, "SIZE  The size of the bottom of the volume chain to reach, or the amount to add.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add (ex: 11g, +1g)")
+	flags.StringVar(&options.Size, "size", "", "the size of the bottom of the volume chain to reach, or the amount to add (ex: 11g, +1g)")
 	return cmd
 }
 

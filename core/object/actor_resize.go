@@ -62,6 +62,11 @@ type (
 		// to finish a stage before any node starts the next one: a replicated
 		// resource offers only what its smallest replica holds.
 		Stages int `json:"stages"`
+
+		// Bottom is the size asked of the bottom of the chain, when the size
+		// asked is of the bottom rather than of the resource the resize was
+		// asked of, and 0 otherwise. See ResizeOptions.Bottom.
+		Bottom int64 `json:"bottom,omitempty"`
 	}
 
 	// ResizeOptions tunes a resize.
@@ -77,6 +82,35 @@ type (
 		// runs once every node has grown what is under the replicated
 		// resource.
 		Force bool
+
+		// Bottom says the size asked is the size of the bottom of the chain,
+		// rather than of the resource the resize is asked of. It is what a
+		// resize asked of a volume means: the size of a volume is what its
+		// pool and the claims of its namespace count, which is what the
+		// bottom of its chain holds, and the links above it keep a cut of
+		// what they rest on for their own metadata, so the head never holds
+		// it.
+		//
+		// The size the head has to reach is worked out from it, up the chain,
+		// from what each link hands out of what is below it, and the links
+		// are then asked from the top down, as they are for a size of the
+		// head: the bottom ends up asked for about the size given. A head
+		// already holding what that leaves it has nothing to do, which is
+		// what makes asking a volume for the size it is configured to hold
+		// harmless.
+		//
+		// A size recorded in DEFAULT.size is never more than the size given:
+		// that is the size the claim of the volume was checked for, and a
+		// rounding up on the way down is no reason to outgrow it.
+		Bottom bool
+
+		// Configured is the size the volume is configured to hold, for a
+		// resize asked of the bottom, and 0 when it says nothing. A size
+		// above it that grows nothing is refused with a
+		// ResizeGrowsNothingError naming the smallest one that does: asked
+		// of the pool through the configuration, it would be claimed with
+		// nothing holding it.
+		Configured int64
 	}
 
 	// resizeLevel is the resources a chain rests on at one depth, all asked
@@ -120,7 +154,11 @@ func (t ResizePlan) String() string {
 		return "nothing to do: every link already holds the size asked of it"
 	}
 	lines := make([]string, 0, len(t.Steps)+t.Stages+1)
-	lines = append(lines, "grow, in this order:")
+	if t.Bottom > 0 {
+		lines = append(lines, fmt.Sprintf("grow, for the bottom of the chain to hold %s, in this order:", sizeconv.BSizeCompact(float64(t.Bottom))))
+	} else {
+		lines = append(lines, "grow, in this order:")
+	}
 	indent := "  "
 	if t.Stages > 1 {
 		indent = "    "
@@ -354,8 +392,10 @@ func (t *actor) replicatedResizeResource(ctx context.Context) resource.Driver {
 // does not cannot read the head: its filesystem is not mounted there. The
 // replicated link is asked for the size the object is asked to be, which is
 // what the head asks of it when the head is a filesystem taking the whole
-// device. Every later stage rests on the head being readable, and runs where
-// it is.
+// device. With opts.Bottom, that size is worked out from the bottom up to the
+// replicated link, which is what it is worked out to up to a filesystem
+// taking the whole of it. Every later stage rests on the head being readable,
+// and runs where it is.
 //
 // The links of the other stages are listed, so a plan shows the whole chain,
 // and marked as nothing to do here.
@@ -445,9 +485,10 @@ func (t *actor) ResizeStage(ctx context.Context, rid string, to int64, stage int
 // nodes stop matching, and the size written back records one no peer has.
 //
 // Running one stage is not stopped. That is what an orchestrated resize does
-// on each node, and what --stage does by hand.
+// on each node, and what --stage does by hand. Neither is a plan with nothing
+// to do: it strands nothing.
 func refuseLoneReplicaResize(plan ResizePlan, home naming.Path, opts ResizeOptions) error {
-	if opts.Force || plan.Stages < 2 {
+	if opts.Force || plan.Stages < 2 || !plan.HasWork() {
 		return nil
 	}
 	return fmt.Errorf("%s grows in %d stages, and this would run them all on %s: a replicated resource offers what its smallest replica holds, so the space would be stranded. Use \"om %s resize\" to grow every node, --stage to run one stage here, or --force to run them all anyway",
@@ -602,6 +643,9 @@ func levelIsReplicated(level resizeLevel) bool {
 // buildResizePlan works out what resizing a chain would do, and changes
 // nothing. The chain runs from the resource the size was asked of down to the
 // deepest one it rests on.
+//
+// The size is of the head, unless opts.Bottom says it is of the bottom, in
+// which case the size of the head is worked out from it first.
 // home is the object the resize was asked of, so a link of another object is
 // named with it.
 func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.Change, home naming.Path, opts ResizeOptions) (ResizePlan, error) {
@@ -621,6 +665,47 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 	if err != nil {
 		return plan, fmt.Errorf("%s: size: %w", resizeLinkName(head, home), err)
 	}
+	stages := resizeStages(chain)
+	if opts.Bottom {
+		bottom, err := resolveBottomSize(ctx, chain, change, home)
+		if err != nil {
+			return plan, err
+		}
+		handsUp, err := chainHandsUp(ctx, chain, home)
+		if err != nil {
+			return plan, err
+		}
+		to := handsUp(bottom)
+		if to <= from && opts.Configured > 0 && bottom > opts.Configured {
+			// More than the volume is configured to hold, and nothing grows:
+			// the size would be recorded with nothing holding it.
+			name := home.String()
+			if name == "" {
+				name = resizeLinkName(head, home)
+			}
+			return plan, growsNothingError(ctx, chain, handsUp, name, bottom, from)
+		}
+		if to <= from {
+			// The head holds what the size given leaves it, so nothing has
+			// to grow. That is the answer to asking a volume for the size
+			// it is configured to hold: the configuration records the
+			// bottom, which the head never holds.
+			plan.Stages = stages[0] + 1
+			plan.Bottom = bottom
+			levelSteps := make([][]ResizeStep, 0, len(chain))
+			for levelIndex, level := range chain {
+				levelSteps = append(levelSteps, notAskedSteps(ctx, level, stages[levelIndex], "holds what the size asked leaves it"))
+			}
+			reverse(levelSteps)
+			for _, steps := range levelSteps {
+				plan.Steps = append(plan.Steps, steps...)
+			}
+			return plan, nil
+		}
+		plan, err = buildResizePlanTo(ctx, chain, to, home, stages)
+		plan.Bottom = bottom
+		return plan, err
+	}
 	to := change.Resolve(from)
 	if to <= 0 {
 		return plan, fmt.Errorf("%s: %s of %s leaves nothing", resizeLinkName(head, home), change, sizeconv.BSizeCompact(float64(from)))
@@ -636,8 +721,16 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 		// not below, and asking again is how it is finished.
 		return plan, nil
 	}
+	return buildResizePlanTo(ctx, chain, to, home, stages)
+}
 
-	stages := resizeStages(chain)
+// buildResizePlanTo works out what growing the head of a chain to the size to
+// would do, from the top down, and changes nothing. stages says which stage
+// each level is grown in.
+func buildResizePlanTo(ctx context.Context, chain []resizeLevel, to int64, home naming.Path, stages []int) (ResizePlan, error) {
+	var plan ResizePlan
+	head := chain[0][0]
+
 	// The chain is indexed from the head, which is in the last stage.
 	plan.Stages = stages[0] + 1
 
@@ -741,6 +834,223 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 	}
 	unskipSpansBelow(&plan)
 	return plan, nil
+}
+
+// resolveBottomSize is the size the bottom of a chain is asked to hold. An
+// amount to add is added to what the bottom holds, which is the smallest of
+// what its links hold: a level is grown as one.
+func resolveBottomSize(ctx context.Context, chain []resizeLevel, change sizeconv.Change, home naming.Path) (int64, error) {
+	head := chain[0][0]
+	if !change.IsRelative {
+		if change.Value <= 0 {
+			return 0, fmt.Errorf("%s: %s leaves nothing", resizeLinkName(head, home), change)
+		}
+		return change.Value, nil
+	}
+	var from int64 = -1
+	for _, link := range chain[len(chain)-1] {
+		sizer, ok := link.r.(resource.Sizer)
+		if !ok {
+			return 0, resizeRefusal(link, head, home, "reports no size")
+		}
+		size, err := sizer.CurrentSize(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
+		}
+		if from < 0 || size < from {
+			from = size
+		}
+	}
+	to := change.Resolve(from)
+	if to <= 0 {
+		return 0, fmt.Errorf("%s: %s of %s leaves nothing", resizeLinkName(head, home), change, sizeconv.BSizeCompact(float64(from)))
+	}
+	return to, nil
+}
+
+// headSizeFromBottom works out the size the head of a chain has to reach for
+// its bottom to hold bottom. See chainHandsUp.
+func headSizeFromBottom(ctx context.Context, chain []resizeLevel, bottom int64, home naming.Path) (int64, error) {
+	handsUp, err := chainHandsUp(ctx, chain, home)
+	if err != nil {
+		return 0, err
+	}
+	return handsUp(bottom), nil
+}
+
+// chainHandsUp answers the function working out the size the head of a chain
+// reaches from the size its bottom holds: each level hands out to the level
+// above what its links hand out of what the level below holds, the least of
+// them, a level being grown as one. A link that cannot say hands out what is
+// below it.
+//
+// What the links rest their answer on is measured once, here, so the function
+// can be asked of many sizes, as the search for the smallest size growing a
+// chain does.
+func chainHandsUp(ctx context.Context, chain []resizeLevel, home naming.Path) (func(bottom int64) int64, error) {
+	levels := make([][]func(int64) int64, len(chain))
+	for i := 0; i < len(chain)-1; i++ {
+		for _, link := range chain[i] {
+			f := resource.HandsOutWhatIsBelow
+			if h, ok := link.r.(resource.ResizeHandsOuter); ok {
+				g, err := h.ResizeHandsOut(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
+				}
+				f = g
+			}
+			levels[i] = append(levels[i], f)
+		}
+	}
+	return func(bottom int64) int64 {
+		size := bottom
+		for i := len(chain) - 2; i >= 0; i-- {
+			var levelSize int64 = -1
+			for _, f := range levels[i] {
+				if out := f(size); levelSize < 0 || out < levelSize {
+					levelSize = out
+				}
+			}
+			size = levelSize
+		}
+		return size
+	}, nil
+}
+
+// bottomUnit is what the bottom of a chain grows by, the largest of what its
+// links grow by: a logical volume grows by extents, a loop file by sectors.
+func bottomUnit(ctx context.Context, chain []resizeLevel) int64 {
+	unit := int64(512)
+	for _, link := range chain[len(chain)-1] {
+		i, ok := link.r.(resource.ResizeUniter)
+		if !ok {
+			continue
+		}
+		if u, err := i.ResizeUnit(ctx); err == nil && u > unit {
+			unit = u
+		}
+	}
+	return unit
+}
+
+// smallestGrowingBottom is the smallest size of the bottom, a whole number of
+// unit more than bottom, for which the head reaches more than it holds, and
+// false when no size does. It searches up from bottom, doubling the step
+// until a size grows the head, then halves its way back down to the smallest
+// one: what a chain hands up never shrinks as its bottom grows.
+func smallestGrowingBottom(handsUp func(int64) int64, bottom, head, unit int64) (int64, bool) {
+	if unit <= 0 {
+		unit = 512
+	}
+	lo := sizeconv.RoundUp(bottom, unit)
+	if lo > bottom && handsUp(lo) > head {
+		return lo, true
+	}
+	step := unit
+	hi := lo + step
+	for handsUp(hi) <= head {
+		if step > 1<<52 {
+			return 0, false
+		}
+		step *= 2
+		hi = lo + step
+	}
+	for hi-lo > unit {
+		mid := lo + (hi-lo)/unit/2*unit
+		if handsUp(mid) > head {
+			hi = mid
+		} else {
+			lo = mid
+		}
+	}
+	return hi, true
+}
+
+// ResizeGrowsNothingError refuses a size asked of a volume, more than the size
+// it is configured to hold, that grows nothing: the links of its chain keep a
+// cut of what they rest on and hand out whole units, so a bottom grown by
+// less than that hands up no more than the head already holds. The size would
+// be written to the configuration and claimed of the pool, and nothing would
+// hold it.
+type ResizeGrowsNothingError struct {
+	// Name is the volume, or the link the size of the chain was worked out
+	// up to.
+	Name string
+
+	// Asked is the size asked of the bottom, and Head what the head holds,
+	// which is no less than what Asked leaves it.
+	Asked, Head int64
+
+	// Smallest is the smallest size of the bottom that grows the chain, and
+	// 0 when none does.
+	Smallest int64
+}
+
+func (e *ResizeGrowsNothingError) Error() string {
+	s := fmt.Sprintf("%s: a size of %s grows nothing: the links of its chain keep a cut of what they rest on and hand out whole units, and what is left is no more than the %s its head holds",
+		e.Name, sizeconv.ExactBSizeCompact(float64(e.Asked)), sizeconv.ExactBSizeCompact(float64(e.Head)))
+	if e.Smallest > 0 {
+		s += fmt.Sprintf(". The smallest size growing it is %s", sizeconv.ExactBSizeCompact(float64(e.Smallest)))
+	}
+	return s
+}
+
+// growsNothingError is the refusal of a size asked of the bottom of a chain
+// whose head already holds what it leaves it.
+func growsNothingError(ctx context.Context, chain []resizeLevel, handsUp func(int64) int64, name string, bottom, head int64) error {
+	e := &ResizeGrowsNothingError{Name: name, Asked: bottom, Head: head}
+	if smallest, ok := smallestGrowingBottom(handsUp, bottom, head, bottomUnit(ctx, chain)); ok {
+		e.Smallest = smallest
+	}
+	return e
+}
+
+// CheckResizeGrows refuses a size asked of the bottom of the chain of rid that
+// grows nothing, naming the smallest size that does. It changes nothing.
+//
+// The chain is walked from rid, and from the replicated resource when rid
+// cannot be read here: a node not holding the object up cannot read the
+// filesystem of its head, and a filesystem taking up the whole of the
+// replicated device is grown to what it hands up. A chain readable neither way
+// cannot be checked here, which is an error other than the refusal.
+func (t *actor) CheckResizeGrows(ctx context.Context, rid string, bottom int64) error {
+	chain, err := t.resizeChainOf(ctx, rid, map[string]bool{})
+	if err != nil {
+		return err
+	}
+	from, err := chainHeadSize(ctx, chain)
+	if err != nil {
+		r := t.replicatedResizeResource(ctx)
+		if r == nil {
+			return err
+		}
+		if chain, err = t.resizeChain(ctx, r, map[string]bool{}); err != nil {
+			return err
+		}
+		if from, err = chainHeadSize(ctx, chain); err != nil {
+			return err
+		}
+	}
+	handsUp, err := chainHandsUp(ctx, chain, t.path)
+	if err != nil {
+		return err
+	}
+	if handsUp(bottom) > from {
+		return nil
+	}
+	return growsNothingError(ctx, chain, handsUp, t.path.String(), bottom, from)
+}
+
+// chainHeadSize is what the head of a chain holds.
+func chainHeadSize(ctx context.Context, chain []resizeLevel) (int64, error) {
+	if len(chain) == 0 || len(chain[0]) == 0 {
+		return 0, fmt.Errorf("nothing to resize")
+	}
+	sizer, ok := chain[0][0].r.(resource.Sizer)
+	if !ok {
+		return 0, fmt.Errorf("%s reports no size", chain[0][0].r.RID())
+	}
+	return sizer.CurrentSize(ctx)
 }
 
 // levelHolds says every link of a level holds the size asked of it.
@@ -918,7 +1228,7 @@ func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what strin
 		if err := resizer.Resize(ctx, step.To); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
-		if err := step.recordSize(ctx); err != nil {
+		if err := step.recordSize(ctx, plan.Bottom); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
@@ -947,7 +1257,13 @@ func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what strin
 // One keyword is written alongside the resource rather than instead of it:
 // the size of a volume the resource was sized from, which is the claim the
 // cluster rations its namespace by. See claimSizeKey.
-func (t ResizeStep) recordSize(ctx context.Context) error {
+//
+// limit, when not 0, is the size asked of the bottom of the chain, and
+// DEFAULT.size is never recorded more than it. That size is the claim the
+// cluster checked, and what a link rounds up to on the way down, a loop file
+// to whole sectors, is not the claim outgrown: recording it would take a
+// little more of the pool at every resize than anyone asked for.
+func (t ResizeStep) recordSize(ctx context.Context, limit int64) error {
 	if t.owner == nil {
 		return nil
 	}
@@ -988,6 +1304,13 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 		t.owner.log.Infof("%s: size reached cannot be read back, so it is not recorded: %s", t.RID, err)
 		return nil
 	}
+	if limit > 0 && reached > limit && recordsClaim(keys) {
+		t.owner.log.Infof("%s: reached %s, more than the %s asked: %s is recorded", t.RID,
+			sizeconv.ExactBSizeCompact(float64(reached)),
+			sizeconv.ExactBSizeCompact(float64(limit)),
+			sizeconv.ExactBSizeCompact(float64(limit)))
+		reached = limit
+	}
 	value := sizeconv.ExactBSizeCompact(float64(reached))
 	ops := make([]keyop.T, 0, len(keys))
 	for _, k := range keys {
@@ -1002,6 +1325,17 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 		return nil
 	}
 	return t.owner.config.Set(ops...)
+}
+
+// recordsClaim says whether DEFAULT.size, the size a volume claims of its
+// pool, is among the keywords a size is recorded in.
+func recordsClaim(keys []key.T) bool {
+	for _, k := range keys {
+		if k.Section == "DEFAULT" && k.Option == "size" {
+			return true
+		}
+	}
+	return false
 }
 
 // claimSizeKey is the size of the object, when this resource is the one a

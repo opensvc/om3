@@ -653,6 +653,19 @@ func (t *actor) resizeSpanShortfall(ctx context.Context, r resource.Driver, curr
 	if err != nil || below <= 0 {
 		return ""
 	}
+	// A link saying what it hands out of a size below is behind when that
+	// is more than it holds: a remainder too small for a unit of it, as the
+	// end of a device less than an extent of a volume group, is no growth
+	// left to take.
+	if outer, ok := r.(resource.ResizeHandsOuter); ok {
+		if handsOut, err := outer.ResizeHandsOut(ctx); err == nil {
+			if handsOut(below) <= current {
+				return ""
+			}
+			held, has := resizeSizePair(current, below)
+			return fmt.Sprintf("holds %s while the %s under it holds %s, so a resize has not finished", held, devs[0].Path(), has)
+		}
+	}
 	need, err := resizer.ResizePlan(ctx, current)
 	if err != nil || need >= below {
 		return ""

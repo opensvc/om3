@@ -56,7 +56,10 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 		return fmt.Errorf("%s: a %s has no head resource to resize", p, p.Kind)
 	}
 	ctx := context.Background()
-	opts := object.ResizeOptions{Force: t.Force, SkipHeadStage: t.SkipHeadStage}
+	// The size of a volume is the size of the bottom of its chain, which is
+	// what its pool and the claims of its namespace count and what its
+	// configuration records, so that is what the size asked here is.
+	opts := object.ResizeOptions{Force: t.Force, SkipHeadStage: t.SkipHeadStage, Bottom: true}
 
 	// No size asked for means the size the volume is configured to be, which
 	// is the size a resize orchestration is converging every node to.
@@ -69,6 +72,11 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 		change.Value = to
 	} else if change, err = sizeconv.ParseChange(t.Size); err != nil {
 		return err
+	} else if configured, err := i.ConfiguredSize(); err == nil {
+		// A size above the configured one that grows nothing is refused,
+		// as the resize orchestration refuses it before writing it: it
+		// names the smallest size that does grow the volume.
+		opts.Configured = configured
 	}
 
 	rid, err := i.HeadRID(ctx)

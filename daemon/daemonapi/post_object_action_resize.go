@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -123,11 +124,14 @@ func writeResizeTarget(eCtx echo.Context, p naming.Path, size string) (time.Time
 	if err != nil {
 		return updatedAt, code, err
 	}
+	log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionResize"), p)
+	if err := refuseIdleGrowth(eCtx.Request().Context(), log, p, to); err != nil {
+		return updatedAt, http.StatusBadRequest, err
+	}
 	sets := keyop.ParseOps([]string{fmt.Sprintf("size=%d", to)})
 	if err := refuseSizeWhileResizing(p, sets); err != nil {
 		return updatedAt, http.StatusConflict, err
 	}
-	log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionResize"), p)
 	if _, err := configUpdate(eCtx, log, p, nil, nil, sets, false); errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
 		return updatedAt, http.StatusForbidden, err
 	} else if errors.Is(err, ErrInvalidConfig) {
@@ -168,6 +172,49 @@ func resizeTarget(p naming.Path, change sizeconv.Change) (int64, int, error) {
 	// holds it already is skipped, so an object that reached it has nothing
 	// to do.
 	return to, http.StatusOK, nil
+}
+
+// refuseIdleGrowth refuses a size more than the volume is configured to hold
+// that grows nothing, naming the smallest size that does grow it.
+//
+// The size is of the bottom of the chain of the volume, and the links above it
+// keep a cut of what they rest on and hand out whole units: a bottom grown by
+// less than that leaves the head holding what it holds. Written, the size
+// would be claimed of the pool with nothing holding it, and every node would
+// say the resize is done.
+//
+// It is worked out on this node, from the head of the volume, or from its
+// replicated resource when the head is not up here. A volume this node cannot
+// work it out for is let through: the nodes plan the resize all the same.
+func refuseIdleGrowth(ctx context.Context, log *plog.Logger, p naming.Path, to int64) error {
+	type growthChecker interface {
+		HeadRID(context.Context) (string, error)
+		ConfiguredSize() (int64, error)
+		CheckResizeGrows(context.Context, string, int64) error
+	}
+	o, err := object.New(p, object.WithVolatile(true))
+	if err != nil {
+		return nil
+	}
+	i, ok := o.(growthChecker)
+	if !ok {
+		return nil
+	}
+	if configured, err := i.ConfiguredSize(); err != nil || to <= configured {
+		return nil
+	}
+	rid, err := i.HeadRID(ctx)
+	if err == nil {
+		err = i.CheckResizeGrows(ctx, rid, to)
+	}
+	var idle *object.ResizeGrowsNothingError
+	switch {
+	case errors.As(err, &idle):
+		return err
+	case err != nil:
+		log.Infof("resize to %s: whether it grows anything cannot be worked out here, the nodes will: %s", sizeconv.BSizeCompact(float64(to)), err)
+	}
+	return nil
 }
 
 // configuredSize is the size the object is asked to be.

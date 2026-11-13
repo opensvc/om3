@@ -454,6 +454,13 @@ func TestMergeResizeLevels(t *testing.T) {
 // configuration of an object.
 func recordOf(t *testing.T, kind naming.Kind, config, rid string, reached int64) *xconfig.T {
 	t.Helper()
+	return recordOfLimited(t, kind, config, rid, reached, 0)
+}
+
+// recordOfLimited is recordOf for a resize asked of the bottom of the chain,
+// whose size limit is what DEFAULT.size can be recorded as at most.
+func recordOfLimited(t *testing.T, kind naming.Kind, config, rid string, reached, limit int64) *xconfig.T {
+	t.Helper()
 	p, err := naming.NewPath("test", kind, "obj")
 	require.NoError(t, err)
 	opts := []funcopt.O{WithConfigData([]byte(config)), WithVolatile(true)}
@@ -473,7 +480,7 @@ func recordOf(t *testing.T, kind naming.Kind, config, rid string, reached int64)
 		r:     &fakeLink{rid: rid, has: reached},
 		owner: a,
 	}
-	require.NoError(t, step.recordSize(context.Background()))
+	require.NoError(t, step.recordSize(context.Background(), limit))
 	return a.config
 }
 
@@ -543,4 +550,263 @@ size = {DEFAULT.size}
 	assert.Equal(t, "{DEFAULT.size}", cfg.Get(key.T{Section: "disk#1", Option: "size"}),
 		"the reference is kept, so a clone still sizes itself from the volume")
 	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}))
+}
+
+const mi = int64(1024 * 1024)
+
+// keepingLink keeps a cut of what it rests on for its metadata, and hands out
+// what is left in whole units, the way a volume group keeps its metadata and
+// hands out whole extents, and a drbd resource keeps room for its bitmap.
+type keepingLink struct {
+	fakeLink
+	keep, unit int64
+	spans      bool
+}
+
+func (t *keepingLink) ResizePlan(_ context.Context, to int64) (int64, error) {
+	return sizeconv.RoundUp(to, t.unit) + t.keep, nil
+}
+
+func (t *keepingLink) ResizeHandsOut(_ context.Context) (func(int64) int64, error) {
+	return func(below int64) int64 {
+		n := sizeconv.RoundDown(below-t.keep, t.unit)
+		if n < 0 {
+			return 0
+		}
+		return n
+	}, nil
+}
+
+func (t *keepingLink) ResizeSpansBelow() bool { return t.spans }
+
+// drbdPoolChain is the chain of a volume of a drbd pool of loop files, with
+// the bottom holding loop: a filesystem on a drbd resource keeping 4m, on a
+// logical volume taking its whole group, on a volume group keeping 4m of its
+// loop file and handing out 4m extents.
+func drbdPoolChain(loop int64) []resource.Driver {
+	vg := sizeconv.RoundDown(loop-4*mi, 4*mi)
+	return []resource.Driver{
+		&spanningLink{fakeLink{rid: "fs#1", has: vg - 4*mi}},
+		&keepingLink{fakeLink: fakeLink{rid: "disk#4", has: vg - 4*mi}, keep: 4 * mi, spans: true},
+		&fakeLink{rid: "disk#3", has: vg},
+		&keepingLink{fakeLink: fakeLink{rid: "disk#2", has: vg}, keep: 4 * mi, unit: 4 * mi, spans: true},
+		&fakeLink{rid: "disk#1", has: loop},
+	}
+}
+
+func bottomPlan(t *testing.T, chain []resource.Driver, size string) ResizePlan {
+	t.Helper()
+	change, err := sizeconv.ParseChange(size)
+	require.NoError(t, err)
+	p, err := buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{Bottom: true})
+	require.NoError(t, err)
+	return p
+}
+
+func stepOf(t *testing.T, p ResizePlan, rid string) ResizeStep {
+	t.Helper()
+	for _, step := range p.Steps {
+		if step.RID == rid {
+			return step
+		}
+	}
+	require.Failf(t, "no step", "%s is not in the plan", rid)
+	return ResizeStep{}
+}
+
+// The size of the head is worked out from the size of the bottom, up the
+// chain, from what each link hands out of what is below it. A link that
+// cannot say, a filesystem or a logical volume of these fakes, hands out what
+// is below it.
+func TestTheHeadSizeIsWorkedOutFromTheBottom(t *testing.T) {
+	chain := links(drbdPoolChain(128 * mi)...)
+	head, err := headSizeFromBottom(context.Background(), chain, 172*mi, naming.Path{})
+	require.NoError(t, err)
+	assert.Equal(t, 164*mi, head, "172m less 4m of volume group, less 4m of drbd")
+
+	head, err = headSizeFromBottom(context.Background(), chain, 170*mi, naming.Path{})
+	require.NoError(t, err)
+	assert.Equal(t, 160*mi, head, "a volume group hands out whole extents")
+
+	head, err = headSizeFromBottom(context.Background(), links(&fakeLink{rid: "fs#1"}), 172*mi, naming.Path{})
+	require.NoError(t, err)
+	assert.Equal(t, 172*mi, head, "a chain of one link is its own bottom")
+
+	// A level is grown as one, so it hands up the least of what its links
+	// hand out.
+	fan := []resizeLevel{
+		{{r: &fakeLink{rid: "fs#1"}}},
+		{{r: &keepingLink{fakeLink: fakeLink{rid: "disk#a"}, keep: 2 * mi}}, {r: &keepingLink{fakeLink: fakeLink{rid: "disk#b"}, keep: 4 * mi}}},
+		{{r: &fakeLink{rid: "disk#1"}}},
+	}
+	head, err = headSizeFromBottom(context.Background(), fan, 100*mi, naming.Path{})
+	require.NoError(t, err)
+	assert.Equal(t, 96*mi, head)
+}
+
+// A volume asked for the size it is configured to hold, right after it was
+// provisioned to it, has nothing to do: the configuration records the bottom
+// of the chain, which the head never holds.
+func TestAskingAVolumeForTheSizeItHoldsIsNothingToDo(t *testing.T) {
+	p := bottomPlan(t, drbdPoolChain(128*mi), "128m")
+	assert.False(t, p.HasWork(), "%s", p)
+	assert.Equal(t, "nothing to do: every link already holds the size asked of it", p.String())
+	assert.Len(t, p.Steps, 5, "the whole chain is listed")
+	assert.Equal(t, 128*mi, p.Bottom)
+
+	p = bottomPlan(t, drbdPoolChain(128*mi), "-1m")
+	assert.False(t, p.HasWork(), "a resize only grows")
+
+	// The same chain asked the same size of its head grows, every time,
+	// which is what the configuration read as the size of the head did.
+	assert.True(t, plan(t, drbdPoolChain(128*mi), "128m").HasWork())
+}
+
+// A volume grown to a size asks the bottom of its chain for that size, and
+// once grown, asking for it again is nothing to do.
+func TestAVolumeGrownToASizeHoldsItAtTheBottom(t *testing.T) {
+	p := bottomPlan(t, drbdPoolChain(128*mi), "172m")
+	require.True(t, p.HasWork())
+	assert.Equal(t, []string{"disk#1", "disk#2", "disk#3", "disk#4", "fs#1"}, rids(p))
+	assert.Equal(t, 172*mi, stepOf(t, p, "disk#1").To, "the bottom is asked the size given")
+	assert.Equal(t, 164*mi, stepOf(t, p, "fs#1").To, "the head what the bottom hands up")
+	assert.Equal(t, 172*mi, p.Bottom)
+	assert.Contains(t, p.String(), "for the bottom of the chain to hold 172mi")
+
+	// An amount to add is added to what the bottom holds.
+	p = bottomPlan(t, drbdPoolChain(128*mi), "+44m")
+	assert.Equal(t, 172*mi, stepOf(t, p, "disk#1").To)
+
+	// Grown, the chain holds what it was asked, and asking again is
+	// nothing to do.
+	p = bottomPlan(t, drbdPoolChain(172*mi), "172m")
+	assert.False(t, p.HasWork(), "%s", p)
+}
+
+// A bottom asked a size no level above can use the whole of, a volume group
+// handing out whole extents, is asked no more than the head needs: the bottom
+// lands under the size given, never over it beyond a rounding.
+func TestTheBottomIsAskedNoMoreThanTheSizeGiven(t *testing.T) {
+	for _, size := range []int64{129 * mi, 130 * mi, 172 * mi, 173*mi + 512, 1 << 34} {
+		change := sizeconv.Change{Value: size}
+		p, err := buildResizePlan(context.Background(), links(drbdPoolChain(128*mi)...), change, naming.Path{}, ResizeOptions{Bottom: true})
+		require.NoError(t, err)
+		if !p.HasWork() {
+			continue
+		}
+		bottom := stepOf(t, p, "disk#1")
+		if !bottom.Skip {
+			assert.LessOrEqual(t, bottom.To, size, "asked %d", size)
+		}
+	}
+}
+
+// A size recorded in DEFAULT.size by a resize asked of the bottom of a chain
+// is never more than that size, which is what the claim was checked for: a
+// loop file rounded up to whole sectors is not the claim outgrown.
+func TestASizeRecordedNeverOutgrowsTheSizeAsked(t *testing.T) {
+	const reference = `
+pool = p1
+size = 1000000
+
+[disk#1]
+type = loop
+size = {DEFAULT.size}
+`
+	cfg := recordOfLimited(t, naming.KindVol, reference, "disk#1", 1000448, 1000000)
+	assert.Equal(t, "1000000", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}))
+
+	cfg = recordOfLimited(t, naming.KindVol, reference, "disk#1", 999424, 1000000)
+	assert.Equal(t, int64(999424), *cfg.GetSize(key.T{Section: "DEFAULT", Option: "size"}), "less than asked is what is there")
+
+	cfg = recordOf(t, naming.KindVol, reference, "disk#1", 1000448)
+	assert.Equal(t, int64(1000448), *cfg.GetSize(key.T{Section: "DEFAULT", Option: "size"}), "a resize of a resource records what it reached")
+
+	// A configuration holding the claim twice records the two together.
+	cfg = recordOfLimited(t, naming.KindVol, `
+pool = p1
+size = 512mi
+
+[disk#1]
+type = loop
+size = 512mi
+`, "disk#1", 612*mi+512, 612*mi)
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "disk#1", Option: "size"}))
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}))
+
+	// A resource not carrying the claim records what it reached.
+	cfg = recordOfLimited(t, naming.KindVol, `
+pool = p1
+size = 512mi
+
+[disk#3]
+type = lv
+size = 100mi
+`, "disk#3", 200*mi, 150*mi)
+	assert.Equal(t, "200mi", cfg.Get(key.T{Section: "disk#3", Option: "size"}))
+}
+
+// A chain crossing a replicated resource is refused when every stage would run
+// on one node, unless there is nothing to run: asking a drbd volume for the
+// size it holds strands nothing.
+func TestALoneReplicaResizeWithNothingToDoIsNotRefused(t *testing.T) {
+	home := naming.Path{Namespace: "test", Kind: naming.KindVol, Name: "data"}
+	idle := ResizePlan{Stages: 2, Steps: []ResizeStep{{RID: "fs#1", Skip: true}}}
+	assert.NoError(t, refuseLoneReplicaResize(idle, home, ResizeOptions{}))
+	busy := ResizePlan{Stages: 2, Steps: []ResizeStep{{RID: "fs#1"}}}
+	assert.Error(t, refuseLoneReplicaResize(busy, home, ResizeOptions{}))
+	assert.NoError(t, refuseLoneReplicaResize(busy, home, ResizeOptions{Force: true}))
+}
+
+// A size above the configured one that grows nothing is refused, naming the
+// smallest size that does: the volume group hands out whole extents of 4m, so
+// a bottom of 130m hands up what a bottom of 128m does.
+func TestASizeThatGrowsNothingIsRefused(t *testing.T) {
+	ask := func(size string, configured int64) (ResizePlan, error) {
+		change, err := sizeconv.ParseChange(size)
+		require.NoError(t, err)
+		return buildResizePlan(context.Background(), links(drbdPoolChain(128*mi)...), change, naming.Path{}, ResizeOptions{Bottom: true, Configured: configured})
+	}
+	_, err := ask("130m", 128*mi)
+	var idle *ResizeGrowsNothingError
+	require.ErrorAs(t, err, &idle)
+	assert.Equal(t, 130*mi, idle.Asked)
+	assert.Equal(t, 120*mi, idle.Head)
+	assert.Equal(t, 132*mi, idle.Smallest, "the bottom size giving the group one more extent")
+	assert.ErrorContains(t, err, "The smallest size growing it is 132mi")
+
+	p, err := ask("132m", 128*mi)
+	require.NoError(t, err)
+	assert.True(t, p.HasWork(), "the smallest size named grows the volume")
+
+	p, err = ask("128m", 128*mi)
+	require.NoError(t, err)
+	assert.False(t, p.HasWork(), "the configured size is nothing to do, not refused")
+
+	p, err = ask("130m", 0)
+	require.NoError(t, err)
+	assert.False(t, p.HasWork(), "with no configured size to compare to, nothing to do")
+}
+
+// The search for the smallest size growing a chain lands on a whole unit of
+// the bottom, the first one handing up more than the head holds.
+func TestTheSmallestGrowingBottom(t *testing.T) {
+	handsUp := func(b int64) int64 { return sizeconv.RoundDown(b-4*mi, 4*mi) - 4*mi }
+	smallest, ok := smallestGrowingBottom(handsUp, 130*mi, 120*mi, 512)
+	require.True(t, ok)
+	assert.Equal(t, 132*mi, smallest)
+	assert.LessOrEqual(t, handsUp(smallest-512), int64(120*mi), "nothing smaller grows it")
+
+	smallest, ok = smallestGrowingBottom(handsUp, 130*mi, 120*mi, 4*mi)
+	require.True(t, ok)
+	assert.Equal(t, 132*mi, smallest, "a whole extent of the bottom")
+
+	smallest, ok = smallestGrowingBottom(handsUp, 129*mi+7, 1000*mi, 3*mi)
+	require.True(t, ok)
+	assert.Greater(t, handsUp(smallest), int64(1000*mi))
+	assert.LessOrEqual(t, handsUp(smallest-3*mi), int64(1000*mi))
+	assert.Zero(t, smallest%(3*mi))
+
+	_, ok = smallestGrowingBottom(func(int64) int64 { return 0 }, 130*mi, 120*mi, 512)
+	assert.False(t, ok, "a chain no bottom grows")
 }

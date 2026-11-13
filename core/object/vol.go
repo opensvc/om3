@@ -273,7 +273,9 @@ func (t *vol) PoolName() (string, error) {
 //
 // It is what was claimed of the pool when the volume was created, and what a
 // resize writes back, so it is the size the volume is meant to hold rather
-// than a record of what it held once.
+// than a record of what it held once. It is the size of the bottom of the
+// chain of the volume, the one its pool sizes from it: the links above keep
+// a cut of what they rest on for their metadata, so the head holds less.
 func (t *vol) ConfiguredSize() (int64, error) {
 	size := t.config.GetSize(key.T{Section: "DEFAULT", Option: "size"})
 	if size == nil {
