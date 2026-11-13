@@ -27,3 +27,10 @@ func TestMountsSubvolume(t *testing.T) {
 	assert.False(t, mountsSubvolume("rw,noatime"))
 	assert.False(t, mountsSubvolume(""))
 }
+
+// The offsets of "wipefs --parsable", with or without its header.
+func TestParsableOffsets(t *testing.T) {
+	assert.Equal(t, []int64{0x438}, parsableOffsets("0x438,82c9d755-6c1e,,ext4\n"))
+	assert.Equal(t, []int64{0x0, 0x10040}, parsableOffsets("# offset,uuid,label,type\n0x0,a,,xfs\n0x10040,b,,btrfs\n"))
+	assert.Empty(t, parsableOffsets(""))
+}

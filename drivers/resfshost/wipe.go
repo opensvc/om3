@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -71,13 +72,23 @@ func (t *T) wipeSignatures(ctx context.Context) error {
 		return err
 	}
 	before := wipeBackups(dir)
+	args := []string{"--all", "--backup", devpath}
+	if !wipefsHasBackup(ctx) {
+		// The wipefs of older distributions, util-linux 2.23 of RHEL 7,
+		// keeps no backup: the bytes at the offset of each signature are
+		// kept here, named as wipefs names its backups.
+		if err := backupSignatures(ctx, devpath, dir); err != nil {
+			return fmt.Errorf("keep the signatures of %s: %w", devpath, err)
+		}
+		args = []string{"--all", devpath}
+	}
 	// wipefs writes the backups to the home directory, and only recent
 	// versions take another: the home of the command is the backup
 	// directory.
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("wipefs"),
-		command.WithVarArgs("--all", "--backup", devpath),
+		command.WithArgs(args),
 		command.WithEnv([]string{"HOME=" + dir}),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -146,4 +157,66 @@ func mountsSubvolume(options string) bool {
 		}
 	}
 	return false
+}
+
+// wipefsHasBackup says the wipefs of the node keeps a backup of the
+// signatures it wipes, as util-linux does since 2.24.
+func wipefsHasBackup(ctx context.Context) bool {
+	out, _ := exec.CommandContext(ctx, "wipefs", "--help").CombinedOutput()
+	return strings.Contains(string(out), "--backup")
+}
+
+// signatureBackupSize is how many bytes are kept at the offset of a
+// signature a wipefs keeping no backup wipes: more than the longest magic
+// string it erases there, the rest written back as it was.
+const signatureBackupSize = 64
+
+// backupSignatures keeps, in dir, the bytes at the offset of each signature
+// of the device, as "wipefs --parsable" lists them, in files named as wipefs
+// --backup names its own, so the restore logged is the same.
+func backupSignatures(ctx context.Context, devpath, dir string) error {
+	out, err := exec.CommandContext(ctx, "wipefs", "--parsable", devpath).Output()
+	if err != nil {
+		return fmt.Errorf("wipefs --parsable: %w", err)
+	}
+	offsets := parsableOffsets(string(out))
+	if len(offsets) == 0 {
+		return nil
+	}
+	f, err := os.Open(devpath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	for _, offset := range offsets {
+		b := make([]byte, signatureBackupSize)
+		n, err := f.ReadAt(b, offset)
+		if n == 0 && err != nil {
+			return fmt.Errorf("read %s at %d: %w", devpath, offset, err)
+		}
+		name := fmt.Sprintf("wipefs-%s-0x%08x.bak", filepath.Base(devpath), offset)
+		if err := os.WriteFile(filepath.Join(dir, name), b[:n], 0600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// parsableOffsets returns the offsets of the lines of "wipefs --parsable",
+// "offset,uuid,label,type" with the offset in hex, its header skipped.
+func parsableOffsets(out string) []int64 {
+	l := make([]int64, 0)
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		field, _, _ := strings.Cut(line, ",")
+		v, err := strconv.ParseInt(strings.TrimPrefix(field, "0x"), 16, 64)
+		if err != nil {
+			continue
+		}
+		l = append(l, v)
+	}
+	return l
 }
