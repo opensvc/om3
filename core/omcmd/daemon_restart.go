@@ -20,13 +20,18 @@ type (
 		NodeSelector string
 		CPUProfile   string
 
+		// APIDaemonPid is the pid of the daemon which forked the command
+		// to serve a restart its api received.
+		APIDaemonPid int
+
 		nodeCount int
 	}
 )
 
 // Run functions restart daemon.
 //
-// The daemon restart is asynchronous when node selector is used
+// The restart of the local daemon returns once it runs again. The restart of
+// the daemon of another node goes through the api, and is asynchronous.
 func (t *CmdDaemonRestart) Run() error {
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
@@ -99,6 +104,7 @@ func (t *CmdDaemonRestart) doLocalDaemonRestart() error {
 	}
 	ctx := context.Background()
 	cmd := daemoncmd.New(cli)
+	cmd.SetAPIDaemonPid(t.APIDaemonPid)
 	if err := cmd.LoadManager(ctx); err != nil {
 		return err
 	}

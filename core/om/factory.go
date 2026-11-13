@@ -166,6 +166,11 @@ func newCmdDaemonRestart() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	// Set by the daemon forking the command to serve a restart its api
+	// received: the restart is queued from outside of the systemd unit,
+	// and done only if that daemon still runs.
+	flags.IntVar(&options.APIDaemonPid, "api-daemon-pid", 0, "the pid of the daemon which forked the command to serve its api")
+	_ = flags.MarkHidden("api-daemon-pid")
 	commoncmd.CmdWithPlainConsoleLog(cmd)
 	return cmd
 }

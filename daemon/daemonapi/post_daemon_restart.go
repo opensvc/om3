@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 
@@ -42,9 +43,13 @@ func (a *DaemonAPI) localPostDaemonRestart(ctx echo.Context) error {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Server error", "can't detect om execname: %s", err)
 	}
 
+	// The pid tells the command it serves the api of this daemon: it
+	// queues the restart from outside of the systemd unit, whose control
+	// group it lives in, and does it only if this daemon still runs, so a
+	// stop requested meanwhile wins.
 	cmd := command.New(
 		command.WithName(execname),
-		command.WithArgs([]string{"daemon", "restart"}),
+		command.WithArgs([]string{"daemon", "restart", "--api-daemon-pid", strconv.Itoa(os.Getpid())}),
 	)
 
 	err = cmd.Start()

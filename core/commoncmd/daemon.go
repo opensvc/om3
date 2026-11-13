@@ -46,7 +46,11 @@ func NewCmdDaemonRestart() *cobra.Command {
 	return &cobra.Command{
 		Use:   "restart",
 		Short: "restart the daemon",
-		Long:  "restart the daemon. Operation is asynchronous when node selector is used",
+		Long: "restart the daemon.\n\n" +
+			"The restart of the daemon of the local node, run by om on that node, returns once the daemon runs again, " +
+			"and fails when the restart could not complete, as when a stop requested meanwhile canceled it.\n\n" +
+			"The restart of the daemon of any other node goes through the api, and is asynchronous: " +
+			"the command returns once the node accepted the request.",
 	}
 }
 

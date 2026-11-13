@@ -127,11 +127,28 @@ func (t *T) NotifyStopping() (bool, error) {
 	return sddaemon.SdNotify(false, sddaemon.SdNotifyStopping)
 }
 
-// Restart restarts the opensvc systemd unit
+// Restart restarts the opensvc systemd unit, and returns when systemd ended
+// the job: the daemon is ready, as the unit is of the notify type, or the
+// job did not complete, as when a stop requested meanwhile replaced it.
 //
-// restart calls systemd-run systemctl restart opensvc-agent. This allows
-// the command to be attached on another control group and prevent systemd
-// warnings during 'om daemon restart' such as:
+// The caller must not be a process of the unit: a restart does not wait for
+// the processes of the unit cgroup other than the main one, and leaves them
+// running, as the "om daemon restart" the api forks. RestartDetached is the
+// one for those.
+func (t *T) Restart(ctx context.Context) error {
+	c := make(chan string, 1)
+	if _, err := t.conn.RestartUnitContext(ctx, UnitName, "replace", c); err != nil {
+		return err
+	}
+	return waitJob(ctx, "restart", c)
+}
+
+// RestartDetached asks systemd to restart the opensvc unit, through a
+// systemctl run by systemd-run, and returns without waiting for it.
+//
+// It is for the "om daemon restart" the api forks, which lives in the unit
+// control group: run from there, systemd would find the command a left-over
+// process of the unit while starting it again:
 //
 //	systemd[1]: Stopping OpenSVC server...
 //	systemd[1]: opensvc-server.service: Succeeded.
@@ -142,10 +159,14 @@ func (t *T) NotifyStopping() (bool, error) {
 //	systemd[1]: This usually indicates unclean termination of a previous run, or service implementation deficiencies.
 //	systemd[1]: Starting OpenSVC server...
 //	systemd[1]: Started OpenSVC server.
-func (t *T) Restart() error {
+//
+// It runs a try-restart, which restarts the unit only if it is active or
+// activating: a stop requested between the api request and the queueing of
+// the restart wins, where a restart would start the daemon again.
+func (t *T) RestartDetached() error {
 	return command.New(
 		command.WithName("systemd-run"),
-		command.WithVarArgs("systemctl", "restart", UnitName),
+		command.WithVarArgs("systemctl", "try-restart", UnitName),
 	).Run()
 }
 
@@ -200,6 +221,8 @@ func jobResultError(op, result string) error {
 //	CalledFromManager() bool
 //	Close() error
 //	NotifyWatchdog() (bool, error)
+//	Restart(ctx context.Context) error
+//	RestartDetached() error
 //	Start(ctx context.Context) error
 //	Stop(ctx context.Context) error
 func New(ctx context.Context) (*T, error) {
