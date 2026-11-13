@@ -48,6 +48,11 @@ type (
 		actionrouter.T
 		LocalFunc  func(context.Context, naming.Path) (any, error)
 		RemoteFunc func(context.Context, naming.Path, string) (any, error)
+
+		// defaultOutputSet says the command chose its default output, an
+		// empty one included: the listing of the execs started is then not
+		// the default of an action submitted to nodes.
+		defaultOutputSet bool
 	}
 
 	asyncResult struct {
@@ -65,7 +70,7 @@ type (
 func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
-	if t.NodeSelector != "" && t.DefaultOutput == "" {
+	if t.NodeSelector != "" && t.DefaultOutput == "" && !t.defaultOutputSet {
 		t.DefaultOutput = "tab=OBJECT:path,NODE:nodename,SESSION_ID:data.session_id,EXEC_ID:data.exec_id"
 	}
 	return t
@@ -260,10 +265,15 @@ func WithSort(s string) funcopt.O {
 	})
 }
 
+// WithDefaultOutput sets the output the results are rendered in when the
+// user asks for none. Empty, a result is rendered as the action run locally
+// renders it: the remote function of the action answers what the action did,
+// not the ids of the execs it started.
 func WithDefaultOutput(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.DefaultOutput = s
+		t.defaultOutputSet = true
 		return nil
 	})
 }
