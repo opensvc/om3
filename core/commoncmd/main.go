@@ -75,8 +75,12 @@ func MergeSelector(selector string, subsysSelector string, kind string, defaultS
 		s = selector
 	case subsysSelector != "":
 		s = subsysSelector
-	default:
+	case defaultSelector != "":
 		s = defaultSelector
+	case kind == naming.KindCcfg.String():
+		// The cluster configuration is the one object of its kind: a
+		// ccfg command naming none is for it, as "om cluster" is.
+		return naming.Cluster.String()
 	}
 	if p, err := naming.ParsePath(s); err == nil {
 		if err == nil {
