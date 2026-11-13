@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/resourceselector"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -261,8 +262,10 @@ func sectionDriverID(cfg *xconfig.T, section string) driver.ID {
 // the key goes without it, as it does with any key missing.
 func (t *actor) seedKeySources(ctx context.Context, provision bool) error {
 	leader := actioncontext.IsLeader(ctx)
+	// The keys of the resources the action selects, and of the ones they
+	// depend on: a scoped action seeds nothing for the others.
 	enabled := make(map[string]bool)
-	for _, r := range t.Resources() {
+	for _, r := range resourceselector.FromContext(ctx, t).Resources() {
 		if !r.IsDisabled() {
 			enabled[r.RID()] = true
 		}

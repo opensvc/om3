@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/resourceselector"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
 	"github.com/opensvc/om3/v3/core/xconfig"
@@ -41,6 +42,12 @@ func (t *actor) Provision(ctx context.Context) (err error) {
 		return err
 	}
 	defer unlock()
+
+	// A selection naming a resource the object does not have is refused
+	// before the preflight, which would check nothing of it.
+	if missing := resourceselector.FromContext(ctx2, t).MissingRIDs(); len(missing) > 0 {
+		return fmt.Errorf("resource does not exist: %s", strings.Join(missing, ", "))
+	}
 
 	// The preflight checks that nothing on the node holds what the
 	// provision would take, before anything is provisioned, unless the
@@ -224,10 +231,14 @@ func (s preflightScope) has(r resource.Driver) bool {
 // A resource a provision made on the node already is not checked: what it
 // holds is its own. Its provisioned state does not tell: a resource is found
 // provisioned when what it names exists, whoever made it.
+//
+// It checks the resources the action selects, and the ones they depend on:
+// "om <obj> volume provision" was refused for a filesystem it does not
+// provision. With no selection, it checks them all.
 func (t *actor) lockedProvisionPreflight(ctx context.Context, scope preflightScope) error {
 	conflicts := make([]string, 0)
 	startedHere := file.Exists(t.lastStartFile())
-	for _, r := range t.Resources() {
+	for _, r := range resourceselector.FromContext(ctx, t).Resources() {
 		if !scope.has(r) {
 			continue
 		}
