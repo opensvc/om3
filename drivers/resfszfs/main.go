@@ -480,6 +480,14 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return to, nil
 }
 
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A dataset takes its space from a pool the object does not own, so no resource of a chain is below it: it is the bottom, and is asked
+// for the size a chain is given. It hands out what it is given.
+func (t *T) ResizeHandsOut(_ context.Context) (func(below int64) int64, error) {
+	return resource.HandsOutWhatIsBelow, nil
+}
+
 // Resize implements resource.Resizer.
 //
 // The properties bounding the dataset move together: a resize moving the

@@ -52,6 +52,13 @@ type (
 		ExtentSize(context.Context) (int64, error)
 		ResizePV(context.Context, string, int64) error
 	}
+
+	// VGDriverPEStarter is implemented by a volume group driver that says the
+	// offset of the first extent of its physical volume, the bytes it keeps
+	// for its metadata whatever the device holds.
+	VGDriverPEStarter interface {
+		PEStart(context.Context) (int64, error)
+	}
 	VGDriverProvisioner interface {
 		Create(context.Context, string, []string, []string) error
 	}
@@ -143,45 +150,95 @@ func (t *T) CurrentFree(ctx context.Context) (int64, error) {
 //
 // A volume group offers its logical volumes less than its physical volumes
 // hold, by the metadata lvm keeps and by what does not fill a whole extent.
-// What it asks of the device below is the size wanted plus what it is short
-// today, which over-asks by at most one extent and never under-asks.
+// What it asks of the device below is the size wanted plus what it keeps for
+// itself today, which over-asks by at most one extent and never under-asks.
 func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
-	vg, err := t.resizer()
+	overhead, extent, err := t.resizeUnits(ctx)
 	if err != nil {
 		return 0, err
+	}
+	return vgAsks(to, overhead, extent), nil
+}
+
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A volume group given a physical volume of below hands out below less what
+// it keeps for itself, in whole extents. It is the inverse of ResizePlan, so
+// what it answers is no more than what lvm hands out: the cut it measures
+// holds what did not fill an extent at the size the physical volume has now,
+// and that part may fill one at another size.
+func (t *T) ResizeHandsOut(ctx context.Context) (func(below int64) int64, error) {
+	overhead, extent, err := t.resizeUnits(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return func(below int64) int64 { return vgHandsOut(below, overhead, extent) }, nil
+}
+
+// resizeUnits returns what the group keeps of its physical volume for itself,
+// and the extent it hands out whole.
+//
+// What it keeps is the offset of its first extent, not the gap between the
+// device and the group: once the device has grown and the group has not been
+// grown onto it, that gap is the growth itself, and counting it as metadata
+// asks for it a second time. What is left at the end of the device, less than
+// an extent, is no part of either: the extents are handed out whole. The gap
+// to the device stands in for a driver that cannot say.
+func (t *T) resizeUnits(ctx context.Context) (overhead, extent int64, err error) {
+	vg, err := t.resizer()
+	if err != nil {
+		return 0, 0, err
 	}
 	pvs, err := t.vg().PVs(ctx)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	if len(pvs) != 1 {
-		return 0, fmt.Errorf("volume group %s has %d physical volumes: which of them to resize is not something this can decide",
+		return 0, 0, fmt.Errorf("volume group %s has %d physical volumes: which of them to resize is not something this can decide",
 			t.VGName, len(pvs))
+	}
+	if extent, err = vg.ExtentSize(ctx); err != nil {
+		return 0, 0, err
+	}
+	if i, ok := vg.(VGDriverPEStarter); ok {
+		if peStart, err := i.PEStart(ctx); err == nil && peStart > 0 {
+			return peStart, extent, nil
+		}
 	}
 	pvSize, err := pvs[0].Size()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	vgSize, err := vg.Size(ctx)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	overhead := pvSize - vgSize
+	overhead = pvSize - vgSize
 	if overhead < 0 {
 		overhead = 0
 	}
+	return overhead, extent, nil
+}
 
-	// A volume group hands out whole extents, so a logical volume asking for
-	// a size that is not one gets the next one up. Ask for that here, or the
-	// group ends up one extent short of what the volume above it needs.
-	extent, err := vg.ExtentSize(ctx)
-	if err != nil {
-		return 0, err
+// vgAsks is the size a physical volume has to hold for a group keeping
+// overhead of it to hand out to.
+//
+// A group hands out whole extents, so a logical volume asking for a size that
+// is not one gets the next one up: that is what is asked, or the group ends up
+// one extent short of what the volume above it needs. A block device holds
+// whole sectors, so that is what it asks for.
+func vgAsks(to, overhead, extent int64) int64 {
+	return sizeconv.RoundUp(sizeconv.RoundUp(to, extent)+overhead, 512)
+}
+
+// vgHandsOut is what a group keeping overhead of a physical volume of below
+// hands out: the rest, in whole extents.
+func vgHandsOut(below, overhead, extent int64) int64 {
+	n := sizeconv.RoundDown(below-overhead, extent)
+	if n < 0 {
+		return 0
 	}
-	to = sizeconv.RoundUp(to, extent)
-
-	// A block device holds whole sectors, so that is what it asks for.
-	return sizeconv.RoundUp(to+overhead, 512), nil
+	return n
 }
 
 // ResizeSpansBelow implements resource.ResizeSpansBelow.

@@ -480,6 +480,18 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return to, nil
 }
 
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A pool hands out what is below it, as its plan asks below what it is asked.
+// zfs keeps a little of the device for itself, but no fixed property says how
+// much, and the gap to the device is the growth itself once the device has
+// grown and the pool has not: see ResizePlan. So a chain worked out from its
+// bottom asks the pool for what its device holds, and the pool lands a little
+// under it, as it does today.
+func (t *T) ResizeHandsOut(_ context.Context) (func(below int64) int64, error) {
+	return resource.HandsOutWhatIsBelow, nil
+}
+
 // Resize implements resource.Resizer.
 //
 // A pool is not given a size: it is what its vdevs hold. Growing one is

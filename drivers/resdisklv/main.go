@@ -394,6 +394,68 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return vgNeed(size, free, from, to, extent), nil
 }
 
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A logical volume given a volume group of below takes what the group would
+// have free then, on top of what it holds: what the other volumes of the group
+// hold stays theirs. It is the inverse of ResizePlan, in whole extents.
+//
+// A thin volume is carved from its thin pool, which over-commits, and a
+// volume whose group can not be read cannot say: both answer what is below
+// them, as their plan asks it.
+func (t *T) ResizeHandsOut(ctx context.Context) (func(below int64) int64, error) {
+	lv, err := t.resizer()
+	if err != nil {
+		return nil, err
+	}
+	if err := t.refuseShareSize(); err != nil {
+		return nil, err
+	}
+	if t.ThinPool != "" {
+		return resource.HandsOutWhatIsBelow, nil
+	}
+	from, err := lv.Size(ctx)
+	if err != nil {
+		return resource.HandsOutWhatIsBelow, nil
+	}
+	vg := lvm2.NewVG(t.VGName, lvm2.WithLogger(t.Log()))
+	size, err := vg.Size(ctx)
+	if err != nil {
+		return resource.HandsOutWhatIsBelow, nil
+	}
+	free, err := vg.Free(ctx)
+	if err != nil {
+		return resource.HandsOutWhatIsBelow, nil
+	}
+	extent, _ := vg.ExtentSize(ctx)
+	return func(below int64) int64 { return lvHandsOut(size, free, from, below, extent) }, nil
+}
+
+// ResizeUnit implements resource.ResizeUniter: a logical volume is a whole
+// number of the extents of its group.
+func (t *T) ResizeUnit(ctx context.Context) (int64, error) {
+	vg := lvm2.NewVG(t.VGName, lvm2.WithLogger(t.Log()))
+	return vg.ExtentSize(ctx)
+}
+
+// lvHandsOut is the size a volume of from, in a volume group of size with free
+// bytes unused, can grow to when the group grows to below: what it holds,
+// plus the space of the group the other volumes do not take, in whole
+// extents. It is the inverse of vgNeed.
+func lvHandsOut(size, free, from, below, extent int64) int64 {
+	room := below - (size - free)
+	grow := sizeconv.RoundDown(room, extent)
+	if room < 0 {
+		// Less than the group holds taken: the volume gives back whole
+		// extents too, so no more than it is left holding is answered.
+		grow = -sizeconv.RoundUp(-room, extent)
+	}
+	if from+grow < 0 {
+		return 0
+	}
+	return from + grow
+}
+
 // vgNeed is the size a volume group of size, with free bytes unused, has to
 // hold for a volume of it to grow from from to to: what it has taken, plus
 // the growth, rounded up to whole extents.

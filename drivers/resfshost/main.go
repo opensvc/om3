@@ -1059,6 +1059,15 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return to, nil
 }
 
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A filesystem counts as the device it takes up, so it hands out what is
+// below it, as its plan asks below what it is asked. A filesystem holding its
+// own size has nothing below it.
+func (t *T) ResizeHandsOut(_ context.Context) (func(below int64) int64, error) {
+	return resource.HandsOutWhatIsBelow, nil
+}
+
 // Resize implements resource.Resizer.
 func (t *T) Resize(ctx context.Context, to int64) error {
 	fs := t.fs()

@@ -77,3 +77,15 @@ func RoundUp(n, to int64) int64 {
 	}
 	return n
 }
+
+// RoundDown returns n rounded down to the previous multiple of to.
+//
+// It is what a link of a resize chain hands out of what it is given: a volume
+// group gives its logical volumes whole extents, and what does not fill one
+// is not handed out at all.
+func RoundDown(n, to int64) int64 {
+	if to <= 0 {
+		return n
+	}
+	return n - n%to
+}

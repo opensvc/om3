@@ -354,6 +354,20 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return to, nil
 }
 
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// A loop device rests on a file of a filesystem the object does not own, so no resource of a chain is below it: it is the bottom, and is asked
+// for the size a chain is given. It hands out what it is given.
+func (t *T) ResizeHandsOut(_ context.Context) (func(below int64) int64, error) {
+	return resource.HandsOutWhatIsBelow, nil
+}
+
+// ResizeUnit implements resource.ResizeUniter: a loop device exposes whole
+// sectors of its file.
+func (t *T) ResizeUnit(_ context.Context) (int64, error) {
+	return 512, nil
+}
+
 // Resize implements resource.Resizer.
 func (t *T) Resize(ctx context.Context, to int64) error {
 	// The loop device exposes whole sectors, so a file that is not a round

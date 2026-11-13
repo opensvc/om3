@@ -354,51 +354,90 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 // A member size is a whole number of chunks on a striped level, so it is
 // rounded up to one, never down: the link above asked for a size it needs.
 func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	dataDevs, chunk, overhead, err := t.resizeUnits(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return mdAsks(to, dataDevs, chunk, overhead), nil
+}
+
+// ResizeHandsOut implements resource.ResizeHandsOuter.
+//
+// An array given members of below each hands out what its data members hold
+// together, less what it keeps on each of them, and in whole chunks on a
+// striped level: one member for a raid1, n-1 for a raid5. It is the inverse of
+// ResizePlan, worked out from what the array already does the same way.
+func (t *T) ResizeHandsOut(ctx context.Context) (func(below int64) int64, error) {
+	dataDevs, chunk, overhead, err := t.resizeUnits(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return func(below int64) int64 { return mdHandsOut(below, dataDevs, chunk, overhead) }, nil
+}
+
+// resizeUnits returns how many members the size of the array is made of, the
+// chunk a member size is a whole number of, and what the array keeps on each
+// member for itself.
+func (t *T) resizeUnits(ctx context.Context) (dataDevs, chunk, overhead int64, err error) {
 	i, ok := t.md().(MDDriverResizer)
 	if !ok {
-		return 0, fmt.Errorf("this md driver cannot resize")
+		return 0, 0, 0, fmt.Errorf("this md driver cannot resize")
 	}
 	sizes, err := i.Sizes(ctx)
 	if err != nil {
-		return 0, err
+		return 0, 0, 0, err
 	}
 	if !sizes.IsWhole() {
 		// mdadm grows a degraded array without a word, and the space it adds
 		// is as unprotected as the array it is added to.
-		return 0, fmt.Errorf("md %s is %q, and an array is grown once it is whole: what a resize adds would be as unprotected, or as busy, as what it already holds", t.GetName(), sizes.State)
+		return 0, 0, 0, fmt.Errorf("md %s is %q, and an array is grown once it is whole: what a resize adds would be as unprotected, or as busy, as what it already holds", t.GetName(), sizes.State)
 	}
 	if sizes.UsedDev <= 0 {
 		// A raid0 and a linear hand out everything their members hold, with
 		// no data size of their own on each. mdadm answers "Cannot set device
 		// size in this type of array": they grow by taking another member,
 		// which is a reshape and not this.
-		return 0, fmt.Errorf("a %s array uses no size of its own on each member, so it cannot be grown onto members that grew. This level grows by taking another member, which is a reshape", sizes.Level)
+		return 0, 0, 0, fmt.Errorf("a %s array uses no size of its own on each member, so it cannot be grown onto members that grew. This level grows by taking another member, which is a reshape", sizes.Level)
 	}
 	if sizes.Array <= 0 {
-		return 0, fmt.Errorf("md %s does not report what it holds, so what to ask of its members cannot be worked out", t.GetName())
+		return 0, 0, 0, fmt.Errorf("md %s does not report what it holds, so what to ask of its members cannot be worked out", t.GetName())
 	}
-	dataDevs := sizes.Array / sizes.UsedDev
+	dataDevs = sizes.Array / sizes.UsedDev
 	if dataDevs < 1 {
 		dataDevs = 1
-	}
-	perDev := (to + dataDevs - 1) / dataDevs
-	if sizes.Chunk > 0 {
-		perDev = sizeconv.RoundUp(perDev, sizes.Chunk)
 	}
 
 	// A member holds what the array hands out from it plus what the array
 	// keeps on it for itself.
 	devs := t.SubDevices(ctx)
 	if len(devs) == 0 {
-		return 0, fmt.Errorf("md %s rests on no device this object knows", t.GetName())
+		return 0, 0, 0, fmt.Errorf("md %s rests on no device this object knows", t.GetName())
 	}
-	overhead, err := i.DevOverhead(ctx, devs[0].Path())
+	overhead, err = i.DevOverhead(ctx, devs[0].Path())
 	if err != nil {
-		return 0, err
+		return 0, 0, 0, err
 	}
+	return dataDevs, sizes.Chunk, overhead, nil
+}
 
-	// mdadm counts a member size in kibibytes.
-	return sizeconv.RoundUp(perDev+overhead, 1024), nil
+// mdAsks is the size each member of an array has to hold for the array to
+// hand out to: a share of to per data member, in whole chunks, plus what the
+// array keeps on the member, in the kibibytes mdadm counts a member size in.
+// Each rounding is up, never down: the link above asked for a size it needs.
+func mdAsks(to, dataDevs, chunk, overhead int64) int64 {
+	perDev := (to + dataDevs - 1) / dataDevs
+	perDev = sizeconv.RoundUp(perDev, chunk)
+	return sizeconv.RoundUp(perDev+overhead, 1024)
+}
+
+// mdHandsOut is the largest size an array asks no more than below of each of
+// its members for: the inverse of mdAsks.
+func mdHandsOut(below, dataDevs, chunk, overhead int64) int64 {
+	perDev := sizeconv.RoundDown(sizeconv.RoundDown(below, 1024)-overhead, chunk)
+	if perDev <= 0 {
+		return 0
+	}
+	return perDev * dataDevs
 }
 
 // Resize implements resource.Resizer.
