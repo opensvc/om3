@@ -157,10 +157,7 @@ func (c Config) setSystemdProperties() error {
 		return err
 	}
 	args := append([]string{"set-property", "--runtime", unit}, props...)
-	if err := runSystemctl(c.Delegation, args); err != nil {
-		return fmt.Errorf("pg %s: %w", c.Path(), err)
-	}
-	return nil
+	return runSystemctl(c.Delegation, args)
 }
 
 // runSystemctl runs systemctl with args, against the systemd instance of the

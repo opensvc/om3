@@ -41,6 +41,12 @@ type (
 		applied bool
 		reset   bool
 		log     *plog.Logger
+
+		// fullReset says the group is the one Uncapped returns: every
+		// capping asked back to where a group nobody capped holds it,
+		// whatever the configuration says. The v1 hierarchy then lifts
+		// the ones no keyword accepts DefaultValue for too.
+		fullReset bool
 	}
 
 	// Delegation is a subtree of the unified hierarchy delegated to an
@@ -295,13 +301,15 @@ func (c *Config) ApplyOnce() (bool, error) {
 	return err == nil, err
 }
 
-// Clean removes the pg configuration if it was applied.
-// Uncapped returns the same group, with every capping the unified hierarchy
-// has a file for asked to go back where the kernel leaves it.
+// Uncapped returns the same group, with every capping asked to go back where
+// the kernel leaves it.
 //
 // It is what "pg reset" applies. The keywords a configuration carries are not
 // read: the point of the command is to lift cappings the configuration does
-// not know about, left by an older agent, by systemd, or by hand.
+// not know about, left by an older agent, by systemd, or by hand. That is why
+// pg_mem_swappiness and pg_mem_oom_control are emptied: they accept no
+// DefaultValue, and the v1 hierarchy, the only one having their files, puts
+// them back with the other cappings of a full reset.
 func (c Config) Uncapped() Config {
 	c.CPUs = DefaultValue
 	c.Mems = DefaultValue
@@ -313,10 +321,14 @@ func (c Config) Uncapped() Config {
 	c.VMemLimit = DefaultValue
 	c.PidsMax = DefaultValue
 	c.BlockIOWeight = DefaultValue
+	c.MemSwappiness = ""
+	c.MemOOMControl = ""
 	c.applied = false
+	c.fullReset = true
 	return c
 }
 
+// Clean removes the pg configuration if it was applied.
 func (c *Config) Clean() (bool, error) {
 	if c == nil || !c.applied {
 		return false, nil
