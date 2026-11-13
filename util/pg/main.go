@@ -42,6 +42,11 @@ type (
 		reset   bool
 		log     *plog.Logger
 
+		// failed says an apply of the group was tried and failed during
+		// this action, so the resources applying it after the first one
+		// do not try, and report, it again.
+		failed bool
+
 		// fullReset says the group is the one Uncapped returns: every
 		// capping asked back to where a group nobody capped holds it,
 		// whatever the configuration says. The v1 hierarchy then lifts
@@ -123,6 +128,7 @@ func (c Config) Delegated(d Delegation) *Config {
 	c.Delegation = &d
 	c.applied = false
 	c.reset = false
+	c.failed = false
 	return &c
 }
 
@@ -276,15 +282,21 @@ func UnifiedPath() string {
 
 // ApplyOnce applies the pg configuration if it hasn't been applied already.
 // Returns true if the config was applied, false if it was already applied.
+//
+// A group whose apply failed is not tried again by the same action: the
+// resources of an object apply the groups above them each, and a failure of
+// the group of the namespace was reported by every one of them.
 func (c *Config) ApplyOnce() (bool, error) {
 	if c == nil {
 		return false, fmt.Errorf("no pg config")
 	}
-	if c.applied {
+	if c.applied || c.failed {
 		return false, nil
 	}
 	created, err := c.ApplyProc(0)
-	if err == nil {
+	if err != nil {
+		c.failed = true
+	} else {
 		c.applied = true
 		// Log at info level
 		if c.log != nil {
@@ -324,6 +336,7 @@ func (c Config) Uncapped() Config {
 	c.MemSwappiness = ""
 	c.MemOOMControl = ""
 	c.applied = false
+	c.failed = false
 	c.fullReset = true
 	return c
 }

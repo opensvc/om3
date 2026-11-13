@@ -4,6 +4,7 @@ package pg
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -240,6 +241,18 @@ func TestApplyProcErrorsNameTheGroup(t *testing.T) {
 	_, err := dc.ApplyProc(0)
 	require.Error(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "pg /user.slice/user-7.slice/user@7.service/opensvc.slice/opensvc-svc.s.slice: "), err.Error())
+}
+
+// A group whose apply failed is not tried again by the same action, so its
+// failure is reported once, not by every resource applying the groups above
+// it.
+func TestApplyOnceDoesNotRetryAFailedGroup(t *testing.T) {
+	newFakeNode(t, true)
+	c := Config{ID: "/opensvc.slice/opensvc-svc.s.slice"}
+	mgr := FromContext(NewContext(context.Background()))
+	mgr.Register(c.Delegated(Delegation{Root: "/user.slice/user-7.slice/user@7.service", UID: 7, GID: 7}))
+	assert.Error(t, mgr.ApplyConfigs())
+	assert.NoError(t, mgr.ApplyConfigs(), "reported once")
 }
 
 // v1Test makes the groups of a test on the v1 hierarchy of the node, and
