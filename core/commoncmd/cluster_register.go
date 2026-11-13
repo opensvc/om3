@@ -29,7 +29,7 @@ func NewCmdClusterRegister() *cobra.Command {
 			" configuration node.uuid keyword of that node." +
 			" The collector mints a registration id for a nodename, so each node registers itself: the" +
 			" collector credentials are forwarded to every node." +
-			" A node already registered is registered again, with a new id.",
+			" A node the collector already knows keeps its id, and is sent its initial inventories again.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
