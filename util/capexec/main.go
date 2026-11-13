@@ -1,10 +1,12 @@
 package capexec
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,11 +25,14 @@ type (
 		PGMems          *string
 		PGCPUShares     *string
 		PGCPUQuota      *string
+		PGCPUBurst      *string
 		PGMemOOMControl *string
 		PGMemLimit      *string
+		PGMemHigh       *string
 		PGVMemLimit     *string
 		PGMemSwappiness *string
 		PGBlockIOWeight *string
+		PGPidsMax       *string
 		LimitAS         *string
 		LimitCPU        *string
 		LimitCore       *string
@@ -64,6 +69,15 @@ func (t T) Argv() []string {
 	}
 	if t.PGCPUQuota != nil {
 		argv = append(argv, "--pg-cpu-quota", *t.PGCPUQuota)
+	}
+	if t.PGCPUBurst != nil {
+		argv = append(argv, "--pg-cpu-burst", *t.PGCPUBurst)
+	}
+	if t.PGMemHigh != nil {
+		argv = append(argv, "--pg-mem-high", *t.PGMemHigh)
+	}
+	if t.PGPidsMax != nil {
+		argv = append(argv, "--pg-pids-max", *t.PGPidsMax)
 	}
 	if t.PGMemOOMControl != nil {
 		argv = append(argv, "--pg-mem-oom-control", *t.PGMemOOMControl)
@@ -125,64 +139,81 @@ func (t T) Argv() []string {
 	return argv
 }
 
-func (t T) toLimit() ulimit.Config {
+// toLimit returns the limits of the flags, and an error naming each flag
+// whose value is not one: a limit ignored is one the user believes applied.
+func (t T) toLimit() (ulimit.Config, error) {
 	limit := ulimit.Config{}
-	if t.LimitAS != nil {
-		if i, err := sizeconv.FromSize(*t.LimitAS); err == nil {
-			limit.AS = &i
+	var errs error
+	size := func(flag string, v *string, dst **int64) {
+		if v == nil || *v == "" {
+			return
 		}
+		i, err := sizeconv.FromSize(*v)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("--%s %q: %w", flag, *v, err))
+			return
+		}
+		*dst = &i
 	}
-	if t.LimitCPU != nil {
-		if i, err := time.ParseDuration(*t.LimitCPU); err == nil {
+	size("limit-as", t.LimitAS, &limit.AS)
+	if t.LimitCPU != nil && *t.LimitCPU != "" {
+		if i, err := time.ParseDuration(*t.LimitCPU); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("--limit-cpu %q: %w", *t.LimitCPU, err))
+		} else {
 			limit.CPU = &i
 		}
 	}
-	if t.LimitCore != nil {
-		if i, err := sizeconv.FromSize(*t.LimitCore); err == nil {
-			limit.Core = &i
+	size("limit-core", t.LimitCore, &limit.Core)
+	size("limit-data", t.LimitData, &limit.Data)
+	size("limit-fsize", t.LimitFSize, &limit.FSize)
+	size("limit-memlock", t.LimitMemLock, &limit.MemLock)
+	size("limit-nofile", t.LimitNoFile, &limit.NoFile)
+	size("limit-nproc", t.LimitNProc, &limit.NProc)
+	size("limit-rss", t.LimitRSS, &limit.RSS)
+	size("limit-stack", t.LimitStack, &limit.Stack)
+	size("limit-vmem", t.LimitVMem, &limit.VMem)
+	return limit, errs
+}
+
+// pgFlags returns the --pg-* flags set, which cap the process group --pg
+// names.
+func (t T) pgFlags() []string {
+	l := make([]string, 0)
+	for _, f := range []struct {
+		name string
+		v    *string
+	}{
+		{"pg-cpus", t.PGCpus},
+		{"pg-mems", t.PGMems},
+		{"pg-cpu-shares", t.PGCPUShares},
+		{"pg-cpu-quota", t.PGCPUQuota},
+		{"pg-cpu-burst", t.PGCPUBurst},
+		{"pg-mem-oom-control", t.PGMemOOMControl},
+		{"pg-mem-limit", t.PGMemLimit},
+		{"pg-mem-high", t.PGMemHigh},
+		{"pg-vmem-limit", t.PGVMemLimit},
+		{"pg-mem-swappiness", t.PGMemSwappiness},
+		{"pg-blkio-weight", t.PGBlockIOWeight},
+		{"pg-pids-max", t.PGPidsMax},
+	} {
+		if f.v != nil && *f.v != "" {
+			l = append(l, "--"+f.name)
 		}
 	}
-	if t.LimitData != nil {
-		if i, err := sizeconv.FromSize(*t.LimitData); err == nil {
-			limit.Data = &i
-		}
+	return l
+}
+
+// hasPG says the command is to run in the process group --pg names.
+func (t T) hasPG() bool {
+	return t.PGID != nil && *t.PGID != ""
+}
+
+// checkPG refuses a --pg-* flag with no --pg: the cap would be ignored.
+func (t T) checkPG() error {
+	if l := t.pgFlags(); len(l) > 0 && !t.hasPG() {
+		return fmt.Errorf("%s: a process group cap needs the process group, name it with --pg", strings.Join(l, " "))
 	}
-	if t.LimitFSize != nil {
-		if i, err := sizeconv.FromSize(*t.LimitFSize); err == nil {
-			limit.FSize = &i
-		}
-	}
-	if t.LimitMemLock != nil {
-		if i, err := sizeconv.FromSize(*t.LimitMemLock); err == nil {
-			limit.MemLock = &i
-		}
-	}
-	if t.LimitNoFile != nil {
-		if i, err := sizeconv.FromSize(*t.LimitNoFile); err == nil {
-			limit.NoFile = &i
-		}
-	}
-	if t.LimitNProc != nil {
-		if i, err := sizeconv.FromSize(*t.LimitNProc); err == nil {
-			limit.NProc = &i
-		}
-	}
-	if t.LimitRSS != nil {
-		if i, err := sizeconv.FromSize(*t.LimitRSS); err == nil {
-			limit.RSS = &i
-		}
-	}
-	if t.LimitStack != nil {
-		if i, err := sizeconv.FromSize(*t.LimitStack); err == nil {
-			limit.Stack = &i
-		}
-	}
-	if t.LimitVMem != nil {
-		if i, err := sizeconv.FromSize(*t.LimitVMem); err == nil {
-			limit.VMem = &i
-		}
-	}
-	return limit
+	return nil
 }
 
 func (t T) toPG() pg.Config {
@@ -201,6 +232,15 @@ func (t T) toPG() pg.Config {
 	}
 	if t.PGCPUQuota != nil {
 		pg.CPUQuota = *t.PGCPUQuota
+	}
+	if t.PGCPUBurst != nil {
+		pg.CPUBurst = *t.PGCPUBurst
+	}
+	if t.PGMemHigh != nil {
+		pg.MemHigh = *t.PGMemHigh
+	}
+	if t.PGPidsMax != nil {
+		pg.PidsMax = *t.PGPidsMax
 	}
 	if t.PGMemOOMControl != nil {
 		pg.MemOOMControl = *t.PGMemOOMControl
@@ -283,6 +323,15 @@ func (t *T) LoadPG(g pg.Config) {
 	if g.CPUQuota != "" {
 		t.PGCPUQuota = &g.CPUQuota
 	}
+	if g.CPUBurst != "" {
+		t.PGCPUBurst = &g.CPUBurst
+	}
+	if g.MemHigh != "" {
+		t.PGMemHigh = &g.MemHigh
+	}
+	if g.PidsMax != "" {
+		t.PGPidsMax = &g.PidsMax
+	}
 	if g.MemOOMControl != "" {
 		t.PGMemOOMControl = &g.MemOOMControl
 	}
@@ -301,16 +350,19 @@ func (t *T) LoadPG(g pg.Config) {
 }
 
 func (t *T) FlagSet(flags *pflag.FlagSet) {
-	t.PGID = flags.String("pg", "", "the process group to attach to")
-	t.PGCpus = flags.String("pg-cpus", "", "the cpus to pin the process group to (ex: 1-3,5)")
-	t.PGMems = flags.String("pg-mems", "", "the memories to pin the process group to (ex: 1-3,5)")
-	t.PGCPUShares = flags.String("pg-cpu-shares", "", "the cpu shares granted to the process group to (ex: 100)")
-	t.PGCPUQuota = flags.String("pg-cpu-quota", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	t.PGMemOOMControl = flags.String("pg-mem-oom-control", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	t.PGMemLimit = flags.String("pg-mem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	t.PGVMemLimit = flags.String("pg-vmem-limit", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	t.PGMemSwappiness = flags.String("pg-mem-swappiness", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
-	t.PGBlockIOWeight = flags.String("pg-blkio-weight", "", "the cpu hardcap limit (in usecs). allowed cpu time in a given period")
+	t.PGID = flags.String("pg", "", "the process group to run the command in, as /opensvc.slice/opensvc-ns.test.slice/opensvc-ns.test-svc.web.slice, which the --pg-* flags cap")
+	t.PGCpus = flags.String("pg-cpus", "", "the cpus the process group is pinned to, as 1-3,5")
+	t.PGMems = flags.String("pg-mems", "", "the memory nodes the process group is pinned to, as 0-1")
+	t.PGCPUShares = flags.String("pg-cpu-shares", "", "the cpu shares of the process group, relative to its siblings, as 100")
+	t.PGCPUQuota = flags.String("pg-cpu-quota", "", "the cpu time the process group may use, as 50% of one cpu, or 100%@4 for 4 cpus")
+	t.PGCPUBurst = flags.String("pg-cpu-burst", "", "the cpu time the process group may use above its quota in a period, as 25%@4 (unified hierarchy only)")
+	t.PGMemOOMControl = flags.String("pg-mem-oom-control", "", "1 to disable the oom killer of the process group (v1 hierarchy only)")
+	t.PGMemLimit = flags.String("pg-mem-limit", "", "the memory the process group may use, as 512m")
+	t.PGMemHigh = flags.String("pg-mem-high", "", "the memory above which the process group is throttled and reclaimed, as 384m (unified hierarchy only)")
+	t.PGVMemLimit = flags.String("pg-vmem-limit", "", "the memory and swap the process group may use, as 1g")
+	t.PGMemSwappiness = flags.String("pg-mem-swappiness", "", "the swappiness of the process group, from 0 to 100 (v1 hierarchy only)")
+	t.PGBlockIOWeight = flags.String("pg-blkio-weight", "", "the block io weight of the process group, relative to its siblings, as 500")
+	t.PGPidsMax = flags.String("pg-pids-max", "", "the number of processes the process group may hold, as 100")
 	t.LimitAS = flags.String("limit-as", "", "the maximum area (in bytes) of address space which may be taken by the process")
 	t.LimitCPU = flags.String("limit-cpu", "", "the maximum amount of processor time (in seconds) that a process can use")
 	t.LimitCore = flags.String("limit-core", "", "the maximum size (in bytes) of a core file that the current process can create")
@@ -361,6 +413,19 @@ func (t T) demote() error {
 // limits and its identity, without guessing a delay.
 const ReadyFDEnv = "OPENSVC_EXEC_READY_FD"
 
+// NotReady reports err on the descriptor ReadyFDEnv names, if any, to the
+// caller waiting for the command to take over: a refusal of the arguments
+// before Exec, as a command missing, is reported there too.
+func NotReady(err error) {
+	if ready := readyFile(); ready != nil {
+		_, _ = ready.WriteString(err.Error())
+		_ = ready.Close()
+	}
+}
+
+// ErrNoCommand is the error of an exec given no command to run.
+var ErrNoCommand = errors.New("a command to run is required, after --")
+
 // readyFile returns the descriptor named by ReadyFDEnv, closed on exec, and
 // unsets the variable.
 func readyFile() *os.File {
@@ -403,7 +468,7 @@ func (t T) Exec(args []string) {
 		os.Exit(1)
 	}
 	if len(args) == 0 {
-		return
+		fail(ErrNoCommand)
 	}
 	prog, err := exec.LookPath(args[0])
 	if err != nil {
@@ -412,10 +477,15 @@ func (t T) Exec(args []string) {
 	if err := t.setUmask(); err != nil {
 		fail(err)
 	}
-	if err := t.toLimit().Apply(); err != nil {
+	if err := t.checkPG(); err != nil {
 		fail(err)
 	}
-	if t.PGID != nil && *t.PGID != "" {
+	if limit, err := t.toLimit(); err != nil {
+		fail(err)
+	} else if err := limit.Apply(); err != nil {
+		fail(err)
+	}
+	if t.hasPG() {
 		if err := t.toPG().Apply(); err != nil {
 			fail(err)
 		}
