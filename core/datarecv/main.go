@@ -431,7 +431,37 @@ func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) o
 		toPath = toPath + "/"
 	}
 
-	from := strings.TrimLeft(l[0], "/")
+	p, keyPattern, ok := referenceStore(l[0], withKind, path.Namespace)
+	if !ok {
+		return object.KVInstall{}
+	}
+	perm := t.getPerm(p.Kind)
+	dirPerm := t.getDirPerm()
+	return object.KVInstall{
+		ToPath:      toPath, // /here
+		ToHead:      head,
+		FromPattern: keyPattern, // k[12]
+		FromStore:   p,          // <volns>/sec/s1
+		AccessControl: object.KVInstallAccessControl{
+			User:         t.User,
+			Group:        t.Group,
+			Perm:         perm,
+			DirUser:      t.User,
+			DirGroup:     t.Group,
+			DirPerm:      dirPerm,
+			MakedirUser:  t.User,
+			MakedirGroup: t.Group,
+			MakedirPerm:  dirPerm,
+		},
+	}
+}
+
+// referenceStore returns the datastore and the key pattern the source of a
+// configs or secrets reference names, "s1/k[12]" or "sec/s1/k[12]", of the
+// namespace given: a reference of the configs keyword names a cfg, one of the
+// secrets keyword a sec, or a usr when it says so.
+func referenceStore(from string, withKind naming.Kind, namespace string) (naming.Path, string, bool) {
+	from = strings.TrimLeft(from, "/")
 	// from = "sec/s1/k[12]"
 
 	kind := withKind
@@ -441,51 +471,33 @@ func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) o
 		kind = naming.KindUsr
 		from = from[4:]
 		if withKind == naming.KindCfg {
-			return object.KVInstall{}
+			return naming.Path{}, "", false
 		}
 	case strings.HasPrefix(from, "sec/"):
 		kind = naming.KindSec
 		from = from[4:]
 		if withKind == naming.KindCfg {
-			return object.KVInstall{}
+			return naming.Path{}, "", false
 		}
 	case strings.HasPrefix(from, "cfg/"):
 		kind = naming.KindCfg
 		from = from[4:]
 		if withKind == naming.KindSec {
-			return object.KVInstall{}
+			return naming.Path{}, "", false
 		}
 	}
 	// kind = path.KindSec
 	// from = s1/k[12]
 
-	l = strings.SplitN(from, "/", 2)
+	l := strings.SplitN(from, "/", 2)
 	if len(l) != 2 {
-		return object.KVInstall{}
+		return naming.Path{}, "", false
 	}
-	if p, err := naming.NewPath(path.Namespace, kind, l[0]); err != nil {
-		return object.KVInstall{}
-	} else {
-		perm := t.getPerm(kind)
-		dirPerm := t.getDirPerm()
-		return object.KVInstall{
-			ToPath:      toPath, // /here
-			ToHead:      head,
-			FromPattern: l[1], // k[12]
-			FromStore:   p,    // <volns>/sec/s1
-			AccessControl: object.KVInstallAccessControl{
-				User:         t.User,
-				Group:        t.Group,
-				Perm:         perm,
-				DirUser:      t.User,
-				DirGroup:     t.Group,
-				DirPerm:      dirPerm,
-				MakedirUser:  t.User,
-				MakedirGroup: t.Group,
-				MakedirPerm:  dirPerm,
-			},
-		}
+	p, err := naming.NewPath(namespace, kind, l[0])
+	if err != nil {
+		return naming.Path{}, "", false
 	}
+	return p, l[1], true
 }
 
 func (t *DataRecv) statusDirs(head string, dirs []dirDefinition) {
