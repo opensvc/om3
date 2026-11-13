@@ -678,7 +678,18 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				}
 			}
 		case instance.MonitorGlobalExpectUnprovisioned, instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectProvisioned:
-			if reason := t.provisionDisabledRefusal(*c.Value.GlobalExpect); reason != "" {
+			reason := t.provisionDisabledRefusal(*c.Value.GlobalExpect)
+			if reason == "" && *c.Value.GlobalExpect == instance.MonitorGlobalExpectPurged {
+				reason = t.usedByProtectedRefusal()
+			}
+			if reason != "" {
+				err := fmt.Errorf("%s", reason)
+				t.log.Infof("set instance monitor: %s", err)
+				globalExpectRefused()
+				return err
+			}
+		case instance.MonitorGlobalExpectDeleted:
+			if reason := t.usedByProtectedRefusal(); reason != "" {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: %s", err)
 				globalExpectRefused()

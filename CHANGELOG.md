@@ -1655,6 +1655,16 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     The unprovision of a resource recorded not provisioned stops it and skips its unprovisioner, as in v2: `om <path> instance unprovision` no longer runs the unprovisioner of such a resource, the record saying there is nothing it made to remove.
 
+* An object leaving its unprovision to the sysadmin, `unprovision = false`, keeps what it uses from a purge and a delete.
+
+    `unprovision = false` protected the object alone: a namespace purge, as `om 'ns/**' purge`, refused the service but deleted the cfg and the sec it installs keys from, and left half purged the vol its volume resource is, the service left broken, its volume naming stores that no longer exist.
+
+    A purge or a delete of a cfg, a sec or a vol is now refused upfront, with a 409 naming the object using it and the nodes, while an object using it evaluates `unprovision = false` on a node where its instance is provisioned. Each node publishes, with the instance configuration, the objects the instance uses as it evaluates the configuration, so `unprovision@node` protects on the nodes it is set for: the datastores of the `install` lines, a pattern as `./sec/web-*` matching, of the `environment` references and of the deprecated `configs`, `secrets` and `*_environment` keywords, and the vol of each volume resource not disabled. A namespace-wide purge purges the other objects and reports each refusal. An instance freed by hand and declared so with `om <path> instance unprovision --state-only` protects nothing any more.
+
+    The refusal holds whoever asks, a namespace admin included, who could purge or delete any object of the namespace before: the object protecting a datastore may live in another namespace the datastore is shared with, and the refusal names it.
+
+    The unprovision or the purge of a vol a child instance holds, provisioned on its node with `unprovision = false`, no longer waits for that child, which no orchestration would unprovision: it ends `unprovision failed` or `purge failed`, the orchestration error saying the child and the way out. It used to wait until the client gave up, `om <vol> unprovision --wait` after 5 minutes.
+
 * A start asked of a frozen object no longer unfreezes it.
 
     In v2 and in earlier v3, `om <path> start` on a frozen instance removed the freeze and then started. The object ended up started and unfrozen, so a freeze an operator had set was discarded to serve the request.
