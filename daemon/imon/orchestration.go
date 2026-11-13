@@ -170,8 +170,19 @@ func (t *Manager) setWaitParents() bool {
 // still provisioned on the node is waited for too, down or not, as in v2: it
 // may still need the parent to unprovision, as a share needs the mount point
 // of its volume.
+//
+// A child instance provisioned with its unprovision disabled is never
+// unprovisioned by an orchestration: the teardown is not waited for, it fails
+// with the reason, and true is returned as for a wait, the caller having
+// nothing left to do.
 func (t *Manager) setWaitChildren() bool {
 	teardown := slices.Contains([]instance.MonitorGlobalExpect{instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectUnprovisioned}, t.state.GlobalExpect)
+	if teardown {
+		if reason := protectedChild(t.state.Children); reason != "" {
+			t.failTeardownHeldByProtectedChild(reason)
+			return true
+		}
+	}
 	for relation, availStatus := range t.state.Children {
 		reason := ""
 		if !availStatus.Is(status.Down, status.StandbyDown, status.StandbyUp, status.Undef, status.NotApplicable) {
@@ -254,7 +265,16 @@ func (t *Manager) setOrchestrationVerdict() {
 			continue
 		}
 		if instMon.State.IsOneOf(instance.MonitorStatesFailure...) {
-			failures = append(failures, fmt.Sprintf("%s on %s", instMon.State, nodename))
+			failure := fmt.Sprintf("%s on %s", instMon.State, nodename)
+			if instMon.State.IsOneOf(instance.MonitorStateUnprovisionFailure, instance.MonitorStatePurgeFailed) {
+				// The reason a child holding the instance for good
+				// failed it, read again from what the cluster holds, as
+				// the failure of a peer carries no reason.
+				if reason := protectedChild(instMon.Children); reason != "" {
+					failure += ": " + reason
+				}
+			}
+			failures = append(failures, failure)
 		}
 	}
 	if len(failures) == 0 {
