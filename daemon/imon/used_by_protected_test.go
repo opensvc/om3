@@ -199,3 +199,17 @@ func TestATeardownOfAVolHeldByAProtectedChildEndsFailedWithTheReason(t *testing.
 	m = newManager(instance.MonitorGlobalExpectPurged)
 	assert.False(t, m.setWaitChildren(), "freed by the sysadmin, the child holds nothing")
 }
+
+// An object using the datastore, unprovisioned but being provisioned, holds
+// it: its provision would read what the purge takes away.
+func TestAnObjectBeingProvisionedProtectsWhatItUses(t *testing.T) {
+	user := mustParsePath(t, "repro/svc/coming")
+	cfg := mustParsePath(t, "repro/cfg/coming")
+	m := &Manager{path: cfg}
+	setUser(t, user, "n1", true, provisioned.False, "repro/cfg/coming")
+	assert.Empty(t, m.usedByProtectedRefusal(), "unprovisioned and idle, it holds nothing")
+
+	instance.MonitorData.Set(user, "n1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectProvisioned, State: instance.MonitorStateProvisionProgress})
+	t.Cleanup(func() { instance.MonitorData.Unset(user, "n1") })
+	assert.Contains(t, m.usedByProtectedRefusal(), "repro/svc/coming on n1")
+}
