@@ -44,7 +44,7 @@ func (t *Manager) usedByProtectedRefusal() string {
 		if !e.Value.UnprovisionDisabled || !e.Value.UsesObject(t.path) {
 			continue
 		}
-		if st := instance.StatusData.GetByPathAndNode(e.Path, e.Node); st != nil && st.Provisioned == provisioned.False {
+		if freedInstance(e.Path, e.Node) {
 			continue
 		}
 		nodesByUser[e.Path] = append(nodesByUser[e.Path], e.Node)
@@ -120,4 +120,25 @@ func (t *Manager) failTeardownHeldByProtectedChild(reason string) {
 	t.log.Warnf("%s orchestration: %s -> %s", t.state.GlobalExpect, reason, state)
 	t.transitionTo(state)
 	t.done()
+}
+
+// freedInstance says the instance of p on node holds nothing: it is not
+// provisioned, and no action or orchestration is under way that could
+// provision it, which an unprovisioned status alone does not say while a
+// provision is queued or running.
+func freedInstance(p naming.Path, node string) bool {
+	st := instance.StatusData.GetByPathAndNode(p, node)
+	if st == nil || st.Provisioned != provisioned.False {
+		return false
+	}
+	mon := instance.MonitorData.GetByPathAndNode(p, node)
+	if mon == nil {
+		return true
+	}
+	switch mon.GlobalExpect {
+	case instance.MonitorGlobalExpectNone, instance.MonitorGlobalExpectInit:
+	default:
+		return false
+	}
+	return mon.State == instance.MonitorStateIdle
 }
