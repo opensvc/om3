@@ -36,3 +36,8 @@ func (t Ext4) MKFS(ctx context.Context, s string, args []string) error {
 func (t Ext4) Grow(ctx context.Context, dev, mountPoint string) error {
 	return extGrow(ctx, t.Log(), dev, mountPoint)
 }
+
+// SizeOnDevice implements SizeOnDevicer.
+func (t Ext4) SizeOnDevice(ctx context.Context, dev string) (int64, error) {
+	return extSizeOnDevice(ctx, dev)
+}
