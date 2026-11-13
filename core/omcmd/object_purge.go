@@ -18,10 +18,9 @@ type (
 		commoncmd.OptsEncap
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Force        bool
-		Leader       bool
-		Local        bool
-		NodeSelector string
+		Force  bool
+		Leader bool
+		Local  bool
 	}
 )
 
@@ -37,7 +36,6 @@ func (t *CmdObjectPurge) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
-		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithAsyncTarget("purged"),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),

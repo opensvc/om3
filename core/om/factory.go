@@ -3892,6 +3892,10 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "purge",
 		Short: "unprovision and delete",
+		Long: `Unprovision and delete every instance of the object, by an orchestration.
+
+To remove the instance of a node only, unprovision it with "instance unprovision
+--node <node>", then delete it with "instance delete --node <node>".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -3906,7 +3910,6 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
 	commoncmd.HiddenFlagForce(flags, &options.Force)
 	commoncmd.HiddenFlagLeader(flags, &options.Leader)
-	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
