@@ -1,7 +1,7 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 )
 
 type (
@@ -13,10 +13,7 @@ type (
 	}
 )
 
+// Run creates the tag on the collector, as the node serving the request.
 func (t *CmdNodeCollectorTagCreate) Run() error {
-	return nodeaction.New(
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-	).Do()
+	return commoncmd.CollectorTagCreate(t.Name, t.Data, t.Exclude)
 }

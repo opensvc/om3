@@ -19,8 +19,12 @@ type (
 )
 
 // Run runs the checks, pushes their results to the collector, and lists
-// them: also when the push failed, which the command then says.
+// them: also when the push failed, which the command then says. With a node
+// selector, the checks run on the nodes selected, through the api.
 func (t *CmdNodeChecks) Run() error {
+	if t.NodeSelector != "" {
+		return commoncmd.NodeChecks(t.NodeSelector, t.OptsGlobal.OptsGlobal)
+	}
 	n, err := object.NewNode()
 	if err != nil {
 		return err
