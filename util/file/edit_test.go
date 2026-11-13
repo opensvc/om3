@@ -91,3 +91,15 @@ func TestARecoverChangingNothingKeepsAnInvalidCopy(t *testing.T) {
 	assert.Equal(t, "bad\n", read(t, EditCopy(src)))
 	assert.Equal(t, "a\n", read(t, src))
 }
+
+// An edit copy that is a link, as one to the installed file, is refused: it
+// would be edited in place of a copy, and judged unchanged with no
+// validation.
+func TestEditRefusesACopyThatIsALink(t *testing.T) {
+	src := editEnv(t, "a\n")
+	require.NoError(t, os.Symlink(src, EditCopy(src)))
+	t.Setenv("EDITOR", "sed -i s/a/bad/")
+	err := Edit(src, EditModeNormal, validNoBad)
+	require.ErrorContains(t, err, "not a regular file")
+	assert.Equal(t, "a\n", read(t, src))
+}
