@@ -9,11 +9,13 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime/pprof"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -264,14 +266,35 @@ func (t *T) SetNode(node string) {
 // run function will start daemon with internal lock protection
 func (t *T) run(ctx context.Context) error {
 	log := logger("locked run: ")
+
+	// Catch the stop signals from the beginning of the startup: the daemon
+	// watches them once its bus runs, and until then, a SIGTERM, as the
+	// one systemd sends to stop the unit while it is activating, must end
+	// the startup cleanly rather than kill the process. Both handlers
+	// receive the signals until the daemon is started, and the daemon
+	// takes the first stop request only. Once started, the daemon alone
+	// handles them, as before: a signal after its stop request has the
+	// default action.
+	sigCtx, sigStop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer sigStop()
+	stoppedDuringStart := func() bool {
+		if sigCtx.Err() == nil {
+			return false
+		}
+		log.Infof("stop requested during the startup: stopped")
+		return true
+	}
+
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return fmt.Errorf("create mandatory directories: %w", err)
 	}
 	setupCrashReport()
-	release, err := getLock("Run")
+	unlock, err := getLock("Run")
 	if err != nil {
 		return err
 	}
+	release := sync.OnceFunc(unlock)
+	defer release()
 	isRunning, err := t.isRunning()
 	if err != nil {
 		return err
@@ -291,27 +314,43 @@ func (t *T) run(ctx context.Context) error {
 			log.Errorf("remove pid file %s: %s", pidFile, err)
 		}
 	}()
+	// The scan is not interrupted: it saves what it found, which must not
+	// be the partial result of an interrupted scan.
 	if err := capabilities.Scan(ctx); err != nil {
 		return err
 	}
 	log.Attr("capabilities", capabilities.Data()).Infof("rescanned node capabilities")
+	if stoppedDuringStart() {
+		return nil
+	}
 
 	if err := bootStrapCcfg(); err != nil {
 		log.Tracef("bootstrap cluster config %s", err)
 		return err
 	}
+	if stoppedDuringStart() {
+		return nil
+	}
 	d := daemon.New()
 	log.Tracef("starting daemon...")
 	err = d.Start(context.Background())
 	release()
-	if err != nil {
+	signalCaught := sigCtx.Err() != nil
+	sigStop()
+	if err == daemon.ErrStoppedDuringStart {
+		log.Infof("stopped during the startup")
+		return nil
+	} else if err != nil {
 		return err
 	}
-	if d != nil {
-		log.Infof("started")
-		d.Wait()
-		log.Infof("stopped")
+	if signalCaught {
+		// A signal caught before the daemon watched them, or caught
+		// by both, which the daemon takes once.
+		d.RequestStop("signal")
 	}
+	log.Infof("started")
+	d.Wait()
+	log.Infof("stopped")
 	return nil
 }
 
