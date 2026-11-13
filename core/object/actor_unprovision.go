@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
-	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -17,16 +16,6 @@ func (t *actor) Unprovision(ctx context.Context) error {
 		return err
 	}
 	unprovision := t.config.GetBool(key.New("", "unprovision"))
-	if !unprovision {
-		// An instance a sysadmin unprovisioned, and declared so, has
-		// nothing left to free: the purge of the object goes on to its
-		// delete.
-		if st, err := t.FreshStatus(ctx); err == nil && st.Provisioned == provisioned.False {
-			t.log.Infof("unprovision is disabled (unprovision=false), and the instance is not provisioned: nothing to do")
-			return nil
-		}
-		return fmt.Errorf("unprovision is disabled (unprovision=false): unprovision the resources by hand, then declare it with 'instance unprovision --state-only'")
-	}
 
 	t.setenv("unprovision", actioncontext.IsLeader(ctx))
 	unlock, err := t.lockAction(ctx)
@@ -34,7 +23,46 @@ func (t *actor) Unprovision(ctx context.Context) error {
 		return err
 	}
 	defer unlock()
+	if !unprovision {
+		// An instance a sysadmin unprovisioned, and declared so, has
+		// nothing left to free: the purge of the object goes on to its
+		// delete. Judged under the action lock, from the records a
+		// provision and a declaration write, not from what a status finds.
+		if !t.anyProvisionRecorded() {
+			t.log.Infof("unprovision is disabled (unprovision=false), and no resource is recorded provisioned: nothing to do")
+			return nil
+		}
+		return fmt.Errorf("unprovision is disabled (unprovision=false): unprovision the resources by hand, then declare it with 'instance unprovision --state-only'")
+	}
 	return t.lockedUnprovision(ctx)
+}
+
+// anyProvisionRecorded says a resource of the instance is recorded made by
+// a provision, or declared made by a sysadmin.
+func (t *actor) anyProvisionRecorded() bool {
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		if resource.ProvisionRecorded(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// allProvisionRecorded says every resource of the instance is recorded made
+// by a provision, or declared made by a sysadmin.
+func (t *actor) allProvisionRecorded() bool {
+	for _, r := range t.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		if !resource.ProvisionRecorded(r) {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *actor) lockedUnprovision(ctx context.Context) error {
