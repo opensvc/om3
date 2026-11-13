@@ -1,8 +1,8 @@
 package omcmd
 
 import (
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/nodeaction"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/xstrings"
 )
 
@@ -16,25 +16,22 @@ type (
 
 func (t *CmdNodeComplianceShowModuleset) Run() error {
 	return nodeaction.New(
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithDefaultOutput(""),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
+		nodeaction.WithLocalFunc(func() (any, error) {
+			comp, err := newNodeCompliance()
 			if err != nil {
 				return nil, err
 			}
-			comp, err := n.NewCompliance()
+			data, err := comp.GetData(xstrings.Split(t.Moduleset, ","))
 			if err != nil {
 				return nil, err
 			}
-			modsets := xstrings.Split(t.Moduleset, ",")
-			data, err := comp.GetData(modsets)
-			if err != nil {
-				return nil, err
-			}
-			tree := data.ModulesetsTree()
-			return tree, nil
+			return data.ModulesetsTree(), nil
 		}),
+		nodeaction.WithRemoteFunc(commoncmd.NodeComplianceModulesetTreeRemote(t.Moduleset)),
 	).Do()
 }

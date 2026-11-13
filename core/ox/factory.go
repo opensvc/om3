@@ -498,6 +498,7 @@ func newCmdNodeCollectorTagShow() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	flags.BoolVar(&options.Verbose, "verbose", false, "also show the attach data")
 	return cmd
 }

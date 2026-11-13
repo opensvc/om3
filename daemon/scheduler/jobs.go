@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/compliance"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -119,11 +120,15 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 
 // expectedExitCodes returns the non-zero exit codes a job of the action is
 // run accepting: answers of the command, not failures, as a push with nothing
-// to collect on the node.
+// to collect on the node, or a compliance run whose modules are all not
+// applicable to the node. A run not compliant exits 1, as a run that failed
+// does, and stays a failure of the job.
 func expectedExitCodes(action string) []int {
 	switch action {
 	case "pushstats":
 		return []int{xerrors.ExitCodeNothingToCollect}
+	case "compliance_auto":
+		return []int{compliance.ExitCodeNA}
 	}
 	return nil
 }

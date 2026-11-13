@@ -1,7 +1,8 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/util/compliance"
 )
 
 type (
@@ -16,10 +17,11 @@ type (
 )
 
 func (t *CmdNodeComplianceFix) Run() error {
-	return nodeaction.New(
-		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-	).Do()
+	opts := commoncmd.ComplianceRunOptions{
+		Modulesets: t.Moduleset,
+		Modules:    t.Module,
+		Force:      t.Force,
+		Attach:     t.Attach,
+	}
+	return doNodeComplianceRun(compliance.ActionFix, opts, t.NodeSelector, t.OptsGlobal)
 }

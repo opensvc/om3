@@ -3,6 +3,7 @@ package omcmd
 import (
 	"sync"
 
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/output"
@@ -17,7 +18,13 @@ type (
 	}
 )
 
+// Run validates the configuration of this node, or with a node selector,
+// which only the hidden "node validate config" offers, the configurations of
+// the nodes selected, each on its node through the api.
 func (t *CmdNodeConfigValidate) Run() error {
+	if t.NodeSelector != "" {
+		return commoncmd.NodeConfigValidate(t.NodeSelector, t.OptsGlobal.OptsGlobal)
+	}
 	alerts := make(xconfig.Alerts, 0)
 	alertsQ := make(chan xconfig.Alerts)
 	done := make(chan bool)
@@ -35,7 +42,6 @@ func (t *CmdNodeConfigValidate) Run() error {
 	var wg sync.WaitGroup
 
 	err := nodeaction.New(
-		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),

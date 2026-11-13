@@ -13,12 +13,16 @@ type (
 	}
 )
 
+// Run prints the key of this node, or with a node selector lists the keys
+// of the nodes selected, as their daemons announce them.
 func (t *CmdNodePRKey) Run() error {
+	if t.NodeSelector != "" {
+		return commoncmd.NodePRKeys(t.NodeSelector, t.OptsGlobal.OptsGlobal)
+	}
 	if err := nodeaction.New(
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithLocalFunc(func() (any, error) {
 			n, err := object.NewNode()
 			if err != nil {

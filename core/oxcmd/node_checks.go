@@ -1,7 +1,7 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 )
 
 type (
@@ -11,11 +11,8 @@ type (
 	}
 )
 
+// Run runs the checks of the nodes selected, which push their results to the
+// collector, and lists them.
 func (t *CmdNodeChecks) Run() error {
-	return nodeaction.New(
-		nodeaction.WithRemoteNodes(t.NodeSelector),
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-	).Do()
+	return commoncmd.NodeChecks(t.NodeSelector, t.OptsGlobal.OptsGlobal)
 }

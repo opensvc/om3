@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -75,4 +76,39 @@ func prKeysByNode() (map[string][]string, error) {
 		byKey[item.Data.Config.PRKey] = append(byKey[item.Data.Config.PRKey], item.Meta.Node)
 	}
 	return byKey, nil
+}
+
+// NodePRKeys lists the scsi3 persistent reservation keys of the selected
+// nodes, as their daemons announce them, and says whether each is its node's
+// alone.
+func NodePRKeys(selector string, opts OptsGlobal) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	resp, err := c.GetNodesWithResponse(context.Background(), &api.GetNodesParams{Node: &selector})
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case 200:
+	case 401:
+		return fmt.Errorf("%s", *resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", *resp.JSON403)
+	default:
+		return fmt.Errorf("unexpected statuscode: %s", resp.Status())
+	}
+	if err := (output.Renderer{
+		DefaultOutput: "tab=NAME:meta.node,PRKEY:data.config.prkey",
+		Output:        opts.Output,
+		Sort:          opts.Sort,
+		Color:         opts.Color,
+		Data:          *resp.JSON200,
+	}).Print(); err != nil {
+		return err
+	}
+	// The keys are on stdout by now. Whether each is its node's alone
+	// is the other half of the answer, and the exit code carries it.
+	return CheckPRKeyUniqueness()
 }

@@ -1,7 +1,7 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 )
 
 type (
@@ -10,10 +10,8 @@ type (
 	}
 )
 
+// Run lists the tags of the collector, as it answers them to the node
+// serving the request.
 func (t *CmdNodeCollectorTagList) Run() error {
-	return nodeaction.New(
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-	).Do()
+	return commoncmd.CollectorTagList(t.OptsGlobal.OptsGlobal)
 }

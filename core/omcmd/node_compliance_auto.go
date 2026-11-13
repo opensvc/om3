@@ -1,8 +1,8 @@
 package omcmd
 
 import (
-	"github.com/opensvc/om3/v3/core/nodeaction"
-	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/util/compliance"
 )
 
 type (
@@ -17,26 +17,11 @@ type (
 )
 
 func (t *CmdNodeComplianceAuto) Run() error {
-	return nodeaction.New(
-		nodeaction.WithFormat(t.Output),
-		nodeaction.WithSort(t.Sort),
-		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			comp, err := n.NewCompliance()
-			if err != nil {
-				return nil, err
-			}
-			run := comp.NewRun()
-			run.SetModulesetsExpr(t.Moduleset)
-			run.SetModulesExpr(t.Module)
-			run.SetForce(t.Force)
-			run.SetAttach(t.Attach)
-			err = run.Auto()
-			return run, err
-		}),
-	).Do()
+	opts := commoncmd.ComplianceRunOptions{
+		Modulesets: t.Moduleset,
+		Modules:    t.Module,
+		Force:      t.Force,
+		Attach:     t.Attach,
+	}
+	return doNodeComplianceRun(compliance.ActionAuto, opts, t.NodeSelector, t.OptsGlobal)
 }
