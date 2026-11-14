@@ -136,3 +136,24 @@ func TestDialPeerFromTheSourceOfItsFamily(t *testing.T) {
 	require.NoError(t, err)
 	conn.Close()
 }
+
+// A peer address that does not answer does not hold its next address for
+// the whole timeout: the next one is tried after peerAttemptDelay. The first
+// address, of TEST-NET-1, is routed nowhere.
+func TestDialPeerTriesTheNextAddressOfAPeer(t *testing.T) {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+	stubAddrs(t, []string{"192.0.2.1", "127.0.0.1"}, nil)
+	saved := peerAttemptDelay
+	peerAttemptDelay = 50 * time.Millisecond
+	t.Cleanup(func() { peerAttemptDelay = saved })
+
+	begin := time.Now()
+	conn, err := dialPeer(context.Background(), 5*time.Second, ipList{net.ParseIP("127.0.0.1")}, net.JoinHostPort("node2", port))
+	require.NoError(t, err)
+	conn.Close()
+	require.Less(t, time.Since(begin), 2*time.Second)
+}

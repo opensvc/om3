@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/stagger"
 )
 
 type (
@@ -442,9 +443,15 @@ func (t *tx) addrLocalIPs() (ipList, error) {
 	return held, nil
 }
 
+// peerAttemptDelay is how long the connect to an address of a peer runs
+// before the connect to its next address starts too.
+var peerAttemptDelay = 300 * time.Millisecond
+
 // dialPeer connects to addr from the address of localIPs of the family of a
-// peer address, each address of the peer tried in the order of the
-// resolver. With no source, or none of the family of a peer address, as an
+// peer address, the addresses of the peer tried in the order of the resolver,
+// each one starting when the previous one failed or ran peerAttemptDelay:
+// an address that does not answer does not hold the others for the whole
+// timeout. With no source, or none of the family of a peer address, as an
 // IPv6 source for a peer reached over IPv4 only, it connects from the
 // address the kernel picks: a source of another family can not reach it.
 func dialPeer(ctx context.Context, timeout time.Duration, localIPs ipList, addr string) (net.Conn, error) {
@@ -470,28 +477,22 @@ func dialPeer(ctx context.Context, timeout time.Duration, localIPs ipList, addr 
 			peerIPs = append(peerIPs, a.IP)
 		}
 	}
-	var firstErr error
+	var attempts []stagger.Attempt
 	for _, peer := range peerIPs {
 		i := slices.IndexFunc(localIPs, func(local net.IP) bool { return sameFamily(local, peer) })
 		if i < 0 {
 			continue
 		}
 		d := &net.Dialer{Timeout: timeout, LocalAddr: &net.TCPAddr{IP: localIPs[i]}}
-		conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(peer.String(), port))
-		if err == nil {
-			return conn, nil
-		}
-		if firstErr == nil {
-			firstErr = err
-		}
-		if ctx.Err() != nil {
-			break
-		}
+		peerAddr := net.JoinHostPort(peer.String(), port)
+		attempts = append(attempts, func(ctx context.Context) (net.Conn, error) {
+			return d.DialContext(ctx, "tcp", peerAddr)
+		})
 	}
-	if firstErr != nil {
-		return nil, firstErr
+	if len(attempts) == 0 {
+		return unbound()
 	}
-	return unbound()
+	return stagger.Dial(ctx, peerAttemptDelay, attempts)
 }
 
 // sameFamily says a and b are both IPv4, or both IPv6.

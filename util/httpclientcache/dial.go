@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/netip"
 	"time"
+
+	"github.com/opensvc/om3/v3/util/stagger"
 )
 
 var (
@@ -79,58 +81,11 @@ func lookup(ctx context.Context, network, host string) ([]net.IP, error) {
 // first established. It returns the error of the first address when none
 // connects.
 func dialAddrs(ctx context.Context, d *net.Dialer, network string, addrs []string) (net.Conn, error) {
-	type result struct {
-		conn net.Conn
-		err  error
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	results := make(chan result, len(addrs))
-	next, pending := 0, 0
-	start := func() {
-		addr := addrs[next]
-		next++
-		pending++
-		go func() {
-			c, err := d.DialContext(ctx, network, addr)
-			results <- result{c, err}
-		}()
-	}
-	start()
-	timer := time.NewTimer(attemptDelay)
-	defer timer.Stop()
-	var firstErr error
-	for pending > 0 {
-		var timerC <-chan time.Time
-		if next < len(addrs) {
-			timerC = timer.C
-		}
-		select {
-		case <-timerC:
-			start()
-			timer.Reset(attemptDelay)
-		case r := <-results:
-			pending--
-			if r.err == nil {
-				// The connects still running end with the context,
-				// and the ones established meanwhile are closed.
-				go func(n int) {
-					for ; n > 0; n-- {
-						if late := <-results; late.conn != nil {
-							_ = late.conn.Close()
-						}
-					}
-				}(pending)
-				return r.conn, nil
-			}
-			if firstErr == nil {
-				firstErr = r.err
-			}
-			if next < len(addrs) && ctx.Err() == nil {
-				start()
-				timer.Reset(attemptDelay)
-			}
+	attempts := make([]stagger.Attempt, len(addrs))
+	for i, addr := range addrs {
+		attempts[i] = func(ctx context.Context) (net.Conn, error) {
+			return d.DialContext(ctx, network, addr)
 		}
 	}
-	return nil, firstErr
+	return stagger.Dial(ctx, attemptDelay, attempts)
 }
