@@ -81,33 +81,58 @@ func stubAddrs(t *testing.T, ips []string, held []string) {
 	}
 }
 
-// An addr given by its name is sent from: its first address, when the node
-// holds it. It was sent from no address, so from a temporary IPv6 address
-// the kernel picked, which the peers refused.
-func TestDefaultLocalIPOfAName(t *testing.T) {
-	stubAddrs(t, []string{"2001:db8::10", "192.0.2.10"}, []string{"2001:db8::10", "2001:db8::abcd:1234"})
+// An addr given by its name is sent from: the addresses it resolves to that
+// the node holds. It was sent from no address, so from a temporary IPv6
+// address the kernel picked, which the peers refused.
+func TestDefaultLocalIPsOfAName(t *testing.T) {
+	stubAddrs(t, []string{"2001:db8::10", "192.0.2.10", "198.51.100.7"}, []string{"2001:db8::10", "2001:db8::abcd:1234", "192.0.2.10"})
 	tx := &tx{ctx: context.Background(), addr: "node1-hb"}
-	ip, err := tx.defaultLocalIP()
+	ips, err := tx.defaultLocalIPs()
 	require.NoError(t, err)
-	require.Equal(t, "2001:db8::10", ip.String())
+	require.Equal(t, "2001:db8::10,192.0.2.10", ips.String())
 }
 
 // An addr given by its address is sent from, with no lookup.
-func TestDefaultLocalIPOfAnAddress(t *testing.T) {
+func TestDefaultLocalIPsOfAnAddress(t *testing.T) {
 	stubAddrs(t, nil, nil)
 	tx := &tx{ctx: context.Background(), addr: "192.0.2.10"}
-	ip, err := tx.defaultLocalIP()
+	ips, err := tx.defaultLocalIPs()
 	require.NoError(t, err)
-	require.Equal(t, "192.0.2.10", ip.String())
+	require.Equal(t, "192.0.2.10", ips.String())
 }
 
-// A name resolving to an address the node does not hold, as behind a nat,
-// is sent from no address in particular, as before, warned about once.
-func TestDefaultLocalIPOfANameNotHeld(t *testing.T) {
+// A name resolving to no address the node holds, as behind a nat, is sent
+// from no address in particular, as before, warned about once.
+func TestDefaultLocalIPsOfANameNotHeld(t *testing.T) {
 	stubAddrs(t, []string{"198.51.100.7"}, []string{"192.0.2.10"})
 	tx := &tx{ctx: context.Background(), addr: "node1-hb"}
-	ip, err := tx.defaultLocalIP()
+	ips, err := tx.defaultLocalIPs()
 	require.NoError(t, err)
-	require.Nil(t, ip)
+	require.Empty(t, ips)
 	require.Equal(t, "198.51.100.7", tx.addrNotLocal.String(), "warned about")
+}
+
+// A peer is dialed from the source of its family: an IPv4 peer from the
+// IPv4 source, though an IPv6 one comes first. A source of the family of no
+// peer address, an IPv6 source for an IPv4 peer, would fail the dial: the
+// peer is dialed from the address the kernel picks then.
+func TestDialPeerFromTheSourceOfItsFamily(t *testing.T) {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+	addr := ln.Addr().String()
+	ctx := context.Background()
+
+	conn, err := dialPeer(ctx, time.Second, ipList{net.ParseIP("::1"), net.ParseIP("127.0.0.1")}, addr)
+	require.NoError(t, err)
+	require.Equal(t, "127.0.0.1", conn.LocalAddr().(*net.TCPAddr).IP.String())
+	conn.Close()
+
+	conn, err = dialPeer(ctx, time.Second, ipList{net.ParseIP("::1")}, addr)
+	require.NoError(t, err, "no source of the family of the peer: unbound")
+	conn.Close()
+
+	conn, err = dialPeer(ctx, time.Second, nil, addr)
+	require.NoError(t, err)
+	conn.Close()
 }
