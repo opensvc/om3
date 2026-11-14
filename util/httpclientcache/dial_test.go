@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -172,10 +173,16 @@ func TestDialAbandonedServesTheNextRequest(t *testing.T) {
 	t.Cleanup(srv.Close)
 	_, port, err := net.SplitHostPort(srv.Listener.Addr().String())
 	require.NoError(t, err)
+	// The dials the transport runs on in the background end before the
+	// lookup is restored: the cleanups run last registered first.
+	var lookups sync.WaitGroup
 	stubLookup(t, func(ctx context.Context, network, host string) ([]net.IP, error) {
+		lookups.Add(1)
+		defer lookups.Done()
 		time.Sleep(700 * time.Millisecond)
 		return []net.IP{net.ParseIP("127.0.0.1")}, nil
 	})
+	t.Cleanup(lookups.Wait)
 	cli := &http.Client{Transport: NewTransport(nil)}
 	t.Cleanup(cli.CloseIdleConnections)
 	url := "http://" + net.JoinHostPort("node1", port)
