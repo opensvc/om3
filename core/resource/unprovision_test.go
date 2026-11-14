@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -124,4 +125,38 @@ func TestAResourceRecordedNotProvisionedIsStoppedNotUnprovisioned(t *testing.T) 
 	v, err := getProvisionedValue(r)
 	require.NoError(t, err)
 	assert.False(t, v, "recorded not provisioned after")
+}
+
+// stoppableDriver is a driver with a start and a stop, and a var directory
+// for its stopped flag.
+type stoppableDriver struct {
+	Driver
+	varDir  string
+	stopped int
+}
+
+func (t *stoppableDriver) VarDir() string              { return t.varDir }
+func (t *stoppableDriver) Start(context.Context) error { return nil }
+func (t *stoppableDriver) Stop(context.Context) error  { t.stopped++; return nil }
+func (t *stoppableDriver) Log() *plog.Logger           { return nil }
+func (t *stoppableDriver) IsStandby() bool             { return false }
+func (t *stoppableDriver) IsShared() bool              { return false }
+
+// An unprovision of selected resources flags them stopped, as a stop of them
+// does, for the daemon not to start them again: a share unprovisioned with
+// restart set was exported again at once (card 299). An unprovision of the
+// instance flags nothing: the daemon disables its monitor.
+func TestUnprovisionOfASelectedResourceFlagsItStopped(t *testing.T) {
+	r := &stoppableDriver{varDir: t.TempDir()}
+	require.NoError(t, unprovisionStop(context.Background(), r, true))
+	assert.Equal(t, 1, r.stopped)
+	stopped, err := IsStopped(r)
+	require.NoError(t, err)
+	assert.False(t, stopped, "no resource selected")
+
+	ctx := actioncontext.WithRID(context.Background(), "share#1")
+	require.NoError(t, unprovisionStop(ctx, r, true))
+	stopped, err = IsStopped(r)
+	require.NoError(t, err)
+	assert.True(t, stopped, "the resource selected")
 }
