@@ -9,6 +9,11 @@ import (
 )
 
 func (t *T) baseDir() string {
+	return nodeBaseDir()
+}
+
+// nodeBaseDir returns the base directory of the flag files of the node.
+func nodeBaseDir() string {
 	p := filepath.FromSlash("/system/volatile")
 	if file.Exists(p) {
 		return filepath.Join(p, "opensvc")

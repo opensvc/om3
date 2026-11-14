@@ -30,6 +30,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/daemon"
 	"github.com/opensvc/om3/v3/daemon/daemonsys"
+	"github.com/opensvc/om3/v3/drivers/resfsflag"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -378,6 +379,9 @@ func (t *T) run(ctx context.Context) error {
 
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return fmt.Errorf("create mandatory directories: %w", err)
+	}
+	if err := resfsflag.MakeBaseDir(log.Warnf); err != nil {
+		log.Warnf("fs.flag base directory: %s", err)
 	}
 	setupCrashReport()
 	unlock, err := getLock("Run")
