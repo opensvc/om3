@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -745,6 +746,13 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 		// short of its device, as by a device grown by hand, holds more
 		// than any size below the device asks, and is grown onto it, as
 		// asking for the size of the device does.
+		//
+		// A filesystem alone: a volume group or a drbd device grown onto
+		// what is below it takes the whole of it, which asking for less
+		// than it holds is not asking for.
+		if !isFilesystem(head.r) {
+			return plan, nil
+		}
 		if spanner, ok := head.r.(resource.ResizeSpansBelow); !ok || !spanner.ResizeSpansBelow() {
 			return plan, nil
 		}
@@ -761,6 +769,11 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 		return plan, nil
 	}
 	return buildResizePlanTo(ctx, chain, to, home, stages, 0)
+}
+
+// isFilesystem says r is a filesystem resource.
+func isFilesystem(r resource.Driver) bool {
+	return r.DriverID().Group == driver.GroupFS
 }
 
 // buildResizePlanTo works out what growing the head of a chain to the size to

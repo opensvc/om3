@@ -897,7 +897,7 @@ func TestTheDeviceOfALogicalVolumeIsHandledByTheVolume(t *testing.T) {
 // is how it is repaired (cards 281 and 283). Nothing below it is asked.
 func TestAFilesystemAskedLessIsGrownOntoItsDevice(t *testing.T) {
 	chain := []resource.Driver{
-		&spanningLink{fakeLink{rid: "fs#1", has: 16 * mi}},
+		&fsLink{spanningLink{fakeLink{rid: "fs#1", has: 16 * mi}}},
 		&fakeLink{rid: "disk#1", has: 16 * mi},
 	}
 	p := plan(t, chain, "14m")
@@ -906,4 +906,24 @@ func TestAFilesystemAskedLessIsGrownOntoItsDevice(t *testing.T) {
 	assert.False(t, fs.Skip)
 	assert.Equal(t, "grown onto what is below it", fs.Comment)
 	assert.True(t, stepOf(t, p, "disk#1").Skip, "nothing below is asked")
+}
+
+// fsLink is a filesystem spanning its device.
+type fsLink struct {
+	spanningLink
+}
+
+func (t *fsLink) DriverID() driver.ID { return driver.NewID(driver.GroupFS, "fake") }
+
+// A volume group or a drbd device asked less than it holds is not grown onto
+// what is below it: that takes the whole of it, which asking for less is not
+// asking for. Only a filesystem is repaired so.
+func TestASpanningDiskAskedLessIsNothingToDo(t *testing.T) {
+	chain := []resource.Driver{
+		&spanningLink{fakeLink{rid: "disk#2", has: 92 * mi}},
+		&fakeLink{rid: "disk#1", has: 96 * mi},
+	}
+	p := plan(t, chain, "64m")
+	assert.False(t, p.HasWork())
+	assert.Empty(t, p.Steps)
 }
