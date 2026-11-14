@@ -164,7 +164,7 @@ func setPaths(root string) {
 			Run:          filepath.FromSlash(fmt.Sprintf("/run/%s", Program)),
 			Backup:       filepath.FromSlash(fmt.Sprintf("/var/lib/%s/backup", Program)),
 			Tmp:          filepath.FromSlash(fmt.Sprintf("/var/tmp/%s", Program)),
-			TmpNs:        filepath.FromSlash(fmt.Sprintf("/var/tmp/namespaces/%s", Program)),
+			TmpNs:        filepath.FromSlash(fmt.Sprintf("/var/tmp/%s/namespaces", Program)),
 			Doc:          filepath.FromSlash(fmt.Sprintf("/usr/share/doc/%s", Program)),
 			HTML:         filepath.FromSlash(fmt.Sprintf("/usr/share/%s/html", Program)),
 			Drivers:      filepath.FromSlash(fmt.Sprintf("/usr/libexec/%s", Program)),

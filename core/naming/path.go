@@ -469,7 +469,7 @@ func (t Path) VarDir() string {
 func (t Path) TmpDir() string {
 	var s string
 	switch {
-	case t.Namespace != "", t.Namespace != NsRoot:
+	case t.Namespace != "" && t.Namespace != NsRoot:
 		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.TmpNs, t.Namespace, t.Kind)
 	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Tmp)
