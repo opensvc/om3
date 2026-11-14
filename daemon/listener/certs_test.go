@@ -50,13 +50,17 @@ func TestWriteCertFile(t *testing.T) {
 }
 
 // The directory of the certificate files, as a tmpfs a former daemon left
-// mounted mode 1777, is made the daemon user's alone.
+// mounted mode 1777, is made the daemon user's alone, and the file of the
+// private key of the authority a former version installed is removed.
 func TestSecureCertDir(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.Chmod(dir, 0o1777))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ca_private_key"), []byte("key"), 0o600))
 	require.NoError(t, secureCertDir(dir))
 	fi, err := os.Stat(dir)
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o700), fi.Mode().Perm())
 	assert.Zero(t, fi.Mode()&os.ModeSticky)
+	assert.NoFileExists(t, filepath.Join(dir, "ca_private_key"))
+	require.NoError(t, secureCertDir(dir), "with no key file left")
 }

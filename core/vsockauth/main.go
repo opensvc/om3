@@ -69,12 +69,8 @@ type claims struct {
 	jwt.RegisteredClaims
 }
 
-// LoadSignKey reads the key a hypervisor signs with.
-func LoadSignKey(file string) (*rsa.PrivateKey, error) {
-	b, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
+// ParseSignKey parses the key a hypervisor signs with, in PEM.
+func ParseSignKey(b []byte) (*rsa.PrivateKey, error) {
 	return jwt.ParseRSAPrivateKeyFromPEM(b)
 }
 

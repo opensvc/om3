@@ -119,7 +119,7 @@ func TestGuestUUID(t *testing.T) {
 	assert.Equal(t, guest, s)
 }
 
-func TestLoadSignKey(t *testing.T) {
-	_, err := LoadSignKey(filepath.Join(t.TempDir(), "none"))
+func TestParseSignKey(t *testing.T) {
+	_, err := ParseSignKey([]byte("not a key"))
 	assert.Error(t, err)
 }
