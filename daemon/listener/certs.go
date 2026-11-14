@@ -2,10 +2,12 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -21,8 +23,6 @@ import (
 )
 
 var (
-	certUsr                  = daemonenv.Username
-	certGrp                  = daemonenv.Groupname
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
 
@@ -81,7 +81,19 @@ func (t *T) stopCertFS(ctx context.Context) error {
 	return nil
 }
 
+// mountCertFS mounts the tmpfs of the certificate files, root's alone: the
+// root of a tmpfs is everyone's to write in otherwise, as it was, mode 1777.
+// A tmpfs already mounted there, as one a daemon stopping uncleanly left,
+// and the directory of a node with no findmnt, are made root's alone too,
+// before any file is written in them.
 func (t *T) mountCertFS(ctx context.Context) error {
+	if err := t.mountOrReuseCertFS(ctx); err != nil {
+		return err
+	}
+	return secureCertDir(rawconfig.Paths.Certs)
+}
+
+func (t *T) mountOrReuseCertFS(ctx context.Context) error {
 	if v, err := findmnt.HasMntWithTypes(ctx, []string{"tmpfs"}, rawconfig.Paths.Certs); err != nil {
 		if err1, ok := err.(*exec.Error); ok {
 			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
@@ -101,11 +113,66 @@ func (t *T) mountCertFS(ctx context.Context) error {
 	}
 	tmpfs := filesystems.FromType("tmpfs")
 	t.log.Infof("mounting cert fs %s", rawconfig.Paths.Certs)
-	if err := tmpfs.Mount(ctx, "none", rawconfig.Paths.Certs, "rw,nosuid,nodev,noexec,relatime,size=1m"); err != nil {
+	if err := tmpfs.Mount(ctx, "none", rawconfig.Paths.Certs, "rw,nosuid,nodev,noexec,relatime,size=1m,mode=0700"); err != nil {
 		return fmt.Errorf("mount cert fs can't mount %s: %w", rawconfig.Paths.Certs, err)
 	}
 	t.log.Infof("mounted cert fs %s", rawconfig.Paths.Certs)
 	return nil
+}
+
+// secureCertDir makes the directory of the certificate files the daemon
+// user's, mode 0700, and removes the file of the private key of the cluster
+// authority a former version installed there: the key is read from
+// system/sec/ca where it signs.
+func secureCertDir(dir string) error {
+	if err := os.Chown(dir, os.Geteuid(), os.Getegid()); err != nil {
+		return fmt.Errorf("secure cert dir %s: %w", dir, err)
+	}
+	if err := os.Chmod(dir, certDirMode); err != nil {
+		return fmt.Errorf("secure cert dir %s: %w", dir, err)
+	}
+	if err := os.Remove(filepath.Join(dir, "ca_private_key")); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("secure cert dir %s: %w", dir, err)
+	}
+	return nil
+}
+
+// writeCertFile writes b to the certificate file p, through a new file
+// renamed over it: a file someone made at p, or holds open, never receives
+// the content, and the listeners reading p never read it half written.
+func writeCertFile(p string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(p), "."+filepath.Base(p)+".*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	defer func() { _ = os.Remove(tmp) }()
+	if _, err := f.Write(b); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Chmod(certFileMode); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, p)
+}
+
+// keyDecoder is a sec, decoding its keys.
+type keyDecoder interface {
+	DecodeKey(name string) ([]byte, error)
+}
+
+// installSecKey writes the key name of the sec to the certificate file p.
+func installSecKey(sec keyDecoder, name, p string) error {
+	b, err := sec.DecodeKey(name)
+	if err != nil {
+		return err
+	}
+	return writeCertFile(p, b)
 }
 
 func (t *T) installCaFiles(clusterName string) error {
@@ -124,34 +191,10 @@ func (t *T) installCaFiles(clusterName string) error {
 		return fmt.Errorf("install ca files can't get %s: %w", caPath, err)
 	}
 
-	opt := object.KVInstall{
-		AccessControl: object.KVInstallAccessControl{
-			Perm:    certFileMode,
-			DirPerm: certDirMode,
-			User:    certUsr,
-			Group:   certGrp,
-		},
+	if err := installSecKey(caSec, "certificate_chain", daemonenv.CACertChainFile()); err != nil {
+		return fmt.Errorf("install ca files can't dump ca certificate_chain to %s: %w", daemonenv.CACertChainFile(), err)
 	}
-
-	// ca_certificates for jwt
-
-	opt.FromPattern = "private_key"
-	opt.ToPath = daemonenv.CAKeyFile()
-	opt.Required = true
-	if _, err := caSec.InstallKeyTo(opt); err != nil {
-		return fmt.Errorf("install ca files can't dump ca private_key to %s: %w", opt.ToPath, err)
-	} else {
-		t.log.Infof("install ca files dump ca private_key to %s", opt.ToPath)
-	}
-
-	opt.FromPattern = "certificate_chain"
-	opt.ToPath = daemonenv.CACertChainFile()
-	opt.Required = true
-	if _, err := caSec.InstallKeyTo(opt); err != nil {
-		return fmt.Errorf("install ca files can't dump ca certificate_chain to %s: %w", opt.ToPath, err)
-	} else {
-		t.log.Infof("install ca files dump ca certificate_chain to %s", opt.ToPath)
-	}
+	t.log.Infof("install ca files dump ca certificate_chain to %s", daemonenv.CACertChainFile())
 
 	// ca_certificates
 	var b []byte
@@ -181,7 +224,7 @@ func (t *T) installCaFiles(clusterName string) error {
 	}
 	if len(b) > 0 {
 		dst := daemonenv.CAsCertFile()
-		if err := os.WriteFile(dst, b, certFileMode); err != nil {
+		if err := writeCertFile(dst, b); err != nil {
 			return fmt.Errorf("install ca files can't create %s: %w", dst, err)
 		}
 		t.log.Infof("install ca files updated %s ca:%s", dst, validCA)
@@ -207,32 +250,15 @@ func (t *T) installCertFiles(clusterName string) error {
 		return fmt.Errorf("install cert files can't get %s: %w", certPath, err)
 	}
 
-	opt := object.KVInstall{
-		AccessControl: object.KVInstallAccessControl{
-			Perm:    certFileMode,
-			DirPerm: certDirMode,
-			User:    certUsr,
-			Group:   certGrp,
-		},
+	if err := installSecKey(certSec, "private_key", daemonenv.KeyFile()); err != nil {
+		return fmt.Errorf("install cert files can't dump cert private_key to %s: %w", daemonenv.KeyFile(), err)
 	}
+	t.log.Infof("install cert files dump cert private_key to %s", daemonenv.KeyFile())
 
-	opt.FromPattern = "private_key"
-	opt.ToPath = daemonenv.KeyFile()
-	opt.Required = true
-	if _, err := certSec.InstallKeyTo(opt); err != nil {
-		return fmt.Errorf("install cert files can't dump cert private_key to %s: %w", opt.ToPath, err)
-	} else {
-		t.log.Infof("install cert files dump cert private_key to %s", opt.ToPath)
+	if err := installSecKey(certSec, "certificate_chain", daemonenv.CertChainFile()); err != nil {
+		return fmt.Errorf("install cert files can't dump cert certificate_chain to %s: %w", daemonenv.CertChainFile(), err)
 	}
-
-	opt.FromPattern = "certificate_chain"
-	opt.ToPath = daemonenv.CertChainFile()
-	opt.Required = true
-	if _, err := certSec.InstallKeyTo(opt); err != nil {
-		return fmt.Errorf("install cert files can't dump cert certificate_chain to %s: %w", opt.ToPath, err)
-	} else {
-		t.log.Infof("install cert files dump cert certificate_chain to %s", opt.ToPath)
-	}
+	t.log.Infof("install cert files dump cert certificate_chain to %s", daemonenv.CertChainFile())
 
 	return nil
 }

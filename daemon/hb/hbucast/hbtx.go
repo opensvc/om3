@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/stagger"
 )
 
 type (
@@ -27,8 +29,12 @@ type (
 		intf        string
 		interval    time.Duration
 		timeout     time.Duration
-		localIP     net.IP
+		localIPs    ipList
 		lastNodeErr sync.Map
+
+		// addrNotLocal are the addresses the name addr resolved to, none of
+		// which the node holds, warned about once.
+		addrNotLocal ipList
 
 		name   string
 		log    *plog.Logger
@@ -48,10 +54,11 @@ type (
 type sendRequest struct {
 	data []byte
 
-	// localIP is the source address the worker must dial from. It is
-	// carried by the request because t.localIP is refreshed by the Start
-	// goroutine, which is the only one allowed to read or write it.
-	localIP net.IP
+	// localIPs are the source addresses the worker dials from, the one
+	// of the family of the peer address. They are carried by the request
+	// because t.localIPs is refreshed by the Start goroutine, which is the
+	// only one allowed to read or write it.
+	localIPs ipList
 }
 
 // sendWorker serializes the sends to one peer node
@@ -127,11 +134,11 @@ func (t *tx) Ctx() context.Context {
 }
 
 func (t *tx) streamPeerDesc(addr string) string {
-	if len(t.localIP) > 0 {
+	if len(t.localIPs) > 0 {
 		if t.intf != "" {
-			return fmt.Sprintf("%s@%s → %s", t.localIP, t.intf, addr)
+			return fmt.Sprintf("%s@%s → %s", t.localIPs, t.intf, addr)
 		} else {
-			return fmt.Sprintf("%s → %s", t.localIP, addr)
+			return fmt.Sprintf("%s → %s", t.localIPs, addr)
 		}
 	} else {
 		if t.intf != "" {
@@ -144,7 +151,7 @@ func (t *tx) streamPeerDesc(addr string) string {
 
 // sendToNode queues a send request for a specific node
 //
-// Must be called from the Start goroutine: it reads t.localIP.
+// Must be called from the Start goroutine: it reads t.localIPs.
 func (t *tx) sendToNode(node string, b []byte) {
 	w, ok := t.sendWorkers[node]
 	if !ok {
@@ -155,7 +162,7 @@ func (t *tx) sendToNode(node string, b []byte) {
 
 	// Try to send without blocking first (non-blocking send)
 	select {
-	case w.queue <- sendRequest{data: b, localIP: t.localIP}:
+	case w.queue <- sendRequest{data: b, localIPs: t.localIPs}:
 		// Successfully queued
 	default:
 		// Queue is full, drop the message to avoid blocking
@@ -175,9 +182,9 @@ func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
 		// The worker connection is closed on every exit path, and by Stop
 		// when it has to interrupt a send.
 		defer w.closeConn()
-		// connLocalIP is the source address the connection is bound to, to
-		// detect a local ip change while it is established
-		var connLocalIP net.IP
+		// connLocalIPs are the source addresses the connection was dialed
+		// from, to detect a local ip change while it is established
+		var connLocalIPs ipList
 
 		for {
 			select {
@@ -192,25 +199,16 @@ func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
 
 				conn := w.getConn()
 
-				if conn != nil && !connLocalIP.Equal(req.localIP) {
+				if conn != nil && !connLocalIPs.Equal(req.localIPs) {
 					// The local ip changed since we dialed: the
 					// connection is bound to an address the node may
 					// not own anymore, redial from the new one.
-					t.log.Infof("local ip changed from %s to %s, reconnect to %s", connLocalIP, req.localIP, addr)
+					t.log.Infof("local ip changed from %s to %s, reconnect to %s", connLocalIPs, req.localIPs, addr)
 					w.closeConn()
 					conn = nil
 				}
 
 				if conn == nil {
-					// Create new connection with context-aware dialer
-					localAddr := net.TCPAddr{
-						IP:   req.localIP,
-						Port: 0,
-					}
-					dialer := &net.Dialer{
-						Timeout:   t.timeout,
-						LocalAddr: &localAddr,
-					}
 					// Use a separate context for dial that respects t.ctx.
 					// Cancel as soon as the dial returns: cancelling after a
 					// successful dial doesn't affect the connection, and this
@@ -218,14 +216,14 @@ func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
 					// deferred cancel would pile up on its stack, one per
 					// reconnect.
 					dialCtx, dialCancel := context.WithTimeout(t.ctx, t.timeout)
-					newConn, err := dialer.DialContext(dialCtx, "tcp", addr)
+					newConn, err := dialPeer(dialCtx, t.timeout, req.localIPs, addr)
 					dialCancel()
 					if err != nil {
 						t.handleSendError(node, err)
 						continue
 					}
 					conn = newConn
-					connLocalIP = req.localIP
+					connLocalIPs = req.localIPs
 					w.setConn(conn)
 				}
 
@@ -314,19 +312,23 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		defer localIPTicker.Stop()
 
 		updateLocalIP := func() {
-			if localIP, err := t.defaultLocalIP(); err != nil {
+			if localIPs, err := t.defaultLocalIPs(); err != nil {
 				t.log.Errorf("%s", err)
-			} else if !t.localIP.Equal(localIP) {
-				t.log.Infof("set local ip to %s", localIP)
-				t.localIP = localIP
+			} else if !t.localIPs.Equal(localIPs) {
+				if len(localIPs) == 0 {
+					t.log.Infof("undetermined local ip")
+				} else {
+					t.log.Infof("set local ip to %s", localIPs)
+				}
+				t.localIPs = localIPs
 			}
 		}
 
-		if localIP, err := t.defaultLocalIP(); err != nil {
+		if localIPs, err := t.defaultLocalIPs(); err != nil {
 			t.log.Errorf("%s", err)
-		} else if localIP != nil {
-			t.log.Infof("set local ip to %s", localIP)
-			t.localIP = localIP
+		} else if len(localIPs) > 0 {
+			t.log.Infof("set local ip to %s", localIPs)
+			t.localIPs = localIPs
 		} else {
 			t.log.Infof("undetermined local ip")
 		}
@@ -365,11 +367,41 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	return nil
 }
 
-// defaultLocalIP returns the ip address of the local nodename, so rx on peer
-// nodes see messages coming from a known cluster member.
-func (t *tx) defaultLocalIP() (net.IP, error) {
+// ipList is the source addresses a heartbeat is sent from, in the order
+// they are preferred.
+type ipList []net.IP
+
+// Equal says l and other hold the same addresses in the same order.
+func (l ipList) Equal(other ipList) bool {
+	return slices.EqualFunc(l, other, func(a, b net.IP) bool { return a.Equal(b) })
+}
+
+func (l ipList) String() string {
+	s := make([]string, len(l))
+	for i, ip := range l {
+		s[i] = ip.String()
+	}
+	return strings.Join(s, ",")
+}
+
+// defaultLocalIPs returns the source addresses of the heartbeat, so rx on
+// peer nodes see messages coming from a known cluster member: the address
+// of addr, or the first address of the local nodename.
+//
+// An addr given by its name is resolved, as the nodename is, and the
+// addresses it resolves to that the node holds are the ones sent from, the
+// one of the family of each peer. It was sent from no address in
+// particular, so from the one the kernel picks, as a temporary IPv6
+// address, which the rx of the peers, accepting the addresses the name of
+// the node resolves to, refused. A name resolving to no address the node
+// holds is sent from the address the kernel picks, as before, with a
+// warning.
+func (t *tx) defaultLocalIPs() (ipList, error) {
 	if t.addr != "" {
-		return net.ParseIP(t.addr), nil
+		if ip := net.ParseIP(t.addr); ip != nil {
+			return ipList{ip}, nil
+		}
+		return t.addrLocalIPs()
 	}
 	addrs, err := net.DefaultResolver.LookupIPAddr(t.ctx, hostname.Hostname())
 	if err != nil {
@@ -378,7 +410,116 @@ func (t *tx) defaultLocalIP() (net.IP, error) {
 	if len(addrs) == 0 {
 		return nil, fmt.Errorf("lookup sender addr: %s: no address found ", t.addr)
 	}
-	return addrs[0].IP, nil
+	return ipList{addrs[0].IP}, nil
+}
+
+// addrLocalIPs returns the addresses the name addr resolves to that the node
+// holds, in the order of the resolver.
+func (t *tx) addrLocalIPs() (ipList, error) {
+	addrs, err := lookupIPAddr(t.ctx, t.addr)
+	if err != nil {
+		return nil, fmt.Errorf("lookup sender addr: %s: %s", t.addr, err)
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("lookup sender addr: %s: no address found", t.addr)
+	}
+	var resolved, held ipList
+	for _, a := range addrs {
+		resolved = append(resolved, a.IP)
+		if local, err := isLocalIP(a.IP); err != nil {
+			return nil, fmt.Errorf("lookup sender addr: %s: %s", t.addr, err)
+		} else if local {
+			held = append(held, a.IP)
+		}
+	}
+	if len(held) == 0 {
+		if !t.addrNotLocal.Equal(resolved) {
+			t.log.Warnf("sender addr %s resolves to %s, which the node does not hold: send from the address the kernel picks", t.addr, resolved)
+			t.addrNotLocal = resolved
+		}
+		return nil, nil
+	}
+	t.addrNotLocal = nil
+	return held, nil
+}
+
+// peerAttemptDelay is how long the connect to an address of a peer runs
+// before the connect to its next address starts too.
+var peerAttemptDelay = 300 * time.Millisecond
+
+// dialPeer connects to addr from the address of localIPs of the family of a
+// peer address, the addresses of the peer tried in the order of the resolver,
+// each one starting when the previous one failed or ran peerAttemptDelay:
+// an address that does not answer does not hold the others for the whole
+// timeout. With no source, or none of the family of a peer address, as an
+// IPv6 source for a peer reached over IPv4 only, it connects from the
+// address the kernel picks: a source of another family can not reach it.
+func dialPeer(ctx context.Context, timeout time.Duration, localIPs ipList, addr string) (net.Conn, error) {
+	unbound := func() (net.Conn, error) {
+		return (&net.Dialer{Timeout: timeout}).DialContext(ctx, "tcp", addr)
+	}
+	if len(localIPs) == 0 {
+		return unbound()
+	}
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	var peerIPs []net.IP
+	if ip := net.ParseIP(host); ip != nil {
+		peerIPs = []net.IP{ip}
+	} else {
+		addrs, err := lookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+		for _, a := range addrs {
+			peerIPs = append(peerIPs, a.IP)
+		}
+	}
+	var attempts []stagger.Attempt
+	for _, peer := range peerIPs {
+		i := slices.IndexFunc(localIPs, func(local net.IP) bool { return sameFamily(local, peer) })
+		if i < 0 {
+			continue
+		}
+		d := &net.Dialer{Timeout: timeout, LocalAddr: &net.TCPAddr{IP: localIPs[i]}}
+		peerAddr := net.JoinHostPort(peer.String(), port)
+		attempts = append(attempts, func(ctx context.Context) (net.Conn, error) {
+			return d.DialContext(ctx, "tcp", peerAddr)
+		})
+	}
+	if len(attempts) == 0 {
+		return unbound()
+	}
+	return stagger.Dial(ctx, peerAttemptDelay, attempts)
+}
+
+// sameFamily says a and b are both IPv4, or both IPv6.
+func sameFamily(a, b net.IP) bool {
+	return (a.To4() != nil) == (b.To4() != nil)
+}
+
+var (
+	// lookupIPAddr resolves the name of an address.
+	lookupIPAddr = net.DefaultResolver.LookupIPAddr
+
+	// interfaceAddrs returns the addresses of the node.
+	interfaceAddrs = net.InterfaceAddrs
+)
+
+// isLocalIP says the node holds ip.
+func isLocalIP(ip net.IP) (bool, error) {
+	addrs, err := interfaceAddrs()
+	if err != nil {
+		return false, err
+	}
+	for _, a := range addrs {
+		if n, ok := a.(*net.IPNet); ok && n.IP.Equal(ip) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // handleSendError handles send errors with deduplication logging

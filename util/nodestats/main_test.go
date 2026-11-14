@@ -136,3 +136,34 @@ func TestCollectRefusesAnEndNotAfterTheBegin(t *testing.T) {
 	begin := now.Add(-time.Hour).Local().Truncate(time.Second).Format(time.RFC3339)
 	assert.Contains(t, err.Error(), "is not after the begin "+begin)
 }
+
+// A sysstat 10.x, as RHEL 7's, names the cpu samples cpu-load-all when asked
+// -u ALL: they are read as the cpu-load of the later ones. The sample is in
+// the form sadf 10.1.5 prints, with the keys it prints.
+func TestAddSadfCPULoadAll(t *testing.T) {
+	b, err := os.ReadFile("testdata/sadf-10.1.5.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	begin := time.Date(2026, 9, 30, 22, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 9, 30, 22, 15, 0, 0, time.UTC)
+	stats := Stats{}
+	if err := stats.addSadf(b, begin, end); err != nil {
+		t.Fatal(err)
+	}
+	cpu := stats["cpu"]
+	if len(cpu.Rows) != 3 {
+		t.Fatalf("cpu rows: %v", cpu.Rows)
+	}
+	for _, col := range []string{"cpu", "usr", "sys", "iowait", "idle"} {
+		if column(cpu, col) < 0 {
+			t.Errorf("cpu: no %s column in %v", col, cpu.Columns)
+		}
+	}
+	if got := cpu.Rows[2][column(cpu, "idle")]; got != "97.65" {
+		t.Errorf("idle of cpu 1: %s", got)
+	}
+	if len(stats["mem_u"].Rows) != 1 || len(stats["proc"].Rows) != 1 {
+		t.Errorf("the other groups: %v", stats)
+	}
+}

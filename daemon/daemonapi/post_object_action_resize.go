@@ -144,11 +144,21 @@ func writeResizeTarget(eCtx echo.Context, p naming.Path, size string) (time.Time
 	if err != nil {
 		return updatedAt, code, err
 	}
+	configured, err := configuredSize(p)
+	op, write := resizeTargetOp(to, configured, err == nil)
+	if !write {
+		// The size configured already: the request is the one naming no
+		// size, for the configuration the orchestration is for.
+		if mtime := file.ModTime(p.ConfigFile()); !mtime.IsZero() {
+			updatedAt = mtime
+		}
+		return updatedAt, http.StatusOK, nil
+	}
 	log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionResize"), p)
 	if err := refuseIdleGrowth(eCtx.Request().Context(), log, p, to); err != nil {
 		return updatedAt, http.StatusBadRequest, err
 	}
-	sets := keyop.ParseOps([]string{fmt.Sprintf("size=%d", to)})
+	sets := keyop.ParseOps([]string{op})
 	if err := refuseSizeWhileResizing(p, sets); err != nil {
 		return updatedAt, http.StatusConflict, err
 	}
@@ -165,6 +175,18 @@ func writeResizeTarget(eCtx echo.Context, p naming.Path, size string) (time.Time
 		updatedAt = mtime
 	}
 	return updatedAt, http.StatusOK, nil
+}
+
+// resizeTargetOp returns the keyword operation writing the size to reach,
+// and false when the configuration holds it already: writing it again would
+// only change its form, as 160mi to 167772160, rewriting the configuration of
+// every node for nothing. The size is written in the form the size reached
+// is recorded in, so the record of a resize reaching it writes nothing.
+func resizeTargetOp(to, configured int64, known bool) (string, bool) {
+	if known && to == configured {
+		return "", false
+	}
+	return "size=" + sizeconv.ExactBSizeCompact(float64(to)), true
 }
 
 // resizeTarget is the size to reach.

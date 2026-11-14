@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io"
@@ -36,7 +37,6 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/core/vsockauth"
-	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -1414,7 +1414,7 @@ func (t *T) EncapAPIBearer(ctx context.Context) (string, error) {
 	if guest == "" {
 		return "", fmt.Errorf("the definition of %s has no uuid", t.Name)
 	}
-	key, err := vsockauth.LoadSignKey(daemonenv.CAKeyFile())
+	key, err := clusterSignKey()
 	if err != nil {
 		return "", err
 	}
@@ -1496,11 +1496,21 @@ func withHypervisorKey(args []string, oem string) []string {
 	return append(slices.Clone(args), "--sysinfo", "oemStrings.entry0="+oem)
 }
 
+// clusterSignKey returns the key the cluster signs the vsock tokens with,
+// the private key of the cluster authority.
+func clusterSignKey() (*rsa.PrivateKey, error) {
+	b, err := object.ClusterCAPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	return vsockauth.ParseSignKey(b)
+}
+
 // hypervisorOEMString returns the string of the firmware of a guest naming the
 // key of the cluster, empty when it can not tell: the daemon of the guest then
 // grants nothing, and the guest is reached the other ways.
 func hypervisorOEMString() (string, error) {
-	key, err := vsockauth.LoadSignKey(daemonenv.CAKeyFile())
+	key, err := clusterSignKey()
 	if err != nil {
 		return "", err
 	}

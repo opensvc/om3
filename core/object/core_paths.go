@@ -2,6 +2,8 @@ package object
 
 import (
 	"os"
+
+	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
 func (t *core) VarDir() string {
@@ -48,7 +50,7 @@ func (t *core) tmpDir() string {
 	}
 	t.paths.tmpDir = t.path.TmpDir()
 	if !t.volatile {
-		if err := os.MkdirAll(t.paths.tmpDir, os.ModePerm); err != nil {
+		if err := rawconfig.MkdirTmp(t.paths.tmpDir); err != nil {
 			t.log.Errorf("%s", err)
 		}
 	}

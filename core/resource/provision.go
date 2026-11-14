@@ -289,7 +289,15 @@ func unprovision(ctx context.Context, t Driver, leader bool) error {
 	return nil
 }
 
+// unprovisionStop stops a resource before its unprovision. An unprovision of
+// selected resources flags them stopped, as a stop of them does: the daemon
+// restarted a resource unprovisioned with restart set, as a share it
+// exported again, the unprovision undone. A provision or a start of the
+// resource clears the flag.
 func unprovisionStop(ctx context.Context, t Driver, leader bool) error {
+	if err := createStoppedIfHasResourceSelector(ctx, t); err != nil {
+		return err
+	}
 	switch o := t.(type) {
 	case UnprovisionStoper:
 		return o.UnprovisionStop(ctx, leader)

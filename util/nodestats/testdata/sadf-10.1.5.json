@@ -1,0 +1,24 @@
+{"sysstat": {
+	"hosts": [
+		{
+			"nodename": "node1",
+			"sysname": "Linux",
+			"release": "3.10.0-1160.el7.x86_64",
+			"machine": "x86_64",
+			"number-of-cpus": 2,
+			"file-date": "2026-09-30",
+			"statistics": [
+				{
+					"timestamp": {"date": "2026-09-30", "time": "22:10:01", "utc": 1, "interval": 600},
+					"cpu-load-all": [
+						{"cpu": "all", "usr": 1.52, "nice": 0.00, "sys": 0.88, "iowait": 0.05, "steal": 0.00, "irq": 0.00, "soft": 0.03, "guest": 0.00, "gnice": 0.00, "idle": 97.52},
+						{"cpu": "0", "usr": 1.60, "nice": 0.00, "sys": 0.91, "iowait": 0.06, "steal": 0.00, "irq": 0.00, "soft": 0.04, "guest": 0.00, "gnice": 0.00, "idle": 97.39},
+						{"cpu": "1", "usr": 1.44, "nice": 0.00, "sys": 0.85, "iowait": 0.04, "steal": 0.00, "irq": 0.00, "soft": 0.02, "guest": 0.00, "gnice": 0.00, "idle": 97.65}
+					],
+					"memory": {"memfree": 3172340, "memused": 708560, "memused-percent": 18.26, "buffers": 2108, "cached": 412348, "commit": 1104876, "commit-percent": 22.60, "active": 389004, "inactive": 207612, "dirty": 40, "swpfree": 1048572, "swpused": 0, "swpused-percent": 0.00, "swpcad": 0, "swpcad-percent": 0.00},
+					"queue": {"runq-sz": 1, "plist-sz": 191, "ldavg-1": 0.00, "ldavg-5": 0.01, "ldavg-15": 0.05, "blocked": 0}
+				}
+			]
+		}
+	]
+}}

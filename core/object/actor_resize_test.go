@@ -783,9 +783,14 @@ func TestASizeThatGrowsNothingIsRefused(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, p.HasWork(), "the configured size is nothing to do, not refused")
 
+	// With no configured size to compare to, nothing is refused, and the
+	// bottom is asked the size given, the head holding what it hands up.
 	p, err = ask("130m", 0)
 	require.NoError(t, err)
-	assert.False(t, p.HasWork(), "with no configured size to compare to, nothing to do")
+	assert.True(t, p.HasWork())
+	assert.Equal(t, 130*mi, stepOf(t, p, "disk#1").To)
+	assert.False(t, stepOf(t, p, "disk#1").Skip)
+	assert.True(t, stepOf(t, p, "disk#3").Skip, "the lv above the group is not asked")
 }
 
 // The search for the smallest size growing a chain lands on a whole unit of
@@ -809,4 +814,116 @@ func TestTheSmallestGrowingBottom(t *testing.T) {
 
 	_, ok = smallestGrowingBottom(func(int64) int64 { return 0 }, 130*mi, 120*mi, 512)
 	assert.False(t, ok, "a chain no bottom grows")
+}
+
+// The bottom of a chain resized for a size is asked that size, not the
+// smallest bottom handing the head the size worked out from it: the volume
+// group hands out whole extents of 4m less 4m of metadata, so a bottom of
+// 162m hands up 156m, which a bottom of 160m hands up too. The bottom used to
+// be asked 160m, 2m short of the size the configuration then recorded at the
+// size reached, and the size asked could never be reached (card 300).
+func TestTheBottomIsAskedTheSizeGiven(t *testing.T) {
+	p := bottomPlan(t, drbdPoolChain(128*mi), "162m")
+	bottom := stepOf(t, p, "disk#1")
+	assert.Equal(t, 162*mi, bottom.To)
+	assert.False(t, bottom.Skip)
+	assert.Equal(t, 162*mi, p.Bottom)
+}
+
+// The bottom is asked the size given even when a level above holds what is
+// needed: a bottom a former resize left short of the size configured is
+// grown to it, and what spans it grown onto it. A bottom holding the size
+// changes nothing, as asking a volume for the size configured never did.
+func TestABottomLeftShortIsGrownToTheSizeGiven(t *testing.T) {
+	chain := drbdPoolChain(128 * mi)
+	chain[len(chain)-1] = &fakeLink{rid: "disk#1", has: 126 * mi}
+	ask := func(size string) ResizePlan {
+		change, err := sizeconv.ParseChange(size)
+		require.NoError(t, err)
+		p, err := buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{Bottom: true, Configured: 128 * mi})
+		require.NoError(t, err)
+		return p
+	}
+	p := ask("128m")
+	bottom := stepOf(t, p, "disk#1")
+	assert.False(t, bottom.Skip, "the bottom left short is grown")
+	assert.Equal(t, 128*mi, bottom.To)
+	assert.False(t, stepOf(t, p, "disk#2").Skip, "the volume group grown onto it")
+
+	chain[len(chain)-1] = &fakeLink{rid: "disk#1", has: 128 * mi}
+	assert.False(t, ask("128m").HasWork(), "a bottom holding the size changes nothing")
+}
+
+// vgLink is a volume group the logical volumes rest on, by its name.
+type vgLink struct {
+	fakeLink
+	name string
+}
+
+func (t *vgLink) ResizeProvides(context.Context) string { return t.name }
+
+// lvLink is a logical volume resting on its group, by the group name.
+type lvLink struct {
+	fakeLink
+	vg string
+}
+
+func (t *lvLink) ResizeRestsOn(context.Context) string { return t.vg }
+
+// The device of a logical volume is handled by the volume, not by its group,
+// which exposes it too: with a single logical volume, both expose one device,
+// and the group, first in the configuration, was taken, so a resize of the
+// filesystem on the volume grew the group and skipped the volume (card 283).
+func TestTheDeviceOfALogicalVolumeIsHandledByTheVolume(t *testing.T) {
+	ctx := context.Background()
+	vg := &vgLink{fakeLink: fakeLink{rid: "disk#2"}, name: "vg1"}
+	lv := &lvLink{fakeLink: fakeLink{rid: "disk#3"}, vg: "vg1"}
+	got := pickDeviceHandler(ctx, []deviceCandidate{{r: vg, exposed: 1}, {r: lv, exposed: 1}})
+	assert.Equal(t, "disk#3", got.RID(), "a group of a single volume")
+
+	got = pickDeviceHandler(ctx, []deviceCandidate{{r: vg, exposed: 3}, {r: lv, exposed: 1}})
+	assert.Equal(t, "disk#3", got.RID(), "a group of several volumes")
+
+	other := &lvLink{fakeLink: fakeLink{rid: "disk#4"}, vg: "vg2"}
+	got = pickDeviceHandler(ctx, []deviceCandidate{{r: vg, exposed: 1}, {r: other, exposed: 2}})
+	assert.Equal(t, "disk#2", got.RID(), "a volume resting on another group leaves the fewest devices to decide")
+
+	assert.Nil(t, pickDeviceHandler(ctx, nil))
+}
+
+// A filesystem asked less than its device is grown onto it all the same:
+// counted as its device, a filesystem left short of a device grown by hand
+// holds more than any size below the device, and asking it a size it holds
+// is how it is repaired (cards 281 and 283). Nothing below it is asked.
+func TestAFilesystemAskedLessIsGrownOntoItsDevice(t *testing.T) {
+	chain := []resource.Driver{
+		&fsLink{spanningLink{fakeLink{rid: "fs#1", has: 16 * mi}}},
+		&fakeLink{rid: "disk#1", has: 16 * mi},
+	}
+	p := plan(t, chain, "14m")
+	require.True(t, p.HasWork())
+	fs := stepOf(t, p, "fs#1")
+	assert.False(t, fs.Skip)
+	assert.Equal(t, "grown onto what is below it", fs.Comment)
+	assert.True(t, stepOf(t, p, "disk#1").Skip, "nothing below is asked")
+}
+
+// fsLink is a filesystem spanning its device.
+type fsLink struct {
+	spanningLink
+}
+
+func (t *fsLink) DriverID() driver.ID { return driver.NewID(driver.GroupFS, "fake") }
+
+// A volume group or a drbd device asked less than it holds is not grown onto
+// what is below it: that takes the whole of it, which asking for less is not
+// asking for. Only a filesystem is repaired so.
+func TestASpanningDiskAskedLessIsNothingToDo(t *testing.T) {
+	chain := []resource.Driver{
+		&spanningLink{fakeLink{rid: "disk#2", has: 92 * mi}},
+		&fakeLink{rid: "disk#1", has: 96 * mi},
+	}
+	p := plan(t, chain, "64m")
+	assert.False(t, p.HasWork())
+	assert.Empty(t, p.Steps)
 }

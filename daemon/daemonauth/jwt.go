@@ -37,10 +37,12 @@ type (
 		jwt.RegisteredClaims
 	}
 
-	// JWTFiler is the interface that groups SignKeyFile and VerifyKeyFile methods
-	// for JWT auth.
+	// JWTFiler is the interface that groups the SignKey and VerifyKeyFile
+	// methods for JWT auth: the sign key is read where it is kept, not
+	// from a file, and the verify keys from the file of the trusted
+	// certificates.
 	JWTFiler interface {
-		SignKeyFile() string
+		SignKey() ([]byte, error)
 		VerifyKeyFile() string
 	}
 )
@@ -205,26 +207,19 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *rsa.PrivateKey, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("missing sign and verify files")
 	}
-	var (
-		signKeyFile   = f.SignKeyFile()
-		verifyKeyFile = f.VerifyKeyFile()
-	)
-	if signKeyFile == "" && verifyKeyFile == "" {
-		return nil, nil, fmt.Errorf("jwt undefined files: sign key and verify key")
-	} else if signKeyFile == "" {
-		return nil, nil, fmt.Errorf("jwt undefined file: sign key")
-	} else if verifyKeyFile == "" {
+	verifyKeyFile := f.VerifyKeyFile()
+	if verifyKeyFile == "" {
 		return nil, nil, fmt.Errorf("jwt undefined file: verify key")
 	}
 
-	if signBytes, err = os.ReadFile(signKeyFile); err != nil {
-		return nil, nil, fmt.Errorf("%w: jwt sign key file", err)
+	if signBytes, err = f.SignKey(); err != nil {
+		return nil, nil, fmt.Errorf("%w: jwt sign key", err)
 	}
 	if verifyBytes, err = os.ReadFile(verifyKeyFile); err != nil {
 		return nil, nil, fmt.Errorf("%w: jwt verify key file", err)
 	}
 	if signKey, err = jwt.ParseRSAPrivateKeyFromPEM(signBytes); err != nil {
-		return nil, nil, fmt.Errorf("%w: parse RSA private key from sign key file content", err)
+		return nil, nil, fmt.Errorf("%w: parse RSA private key from sign key", err)
 	}
 	if verifyKey, err = jwt.ParseRSAPublicKeyFromPEM(verifyBytes); err != nil {
 		return nil, nil, fmt.Errorf("%w: parse RSA public key from verify key file content", err)
