@@ -647,18 +647,18 @@ func (t *actor) EncapNodes() ([]string, error) {
 // none.
 //
 // Several can: a volume group exposes the devices of its logical volumes, and
-// each logical volume its own. The one exposing the fewest devices is the one
-// handling p: a filesystem on a logical volume rests on the volume, not on
-// its group, which a resize walking down from the filesystem would grow
-// instead of the volume.
+// each logical volume its own. The one handling p is the one no other of them
+// rests on: a filesystem on a logical volume rests on the volume, not on its
+// group, which a resize walking down from the filesystem would grow instead
+// of the volume. Among those, the one exposing the fewest devices.
+//
+// Exposing the fewest devices alone tied a group of a single logical volume
+// with the volume, and the group, first in the configuration, was taken.
 func (t *actor) ResourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error) {
 	type exposedDevicer interface {
 		ExposedDevices(context.Context) device.L
 	}
-	var (
-		found  resource.Driver
-		fewest int
-	)
+	var candidates []deviceCandidate
 	for _, r := range t.Resources() {
 		h, ok := r.(exposedDevicer)
 		if !ok {
@@ -672,12 +672,52 @@ func (t *actor) ResourceHandlingDevice(ctx context.Context, p device.T) (resourc
 		exposed := h.ExposedDevices(ctx)
 		if v, err := exposed.Contains(p); err != nil {
 			return nil, err
-		} else if v && (found == nil || len(exposed) < fewest) {
-			found = r
-			fewest = len(exposed)
+		} else if v {
+			candidates = append(candidates, deviceCandidate{r: r, exposed: len(exposed)})
 		}
 	}
-	return found, nil
+	return pickDeviceHandler(ctx, candidates), nil
+}
+
+// deviceCandidate is a resource exposing a device, and how many devices it
+// exposes.
+type deviceCandidate struct {
+	r       resource.Driver
+	exposed int
+}
+
+// pickDeviceHandler returns the resource handling a device among the ones
+// exposing it: the one exposing the fewest devices among those no other rests
+// on.
+func pickDeviceHandler(ctx context.Context, candidates []deviceCandidate) resource.Driver {
+	restedOn := make(map[resource.Driver]bool)
+	for _, a := range candidates {
+		namer, ok := a.r.(resource.ResizeRestsOn)
+		if !ok {
+			continue
+		}
+		name := namer.ResizeRestsOn(ctx)
+		if name == "" {
+			continue
+		}
+		for _, b := range candidates {
+			if provider, ok := b.r.(resource.ResizeProvides); ok && b.r != a.r && provider.ResizeProvides(ctx) == name {
+				restedOn[b.r] = true
+			}
+		}
+	}
+	var found resource.Driver
+	fewest := 0
+	for _, c := range candidates {
+		if restedOn[c.r] {
+			continue
+		}
+		if found == nil || c.exposed < fewest {
+			found = c.r
+			fewest = c.exposed
+		}
+	}
+	return found
 }
 
 // ResourceHandlingFile returns the resource hosting a filename.

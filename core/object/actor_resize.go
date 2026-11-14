@@ -739,6 +739,25 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 		// Asking for exactly what is held is not nothing: a chain left uneven
 		// by a resize that stopped part way holds its size at the head and
 		// not below, and asking again is how it is finished.
+		//
+		// Nor is asking less of a head spanning what is below it, as a
+		// filesystem: it is counted as its device, so a filesystem left
+		// short of its device, as by a device grown by hand, holds more
+		// than any size below the device asks, and is grown onto it, as
+		// asking for the size of the device does.
+		if spanner, ok := head.r.(resource.ResizeSpansBelow); !ok || !spanner.ResizeSpansBelow() {
+			return plan, nil
+		}
+		plan.Stages = stages[0] + 1
+		levelSteps := make([][]ResizeStep, 0, len(chain))
+		for levelIndex, level := range chain {
+			levelSteps = append(levelSteps, notAskedSteps(ctx, level, stages[levelIndex], "holds the size asked"))
+		}
+		reverse(levelSteps)
+		for _, steps := range levelSteps {
+			plan.Steps = append(plan.Steps, steps...)
+		}
+		unskipSpansBelow(&plan)
 		return plan, nil
 	}
 	return buildResizePlanTo(ctx, chain, to, home, stages, 0)

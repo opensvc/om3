@@ -853,3 +853,57 @@ func TestABottomLeftShortIsGrownToTheSizeGiven(t *testing.T) {
 	chain[len(chain)-1] = &fakeLink{rid: "disk#1", has: 128 * mi}
 	assert.False(t, ask("128m").HasWork(), "a bottom holding the size changes nothing")
 }
+
+// vgLink is a volume group the logical volumes rest on, by its name.
+type vgLink struct {
+	fakeLink
+	name string
+}
+
+func (t *vgLink) ResizeProvides(context.Context) string { return t.name }
+
+// lvLink is a logical volume resting on its group, by the group name.
+type lvLink struct {
+	fakeLink
+	vg string
+}
+
+func (t *lvLink) ResizeRestsOn(context.Context) string { return t.vg }
+
+// The device of a logical volume is handled by the volume, not by its group,
+// which exposes it too: with a single logical volume, both expose one device,
+// and the group, first in the configuration, was taken, so a resize of the
+// filesystem on the volume grew the group and skipped the volume (card 283).
+func TestTheDeviceOfALogicalVolumeIsHandledByTheVolume(t *testing.T) {
+	ctx := context.Background()
+	vg := &vgLink{fakeLink: fakeLink{rid: "disk#2"}, name: "vg1"}
+	lv := &lvLink{fakeLink: fakeLink{rid: "disk#3"}, vg: "vg1"}
+	got := pickDeviceHandler(ctx, []deviceCandidate{{r: vg, exposed: 1}, {r: lv, exposed: 1}})
+	assert.Equal(t, "disk#3", got.RID(), "a group of a single volume")
+
+	got = pickDeviceHandler(ctx, []deviceCandidate{{r: vg, exposed: 3}, {r: lv, exposed: 1}})
+	assert.Equal(t, "disk#3", got.RID(), "a group of several volumes")
+
+	other := &lvLink{fakeLink: fakeLink{rid: "disk#4"}, vg: "vg2"}
+	got = pickDeviceHandler(ctx, []deviceCandidate{{r: vg, exposed: 1}, {r: other, exposed: 2}})
+	assert.Equal(t, "disk#2", got.RID(), "a volume resting on another group leaves the fewest devices to decide")
+
+	assert.Nil(t, pickDeviceHandler(ctx, nil))
+}
+
+// A filesystem asked less than its device is grown onto it all the same:
+// counted as its device, a filesystem left short of a device grown by hand
+// holds more than any size below the device, and asking it a size it holds
+// is how it is repaired (cards 281 and 283). Nothing below it is asked.
+func TestAFilesystemAskedLessIsGrownOntoItsDevice(t *testing.T) {
+	chain := []resource.Driver{
+		&spanningLink{fakeLink{rid: "fs#1", has: 16 * mi}},
+		&fakeLink{rid: "disk#1", has: 16 * mi},
+	}
+	p := plan(t, chain, "14m")
+	require.True(t, p.HasWork())
+	fs := stepOf(t, p, "fs#1")
+	assert.False(t, fs.Skip)
+	assert.Equal(t, "grown onto what is below it", fs.Comment)
+	assert.True(t, stepOf(t, p, "disk#1").Skip, "nothing below is asked")
+}
