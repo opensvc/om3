@@ -58,6 +58,9 @@ type (
 // Groups are the groups Collect knows, in the order they are collected.
 var Groups = []string{"cpu", "mem_u", "swap", "proc", "block", "blockdev", "netdev", "netdev_err", "fs_u"}
 
+// SysstatGroups are the groups read from sysstat.
+var SysstatGroups = []string{"cpu", "mem_u", "swap", "proc", "block", "blockdev", "netdev", "netdev_err"}
+
 // ErrNotSupported is returned on an operating system whose statistics are not
 // collected.
 var ErrNotSupported = errors.New("node statistics are collected on linux only")
@@ -187,6 +190,10 @@ type (
 			UTC  int    `json:"utc"`
 		} `json:"timestamp"`
 		CPULoad []map[string]any `json:"cpu-load"`
+
+		// CPULoadAll is the cpu-load of a sysstat 10.x, as RHEL 7's,
+		// which names it so when asked -u ALL.
+		CPULoadAll []map[string]any `json:"cpu-load-all"`
 		Memory  map[string]any   `json:"memory"`
 		Queue   map[string]any   `json:"queue"`
 		IO      map[string]any   `json:"io"`
@@ -266,7 +273,11 @@ func (stats Stats) addSadf(b []byte, begin, end time.Time) error {
 				continue
 			}
 			date := t.UTC().Format(time.RFC3339)
-			for _, cpu := range sample.CPULoad {
+			cpuLoad := sample.CPULoad
+			if len(cpuLoad) == 0 {
+				cpuLoad = sample.CPULoadAll
+			}
+			for _, cpu := range cpuLoad {
 				stats.add("cpu", cpuFields, date, cpu)
 			}
 			if sample.Memory != nil {

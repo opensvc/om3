@@ -159,7 +159,30 @@ func (t *Node) pushStatsRun(ctx context.Context, o PushStatsOptions, send func(c
 		}
 	}
 	result.End = end
+	t.logEmptySysstatGroups(result.Rows, disabled)
 	return result, nil
+}
+
+// logEmptySysstatGroups says which groups read from sysstat had no row while
+// others had, as the cpu of a sysstat naming its key in a way the reader
+// does not know: the push succeeds without them, and the collector shows no
+// history of them.
+func (t *Node) logEmptySysstatGroups(rows map[string]int, disabled []string) {
+	var empty []string
+	read := false
+	for _, group := range nodestats.SysstatGroups {
+		if slices.Contains(disabled, group) {
+			continue
+		}
+		if rows[group] == 0 {
+			empty = append(empty, group)
+		} else {
+			read = true
+		}
+	}
+	if read && len(empty) > 0 {
+		t.log.Infof("pushstats: sysstat gave no row of %s", strings.Join(empty, ", "))
+	}
 }
 
 // PushStatsDryRun reads the statistics a push would send, and sends nothing.
