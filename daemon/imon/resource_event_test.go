@@ -112,6 +112,13 @@ func TestAnMdEventRefreshesTheInstanceHoldingTheArray(t *testing.T) {
 	assert.False(t, m.eventRefreshScheduled, "another uuid")
 	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md125", UUID: "a:b:c:d"})
 	assert.True(t, m.eventRefreshScheduled)
+
+	// A kernel name a stale status of another resource names, reused by
+	// the array of this one, matches this one by its uuid.
+	m = newResourceEventTestManager()
+	m.instStatus["n1"].Resources["disk#2"] = resource.Status{Type: "disk.md", Info: map[string]any{"uuid": "a:b:c:d"}}
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md127", UUID: "a:b:c:d"})
+	assert.True(t, m.eventRefreshScheduled)
 }
 
 // An md event during an action of the object, here or on a peer, is not

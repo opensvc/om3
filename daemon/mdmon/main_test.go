@@ -106,6 +106,13 @@ func TestManagerTellsTheTakerByUUID(t *testing.T) {
 	assert.Equal(t, "569109e3:33b8d30c:12ee6eb1:08a1dee6", uuid)
 	_, ok = m.taker("md124")
 	assert.False(t, ok, "an array of another uuid")
+
+	// A kernel name a stale status still names, another array reused, is
+	// published with the uuid of the array, for its holder by uuid.
+	m.counter.Set("svc2", []string{"md125"})
+	uuid, ok = m.taker("md125")
+	assert.True(t, ok)
+	assert.Equal(t, "569109e3:33b8d30c:12ee6eb1:08a1dee6", uuid)
 }
 
 // The counter keys of the md resources: the kernel name of their array, else
