@@ -30,6 +30,10 @@ type (
 		localIP     net.IP
 		lastNodeErr sync.Map
 
+		// addrNotLocal is the address the name addr resolved to that the
+		// node does not hold, warned about once.
+		addrNotLocal net.IP
+
 		name   string
 		log    *plog.Logger
 		cmdC   chan<- interface{}
@@ -317,7 +321,11 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if localIP, err := t.defaultLocalIP(); err != nil {
 				t.log.Errorf("%s", err)
 			} else if !t.localIP.Equal(localIP) {
-				t.log.Infof("set local ip to %s", localIP)
+				if localIP == nil {
+					t.log.Infof("undetermined local ip")
+				} else {
+					t.log.Infof("set local ip to %s", localIP)
+				}
 				t.localIP = localIP
 			}
 		}
@@ -367,9 +375,20 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 
 // defaultLocalIP returns the ip address of the local nodename, so rx on peer
 // nodes see messages coming from a known cluster member.
+//
+// An addr given by its name is resolved, as the nodename is, and its first
+// address is the one sent from. It was sent from no address in particular,
+// so from the one the kernel picks, as a temporary IPv6 address, which the
+// rx of the peers, accepting the addresses the name of the node resolves to,
+// refused. An address the node does not hold is not sent from: the
+// heartbeat is sent from the address the kernel picks, as before, with a
+// warning.
 func (t *tx) defaultLocalIP() (net.IP, error) {
 	if t.addr != "" {
-		return net.ParseIP(t.addr), nil
+		if ip := net.ParseIP(t.addr); ip != nil {
+			return ip, nil
+		}
+		return t.addrLocalIP()
 	}
 	addrs, err := net.DefaultResolver.LookupIPAddr(t.ctx, hostname.Hostname())
 	if err != nil {
@@ -379,6 +398,52 @@ func (t *tx) defaultLocalIP() (net.IP, error) {
 		return nil, fmt.Errorf("lookup sender addr: %s: no address found ", t.addr)
 	}
 	return addrs[0].IP, nil
+}
+
+// addrLocalIP returns the first address the name addr resolves to, or none
+// when the node does not hold it.
+func (t *tx) addrLocalIP() (net.IP, error) {
+	addrs, err := lookupIPAddr(t.ctx, t.addr)
+	if err != nil {
+		return nil, fmt.Errorf("lookup sender addr: %s: %s", t.addr, err)
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("lookup sender addr: %s: no address found", t.addr)
+	}
+	ip := addrs[0].IP
+	if local, err := isLocalIP(ip); err != nil {
+		return nil, fmt.Errorf("lookup sender addr: %s: %s", t.addr, err)
+	} else if !local {
+		if !t.addrNotLocal.Equal(ip) {
+			t.log.Warnf("sender addr %s resolves to %s, which the node does not hold: send from the address the kernel picks", t.addr, ip)
+			t.addrNotLocal = ip
+		}
+		return nil, nil
+	}
+	t.addrNotLocal = nil
+	return ip, nil
+}
+
+var (
+	// lookupIPAddr resolves the name of an address.
+	lookupIPAddr = net.DefaultResolver.LookupIPAddr
+
+	// interfaceAddrs returns the addresses of the node.
+	interfaceAddrs = net.InterfaceAddrs
+)
+
+// isLocalIP says the node holds ip.
+func isLocalIP(ip net.IP) (bool, error) {
+	addrs, err := interfaceAddrs()
+	if err != nil {
+		return false, err
+	}
+	for _, a := range addrs {
+		if n, ok := a.(*net.IPNet); ok && n.IP.Equal(ip) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // handleSendError handles send errors with deduplication logging
