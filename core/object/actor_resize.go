@@ -686,23 +686,43 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 			return plan, growsNothingError(ctx, chain, handsUp, name, bottom, from)
 		}
 		if to <= from {
-			// The head holds what the size given leaves it, so nothing has
-			// to grow. That is the answer to asking a volume for the size
-			// it is configured to hold: the configuration records the
-			// bottom, which the head never holds.
+			// The head holds what the size given leaves it, so nothing
+			// above the bottom has to grow. That is the answer to asking a
+			// volume for the size it is configured to hold: the
+			// configuration records the bottom, which the head never holds.
+			//
+			// The bottom is still asked the size given, which it holds
+			// already but for a bottom a former resize left short of it:
+			// the head was worked back down to the bottom it needed, less
+			// than the size given by what the links above round off.
 			plan.Stages = stages[0] + 1
 			plan.Bottom = bottom
 			levelSteps := make([][]ResizeStep, 0, len(chain))
+			last := len(chain) - 1
 			for levelIndex, level := range chain {
+				if levelIndex > 0 && levelIndex == last {
+					steps, _, err := askResizeLevel(ctx, level, levelIndex, bottom, stages[levelIndex], head, home)
+					if err != nil {
+						return plan, err
+					}
+					levelSteps = append(levelSteps, steps)
+					continue
+				}
 				levelSteps = append(levelSteps, notAskedSteps(ctx, level, stages[levelIndex], "holds what the size asked leaves it"))
 			}
 			reverse(levelSteps)
 			for _, steps := range levelSteps {
 				plan.Steps = append(plan.Steps, steps...)
 			}
+			if plan.HasWork() {
+				// The bottom grows: the links resting on it are grown
+				// onto it. A bottom holding the size changes nothing,
+				// the head included.
+				unskipSpansBelow(&plan)
+			}
 			return plan, nil
 		}
-		plan, err = buildResizePlanTo(ctx, chain, to, home, stages)
+		plan, err = buildResizePlanTo(ctx, chain, to, home, stages, bottom)
 		plan.Bottom = bottom
 		return plan, err
 	}
@@ -721,21 +741,32 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 		// not below, and asking again is how it is finished.
 		return plan, nil
 	}
-	return buildResizePlanTo(ctx, chain, to, home, stages)
+	return buildResizePlanTo(ctx, chain, to, home, stages, 0)
 }
 
 // buildResizePlanTo works out what growing the head of a chain to the size to
 // would do, from the top down, and changes nothing. stages says which stage
 // each level is grown in.
-func buildResizePlanTo(ctx context.Context, chain []resizeLevel, to int64, home naming.Path, stages []int) (ResizePlan, error) {
+//
+// bottom, when not zero, is the size the bottom is asked, the size a volume
+// is given: the bottom is asked it, not the smallest size handing the head
+// its size, which the links above, rounding off what they hand out, would
+// leave short of it. It is asked it even when a level above holds what is
+// needed, for the configuration recording the bottom to say the size the
+// bottom holds.
+func buildResizePlanTo(ctx context.Context, chain []resizeLevel, to int64, home naming.Path, stages []int, bottom int64) (ResizePlan, error) {
 	var plan ResizePlan
 	head := chain[0][0]
 
 	// The chain is indexed from the head, which is in the last stage.
 	plan.Stages = stages[0] + 1
 
+	last := len(chain) - 1
 	levelSteps := make([][]ResizeStep, 0, len(chain))
 	for levelIndex, level := range chain {
+		if bottom > 0 && levelIndex > 0 && levelIndex == last && to < bottom {
+			to = bottom
+		}
 		if levelIndex > 0 && levelHolds(ctx, level, to) {
 			// A level holding what the level above asks of it is not asked
 			// anything, and neither is what is below it: a logical volume
@@ -746,77 +777,22 @@ func buildResizePlanTo(ctx context.Context, chain []resizeLevel, to int64, home 
 			// holds is how a chain a resize left uneven is finished.
 			levelSteps = append(levelSteps, notAskedSteps(ctx, level, stages[levelIndex], "already holds what the link above needs"))
 			for i, rest := range chain[levelIndex+1:] {
-				levelSteps = append(levelSteps, notAskedSteps(ctx, rest, stages[levelIndex+1+i], "not asked: a link above holds what is needed"))
+				restIndex := levelIndex + 1 + i
+				if bottom > 0 && restIndex == last {
+					steps, _, err := askResizeLevel(ctx, rest, restIndex, bottom, stages[restIndex], head, home)
+					if err != nil {
+						return plan, err
+					}
+					levelSteps = append(levelSteps, steps)
+					continue
+				}
+				levelSteps = append(levelSteps, notAskedSteps(ctx, rest, stages[restIndex], "not asked: a link above holds what is needed"))
 			}
 			break
 		}
-		// Every resource of a level is asked for the same size, and the
-		// level below has to satisfy the most demanding of them.
-		var needBelow int64
-		var steps []ResizeStep
-		for _, link := range level {
-			sizer, ok := link.r.(resource.Sizer)
-			if !ok {
-				return plan, resizeRefusal(link, head, home, "reports no size")
-			}
-			linkFrom, err := sizer.CurrentSize(ctx)
-			if err != nil {
-				return plan, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
-			}
-			if levelIndex > 0 && linkFrom >= to {
-				// A link holding the size is not asked how it would grow:
-				// it does not, and one that cannot is no reason to refuse.
-				steps = append(steps, ResizeStep{
-					Path:    link.path.String(),
-					RID:     link.r.RID(),
-					Driver:  driverOf(link.r),
-					From:    linkFrom,
-					To:      linkFrom,
-					Stage:   stages[levelIndex],
-					Skip:    true,
-					Comment: "already holds what the link above needs",
-					r:       link.r,
-					owner:   link.owner,
-				})
-				continue
-			}
-			resizer, ok := link.r.(resource.Resizer)
-			if !ok {
-				return plan, resizeRefusal(link, head, home, "cannot resize")
-			}
-			linkNeedBelow, err := resizer.ResizePlan(ctx, to)
-			if err != nil {
-				return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
-			}
-			if err := checkUnmanagedBelow(ctx, link, linkNeedBelow); err != nil {
-				return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
-			}
-			if linkNeedBelow > needBelow {
-				needBelow = linkNeedBelow
-			}
-			step := ResizeStep{
-				Path:   link.path.String(),
-				RID:    link.r.RID(),
-				Driver: driverOf(link.r),
-				From:   linkFrom,
-				To:     to,
-				Stage:  stages[levelIndex],
-				r:      link.r,
-				owner:  link.owner,
-			}
-
-			// A link below only has to be large enough. One that already is
-			// is left alone: taking the space back is work nobody asked for.
-			// This is also what heals a chain left uneven by a resize that
-			// failed part way.
-			if linkFrom >= to {
-				step.Skip = true
-				step.To = linkFrom
-				step.Comment = "already holds what the link above needs"
-			} else if linkNeedBelow != to {
-				step.Comment = fmt.Sprintf("asks %s of the link below", sizeconv.BSizeCompact(float64(linkNeedBelow)))
-			}
-			steps = append(steps, step)
+		steps, needBelow, err := askResizeLevel(ctx, level, levelIndex, to, stages[levelIndex], head, home)
+		if err != nil {
+			return plan, err
 		}
 		levelSteps = append(levelSteps, steps)
 		to = needBelow
@@ -834,6 +810,82 @@ func buildResizePlanTo(ctx context.Context, chain []resizeLevel, to int64, home 
 	}
 	unskipSpansBelow(&plan)
 	return plan, nil
+}
+
+// askResizeLevel works out the steps growing each resource of a level to the
+// size to, and the size the level below has to hold for them, the most any
+// of them asks. A level below the head holding the size is not asked how it
+// would grow.
+func askResizeLevel(ctx context.Context, level resizeLevel, levelIndex int, to int64, stage int, head resizeLink, home naming.Path) ([]ResizeStep, int64, error) {
+	// Every resource of a level is asked for the same size, and the level
+	// below has to satisfy the most demanding of them.
+	var needBelow int64
+	var steps []ResizeStep
+	for _, link := range level {
+		sizer, ok := link.r.(resource.Sizer)
+		if !ok {
+			return nil, 0, resizeRefusal(link, head, home, "reports no size")
+		}
+		linkFrom, err := sizer.CurrentSize(ctx)
+		if err != nil {
+			return nil, 0, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
+		}
+		if levelIndex > 0 && linkFrom >= to {
+			// A link holding the size is not asked how it would grow:
+			// it does not, and one that cannot is no reason to refuse.
+			steps = append(steps, ResizeStep{
+				Path:    link.path.String(),
+				RID:     link.r.RID(),
+				Driver:  driverOf(link.r),
+				From:    linkFrom,
+				To:      linkFrom,
+				Stage:   stage,
+				Skip:    true,
+				Comment: "already holds what the link above needs",
+				r:       link.r,
+				owner:   link.owner,
+			})
+			continue
+		}
+		resizer, ok := link.r.(resource.Resizer)
+		if !ok {
+			return nil, 0, resizeRefusal(link, head, home, "cannot resize")
+		}
+		linkNeedBelow, err := resizer.ResizePlan(ctx, to)
+		if err != nil {
+			return nil, 0, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
+		}
+		if err := checkUnmanagedBelow(ctx, link, linkNeedBelow); err != nil {
+			return nil, 0, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
+		}
+		if linkNeedBelow > needBelow {
+			needBelow = linkNeedBelow
+		}
+		step := ResizeStep{
+			Path:   link.path.String(),
+			RID:    link.r.RID(),
+			Driver: driverOf(link.r),
+			From:   linkFrom,
+			To:     to,
+			Stage:  stage,
+			r:      link.r,
+			owner:  link.owner,
+		}
+
+		// A link below only has to be large enough. One that already is
+		// is left alone: taking the space back is work nobody asked for.
+		// This is also what heals a chain left uneven by a resize that
+		// failed part way.
+		if linkFrom >= to {
+			step.Skip = true
+			step.To = linkFrom
+			step.Comment = "already holds what the link above needs"
+		} else if linkNeedBelow != to {
+			step.Comment = fmt.Sprintf("asks %s of the link below", sizeconv.BSizeCompact(float64(linkNeedBelow)))
+		}
+		steps = append(steps, step)
+	}
+	return steps, needBelow, nil
 }
 
 // resolveBottomSize is the size the bottom of a chain is asked to hold. An
