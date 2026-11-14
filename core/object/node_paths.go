@@ -47,7 +47,7 @@ func (t *Node) TmpDir() string {
 	}
 	p := fmt.Sprintf("%s", rawconfig.Paths.Tmp)
 	t.paths.tmpDir = filepath.FromSlash(p)
-	if err := os.MkdirAll(t.paths.tmpDir, os.ModePerm); err != nil {
+	if err := rawconfig.MkdirTmp(t.paths.tmpDir); err != nil {
 		log.Error().Msgf("%s", err)
 	}
 	return t.paths.tmpDir

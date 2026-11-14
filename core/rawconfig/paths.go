@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/opensvc/om3/v3/util/confined"
 )
 
 type (
@@ -81,7 +84,6 @@ func CreateMandatoryDirectories() error {
 		Paths.Etc,
 		Paths.EtcNs,
 		Paths.Lsnr,
-		Paths.Tmp,
 		Paths.Backup,
 	}
 	for _, d := range mandatoryDirs {
@@ -96,5 +98,23 @@ func CreateMandatoryDirectories() error {
 			return fmt.Errorf("mandatory dir '%s' is not a directory", d)
 		}
 	}
-	return nil
+	return MkdirTmp(Paths.Tmp)
+}
+
+// MkdirTmp makes the directory p, the temporary directory of the agent or
+// a directory under it, owned by the user of the process and writable by it
+// alone, every directory from the temporary directory of the agent down.
+//
+// The temporary directory of the agent is under /var/tmp, where every user
+// can write: a user making it first, as after a cleaner removed it, could
+// have the agent write its files through links of theirs. A directory of
+// another user is refused, never taken over: an admin removes it. A
+// directory of the user writable by others is made 0700.
+func MkdirTmp(p string) error {
+	anchor := filepath.Dir(Paths.Tmp)
+	rel, err := filepath.Rel(anchor, p)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%s is not under %s", p, Paths.Tmp)
+	}
+	return confined.MkdirTrusted(anchor, rel, 0o700, nil)
 }
