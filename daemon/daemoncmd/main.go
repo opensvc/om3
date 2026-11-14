@@ -44,15 +44,22 @@ var (
 	// lockPath is the lock a starting daemon holds until it is started,
 	// and a stop holds while it stops the daemon: a stop waits for a
 	// starting daemon to be started, so a daemon whose api does not answer
-	// to a stop holding it is not starting, but hung or stopping.
-	lockPath = "/tmp/locks/main"
+	// to a stop holding it is not starting, but hung or stopping. It is
+	// daemonLockPath when empty.
+	//
+	// It is in the lock directory of the agent, which root alone can
+	// write in. It was /tmp/locks/main: a user making /tmp/locks first, as
+	// after a reboot cleaned /tmp, could have the lock of each start and
+	// stop write and truncate any file through a link, or hold the lock.
+	lockPath string
 
 	// cliLockPath is the lock of the lifecycle commands run outside of
 	// systemd: a start holds it from the spawn of the daemon to its
 	// readiness, a restart from the stop of the daemon to the readiness of
 	// the new one, and a stop while it stops. A stop requested during a
-	// restart waits for it to end, then stops: the stop wins.
-	cliLockPath = lockPath + "-cli"
+	// restart waits for it to end, then stops: the stop wins. It is
+	// daemonLockPath with a "-cli" suffix when empty.
+	cliLockPath string
 
 	lockTimeout        = 60 * time.Second
 	WaitRunningTimeout = 20 * time.Second
@@ -524,7 +531,24 @@ func (t *T) WaitRunning() error {
 //
 // It returns a release function to release lock
 func getLock(desc string) (func(), error) {
-	return lock.Lock(lockPath, lockTimeout, desc)
+	return lock.Lock(daemonLockPath(), lockTimeout, desc)
+}
+
+// daemonLockPath returns the path of the lock of the daemon lifecycle.
+func daemonLockPath() string {
+	if lockPath != "" {
+		return lockPath
+	}
+	return filepath.Join(rawconfig.Paths.Lock, "daemon")
+}
+
+// daemonCLILockPath returns the path of the lock of the lifecycle commands
+// run outside of systemd.
+func daemonCLILockPath() string {
+	if cliLockPath != "" {
+		return cliLockPath
+	}
+	return daemonLockPath() + "-cli"
 }
 
 // stopLockTimeout is how long a stop waits for the cli lock, which a restart
@@ -536,7 +560,7 @@ func stopLockTimeout() time.Duration {
 // StopWithoutManager stops the daemon run outside of systemd, holding the
 // cli lock: a stop requested during a restart waits for its end, then stops.
 func (t *T) StopWithoutManager() error {
-	return lock.Func(cliLockPath, stopLockTimeout(), "daemon stop", func() error {
+	return lock.Func(daemonCLILockPath(), stopLockTimeout(), "daemon stop", func() error {
 		return t.stopMainLocked(false)
 	})
 }
@@ -554,7 +578,7 @@ func (t *T) stopMainLocked(fromManager bool) error {
 
 // start starts a daemon, holding the cli lock until it runs.
 func (t *T) start(profile string) error {
-	return lock.Func(cliLockPath, lockTimeout, "daemon start", func() error {
+	return lock.Func(daemonCLILockPath(), lockTimeout, "daemon start", func() error {
 		if isRunning, err := t.isRunning(); err != nil {
 			return err
 		} else if isRunning {
@@ -631,7 +655,7 @@ func (t *T) restartWithoutManager(profile string) error {
 // stop wins either way.
 func (t *T) restartLocked(start func() error) error {
 	log := logger("restart: ")
-	return lock.Func(cliLockPath, lockTimeout, "daemon restart", func() error {
+	return lock.Func(daemonCLILockPath(), lockTimeout, "daemon restart", func() error {
 		if t.apiDaemonPid > 0 {
 			if stopped, err := t.stopped(t.apiDaemonPid); err != nil {
 				return err
