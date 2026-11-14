@@ -1,6 +1,7 @@
 package hbucast
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -56,4 +57,57 @@ func TestSendWorkerCloseConn(t *testing.T) {
 		w.closeConn()
 		require.Nil(t, w.getConn())
 	})
+}
+
+// stubAddrs resolves every name to ips, and gives the node the addresses
+// held.
+func stubAddrs(t *testing.T, ips []string, held []string) {
+	t.Helper()
+	savedLookup, savedIfaces := lookupIPAddr, interfaceAddrs
+	t.Cleanup(func() { lookupIPAddr, interfaceAddrs = savedLookup, savedIfaces })
+	lookupIPAddr = func(ctx context.Context, host string) ([]net.IPAddr, error) {
+		l := make([]net.IPAddr, 0, len(ips))
+		for _, s := range ips {
+			l = append(l, net.IPAddr{IP: net.ParseIP(s)})
+		}
+		return l, nil
+	}
+	interfaceAddrs = func() ([]net.Addr, error) {
+		l := make([]net.Addr, 0, len(held))
+		for _, s := range held {
+			l = append(l, &net.IPNet{IP: net.ParseIP(s), Mask: net.CIDRMask(64, 128)})
+		}
+		return l, nil
+	}
+}
+
+// An addr given by its name is sent from: its first address, when the node
+// holds it. It was sent from no address, so from a temporary IPv6 address
+// the kernel picked, which the peers refused.
+func TestDefaultLocalIPOfAName(t *testing.T) {
+	stubAddrs(t, []string{"2001:db8::10", "192.0.2.10"}, []string{"2001:db8::10", "2001:db8::abcd:1234"})
+	tx := &tx{ctx: context.Background(), addr: "node1-hb"}
+	ip, err := tx.defaultLocalIP()
+	require.NoError(t, err)
+	require.Equal(t, "2001:db8::10", ip.String())
+}
+
+// An addr given by its address is sent from, with no lookup.
+func TestDefaultLocalIPOfAnAddress(t *testing.T) {
+	stubAddrs(t, nil, nil)
+	tx := &tx{ctx: context.Background(), addr: "192.0.2.10"}
+	ip, err := tx.defaultLocalIP()
+	require.NoError(t, err)
+	require.Equal(t, "192.0.2.10", ip.String())
+}
+
+// A name resolving to an address the node does not hold, as behind a nat,
+// is sent from no address in particular, as before, warned about once.
+func TestDefaultLocalIPOfANameNotHeld(t *testing.T) {
+	stubAddrs(t, []string{"198.51.100.7"}, []string{"192.0.2.10"})
+	tx := &tx{ctx: context.Background(), addr: "node1-hb"}
+	ip, err := tx.defaultLocalIP()
+	require.NoError(t, err)
+	require.Nil(t, ip)
+	require.Equal(t, "198.51.100.7", tx.addrNotLocal.String(), "warned about")
 }
