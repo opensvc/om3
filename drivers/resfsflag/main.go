@@ -3,7 +3,9 @@ package resfsflag
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -16,7 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
-	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -66,8 +68,10 @@ func (t *T) Abort(ctx context.Context) bool {
 		var b bytes.Buffer
 		session.Stdout = &b
 		// The peer runs the command through its login shell: the path,
-		// which holds the resource id, is quoted for it.
-		err = session.Run("test -f " + shellquote.Join(t.file()))
+		// which holds the resource id, is quoted for it. A link is not
+		// a flag file, whatever it leads to.
+		quoted := shellquote.Join(t.file())
+		err = session.Run("test -f " + quoted + " && test ! -h " + quoted)
 		if err == nil {
 			return true
 		}
@@ -93,17 +97,28 @@ func (t *T) Start(ctx context.Context) error {
 	if t.file() == "" {
 		return fmt.Errorf("empty file path")
 	}
-	if t.exists() {
-		t.Log().Infof("flag file %s is already installed", t.file())
-		return nil
-	}
-	if err := os.MkdirAll(t.dir(), os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", t.dir(), err)
-	}
-	t.Log().Infof("install flag file %s", t.file())
-	if _, err := os.Create(t.file()); err != nil {
+	r, err := t.openDir(true)
+	if err != nil {
 		return err
 	}
+	defer func() { _ = r.Close() }()
+	name := filepath.Base(t.file())
+	f, err := r.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, fs.ErrExist) {
+		if ok, err := confined.TrustedFile(r, name); err != nil {
+			return fmt.Errorf("%s: %w: remove it", t.file(), err)
+		} else if ok {
+			t.Log().Infof("flag file %s is already installed", t.file())
+			return nil
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	t.Log().Infof("installed flag file %s", t.file())
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.stop()
 	})
@@ -115,17 +130,29 @@ func (t *T) Stop(ctx context.Context) error {
 	if t.file() == "" {
 		return fmt.Errorf("empty file path")
 	}
-	if !t.exists() {
-		t.Log().Infof("flag file %s is already uninstalled", t.file())
-		return nil
-	}
 	return t.stop()
 }
 
+// stop removes the flag file. A flag file the node did not make, as one in
+// a directory of another user, is not the flag of the resource: it is left,
+// and the resource is down already.
 func (t *T) stop() error {
-	p := t.file()
-	t.Log().Infof("uninstall flag file %s", p)
-	return os.Remove(p)
+	up, err := t.isUp()
+	if err != nil {
+		t.Log().Warnf("%s: not a flag file of the node: nothing to uninstall", err)
+		return nil
+	}
+	if !up {
+		t.Log().Infof("flag file %s is already uninstalled", t.file())
+		return nil
+	}
+	r, err := t.openDir(false)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = r.Close() }()
+	t.Log().Infof("uninstall flag file %s", t.file())
+	return r.Remove(filepath.Base(t.file()))
 }
 
 // Label implements Label from resource.Driver interface,
@@ -140,7 +167,12 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("Empty file path")
 		return status.NotApplicable
 	}
-	if t.exists() {
+	up, err := t.isUp()
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Down
+	}
+	if up {
 		return status.Up
 	}
 	return status.Down
@@ -156,8 +188,41 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t *T) exists() bool {
-	return file.Exists(t.file())
+// openDir opens the directory of the flag file, under the base directory,
+// made with create. Every directory under the parent of the base directory,
+// as /dev/shm, must be the node's: owned by root, and writable by root alone.
+// A user making the base directory before the node does, or writing in it,
+// would otherwise have the node create its flag through a link of theirs,
+// truncating any file, or forge the flag of an instance up. A directory of
+// another user is refused, never taken over: an admin removes it.
+func (t *T) openDir(create bool) (*os.Root, error) {
+	anchor := filepath.Dir(t.baseDir())
+	rel, err := filepath.Rel(anchor, t.dir())
+	if err != nil {
+		return nil, err
+	}
+	return confined.OpenDirTrusted(anchor, rel, create, 0o755, func(p string, mode fs.FileMode) {
+		t.Log().Warnf("%s was writable by others (%s): made 0755", p, mode)
+	})
+}
+
+// isUp says the flag file is installed: a regular file of root in a
+// directory tree of root. A file of another user, a link, or a file in a
+// directory of another user is not a flag of the node, and the error says
+// why.
+func (t *T) isUp() (bool, error) {
+	r, err := t.openDir(false)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	defer func() { _ = r.Close() }()
+	ok, err := confined.TrustedFile(r, filepath.Base(t.file()))
+	if err != nil {
+		return false, fmt.Errorf("%s: %w", t.file(), err)
+	}
+	return ok, nil
 }
 
 func (t *T) file() string {
@@ -172,8 +237,28 @@ func (t *T) file() string {
 	return t.lazyFile
 }
 
+// MakeBaseDir makes the base directory of the flag files of the node, as
+// /dev/shm/opensvc, owned by root and writable by root alone, as the daemon
+// does at start: a user can no longer make it first, which would have the
+// fs.flag resources of the node refuse to start until an admin removes it.
+// A directory of root writable by others is given 0755, and told to warn.
+func MakeBaseDir(warn func(format string, args ...any)) error {
+	p := nodeBaseDir()
+	if p == "" {
+		return nil
+	}
+	return confined.MkdirTrusted(filepath.Dir(p), filepath.Base(p), 0o755, func(p string, mode fs.FileMode) {
+		warn("%s was writable by others (%s): made 0755", p, mode)
+	})
+}
+
+// tmpBase is the base directory of the flag files on linux, in the tmpfs
+// every user can write in: the flags go with a reboot, as the instances
+// they tell up.
+var tmpBase = filepath.FromSlash("/dev/shm/opensvc")
+
 func tmpBaseDir() string {
-	return filepath.FromSlash("/dev/shm/opensvc")
+	return tmpBase
 }
 
 func (t *T) dir() string {
