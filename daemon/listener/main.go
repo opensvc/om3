@@ -42,8 +42,10 @@ func (a *authOption) X509CACertFile() string {
 	return daemonenv.CAsCertFile()
 }
 
-func (a *authOption) SignKeyFile() string {
-	return daemonenv.CAKeyFile()
+// SignKey returns the key the api tokens are signed with, the private key of
+// the cluster authority, read from system/sec/ca.
+func (a *authOption) SignKey() ([]byte, error) {
+	return object.ClusterCAPrivateKey()
 }
 
 func (a *authOption) VerifyKeyFile() string {

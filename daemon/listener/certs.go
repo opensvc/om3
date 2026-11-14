@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -120,12 +121,17 @@ func (t *T) mountOrReuseCertFS(ctx context.Context) error {
 }
 
 // secureCertDir makes the directory of the certificate files the daemon
-// user's, mode 0700.
+// user's, mode 0700, and removes the file of the private key of the cluster
+// authority a former version installed there: the key is read from
+// system/sec/ca where it signs.
 func secureCertDir(dir string) error {
 	if err := os.Chown(dir, os.Geteuid(), os.Getegid()); err != nil {
 		return fmt.Errorf("secure cert dir %s: %w", dir, err)
 	}
 	if err := os.Chmod(dir, certDirMode); err != nil {
+		return fmt.Errorf("secure cert dir %s: %w", dir, err)
+	}
+	if err := os.Remove(filepath.Join(dir, "ca_private_key")); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("secure cert dir %s: %w", dir, err)
 	}
 	return nil
@@ -184,11 +190,6 @@ func (t *T) installCaFiles(clusterName string) error {
 	if err != nil {
 		return fmt.Errorf("install ca files can't get %s: %w", caPath, err)
 	}
-
-	if err := installSecKey(caSec, "private_key", daemonenv.CAKeyFile()); err != nil {
-		return fmt.Errorf("install ca files can't dump ca private_key to %s: %w", daemonenv.CAKeyFile(), err)
-	}
-	t.log.Infof("install ca files dump ca private_key to %s", daemonenv.CAKeyFile())
 
 	if err := installSecKey(caSec, "certificate_chain", daemonenv.CACertChainFile()); err != nil {
 		return fmt.Errorf("install ca files can't dump ca certificate_chain to %s: %w", daemonenv.CACertChainFile(), err)

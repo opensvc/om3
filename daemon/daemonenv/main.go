@@ -89,10 +89,6 @@ var (
 	SubQSHuge uint64 = 40000
 )
 
-func CAKeyFile() string {
-	return filepath.Join(rawconfig.Paths.Certs, "ca_private_key")
-}
-
 func CACertChainFile() string {
 	return filepath.Join(rawconfig.Paths.Certs, "ca_certificate_chain")
 }
