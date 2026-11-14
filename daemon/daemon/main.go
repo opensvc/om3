@@ -43,6 +43,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/ipampeers"
 	"github.com/opensvc/om3/v3/daemon/istat"
 	"github.com/opensvc/om3/v3/daemon/listener"
+	"github.com/opensvc/om3/v3/daemon/mdmon"
 	"github.com/opensvc/om3/v3/daemon/mntmon"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/netmon"
@@ -300,6 +301,7 @@ func (t *T) Start(ctx context.Context) error {
 		drbdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		virtmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		ctrmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
+		mdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		pgmetrics.New(),

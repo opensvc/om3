@@ -34,6 +34,7 @@ var AuditSubsystems = []string{
 	"drbdmon",
 	"virtmon",
 	"ctrmon",
+	"mdmon",
 	"hb",
 	"hb.ctrl",
 	"hb.main",

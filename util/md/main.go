@@ -440,6 +440,33 @@ func (t T) validateName() error {
 	return nil
 }
 
+// devRoot is the root of the device files, a variable for the tests.
+var devRoot = "/dev"
+
+// KernelName returns the kernel name of the array, as "md127", the name
+// /proc/mdstat gives it, while it is assembled: the target of its udev link
+// by uuid, or of its link by name. It is empty when neither resolves to an md
+// device, as an array stopped, or a node whose udev did not make the links.
+func (t T) KernelName() string {
+	links := []string{}
+	if t.uuid != "" {
+		links = append(links, filepath.Join(devRoot, "disk", "by-id", "md-uuid-"+t.uuid))
+	}
+	if t.name != "" {
+		links = append(links, filepath.Join(devRoot, "md", t.name))
+	}
+	for _, link := range links {
+		target, err := filepath.EvalSymlinks(link)
+		if err != nil {
+			continue
+		}
+		if name := filepath.Base(target); strings.HasPrefix(name, "md") {
+			return name
+		}
+	}
+	return ""
+}
+
 func (t T) devpathFromUUID() string {
 	return "/dev/disk/by-id/md-uuid-" + t.uuid
 }

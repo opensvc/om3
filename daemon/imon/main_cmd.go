@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -1958,6 +1959,61 @@ func (t *Manager) onContainerUpdated(c *msgbus.ContainerUpdated) {
 		return
 	}
 	t.refreshOnResourceEvent(c.Type, "name", c.Name, "container")
+}
+
+// onMdArrayUpdated schedules a status refresh when the instance holds the md
+// array of the node that changed state: an md resource whose status info
+// names it, as "md127". An event naming no array, as one of an array that
+// resynced whole between two reads of the monitor, is taken by an md
+// resource whose status tells a warning, as resyncing, which may be stale: a
+// clean one has nothing to learn from it.
+//
+// The refresh is scheduled even while an action runs on an instance: the
+// event is often the end of a resync an action started, a few seconds after
+// it, while a peer still provisions. The refresh timer defers it until no
+// action runs, and replays it then, where dropping it left the status
+// "resyncing" until the next scheduled status.
+func (t *Manager) onMdArrayUpdated(c *msgbus.MdArrayUpdated) {
+	if c.Node != t.localhost {
+		return
+	}
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		return
+	}
+	for rid, rstat := range instStatus.Resources {
+		if rstat.Type != mdDriverType {
+			continue
+		}
+		var what string
+		if c.Name == "" {
+			if !hasWarning(rstat) {
+				continue
+			}
+			what = "md arrays changed"
+		} else {
+			if dev, _ := rstat.Info["dev"].(string); dev != c.Name {
+				continue
+			}
+			what = "md array " + c.Name + " changed"
+		}
+		t.log.Infof("%s, matching resource %s - schedule a status refresh", what, rid)
+		t.scheduleEventRefresh(what)
+		return
+	}
+}
+
+// mdDriverType is the driver type of the md resources.
+const mdDriverType = "disk.md"
+
+// hasWarning says the status of the resource tells a warning or an error.
+func hasWarning(rstat resource.Status) bool {
+	for _, entry := range rstat.Log {
+		if entry.Level == resource.WarnLevel || entry.Level == resource.ErrorLevel {
+			return true
+		}
+	}
+	return false
 }
 
 // refreshOnResourceEvent schedules a status refresh when a resource of the
