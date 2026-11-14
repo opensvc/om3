@@ -304,6 +304,8 @@ var (
 		"VirtDomainUpdated": func() any { return &VirtDomainUpdated{} },
 
 		"ContainerUpdated": func() any { return &ContainerUpdated{} },
+
+		"MdArrayUpdated": func() any { return &MdArrayUpdated{} },
 	}
 )
 
@@ -1314,6 +1316,17 @@ type (
 		Type       string `json:"type" yaml:"type"`
 		Name       string `json:"name" yaml:"name"`
 	}
+
+	// MdArrayUpdated is published when an md array of the node changed
+	// state, as the kernel tells: a resync or a recovery started or ended,
+	// a device failed, was added or removed, an array started or stopped.
+	// Name is the kernel name of the array, as "md127", empty when the
+	// event names none, for the instances holding any md array.
+	MdArrayUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+	}
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -1990,6 +2003,14 @@ func (e *ContainerUpdated) Kind() string {
 
 func (e *ContainerUpdated) Key() string {
 	return fmt.Sprintf("ContainerUpdated,node=%s,type=%s,name=%s", e.Node, e.Type, e.Name)
+}
+
+func (e *MdArrayUpdated) Kind() string {
+	return "MdArrayUpdated"
+}
+
+func (e *MdArrayUpdated) Key() string {
+	return fmt.Sprintf("MdArrayUpdated,node=%s,name=%s", e.Node, e.Name)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {

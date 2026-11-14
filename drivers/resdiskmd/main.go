@@ -53,6 +53,7 @@ type (
 		Exists(ctx context.Context) (bool, error)
 		Devices(ctx context.Context) (device.L, error)
 		UUID() string
+		KernelName() string
 		IsAutoActivated() bool
 		DisableAutoActivation() error
 	}
@@ -194,6 +195,17 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	t.downStateAlerts()
 	return status.Down
+}
+
+// StatusInfo implements resource.StatusInfoer: the kernel name of the array
+// while it is assembled, as "md127", the name /proc/mdstat gives it, for the
+// md events of the daemon to refresh the instance holding it alone.
+func (t *T) StatusInfo(context.Context) map[string]any {
+	data := make(map[string]any)
+	if name := t.md().KernelName(); name != "" {
+		data["dev"] = name
+	}
+	return data
 }
 
 // Label implements Label from resource.Driver interface,

@@ -69,3 +69,51 @@ func TestAContainerEventRefreshesTheInstanceHoldingIt(t *testing.T) {
 	m.onContainerUpdated(&msgbus.ContainerUpdated{Node: "n1", Type: "container.podman", Name: "c1"})
 	assert.True(t, m.eventRefreshScheduled)
 }
+
+// An md array changing on the node refreshes the status of the instance
+// whose md resource names it, and of no other. An event naming no array
+// refreshes the instances whose md resource status tells a warning, as a
+// resync it may have caught, and not the clean ones.
+func TestAnMdEventRefreshesTheInstanceHoldingTheArray(t *testing.T) {
+	m := newResourceEventTestManager()
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md127"})
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1"})
+	assert.False(t, m.eventRefreshScheduled, "no md resource")
+
+	m.instStatus["n1"].Resources["disk#2"] = resource.Status{Type: "disk.md", Info: map[string]any{"dev": "md127"}}
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n2", Name: "md127"})
+	assert.False(t, m.eventRefreshScheduled, "another node")
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md126"})
+	assert.False(t, m.eventRefreshScheduled, "another array")
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1"})
+	assert.False(t, m.eventRefreshScheduled, "no array named, a clean md resource")
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md127"})
+	assert.True(t, m.eventRefreshScheduled)
+
+	m = newResourceEventTestManager()
+	m.instStatus["n1"].Resources["disk#2"] = resource.Status{
+		Type: "disk.md",
+		Info: map[string]any{"dev": "md127"},
+		Log:  []resource.StatusLogEntry{{Level: resource.WarnLevel, Message: "clean, resyncing"}},
+	}
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1"})
+	assert.True(t, m.eventRefreshScheduled, "no array named, an md resource resyncing")
+
+	m = newResourceEventTestManager()
+	m.instStatus["n1"].Resources["disk#2"] = resource.Status{Type: "disk.md"}
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md126"})
+	assert.False(t, m.eventRefreshScheduled, "an md resource naming no array takes no named change")
+}
+
+// An md event during an action of the object, here or on a peer, is not
+// dropped: it is often the end of a resync the action started, while a peer
+// still provisions. Its refresh is deferred until no action runs.
+func TestAnMdEventDuringAnActionIsDeferred(t *testing.T) {
+	m := newResourceEventTestManager()
+	m.instStatus["n1"].Resources["disk#2"] = resource.Status{Type: "disk.md", Info: map[string]any{"dev": "md127"}}
+	m.instMonitor = map[string]instance.Monitor{"n2": {State: instance.MonitorStateProvisionProgress}}
+	m.onMdArrayUpdated(&msgbus.MdArrayUpdated{Node: "n1", Name: "md127"})
+	assert.True(t, m.eventRefreshScheduled)
+	m.onEventRefreshTimer()
+	assert.True(t, m.eventRefreshDeferred, "deferred until the peer is done")
+}

@@ -1,9 +1,12 @@
 package md
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMD(t *testing.T) {
@@ -142,4 +145,31 @@ func TestARaidMemberIsToldByItsType(t *testing.T) {
 	assert.True(t, isRaidMember(`/dev/sdb: UUID="x" TYPE="linux_raid_member" USAGE="raid"`))
 	assert.False(t, isRaidMember(`/dev/sdb: UUID="x" TYPE="ext4" USAGE="filesystem"`))
 	assert.False(t, isRaidMember(""))
+}
+
+// The kernel name of an array is the md device its link by uuid leads to,
+// else its link by name, and none when neither does.
+func TestKernelName(t *testing.T) {
+	root := t.TempDir()
+	prev := devRoot
+	devRoot = root
+	t.Cleanup(func() { devRoot = prev })
+	for _, d := range []string{"disk/by-id", "md"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, d), 0o755))
+	}
+	for _, f := range []string{"md127", "md126", "sda"} {
+		require.NoError(t, os.WriteFile(filepath.Join(root, f), nil, 0o644))
+	}
+	res := T{name: "svc1.disk.10", uuid: "736f5713:940542de:de5db10c:9ac1667f"}
+	assert.Equal(t, "", res.KernelName(), "no link")
+
+	require.NoError(t, os.Symlink("../md126", filepath.Join(root, "md", "svc1.disk.10")))
+	assert.Equal(t, "md126", res.KernelName(), "the link by name")
+
+	require.NoError(t, os.Symlink("../../md127", filepath.Join(root, "disk/by-id", "md-uuid-"+res.uuid)))
+	assert.Equal(t, "md127", res.KernelName(), "the link by uuid first")
+
+	other := T{name: "svc2.disk.10"}
+	require.NoError(t, os.Symlink("../sda", filepath.Join(root, "md", "svc2.disk.10")))
+	assert.Equal(t, "", other.KernelName(), "not an md device")
 }
