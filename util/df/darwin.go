@@ -20,6 +20,11 @@ func doDFUsage(ctx context.Context, args ...string) ([]byte, error) {
 	return doDF(ctx, append([]string{"-k", "-P"}, args...))
 }
 
+// doDFPathUsage reads the usage of the filesystem holding a path.
+func doDFPathUsage(ctx context.Context, args ...string) ([]byte, error) {
+	return doDFUsage(ctx, args...)
+}
+
 func parseUsage(b []byte) ([]Entry, error) {
 	r := make([]Entry, 0)
 	text := string(b)

@@ -16,8 +16,16 @@ func doDFInode(ctx context.Context, args ...string) ([]byte, error) {
 	return doDF(ctx, append([]string{"-lPi"}, args...))
 }
 
+// doDFUsage lists the usage of the local filesystems.
 func doDFUsage(ctx context.Context, args ...string) ([]byte, error) {
 	return doDF(ctx, append([]string{"-lP"}, args...))
+}
+
+// doDFPathUsage reads the usage of the filesystem holding a path, remote or
+// local: -l only filters a listing, and turns the answer for a path on a
+// remote filesystem, as nfs, into an error.
+func doDFPathUsage(ctx context.Context, args ...string) ([]byte, error) {
+	return doDF(ctx, append([]string{"-P"}, args...))
 }
 
 // parse reads the entries of a df -P output, whose counts are in blocks of
