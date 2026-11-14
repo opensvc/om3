@@ -1963,7 +1963,8 @@ func (t *Manager) onContainerUpdated(c *msgbus.ContainerUpdated) {
 
 // onMdArrayUpdated schedules a status refresh when the instance holds the md
 // array of the node that changed state: an md resource whose status info
-// names it, as "md127". An event naming no array, as one of an array that
+// names it, as "md127", or tells its uuid, as for an array assembled outside
+// of the agent while its resource was down. An event naming no array, as one of an array that
 // resynced whole between two reads of the monitor, is taken by an md
 // resource whose status tells a warning, as resyncing, which may be stale: a
 // clean one has nothing to learn from it.
@@ -1992,7 +1993,9 @@ func (t *Manager) onMdArrayUpdated(c *msgbus.MdArrayUpdated) {
 			}
 			what = "md arrays changed"
 		} else {
-			if dev, _ := rstat.Info["dev"].(string); dev != c.Name {
+			dev, _ := rstat.Info["dev"].(string)
+			uuid, _ := rstat.Info["uuid"].(string)
+			if dev != c.Name && (c.UUID == "" || uuid != c.UUID) {
 				continue
 			}
 			what = "md array " + c.Name + " changed"

@@ -172,4 +172,7 @@ func TestKernelName(t *testing.T) {
 	other := T{name: "svc2.disk.10"}
 	require.NoError(t, os.Symlink("../sda", filepath.Join(root, "md", "svc2.disk.10")))
 	assert.Equal(t, "", other.KernelName(), "not an md device")
+
+	assert.Equal(t, res.uuid, UUIDOfKernelName("md127"), "the uuid of the array a link by uuid leads to")
+	assert.Equal(t, "", UUIDOfKernelName("md126"), "no link by uuid leads to it")
 }

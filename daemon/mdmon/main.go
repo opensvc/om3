@@ -18,7 +18,8 @@
 // A change is published debounceDelay after it is read, and only when a
 // local instance holds the array then: an array an instance just started is
 // named in its status by the end of its action, which the delay leaves time
-// for. An event changing no line, as an array resynced whole between two
+// for. An array no md resource names, as one assembled outside of the agent
+// for a resource down, is told apart by its uuid, from its udev link. An event changing no line, as an array resynced whole between two
 // reads, names no array, for the instances whose md resource status still
 // tells a transient state, as resyncing, to refresh.
 //
@@ -38,6 +39,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/evwatch"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/md"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -60,8 +62,9 @@ type (
 		labelLocalhost pubsub.Label
 
 		// counter counts the md resources of the local instances, by the
-		// kernel name of their array, as "md127", an empty one for a
-		// resource whose array is not assembled.
+		// kernel name of their array, as "md127", by the uuid of their
+		// array, as "uuid:<uuid>", for a resource whose array is not
+		// assembled, or by none.
 		counter *evwatch.Counter
 
 		// runner runs the event source while the node holds an md
@@ -73,6 +76,10 @@ type (
 		// name, "" for every array.
 		debouncer *evwatch.Debouncer
 
+		// uuidOfKernelName returns the uuid of the array of a kernel
+		// name, from its udev link.
+		uuidOfKernelName func(name string) string
+
 		wg sync.WaitGroup
 	}
 )
@@ -83,22 +90,29 @@ const (
 	// just started is named in its status by then.
 	debounceDelay = 2 * time.Second
 
-	// mdType is the driver type of the md resources, and devInfoKey the
-	// status info naming the kernel name of their array.
-	mdType     = "disk.md"
-	devInfoKey = "dev"
+	// mdType is the driver type of the md resources, and devInfoKey and
+	// uuidInfoKey the status infos naming the kernel name and the uuid of
+	// their array.
+	mdType      = "disk.md"
+	devInfoKey  = "dev"
+	uuidInfoKey = "uuid"
+
+	// uuidKeyPrefix prefixes the counter key of a resource counted by the
+	// uuid of its array.
+	uuidKeyPrefix = "uuid:"
 )
 
 // NewManager creates a new md monitor manager
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	localhost := hostname.Hostname()
 	return &Manager{
-		drainDuration:  drainDuration,
-		log:            plog.NewDefaultLogger().Attr("pkg", "daemon/mdmon").WithPrefix("daemon: mdmon: "),
-		localhost:      localhost,
-		labelLocalhost: pubsub.Label{"node", localhost},
-		subQS:          subQS,
-		counter:        evwatch.NewCounter(),
+		drainDuration:    drainDuration,
+		log:              plog.NewDefaultLogger().Attr("pkg", "daemon/mdmon").WithPrefix("daemon: mdmon: "),
+		localhost:        localhost,
+		labelLocalhost:   pubsub.Label{"node", localhost},
+		subQS:            subQS,
+		counter:          evwatch.NewCounter(),
+		uuidOfKernelName: md.UUIDOfKernelName,
 	}
 }
 
@@ -118,7 +132,7 @@ func (t *Manager) Start(parent context.Context) error {
 	// started late, are counted too.
 	for p, st := range instance.StatusData.GetByNode(t.localhost) {
 		if st != nil {
-			t.counter.Set(p.String(), evwatch.KeysOf(*st, devInfoKey, mdType))
+			t.counter.Set(p.String(), keysOf(*st))
 		}
 	}
 	t.runner.SetDemand(t.counter.Len())
@@ -176,7 +190,7 @@ func (t *Manager) startSubscriptions() {
 					t.log.HandleAuditStop(c.Q, c.Subsystems, "mdmon")
 				case *msgbus.InstanceStatusUpdated:
 					if c.Node == t.localhost {
-						t.counter.Set(c.Path.String(), evwatch.KeysOf(c.Value, devInfoKey, mdType))
+						t.counter.Set(c.Path.String(), keysOf(c.Value))
 						t.runner.SetDemand(t.counter.Len())
 					}
 				case *msgbus.InstanceStatusDeleted:
@@ -204,23 +218,56 @@ func (t *Manager) resync() {
 	}
 }
 
+// keysOf returns the counter keys of the md resources of the status: the
+// kernel name of their array, as "md127", else its uuid, prefixed, else none.
+func keysOf(st instance.Status) []string {
+	l := make([]string, 0)
+	for _, rs := range st.Resources {
+		if rs.Type != mdType {
+			continue
+		}
+		if dev, _ := rs.Info[devInfoKey].(string); dev != "" {
+			l = append(l, dev)
+		} else if uuid, _ := rs.Info[uuidInfoKey].(string); uuid != "" {
+			l = append(l, uuidKeyPrefix+uuid)
+		} else {
+			l = append(l, "")
+		}
+	}
+	return l
+}
+
 // publish publishes the change of the md array name when a local instance
-// holds it, or of no array named, "", when a local instance holds an md
-// resource. The others, as an array no object names, interest no instance.
+// holds it, by its kernel name or by its uuid, or of no array named, "",
+// when a local instance holds an md resource. The others, as an array no
+// object names, interest no instance.
 func (t *Manager) publish(name string) {
-	if !t.isTaken(name) {
+	uuid, ok := t.taker(name)
+	if !ok {
 		t.log.Debugf("md array %q changed, held by no local instance", name)
 		return
 	}
 	t.log.Debugf("md array %q changed", name)
-	t.publisher.Pub(&msgbus.MdArrayUpdated{Node: t.localhost, Name: name}, t.labelLocalhost)
+	t.publisher.Pub(&msgbus.MdArrayUpdated{Node: t.localhost, Name: name, UUID: uuid}, t.labelLocalhost)
 }
 
-// isTaken says a local instance holds the array name, or any md resource for
-// no array named.
-func (t *Manager) isTaken(name string) bool {
-	if name == "" {
-		return t.counter.Len() > 0
+// taker says a local instance holds the array name, or any md resource for
+// no array named. An array held by a resource that does not know its kernel
+// name yet, as one assembled outside of the agent, is held by its uuid,
+// which it returns.
+func (t *Manager) taker(name string) (uuid string, ok bool) {
+	switch {
+	case name == "":
+		return "", t.counter.Len() > 0
+	case t.counter.Has(name):
+		return "", true
 	}
-	return t.counter.Has(name)
+	if t.uuidOfKernelName == nil {
+		return "", false
+	}
+	uuid = t.uuidOfKernelName(name)
+	if uuid != "" && t.counter.Has(uuidKeyPrefix+uuid) {
+		return uuid, true
+	}
+	return "", false
 }
