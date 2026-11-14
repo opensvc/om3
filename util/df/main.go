@@ -23,7 +23,7 @@ type (
 	}
 )
 
-// Usage executes and parses a df command
+// Usage executes and parses a df command listing the local filesystems.
 func Usage(ctx context.Context) ([]Entry, error) {
 	b, err := doDFUsage(ctx)
 	if err != nil {
@@ -32,7 +32,8 @@ func Usage(ctx context.Context) ([]Entry, error) {
 	return parseUsage(b)
 }
 
-// Inode executes and parses a df command
+// Inode executes and parses a df command listing the inodes of the local
+// filesystems.
 func Inode(ctx context.Context) ([]Entry, error) {
 	b, err := doDFInode(ctx)
 	if err != nil {
@@ -41,7 +42,8 @@ func Inode(ctx context.Context) ([]Entry, error) {
 	return parseInode(b)
 }
 
-// ContainingMountUsage executes and parses a df command for the mount point containing the path
+// ContainingMountUsage executes and parses a df command for the mount point
+// containing the path, local or remote, as a share pool on nfs.
 func ContainingMountUsage(ctx context.Context, p string) ([]Entry, error) {
 	pp := p
 	for {
@@ -54,7 +56,7 @@ func ContainingMountUsage(ctx context.Context, p string) ([]Entry, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		if b, err := doDFUsage(ctx, pp); err == nil {
+		if b, err := doDFPathUsage(ctx, pp); err == nil {
 			return parseUsage(b)
 		} else {
 			return nil, err
@@ -64,7 +66,7 @@ func ContainingMountUsage(ctx context.Context, p string) ([]Entry, error) {
 
 // MountUsage executes and parses a df command for a mount point
 func MountUsage(ctx context.Context, mnt string) ([]Entry, error) {
-	b, err := doDFUsage(ctx, mnt)
+	b, err := doDFPathUsage(ctx, mnt)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +75,7 @@ func MountUsage(ctx context.Context, mnt string) ([]Entry, error) {
 
 // TypeMountUsage executes and parses a df command for a mount point and a fstype
 func TypeMountUsage(ctx context.Context, fstype string, mnt string) ([]Entry, error) {
-	b, err := doDFUsage(ctx, typeOption, fstype, mnt)
+	b, err := doDFPathUsage(ctx, typeOption, fstype, mnt)
 	if err != nil {
 		return nil, err
 	}
