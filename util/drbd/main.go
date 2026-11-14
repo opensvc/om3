@@ -300,58 +300,66 @@ func GetDigest() (Digest, error) {
 
 func (t *T) Primary(ctx context.Context) error {
 	args := []string{"primary", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) PrimaryForce(ctx context.Context) error {
 	args := []string{"primary", t.res, "--force"}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Secondary(ctx context.Context) error {
 	args := []string{"secondary", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Adjust(ctx context.Context) error {
 	args := []string{"adjust", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 // Resize makes the drbd resource use the current size of the device behind
@@ -361,16 +369,18 @@ func (t *T) Adjust(ctx context.Context) error {
 // offer what the smallest replica holds.
 func (t *T) Resize(ctx context.Context) error {
 	args := []string{"resize", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Connect(ctx context.Context, nodeID string) error {
@@ -382,72 +392,82 @@ func (t *T) Connect(ctx context.Context, nodeID string) error {
 
 func (t *T) connect(ctx context.Context, nodeID string) error {
 	args := []string{"connect", t.res, nodeID}
-	cmd := command.New(
-		command.WithName(drbdsetup),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdsetup),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Disconnect(ctx context.Context) error {
 	args := []string{"disconnect", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Attach(ctx context.Context) error {
 	args := []string{"attach", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) DetachForce(ctx context.Context) error {
 	args := []string{"detach", t.res, "--force"}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Down(ctx context.Context) error {
 	args := []string{"down", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) Up(ctx context.Context) error {
@@ -456,16 +476,18 @@ func (t *T) Up(ctx context.Context) error {
 
 func (t *T) up(ctx context.Context) error {
 	args := []string{"up", t.res}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) CreateMD(ctx context.Context, maxPeers int) error {
@@ -696,16 +718,18 @@ func (t *T) ConfigurePeerMultiPrimary(ctx context.Context, peer string, enabled 
 		yesOrNo = "no"
 	}
 	args := []string{"net-options", "--allow-two-primaries=" + yesOrNo, t.res + ":" + peer}
-	cmd := command.New(
-		command.WithName(drbdadm),
-		command.WithArgs(args),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithContext(ctx),
-	)
-	return retry(cmd)
+	newCmd := func() *command.T {
+		return command.New(
+			command.WithName(drbdadm),
+			command.WithArgs(args),
+			command.WithLogger(t.log),
+			command.WithCommandLogLevel(zerolog.InfoLevel),
+			command.WithStdoutLogLevel(zerolog.InfoLevel),
+			command.WithStderrLogLevel(zerolog.ErrorLevel),
+			command.WithContext(ctx),
+		)
+	}
+	return retry(newCmd)
 }
 
 func (t *T) validateName() error {
@@ -872,9 +896,14 @@ func (t *T) ConnectAndWaitConnectingOrConnected(ctx context.Context, nodeID stri
 	return t.WaitConnectingOrConnected(ctx, nodeID)
 }
 
-func retry(cmd *command.T) error {
+// retry runs the command newCmd makes until it does not fail on a device in
+// use, for RetryTimeout. Each attempt runs a new command: a command runs
+// once, and running it again failed with "command: already started",
+// hiding the error of the first attempt.
+func retry(newCmd func() *command.T) error {
 	limit := time.Now().Add(RetryTimeout)
 	for {
+		cmd := newCmd()
 		err := cmd.Run()
 		if err == nil {
 			return nil
