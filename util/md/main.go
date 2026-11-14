@@ -467,6 +467,26 @@ func (t T) KernelName() string {
 	return ""
 }
 
+// UUIDOfKernelName returns the uuid of the array of kernel name, as "md127",
+// from the udev link by uuid leading to it, empty when none does.
+func UUIDOfKernelName(name string) string {
+	const prefix = "md-uuid-"
+	links, err := filepath.Glob(filepath.Join(devRoot, "disk", "by-id", prefix+"*"))
+	if err != nil {
+		return ""
+	}
+	for _, link := range links {
+		target, err := filepath.EvalSymlinks(link)
+		if err != nil {
+			continue
+		}
+		if filepath.Base(target) == name {
+			return strings.TrimPrefix(filepath.Base(link), prefix)
+		}
+	}
+	return ""
+}
+
 func (t T) devpathFromUUID() string {
 	return "/dev/disk/by-id/md-uuid-" + t.uuid
 }

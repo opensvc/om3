@@ -197,11 +197,15 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.Down
 }
 
-// StatusInfo implements resource.StatusInfoer: the kernel name of the array
-// while it is assembled, as "md127", the name /proc/mdstat gives it, for the
-// md events of the daemon to refresh the instance holding it alone.
+// StatusInfo implements resource.StatusInfoer: the uuid of the array, and its
+// kernel name while it is assembled, as "md127", the name /proc/mdstat gives
+// it, for the md events of the daemon to refresh the instance holding it
+// alone, an array assembled outside of the agent included.
 func (t *T) StatusInfo(context.Context) map[string]any {
 	data := make(map[string]any)
+	if t.UUID != "" {
+		data["uuid"] = t.UUID
+	}
 	if name := t.md().KernelName(); name != "" {
 		data["dev"] = name
 	}

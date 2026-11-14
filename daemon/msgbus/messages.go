@@ -1321,11 +1321,14 @@ type (
 	// state, as the kernel tells: a resync or a recovery started or ended,
 	// a device failed, was added or removed, an array started or stopped.
 	// Name is the kernel name of the array, as "md127", empty when the
-	// event names none, for the instances holding any md array.
+	// event names none, for the instances holding any md array. UUID is
+	// the uuid of the array when it is held by an md resource that did not
+	// know its kernel name yet, as one assembled outside of the agent.
 	MdArrayUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 		Name       string `json:"name" yaml:"name"`
+		UUID       string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 	}
 )
 

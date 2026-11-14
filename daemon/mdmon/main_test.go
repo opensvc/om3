@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/daemon/evwatch"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -38,7 +40,7 @@ func newTestManager(t *testing.T) (*Manager, *notifications) {
 	n := &notifications{}
 	m := &Manager{log: plog.NewDefaultLogger(), counter: evwatch.NewCounter()}
 	m.debouncer = evwatch.NewDebouncer(10*time.Millisecond, func(name string) {
-		if m.isTaken(name) {
+		if _, ok := m.taker(name); ok {
 			n.add(name)
 		}
 	})
@@ -75,7 +77,7 @@ func TestManagerTellsTheTakerAtPublishTime(t *testing.T) {
 	n := &notifications{}
 	m := &Manager{log: plog.NewDefaultLogger(), counter: evwatch.NewCounter()}
 	m.debouncer = evwatch.NewDebouncer(100*time.Millisecond, func(name string) {
-		if m.isTaken(name) {
+		if _, ok := m.taker(name); ok {
 			n.add(name)
 		}
 	})
@@ -85,4 +87,35 @@ func TestManagerTellsTheTakerAtPublishTime(t *testing.T) {
 	m.counter.Set("svc1", []string{"md127"})
 	time.Sleep(200 * time.Millisecond)
 	assert.Equal(t, []string{"md127"}, n.settled())
+}
+
+// An array held by a resource that does not know its kernel name, as one
+// assembled outside of the agent for a resource down, is held by its uuid,
+// from its udev link, and its change published with it.
+func TestManagerTellsTheTakerByUUID(t *testing.T) {
+	m, _ := newTestManager(t)
+	m.uuidOfKernelName = func(name string) string {
+		if name == "md125" {
+			return "569109e3:33b8d30c:12ee6eb1:08a1dee6"
+		}
+		return ""
+	}
+	m.counter.Set("svc1", []string{"uuid:569109e3:33b8d30c:12ee6eb1:08a1dee6"})
+	uuid, ok := m.taker("md125")
+	assert.True(t, ok)
+	assert.Equal(t, "569109e3:33b8d30c:12ee6eb1:08a1dee6", uuid)
+	_, ok = m.taker("md124")
+	assert.False(t, ok, "an array of another uuid")
+}
+
+// The counter keys of the md resources: the kernel name of their array, else
+// its uuid, else none.
+func TestKeysOf(t *testing.T) {
+	st := instance.Status{Resources: instance.ResourceStatuses{
+		"disk#1": resource.Status{Type: "disk.md", Info: map[string]any{"dev": "md127", "uuid": "a:b:c:d"}},
+		"disk#2": resource.Status{Type: "disk.md", Info: map[string]any{"uuid": "e:f:g:h"}},
+		"disk#3": resource.Status{Type: "disk.md"},
+		"disk#4": resource.Status{Type: "disk.drbd", Info: map[string]any{"dev": "md1"}},
+	}}
+	assert.ElementsMatch(t, []string{"md127", "uuid:e:f:g:h", ""}, keysOf(st))
 }
