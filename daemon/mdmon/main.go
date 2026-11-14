@@ -251,21 +251,21 @@ func (t *Manager) publish(name string) {
 	t.publisher.Pub(&msgbus.MdArrayUpdated{Node: t.localhost, Name: name, UUID: uuid}, t.labelLocalhost)
 }
 
-// taker says a local instance holds the array name, or any md resource for
-// no array named. An array held by a resource that does not know its kernel
-// name yet, as one assembled outside of the agent, is held by its uuid,
-// which it returns.
+// taker says a local instance holds the array name, by its kernel name or
+// by its uuid, or any md resource for no array named. It returns the uuid of
+// the array, from its udev link, which tells apart a resource whose array
+// is not assembled, as one assembled outside of the agent, and a resource
+// whose status still names a kernel name another array reused.
 func (t *Manager) taker(name string) (uuid string, ok bool) {
-	switch {
-	case name == "":
+	if name == "" {
 		return "", t.counter.Len() > 0
-	case t.counter.Has(name):
-		return "", true
 	}
-	if t.uuidOfKernelName == nil {
-		return "", false
+	if t.uuidOfKernelName != nil {
+		uuid = t.uuidOfKernelName(name)
 	}
-	uuid = t.uuidOfKernelName(name)
+	if t.counter.Has(name) {
+		return uuid, true
+	}
 	if uuid != "" && t.counter.Has(uuidKeyPrefix+uuid) {
 		return uuid, true
 	}
