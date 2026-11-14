@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
-	"net"
 	"net/http"
 	"os"
 	"time"
@@ -43,11 +42,12 @@ type (
 )
 
 var (
-	// dialTimeout bounds the TCP connect of a client. Without it the
-	// connect to an unreachable node waits for the kernel to give up
-	// (about 2 minutes with the default 6 SYN retries), and it is not
-	// abandoned when the request context ends: the transport completes
-	// the dial in the background to pool the connection.
+	// dialTimeout bounds the TCP connect of a client to an address.
+	// Without it the connect to an unreachable node waits for the kernel
+	// to give up (about 2 minutes with the default 6 SYN retries), and it
+	// is not abandoned when the request context ends: the transport
+	// completes the dial in the background to pool the connection. The
+	// resolution of a node name is bounded apart, by lookupTimeout.
 	dialTimeout = 5 * time.Second
 
 	// dialKeepAlive is the period of the TCP keepalive probes of a
@@ -185,9 +185,9 @@ func TLSConfig(o Options) (*tls.Config, error) {
 
 // NewTransport returns a transport to the nodes, or to the services the
 // daemon reaches, as an arbitrator or the collector, trusting what config
-// says: its connect and its TLS handshake are bounded, and its idle
-// connections dropped. Every client of the nodes is made of one, for a node
-// unreachable not to hold them longer than another.
+// says: its name resolution, its connect and its TLS handshake are bounded,
+// and its idle connections dropped. Every client of the nodes is made of
+// one, for a node unreachable not to hold them longer than another.
 //
 // It speaks HTTP/1.1, as a transport given a TLS configuration does: unlike
 // a clone of http.DefaultTransport, which would attempt HTTP/2. It uses no
@@ -195,7 +195,7 @@ func TLSConfig(o Options) (*tls.Config, error) {
 func NewTransport(config *tls.Config) *http.Transport {
 	return &http.Transport{
 		TLSClientConfig:     config,
-		DialContext:         (&net.Dialer{Timeout: dialTimeout, KeepAlive: dialKeepAlive}).DialContext,
+		DialContext:         dialContext,
 		TLSHandshakeTimeout: tlsHandshakeTimeout,
 		IdleConnTimeout:     idleConnTimeout,
 	}
