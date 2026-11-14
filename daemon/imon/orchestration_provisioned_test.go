@@ -395,3 +395,109 @@ func TestANodeWaitingParentsStopsWaitingWhenTheLeadershipMoved(t *testing.T) {
 	m.orchestrateProvisioned()
 	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
 }
+
+// newParentsTestManager returns the manager of node1 for a failover child,
+// "parents = parent@{nodename}", provisioned nowhere on node1 and node2,
+// node1 leading the placement, with the parent of each node of the given
+// status.
+func newParentsTestManager(state instance.MonitorState, parent1, parent2 status.T) *Manager {
+	m := newProvisionedTestManager(state)
+	m.objStatus.Topology = topology.Failover
+	m.objStatus.PlacementPolicy = placement.NodesOrder
+	m.scopeNodes = []string{"node1", "node2"}
+	m.state.IsLeader = true
+	m.state.Parents = map[string]status.T{"parent@node1": parent1}
+	m.instStatus["node1"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.False}
+	m.instMonitor["node2"] = instance.Monitor{
+		State:           instance.MonitorStateIdle,
+		OrchestrationID: m.state.OrchestrationID,
+		Parents:         map[string]status.T{"parent@node2": parent2},
+	}
+	return m
+}
+
+// A failover child whose parent runs on the second node of the placement is
+// provisioned from that node: it is the one able to start it. The first node,
+// its parent down by design, provisions with no wait. The leader used to be
+// the first node, waiting for ever for a parent never to start there.
+func TestAProvisionIsLedFromTheNodeWhoseParentsAreUp(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateIdle, status.Down, status.Up)
+	queued := queuedActions(t)
+
+	require.Equal(t, "node2", m.provisioningLeader())
+	require.False(t, m.isProvisioningLeader())
+	m.orchestrateProvisioned()
+	require.NotEqual(t, instance.MonitorStateWaitParents, m.state.State)
+	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
+}
+
+// The same, seen from the node whose parent is up: it leads, and checks with
+// no wait.
+func TestTheNodeWhoseParentsAreUpLeadsTheProvision(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateIdle, status.Up, status.Down)
+	m.localhost = "node2"
+	m.state.IsLeader = false
+	m.state.Parents = map[string]status.T{"parent@node2": status.Up}
+	m.instMonitor = map[string]instance.Monitor{"node1": {
+		State:           instance.MonitorStateIdle,
+		OrchestrationID: m.state.OrchestrationID,
+		IsLeader:        true,
+		Parents:         map[string]status.T{"parent@node1": status.Down},
+	}}
+	queued := queuedActions(t)
+
+	require.Equal(t, "node2", m.provisioningLeader())
+	require.True(t, m.isProvisioningLeader())
+	m.orchestrateProvisioned()
+	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
+}
+
+// The placement leader keeps a provision when its parents are up, and when
+// no node has its parents up, in which case it waits for them.
+func TestThePlacementLeaderKeepsTheProvision(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateIdle, status.Up, status.Up)
+	require.Equal(t, "node1", m.provisioningLeader(), "its parents are up")
+
+	m = newParentsTestManager(instance.MonitorStateIdle, status.Down, status.Down)
+	queued := queuedActions(t)
+	require.Equal(t, "node1", m.provisioningLeader(), "no node has its parents up")
+	m.orchestrateProvisioned()
+	require.Equal(t, instance.MonitorStateWaitParents, m.state.State)
+	require.Empty(t, *queued)
+}
+
+// A placement leader waiting for its parents hands the provision over to the
+// node whose parent came up, and checks with no wait.
+func TestTheProvisionMovesToTheNodeWhoseParentCameUp(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateWaitParents, status.Down, status.Down)
+	queued := queuedActions(t)
+	m.orchestrateProvisioned()
+	require.Equal(t, instance.MonitorStateWaitParents, m.state.State)
+
+	instMon := m.instMonitor["node2"]
+	instMon.Parents = map[string]status.T{"parent@node2": status.Up}
+	m.instMonitor["node2"] = instMon
+	m.orchestrateProvisioned()
+	require.Equal(t, instance.MonitorStateIdle, m.state.State)
+	m.orchestrateProvisioned()
+	require.Equal(t, []instance.MonitorState{instance.MonitorStatePreflightProgress}, *queued)
+}
+
+// A peer whose parents are not known yet is not taken for one whose parents
+// are up.
+func TestAPeerOfUnknownParentsDoesNotLeadTheProvision(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateIdle, status.Down, status.Up)
+	instMon := m.instMonitor["node2"]
+	instMon.Parents = nil
+	m.instMonitor["node2"] = instMon
+	require.Equal(t, "node1", m.provisioningLeader())
+}
+
+// The parents gate the start a provision does, not an unprovision: its
+// leader stays the placement leader.
+func TestTheParentsDoNotMoveTheUnprovisionLeader(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateIdle, status.Down, status.Up)
+	m.state.GlobalExpect = instance.MonitorGlobalExpectUnprovisioned
+	require.Equal(t, "node1", m.provisioningLeader())
+}

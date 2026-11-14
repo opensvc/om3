@@ -279,6 +279,13 @@ func (t *Manager) leaders() []string {
 // provisions and starts, the others provision and stay down: the placement
 // leader, when the object runs elsewhere, would start a second instance of
 // it.
+//
+// A failover object running nowhere is provisioned from the first candidate
+// of the placement whose parents are up, when the placement leader's are
+// not: the leader starts, so waits for its parents, and a parent of the node,
+// as "parent@{nodename}" names, is down by design where its failover object
+// does not run. The placement leader keeps the provision when no candidate
+// has its parents up, and waits for them.
 func (t *Manager) provisioningLeader() string {
 	if t.objStatus.Topology != topology.Flex {
 		if running := t.runningInstances(); len(running) > 0 {
@@ -286,6 +293,48 @@ func (t *Manager) provisioningLeader() string {
 			return running[0]
 		}
 	}
+	leader := t.placementProvisioningLeader()
+	if t.objStatus.Topology == topology.Flex || t.state.GlobalExpect != instance.MonitorGlobalExpectProvisioned {
+		return leader
+	}
+	if leader == "" || t.areParentsUp(leader) {
+		return leader
+	}
+	for _, node := range t.leaderCandidates() {
+		if t.areParentsUp(node) {
+			return node
+		}
+	}
+	return leader
+}
+
+// areParentsUp says the parents of the instance of node are up, or of an
+// undefined status, as the wait for the parents tells. A peer whose parents
+// are not known yet, as one publishing none while the object has parents,
+// is not counted up.
+func (t *Manager) areParentsUp(node string) bool {
+	var parents map[string]status.T
+	if node == t.localhost {
+		parents = t.state.Parents
+	} else if instMon, ok := t.instMonitor[node]; ok {
+		parents = instMon.Parents
+	} else {
+		return false
+	}
+	if len(parents) == 0 && len(t.state.Parents) > 0 {
+		return false
+	}
+	for _, availStatus := range parents {
+		if !availStatus.Is(status.Up, status.Undef) {
+			return false
+		}
+	}
+	return true
+}
+
+// placementProvisioningLeader returns the leader of the placement, or the
+// first candidate of a flex object no node leads.
+func (t *Manager) placementProvisioningLeader() string {
 	leaders := t.leaders()
 	switch len(leaders) {
 	case 0:
