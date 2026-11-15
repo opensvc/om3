@@ -3,6 +3,7 @@ package virtmon
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -138,4 +139,45 @@ exit 1`)
 	assert.Contains(t, err.Error(), "failed to connect to the hypervisor")
 	time.Sleep(readyDelay + 200*time.Millisecond)
 	assert.Zero(t, readies)
+}
+
+// virsh runs through stdbuf, line buffered, where stdbuf is installed: an
+// older virsh holds the events it writes to a pipe in its libc buffer, which
+// "--loop" never flushes (card 303). Where stdbuf is not, virsh runs as is.
+func TestSourceRunsVirshLineBuffered(t *testing.T) {
+	if _, err := exec.LookPath("stdbuf"); err != nil {
+		t.Skip("no stdbuf")
+	}
+	installVirsh(t, `[ "$1" = "help" ] && { echo "--loop"; exit 0; }
+[ "$_STDBUF_O" = "L" ] || exit 5
+echo "event 'lifecycle' for domain 'vm1': Stopped Destroyed"
+sleep 60`)
+	src := &source{log: plog.NewDefaultLogger()}
+	require.NoError(t, src.Check(context.Background()))
+	require.NotEmpty(t, src.stdbuf)
+	assert.Equal(t, []string{src.stdbuf, "-oL", src.virsh, "-r", "event", "--event", "lifecycle", "--loop"}, src.command())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	names := make(chan string, 1)
+	go func() { _ = src.Run(ctx, func() {}, func(name string) { names <- name }) }()
+	select {
+	case name := <-names:
+		assert.Equal(t, "vm1", name)
+	case <-time.After(5 * time.Second):
+		t.Fatal("no event through stdbuf")
+	}
+
+	saved := lookPath
+	lookPath = func(name string) (string, error) {
+		if name == "stdbuf" {
+			return "", exec.ErrNotFound
+		}
+		return saved(name)
+	}
+	t.Cleanup(func() { lookPath = saved })
+	src = &source{log: plog.NewDefaultLogger()}
+	require.NoError(t, src.Check(context.Background()))
+	assert.Empty(t, src.stdbuf)
+	assert.Equal(t, []string{src.virsh, "-r", "event", "--event", "lifecycle", "--loop"}, src.command(), "virsh as is")
 }
