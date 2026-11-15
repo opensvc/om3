@@ -109,17 +109,16 @@ func setSizeRlimit(d *int64, what int) error {
 	return setRlimit(uint64(*d), what)
 }
 
+// setRlimit sets the limit what to max, the soft limit and the hard one, as
+// systemd Limit*=N does: the soft limit is the one enforced. The hard limit
+// alone was set, the soft one only lowered under it, so a limit raised, as
+// limit_core=1g from a soft limit of 0, kept the soft limit inherited.
+//
+// syscall.Setrlimit, rather than unix.Setrlimit, is what has the Go runtime
+// leave the nofile limit set to the process it executes.
 func setRlimit(max uint64, what int) error {
-	var rLimit syscall.Rlimit
-	err := syscall.Getrlimit(what, &rLimit)
-	if err != nil {
-		return fmt.Errorf("get_rlimit: %w", err)
-	}
-	rLimit.Max = max
-	if rLimit.Max < rLimit.Cur {
-		rLimit.Cur = rLimit.Max
-	}
-	err = syscall.Setrlimit(what, &rLimit)
+	rLimit := syscall.Rlimit{Cur: max, Max: max}
+	err := syscall.Setrlimit(what, &rLimit)
 	if err != nil {
 		return fmt.Errorf("set_rlimit: %+v: %w", rLimit, err)
 	}
