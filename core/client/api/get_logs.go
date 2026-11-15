@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -112,9 +113,19 @@ func (t GetLogs) eventsBase() (resp *http.Response, err error) {
 		Lines:  t.Lines,
 		Paths:  t.Paths,
 	}
-	if resp, err := t.client.GetNodeLogs(context.Background(), t.nodename, &params); err == nil && resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
-	} else {
+	resp, err = t.client.GetNodeLogs(context.Background(), t.nodename, &params)
+	if err != nil {
 		return resp, err
 	}
+	if resp.StatusCode != http.StatusOK {
+		// The problem the daemon answered says why, as a filter the
+		// journalctl of the node can not apply.
+		defer func() { _ = resp.Body.Close() }()
+		var problem api.Problem
+		if err := json.NewDecoder(resp.Body).Decode(&problem); err == nil && problem.Detail != "" {
+			return nil, fmt.Errorf("%s", problem.Detail)
+		}
+		return nil, fmt.Errorf("unexpected get events status code %s", resp.Status)
+	}
+	return resp, nil
 }
