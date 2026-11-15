@@ -42,10 +42,6 @@ func (ea *ExecutorArg) CpCmdArgs(src, dst string) []string {
 	return []string{"cp", "-q", src, ea.BT.ContainerName() + ":" + dst}
 }
 
-func (ea *ExecutorArg) EnterCmdArgs(pid int) []string {
-	return []string{"nsenter", "-t", fmt.Sprint(pid), "--all"}
-}
-
 func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string, interactive bool) []string {
 	l := []string{"exec"}
 	for _, e := range env {
@@ -56,10 +52,6 @@ func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string, interactive bool
 	}
 	l = append(l, ea.BT.ContainerName())
 	return append(l, args...)
-}
-
-func (ea *ExecutorArg) EnterCmdCheckArgs(pid int) []string {
-	return []string{"nsenter", "-t", fmt.Sprint(pid), "--all"}
 }
 
 func (ea *ExecutorArg) HasImageArgs() *args.T {

@@ -181,8 +181,6 @@ type (
 	// args for container resource operations.
 	ExecutorContainerArgser interface {
 		CpCmdArgs(string, string) []string
-		EnterCmdArgs(pid int) []string
-		EnterCmdCheckArgs(pid int) []string
 		ExecCmdArgs([]string, []string, bool) []string
 		RemoveArgs() *args.T
 		RunArgsBase(ctx context.Context) (*args.T, error)
