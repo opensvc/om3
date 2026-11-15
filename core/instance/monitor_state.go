@@ -75,6 +75,15 @@ const (
 	// it starts, for the resource files the source it took over from lists.
 	MonitorStateWaitFiles
 
+	// MonitorStateWaitAffinity is the instance an orchestration starting
+	// the object waits on, no node satisfying its hard affinities yet, for
+	// an object they name to come up, as one the same request provisions
+	// or starts. MonitorStateWaitAffinityFailure ends the wait when such
+	// an object failed or showed no intention to come up, with the reason
+	// in the StateReason of the monitor.
+	MonitorStateWaitAffinity
+	MonitorStateWaitAffinityFailure
+
 	// Miscellaneous
 	MonitorStateRunning
 	MonitorStateSyncing
@@ -106,6 +115,7 @@ var (
 		MonitorStateDeleteFailure,
 		MonitorStatePrepareFailure,
 		MonitorStateWaitDestinationFailure,
+		MonitorStateWaitAffinityFailure,
 		MonitorStateFreezeFailure,
 		MonitorStateProvisionFailure,
 		MonitorStatePurgeFailed,
@@ -189,6 +199,8 @@ func init() {
 		{MonitorStateWaitDestination, "wait destination"},
 		{MonitorStateWaitDestinationFailure, "wait destination failed"},
 		{MonitorStateWaitFiles, "wait files"},
+		{MonitorStateWaitAffinity, "wait affinity"},
+		{MonitorStateWaitAffinityFailure, "wait affinity failed"},
 
 		// Miscellaneous
 		{MonitorStateRunning, "running"},

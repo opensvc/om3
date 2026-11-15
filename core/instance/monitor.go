@@ -42,9 +42,16 @@ type (
 		// OrchestrationIsDone set.
 		OrchestrationIsDone bool `json:"orchestration_is_done"`
 
-		SessionID               xsession.ID      `json:"session_id"`
-		State                   MonitorState     `json:"state"`
-		StateUpdatedAt          time.Time        `json:"state_updated_at"`
+		SessionID      xsession.ID  `json:"session_id"`
+		State          MonitorState `json:"state"`
+		StateUpdatedAt time.Time    `json:"state_updated_at"`
+
+		// StateReason says why the instance is in a failure state, when
+		// the state alone does not, as the object a wait for a hard
+		// affinity gave up on. It is cleared when the state is no
+		// failure.
+		StateReason string `json:"state_reason,omitempty"`
+
 		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at"`
 		IsPreserved             bool             `json:"preserved"`
 		Resources               ResourceMonitors `json:"resources,omitempty"`
@@ -384,6 +391,9 @@ func (t Monitor) Unstructured() map[string]any {
 		"monitor_action_executed_at": t.MonitorActionExecutedAt,
 		"preserved":                  t.IsPreserved,
 		"updated_at":                 t.UpdatedAt,
+	}
+	if t.StateReason != "" {
+		m["state_reason"] = t.StateReason
 	}
 	if len(t.Resources) > 0 {
 		m["resources"] = t.Resources.Unstructured()

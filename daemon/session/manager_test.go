@@ -473,3 +473,13 @@ func TestARefusedOrchestrationSaysWhatWasAsked(t *testing.T) {
 	assert.Equal(t, StateRefused, o.State)
 	assert.Equal(t, "stopped", o.Expect)
 }
+
+// The failure an instance ended on carries the reason its monitor tells, as
+// the hard affinity a wait gave up on, for the client waiting for the
+// orchestration to print it.
+func TestInstanceFailureCarriesTheReason(t *testing.T) {
+	assert.Equal(t, "", instanceFailure("n1", instance.MonitorStateIdle, "stale"))
+	assert.Equal(t, "start failed on n1", instanceFailure("n1", instance.MonitorStateStartFailure, ""))
+	assert.Equal(t, "wait affinity failed on n1: hard affinity c1/svc/p: start failed on n2",
+		instanceFailure("n1", instance.MonitorStateWaitAffinityFailure, "hard affinity c1/svc/p: start failed on n2"))
+}

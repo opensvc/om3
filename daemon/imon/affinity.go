@@ -50,6 +50,9 @@ func (t *Manager) janitorAffinities() {
 		t.log.Infof("subscribe to %s instance status updates and deletes, named by an affinity", p)
 		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		// The monitors of the object tell a wait for it whether it
+		// comes up.
+		t.sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		t.affinitySubscribed[p] = struct{}{}
 	}
 	for p := range t.affinitySubscribed {
@@ -59,6 +62,7 @@ func (t *Manager) janitorAffinities() {
 		t.log.Infof("unsubscribe from %s instance status updates and deletes, no longer named by an affinity", p)
 		t.sub.DelFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		t.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		t.sub.DelFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		delete(t.affinitySubscribed, p)
 		for k := range t.affinityAvail {
 			if strings.HasPrefix(k, p.String()+"@") {
@@ -108,6 +112,11 @@ func affineAvail(p naming.Path, node string) status.T {
 type affinityViolation struct {
 	text    string
 	follows naming.Path
+
+	// path is the object of the affinity, and anti says it is one of a
+	// hard anti affinity.
+	path naming.Path
+	anti bool
 }
 
 // affinityViolations says why the object may not start on node, as the start
@@ -126,13 +135,14 @@ func (t *Manager) affinityViolations(node string) []affinityViolation {
 			cycle := t.hardAffinityCycle(p)
 			switch {
 			case len(cycle) == 0:
-				l = append(l, affinityViolation{text: fmt.Sprintf("hard affinity with %s not satisfied on %s (%s)", p, node, avail)})
+				l = append(l, affinityViolation{text: fmt.Sprintf("hard affinity with %s not satisfied on %s (%s)", p, node, avail), path: p})
 			case cycle[0] == t.path:
 				// This object starts first, the others follow it.
 			default:
 				l = append(l, affinityViolation{
 					text:    fmt.Sprintf("hard affinity with %s not satisfied on %s (%s), %s starting first among %s", p, node, avail, cycle[0], cycle),
 					follows: cycle[0],
+					path:    p,
 				})
 			}
 		}
@@ -144,7 +154,7 @@ func (t *Manager) affinityViolations(node string) []affinityViolation {
 		switch avail := affineAvail(p, node); avail {
 		case status.Down, status.StandbyUp, status.StandbyDown, status.NotApplicable:
 		default:
-			l = append(l, affinityViolation{text: fmt.Sprintf("hard anti affinity with %s not satisfied on %s (%s)", p, node, avail)})
+			l = append(l, affinityViolation{text: fmt.Sprintf("hard anti affinity with %s not satisfied on %s (%s)", p, node, avail), path: p, anti: true})
 		}
 	}
 	return l
