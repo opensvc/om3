@@ -223,3 +223,22 @@ func TestAStartWaitFailsAndThePeersEnd(t *testing.T) {
 	peer.orchestrateStarted()
 	assert.True(t, peer.state.OrchestrationIsDone, "the peer ends the orchestration")
 }
+
+// The reason of a failure is cleared once the state is no failure, the state
+// set directly, as by a clear of the monitor, or by a transition, and kept
+// while it is.
+func TestTheReasonOfAFailureIsClearedWithIt(t *testing.T) {
+	m := newProvisionAffinityTestManager(instance.ActorConfig{})
+	m.state.State = instance.MonitorStateWaitAffinityFailure
+	m.state.StateReason = "hard affinity with p: start failed on node2"
+	m.clearStaleStateReason()
+	assert.NotEmpty(t, m.state.StateReason, "kept while failed")
+
+	m.state.State = instance.MonitorStateIdle
+	m.clearStaleStateReason()
+	assert.Empty(t, m.state.StateReason, "cleared by a state set directly")
+
+	m.state.StateReason = "stale"
+	m.transitionTo(instance.MonitorStateIdle)
+	assert.Empty(t, m.state.StateReason, "cleared by a transition")
+}
