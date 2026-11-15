@@ -5338,6 +5338,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        501:
+          $ref: '#/components/responses/501'
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/container/log:
     get:
@@ -5955,6 +5957,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        501:
+          $ref: '#/components/responses/501'
 
   /api/node/name/{nodename}/metrics:
     get:
@@ -14955,6 +14959,13 @@ components:
 
     '500':
       description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+    '501':
+      description: Not Implemented
       content:
         application/json:
           schema:
