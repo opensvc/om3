@@ -178,7 +178,21 @@ func (t *Manager) provisionedFromWaitLeader() {
 		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
-	if !t.hasLeaderProvisioned() || !t.isLocalStatusCurrent() {
+	if !t.isLocalStatusCurrent() {
+		return
+	}
+	if !t.hasLeaderProvisioned() {
+		// The leadership moved to this node while it waited for the
+		// former leader, which gave up the provision without making
+		// anything, as one waiting for its parents when a parent of
+		// this node came up: this node leads now, once every peer
+		// checked, the former leader included. Waiting for the former
+		// leader to be done would wait for ever, as it waits for this
+		// node.
+		if t.isProvisioningLeader() && t.formerLeaderGaveUp() && t.arePeersPreflighted() {
+			t.log.Infof("lead the provision: the former leader %s gave it up", t.waitedLeader())
+			t.provisionedFromChecked()
+		}
 		return
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.NotApplicable, provisioned.True) {
@@ -413,6 +427,28 @@ type leaderWaited struct {
 
 // waitedLeader returns the leader the local instance began to wait for in
 // the orchestration running, empty when it waits for none.
+// formerLeaderGaveUp says the leader the local instance waited for, the
+// leadership having moved to the local instance since, gave the provision up
+// without making anything: it is in the same orchestration, not done, and
+// back to a state of no action, as idle, a wait, or its check.
+func (t *Manager) formerLeaderGaveUp() bool {
+	waited := t.waitedLeader()
+	if waited == "" || waited == t.localhost {
+		return false
+	}
+	instMon, ok := t.instMonitor[waited]
+	if !ok || instMon.OrchestrationID != t.state.OrchestrationID || instMon.OrchestrationIsDone {
+		return false
+	}
+	return instMon.State.IsOneOf(
+		instance.MonitorStateIdle,
+		instance.MonitorStateWaitParents,
+		instance.MonitorStatePreflightProgress,
+		instance.MonitorStatePreflightSuccess,
+		instance.MonitorStateWaitLeader,
+	)
+}
+
 func (t *Manager) waitedLeader() string {
 	if t.leaderWaited.orchestrationID != t.state.OrchestrationID {
 		return ""

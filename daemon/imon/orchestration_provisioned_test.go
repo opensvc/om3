@@ -501,3 +501,36 @@ func TestTheParentsDoNotMoveTheUnprovisionLeader(t *testing.T) {
 	m.state.GlobalExpect = instance.MonitorGlobalExpectUnprovisioned
 	require.Equal(t, "node1", m.provisioningLeader())
 }
+
+// A node waiting for the leader whose parents were down leads once a parent
+// of its own came up and the former leader, back to its check, waits for it
+// in turn: it provisions as the leader. It used to wait for the former
+// leader to be done, which waited for it: the orchestration never ended.
+func TestTheWaiterLeadsWhenTheFormerLeaderGaveUp(t *testing.T) {
+	m := newParentsTestManager(instance.MonitorStateWaitLeader, status.Up, status.Down)
+	m.localhost = "node2"
+	m.state.IsLeader = false
+	m.state.Parents = map[string]status.T{"parent@node2": status.Up}
+	m.leaderWaited = leaderWaited{node: "node1", orchestrationID: m.state.OrchestrationID}
+	m.instStatus = map[string]instance.Status{
+		"node1": {Avail: status.Down, Provisioned: provisioned.False},
+		"node2": {Avail: status.Down, Provisioned: provisioned.False},
+	}
+	m.instMonitor = map[string]instance.Monitor{"node1": {
+		State:           instance.MonitorStateWaitParents,
+		OrchestrationID: m.state.OrchestrationID,
+		IsLeader:        true,
+		Parents:         map[string]status.T{"parent@node1": status.Down},
+	}}
+	queued := queuedActions(t)
+	require.Equal(t, "node2", m.provisioningLeader())
+
+	m.orchestrateProvisioned()
+	require.Empty(t, *queued, "the former leader not checked yet")
+
+	instMon := m.instMonitor["node1"]
+	instMon.State = instance.MonitorStateWaitLeader
+	m.instMonitor["node1"] = instMon
+	m.orchestrateProvisioned()
+	require.Equal(t, []instance.MonitorState{instance.MonitorStateProvisionProgress}, *queued, "provisions as the leader")
+}
