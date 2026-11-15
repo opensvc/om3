@@ -680,6 +680,12 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			}
 		case instance.MonitorGlobalExpectUnprovisioned, instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectProvisioned:
 			reason := t.provisionDisabledRefusal(*c.Value.GlobalExpect)
+			if reason == "" && *c.Value.GlobalExpect == instance.MonitorGlobalExpectProvisioned && t.objStatus.Topology != topology.Flex {
+				// The hard affinities never let the object start
+				// anywhere: a provision starting it would wait for
+				// nothing.
+				reason = t.hardAffinityNeverMet(t.scopeNodes)
+			}
 			if reason == "" && *c.Value.GlobalExpect == instance.MonitorGlobalExpectPurged {
 				reason = t.usedByProtectedRefusal()
 			}
@@ -1412,6 +1418,20 @@ func (t *Manager) leaderCandidates() []string {
 		candidates = append(candidates, node)
 	}
 	return t.sortCandidates(candidates)
+}
+
+// provisionCandidates returns the nodes a provision may start the object on,
+// in the order a start would: the leader candidates, provisioned or not,
+// their hard affinities letting the object start there, those its soft
+// affinities prefer first.
+func (t *Manager) provisionCandidates() []string {
+	var candidates []string
+	for _, node := range t.leaderCandidates() {
+		if t.isHardAffinitySatisfied(node) {
+			candidates = append(candidates, node)
+		}
+	}
+	return t.sortBySoftAffinity(candidates)
 }
 
 func (t *Manager) newIsLeader() bool {

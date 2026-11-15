@@ -125,7 +125,7 @@ func (t *Manager) handle(i any) {
 				m.Node,
 				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
 				m.Value.GlobalExpect.String(),
-				instanceFailure(m.Node, m.Value.State),
+				instanceFailure(m.Node, m.Value.State, m.Value.StateReason),
 				m.Value.GlobalExpectUpdatedAt,
 			)
 		case *msgbus.NodeMonitorUpdated:
@@ -227,9 +227,12 @@ func (t *Manager) handle(i any) {
 // node: an instance that reached what was asked is idle by then, and one that
 // gave up keeps the state it failed on. This is what lets a node that did not
 // accept the orchestration answer for its outcome.
-func instanceFailure(nodename string, state instance.MonitorState) string {
+func instanceFailure(nodename string, state instance.MonitorState, reason string) string {
 	if !state.IsOneOf(instance.MonitorStatesFailure...) {
 		return ""
+	}
+	if reason != "" {
+		return fmt.Sprintf("%s on %s: %s", state, nodename, reason)
 	}
 	return fmt.Sprintf("%s on %s", state, nodename)
 }

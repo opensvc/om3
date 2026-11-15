@@ -22,6 +22,7 @@ import (
 var provisionedFailureStates = []instance.MonitorState{
 	instance.MonitorStateProvisionFailure,
 	instance.MonitorStateStartFailure,
+	instance.MonitorStateWaitAffinityFailure,
 }
 
 func (t *Manager) orchestrateProvisioned() {
@@ -44,7 +45,44 @@ func (t *Manager) orchestrateProvisioned() {
 		t.provisionedFromProvisionFailed()
 	case instance.MonitorStateWaitParents:
 		t.provisionedFromWaitParents()
+	case instance.MonitorStateWaitAffinity:
+		t.provisionedFromWaitAffinity()
+	case instance.MonitorStateWaitAffinityFailure:
+		if t.isWaitAffinityFailureOfOther() {
+			// The failure of an orchestration gone: this one starts
+			// from idle.
+			t.transitionTo(instance.MonitorStateIdle)
+			t.provisionedFromIdle()
+		} else {
+			t.provisionedFromProvisionFailed()
+		}
 	}
+}
+
+// provisionedFromWaitAffinity goes on once a node satisfies the hard
+// affinities, the leadership moving there, or as soon as the node no longer
+// leads the provision.
+func (t *Manager) provisionedFromWaitAffinity() {
+	if !t.isProvisioningLeader() {
+		t.log.Infof("stop waiting affinity: not the provisioning leader")
+		t.stopWaitAffinityTimer()
+		t.transitionTo(instance.MonitorStateIdle)
+		return
+	}
+	if t.waitsAffinityToProvision() {
+		return
+	}
+	t.transitionTo(instance.MonitorStateIdle)
+}
+
+// waitsAffinityToProvision has the provisioning leader of a failover object
+// wait for an object its hard affinities name to come up, as no candidate of
+// the placement satisfies them, and says so.
+func (t *Manager) waitsAffinityToProvision() bool {
+	if t.objStatus.Topology == topology.Flex {
+		return false
+	}
+	return t.setWaitAffinity(t.leaderCandidates())
 }
 
 // provisionedFromProvisioned ends the orchestration once the leader
@@ -80,7 +118,7 @@ func (t *Manager) provisionedFromIdle() {
 	// checks and provisions with its parent down, as the parent of a
 	// failover object is on every node but one, and the leader waits for
 	// every node to have checked.
-	if t.isProvisioningLeader() && t.setWaitParents() {
+	if t.isProvisioningLeader() && (t.waitsAffinityToProvision() || t.setWaitParents()) {
 		return
 	}
 	// Every node checks, before any provisions or starts, that nothing on
@@ -294,12 +332,15 @@ func (t *Manager) leaders() []string {
 // leader, when the object runs elsewhere, would start a second instance of
 // it.
 //
-// A failover object running nowhere is provisioned from the first candidate
-// of the placement whose parents are up, when the placement leader's are
-// not: the leader starts, so waits for its parents, and a parent of the node,
-// as "parent@{nodename}" names, is down by design where its failover object
-// does not run. The placement leader keeps the provision when no candidate
-// has its parents up, and waits for them.
+// A failover object running nowhere is provisioned from where a start
+// would start it: the first of the candidates of the placement its hard
+// affinities let it start on, its soft affinities preferring some, whose
+// parents are up, the leader starting the object, so waiting for its parents,
+// and a parent of the node, as "parent@{nodename}" names, being down by
+// design where its failover object does not run. The first of these
+// candidates keeps the provision when none has its parents up, and waits for
+// them. The placement leader keeps it when the hard affinities let the
+// object start nowhere yet, and waits for an object they name to come up.
 func (t *Manager) provisioningLeader() string {
 	if t.objStatus.Topology != topology.Flex {
 		if running := t.runningInstances(); len(running) > 0 {
@@ -311,13 +352,17 @@ func (t *Manager) provisioningLeader() string {
 	if t.objStatus.Topology == topology.Flex || t.state.GlobalExpect != instance.MonitorGlobalExpectProvisioned {
 		return leader
 	}
-	if leader == "" || t.areParentsUp(leader) {
+	if leader == "" {
 		return leader
 	}
-	for _, node := range t.leaderCandidates() {
+	candidates := t.provisionCandidates()
+	for _, node := range candidates {
 		if t.areParentsUp(node) {
 			return node
 		}
+	}
+	if len(candidates) > 0 {
+		return candidates[0]
 	}
 	return leader
 }
@@ -443,6 +488,7 @@ func (t *Manager) formerLeaderGaveUp() bool {
 	return instMon.State.IsOneOf(
 		instance.MonitorStateIdle,
 		instance.MonitorStateWaitParents,
+		instance.MonitorStateWaitAffinity,
 		instance.MonitorStatePreflightProgress,
 		instance.MonitorStatePreflightSuccess,
 		instance.MonitorStateWaitLeader,

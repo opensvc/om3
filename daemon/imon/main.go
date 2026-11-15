@@ -152,6 +152,14 @@ type (
 		waitFilesTimer *time.Timer
 		waitFilesSince time.Time
 
+		// waitAffinityTimer fires when an orchestration starting the
+		// object has waited waitAffinityGrace, since waitAffinitySince,
+		// for an object the hard affinities name to show it comes up.
+		// waitAffinityFailedID is the orchestration such a wait failed.
+		waitAffinityTimer    *time.Timer
+		waitAffinitySince    time.Time
+		waitAffinityFailedID uuid.UUID
+
 		// fetchHoldTimer fires when the orchestration has held its actions
 		// for the resource files fetch and ingest long enough.
 		fetchHoldTimer *time.Timer
@@ -530,6 +538,8 @@ func (t *Manager) worker(initialNodes []string) {
 	t.waitDestinationTimer.Stop()
 	t.waitFilesTimer = time.NewTimer(time.Hour)
 	t.waitFilesTimer.Stop()
+	t.waitAffinityTimer = time.NewTimer(time.Hour)
+	t.waitAffinityTimer.Stop()
 	t.fetchHoldTimer = time.NewTimer(time.Hour)
 	t.fetchHoldTimer.Stop()
 
@@ -605,6 +615,10 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
 				t.onRelationInstanceStatusUpdated(c)
+			case *msgbus.InstanceMonitorUpdated:
+				if c.Path != t.path {
+					t.onAffinityChange(c.Path)
+				}
 			case *msgbus.ObjectStatusDeleted:
 				t.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:
@@ -671,6 +685,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onWaitDestinationTimer()
 		case <-t.waitFilesTimer.C:
 			t.onWaitFilesTimer()
+		case <-t.waitAffinityTimer.C:
+			t.onChange()
 		case <-t.fetchHoldTimer.C:
 			t.onChange()
 		}
@@ -745,6 +761,9 @@ func (t *Manager) update() {
 func (t *Manager) transitionTo(newState instance.MonitorState) {
 	t.change = true
 	t.state.State = newState
+	if !newState.IsOneOf(instance.MonitorStatesFailure...) {
+		t.state.StateReason = ""
+	}
 	t.updateIfChange()
 }
 

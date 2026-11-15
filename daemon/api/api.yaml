@@ -10624,6 +10624,9 @@ components:
         state_updated_at:
           type: string
           format: date-time
+        state_reason:
+          type: string
+          description: why the instance is in a failure state, when the state alone does not say it
         monitor_action_executed_at:
           type: string
           format: date-time

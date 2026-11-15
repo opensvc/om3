@@ -266,7 +266,9 @@ func (t *Manager) setOrchestrationVerdict() {
 		}
 		if instMon.State.IsOneOf(instance.MonitorStatesFailure...) {
 			failure := fmt.Sprintf("%s on %s", instMon.State, nodename)
-			if instMon.State.IsOneOf(instance.MonitorStateUnprovisionFailure, instance.MonitorStatePurgeFailed) {
+			if instMon.StateReason != "" {
+				failure += ": " + instMon.StateReason
+			} else if instMon.State.IsOneOf(instance.MonitorStateUnprovisionFailure, instance.MonitorStatePurgeFailed) {
 				// The reason a child holding the instance for good
 				// failed it, read again from what the cluster holds, as
 				// the failure of a peer carries no reason.
