@@ -104,19 +104,14 @@ func (e *Executor) Enter(ctx context.Context) error {
 		return err
 	}
 
-outerLoop:
+	// The shell is looked for in the files of the container, not run to
+	// see whether it exists: nsenter tells a missing program by its exit
+	// code 127 from util-linux 2.41, by 1 as other failures in 2.23, as
+	// rhel7's, which had /bin/bash taken in an image of /bin/sh alone.
 	for _, candidate := range candidates {
-		args := append(nsenterArgs(pid), "-w", candidate)
-		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-		cmd.Env = env
-		_ = cmd.Run()
-
-		switch cmd.ProcessState.ExitCode() {
-		case 126, 127:
-			continue
-		default:
+		if containerHasExecutable(pid, candidate) {
 			enterCmd = candidate
-			break outerLoop
+			break
 		}
 	}
 	cancel()
