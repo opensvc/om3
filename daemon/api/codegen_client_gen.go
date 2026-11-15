@@ -27733,6 +27733,7 @@ type GetInstanceLogsResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON501      *N501
 }
 
 // Status returns HTTPResponse.Status
@@ -28037,6 +28038,7 @@ type GetNodeLogsResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON501      *N501
 }
 
 // Status returns HTTPResponse.Status
@@ -41768,6 +41770,13 @@ func ParseGetInstanceLogsResponse(rsp *http.Response) (*GetInstanceLogsResponse,
 		}
 		response.JSON500 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 501:
+		var dest N501
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON501 = &dest
+
 	}
 
 	return response, nil
@@ -42239,6 +42248,13 @@ func ParseGetNodeLogsResponse(rsp *http.Response) (*GetNodeLogsResponse, error) 
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 501:
+		var dest N501
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON501 = &dest
 
 	}
 
