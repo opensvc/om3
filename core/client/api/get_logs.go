@@ -105,7 +105,7 @@ func (t *GetLogs) GetReader() (event.ReadCloser, error) {
 	return sseevent.NewReadCloser(resp.Body), nil
 }
 
-func (t GetLogs) eventsBase() (resp *http.Response, err error) {
+func (t GetLogs) eventsBase() (*http.Response, error) {
 	params := api.GetNodeLogsParams{
 		Filter: t.Filters,
 		Grep:   t.Grep,
@@ -113,14 +113,16 @@ func (t GetLogs) eventsBase() (resp *http.Response, err error) {
 		Lines:  t.Lines,
 		Paths:  t.Paths,
 	}
-	resp, err = t.client.GetNodeLogs(context.Background(), t.nodename, &params)
+	resp, err := t.client.GetNodeLogs(context.Background(), t.nodename, &params)
 	if err != nil {
 		return resp, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		// The problem the daemon answered says why, as a filter the
-		// journalctl of the node can not apply.
-		defer func() { _ = resp.Body.Close() }()
+		// journalctl of the node can not apply. The body is closed
+		// through its own variable: the response is not returned.
+		body := resp.Body
+		defer func() { _ = body.Close() }()
 		var problem api.Problem
 		if err := json.NewDecoder(resp.Body).Decode(&problem); err == nil && problem.Detail != "" {
 			return nil, fmt.Errorf("%s", problem.Detail)

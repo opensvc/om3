@@ -224,6 +224,11 @@ func (t *GetEvents) eventsBase() (*http.Response, error) {
 	if err != nil {
 		return resp, err
 	}
+	if resp.StatusCode != http.StatusOK {
+		// The response is not returned: its body is closed here.
+		body := resp.Body
+		defer func() { _ = body.Close() }()
+	}
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return resp, nil
