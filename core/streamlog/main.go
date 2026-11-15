@@ -2,12 +2,15 @@ package streamlog
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -157,6 +160,50 @@ func NewEvent(b []byte) (Event, error) {
 	}
 }
 
+// ErrGrepUnsupported is the error of a read filtering on a pattern where
+// journalctl has no --grep: a journalctl older than systemd 237, or built
+// without PCRE2, as rhel7's. The read used to answer no line, as if none
+// matched.
+var ErrGrepUnsupported = errors.New("--grep: unsupported by this journalctl (systemd < 237 or built without PCRE2)")
+
+var (
+	// journalctlVersion returns what "journalctl --version" prints, a
+	// variable for the tests.
+	journalctlVersion = func() string {
+		b, _ := exec.Command("journalctl", "--version").Output()
+		return string(b)
+	}
+
+	grepSupportOnce sync.Once
+	grepSupport     bool
+)
+
+// grepSupported says journalctl filters on a pattern, read once.
+func grepSupported() bool {
+	grepSupportOnce.Do(func() {
+		grepSupport = journalctlHasGrep(journalctlVersion())
+	})
+	return grepSupport
+}
+
+// journalctlHasGrep says a journalctl printing version knows --grep: systemd
+// 237 or later, built with PCRE2. A version it cannot read is taken as one
+// knowing it, journalctl telling otherwise.
+func journalctlHasGrep(version string) bool {
+	fields := strings.Fields(version)
+	if len(fields) < 2 || fields[0] != "systemd" {
+		return true
+	}
+	n, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return true
+	}
+	if n < 237 {
+		return false
+	}
+	return !slices.Contains(fields, "-PCRE2")
+}
+
 func NewStream() *Stream {
 	return &Stream{
 		q:    make(chan Event),
@@ -197,6 +244,9 @@ func (streamConfig StreamConfig) args(options ...string) ([]string, error) {
 	// to filter on nothing, and asks it for an option the journalctl of an
 	// older distribution does not have, which fails the whole read.
 	if streamConfig.Grep != nil && *streamConfig.Grep != "" {
+		if !grepSupported() {
+			return nil, ErrGrepUnsupported
+		}
 		args = append(args, "--grep", *streamConfig.Grep)
 	}
 	return append(args, options...), nil

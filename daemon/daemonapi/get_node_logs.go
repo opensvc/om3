@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -124,7 +125,11 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 		Matches: matches,
 		Grep:    params.Grep,
 	}
-	if err := stream.Start(streamConfig); err != nil {
+	if err := stream.Start(streamConfig); errors.Is(err, streamlog.ErrGrepUnsupported) {
+		// The read asks journalctl for a filter it can not apply: the
+		// client is told, rather than answered no line.
+		return JSONProblemf(ctx, http.StatusNotImplemented, "Grep unsupported", "%s: %s", a.localhost, err)
+	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)
 	}
 	defer func() {

@@ -38,6 +38,10 @@ func (t *CmdNodeLogs) Remote() error {
 
 	// Create readers for all nodes
 	streams := make([]logreader.NodeStream, 0, len(nodes))
+	// unread counts the nodes whose logs could not be read, as one whose
+	// journalctl can not apply the --grep asked: the command fails, after
+	// showing the logs of the others.
+	unread := 0
 	for i, node := range nodes {
 		reader, err := c.NewGetLogs(node).
 			SetFilters(&t.Filter).
@@ -47,6 +51,7 @@ func (t *CmdNodeLogs) Remote() error {
 			GetReader()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			unread++
 			continue
 		}
 		streams = append(streams, logreader.NodeStream{
@@ -69,5 +74,8 @@ func (t *CmdNodeLogs) Remote() error {
 		t.Follow,  // follow mode
 	)
 
+	if unread > 0 {
+		return fmt.Errorf("the logs of %d node(s) could not be read", unread)
+	}
 	return nil
 }
