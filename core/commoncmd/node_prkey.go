@@ -100,7 +100,7 @@ func NodePRKeys(selector string, opts OptsGlobal) error {
 		return fmt.Errorf("unexpected statuscode: %s", resp.Status())
 	}
 	if err := (output.Renderer{
-		DefaultOutput: "tab=NAME:meta.node,PRKEY:data.config.prkey",
+		DefaultOutput: nodePRKeysOutput(selector, resp.JSON200.Items),
 		Output:        opts.Output,
 		Sort:          opts.Sort,
 		Color:         opts.Color,
@@ -111,4 +111,17 @@ func NodePRKeys(selector string, opts OptsGlobal) error {
 	// The keys are on stdout by now. Whether each is its node's alone
 	// is the other half of the answer, and the exit code carries it.
 	return CheckPRKeyUniqueness()
+}
+
+// nodePRKeysOutput returns the default output of the keys of the nodes a
+// selector selected: the bare key when the selector is the name of the one
+// node selected, whatever its case, as "om node config get --kw node.prkey --node" prints it, a
+// table naming each node otherwise: a selector that may select several, as
+// a glob, a label or a list, gets the table even when it selected one node,
+// a bare key not saying which node it is the key of.
+func nodePRKeysOutput(selector string, items api.NodeItems) string {
+	if len(items) == 1 && strings.EqualFold(selector, items[0].Meta.Node) {
+		return "tab=data.config.prkey"
+	}
+	return "tab=NAME:meta.node,PRKEY:data.config.prkey"
 }
