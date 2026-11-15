@@ -753,17 +753,26 @@ func (t *Manager) update() {
 	}
 
 	t.state.UpdatedAt = time.Now()
+	t.clearStaleStateReason()
 
 	instance.MonitorData.Set(t.path, t.localhost, t.state.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: *t.state.DeepCopy()}, t.pubLabels...)
 }
 
+// clearStaleStateReason clears the reason of a failure once the state is no
+// failure, whatever set it: the state is set directly in places, as by a
+// clear of the monitor or the adoption of the global expect of a peer, which
+// would publish an instance idle with the reason of its former failure.
+func (t *Manager) clearStaleStateReason() {
+	if t.state.StateReason != "" && !t.state.State.IsOneOf(instance.MonitorStatesFailure...) {
+		t.state.StateReason = ""
+	}
+}
+
 func (t *Manager) transitionTo(newState instance.MonitorState) {
 	t.change = true
 	t.state.State = newState
-	if !newState.IsOneOf(instance.MonitorStatesFailure...) {
-		t.state.StateReason = ""
-	}
+	t.clearStaleStateReason()
 	t.updateIfChange()
 }
 
