@@ -73,6 +73,13 @@ type (
 
 		// virsh is the path of the virsh command, found at the check.
 		virsh string
+
+		// stdbuf is the path of the stdbuf command, found at the check,
+		// empty where it is not installed.
+		stdbuf string
+
+		// noStdbufLogged says the missing stdbuf was logged.
+		noStdbufLogged bool
 	}
 )
 
@@ -96,6 +103,9 @@ const (
 
 // env is the environment of virsh, which translates the events it prints.
 var env = []string{"LC_ALL=C"}
+
+// lookPath finds a command, a variable for the tests.
+var lookPath = exec.LookPath
 
 // NewManager creates a new libvirt monitor manager
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
@@ -228,7 +238,7 @@ func (t *source) Name() string {
 // Check implements evwatch.Source: virsh is installed, and knows the event
 // stream, which "virsh help event" tells with no connection to libvirtd.
 func (t *source) Check(ctx context.Context) error {
-	p, err := exec.LookPath("virsh")
+	p, err := lookPath("virsh")
 	if err != nil {
 		return fmt.Errorf("virsh is not installed: no libvirt event to watch: %w", evwatch.ErrUnsupported)
 	}
@@ -240,7 +250,28 @@ func (t *source) Check(ctx context.Context) error {
 		return err
 	}
 	t.virsh = p
+	t.stdbuf, _ = lookPath("stdbuf")
 	return nil
+}
+
+// command returns the command printing the lifecycle events of the
+// domains, on a read-only connection.
+//
+// virsh writes them through the stdio of its libc, which holds what it
+// writes to a pipe until its buffer fills, and "--loop" never exits to flush
+// it: an event of an older virsh, as the ones of libvirt 6 and 8, reached the
+// monitor never, or minutes later. stdbuf has it write each line as it ends.
+// Where stdbuf is not installed, virsh runs as is, and says so once.
+func (t *source) command() []string {
+	args := []string{t.virsh, "-r", "event", "--event", "lifecycle", "--loop"}
+	if t.stdbuf != "" {
+		return append([]string{t.stdbuf, "-oL"}, args...)
+	}
+	if !t.noStdbufLogged {
+		t.log.Warnf("stdbuf is not installed: an older virsh may hold the events it prints, seen at the scheduled status then")
+		t.noStdbufLogged = true
+	}
+	return args
 }
 
 // Run implements evwatch.Source: it reads the lifecycle events of the
@@ -257,12 +288,13 @@ func (t *source) Run(ctx context.Context, ready func(), emit func(string)) error
 			ready()
 		}
 	}()
+	command := t.command()
 	stderr, err := evwatch.StreamLines(ctx, env, func(line string) {
 		if ev, ok := parseEvent(line); ok {
 			t.log.Debugf("libvirt domain %s: %s %s", ev.Domain, ev.Event, ev.Detail)
 			emit(ev.Domain)
 		}
-	}, t.virsh, "-r", "event", "--event", "lifecycle", "--loop")
+	}, command[0], command[1:]...)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
