@@ -3,6 +3,8 @@ package imon
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
@@ -12,6 +14,12 @@ import (
 func (t *Manager) orchestrateStarted() {
 	if t.isStarted() {
 		t.startedClearIfReached()
+		return
+	}
+	if t.peerWaitAffinityFailed() {
+		// The instance waiting for an object of the hard affinities to
+		// come up gave the start up: no node is to start.
+		t.done()
 		return
 	}
 	switch t.state.State {
@@ -33,6 +41,15 @@ func (t *Manager) orchestrateStarted() {
 	case instance.MonitorStateRunning:
 	case instance.MonitorStateWaitParents:
 		t.setWaitParents()
+	case instance.MonitorStateWaitAffinity:
+		t.startedFromWaitAffinity()
+	case instance.MonitorStateWaitAffinityFailure:
+		if t.isWaitAffinityFailureOfOther() {
+			t.transitionTo(instance.MonitorStateIdle)
+			t.startedFromIdle()
+		} else {
+			t.done()
+		}
 	default:
 		t.log.Errorf("don't know how to orchestrate started from %s", t.state.State)
 	}
@@ -105,6 +122,9 @@ func (t *Manager) isStartLeader() bool {
 // else => state -> ready, start ready routine
 func (t *Manager) startedFromUnfrozen() {
 	if t.startedClearIfReached() {
+		return
+	}
+	if t.waitsAffinityToStart() {
 		return
 	}
 	if !t.isStartLeader() {
@@ -312,4 +332,56 @@ func (t *Manager) isLocalStarted() bool {
 	default:
 		return false
 	}
+}
+
+// startAffinityWaiter returns the node waiting, for a start a user asked
+// for, for an object the hard affinities name to come up, as no node
+// satisfies them: the first start candidate the hard affinities aside. It
+// returns "" when a node satisfies them, the start going there.
+func (t *Manager) startAffinityWaiter() string {
+	if t.state.GlobalExpect != instance.MonitorGlobalExpectStarted || t.objStatus.Topology == topology.Flex {
+		return ""
+	}
+	if len(t.startCandidates(false)) > 0 {
+		return ""
+	}
+	if candidates := t.startCandidatesWith(false, false); len(candidates) > 0 {
+		return candidates[0]
+	}
+	return ""
+}
+
+// waitsAffinityToStart has the instance waiting for an object of the hard
+// affinities to come up wait, and says so.
+func (t *Manager) waitsAffinityToStart() bool {
+	if t.startAffinityWaiter() != t.localhost {
+		return false
+	}
+	return t.setWaitAffinity(t.provisionedInstances(nil))
+}
+
+// startedFromWaitAffinity goes on once a node satisfies the hard affinities,
+// or as soon as the node is no longer the one waiting.
+func (t *Manager) startedFromWaitAffinity() {
+	if t.startAffinityWaiter() == t.localhost && t.setWaitAffinity(t.provisionedInstances(nil)) {
+		return
+	}
+	t.stopWaitAffinityTimer()
+	if t.state.State == instance.MonitorStateWaitAffinity {
+		t.transitionTo(instance.MonitorStateIdle)
+	}
+}
+
+// peerWaitAffinityFailed says the peer instance waiting for an object of the
+// hard affinities to come up, for the current orchestration, gave it up.
+func (t *Manager) peerWaitAffinityFailed() bool {
+	for node, instMon := range t.instMonitor {
+		if node == t.localhost {
+			continue
+		}
+		if instMon.State == instance.MonitorStateWaitAffinityFailure && instMon.OrchestrationID == t.state.OrchestrationID && t.state.OrchestrationID != uuid.Nil {
+			return true
+		}
+	}
+	return false
 }

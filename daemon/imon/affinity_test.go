@@ -69,12 +69,16 @@ func TestHardAffinityExcludesStartCandidates(t *testing.T) {
 	assert.True(t, m.isStartCandidateLeader(true))
 	assert.True(t, m.isStartCandidateLeader(false))
 
-	setAffine(t, affine, map[string]status.T{})
+	setAffine(t, affine, map[string]status.T{"node1": status.Down, "node2": status.Down})
 	assert.False(t, m.isStartCandidateLeader(false))
 	assert.Equal(t, "", m.nextPlacedAtCandidate())
 	ok, reason = m.isRequestedStartable()
-	assert.False(t, ok, "a start no node can do is refused")
-	assert.Contains(t, reason, "hard affinity with affine-hard not satisfied on node1")
+	assert.True(t, ok, "a start no node can do yet waits for the affine object: %s", reason)
+
+	setAffine(t, affine, map[string]status.T{})
+	ok, reason = m.isRequestedStartable()
+	assert.False(t, ok, "a start the affinity never lets happen is refused")
+	assert.Contains(t, reason, "hard affinity with affine-hard: no such object")
 }
 
 func TestHardAntiAffinityExcludesStartCandidates(t *testing.T) {

@@ -167,3 +167,59 @@ func TestAProvisionNeverMetIsRefused(t *testing.T) {
 	setAffine(t, anti, map[string]status.T{"node1": status.Up, "node2": status.Down})
 	assert.Equal(t, "", m.hardAffinityNeverMet(m.scopeNodes), "node2 and node3 not refused")
 }
+
+// newStartAffinityTestManager returns the manager of node1, of a failover
+// object provisioned and down on node1, node2 and node3, of the affinities
+// given, a start a user asked for running.
+func newStartAffinityTestManager(cfg instance.ActorConfig) *Manager {
+	m := newProvisionAffinityTestManager(cfg)
+	m.state.GlobalExpect = instance.MonitorGlobalExpectStarted
+	for _, n := range m.scopeNodes {
+		m.instStatus[n] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	}
+	return m
+}
+
+// A start no node can do yet, an object of the hard affinities down
+// everywhere, waits on the first candidate for that object to come up, and
+// goes where it came up. It used to be refused, which a request starting both
+// objects hit.
+func TestAStartWaitsForAnAffineObjectComingUp(t *testing.T) {
+	affine := naming.Path{Kind: naming.KindSvc, Name: "affine-start"}
+	m := newStartAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{affine}})
+	setAffine(t, affine, map[string]status.T{"node1": status.Down, "node2": status.Down})
+	setAffineMonitor(t, affine, "node2", instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectStarted, State: instance.MonitorStateReady})
+	ok, reason := m.isRequestedStartable()
+	require.True(t, ok, reason)
+
+	require.Equal(t, "node1", m.startAffinityWaiter())
+	m.orchestrateStarted()
+	assert.Equal(t, instance.MonitorStateWaitAffinity, m.state.State)
+
+	setAffine(t, affine, map[string]status.T{"node1": status.Down, "node2": status.Up})
+	assert.Equal(t, "", m.startAffinityWaiter(), "node2 satisfies the hard affinity")
+	m.orchestrateStarted()
+	assert.Equal(t, instance.MonitorStateIdle, m.state.State)
+	assert.False(t, m.isStartLeader(), "node2 starts, not node1")
+}
+
+// A start waiting for an object that failed to come up fails, and the peers
+// end the orchestration too.
+func TestAStartWaitFailsAndThePeersEnd(t *testing.T) {
+	affine := naming.Path{Kind: naming.KindSvc, Name: "affine-start-fail"}
+	m := newStartAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{affine}})
+	setAffine(t, affine, map[string]status.T{"node1": status.Down, "node2": status.Down})
+	setAffineMonitor(t, affine, "node2", instance.Monitor{State: instance.MonitorStateStartFailure, StateUpdatedAt: time.Now().Add(time.Second)})
+	m.orchestrateStarted()
+	assert.Equal(t, instance.MonitorStateWaitAffinityFailure, m.state.State)
+	assert.Equal(t, "hard affinity with affine-start-fail: start failed on node2", m.state.StateReason)
+	m.orchestrateStarted()
+	assert.True(t, m.state.OrchestrationIsDone)
+
+	peer := newStartAffinityTestManager(instance.ActorConfig{HardAffinity: naming.Paths{affine}})
+	peer.localhost = "node2"
+	peer.state.OrchestrationID = m.state.OrchestrationID
+	peer.instMonitor = map[string]instance.Monitor{"node1": *m.state.DeepCopy()}
+	peer.orchestrateStarted()
+	assert.True(t, peer.state.OrchestrationIsDone, "the peer ends the orchestration")
+}

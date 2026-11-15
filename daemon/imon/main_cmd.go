@@ -988,9 +988,16 @@ func (t *Manager) isRequestedStartable() (bool, string) {
 	if t.isStarted() {
 		return false, "already started"
 	}
-	reason, follows := t.hardAffinityRefusal(t.provisionedInstances(nil))
-	if reason != "" {
+	nodes := t.provisionedInstances(nil)
+	if reason := t.hardAffinityNeverMet(nodes); reason != "" {
 		return false, reason
+	}
+	reason, follows := t.hardAffinityRefusal(nodes)
+	if reason != "" {
+		// No node satisfies the hard affinities yet: the start waits
+		// for an object they name to come up, as one the same request
+		// starts, and fails if none shows it does.
+		t.log.Infof("the start waits for the hard affinities: %s", reason)
 	}
 	if len(follows) > 0 {
 		t.log.Infof("the start waits for %s, starting first in its hard affinity cycle", follows)
@@ -1367,6 +1374,13 @@ func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 // startCandidates returns the nodes an instance may start on, in the order
 // of the placement policy and the soft affinities.
 func (t *Manager) startCandidates(isDaemonDecision bool) []string {
+	return t.startCandidatesWith(isDaemonDecision, true)
+}
+
+// startCandidatesWith returns the nodes an instance may start on, as
+// startCandidates does, the hard affinities excluding nodes when
+// hardAffinity is set.
+func (t *Manager) startCandidatesWith(isDaemonDecision, hardAffinity bool) []string {
 	var candidates []string
 
 	for _, node := range t.scopeNodes {
@@ -1396,7 +1410,7 @@ func (t *Manager) startCandidates(isDaemonDecision bool) []string {
 		if v, ok := t.IsNodeMonitorStatusRankable(node); !ok || !v {
 			continue
 		}
-		if !t.isHardAffinitySatisfied(node) {
+		if hardAffinity && !t.isHardAffinitySatisfied(node) {
 			continue
 		}
 		candidates = append(candidates, node)
