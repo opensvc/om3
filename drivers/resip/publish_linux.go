@@ -77,6 +77,18 @@ func StatusPublish(slog resource.StatusLogger, owner network.PublishOwner, publi
 		slog.Warn("publish: rules missing in table %s", network.PublishTableName)
 		return status.Warn
 	}
+	if resolved, err := network.PublishResolved(owner); err != nil {
+		slog.Warn("publish: %s", err)
+		return status.Warn
+	} else if bound, err := network.PublishesBound(resolved); err != nil {
+		slog.Warn("publish: %s", err)
+		return status.Warn
+	} else if len(bound) > 0 {
+		for _, p := range bound {
+			slog.Warn("publish: port %d/%s also bound on the node", p.HostPort, p.Proto)
+		}
+		return status.Warn
+	}
 	var off *network.ErrForwardingOff
 	if err := network.CheckForwarding(addr); errors.As(err, &off) {
 		slog.Warn("publish: forwarding off (%s=%s)", off.Sysctl, off.Value)
