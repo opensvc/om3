@@ -75,6 +75,15 @@ var (
 	// objectDiscoverInterval is the interval between the checks of the
 	// object configurations installed.
 	objectDiscoverInterval = 2 * time.Second
+
+	// clusterDiscoverTimeout bounds the wait for the daemon just started to
+	// list the cluster object, beyond the 30s its initial discovery takes
+	// at most.
+	clusterDiscoverTimeout = 35 * time.Second
+
+	// clusterDiscoverInterval is the interval between the asks of the
+	// cluster object to the daemon.
+	clusterDiscoverInterval = 200 * time.Millisecond
 )
 
 func (t *CmdClusterJoin) Run() error {
@@ -361,6 +370,14 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
 	}
+	// The daemon answers before it has discovered the objects of its
+	// configuration files: a command right after the join would not find
+	// the cluster (card 308).
+	waitCtx, cancel := context.WithTimeout(context.Background(), clusterDiscoverTimeout)
+	if err := waitClusterDiscovered(waitCtx, clusterDiscoverInterval); err != nil {
+		t.logger().Warnf("%s", err)
+	}
+	cancel()
 
 	// After the daemon start, which the inventory collection would delay.
 	if registered {
@@ -489,6 +506,35 @@ func (t *CmdClusterJoin) pushObjectFreeInventory(n *object.Node) {
 	}
 	if err := n.Sysreport(); err != nil {
 		t.logger().Warnf("sysreport: %s", err)
+	}
+}
+
+// waitClusterDiscovered waits for the local daemon to list the cluster
+// object, which it does once it has discovered the objects of its
+// configuration files.
+func waitClusterDiscovered(ctx context.Context, interval time.Duration) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		resp, err := c.GetObjectPathsWithResponse(ctx, &api.GetObjectPathsParams{Path: naming.Cluster.String()})
+		switch {
+		case err != nil:
+		case resp.StatusCode() != http.StatusOK:
+			err = fmt.Errorf("%s", resp.Status())
+		case resp.JSON200 == nil || len(resp.JSON200.Items) == 0:
+			err = fmt.Errorf("not listed yet")
+		default:
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for the daemon to list the cluster object: %w: %w", ctx.Err(), err)
+		case <-ticker.C:
+		}
 	}
 }
 
