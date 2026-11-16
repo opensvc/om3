@@ -289,6 +289,12 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		}
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for nodename, data := range t.nodeMonitor {
+				// A node left out of the orchestration is so whatever
+				// it carries, as a down peer the global expect of an
+				// earlier one.
+				if skipsClusterOrchestration(*c.Value.GlobalExpect, nodename == t.localhost, data.State) {
+					continue
+				}
 				if data.GlobalExpect == *c.Value.GlobalExpect {
 					err := fmt.Errorf("%w %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
 					t.log.Infof("%s", err)

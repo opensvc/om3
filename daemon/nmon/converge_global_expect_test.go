@@ -33,7 +33,9 @@ func TestAlignEndedGlobalExpect(t *testing.T) {
 	peer.localhost = "node3"
 	peer.state = ended
 	peer.nodeMonitor = map[string]node.Monitor{
-		"node1": {GlobalExpect: node.MonitorGlobalExpectNone},
+		// Restarted and rejoined: a node starting or rejoining adopts
+		// nothing yet, and is not waited for.
+		"node1": {State: node.MonitorStateIdle, GlobalExpect: node.MonitorGlobalExpectNone},
 		"node2": ended,
 		"node3": ended,
 	}

@@ -204,6 +204,9 @@ func (t *Manager) onNetworkSetupDone(r networkSetupResult) {
 			if t.state.State == node.MonitorStateRejoin {
 				t.log.Infof("the networks are set up: transition to idle")
 				t.transitionTo(node.MonitorStateIdle)
+				// A cluster freeze or thaw taken while rejoining
+				// runs now: nothing else may come to run it.
+				t.orchestrate()
 			}
 		}
 	}
@@ -224,6 +227,9 @@ func (t *Manager) onNetworkSetupDone(r networkSetupResult) {
 func (t *Manager) rejoined() {
 	if t.networksReady {
 		t.transitionTo(node.MonitorStateIdle)
+		// A cluster freeze or thaw taken while rejoining runs now:
+		// nothing else may come to run it.
+		t.orchestrate()
 		return
 	}
 	if !t.idleWanted {
