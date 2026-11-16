@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/discovered"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -45,6 +46,9 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 			continue
 		}
 		return a.proxy(eCtx, nodename, fn)
+	}
+	if !discovered.Settled() {
+		return JSONProblemExpand(eCtx, ErrDiscovering)
 	}
 	return JSONProblem(eCtx, http.StatusNotFound, "object not found", "")
 }

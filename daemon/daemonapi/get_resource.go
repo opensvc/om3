@@ -21,8 +21,8 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 		Path:    params.Path,
 	}
 	if err := meta.Expand(); err != nil {
-		log.Errorf("%s: %s", name, err)
-		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
+		log.Warnf("%s: %s", name, err)
+		return JSONProblemExpand(ctx, err)
 	}
 	configs := instance.ConfigData.GetAll()
 	items := make(api.ResourceItems, 0)

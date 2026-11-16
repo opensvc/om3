@@ -88,10 +88,14 @@ func (t *Manager) cfg(started chan<- bool) {
 		t.onClusterConfigUpdated(msg)
 	}
 	started <- true
+	settleTimer := time.NewTimer(t.scanSettleTimeout)
+	defer settleTimer.Stop()
 	for {
 		select {
 		case <-t.ctx.Done():
 			return
+		case <-settleTimer.C:
+			t.onScanSettleTimeout()
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.ClusterConfigUpdated:
@@ -129,6 +133,8 @@ func (t *Manager) cfg(started chan<- bool) {
 				t.onFetchFailed(c)
 			case *fetchRetry:
 				t.onFetchRetry(c)
+			case *initialScan:
+				t.onInitialScan(c)
 			default:
 				t.log.Errorf("cfg: unsupported command bus message type: %#v", i)
 			}
@@ -272,10 +278,12 @@ func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 
 func (t *Manager) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	t.objectList.Add(c.Path.String())
+	t.scanDiscovered(c.Path)
 }
 
 func (t *Manager) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.objectList.Del(c.Path.String())
+	t.scanDiscovered(c.Path)
 }
 
 func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
@@ -288,12 +296,14 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	mtime := file.ModTime(c.File)
 	if mtime.IsZero() {
 		log.Infof("cfg: config file %s mtime is zero", c.File)
+		t.scanDiscovered(c.Path)
 		return
 	}
 	if _, ok := t.cfgMTime[s]; !ok {
 		log.Infof("cfg: config file updated for %s: start icfg", c.Path)
 		if err := icfg.Start(t.ctx, c.Path, c.File, t.cfgCmdC); err != nil {
 			log.Infof("cfg: can't start icfg for %s: %s", c.Path, err)
+			t.scanDiscovered(c.Path)
 			return
 		} else {
 			t.cfgMTime[s] = mtime
@@ -340,6 +350,15 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.File
 	p := c.Path
+	// The object is discovered as its configuration manager is done, but
+	// for one recovering the configuration from a peer or starting again
+	// on a newer file: its status, or its failure, settles it then.
+	settled := true
+	defer func() {
+		if settled {
+			t.scanDiscovered(p)
+		}
+	}()
 	s := p.String()
 	log := t.objectLogger(p)
 
@@ -363,6 +382,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 		} else {
 			if peer, instanceConfig := t.mostRecentPeerConfig(p); instanceConfig != nil {
 				log.Infof("cfg: icfg is done, recovering config file for %s from %s", p, peer)
+				settled = false
 				cleanup()
 				t.onInstanceConfigUpdated(&msgbus.InstanceConfigUpdated{
 					Path:  p,
@@ -385,6 +405,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 				cleanup()
 				return
 			} else {
+				settled = false
 				t.cfgMTime[s] = mtime
 			}
 		}
