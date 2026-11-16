@@ -279,11 +279,14 @@ func (t *CmdClusterJoin) createTmpCertFile(b []byte) (certFile string, err error
 func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID string, kept keptConfig) (err error) {
 	filePaths := make(map[string]naming.Path)
 	fileTimestamps := make(map[string]time.Time)
+	// The certificate last: the speaker reissues it for the cluster nodes
+	// the join added this node to, and the later it is fetched, the more
+	// likely it names this node.
 	toFetch := []naming.Path{
 		naming.Cluster,
 		naming.SecCa,
-		naming.SecCert,
 		naming.SecHb,
+		naming.SecCert,
 	}
 	downloadedFiles := make([]string, 0)
 	defer func() {
@@ -304,6 +307,28 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T, prevUUID s
 			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
 		}
 		downloadedFiles = append(downloadedFiles, file)
+		if p == naming.SecCert {
+			fetch := func() (string, time.Time, error) {
+				f, ts, err := remoteconfig.FetchObjectConfigFile(cli, p)
+				if err == nil {
+					downloadedFiles = append(downloadedFiles, f)
+				}
+				return f, ts, err
+			}
+			// Its keys are encrypted with the secret of the cluster
+			// joined, not of the one this node was in.
+			clusterName, secret := clusterNameAndSecret(fetchObjectConfigData[naming.Cluster])
+			if clusterName == "" || secret == "" {
+				// The certificate can not be read: installed as
+				// fetched, as before the wait for it to name the node.
+				t.logger().Warnf("the cluster configuration fetched has no cluster name or secret: %s installed as fetched", p)
+			} else {
+				certNames := func(f string) (bool, error) {
+					return certFileNames(f, hostname.Hostname(), clusterName, secret)
+				}
+				file, timestamp = t.waitCertNamingNode(ctx, file, timestamp, fetch, certNames, certReissueInterval, certReissueTimeout)
+			}
+		}
 		fetchObjectConfigData[p], err = os.ReadFile(file)
 		if err != nil {
 			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
