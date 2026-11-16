@@ -10,6 +10,14 @@ func (t *Manager) orchestrateUnfrozen() {
 		node.MonitorStateUnfreezeFailure:
 	case node.MonitorStateUnfreezeSuccess:
 		t.unfrozenFromUnfreezeSuccess()
+	case node.MonitorStateFreezeSuccess:
+		// A freeze done here, the node not back to idle yet as its
+		// orchestration ended elsewhere first: a thaw asked meanwhile
+		// found no way from there, and the node stayed frozen for good.
+		t.log.Infof("thaw asked as the freeze is done here: back to idle")
+		t.state.State = node.MonitorStateIdle
+		t.change = true
+		t.unfrozenFromIdle()
 	default:
 		t.log.Warnf("don't know how to orchestrate %s from %s", t.state.GlobalExpect, t.state.State)
 	}
