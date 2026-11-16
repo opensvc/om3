@@ -209,7 +209,9 @@ func TestRunnerRunsOnDemand(t *testing.T) {
 	waitState(t, r, StateIdle)
 	r.SetDemand(1)
 	waitState(t, r, StateRunning)
-	assert.Equal(t, int32(2), src.runs.Load())
+	// The state is running as the source is started, its run counted
+	// as it runs.
+	assert.Eventually(t, func() bool { return src.runs.Load() == 2 }, time.Second, 5*time.Millisecond, "runs %d, want 2", src.runs.Load())
 }
 
 // A source that can not run is disabled until no resource is left, then
