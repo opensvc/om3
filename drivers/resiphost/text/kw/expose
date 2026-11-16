@@ -1,2 +1,14 @@
-A whitespace-separated list of `<port>/<protocol>[:<host port>]` describing
-socket services that mandate a SRV exposition.
+A whitespace-separated list of socket services the cluster DNS serves a SRV
+record of, each written as a `publish` declaration is,
+`[<frontend port>:]<port>[/<proto>]`:
+
+* `<port>` is the port the address serves.
+* `<frontend port>` is the port the record is named after,
+  `_<frontend port>._<proto>.<object fqdn>`, the port itself when not set. A
+  service name, as `http`, is accepted.
+* `<proto>` is `tcp`, the default, `tcp4`, `tcp6`, `udp`, `udp4` or `udp6`.
+
+The former form, `<port>/<proto>[:<frontend port>]`, as `443/tcp:8443`, is
+still read, and makes the same record as `8443:443/tcp`.
+
+`none` exposes nothing.
