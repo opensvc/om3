@@ -96,7 +96,7 @@ var (
 		{
 			Attr:      "Expose",
 			Converter: converters.List,
-			Example:   "443/tcp:8443 53/udp",
+			Example:   "8443:443/tcp 53/udp",
 			Option:    "expose",
 			Group:     resip.GroupDNS.ID,
 			Scopable:  true,

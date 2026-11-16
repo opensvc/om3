@@ -179,7 +179,7 @@ func (t *T) checkDev() error {
 func (t *T) StatusInfo(_ context.Context) map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
-	data["expose"] = t.Expose
+	data["expose"] = resip.ExposeInfo(t.Expose)
 	data["ipaddr"] = t.ipaddr()
 	data["dev"] = t.Dev
 	data["netmask"] = netmask

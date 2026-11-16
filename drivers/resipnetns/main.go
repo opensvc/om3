@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actionresdeps"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -63,6 +64,7 @@ type (
 		CheckCarrier  bool           `json:"check_carrier"`
 		Alias         bool           `json:"alias"`
 		Expose        []string       `json:"expose"`
+		Publish       []string       `json:"publish"`
 
 		// cache
 		_alloc    *resip.Allocation
@@ -134,7 +136,11 @@ func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
 func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
-	data["expose"] = t.Expose
+	if t.publishIgnored() {
+		data["publish"], data["expose"] = []string{}, resip.ExposeInfo(t.Expose)
+	} else {
+		data["publish"], data["expose"] = resip.PublishInfo(t.publishKey(), t.Publish, t.Expose)
+	}
 	data["ipaddr"] = t.ipaddr()
 	data["dev"] = t.Dev
 	data["netmask"] = netmask
@@ -153,6 +159,12 @@ func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 		{Action: "start", A: t.NetNS, B: t.RID()},
 		{Action: "stop", A: t.NetNS, B: t.RID()},
 	}
+}
+
+// publishKey is the key the forwardings of the published ports of the
+// resource are recorded under on the node.
+func (t *T) publishKey() network.PublishOwner {
+	return resip.PublishOwner(t.Path, t.RID())
 }
 
 // NetNSResource returns the resource the address is configured in the
@@ -230,6 +242,11 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	}
 	if err := t.startMode(ctx); err != nil {
+		return err
+	}
+	if t.publishIgnored() {
+		t.Log().Infof("publish: ignored on lan network %s", t.Network)
+	} else if err := resip.StartPublish(ctx, t.Log(), t.publishKey(), t.Publish, t.ipaddr(), t.ipnet()); err != nil {
 		return err
 	}
 	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
@@ -488,6 +505,11 @@ func (t *T) Stop(ctx context.Context) error {
 	} else if t._ipaddrAge > 0 {
 		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
+	// The forwardings go first, while the address they go to is still the
+	// resource's.
+	if err := resip.StopPublish(ctx, t.Log(), t.publishKey()); err != nil {
+		return err
+	}
 	if err := t.stopMode(ctx); err != nil {
 		return err
 	}
@@ -645,6 +667,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Undef
 	}
 	s := t.statusWithIPAddrCacheTrust(ctx)
+	if t.publishIgnored() {
+		t.StatusLog().Info("publish: ignored on lan network %s", t.Network)
+	} else {
+		s = resip.StatusPublish(t.StatusLog(), t.publishKey(), t.Publish, t.ipaddr(), s)
+	}
 	if s == status.Up && t._ipaddrAge > 0 {
 		return status.Warn
 	}

@@ -5,7 +5,9 @@
   `--net <network>` or `--network <network>`, replaces it. The ports `run_args` publishes, as
   `-p 2222:22`, are published on an engine network only: the engines
   discard them in a private netns. The `expose` keyword makes SRV records,
-  and publishes nothing.
+  and publishes nothing. To forward a port of the node to the address an
+  `ip.netns` or `ip.cni` resource plumbs in the netns, whatever the engine,
+  set the `publish` keyword of that resource, as `publish = 25489:80/tcp`.
 
   The ip of an om network, by an `ip.netns` resource, is not supported in a
   container joined to an engine network: the netns would keep the default
