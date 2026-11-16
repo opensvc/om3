@@ -9,6 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -263,4 +266,35 @@ func TestALaggingNodeAdoptsTheRequestRunning(t *testing.T) {
 		assert.Equal(t, instance.MonitorGlobalExpectStopped, m.state.GlobalExpect)
 		assert.Equal(t, id, m.state.OrchestrationID)
 	}
+}
+
+// A volume purged waits for the instance of the service using it to be
+// deleted, not only unprovisioned: purged before, the volume was gone with
+// the configuration of the service naming it still there (qatests
+// 512.07.3). A service whose purge failed holds nothing.
+func TestAPurgedVolumeWaitsForItsChildDeleted(t *testing.T) {
+	child := naming.Path{Namespace: "c512", Kind: naming.KindSvc, Name: "nfs"}
+	relation := child.String() + "@node1"
+	t.Cleanup(func() {
+		instance.StatusData.Unset(child, "node1")
+		instance.MonitorData.Unset(child, "node1")
+	})
+	instance.StatusData.Set(child, "node1", &instance.Status{Avail: status.Down, Provisioned: provisioned.False})
+	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStateDeleteProgress})
+
+	m := newClearTestManager(&pubSpy{})
+	m.state.GlobalExpect = instance.MonitorGlobalExpectPurged
+	m.state.Children = map[string]status.T{relation: status.Down}
+	assert.True(t, m.setWaitChildren(), "the service is unprovisioned, and being deleted")
+
+	m.state.GlobalExpect = instance.MonitorGlobalExpectUnprovisioned
+	assert.False(t, m.setWaitChildren(), "an unprovision waits for the unprovision only")
+
+	m.state.GlobalExpect = instance.MonitorGlobalExpectPurged
+	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStatePurgeFailed})
+	assert.False(t, m.setWaitChildren(), "its purge failed")
+
+	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStateDeleteProgress})
+	instance.StatusData.Unset(child, "node1")
+	assert.False(t, m.setWaitChildren(), "its instance is gone")
 }
