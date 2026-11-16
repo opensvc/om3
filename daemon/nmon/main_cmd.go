@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/expectstamp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
@@ -310,7 +311,13 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 			t.log.Infof("set global expect %s -> %s", t.state.GlobalExpect, *c.Value.GlobalExpect)
 			t.change = true
 			t.state.GlobalExpect = *c.Value.GlobalExpect
-			t.state.GlobalExpectUpdatedAt = time.Now()
+			// Stamped after every stamp seen, whatever the skew of the
+			// clock of this node with the ones of the peers.
+			seen := []time.Time{t.state.GlobalExpectUpdatedAt}
+			for _, data := range t.nodeMonitor {
+				seen = append(seen, data.GlobalExpectUpdatedAt)
+			}
+			t.state.GlobalExpectUpdatedAt = expectstamp.Next(time.Now(), seen...)
 			resetFailedState()
 		}
 		return nil
