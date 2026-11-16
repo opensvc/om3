@@ -77,3 +77,10 @@ func TestExposeInfo(t *testing.T) {
 	assert.Equal(t, []string{"53/udp"}, ExposeInfo([]string{"53/udp"}))
 	assert.Nil(t, ExposeInfo(nil))
 }
+
+// TestPublishIsStopToChange pins that a change of the publishes of a
+// resource up is refused: the forwardings it set up are the ones of the
+// value it started with.
+func TestPublishIsStopToChange(t *testing.T) {
+	assert.True(t, KeywordPublish.StopToChange)
+}

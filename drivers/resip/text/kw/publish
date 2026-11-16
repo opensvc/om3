@@ -33,6 +33,8 @@ namespace: docker, podman, lxc, a containerd or runc container joining the
 namespace of an `ip.cni` resource, or a process of an `app` resource.
 
 The rules are added when the resource starts and removed when it stops. A
+change or a removal of the keyword is refused while the resource is up: it
+is stopped first. A
 start is refused when:
 
 * the node does not forward the packets of the family of the address:
