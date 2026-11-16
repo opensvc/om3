@@ -33,7 +33,11 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			mostRecentUpdated = nodeTime
 		}
 	}
-	if mostRecentUpdated.IsZero() {
+	if mostRecentUpdated.IsZero() || mostRecentEndedUpdated.After(mostRecentUpdated) {
+		// No request running on a peer, or the one running is older
+		// than one a peer ended since, as a peer lagging behind
+		// carries it still: not adopted, to run after the request
+		// that replaced it.
 		t.alignEndedGlobalExpect(mostRecentEndedNode, mostRecentEndedUpdated)
 		return
 	}
@@ -93,6 +97,13 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 	localUpdated := t.state.GlobalExpectUpdatedAt
 	for s, data := range t.nodeMonitor {
 		if s == t.localhost {
+			continue
+		}
+		if data.State.IsOneOf(peerNotWaited...) && t.state.GlobalExpect != node.MonitorGlobalExpectUpgraded {
+			// A peer stopped, starting or rejoining adopts nothing
+			// now: one rejoining adopts it then, one that missed a
+			// cluster freeze catches it as it rejoins. An upgrade
+			// waits for every node.
 			continue
 		}
 		if expectstamp.Newer(localUpdated, t.state.OrchestrationID, data.GlobalExpectUpdatedAt, data.OrchestrationID) {

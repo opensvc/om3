@@ -125,3 +125,21 @@ func (t *Manager) abortOrchestrationEnding() {
 	t.orchestrationEnding.Aborted = true
 	t.publishOrchestrationEnding()
 }
+
+// skipsClusterOrchestration says whether a request for a cluster freeze or
+// thaw goes on without the node in the state: a peer starting, rejoining,
+// in maintenance or shutting down runs no orchestration and is not waited
+// for, and this node starting or rejoining runs it once rejoined. The
+// request was refused, as v2 did not: a cluster with a node down could not
+// be frozen.
+func skipsClusterOrchestration(globalExpect node.MonitorGlobalExpect, local bool, state node.MonitorState) bool {
+	switch globalExpect {
+	case node.MonitorGlobalExpectFrozen, node.MonitorGlobalExpectUnfrozen:
+	default:
+		return false
+	}
+	if local {
+		return state.IsOneOf(node.MonitorStateInit, node.MonitorStateRejoin)
+	}
+	return state.IsOneOf(peerNotWaited...)
+}
