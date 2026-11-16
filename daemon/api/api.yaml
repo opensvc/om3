@@ -9554,6 +9554,13 @@ components:
               description: |
                 The node the collector of this node takes for the collector
                 speaker, as the speaker it waits for while away.
+            unreachable_since:
+              type: string
+              format: date-time
+              description: |
+                The time the speaker found the collector unreachable at, its
+                sends failing before any answer. Absent once it answers: the
+                scheduler holds the jobs feeding the collector meanwhile.
           required:
             - url
 
