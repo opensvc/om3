@@ -80,7 +80,7 @@ func StatusPublish(slog resource.StatusLogger, owner network.PublishOwner, publi
 	if resolved, err := network.PublishResolved(owner); err != nil {
 		slog.Warn("publish: %s", err)
 		return status.Warn
-	} else if bound, err := network.PublishesBound(resolved); err != nil {
+	} else if bound, err := network.PublishesBound(addr, resolved); err != nil {
 		slog.Warn("publish: %s", err)
 		return status.Warn
 	} else if len(bound) > 0 {
