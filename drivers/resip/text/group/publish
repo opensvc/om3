@@ -1,0 +1,3 @@
+The ports of the node forwarded to the address, so the clients reach a
+service of the network namespace through the node, whatever runs in that
+namespace.

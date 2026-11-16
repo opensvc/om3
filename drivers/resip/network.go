@@ -59,6 +59,12 @@ func (t *Allocation) Resolve() (network.Networker, error) {
 	return nil, fmt.Errorf("unknown network %s, expected one of %s", t.Network, strings.Join(names, ", "))
 }
 
+// ResolvedAllocation returns an allocation of the network nw, already
+// resolved: a test hands a resource a network the node does not have.
+func ResolvedAllocation(nw network.Networker) *Allocation {
+	return &Allocation{resolved: true, nw: nw}
+}
+
 // IsAddr reports whether a value is an address or a subnet, which is what the
 // network keyword used to hold.
 func IsAddr(s string) bool {
