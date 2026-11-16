@@ -50,8 +50,8 @@ On a `lan` network, the publishes are ignored, whatever the mode: the
 address is on the segment of its clients, which reach it directly. The
 resource starts all the same, and its status says so in an info line.
 
-The status warns when the rules are expected and not loaded, or when the
-node no longer forwards.
+The status warns when the rules of the resource are expected and not
+loaded, a rule per publish, or when the node no longer forwards.
 
 The port is forwarded for the clients connecting to an address of the node
 other than a loopback one: `127.0.0.1:<host port>` is not forwarded.

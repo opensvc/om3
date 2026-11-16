@@ -25,16 +25,16 @@ func withPublishState(t *testing.T) *[]string {
 	t.Helper()
 	dir := t.TempDir()
 	applied := &[]string{}
-	saveDir, saveLock, saveApply, saveExists := publishStateDir, publishLockPath, applyPublishRuleset, publishTableExists
+	saveDir, saveLock, saveApply, saveCount := publishStateDir, publishLockPath, applyPublishRuleset, publishRuleCount
 	publishStateDir = func() string { return filepath.Join(dir, "run") }
 	publishLockPath = func() string { return filepath.Join(dir, "lock") }
 	applyPublishRuleset = func(_ *plog.Logger, ruleset string) error {
 		*applied = append(*applied, ruleset)
 		return nil
 	}
-	publishTableExists = func(nftables.TableFamily) (bool, error) { return true, nil }
+	publishRuleCount = func(nftables.TableFamily, string) (int, error) { return 64, nil }
 	t.Cleanup(func() {
-		publishStateDir, publishLockPath, applyPublishRuleset, publishTableExists = saveDir, saveLock, saveApply, saveExists
+		publishStateDir, publishLockPath, applyPublishRuleset, publishRuleCount = saveDir, saveLock, saveApply, saveCount
 	})
 	return applied
 }
@@ -315,4 +315,26 @@ func TestAllocHostPort(t *testing.T) {
 		require.NoError(t, err, proto)
 		assert.Greater(t, port, 0, proto)
 	}
+}
+
+// TestPublishStatusCountsTheRulesOfTheOwner pins that the table being loaded
+// is not enough: the owner has a rule per publish, the ones of the other
+// owners keeping the table loaded included.
+func TestPublishStatusCountsTheRulesOfTheOwner(t *testing.T) {
+	withPublishState(t)
+	web := owner(t, "web", "ip#0")
+	require.NoError(t, publishStart(context.Background(), nil, web, net.ParseIP("10.22.0.5").To4(), nil, mustPublishes(t, "25489:80", "25490:81")))
+
+	var asked string
+	for n, want := range map[int]bool{0: false, 1: false, 2: true} {
+		publishRuleCount = func(_ nftables.TableFamily, key string) (int, error) {
+			asked = key
+			return n, nil
+		}
+		recorded, loaded, err := PublishStatus(web)
+		require.NoError(t, err)
+		assert.True(t, recorded)
+		assert.Equal(t, want, loaded, "%d rules of 2", n)
+	}
+	assert.Equal(t, "web ip#0", asked)
 }
