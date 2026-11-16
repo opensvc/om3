@@ -123,6 +123,7 @@ func (t *Manager) onDelayTimer() {
 		t.delayUpdateEnabled = false
 		t.updateIfChange()
 	}
+	t.onOrchestrationClearCheck()
 }
 
 func (t *Manager) initRelationAvailStatus() {
@@ -581,6 +582,12 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 }
 
 func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
+	if t.holdRequest(c) {
+		return
+	}
+	if c.Value.GlobalExpect != nil && *c.Value.GlobalExpect == instance.MonitorGlobalExpectAborted {
+		t.refuseHeldRequest("aborted")
+	}
 	doState := func() error {
 		if c.Value.State == nil {
 			return nil
@@ -819,6 +826,9 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			t.endWithDeletion = false
 			t.publishOrchestrationEnded()
 		}
+		// The orchestration before it ended, its peers clearing it or
+		// not: its end is announced before this one is accepted.
+		t.publishOrchestrationEnding()
 		t.savePendingOrchestration()
 		t.publishOrchestrationAccepted()
 		t.setNextPendingOrchestration()
