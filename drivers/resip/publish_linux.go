@@ -74,7 +74,7 @@ func StatusPublish(slog resource.StatusLogger, owner network.PublishOwner, publi
 		slog.Warn("publish: %s not forwarded", strings.Join(publish, " "))
 		return status.Warn
 	case !loaded:
-		slog.Warn("publish: table %s not loaded", network.PublishTableName)
+		slog.Warn("publish: rules missing in table %s", network.PublishTableName)
 		return status.Warn
 	}
 	var off *network.ErrForwardingOff

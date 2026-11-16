@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/google/nftables"
+	"github.com/google/nftables/userdata"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -27,6 +28,10 @@ import (
 // that one again in full, and the forwardings of the running resources would
 // go with it.
 const PublishTableName = "osvc-publish"
+
+// publishChainPrerouting is the chain of the table holding a rule per
+// publish, which the status counts.
+const publishChainPrerouting = "prerouting"
 
 // fwPriorityDstNAT is the number the "dstnat" name stands for in the ip and
 // ip6 families, written as a number for the reason the other priorities are.
@@ -90,20 +95,37 @@ var (
 		return h.apply(ruleset)
 	}
 
-	// publishTableExists says the table of a family is loaded, replaced by
-	// the tests.
-	publishTableExists = func(family nftables.TableFamily) (bool, error) {
+	// publishRuleCount counts the forwardings of key loaded in the table of
+	// a family, the prerouting rules its comment names, replaced by the
+	// tests. A table not loaded holds none.
+	publishRuleCount = func(family nftables.TableFamily, key string) (int, error) {
 		h := newNFTHandle()
 		tables, err := h.Tables()
 		if err != nil {
-			return false, err
+			return 0, err
 		}
-		for _, table := range tables {
-			if table.Family == family && table.Name == PublishTableName {
-				return true, nil
+		var table *nftables.Table
+		for _, t := range tables {
+			if t.Family == family && t.Name == PublishTableName {
+				table = t
+				break
 			}
 		}
-		return false, nil
+		if table == nil {
+			return 0, nil
+		}
+		rules, err := h.Conn().GetRules(table, &nftables.Chain{Name: publishChainPrerouting, Table: table})
+		if err != nil {
+			return 0, err
+		}
+		comment := publishCommentText(key)
+		n := 0
+		for _, rule := range rules {
+			if s, ok := userdata.GetString(rule.UserData, userdata.TypeComment); ok && s == comment {
+				n++
+			}
+		}
+		return n, nil
 	}
 
 	// allocHostPort draws a free port of the node for a publish naming none,
@@ -363,9 +385,10 @@ func PublishStop(ctx context.Context, log *plog.Logger, owner PublishOwner) erro
 	return removePublishEntry(owner)
 }
 
-// PublishStatus says whether the forwardings of owner are recorded and their
-// table loaded. An owner recorded with a table missing, as one an
-// administrator flushed, is forwarded no more.
+// PublishStatus says whether the forwardings of owner are recorded and
+// loaded: the table holds a rule of the owner for every publish recorded. An
+// owner recorded with rules missing, as ones an administrator deleted or a
+// table flushed, is forwarded no more.
 func PublishStatus(owner PublishOwner) (recorded bool, loaded bool, err error) {
 	entry, err := readPublishEntry(owner)
 	if errors.Is(err, os.ErrNotExist) {
@@ -374,8 +397,8 @@ func PublishStatus(owner PublishOwner) (recorded bool, loaded bool, err error) {
 	if err != nil {
 		return false, false, err
 	}
-	loaded, err = publishTableExists(ipFamily(entry.Addr))
-	return true, loaded, err
+	n, err := publishRuleCount(ipFamily(entry.Addr), entry.Key)
+	return true, n >= len(entry.Publishes), err
 }
 
 func readPublishEntry(owner PublishOwner) (publishEntry, error) {
@@ -513,7 +536,7 @@ func publishRuleset(entries []publishEntry) (string, error) {
 			continue
 		}
 		fmt.Fprintf(&sb, "table %s %s {\n", name, PublishTableName)
-		fmt.Fprintf(&sb, "\tchain prerouting {\n\t\ttype nat hook prerouting priority %d; policy accept;\n%s\t}\n", fwPriorityDstNAT, pre.String())
+		fmt.Fprintf(&sb, "\tchain %s {\n\t\ttype nat hook prerouting priority %d; policy accept;\n%s\t}\n", publishChainPrerouting, fwPriorityDstNAT, pre.String())
 		fmt.Fprintf(&sb, "\tchain output {\n\t\ttype nat hook output priority %d; policy accept;\n%s\t}\n", fwPriorityDstNAT, out.String())
 		fmt.Fprintf(&sb, "\tchain postrouting {\n\t\ttype nat hook postrouting priority %d; policy accept;\n%s\t}\n", fwPrioritySrcNAT, post.String())
 		sb.WriteString("}\n")
@@ -524,10 +547,16 @@ func publishRuleset(entries []publishEntry) (string, error) {
 // publishComment quotes the key of a resource for a rule comment, which
 // says what a rule is for to the administrator listing the table.
 func publishComment(key string) string {
-	return `"` + strings.Map(func(r rune) rune {
+	return `"` + publishCommentText(key) + `"`
+}
+
+// publishCommentText is the comment of the rules of key, as the kernel
+// stores it: the characters a rule comment can not hold replaced.
+func publishCommentText(key string) string {
+	return strings.Map(func(r rune) rune {
 		if r < ' ' || r > '~' || r == '"' || r == '\\' {
 			return '_'
 		}
 		return r
-	}, key) + `"`
+	}, key)
 }
