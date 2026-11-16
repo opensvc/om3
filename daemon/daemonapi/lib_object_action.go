@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,16 +42,41 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 
 		return JSONFromSetInstanceMonitorError(eCtx, p, a.localhost, &value, setImonErr.Receive())
 	}
-	for nodename := range instance.MonitorData.GetByPath(p) {
-		if nodename == a.localhost {
-			continue
-		}
+	if nodename := actionNode(a.localhost, instance.MonitorData.GetByPath(p), hearsPeer); nodename != "" {
 		return a.proxy(eCtx, nodename, fn)
 	}
 	if !discovered.Settled() {
 		return JSONProblemExpand(eCtx, ErrDiscovering)
 	}
 	return JSONProblem(eCtx, http.StatusNotFound, "object not found", "")
+}
+
+// actionNode returns the node a node without an instance of the object hands
+// a request for an orchestration to: the first, in name order, of the
+// instance nodes it hears, else the first of them all, and "" when there is
+// none.
+//
+// The node was the first of a map iteration, a random one: two requests in
+// a row went to two nodes, the second judged by a node that had not seen the
+// first orchestration cleared yet, and refused as already in progress. The
+// same node judges the requests in a row now.
+func actionNode(localhost string, monitors map[string]*instance.Monitor, hears func(localhost, nodename string) bool) string {
+	nodes := make([]string, 0, len(monitors))
+	for nodename := range monitors {
+		if nodename != localhost {
+			nodes = append(nodes, nodename)
+		}
+	}
+	if len(nodes) == 0 {
+		return ""
+	}
+	slices.Sort(nodes)
+	for _, nodename := range nodes {
+		if hears(localhost, nodename) {
+			return nodename
+		}
+	}
+	return nodes[0]
 }
 
 // monitorStatesRunningAction are the states of an instance monitor running
