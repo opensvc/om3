@@ -556,6 +556,15 @@ var rules = map[string]Group{
 				MayUnset: true,
 			},
 
+			// A published port is a port of the node, forwarded on every
+			// address of the node unless one is named: publishing 22 would
+			// take the ssh of the node. The ports of the node are the node
+			// administrator's to hand out.
+			"publish": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a port of the node forwarded to the address requires the root grant",
+			},
+
 			// These say what the object does with its address, inside the
 			// object: which of its containers holds the namespace, what the
 			// device is called in it, which ports it serves, and how the
