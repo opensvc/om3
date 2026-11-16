@@ -157,6 +157,8 @@ var (
 
 		"InstanceConfigFor": func() any { return &InstanceConfigFor{} },
 
+		"InstanceConfigServed": func() any { return &InstanceConfigServed{} },
+
 		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
 		"InstanceFrozenFileRemoved": func() any { return &InstanceFrozenFileRemoved{} },
@@ -648,6 +650,16 @@ type (
 
 	// InstanceConfigFor message is published by a node during analyse of
 	// instance config file that is scoped for foreign nodes (peers).
+	// InstanceConfigServed says this node served the config file of the
+	// object to the peer Node, as one installing it: the peer has an
+	// instance coming, which an orchestration deleting the object waits
+	// for, as its monitor may not have reached this node yet.
+	InstanceConfigServed struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
 	InstanceConfigFor struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
@@ -1549,6 +1561,10 @@ func (e *InstanceConfigDeleting) Kind() string {
 
 func (e *InstanceConfigFor) Kind() string {
 	return "InstanceConfigFor"
+}
+
+func (e *InstanceConfigServed) Kind() string {
+	return "InstanceConfigServed"
 }
 
 func (e *InstanceConfigUpdated) Kind() string {

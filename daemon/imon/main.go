@@ -222,6 +222,10 @@ type (
 		// the instance monitors of peers starting.
 		waitPeersStartingMsg string
 
+		// servedAt is the local time this node served the config of the
+		// object to each peer, as one installing it, its instance coming.
+		servedAt map[string]time.Time
+
 		// orchestrationPending represents the ObjectOrchestrationEnd event for the
 		// orchestration that has been accepted
 		// It will be used to notify the end of orchestration
@@ -470,6 +474,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, t.labelPath)
 	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, t.labelPath)
 	sub.AddFilter(&msgbus.SetInstanceMonitor{}, t.labelPath)
+	sub.AddFilter(&msgbus.InstanceConfigServed{}, t.labelPath, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NetIPAddrAdded{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NetIPAddrDeleted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSMounted{}, t.labelLocalhost)
@@ -656,6 +661,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onObjectStatusUpdated(c)
 			case *msgbus.ProgressInstanceMonitor:
 				t.onProgressInstanceMonitor(c)
+			case *msgbus.InstanceConfigServed:
+				t.onInstanceConfigServed(c)
 			case *msgbus.SetInstanceMonitor:
 				t.onSetInstanceMonitor(c)
 			case *msgbus.NodeConfigUpdated:

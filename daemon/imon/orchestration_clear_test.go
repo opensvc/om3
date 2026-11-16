@@ -1,6 +1,7 @@
 package imon
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -268,6 +270,27 @@ func TestALaggingNodeAdoptsTheRequestRunning(t *testing.T) {
 	}
 }
 
+// A peer this node served the config to counts as starting before its
+// config reaches this node by heartbeat: a purge went on without it, the
+// leader first, and its instance was left (qatests 308). The count is
+// bounded, and ends with its monitor seen out of init.
+func TestAPeerServedTheConfigIsStarting(t *testing.T) {
+	m := newClearTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2"}
+	m.nodeStatus = map[string]node.Status{"node2": {}}
+	assert.Empty(t, m.peersStarting(), "no config of node2, none served")
+
+	m.onInstanceConfigServed(&msgbus.InstanceConfigServed{Path: m.path, Node: "node2"})
+	assert.Equal(t, []string{"node2"}, m.peersStarting())
+
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	assert.Empty(t, m.peersStarting(), "its monitor is out of init")
+
+	delete(m.instMonitor, "node2")
+	m.servedAt["node2"] = time.Now().Add(-servedStartingTimeout)
+	assert.Empty(t, m.peersStarting(), "served too long ago")
+}
+
 // A volume purged waits for the instance of the service using it to be
 // deleted, not only unprovisioned: purged before, the volume was gone with
 // the configuration of the service naming it still there (qatests
@@ -297,4 +320,39 @@ func TestAPurgedVolumeWaitsForItsChildDeleted(t *testing.T) {
 	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStateDeleteProgress})
 	instance.StatusData.Unset(child, "node1")
 	assert.False(t, m.setWaitChildren(), "its instance is gone")
+}
+
+// A peer served the config, its monitor seen started, no longer counts as
+// starting once its monitor is gone, as its instance deleted by a purge:
+// the leader waited for it until the served mark expired, and with nothing
+// to look at the orchestration again, until an abort.
+func TestAPeerServedThenStartedThenDeletedIsNotStarting(t *testing.T) {
+	m := newClearTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2"}
+	m.nodeStatus = map[string]node.Status{"node2": {}}
+	m.onInstanceConfigServed(&msgbus.InstanceConfigServed{Path: m.path, Node: "node2"})
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	assert.Empty(t, m.peersStarting())
+	delete(m.instMonitor, "node2")
+	assert.Empty(t, m.peersStarting(), "its instance deleted, not starting")
+}
+
+// The timer of a served mark expiring looks at the orchestration again: a
+// peer served the config, its instance deleted before its monitor was seen
+// started, held a delete for good, the expired mark deleted before the
+// timer looked whether one was left (qatests 203.03).
+func TestAServedMarkExpiringLooksAtTheOrchestrationAgain(t *testing.T) {
+	m := newClearTestManager(&pubSpy{})
+	m.scopeNodes = []string{"node1", "node2"}
+	m.nodeStatus = map[string]node.Status{"node2": {}}
+	m.onInstanceConfigServed(&msgbus.InstanceConfigServed{Path: m.path, Node: "node2"})
+	assert.Equal(t, []string{"node2"}, m.peersStarting())
+	m.servedAt["node2"] = time.Now().Add(-servedStartingTimeout)
+	m.delayOrchestrateEnabled = false
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	m.ctx = ctx
+	m.onOrchestrationClearTimer()
+	assert.True(t, m.delayOrchestrateEnabled, "the orchestration is looked at again")
+	assert.Empty(t, m.peersStarting())
 }

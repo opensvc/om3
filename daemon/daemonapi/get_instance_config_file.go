@@ -28,11 +28,18 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 		log.Tracef("%s: starting", logName)
 		log = naming.LogWithPath(log, objPath)
 
+		// The path the peers fetch a config through, as discover does.
+		if a.configBeingDeleted(objPath) {
+			log.Infof("%s: %s is being deleted: config file not served", logName, objPath)
+			return JSONProblemf(ctx, http.StatusNotFound, "Not found", "%s is being deleted", objPath)
+		}
 		filename := objPath.ConfigFile()
 		mtime := file.ModTime(filename)
 		if !mtime.IsZero() {
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
-			log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).Username)
+			requester := userFromContext(ctx).Username
+			log.Infof("serve config file %s to %s", objPath, requester)
+			a.announceConfigServed(objPath, requester)
 			return serveConfigFile(ctx, objPath, filename, redact)
 		}
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Config file not found for %s@%s", objPath, a.localhost)
