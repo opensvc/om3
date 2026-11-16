@@ -82,6 +82,11 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	// rest.
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	// A delete or a purge ends once its object is gone: the instance
+	// configs and statuses of every node going say it.
+	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
+	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
 	sub.AddFilter(&msgbus.NodeOrchestrationAccepted{}, label)
 	sub.AddFilter(&msgbus.NodeOrchestrationEnd{}, label)
 	sub.AddFilter(&msgbus.NodeOrchestrationRefused{}, label)
@@ -103,14 +108,26 @@ func (t *Manager) loop() {
 	ticker := time.NewTicker(purgeInterval)
 	defer ticker.Stop()
 
+	// The deleting orchestrations waiting for their object to be gone are
+	// checked at each event, and every second for their timeout.
+	goneTicker := time.NewTicker(time.Second)
+	defer goneTicker.Stop()
+
 	for {
 		select {
 		case <-t.ctx.Done():
 			return
 		case <-ticker.C:
 			Purge()
+		case <-goneTicker.C:
+			if awaitingAny() {
+				CheckGone()
+			}
 		case i := <-sub.C:
 			t.handle(i)
+			if awaitingAny() {
+				CheckGone()
+			}
 		}
 	}
 }

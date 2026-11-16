@@ -333,10 +333,26 @@ func EndOrchestration(id string, state State, errS string) {
 		o = &Orchestration{OrchestrationID: id, StartedAt: now}
 		orchestrations[id] = o
 	}
+	if ok && o.EndedAt == nil && state == StateSucceeded && endsWithDeletion(id) {
+		// The node that accepted a delete or a purge says it ended as
+		// its own instance goes: the orchestration is over once its
+		// participants left and the object is gone, as on the other
+		// nodes, rather than when this one is done.
+		if len(participants[id]) > 0 {
+			return
+		}
+		if len(failures[id]) == 0 && !endIfGone(id, o, now) {
+			return
+		}
+		delete(awaitingGone, id)
+		finish(id, o, now)
+		return
+	}
 	o.State = state
 	o.Error = errS
 	o.EndedAt = &now
 	delete(failures, id)
+	delete(awaitingGone, id)
 	notifyEnded()
 	purgeOrchestrations()
 }
@@ -485,6 +501,17 @@ func leave(id, node, failure string) {
 		return
 	}
 	now := time.Now()
+	if endsWithDeletion(id) && len(failures[id]) == 0 && !endIfGone(id, o, now) {
+		// The object is to be gone too, its instances on nodes not
+		// seen running the orchestration yet with it.
+		return
+	}
+	finish(id, o, now)
+}
+
+// finish ends the orchestration of id, failed when a participant said so.
+// The caller holds the lock.
+func finish(id string, o *Orchestration, now time.Time) {
 	if l := failures[id]; len(l) > 0 {
 		o.State = StateFailed
 		o.Error = strings.Join(l, ", ")
