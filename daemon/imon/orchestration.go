@@ -189,6 +189,9 @@ func (t *Manager) setWaitChildren() bool {
 			reason = fmt.Sprintf("avail status is %s", availStatus)
 		} else if teardown {
 			reason = childInstanceProvisioned(relation)
+			if reason == "" && t.state.GlobalExpect == instance.MonitorGlobalExpectPurged {
+				reason = childInstanceBeingDeleted(relation)
+			}
 		}
 		if reason != "" {
 			if t.state.State != instance.MonitorStateWaitChildren {
@@ -436,6 +439,37 @@ func (t *Manager) isLocalStatusCurrent() bool {
 // parent goes on, and the verdict of the orchestration says what failed.
 // A relation to a whole object is not looked at, its instances may live on
 // other nodes.
+// childInstanceBeingDeleted returns why the purge of a parent waits for the
+// instance of a child node relation still being purged or deleted, "" when
+// it does not: a volume purged as the service using it was unprovisioned,
+// and before its instance was deleted, was gone with the configuration of
+// the service naming it still there, kept for good by a delete failing
+// (qatests 512.07.3). A child whose purge or delete failed holds nothing.
+func childInstanceBeingDeleted(relation string) string {
+	p, node, err := naming.Relation(relation).Split()
+	if err != nil || node == "" {
+		return ""
+	}
+	// Its status unset is the instance gone: the deletion of the status,
+	// announced as its monitor is unset, is what wakes the parent.
+	if instance.StatusData.GetByPathAndNode(p, node) == nil {
+		return ""
+	}
+	mon := instance.MonitorData.GetByPathAndNode(p, node)
+	if mon == nil {
+		return ""
+	}
+	switch mon.GlobalExpect {
+	case instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectDeleted:
+	default:
+		return ""
+	}
+	if mon.State.IsOneOf(instance.MonitorStatesFailure...) {
+		return ""
+	}
+	return fmt.Sprintf("is being deleted (%s)", mon.State)
+}
+
 func childInstanceProvisioned(relation string) string {
 	p, node, err := naming.Relation(relation).Split()
 	if err != nil || node == "" {

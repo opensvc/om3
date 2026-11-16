@@ -40,7 +40,8 @@ func TestAPurgedVolumeWaitsForItsProvisionedChildInstance(t *testing.T) {
 	assert.False(t, newManager(instance.MonitorGlobalExpectStarted).setWaitChildren(), "start, child down")
 
 	setChild(provisioned.False, instance.MonitorGlobalExpectPurged, instance.MonitorStateUnprovisionSuccess)
-	assert.False(t, newManager(instance.MonitorGlobalExpectPurged).setWaitChildren(), "child unprovisioned")
+	assert.True(t, newManager(instance.MonitorGlobalExpectPurged).setWaitChildren(), "purge, child unprovisioned, its instance being deleted")
+	assert.False(t, newManager(instance.MonitorGlobalExpectUnprovisioned).setWaitChildren(), "unprovision, child unprovisioned")
 
 	setChild(provisioned.True, instance.MonitorGlobalExpectPurged, instance.MonitorStatePurgeFailed)
 	assert.False(t, newManager(instance.MonitorGlobalExpectPurged).setWaitChildren(), "child purge failed")
