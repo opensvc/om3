@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/daemon/expectstamp"
 	"github.com/opensvc/om3/v3/util/file"
 )
 
@@ -25,7 +26,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			continue
 		}
 		nodeTime := instMon.GlobalExpectUpdatedAt
-		if mostRecentUpdated.Before(nodeTime) {
+		if mostRecentNode == "" || expectstamp.NewerCandidate(nodeTime, instMon.OrchestrationID, mostRecentUpdated, t.instMonitor[mostRecentNode].OrchestrationID) {
 			mostRecentNode = node
 			mostRecentUpdated = nodeTime
 		}
@@ -33,11 +34,24 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 	if mostRecentUpdated.IsZero() {
 		return
 	}
-	if mostRecentUpdated.After(t.state.GlobalExpectUpdatedAt) {
+	// Of a peer stamping its global expect the same as this node, as both
+	// accepting a request at once after the same stamp, the one of the
+	// greater orchestration id is kept on both.
+	if expectstamp.Newer(mostRecentUpdated, t.instMonitor[mostRecentNode].OrchestrationID, t.state.GlobalExpectUpdatedAt, t.state.OrchestrationID) {
 		t.change = true
 		t.state.GlobalExpect = t.instMonitor[mostRecentNode].GlobalExpect
 		t.state.GlobalExpectUpdatedAt = t.instMonitor[mostRecentNode].GlobalExpectUpdatedAt
+		t.globalExpectSeenAt = time.Now()
 		t.state.GlobalExpectOptions = t.instMonitor[mostRecentNode].GlobalExpectOptions
+		if adopted := t.instMonitor[mostRecentNode].OrchestrationID; t.orchestrationPending != nil && t.orchestrationPending.ID != adopted.String() {
+			// The orchestration accepted here is displaced by the one
+			// of a peer, as of a request accepted there at once and
+			// stamped the same: it ends aborted, rather than end as
+			// the one adopted does, under its id.
+			t.log.Infof("orchestration %s accepted here displaced by %s of node %s", t.orchestrationPending.ID, adopted, mostRecentNode)
+			t.orchestrationPending.Aborted = true
+			t.publishOrchestrationEnded()
+		}
 		t.state.OrchestrationID = t.instMonitor[mostRecentNode].OrchestrationID
 		t.state.State = instance.MonitorStateIdle
 		strVal := t.instMonitor[mostRecentNode].GlobalExpect.String()
@@ -79,7 +93,7 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 			t.log.Errorf("isConvergedGlobalExpect: %s", err)
 			panic(err)
 		}
-		if localUpdated.After(v.GlobalExpectUpdatedAt) {
+		if expectstamp.Newer(localUpdated, t.state.OrchestrationID, v.GlobalExpectUpdatedAt, v.OrchestrationID) {
 			t.log.Tracef("wait GlobalExpect propagation on %s", s)
 			return false
 		}
@@ -105,7 +119,13 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 		}
 	}
 	if t.state.GlobalExpect != instance.MonitorGlobalExpectNone && t.state.GlobalExpect != instance.MonitorGlobalExpectInit {
-		if t.state.GlobalExpectUpdatedAt.Sub(t.instConfig.UpdatedAt) < time.Second {
+		// The local time the global expect was seen at, the stamp being
+		// of the clock of the node that accepted it, or after it.
+		seenAt := t.globalExpectSeenAt
+		if seenAt.IsZero() {
+			seenAt = t.state.GlobalExpectUpdatedAt
+		}
+		if seenAt.Sub(t.instConfig.UpdatedAt) < time.Second {
 			// The instance config has been modified within the same second of the global expectation update.
 			// Take time to verify if we have the last instance config:
 			//     t.instConfig.UpdatedAt versus config file mod time
@@ -120,4 +140,14 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 		}
 	}
 	return true
+}
+
+// seenGlobalExpectStamps returns the stamps of the global expects of this
+// monitor and of its peers, the stamp of a new one to be after them.
+func (t *Manager) seenGlobalExpectStamps() []time.Time {
+	l := []time.Time{t.state.GlobalExpectUpdatedAt}
+	for _, instMon := range t.instMonitor {
+		l = append(l, instMon.GlobalExpectUpdatedAt)
+	}
+	return l
 }

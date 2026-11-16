@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/daemon/expectstamp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/util/errcontext"
@@ -753,8 +754,11 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			t.state.GlobalExpect = *c.Value.GlobalExpect
 			t.state.GlobalExpectOptions = globalExpectOptions
 			// update GlobalExpectUpdated now
-			// This will allow remote nodes to pickup most recent value
-			t.state.GlobalExpectUpdatedAt = time.Now()
+			// This will allow remote nodes to pickup most recent value:
+			// stamped after every stamp seen, whatever the skew of the
+			// clock of this node with the ones of the peers.
+			t.state.GlobalExpectUpdatedAt = expectstamp.Next(time.Now(), t.seenGlobalExpectStamps()...)
+			t.globalExpectSeenAt = time.Now()
 
 			// reset state to idle to allow the new orchestration to begin
 			t.state.State = instance.MonitorStateIdle

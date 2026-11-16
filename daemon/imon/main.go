@@ -179,6 +179,11 @@ type (
 		// and heldRequest.
 		orchestrationClearTimer *time.Timer
 
+		// globalExpectSeenAt is the time of the local clock this monitor
+		// set or adopted its global expect at: the stamp of the global
+		// expect orders the requests, and may be of the clock of a peer.
+		globalExpectSeenAt time.Time
+
 		// fetchHoldTimer fires when the orchestration has held its actions
 		// for the resource files fetch and ingest long enough.
 		fetchHoldTimer *time.Timer

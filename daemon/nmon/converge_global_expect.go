@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/expectstamp"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
@@ -27,7 +28,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			continue
 		}
 		nodeTime := data.GlobalExpectUpdatedAt
-		if mostRecentUpdated.Before(nodeTime) {
+		if mostRecentNode == "" || expectstamp.NewerCandidate(nodeTime, data.OrchestrationID, mostRecentUpdated, t.nodeMonitor[mostRecentNode].OrchestrationID) {
 			mostRecentNode = nodename
 			mostRecentUpdated = nodeTime
 		}
@@ -36,7 +37,9 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		t.alignEndedGlobalExpect(mostRecentEndedNode, mostRecentEndedUpdated)
 		return
 	}
-	if mostRecentUpdated.After(t.state.GlobalExpectUpdatedAt) {
+	// Of a peer stamping its global expect the same as this node, the one
+	// of the greater orchestration id is kept on both.
+	if expectstamp.Newer(mostRecentUpdated, t.nodeMonitor[mostRecentNode].OrchestrationID, t.state.GlobalExpectUpdatedAt, t.state.OrchestrationID) {
 		t.change = true
 		t.state.GlobalExpect = t.nodeMonitor[mostRecentNode].GlobalExpect
 		t.state.GlobalExpectUpdatedAt = t.nodeMonitor[mostRecentNode].GlobalExpectUpdatedAt
@@ -92,7 +95,7 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 		if s == t.localhost {
 			continue
 		}
-		if localUpdated.After(data.GlobalExpectUpdatedAt) {
+		if expectstamp.Newer(localUpdated, t.state.OrchestrationID, data.GlobalExpectUpdatedAt, data.OrchestrationID) {
 			t.log.Tracef("wait global expect propagation on %s", s)
 			return false
 		}
