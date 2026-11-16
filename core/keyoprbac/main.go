@@ -558,11 +558,14 @@ var rules = map[string]Group{
 
 			// A published port is a port of the node, forwarded on every
 			// address of the node unless one is named: publishing 22 would
-			// take the ssh of the node. The ports of the node are the node
-			// administrator's to hand out.
+			// take the ssh of the node. The ports of the node, and its
+			// addresses, are the node administrator's to hand out. A publish
+			// naming neither, its port of the node drawn free by the kernel,
+			// takes nothing a process of the node holds, and is open.
 			"publish": {
 				Grant:  rbac.GrantRoot,
-				Reason: "a port of the node forwarded to the address requires the root grant",
+				Reason: "a publish naming a port or an address of the node requires the root grant",
+				Denies: valueOnly(deniesPublish),
 			},
 
 			// These say what the object does with its address, inside the
@@ -899,6 +902,23 @@ func isTrue(s string) bool {
 // leading elsewhere.
 func isNoName(s string) bool {
 	return s == "." || s == ".." || strings.ContainsAny(s, `/\`)
+}
+
+// drawnPublishRe matches a publish declaration naming neither a port nor an
+// address of the node: a port of the address, and a protocol.
+var drawnPublishRe = regexp.MustCompile(`^[0-9]{1,5}(/(tcp|udp))?$`)
+
+// deniesPublish reports whether a publish value names a port or an address
+// of the node, in one of its declarations at least. Only the form
+// <port>[/<proto>] passes: anything else, as a reference whose value could
+// name a port of the node, asks for the grant.
+func deniesPublish(value string) bool {
+	for _, s := range strings.Fields(value) {
+		if !drawnPublishRe.MatchString(s) {
+			return true
+		}
+	}
+	return false
 }
 
 // valueOnly adapts a check that only reads the value to the rule signature.

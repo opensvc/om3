@@ -57,10 +57,12 @@ func TestIPCNIKeepsEveryKeywordItHad(t *testing.T) {
 			continue
 		}
 		if option == "publish" {
-			// Added after the default, and refused on purpose: it
-			// forwards a port of the node.
+			// Added after the default: open for a port of the node
+			// drawn, refused on purpose for one named.
+			assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "80/tcp", section("network")),
+				"ip.cni keyword %s draws a port of the node", option)
 			assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "25489:80", section("network")),
-				"ip.cni keyword %s takes a port of the node", option)
+				"ip.cni keyword %s names a port of the node", option)
 			continue
 		}
 		value := "x"

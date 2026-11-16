@@ -62,5 +62,10 @@ ipv6 wildcard, dual stack by default, counts for both families.
 The port is forwarded for the clients connecting to an address of the node
 other than a loopback one: `127.0.0.1:<host port>` is not forwarded.
 
+A declaration naming a port or an address of the node requires the root
+grant, the ports and the addresses of the node being the node
+administrator's to hand out. One naming neither, as `80/tcp`, its port of
+the node drawn free, is open to the namespace administrators.
+
 The nodes of a service setting this keyword are all to run an agent knowing
 it: an older one ignores it, and starts the service with no port forwarded.
