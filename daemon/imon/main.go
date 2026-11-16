@@ -160,6 +160,25 @@ type (
 		waitAffinitySince    time.Time
 		waitAffinityFailedID uuid.UUID
 
+		// orchestrationEnding is the end of the orchestration this node
+		// accepted, held back from orchestrationEndingSince until every
+		// peer cleared the orchestration: the requester waiting for the
+		// end then finds every node ready for its next request.
+		orchestrationEnding      *msgbus.ObjectOrchestrationEnd
+		orchestrationEndingSince time.Time
+
+		// heldRequest is a request for a new orchestration received from
+		// heldRequestSince while the orchestration of this monitor is done
+		// here and not cleared yet, as its peers are not seen done: it is
+		// taken on once the orchestration clears, or refused as already
+		// in progress after heldRequestTimeout.
+		heldRequest      *msgbus.SetInstanceMonitor
+		heldRequestSince time.Time
+
+		// orchestrationClearTimer bounds the waits of orchestrationEnding
+		// and heldRequest.
+		orchestrationClearTimer *time.Timer
+
 		// fetchHoldTimer fires when the orchestration has held its actions
 		// for the resource files fetch and ingest long enough.
 		fetchHoldTimer *time.Timer
@@ -540,6 +559,8 @@ func (t *Manager) worker(initialNodes []string) {
 	t.waitFilesTimer.Stop()
 	t.waitAffinityTimer = time.NewTimer(time.Hour)
 	t.waitAffinityTimer.Stop()
+	t.orchestrationClearTimer = time.NewTimer(time.Hour)
+	t.orchestrationClearTimer.Stop()
 	t.fetchHoldTimer = time.NewTimer(time.Hour)
 	t.fetchHoldTimer.Stop()
 
@@ -574,6 +595,11 @@ func (t *Manager) worker(initialNodes []string) {
 
 		// a last chance to publish any pending aborted orchestration
 		t.publishOrchestrationAborted()
+
+		// The orchestration ended: its peers clearing it are not waited
+		// for any more. A request held is refused, no monitor to take it.
+		t.publishOrchestrationEnding()
+		t.refuseHeldRequest("the instance monitor is stopping")
 
 		t.abortPendingNotEndedByDeletion()
 
@@ -687,6 +713,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onWaitFilesTimer()
 		case <-t.waitAffinityTimer.C:
 			t.onChange()
+		case <-t.orchestrationClearTimer.C:
+			t.onOrchestrationClearTimer()
 		case <-t.fetchHoldTimer.C:
 			t.onChange()
 		}

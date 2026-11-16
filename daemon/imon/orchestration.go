@@ -214,7 +214,9 @@ func (t *Manager) endOrchestration() {
 	t.setOrchestrationVerdict()
 	if !t.endWithDeletion {
 		// Else the end goes with the InstanceMonitorDeleted event.
-		defer t.publishOrchestrationEnded()
+		// The end is announced once every peer cleared the orchestration
+		// too, for a next request to find none in progress anywhere.
+		defer t.endOrchestrationWhenPeersCleared()
 	}
 
 	t.clearStateSpokenToPeers()
