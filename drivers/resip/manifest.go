@@ -33,8 +33,12 @@ var (
 		Option:    "publish",
 		Group:     GroupPublish.ID,
 		Scopable:  true,
-		Validate:  network.ValidatePublish,
-		Text:      keywords.NewText(fs, "text/kw/publish"),
+		// The forwardings of a resource up are the ones of the value it
+		// started with: a value changed or removed while it runs would
+		// leave them in place, and its status would check the new one.
+		StopToChange: true,
+		Validate:     network.ValidatePublish,
+		Text:         keywords.NewText(fs, "text/kw/publish"),
 	}
 
 	// GroupPublish is the group of the keywords saying the ports of the
