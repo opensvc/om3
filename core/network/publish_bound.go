@@ -27,14 +27,17 @@ var boundStates = map[string]string{
 	"udp": "07",
 }
 
-// PublishesBound returns the publishes whose port of the node a socket of
-// the node holds too: the forwarding takes the connections that process
-// waits for. A socket of a loopback address alone is no conflict, its
-// connections not being forwarded.
+// PublishesBound returns the publishes to addr whose port of the node a
+// socket of the node holds too: the forwarding takes the connections that
+// process waits for. A socket of a loopback address alone is no conflict, its
+// connections not being forwarded, nor a socket of the other family than
+// addr, which the forwarding of that family does not take the connections
+// of.
 //
 // Nothing keeps a process of the node from binding a published port, the one
 // drawn for a publish naming none included: the status says it.
-func PublishesBound(publishes []Publish) ([]Publish, error) {
+func PublishesBound(addr net.IP, publishes []Publish) ([]Publish, error) {
+	v4 := addr.To4() != nil
 	var bound []Publish
 	cache := make(map[string][]boundSocket)
 	for _, p := range publishes {
@@ -50,7 +53,7 @@ func PublishesBound(publishes []Publish) ([]Publish, error) {
 			cache[p.Proto] = sockets
 		}
 		for _, s := range sockets {
-			if s.port != p.HostPort || s.addr.IsLoopback() {
+			if s.port != p.HostPort || s.addr.IsLoopback() || !receivesFamily(s.addr, v4) {
 				continue
 			}
 			if p.HostAddr == nil || s.addr.IsUnspecified() || s.addr.Equal(p.HostAddr) {
@@ -60,6 +63,20 @@ func PublishesBound(publishes []Publish) ([]Publish, error) {
 		}
 	}
 	return bound, nil
+}
+
+// receivesFamily says a socket of the address a receives the connections of
+// the ipv4 family, or else of the ipv6 one.
+//
+// An ipv4 socket, or an ipv6 one of an ipv4 mapped address, receives the
+// ipv4 connections only. The ipv6 wildcard receives the ipv4 connections too,
+// its sockets being dual stack by default on linux: a v6only one does not,
+// which the socket tables do not say, so it is taken for one that does.
+func receivesFamily(a net.IP, v4 bool) bool {
+	if a.To4() != nil {
+		return v4
+	}
+	return !v4 || a.Equal(net.IPv6unspecified)
 }
 
 type boundSocket struct {
