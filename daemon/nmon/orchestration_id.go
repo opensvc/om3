@@ -53,7 +53,7 @@ func (t *Manager) endOrchestration() {
 		t.orchestrationPending.Failed = true
 		t.orchestrationPending.Error = t.state.State.String()
 	}
-	defer t.publishOrchestrationEnded()
+	defer t.endOrchestrationWhenPeersDone()
 	t.state.OrchestrationID = uuid.Nil
 	t.upgradeWaiting = ""
 	t.logSetOrchestrationID(uuid.Nil)
@@ -75,6 +75,9 @@ func (t *Manager) expect() string {
 }
 
 func (t *Manager) setNextPendingOrchestration() {
+	// The orchestration whose end is held back is displaced on the peers
+	// still running it.
+	t.abortOrchestrationEnding()
 	t.orchestrationPending = &msgbus.NodeOrchestrationEnd{
 		Msg:                   pubsub.Msg{},
 		Node:                  t.localhost,
