@@ -99,6 +99,11 @@ func (t *Manager) purgedFromWaitNonLeader() {
 		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
+	// A peer whose instance is starting purges first too: its status not
+	// seen yet, it was taken for one with nothing provisioned.
+	if t.waitPeersStarting() {
+		return
+	}
 	if t.hasNonLeaderProvisioned() {
 		// A non-leader whose unprovision failed stays provisioned, and
 		// a failed action is not retried: the leader would wait for it

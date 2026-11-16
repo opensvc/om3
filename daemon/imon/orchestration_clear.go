@@ -117,6 +117,10 @@ func (t *Manager) refuseHeldRequest(reason string) {
 
 func (t *Manager) onOrchestrationClearTimer() {
 	t.onOrchestrationClearCheck()
+	// A served mark may have expired, which the check above deletes: the
+	// orchestration waiting for that peer is looked at again, as it waited
+	// for good, nothing else bringing it back (qatests 203.03).
+	t.onChange()
 	t.updateIfChange()
 }
 
@@ -154,17 +158,31 @@ func (t *Manager) armOrchestrationClearTimer(now time.Time) {
 		return
 	}
 	t.orchestrationClearTimer.Stop()
-	if t.orchestrationEnding == nil && t.heldRequest == nil {
-		return
+	var (
+		next  time.Duration
+		armed bool
+	)
+	consider := func(d time.Duration) {
+		if !armed || d < next {
+			next, armed = d, true
+		}
 	}
-	next := time.Duration(-1)
+	for peer, at := range t.servedAt {
+		d := servedStartingTimeout - now.Sub(at)
+		if d < 0 {
+			delete(t.servedAt, peer)
+			continue
+		}
+		consider(d)
+	}
 	if t.orchestrationEnding != nil {
-		next = orchestrationClearTimeout - now.Sub(t.orchestrationEndingSince)
+		consider(orchestrationClearTimeout - now.Sub(t.orchestrationEndingSince))
 	}
 	if t.heldRequest != nil {
-		if d := heldRequestTimeout - now.Sub(t.heldRequestSince); next < 0 || d < next {
-			next = d
-		}
+		consider(heldRequestTimeout - now.Sub(t.heldRequestSince))
+	}
+	if !armed {
+		return
 	}
 	if next < 0 {
 		next = 0
