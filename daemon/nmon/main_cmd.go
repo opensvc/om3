@@ -378,6 +378,9 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 
 	t.saveNodesInfo()
 
+	// A peer forgotten is not waited for to end an orchestration.
+	t.onOrchestrationEndingCheck()
+
 	var forgetType string
 	if !slices.Contains(clusternode.Get(), c.Node) {
 		forgetType = "removed"
@@ -466,6 +469,7 @@ func (t *Manager) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
 	t.updateIfChange()
 	t.orchestrate()
 	t.updateIfChange()
+	t.onOrchestrationEndingCheck()
 }
 
 func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
@@ -480,6 +484,7 @@ func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.updateIfChange()
 	t.orchestrate()
 	t.updateIfChange()
+	t.onOrchestrationEndingCheck()
 }
 
 func missingNodes(nodes, joinedNodes []string) []string {
