@@ -23471,6 +23471,7 @@ type GetInstancesResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON503      *N503
 }
 
 // Status returns HTTPResponse.Status
@@ -28677,6 +28678,7 @@ type GetObjectsResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON503      *N503
 }
 
 // Status returns HTTPResponse.Status
@@ -28710,6 +28712,7 @@ type GetObjectPathsResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON503      *N503
 }
 
 // Status returns HTTPResponse.Status
@@ -28810,6 +28813,7 @@ type GetObjectResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON503      *N503
 }
 
 // Status returns HTTPResponse.Status
@@ -30607,6 +30611,7 @@ type GetResourcesResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
+	JSON503      *N503
 }
 
 // Status returns HTTPResponse.Status
@@ -34751,6 +34756,13 @@ func ParseGetInstancesResponse(rsp *http.Response) (*GetInstancesResponse, error
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 
@@ -43226,6 +43238,13 @@ func ParseGetObjectsResponse(rsp *http.Response) (*GetObjectsResponse, error) {
 		}
 		response.JSON500 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
 	}
 
 	return response, nil
@@ -43272,6 +43291,13 @@ func ParseGetObjectPathsResponse(rsp *http.Response) (*GetObjectPathsResponse, e
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 
@@ -43420,6 +43446,13 @@ func ParseGetObjectResponse(rsp *http.Response) (*GetObjectResponse, error) {
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 
@@ -46615,6 +46648,13 @@ func ParseGetResourcesResponse(rsp *http.Response) (*GetResourcesResponse, error
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 

@@ -59,6 +59,9 @@ func (t *CmdObjectInstanceList) Run(kind string) error {
 		pb = resp.JSON403
 	case 500:
 		pb = resp.JSON500
+	case 503:
+		// The daemon is starting, its objects not discovered yet.
+		pb = resp.JSON503
 	}
 	return fmt.Errorf("%s", pb)
 }

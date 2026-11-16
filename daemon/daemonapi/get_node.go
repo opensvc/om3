@@ -20,7 +20,7 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 	}
 	name := "GetNodes"
 	log := LogHandler(ctx, name)
-	if err := meta.Expand(); err != nil {
+	if err := meta.ExpandNode(); err != nil {
 		log.Errorf("%s: %s", name, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}

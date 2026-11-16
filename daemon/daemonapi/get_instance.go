@@ -20,8 +20,8 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 	name := "GetInstances"
 	log := LogHandler(ctx, name)
 	if err := meta.Expand(); err != nil {
-		log.Errorf("%s: %s", name, err)
-		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
+		log.Warnf("%s: %s", name, err)
+		return JSONProblemExpand(ctx, err)
 	}
 	configs := instance.ConfigData.GetAll()
 	l := make(api.InstanceItems, 0)

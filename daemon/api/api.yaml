@@ -1106,6 +1106,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
 
   /api/instance/path/{namespace}/{kind}/{name}/progress:
     post:
@@ -6436,6 +6438,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
 
   /api/object/path:
     get:
@@ -6462,6 +6466,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
 
   /api/object/path/{namespace}/svc/{name}/disable:
     post:
@@ -6551,6 +6557,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
 
   /api/object/path/{namespace}/{kind}/{name}/action/abort:
     post:
@@ -8492,6 +8500,8 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
 
   /api/store:
     get:

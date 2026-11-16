@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/daemon/discovered"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -79,7 +80,16 @@ func (m *Meta) Expand() error {
 	return nil
 }
 
+// ExpandNode expands the node selector only, for the handlers that do not
+// read objects.
+func (m *Meta) ExpandNode() error {
+	return m.expandNode()
+}
+
 func (m *Meta) expandPath() error {
+	if !discovered.Settled() {
+		return ErrDiscovering
+	}
 	paths := object.StatusData.GetPaths()
 	if m.Path != nil {
 		selection := objectselector.New(
