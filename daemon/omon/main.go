@@ -157,22 +157,25 @@ func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
 	pathString := t.path.String()
 
 	sub := pubsub.SubFromContext(t.ctx, "daemon.omon "+pathString, subQS)
+	// One operation of the bus for all the filters: see pubsub.Subscription.AddFilters.
+	var filters pubsub.Filters
 
 	labelPath := pubsub.Label{"path", pathString}
-	sub.AddFilter(&msgbus.AuditStart{})
-	sub.AddFilter(&msgbus.AuditStop{})
+	filters.Add(&msgbus.AuditStart{})
+	filters.Add(&msgbus.AuditStop{})
 
-	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, labelPath)
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, labelPath)
+	filters.Add(&msgbus.InstanceMonitorDeleted{}, labelPath)
+	filters.Add(&msgbus.InstanceMonitorUpdated{}, labelPath)
 
 	// msgbus.InstanceConfigDeleted is also used to detected msgbus.InstanceStatusDeleted (see forwarded srcEvent to imon)
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, labelPath)
-	sub.AddFilter(&msgbus.InstanceConfigFor{}, labelPath)
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPath)
+	filters.Add(&msgbus.InstanceConfigDeleted{}, labelPath)
+	filters.Add(&msgbus.InstanceConfigFor{}, labelPath)
+	filters.Add(&msgbus.InstanceConfigUpdated{}, labelPath)
 
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelPath)
-	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, labelPath)
+	filters.Add(&msgbus.InstanceStatusDeleted{}, labelPath)
+	filters.Add(&msgbus.InstanceStatusUpdated{}, labelPath)
 
+	sub.AddFilters(filters)
 	sub.Start()
 	t.sub = sub
 }

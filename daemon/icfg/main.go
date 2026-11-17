@@ -169,23 +169,25 @@ func (t *Manager) startSubscriptions() {
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 
 	t.sub = pubsub.SubFromContext(t.ctx, "daemon.icfg "+t.path.String())
-	t.sub.AddFilter(&msgbus.AuditStart{})
-	t.sub.AddFilter(&msgbus.AuditStop{})
-	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, labelPath)
+	// One operation of the bus for all the filters: see pubsub.Subscription.AddFilters.
+	var filters pubsub.Filters
+	filters.Add(&msgbus.AuditStart{})
+	filters.Add(&msgbus.AuditStop{})
+	filters.Add(&msgbus.ConfigFileRemoved{}, labelPath)
 	if t.path.String() != clusterPathString {
-		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, labelPath)
+		filters.Add(&msgbus.ConfigFileUpdated{}, labelPath)
 
 		// the scope value may depend on cluster nodes values: *, clusternodes ...
 		// so we must also watch for cluster config updates to configFileCheckRefresh non cluster instance config scope
-		t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelPathCluster, labelLocalhost)
-		t.sub.AddFilter(&msgbus.NodeLabelsCommited{})
+		filters.Add(&msgbus.InstanceConfigUpdated{}, labelPathCluster, labelLocalhost)
+		filters.Add(&msgbus.NodeLabelsCommited{})
 
 		// what an object claims of the cpu and memory depends on the
 		// default caps of its namespace claims, so we must also watch for
 		// its namespace config updates.
 		if t.path.Namespace != naming.NsRoot && t.path.Kind != naming.KindNscfg {
 			nscfgPath := naming.Path{Namespace: t.path.Namespace, Kind: naming.KindNscfg, Name: "namespace"}
-			t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", nscfgPath.String()}, labelLocalhost)
+			filters.Add(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", nscfgPath.String()}, labelLocalhost)
 		}
 	} else {
 		// Special note for cluster instance config: we don't subscribe for ConfigFileUpdated, instead we subscribe for
@@ -197,8 +199,9 @@ func (t *Manager) startSubscriptions() {
 		//     ccfg: ConfigFileUpdated =>  - update cached cluster nodes
 		//                                 - ClusterConfigUpdated
 		//     icfg:                         ClusterConfigUpdated         => cluster InstanceConfigUpdated
-		t.sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
+		filters.Add(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 	}
+	t.sub.AddFilters(filters)
 	t.sub.Start()
 }
 
