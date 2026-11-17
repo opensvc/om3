@@ -59,7 +59,7 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 		return JSONProblemf(eCtx, http.StatusBadRequest, "Cap", "%s", err)
 	}
 	if instance.MonitorData.GetByPathAndNode(p, a.localhost) == nil {
-		for nodename := range instance.MonitorData.GetByPath(p) {
+		for _, nodename := range instance.MonitorData.GetNodesByPath(p) {
 			return a.proxy(eCtx, nodename, func(c *client.T) (*http.Response, error) {
 				return c.PostObjectActionCap(eCtx.Request().Context(), namespace, kind, name, &params)
 			})

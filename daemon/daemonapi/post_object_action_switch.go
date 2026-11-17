@@ -51,7 +51,7 @@ func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, 
 
 		return JSONFromSetInstanceMonitorError(eCtx, p, a.localhost, &value, setInstanceMonitorErr.Receive())
 	}
-	for nodename := range instance.MonitorData.GetByPath(p) {
+	for _, nodename := range instance.MonitorData.GetNodesByPath(p) {
 		return a.proxy(eCtx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.PostObjectActionSwitchWithBody(eCtx.Request().Context(), namespace, kind, name, eCtx.Request().Header.Get("Content-Type"), eCtx.Request().Body)
 		})

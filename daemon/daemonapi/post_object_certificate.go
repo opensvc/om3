@@ -146,7 +146,7 @@ func (a *DaemonAPI) certificateKeyStore(ctx echo.Context, namespace string, kind
 // configuration of p, which answers for it. A renewal waits for the ACME
 // directory, longer than a client allows an answer by default.
 func (a *DaemonAPI) proxyCertificate(ctx echo.Context, p naming.Path, long bool, fn func(*client.T) (int, []byte, error)) error {
-	for nodename := range instance.ConfigData.GetByPath(p) {
+	for _, nodename := range instance.ConfigData.GetNodesByPath(p) {
 		var opts []funcopt.O
 		if long {
 			opts = append(opts, client.WithTimeout(0))

@@ -28,16 +28,10 @@ func remainingInstances(path string) []string {
 	if err != nil {
 		return nil
 	}
-	m := make(map[string]bool)
-	for nodename := range instance.ConfigData.GetByPath(p) {
-		m[nodename] = true
-	}
-	for nodename := range instance.StatusData.GetByPath(p) {
-		m[nodename] = true
-	}
-	for nodename := range instance.MonitorData.GetByPath(p) {
-		m[nodename] = true
-	}
+	// The node names only: a copy of the data of every node, statuses
+	// with all their resources, was made for each orchestration waiting,
+	// at each event.
+	m := instance.NodesWithInstance(p)
 	var l []string
 	for nodename := range m {
 		// A node without a monitor, forgotten or not heard from since
@@ -82,6 +76,22 @@ func endIfGone(id string, o *Orchestration, now time.Time) bool {
 // CheckGone ends the deleting orchestrations waiting for their object to be
 // gone, once it is, or past the timeout.
 func CheckGone() {
+	checkGone("")
+}
+
+// CheckGoneOf ends the deleting orchestrations of the object of path waiting
+// for it to be gone, once it is, or past the timeout: an event about one
+// object changes nothing for the others.
+func CheckGoneOf(path string) {
+	if path == "" {
+		return
+	}
+	checkGone(path)
+}
+
+// checkGone checks the orchestrations waiting of the object of path, or
+// all of them for an empty path.
+func checkGone(path string) {
 	mu.Lock()
 	defer mu.Unlock()
 	now := time.Now()
@@ -89,6 +99,9 @@ func CheckGone() {
 		o, ok := orchestrations[id]
 		if !ok || o.EndedAt != nil {
 			delete(awaitingGone, id)
+			continue
+		}
+		if path != "" && o.Path != path {
 			continue
 		}
 		if endIfGone(id, o, now) {
