@@ -54,7 +54,7 @@ func (s *state) evaluateLocal(path string) {
 		}
 		mtime := file.ModTime(p.ConfigFile())
 		if mtime.IsZero() && instance.ConfigData.GetByPathAndNode(p, s.localhost) == nil {
-			s.clearLocal(rec, goneBy(rec.Kind))
+			s.clearLocal(rec, rec.Kind.GoneBy())
 			continue
 		}
 		base, ok := s.baseline[id]
@@ -72,15 +72,6 @@ func (s *state) evaluateLocal(path string) {
 		s.log.Infof("tombstone %s of %s: the config changed on this node: kept", rec.OrchestrationID, rec.Path)
 		s.clearLocal(rec, tombstone.ClearedByKept)
 	}
-}
-
-// goneBy returns how a holder whose instance is gone is cleared, after the
-// kind of the record.
-func goneBy(kind tombstone.Kind) tombstone.ClearedBy {
-	if kind == tombstone.KindDeleted {
-		return tombstone.ClearedByDeleted
-	}
-	return tombstone.ClearedByPurged
 }
 
 // quiet says whether nothing but the operator may be changing the config of

@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
@@ -68,7 +69,14 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 // deletes it: its config is not served, a peer installing it bringing back
 // an instance the orchestration deletes, as v2 refused to fetch a config
 // then.
+//
+// Nor is the config of an object a tombstone names this node a pending
+// holder of: its instance is to be deleted, or kept stopped until the
+// operator decides, and a peer installing it would bring the object back.
 func (a *DaemonAPI) configBeingDeleted(p naming.Path) bool {
+	if tombstone.Data.IsPending(p.String(), a.localhost) {
+		return true
+	}
 	mon := instance.MonitorData.GetByPathAndNode(p, a.localhost)
 	if mon == nil {
 		return false

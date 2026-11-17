@@ -55,6 +55,8 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelLocalhost)
 
+	sub.AddFilter(&msgbus.NodeTombstoneUpdated{})
+
 	sub.Start()
 	return sub
 }
@@ -114,6 +116,8 @@ func (t *Manager) cfg(started chan<- bool) {
 				t.onInstanceConfigManagerDone(c)
 			case *msgbus.InstanceConfigUpdated:
 				t.onInstanceConfigUpdated(c)
+			case *msgbus.NodeTombstoneUpdated:
+				t.onNodeTombstoneUpdated(c)
 
 			case *msgbus.ObjectStatusDeleted:
 				t.onObjectStatusDeleted(c)
@@ -379,6 +383,10 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 			} else {
 				log.Infof("cfg: on icfg done, no more local config file, no peer config waiters")
 			}
+		} else if t.isTombstoned(p, "") {
+			// Deleted while a tombstone names this node: not recovered
+			// from a peer, and the live holder of the node cleared.
+			log.Infof("cfg: icfg is done for %s, tombstoned", p)
 		} else {
 			if peer, instanceConfig := t.mostRecentPeerConfig(p); instanceConfig != nil {
 				log.Infof("cfg: icfg is done, recovering config file for %s from %s", p, peer)
@@ -394,6 +402,9 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 			log.Infof("cfg: icfg is done for %s", p)
 		}
 		cleanup()
+		// The instance is gone, as its monitor deleted it: a live holder
+		// of the node in a tombstone of p is cleared.
+		t.clearLiveHolderIfGone(p)
 	} else if mtime.After(t.cfgMTime[s]) {
 		if _, ok := t.disableRecover[p]; ok {
 			log.Infof("cfg: icfg is done, foreign config file exists for %s", p)
@@ -418,7 +429,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 func (t *Manager) mostRecentPeerConfig(p naming.Path) (peer string, cfg *instance.Config) {
 	pathS := p.String()
 	for n, peerConfig := range instance.ConfigData.GetByPath(p) {
-		if n == t.localhost {
+		if n == t.localhost || t.isTombstoned(p, n) {
 			continue
 		}
 		if t.inScope(peerConfig) {
@@ -442,6 +453,12 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstanceConfig instance.Config) {
 	pathS := p.String()
 	log := t.objectLogger(p)
+	if t.isTombstoned(p, node) {
+		// Before the foreign config branch: the config of a pending
+		// holder, scope included, says nothing to act on.
+		log.Debugf("cfg: ignore the %s config of node %s: tombstoned", pathS, node)
+		return
+	}
 	localUpdated := file.ModTime(p.ConfigFile())
 
 	icfgFor, hasIcfgFor := t.instanceConfigFor[p]
@@ -626,6 +643,11 @@ func (t *Manager) onInstanceConfigFor(c *msgbus.InstanceConfigFor) {
 	log := t.objectLogger(c.Path)
 	pathS := c.Path.String()
 
+	if c.Node != t.localhost && t.isTombstoned(c.Path, c.Node) {
+		log.Debugf("cfg: ignore the %s config for of node %s: tombstoned", pathS, c.Node)
+		return
+	}
+
 	if fetchingUpdatingAt, ok := t.fetcherUpdated[pathS]; ok {
 		if c.UpdatedAt.After(fetchingUpdatingAt) {
 			log.Infof("cfg: cancel current fetcher because of more recent config file from %s@%s%s (was fetching from %s)",
@@ -768,6 +790,12 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			c.Err <- nil
 			return
 		}
+		if t.isTombstoned(c.Path, c.Node) {
+			// The tombstone landed while the config was fetched.
+			log.Infof("cfg: drop the %s config fetched from node %s: tombstoned", c.Path, c.Node)
+			c.Err <- nil
+			return
+		}
 		confFile := c.Path.ConfigFile()
 		if err := handleStoppedFlag(confFile); err != nil {
 			c.Err <- err
@@ -842,6 +870,10 @@ func (t *Manager) fetchConfigFromRemote(a fetchArgs) {
 		// Checked here, where every path to a fetch goes, so none starts
 		// one the delete would race.
 		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: the object is being removed", s, peer)
+		return
+	}
+	if t.isTombstoned(p, peer) {
+		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: tombstoned", s, peer)
 		return
 	}
 	if n, ok := t.fetcherFrom[s]; ok {

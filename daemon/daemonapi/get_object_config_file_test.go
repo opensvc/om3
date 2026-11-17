@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -72,5 +73,23 @@ func TestTheConfigOfAnObjectBeingDeletedIsNotProxied(t *testing.T) {
 	c.Set("grants", rbac.Grants{rbac.GrantRoot})
 	a := &DaemonAPI{localhost: "n1"}
 	require.NoError(t, a.GetObjectConfigFile(c, p.Namespace, p.Kind, p.Name, api.GetObjectConfigFileParams{}))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// The config of an object a tombstone names this node a pending holder of
+// is not served: a peer installing it would bring the object back.
+func TestTheInstanceConfigOfAPendingHolderIsNotServed(t *testing.T) {
+	p := naming.Path{Namespace: "tombtest", Kind: naming.KindSec, Name: "s1"}
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	tombstone.Data.Set("n2", tombstone.Record{OrchestrationID: "a", Path: p.String(), Kind: tombstone.KindDeleted,
+		Holders: map[string]tombstone.Holder{"n1": {State: tombstone.HolderPending, Mode: tombstone.HolderLive}}})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("logger", plog.NewDefaultLogger())
+	c.Set("grants", rbac.Grants{rbac.GrantRoot})
+	a := &DaemonAPI{localhost: "n1"}
+	require.NoError(t, a.GetInstanceConfigFile(c, "n1", p.Namespace, p.Kind, p.Name))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
