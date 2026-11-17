@@ -10754,6 +10754,11 @@ components:
         state_reason:
           type: string
           description: why the instance is in a failure state, when the state alone does not say it
+        issues:
+          description: what keeps the instance from being orchestrated as usual, for the operator to act on
+          type: array
+          items:
+            type: string
         monitor_action_executed_at:
           type: string
           format: date-time

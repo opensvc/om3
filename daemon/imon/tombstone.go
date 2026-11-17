@@ -99,6 +99,7 @@ func (t *Manager) isNodeUp(nodename string) bool {
 // node adopts its delete or purge.
 func (t *Manager) refreshTombstones() {
 	t.tombstones = tombstone.Data.MergedOf(t.path.String())
+	t.applyTombstoneIssue()
 	t.onChange()
 }
 
@@ -254,6 +255,77 @@ func forceAway(options any) bool {
 		return o.Force
 	case instance.MonitorGlobalExpectOptionsUnprovisioned:
 		return o.Force
+	default:
+		return false
+	}
+}
+
+// tombstoneIssue returns the issue of the instance when a tombstone names its
+// node an away holder, and the id of the record, or empty: the object was
+// purged or deleted on the other nodes while this one was away, and this
+// instance may hold the only copy of the data. The operator purges or
+// deletes it here, or keeps it by an edit or a touch of its config, which
+// clears the holder and propagates the config again.
+func (t *Manager) tombstoneIssue() (string, string) {
+	for id, rec := range t.tombstones {
+		h, ok := rec.Holders[t.localhost]
+		if !ok || h.State != tombstone.HolderPending || h.Mode != tombstone.HolderAway {
+			continue
+		}
+		action := "purge"
+		if rec.Kind == tombstone.KindDeleted {
+			action = "delete"
+		}
+		return fmt.Sprintf("%s on the other nodes at %s while this node was away: run om %s %s, or edit or touch its config to keep it",
+			rec.Kind, rec.PurgedAt.Format(time.RFC3339), t.path, action), id
+	}
+	return "", ""
+}
+
+// applyTombstoneIssue shows the issue of an away holder in the instance
+// monitor, and flags the instance stopped once per record, unless it is up:
+// the daemon does not start it on its own, and the operator decides. The
+// instance is never stopped here, and the frozen flag, the operator's, is
+// never touched.
+func (t *Manager) applyTombstoneIssue() {
+	issue, id := t.tombstoneIssue()
+	var issues []string
+	if issue != "" {
+		issues = []string{issue}
+	}
+	if !slices.Equal(issues, t.state.Issues) {
+		t.state.Issues = issues
+		t.change = true
+	}
+	if id == "" || t.tombstoneStopped == id {
+		return
+	}
+	if t.instStatus[t.localhost].UpdatedAt.IsZero() {
+		// Not known yet whether the instance is up: decided on its
+		// first status.
+		return
+	}
+	if t.instStatus[t.localhost].Avail.Is(status.Up, status.Warn) {
+		t.tombstoneStopped = id
+		return
+	}
+	t.log.Infof("flag the instance stopped: %s", issue)
+	if err := t.setStopped(); err != nil {
+		// Decided again at the next status or tombstone event.
+		return
+	}
+	t.tombstoneStopped = id
+}
+
+// refusedByTombstone says whether a global expect is refused to an away
+// holder: what starts or provisions the instance. A purge, a delete, a stop
+// and an unprovision are accepted.
+func refusedByTombstone(ge instance.MonitorGlobalExpect) bool {
+	switch ge {
+	case instance.MonitorGlobalExpectStarted, instance.MonitorGlobalExpectRestarted,
+		instance.MonitorGlobalExpectPlaced, instance.MonitorGlobalExpectPlacedAt,
+		instance.MonitorGlobalExpectProvisioned:
+		return true
 	default:
 		return false
 	}

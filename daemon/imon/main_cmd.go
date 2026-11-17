@@ -316,6 +316,8 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	}
 	if srcCmd.Node == t.localhost {
 		t.janitorVolumes()
+		// The stopped flag of an away holder waits for a known status.
+		t.applyTombstoneIssue()
 	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()
@@ -652,6 +654,16 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		// value when we guess destinations
 		var globalExpectOptions any = c.Value.GlobalExpectOptions
 
+		// The object was purged or deleted elsewhere while this node was
+		// away: nothing starts or provisions its instance until the
+		// operator purges it or keeps it here.
+		if issue, _ := t.tombstoneIssue(); issue != "" && refusedByTombstone(*c.Value.GlobalExpect) {
+			err := fmt.Errorf("%s", issue)
+			t.log.Infof("set instance monitor: %s", err)
+			globalExpectRefused()
+			return err
+		}
+
 		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
 			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
@@ -964,6 +976,9 @@ func (t *Manager) AllInstanceMonitors() map[string]instance.Monitor {
 }
 
 func (t *Manager) isHAOrchestrateable() (bool, string) {
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return false, issue
+	}
 	if (t.objStatus.Topology == topology.Failover) && (t.objStatus.Avail == status.Warn) {
 		return false, "failover object is warn state"
 	}
@@ -1014,6 +1029,9 @@ func (t *Manager) hasInstanceMonitorAndStatusOnPeers() (bool, string) {
 // it is refused when none is, which would leave the orchestration with no
 // instance to start, and never ending.
 func (t *Manager) isRequestedStartable() (bool, string) {
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return false, issue
+	}
 	if ok, reason := t.isWarnFailoverStartable(); !ok {
 		return false, reason
 	}

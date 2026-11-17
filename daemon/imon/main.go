@@ -114,6 +114,10 @@ type (
 		// while their node was away, see noteAwayStatus.
 		awayStatus map[string]instance.Status
 
+		// tombstoneStopped is the id of the tombstone the instance was
+		// flagged stopped for, see applyTombstoneIssue.
+		tombstoneStopped string
+
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
 		nodeStatus    map[string]node.Status
@@ -562,10 +566,13 @@ func (t *Manager) worker(initialNodes []string) {
 		t.instMonitor[n] = *v
 		t.noteCarrying(n, *v)
 	}
-	t.tombstones = tombstone.Data.MergedOf(t.path.String())
 	for n, v := range instance.StatusData.GetByPath(t.path) {
 		t.instStatus[n] = *v
 	}
+	// After the statuses: whether the instance is flagged stopped depends
+	// on whether it is up.
+	t.tombstones = tombstone.Data.MergedOf(t.path.String())
+	t.applyTombstoneIssue()
 	// A peer up under an orchestration as the worker starts is the source
 	// of the placement it does, as recordFilesSource would have recorded it
 	// on the events published before the subscription.

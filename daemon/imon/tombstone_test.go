@@ -2,6 +2,8 @@ package imon
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -216,6 +219,62 @@ func TestAwayStatusKeptOnDeletion(t *testing.T) {
 	assert.NotContains(t, m.awayStatus, "node3")
 }
 
+// An away holder shows the issue, is flagged stopped once, and refuses what
+// would start or provision it; the issue goes with the holder cleared.
+func TestAwayHolderIssue(t *testing.T) {
+	m, pub, _ := newTombstoneTestManager(t)
+	rawVar := rawconfig.Paths.Var
+	rawconfig.Paths.Var = t.TempDir()
+	t.Cleanup(func() { rawconfig.Paths.Var = rawVar })
+	id, rec := liveRecord(m, tombstone.HolderAway)
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	m.applyTombstoneIssue()
+	require.Len(t, m.state.Issues, 1)
+	assert.Contains(t, m.state.Issues[0], "while this node was away")
+	assert.Empty(t, m.tombstoneStopped, "no status known yet: the flag waits")
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, UpdatedAt: time.Now()}
+	m.applyTombstoneIssue()
+	stopped := func() int {
+		n := 0
+		for _, msg := range pub.msgs {
+			if _, ok := msg.(*msgbus.InstanceStoppedFileUpdated); ok {
+				n++
+			}
+		}
+		return n
+	}
+	assert.Equal(t, 1, stopped())
+	m.applyTombstoneIssue()
+	assert.Equal(t, 1, stopped(), "flagged once per record")
+
+	ok, reason := m.isRequestedStartable()
+	assert.False(t, ok)
+	assert.Contains(t, reason, "while this node was away")
+	assert.True(t, refusedByTombstone(instance.MonitorGlobalExpectProvisioned))
+	assert.False(t, refusedByTombstone(instance.MonitorGlobalExpectPurged))
+	assert.False(t, refusedByTombstone(instance.MonitorGlobalExpectStopped))
+
+	rec.Holders[m.localhost] = tombstone.Holder{State: tombstone.HolderCleared, Mode: tombstone.HolderAway, ClearedBy: tombstone.ClearedByKept}
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	m.applyTombstoneIssue()
+	assert.Empty(t, m.state.Issues)
+}
+
+// An away holder whose instance is up is not flagged stopped: never stopped
+// by the tombstone, the operator decides.
+func TestAwayHolderUpNotFlagged(t *testing.T) {
+	m, pub, _ := newTombstoneTestManager(t)
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Up, UpdatedAt: time.Now()}
+	id, rec := liveRecord(m, tombstone.HolderAway)
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	m.applyTombstoneIssue()
+	assert.Len(t, m.state.Issues, 1)
+	for _, msg := range pub.msgs {
+		_, ok := msg.(*msgbus.InstanceStoppedFileUpdated)
+		assert.False(t, ok)
+	}
+}
+
 // A peer back from away forgets the status it was away with.
 func TestAwayStatusForgottenOnReturn(t *testing.T) {
 	m, _, _ := newTombstoneTestManager(t)
@@ -236,4 +295,26 @@ func TestUpgradingNodeIsAway(t *testing.T) {
 	assert.Equal(t, tombstone.HolderAway, (*recorded)[0].Holders["node2"].Mode)
 	m.instStatus["node2"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
 	assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "node2")
+}
+
+// A stopped flag not written is not taken as decided: it is written at the
+// next status or tombstone event.
+func TestAwayHolderStoppedFlagRetried(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	rawVar := rawconfig.Paths.Var
+	t.Cleanup(func() { rawconfig.Paths.Var = rawVar })
+	// A file where the var directory is to be: no flag can be written.
+	notADir := filepath.Join(t.TempDir(), "var")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+	rawconfig.Paths.Var = notADir
+	m.instStatus[m.localhost] = instance.Status{Avail: status.Down, UpdatedAt: time.Now()}
+	id, rec := liveRecord(m, tombstone.HolderAway)
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	m.applyTombstoneIssue()
+	assert.Empty(t, m.tombstoneStopped, "the write failed")
+
+	rawconfig.Paths.Var = t.TempDir()
+	m.applyTombstoneIssue()
+	assert.Equal(t, id.String(), m.tombstoneStopped)
+	assert.True(t, m.isStopped())
 }
