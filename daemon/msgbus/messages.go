@@ -1256,18 +1256,26 @@ type (
 	NetIPAddrAdded struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
-		LinkIndex  int    `json:"link_index" yaml:"link_index"`
-		LinkName   string `json:"link_name" yaml:"link_name"`
-		Address    string `json:"address" yaml:"address"`
+		// NSID is the id the namespace of the daemon holds for the
+		// network namespace of the link, as the one of a container, nil
+		// for a link of the namespace of the daemon.
+		NSID      *int   `json:"nsid,omitempty" yaml:"nsid,omitempty"`
+		LinkIndex int    `json:"link_index" yaml:"link_index"`
+		LinkName  string `json:"link_name" yaml:"link_name"`
+		Address   string `json:"address" yaml:"address"`
 	}
 
 	// NetIPAddrDeleted is published when an IP address is deleted from a link
 	NetIPAddrDeleted struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
-		LinkIndex  int    `json:"link_index" yaml:"link_index"`
-		LinkName   string `json:"link_name" yaml:"link_name"`
-		Address    string `json:"address" yaml:"address"`
+		// NSID is the id the namespace of the daemon holds for the
+		// network namespace of the link, nil for a link of the namespace
+		// of the daemon.
+		NSID      *int   `json:"nsid,omitempty" yaml:"nsid,omitempty"`
+		LinkIndex int    `json:"link_index" yaml:"link_index"`
+		LinkName  string `json:"link_name" yaml:"link_name"`
+		Address   string `json:"address" yaml:"address"`
 	}
 
 	// FSMounted is published when a filesystem is mounted
@@ -1965,7 +1973,7 @@ func (e *NetIPAddrAdded) Kind() string {
 }
 
 func (e *NetIPAddrAdded) Key() string {
-	return fmt.Sprintf("NetIPAddrAdded,node=%s,link_name=%s,address=%s", e.Node, e.LinkName, e.Address)
+	return fmt.Sprintf("NetIPAddrAdded,node=%s,%slink_name=%s,address=%s", e.Node, nsidKey(e.NSID), e.LinkName, e.Address)
 }
 
 func (e *NetIPAddrDeleted) Kind() string {
@@ -1973,7 +1981,16 @@ func (e *NetIPAddrDeleted) Kind() string {
 }
 
 func (e *NetIPAddrDeleted) Key() string {
-	return fmt.Sprintf("NetIPAddrDeleted,node=%s,link_name=%s,address=%s", e.Node, e.LinkName, e.Address)
+	return fmt.Sprintf("NetIPAddrDeleted,node=%s,%slink_name=%s,address=%s", e.Node, nsidKey(e.NSID), e.LinkName, e.Address)
+}
+
+// nsidKey is the nsid part of the key of a network event, empty for an
+// event of the namespace of the daemon.
+func nsidKey(nsid *int) string {
+	if nsid == nil {
+		return ""
+	}
+	return fmt.Sprintf("nsid=%d,", *nsid)
 }
 
 func (e *FSMounted) Kind() string {
