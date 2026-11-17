@@ -1212,6 +1212,75 @@ func (e SyncSnapshotListKind) Valid() bool {
 	}
 }
 
+// Defines values for TombstoneKind.
+const (
+	Deleted TombstoneKind = "deleted"
+	Purged  TombstoneKind = "purged"
+)
+
+// Valid indicates whether the value is a known member of the TombstoneKind enum.
+func (e TombstoneKind) Valid() bool {
+	switch e {
+	case Deleted:
+		return true
+	case Purged:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TombstoneHolderMode.
+const (
+	Away TombstoneHolderMode = "away"
+	Live TombstoneHolderMode = "live"
+)
+
+// Valid indicates whether the value is a known member of the TombstoneHolderMode enum.
+func (e TombstoneHolderMode) Valid() bool {
+	switch e {
+	case Away:
+		return true
+	case Live:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TombstoneHolderState.
+const (
+	Cleared TombstoneHolderState = "cleared"
+	Pending TombstoneHolderState = "pending"
+)
+
+// Valid indicates whether the value is a known member of the TombstoneHolderState enum.
+func (e TombstoneHolderState) Valid() bool {
+	switch e {
+	case Cleared:
+		return true
+	case Pending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TombstoneListKind.
+const (
+	TombstoneListKindTombstoneList TombstoneListKind = "TombstoneList"
+)
+
+// Valid indicates whether the value is a known member of the TombstoneListKind enum.
+func (e TombstoneListKind) Valid() bool {
+	switch e {
+	case TombstoneListKindTombstoneList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Topology.
 const (
 	Failover Topology = "failover"
@@ -3773,6 +3842,54 @@ type SyncSnapshotList struct {
 
 // SyncSnapshotListKind defines model for SyncSnapshotList.Kind.
 type SyncSnapshotListKind string
+
+// Tombstone defines model for Tombstone.
+type Tombstone struct {
+	Holders []TombstoneHolder `json:"holders"`
+	Kind    TombstoneKind     `json:"kind"`
+
+	// Nodes the nodes publishing the tombstone
+	Nodes []string `json:"nodes"`
+
+	// OrchestrationID the orchestration of the delete or the purge, the key of the tombstone
+	OrchestrationID string `json:"orchestration_id"`
+	Path            string `json:"path"`
+
+	// PurgedAt when the orchestration was accepted, as the node accepting it stamped it
+	PurgedAt time.Time `json:"purged_at"`
+}
+
+// TombstoneKind defines model for Tombstone.Kind.
+type TombstoneKind string
+
+// TombstoneHolder defines model for TombstoneHolder.
+type TombstoneHolder struct {
+	ClearedBy *string `json:"cleared_by,omitempty"`
+
+	// Mode live, the node was up as the tombstone was written and completes
+	// the delete or the purge; away, it was not, and its instance is
+	// kept stopped until purged or kept there
+	Mode  TombstoneHolderMode  `json:"mode"`
+	Node  string               `json:"node"`
+	State TombstoneHolderState `json:"state"`
+}
+
+// TombstoneHolderMode live, the node was up as the tombstone was written and completes
+// the delete or the purge; away, it was not, and its instance is
+// kept stopped until purged or kept there
+type TombstoneHolderMode string
+
+// TombstoneHolderState defines model for TombstoneHolder.State.
+type TombstoneHolderState string
+
+// TombstoneList defines model for TombstoneList.
+type TombstoneList struct {
+	Items []Tombstone       `json:"items"`
+	Kind  TombstoneListKind `json:"kind"`
+}
+
+// TombstoneListKind defines model for TombstoneList.Kind.
+type TombstoneListKind string
 
 // Topology object topology
 type Topology string

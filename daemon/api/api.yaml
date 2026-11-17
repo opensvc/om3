@@ -825,6 +825,33 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/tombstone:
+    get:
+      description: |
+        Return the tombstones of the deletes and purges some nodes of the
+        object did not run, the copies of every node merged: the nodes
+        holding the instance still, pending until it is gone or kept there.
+        A user other than root sees the ones of the namespaces it is guest
+        of.
+      operationId: GetClusterTombstones
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TombstoneList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /api/cluster/lock:
     get:
       description: |
@@ -9373,6 +9400,82 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClusterLock'
+
+    Tombstone:
+      type: object
+      required:
+        - orchestration_id
+        - path
+        - kind
+        - purged_at
+        - holders
+        - nodes
+      properties:
+        orchestration_id:
+          description: the orchestration of the delete or the purge, the key of the tombstone
+          type: string
+          x-go-name: OrchestrationID
+        path:
+          type: string
+        kind:
+          type: string
+          enum:
+            - purged
+            - deleted
+        purged_at:
+          description: when the orchestration was accepted, as the node accepting it stamped it
+          type: string
+          format: date-time
+        holders:
+          type: array
+          items:
+            $ref: '#/components/schemas/TombstoneHolder'
+        nodes:
+          description: the nodes publishing the tombstone
+          type: array
+          items:
+            type: string
+
+    TombstoneHolder:
+      type: object
+      required:
+        - node
+        - state
+        - mode
+      properties:
+        node:
+          type: string
+        state:
+          type: string
+          enum:
+            - pending
+            - cleared
+        mode:
+          description: |
+            live, the node was up as the tombstone was written and completes
+            the delete or the purge; away, it was not, and its instance is
+            kept stopped until purged or kept there
+          type: string
+          enum:
+            - live
+            - away
+        cleared_by:
+          type: string
+
+    TombstoneList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - TombstoneList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tombstone'
 
     PostClusterLock:
       type: object
