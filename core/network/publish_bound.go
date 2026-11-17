@@ -13,11 +13,17 @@ import (
 	"strings"
 )
 
+// procNetTables are the socket tables of the network namespace of the node,
+// ipv4 and ipv6.
+type procNetTables struct {
+	v4, v6 string
+}
+
 // procNetFiles are the socket tables of the network namespace of the node, by
 // protocol, replaced by the tests.
-var procNetFiles = map[string][]string{
-	"tcp": {"/proc/net/tcp", "/proc/net/tcp6"},
-	"udp": {"/proc/net/udp", "/proc/net/udp6"},
+var procNetFiles = map[string]procNetTables{
+	"tcp": {v4: "/proc/net/tcp", v6: "/proc/net/tcp6"},
+	"udp": {v4: "/proc/net/udp", v6: "/proc/net/udp6"},
 }
 
 // boundStates are the socket states holding a port for the connections to
@@ -32,7 +38,7 @@ var boundStates = map[string]string{
 // process waits for. A socket of a loopback address alone is no conflict, its
 // connections not being forwarded, nor a socket of the other family than
 // addr, which the forwarding of that family does not take the connections
-// of.
+// of, a v6only ipv6 wildcard socket for an ipv4 addr included.
 //
 // Nothing keeps a process of the node from binding a published port, the one
 // drawn for a publish naming none included: the status says it.
@@ -53,7 +59,7 @@ func PublishesBound(addr net.IP, publishes []Publish) ([]Publish, error) {
 			cache[p.Proto] = sockets
 		}
 		for _, s := range sockets {
-			if s.port != p.HostPort || s.addr.IsLoopback() || !receivesFamily(s.addr, v4) {
+			if s.port != p.HostPort || s.addr.IsLoopback() || !s.receivesFamily(v4) {
 				continue
 			}
 			if p.HostAddr == nil || s.addr.IsUnspecified() || s.addr.Equal(p.HostAddr) {
@@ -65,56 +71,74 @@ func PublishesBound(addr net.IP, publishes []Publish) ([]Publish, error) {
 	return bound, nil
 }
 
-// receivesFamily says a socket of the address a receives the connections of
-// the ipv4 family, or else of the ipv6 one.
+// receivesFamily says the socket receives the connections of the ipv4
+// family, or else of the ipv6 one.
 //
 // An ipv4 socket, or an ipv6 one of an ipv4 mapped address, receives the
-// ipv4 connections only. The ipv6 wildcard receives the ipv4 connections too,
-// its sockets being dual stack by default on linux: a v6only one does not,
-// which the socket tables do not say, so it is taken for one that does.
-func receivesFamily(a net.IP, v4 bool) bool {
-	if a.To4() != nil {
+// ipv4 connections only. The ipv6 wildcard receives the ipv4 connections too
+// unless it is v6only. The socket tables of /proc not saying the v6only
+// option, a socket read from them is taken for a dual stack one, the default
+// on linux.
+func (s boundSocket) receivesFamily(v4 bool) bool {
+	if s.addr.To4() != nil {
 		return v4
 	}
-	return !v4 || a.Equal(net.IPv6unspecified)
+	return !v4 || (s.addr.Equal(net.IPv6unspecified) && !s.v6only)
 }
 
 type boundSocket struct {
-	addr net.IP
-	port int
+	addr   net.IP
+	port   int
+	v6only bool
 }
 
-// boundSockets reads the sockets of a protocol holding a port.
+// boundSockets reads the sockets of a protocol holding a port: the ipv4 ones
+// from the socket table of /proc, the ipv6 ones from the sock_diag interface
+// of the kernel, which says their v6only option, or from the socket table of
+// /proc when the kernel does not answer.
 func boundSockets(proto string) ([]boundSocket, error) {
+	tables := procNetFiles[proto]
+	l, err := readProcNet(tables.v4, proto)
+	if err != nil {
+		return nil, err
+	}
+	l6, err := diagV6Sockets(proto)
+	if err != nil {
+		if l6, err = readProcNet(tables.v6, proto); err != nil {
+			return nil, err
+		}
+	}
+	return append(l, l6...), nil
+}
+
+// readProcNet reads the sockets of a protocol holding a port from a socket
+// table of /proc.
+func readProcNet(file, proto string) ([]boundSocket, error) {
+	f, err := os.Open(file)
+	if os.IsNotExist(err) {
+		// No ipv6 on the node.
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
 	var l []boundSocket
-	for _, file := range procNetFiles[proto] {
-		f, err := os.Open(file)
-		if os.IsNotExist(err) {
-			// No ipv6 on the node.
+	scanner := bufio.NewScanner(f)
+	scanner.Scan() // the header
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) < 4 || fields[3] != boundStates[proto] {
 			continue
 		}
+		s, err := parseProcNetAddr(fields[1])
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", file, err)
 		}
-		scanner := bufio.NewScanner(f)
-		scanner.Scan() // the header
-		for scanner.Scan() {
-			fields := strings.Fields(scanner.Text())
-			if len(fields) < 4 || fields[3] != boundStates[proto] {
-				continue
-			}
-			s, err := parseProcNetAddr(fields[1])
-			if err != nil {
-				_ = f.Close()
-				return nil, fmt.Errorf("%s: %w", file, err)
-			}
-			l = append(l, s)
-		}
-		err = scanner.Err()
-		_ = f.Close()
-		if err != nil {
-			return nil, err
-		}
+		l = append(l, s)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", file, err)
 	}
 	return l, nil
 }
