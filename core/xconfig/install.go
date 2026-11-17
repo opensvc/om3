@@ -124,6 +124,13 @@ func installLockPath(p string) string {
 // or the replication of a peer's file makes it. It is a flock(2) lock, which
 // the kernel releases when its holder dies.
 func install(src, dst string, base *Base) error {
+	return installSync(src, dst, base, true)
+}
+
+// installSync is install, syncing dst after the rename when syncDst is
+// set. A caller that synced src before leaves it unset: the rename only
+// moves data already on stable storage.
+func installSync(src, dst string, base *Base, syncDst bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), installLockTimeout)
 	defer cancel()
 	unlock, err := lock.Exclusive(ctx, installLockPath(dst))
@@ -151,7 +158,7 @@ func install(src, dst string, base *Base) error {
 			if done != nil {
 				done(err == nil)
 			}
-			if err != nil {
+			if err != nil || !syncDst {
 				return err
 			}
 			return file.Sync(dst)
@@ -159,6 +166,9 @@ func install(src, dst string, base *Base) error {
 	}
 	if err := os.Rename(src, dst); err != nil {
 		return err
+	}
+	if !syncDst {
+		return nil
 	}
 	return file.Sync(dst)
 }
@@ -168,4 +178,13 @@ func install(src, dst string, base *Base) error {
 // elsewhere, as one fetched from a peer, is installed.
 func InstallFile(src, dst string) error {
 	return install(src, dst, nil)
+}
+
+// InstallSyncedFile is InstallFile for a file src its writer synced to
+// stable storage already, beside dst: it only renames it in place, under the
+// lock. The sync, which waits on the disk, is made by the writer, out of
+// the caller holding up others, as the discovery loop that starts the
+// config managers of every object.
+func InstallSyncedFile(src, dst string) error {
+	return installSync(src, dst, nil, false)
 }
