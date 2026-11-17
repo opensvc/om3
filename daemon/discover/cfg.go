@@ -775,9 +775,13 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		}
 		// Installed under the lock every writer of the file takes, so a
 		// local write checked against the file this replaces does not land
-		// over it, and the file is synced to stable storage, so a reboot
-		// does not find it absent or empty.
-		if err := xconfig.InstallFile(c.File, confFile); err != nil {
+		// over it. The fetch synced the file to stable storage, so a
+		// reboot does not find it empty: the loop only renames it. A sync
+		// here, on a disk busy with many objects at once, held up the
+		// loop, and the start of the config managers of every object with
+		// it, up to 80s for 850 objects: a delete ran meanwhile on the
+		// nodes whose instance had no manager yet, and was not seen there.
+		if err := xconfig.InstallSyncedFile(c.File, confFile); err != nil {
 			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
 			c.Err <- err
 		} else {
