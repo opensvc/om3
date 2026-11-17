@@ -87,6 +87,9 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
+	// A live holder of a tombstone clearing ends the wait of its object.
+	sub.AddFilter(&msgbus.NodeTombstoneUpdated{})
+	sub.AddFilter(&msgbus.NodeTombstoneDeleted{})
 	sub.AddFilter(&msgbus.NodeOrchestrationAccepted{}, label)
 	sub.AddFilter(&msgbus.NodeOrchestrationEnd{}, label)
 	sub.AddFilter(&msgbus.NodeOrchestrationRefused{}, label)
@@ -155,6 +158,10 @@ func eventPath(i any) (string, bool) {
 		return m.Path.String(), true
 	case *msgbus.ObjectStatusDeleted:
 		return m.Path.String(), true
+	case *msgbus.NodeTombstoneUpdated:
+		return m.Path, true
+	case *msgbus.NodeTombstoneDeleted:
+		return m.Path, true
 	case *msgbus.ObjectOrchestrationAccepted:
 		return m.Path.String(), true
 	case *msgbus.ObjectOrchestrationEnd:

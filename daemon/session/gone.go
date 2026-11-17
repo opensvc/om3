@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/tombstone"
 )
 
 // goneTimeout bounds the wait of a delete or a purge for the instances of
@@ -32,6 +33,12 @@ func remainingInstances(path string) []string {
 	// with all their resources, was made for each orchestration waiting,
 	// at each event.
 	m := instance.NodesWithInstance(p)
+	// A live holder of a tombstone of the object holds an instance its
+	// node has not seen yet, as one whose config manager had not started:
+	// it completes the delete, and the orchestration waits for it.
+	for _, nodename := range tombstone.Data.PendingHolders(path, tombstone.HolderLive) {
+		m[nodename] = true
+	}
 	var l []string
 	for nodename := range m {
 		// A node without a monitor, forgotten or not heard from since

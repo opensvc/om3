@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -175,4 +176,36 @@ func TestCheckGoneOfChecksTheObjectOfTheEventOnly(t *testing.T) {
 	assert.Equal(t, StateSucceeded, o.State, "an event of a ends it, a gone")
 	o, _ = GetOrchestration(idb.String())
 	assert.Equal(t, StateRunning, o.State, "b holds an instance on n2 still")
+}
+
+// A delete waits for the live holders of its tombstone, whose instance its
+// node has not seen yet, and ends once they are cleared.
+func TestADeleteWaitsForTheLiveHoldersOfItsTombstone(t *testing.T) {
+	reset()
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	m := &Manager{}
+	id := uuid.New()
+	p := naming.Path{Namespace: "c850", Name: "live", Kind: naming.KindSec}
+	node.MonitorData.Set("n2", &node.Monitor{State: node.MonitorStateIdle})
+	t.Cleanup(func() {
+		node.MonitorData.Unset("n2")
+		awaitingGone = make(map[string]time.Time)
+	})
+	rec := tombstone.Record{OrchestrationID: id.String(), Path: p.String(), Kind: tombstone.KindDeleted,
+		Holders: map[string]tombstone.Holder{"n2": {State: tombstone.HolderPending, Mode: tombstone.HolderLive}}}
+	tombstone.Data.Set("n1", rec)
+	m.handle(&msgbus.InstanceMonitorUpdated{Path: p, Node: "n1", Value: instance.Monitor{OrchestrationID: id, GlobalExpect: instance.MonitorGlobalExpectDeleted}})
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n1"})
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, StateRunning, o.State, "n2, a live holder, has not deleted yet")
+
+	rec.Holders["n2"] = tombstone.Holder{State: tombstone.HolderCleared, Mode: tombstone.HolderLive, ClearedBy: tombstone.ClearedByDeleted}
+	tombstone.Data.Set("n2", rec)
+	ev := &msgbus.NodeTombstoneUpdated{Node: "n2", ID: id.String(), Path: p.String(), Value: rec}
+	path, ok := eventPath(ev)
+	require.True(t, ok)
+	CheckGoneOf(path)
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
 }

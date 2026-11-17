@@ -97,6 +97,10 @@ type (
 		// or InstanceMonitorUpdated from other nodes.
 		instMonitor map[string]instance.Monitor
 
+		// seenCarrying is the orchestration id the monitor of each peer
+		// was last seen carrying, see recordTombstone.
+		seenCarrying map[string]uuid.UUID
+
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
 		nodeStatus    map[string]node.Status
@@ -400,6 +404,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		files:         newFilesManager(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
+		seenCarrying:  make(map[string]uuid.UUID),
 		nodeMonitor:   make(map[string]node.Monitor),
 		nodeStats:     make(map[string]node.Stats),
 		nodeStatus:    make(map[string]node.Status),
@@ -539,6 +544,7 @@ func (t *Manager) worker(initialNodes []string) {
 			continue
 		}
 		t.instMonitor[n] = *v
+		t.noteCarrying(n, *v)
 	}
 	for n, v := range instance.StatusData.GetByPath(t.path) {
 		t.instStatus[n] = *v

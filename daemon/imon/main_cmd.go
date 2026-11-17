@@ -896,6 +896,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	instMon := c.Value
 	t.log.Tracef("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
+	t.noteCarrying(remote, instMon)
 	t.recordFilesSource(remote)
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()

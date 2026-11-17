@@ -162,6 +162,12 @@ func (t *Manager) crmBoot() error {
 }
 
 func (t *Manager) crmDelete() error {
+	// The point of no return: the tombstone of the nodes not seen
+	// running the orchestration is saved first, or nothing is deleted.
+	if err := t.recordTombstone(); err != nil {
+		t.log.Errorf("record the tombstone: %s", err)
+		return err
+	}
 	t.publisher.Pub(&msgbus.InstanceConfigDeleting{
 		Path: t.path,
 		Node: t.localhost,
