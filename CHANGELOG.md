@@ -67,6 +67,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Orchestration & Management
 
+* **Tombstones**: A purge or a delete some nodes of the object did not run leaves a tombstone naming them, kept and shared by every node, so the object does not come back from them. A node up but not seen running it completes it. A node away keeps its instance, flagged stopped, the issue shown in its status: `om <path> purge` there, or an edit or a touch of its config to keep it. `om cluster tombstone ls`, `ox cluster tombstone ls` and `GET /api/cluster/tombstone` list them.
+
 * **Live migration for KVM**: Full support for live migration of KVM instances with data on `disk.disk` and `disk.drbd` resources using `om <svc> switch --live` and `om <svc> takeover --live` commands.
 
 * **New placement policy**: `last start` policy uses the mtime of `<objvar>/last_start` as the candidate sort key, with more recent starts having higher priority.
@@ -676,6 +678,12 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     om svc1 purge          # refused: n3 away with an instance up or provisioned
     om svc1 purge --force  # purged on the nodes up, n3 holding a tombstone
     ```
+
+* **A create of an object a tombstone holds is refused without `--force`:**
+    `om <path> create`, `ox` and the api refuse a name whose purge or delete some nodes still hold, naming them:
+    retry once a delete in progress is done, or purge it there; `--force` drops the tombstone. During a rolling
+    upgrade, a node still running a former version never clears itself from a tombstone: a name deleted
+    meanwhile can be created again once the node is upgraded, or with `--force`.
 
 * **Configuration updates and queries use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.

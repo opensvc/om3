@@ -34,6 +34,11 @@ type configCheck struct {
 	// collect has every check run, and every problem kept as alerts.
 	collect bool
 
+	// afterCommit, if set, runs once the configuration is written, before
+	// it is announced: what only a write done may do, as the drop of the
+	// tombstone of a create --force.
+	afterCommit func() error
+
 	alerts  api.ConfigAlertItems
 	refusal *configRefusal
 

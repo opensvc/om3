@@ -1,8 +1,10 @@
 package daemonapi
 
 import (
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -10,7 +12,9 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/tombmon"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -42,6 +46,19 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	// from the moment its configuration file is written, before the daemon
 	// knows it: two creates racing, the second is not one.
 	force := params.Force != nil && *params.Force
+	// A tombstone of the path with pending holders: nodes hold the
+	// instance of an object purged or deleted elsewhere, and a new object
+	// of the name would meet theirs. Forced, the tombstone is dropped once
+	// the configuration is written: a create refused or failed leaves it,
+	// and a crash between the two leaves it pending, the safe side, a
+	// create --force again dropping it.
+	pending := tombstone.Data.PendingHolders(p.String(), "")
+	if len(pending) > 0 && !force {
+		if live := tombstone.Data.PendingHolders(p.String(), tombstone.HolderLive); len(live) > 0 {
+			return JSONProblemf(ctx, http.StatusConflict, "Conflict", "%s is being deleted on %s: retry once done, a create forced meanwhile having its new instances join that delete", p, strings.Join(live, ", "))
+		}
+		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "%s was purged or deleted with %s away, holding it still: purge it there, or create with --force to drop its tombstone", p, strings.Join(pending, ", "))
+	}
 	exists := len(instance.MonitorData.GetNodesByPath(p)) > 0 || base.exists()
 	if exists && !force {
 		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
@@ -81,6 +98,21 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	// A dry run runs every check, and answers what they found.
 	dryRun := params.DryRun != nil && *params.DryRun
 	check := a.newConfigCheck(ctx, p, dryRun)
+	// Forced, the tombstones of the path are dropped as they are once the
+	// configuration is written, one recorded by a delete since the check
+	// above included.
+	if force {
+		check.afterCommit = func() error {
+			dropped, err := tombmon.Drop(p.String())
+			if err != nil {
+				return fmt.Errorf("%s is created, and its tombstone not dropped: %w: create it again with --force", p, err)
+			}
+			if len(dropped) > 0 {
+				log.Infof("%s: tombstone dropped, holders %s", p, dropped)
+			}
+			return nil
+		}
+	}
 
 	// Validate RBAC rules for config keys
 	if !check.rbac(body) {

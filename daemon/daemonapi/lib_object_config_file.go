@@ -131,6 +131,12 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, check *configCheck, 
 	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
+	if check.afterCommit != nil {
+		if err := check.afterCommit(); err != nil {
+			a.announceConfigFileWritten(p)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "After commit", "%s", err)
+		}
+	}
 	a.announceConfigFileWritten(p)
 	if waitKnown {
 		knownCtx, knownCancel, bound := objectKnownContext(ctx.Request().Context(), waitCtx, waiting)
