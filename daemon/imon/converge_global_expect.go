@@ -111,7 +111,11 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 			// monitors would never end the abort.
 		default:
 			for n := range expectedInstanceMonitor {
-				if _, ok := t.nodeMonitor[n]; ok {
+				// A node in maintenance or shutting down runs no
+				// orchestration: waited for, it held a forced
+				// unprovision until it came back. A node starting
+				// is waited for: it adopts it as its monitor starts.
+				if mon, ok := t.nodeMonitor[n]; ok && !mon.State.LeftOrchestrations() {
 					t.log.Tracef("wait for initial GlobalExpect propagation on %s", n)
 					return false
 				}

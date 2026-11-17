@@ -73,6 +73,12 @@ func (t MonitorState) IsMaintenance() bool {
 	return t == MonitorStateMaintenance || t == MonitorStateUpgrade
 }
 
+// LeftOrchestrations says whether a node in this state runs no orchestration
+// until it comes back: in maintenance, upgrading or shutting down.
+func (t MonitorState) LeftOrchestrations() bool {
+	return t.IsMaintenance() || t.IsOneOf(MonitorStateShutdownProgress, MonitorStateShutdownSuccess, MonitorStateShutdownFailure)
+}
+
 func (t MonitorState) IsRankable() bool {
 	_, ok := MonitorStateUnrankable[t]
 	return !ok

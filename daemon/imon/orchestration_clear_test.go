@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -381,4 +382,21 @@ func TestAServedMarkExpiringLooksAtTheOrchestrationAgain(t *testing.T) {
 	m.onOrchestrationClearTimer()
 	assert.True(t, m.delayOrchestrateEnabled, "the orchestration is looked at again")
 	assert.Empty(t, m.peersStarting())
+}
+
+// The leader of an unprovision or a purge does not wait for the retained
+// status of the instance of a node away: it waited for it until the
+// maintenance grace period dropped it.
+func TestTheLeaderDoesNotWaitForANodeAway(t *testing.T) {
+	m := newClearTestManager(&pubSpy{})
+	m.nodeMonitor = map[string]node.Monitor{"node2": {State: node.MonitorStateIdle}}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	// node1, the local node, leads.
+	m.objStatus.Topology = topology.Flex
+	m.state.IsLeader = true
+	assert.True(t, m.hasNonLeaderProvisioned(), "node2 live and provisioned")
+
+	m.nodeMonitor["node2"] = node.Monitor{State: node.MonitorStateMaintenance}
+	assert.False(t, m.hasNonLeaderProvisioned(), "node2 in maintenance")
 }

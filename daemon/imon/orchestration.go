@@ -487,3 +487,15 @@ func childInstanceProvisioned(relation string) string {
 	}
 	return fmt.Sprintf("is provisioned (%s)", st.Provisioned)
 }
+
+// isNodeAway says the peer is away, its daemon stopped, starting, rejoining,
+// shutting down or upgrading: its instance, its data kept in the cluster, runs no
+// orchestration, and the leader of an unprovision or a purge waited for its
+// retained status until the maintenance grace period dropped it.
+func (t *Manager) isNodeAway(nodename string) bool {
+	if nodename == t.localhost {
+		return false
+	}
+	mon, ok := t.nodeMonitor[nodename]
+	return ok && mon.State.IsAwayFromObjects()
+}
