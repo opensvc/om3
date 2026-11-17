@@ -1117,6 +1117,20 @@ func isObjectStarted(topo topology.T, avail status.T, upInstancesCount, flexTarg
 	}
 }
 
+// applyActionResult sets the state an action ended in, if the monitor is
+// still in the state the action ran in, and says whether it did. A failure
+// of a purge or a delete lands here, not through transitionTo: it turns the
+// live holder of the node away as well.
+func (t *Manager) applyActionResult(c cmdOrchestrate) bool {
+	if t.state.State != c.state {
+		return false
+	}
+	t.change = true
+	t.state.State = c.newState
+	t.demoteTombstoneIfFailed()
+	return true
+}
+
 func (t *Manager) needOrchestrate(c cmdOrchestrate) {
 	if c.state == instance.MonitorStateInit {
 		return
@@ -1126,9 +1140,7 @@ func (t *Manager) needOrchestrate(c cmdOrchestrate) {
 		return
 	default:
 	}
-	if t.state.State == c.state {
-		t.change = true
-		t.state.State = c.newState
+	if t.applyActionResult(c) {
 		t.updateIfChange()
 	}
 	select {

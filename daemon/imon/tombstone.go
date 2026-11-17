@@ -17,9 +17,15 @@ import (
 	"github.com/opensvc/om3/v3/daemon/tombmon"
 )
 
-// recordTombstoneFunc writes a tombstone, persisted before it returns: a
-// variable for the tests to stub.
-var recordTombstoneFunc = tombmon.Record
+var (
+	// recordTombstoneFunc writes a tombstone, persisted before it
+	// returns: a variable for the tests to stub.
+	recordTombstoneFunc = tombmon.Record
+
+	// demoteTombstoneFunc turns away the live holder of the node in a
+	// tombstone of a path: a variable for the tests to stub.
+	demoteTombstoneFunc = tombmon.DemoteLocal
+)
 
 // noteCarrying records that the monitor of node was seen carrying the
 // orchestration id of its global expect: a peer seen running the delete or
@@ -133,6 +139,20 @@ func (t *Manager) adoptTombstone() bool {
 		if tombmon.WasRemoved(id) {
 			// A stale copy a peer publishes again: the node cleared
 			// its holder, and tombmon answers it.
+			continue
+		}
+		if oid == t.carriedOrchestrationID {
+			// The instance ran it already, and failed or was
+			// aborted: adopting it again would run what the
+			// operator stopped. The holder turns away instead, the
+			// issue shown, and the operator decides.
+			if t.tombstoneDemoted != id {
+				t.tombstoneDemoted = id
+				t.log.Infof("the tombstone %s names this node a live holder of an orchestration it ran already: turn the holder away", id)
+				if err := demoteTombstoneFunc(t.path.String(), id); err != nil {
+					t.log.Warnf("turn the live holder of the tombstone %s away: %s", id, err)
+				}
+			}
 			continue
 		}
 		ge := instance.MonitorGlobalExpectPurged
@@ -288,6 +308,7 @@ func (t *Manager) tombstoneIssue() (string, string) {
 // instance is never stopped here, and the frozen flag, the operator's, is
 // never touched.
 func (t *Manager) applyTombstoneIssue() {
+	t.demoteTombstoneIfFailed()
 	issue, id := t.tombstoneIssue()
 	var issues []string
 	if issue != "" {
@@ -328,5 +349,39 @@ func refusedByTombstone(ge instance.MonitorGlobalExpect) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// demoteTombstoneIfFailed turns away the live holder of the node, once per
+// orchestration, when its instance failed the delete or the purge: the
+// peers deleted theirs, so the object lives on this node only, and the
+// operator decides, the issue shown, as for a node that was away.
+func (t *Manager) demoteTombstoneIfFailed() {
+	// The failures ending the orchestration only: a delete goes on after
+	// a stop, a start or a freeze failed, as from idle.
+	switch t.state.GlobalExpect {
+	case instance.MonitorGlobalExpectPurged:
+		if !t.state.State.IsOneOf(instance.MonitorStateStopFailure, instance.MonitorStatePurgeFailed) {
+			return
+		}
+	case instance.MonitorGlobalExpectDeleted:
+		if t.state.State != instance.MonitorStateDeleteFailure {
+			return
+		}
+	default:
+		return
+	}
+	id := t.state.OrchestrationID.String()
+	rec, ok := t.tombstones[id]
+	if !ok || t.tombstoneDemoted == id {
+		return
+	}
+	if h := rec.Holders[t.localhost]; h.State != tombstone.HolderPending || h.Mode != tombstone.HolderLive {
+		return
+	}
+	t.tombstoneDemoted = id
+	t.log.Infof("the %s failed here, the peers done: turn the live holder of the tombstone %s away", rec.Kind, id)
+	if err := demoteTombstoneFunc(t.path.String(), id); err != nil {
+		t.log.Warnf("turn the live holder of the tombstone %s away: %s", id, err)
 	}
 }

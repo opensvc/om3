@@ -110,6 +110,10 @@ type (
 		// the orchestration of, see adoptTombstone.
 		adoptedTombstone string
 
+		// carriedOrchestrationID is the last orchestration the instance
+		// carried: a tombstone of it is never adopted, see adoptTombstone.
+		carriedOrchestrationID uuid.UUID
+
 		// awayStatus is the last instance status of the peers deleted
 		// while their node was away, see noteAwayStatus.
 		awayStatus map[string]instance.Status
@@ -117,6 +121,10 @@ type (
 		// tombstoneStopped is the id of the tombstone the instance was
 		// flagged stopped for, see applyTombstoneIssue.
 		tombstoneStopped string
+
+		// tombstoneDemoted is the id of the tombstone whose live holder
+		// of the node was turned away, see demoteTombstoneIfFailed.
+		tombstoneDemoted string
 
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
@@ -474,12 +482,14 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 // logSetOrchestrationID names in the logs the orchestration this instance
 // monitor is running, and names none when it is running none: an id of
 // zeroes would match nothing a client can ask for, and every entry of every
-// idle monitor would carry it.
+// idle monitor would carry it. It remembers the orchestration as the last
+// one the instance carried, see adoptTombstone.
 func (t *Manager) logSetOrchestrationID(i uuid.UUID) {
 	if i == uuid.Nil {
 		t.log = t.logBase
 		return
 	}
+	t.carriedOrchestrationID = i
 	t.log = t.logBase.Attr("orchestration_id", i.String())
 }
 
@@ -850,6 +860,7 @@ func (t *Manager) transitionTo(newState instance.MonitorState) {
 	t.change = true
 	t.state.State = newState
 	t.clearStaleStateReason()
+	t.demoteTombstoneIfFailed()
 	t.updateIfChange()
 }
 

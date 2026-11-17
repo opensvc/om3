@@ -275,6 +275,31 @@ func TestAwayHolderUpNotFlagged(t *testing.T) {
 	}
 }
 
+// A live holder of the node whose delete fails, the peers done, turns away,
+// once: the operator decides, the issue shown.
+func TestLiveHolderFailedTurnsAway(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	var demoted []string
+	saved := demoteTombstoneFunc
+	demoteTombstoneFunc = func(path, _ string) error {
+		demoted = append(demoted, path)
+		return nil
+	}
+	t.Cleanup(func() { demoteTombstoneFunc = saved })
+	_, rec := liveRecord(m, tombstone.HolderLive)
+	rec.OrchestrationID = m.state.OrchestrationID.String()
+	m.tombstones = map[string]tombstone.Record{rec.OrchestrationID: rec}
+
+	m.state.State = instance.MonitorStateDeleteProgress
+	m.demoteTombstoneIfFailed()
+	assert.Empty(t, demoted, "no failure")
+	m.state.State = instance.MonitorStateDeleteFailure
+	m.demoteTombstoneIfFailed()
+	assert.Equal(t, []string{m.path.String()}, demoted)
+	m.refreshTombstones()
+	assert.Len(t, demoted, 1, "once per orchestration")
+}
+
 // A peer back from away forgets the status it was away with.
 func TestAwayStatusForgottenOnReturn(t *testing.T) {
 	m, _, _ := newTombstoneTestManager(t)
@@ -297,6 +322,53 @@ func TestUpgradingNodeIsAway(t *testing.T) {
 	assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "node2")
 }
 
+// A live holder never adopts an orchestration its instance ran already, as
+// one that failed and was aborted: it turns away once, the operator deciding
+// (qatests 308, the aborted purge run again).
+func TestNoAdoptionOfAnOrchestrationRunHere(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	var demoted []string
+	saved := demoteTombstoneFunc
+	demoteTombstoneFunc = func(path, _ string) error {
+		demoted = append(demoted, path)
+		return nil
+	}
+	t.Cleanup(func() { demoteTombstoneFunc = saved })
+	m.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	m.state.OrchestrationID = uuid.Nil
+	m.nodeMonitor[m.localhost] = node.Monitor{State: node.MonitorStateIdle}
+	id, rec := liveRecord(m, tombstone.HolderLive)
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	m.carriedOrchestrationID = id
+
+	assert.False(t, m.adoptTombstone(), "ran here already")
+	assert.Equal(t, instance.MonitorGlobalExpectNone, m.state.GlobalExpect)
+	assert.Equal(t, []string{m.path.String()}, demoted)
+	assert.False(t, m.adoptTombstone())
+	assert.Len(t, demoted, 1, "turned away once")
+}
+
+// The failure of a delete set by the end of its action, not by
+// transitionTo, turns the live holder away too.
+func TestLiveHolderFailedOnActionResult(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	var demoted []string
+	saved := demoteTombstoneFunc
+	demoteTombstoneFunc = func(path, _ string) error {
+		demoted = append(demoted, path)
+		return nil
+	}
+	t.Cleanup(func() { demoteTombstoneFunc = saved })
+	_, rec := liveRecord(m, tombstone.HolderLive)
+	rec.OrchestrationID = m.state.OrchestrationID.String()
+	m.tombstones = map[string]tombstone.Record{rec.OrchestrationID: rec}
+	m.state.State = instance.MonitorStateDeleteProgress
+	assert.False(t, m.applyActionResult(cmdOrchestrate{state: instance.MonitorStateStartProgress, newState: instance.MonitorStateStartFailure}), "not the state the action ran in")
+	assert.Empty(t, demoted)
+	assert.True(t, m.applyActionResult(cmdOrchestrate{state: instance.MonitorStateDeleteProgress, newState: instance.MonitorStateDeleteFailure}))
+	assert.Equal(t, []string{m.path.String()}, demoted)
+}
+
 // A stopped flag not written is not taken as decided: it is written at the
 // next status or tombstone event.
 func TestAwayHolderStoppedFlagRetried(t *testing.T) {
@@ -317,4 +389,26 @@ func TestAwayHolderStoppedFlagRetried(t *testing.T) {
 	m.applyTombstoneIssue()
 	assert.Equal(t, id.String(), m.tombstoneStopped)
 	assert.True(t, m.isStopped())
+}
+
+// A delete going on after a stop failed, as from idle, does not turn the live
+// holder away: only the failures ending the orchestration do.
+func TestLiveHolderNotTurnedAwayOnARecoverableFailure(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	var demoted []string
+	saved := demoteTombstoneFunc
+	demoteTombstoneFunc = func(path, id string) error {
+		demoted = append(demoted, id)
+		return nil
+	}
+	t.Cleanup(func() { demoteTombstoneFunc = saved })
+	_, rec := liveRecord(m, tombstone.HolderLive)
+	rec.OrchestrationID = m.state.OrchestrationID.String()
+	m.tombstones = map[string]tombstone.Record{rec.OrchestrationID: rec}
+	m.state.State = instance.MonitorStateStopFailure
+	m.demoteTombstoneIfFailed()
+	assert.Empty(t, demoted, "a delete goes on after a stop failure")
+	m.state.State = instance.MonitorStateDeleteFailure
+	m.demoteTombstoneIfFailed()
+	assert.Equal(t, []string{rec.OrchestrationID}, demoted, "with the id of the failed orchestration")
 }
