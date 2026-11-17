@@ -74,7 +74,8 @@ func TestStore(t *testing.T) {
 	require.Empty(t, l)
 
 	r := rec(map[string]Holder{"n2": pendingAway})
-	require.NoError(t, Save(dir, r))
+	require.NoError(t, Write(dir, r))
+	require.NoError(t, SyncDir(dir))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "corrupt.json"), []byte("{"), 0o600))
 	l, err = Load(dir)
 	require.Error(t, err)
@@ -86,14 +87,14 @@ func TestStore(t *testing.T) {
 		assert.NotContains(t, e.Name(), ".tmp", "no temporary file left")
 	}
 
-	require.NoError(t, Remove(dir, r.OrchestrationID))
-	require.NoError(t, Remove(dir, r.OrchestrationID), "removing an absent record is no error")
+	require.NoError(t, RemoveFile(dir, r.OrchestrationID))
+	require.NoError(t, RemoveFile(dir, r.OrchestrationID), "removing an absent record is no error")
 	require.NoError(t, os.Remove(filepath.Join(dir, "corrupt.json")))
 	l, err = Load(dir)
 	require.NoError(t, err)
 	require.Empty(t, l)
 
-	require.Error(t, Save(dir, Record{OrchestrationID: "../x"}))
+	require.Error(t, Write(dir, Record{OrchestrationID: "../x"}))
 }
 
 // The pending holders of a path are read from the copies of every node

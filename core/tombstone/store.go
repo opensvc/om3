@@ -23,11 +23,11 @@ func recordFile(dir, id string) (string, error) {
 	return filepath.Join(dir, id+".json"), nil
 }
 
-// Save writes the record to its file in dir, atomically: written to a
-// temporary file synced to stable storage, renamed in place, and the
-// directory synced, so a crash leaves the former record or this one, never
-// an empty one.
-func Save(dir string, rec Record) error {
+// Write writes the record to its file in dir: written to a temporary file
+// synced to stable storage and renamed in place, so a crash leaves the
+// former record or this one, never an empty one, once the directory is
+// synced with SyncDir, once for the records written together.
+func Write(dir string, rec Record) error {
 	p, err := recordFile(dir, rec.OrchestrationID)
 	if err != nil {
 		return err
@@ -56,13 +56,12 @@ func Save(dir string, rec Record) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, p); err != nil {
-		return err
-	}
-	return syncDir(dir)
+	return os.Rename(tmp, p)
 }
 
-func syncDir(dir string) error {
+// SyncDir syncs the directory of the records to stable storage: the
+// renames and removals made in it.
+func SyncDir(dir string) error {
 	d, err := os.Open(dir)
 	if err != nil {
 		return err
@@ -71,9 +70,9 @@ func syncDir(dir string) error {
 	return d.Sync()
 }
 
-// Remove removes the file of the record of id from dir. A record absent is
-// no error.
-func Remove(dir, id string) error {
+// RemoveFile removes the file of the record of id from dir, the directory
+// to sync with SyncDir. A record absent is no error.
+func RemoveFile(dir, id string) error {
 	p, err := recordFile(dir, id)
 	if err != nil {
 		return err
@@ -81,7 +80,7 @@ func Remove(dir, id string) error {
 	if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	return syncDir(dir)
+	return nil
 }
 
 // Load returns the records kept in dir. A file that can not be read or

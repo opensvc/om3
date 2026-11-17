@@ -52,6 +52,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/daemon/scheduler"
 	"github.com/opensvc/om3/v3/daemon/session"
+	"github.com/opensvc/om3/v3/daemon/tombmon"
 	"github.com/opensvc/om3/v3/daemon/virtmon"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -294,6 +295,10 @@ func (t *T) Start(ctx context.Context) error {
 		cstat.New(qsMedium),
 		istat.New(qsLarge),
 		listener.New(),
+		// Before nmon: the records of the node are published before its
+		// node monitor leaves the rejoin, which the removal of a record
+		// relies on.
+		tombmon.NewManager(qsHuge),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		ipampeers.New(qsMedium),
 		netmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
