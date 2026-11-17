@@ -1,7 +1,9 @@
 package imon
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,6 +11,8 @@ import (
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/tombmon"
 )
@@ -178,4 +182,79 @@ func (t *Manager) unseenHolders() map[string]tombstone.Holder {
 		holders[n] = h
 	}
 	return holders
+}
+
+// awayInstancesRefusal returns why a purge, a delete or an unprovision of
+// the object is refused, or empty: the nodes away whose instance, as they
+// last published it, is up or provisioned, provisioned only for an
+// unprovision. The orchestration does not wait for a node away: a purge or
+// a delete can not release its instance, maybe the only copy of the data,
+// which it holds a tombstone for; an unprovision may release shared
+// resources that instance still uses. A node with no status known needs no
+// force: nothing says it holds anything.
+func (t *Manager) awayInstancesRefusal(ge instance.MonitorGlobalExpect) string {
+	var l []string
+	for _, n := range t.scopeNodes {
+		if n == t.localhost {
+			continue
+		}
+		if mon, ok := t.nodeMonitor[n]; ok && !mon.State.IsAwayFromObjects() {
+			continue
+		}
+		st, ok := t.instStatus[n]
+		if !ok {
+			if st, ok = t.awayStatus[n]; !ok {
+				continue
+			}
+		}
+		holds := st.Provisioned == provisioned.True || st.Provisioned == provisioned.Mixed
+		if ge != instance.MonitorGlobalExpectUnprovisioned {
+			holds = holds || st.Avail.Is(status.Up, status.Warn)
+		}
+		if holds {
+			l = append(l, n)
+		}
+	}
+	if len(l) == 0 {
+		return ""
+	}
+	slices.Sort(l)
+	switch ge {
+	case instance.MonitorGlobalExpectUnprovisioned:
+		return fmt.Sprintf("%s away with an instance provisioned: the unprovision would not wait for it, and may release resources it still uses: use --force to unprovision without it", strings.Join(l, ", "))
+	case instance.MonitorGlobalExpectDeleted:
+		return fmt.Sprintf("%s away with an instance up or provisioned: the delete can not reach it, maybe the only copy of the data: use --force to delete without it, the node holding a tombstone", strings.Join(l, ", "))
+	default:
+		return fmt.Sprintf("%s away with an instance up or provisioned: the purge can not release it, maybe the only copy of the data: use --force to purge without it, the node holding a tombstone", strings.Join(l, ", "))
+	}
+}
+
+// noteAwayStatus remembers the last status of the instance of node, deleted
+// while its node is away: a node stopping deletes the statuses of its
+// instances as its monitors stop, after it announced its shutdown, so a
+// purge, a delete or an unprovision would else not know what it holds. It
+// is forgotten as the node publishes a status again.
+func (t *Manager) noteAwayStatus(node string, st instance.Status) {
+	if mon, ok := t.nodeMonitor[node]; ok && !mon.State.IsAwayFromObjects() {
+		return
+	}
+	if t.awayStatus == nil {
+		t.awayStatus = make(map[string]instance.Status)
+	}
+	t.awayStatus[node] = st
+}
+
+// forceAway says whether the options of a purge, a delete or an
+// unprovision ask it to go on without the instances of the nodes away.
+func forceAway(options any) bool {
+	switch o := options.(type) {
+	case instance.MonitorGlobalExpectOptionsPurged:
+		return o.Force
+	case instance.MonitorGlobalExpectOptionsDeleted:
+		return o.Force
+	case instance.MonitorGlobalExpectOptionsUnprovisioned:
+		return o.Force
+	default:
+		return false
+	}
 }

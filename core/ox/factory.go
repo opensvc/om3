@@ -3077,6 +3077,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagForceAway(flags, &options.Force)
 	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
 	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
@@ -3801,6 +3802,7 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagForceAway(flags, &options.Force)
 	return cmd
 }
 
@@ -4246,6 +4248,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagForceAway(flags, &options.Force)
 	return cmd
 }
 

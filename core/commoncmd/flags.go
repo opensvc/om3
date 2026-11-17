@@ -274,6 +274,15 @@ func FlagForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "allow dangerous operations")
 }
 
+// FlagForceAway is the force of a purge, a delete or an unprovision to go on
+// without the instance a node away holds up or provisioned, which it can
+// not reach: the node holds a tombstone, and is purged or kept there on its
+// return. With --local, it also allows the dangerous operations of the
+// action.
+func FlagForceAway(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "force", false, "go on without the instance a node away holds up or provisioned, which a tombstone then holds; with --local, allow dangerous operations")
+}
+
 // FlagConfigForce is the force of a configuration write a resource up on a
 // node would leak by.
 func FlagConfigForce(flags *pflag.FlagSet, p *bool) {

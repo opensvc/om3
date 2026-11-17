@@ -110,6 +110,10 @@ type (
 		// the orchestration of, see adoptTombstone.
 		adoptedTombstone string
 
+		// awayStatus is the last instance status of the peers deleted
+		// while their node was away, see noteAwayStatus.
+		awayStatus map[string]instance.Status
+
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
 		nodeStatus    map[string]node.Status

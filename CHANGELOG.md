@@ -663,6 +663,20 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Commands
 
+* **A purge, a delete or an unprovision leaving the instance of a node away needs `--force`:**
+    `om <path> purge`, `delete` and `unprovision`, and their `ox` and api counterparts, are refused when a node
+    down, in maintenance or unknown last published its instance up or provisioned, provisioned only for an
+    unprovision, naming that node. The orchestration does not wait for a node away: a purge or a delete can not
+    release its instance, maybe the only copy of the data, and an unprovision may release resources it still uses.
+    `--force` goes on without it; a purge or a delete then leaves a tombstone the node holds, see
+    `om cluster tombstone ls`. The `--force` of `purge` and `unprovision`, hidden before and allowing the dangerous
+    operations of a `--local` action, is shown and keeps that meaning too.
+
+    ```
+    om svc1 purge          # refused: n3 away with an instance up or provisioned
+    om svc1 purge --force  # purged on the nodes up, n3 holding a tombstone
+    ```
+
 * **Configuration updates and queries use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 

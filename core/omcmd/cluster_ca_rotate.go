@@ -444,7 +444,7 @@ func (t *CmdClusterCARotate) deleteSec(ctx context.Context, c *client.T, p namin
 	if !p.Exists() {
 		return nil
 	}
-	resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+	resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	if err != nil {
 		return fmt.Errorf("delete %s: %w", p, err)
 	}

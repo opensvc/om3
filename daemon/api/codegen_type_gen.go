@@ -5967,12 +5967,22 @@ type PostObjectActionCapParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostObjectActionDeleteParams defines parameters for PostObjectActionDelete.
+type PostObjectActionDeleteParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
+}
+
 // PostObjectActionProvisionParams defines parameters for PostObjectActionProvision.
 type PostObjectActionProvisionParams struct {
 	// Adopt Take over the system resources found holding what the provision would
 	// take, as replicated storage a restored object finds, rather than
 	// refusing them.
 	Adopt *InQueryAdopt `form:"adopt,omitempty" json:"adopt,omitempty"`
+}
+
+// PostObjectActionPurgeParams defines parameters for PostObjectActionPurge.
+type PostObjectActionPurgeParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PostObjectActionResizeParams defines parameters for PostObjectActionResize.
@@ -5997,6 +6007,11 @@ type PostObjectActionStopParams struct {
 	// InterruptSyncs End the syncs running on the instance before stopping it, instead of
 	// waiting for them to end.
 	InterruptSyncs *InQueryInterruptSyncs `form:"interrupt_syncs,omitempty" json:"interrupt_syncs,omitempty"`
+}
+
+// PostObjectActionUnprovisionParams defines parameters for PostObjectActionUnprovision.
+type PostObjectActionUnprovisionParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PostObjectCertificateRenewParams defines parameters for PostObjectCertificateRenew.
