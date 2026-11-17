@@ -23,7 +23,7 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
 	}
-	if len(instance.MonitorData.GetByPath(p)) == 0 {
+	if len(instance.MonitorData.GetNodesByPath(p)) == 0 {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Use the POST method instead of PUT to create the object")
 	}
 

@@ -127,6 +127,18 @@ func (c *Data[T]) GetByPath(p naming.Path) map[string]*T {
 	return result
 }
 
+// GetNodesByPath returns the nodes holding instance data of the path,
+// copying none of it: for a caller asking which nodes hold some, not what.
+func (c *Data[T]) GetNodesByPath(p naming.Path) []string {
+	c.RLock()
+	defer c.RUnlock()
+	result := make([]string, 0, len(c.pathToNode[p]))
+	for nodename := range c.pathToNode[p] {
+		result = append(result, nodename)
+	}
+	return result
+}
+
 // GetAll returns all instance data as a list of DataElements
 func (c *Data[T]) GetAll() []DataElement[T] {
 	c.RLock()
@@ -193,4 +205,20 @@ func init() {
 
 func InstanceString(p naming.Path, nodename string) string {
 	return p.String() + "@" + nodename
+}
+
+// NodesWithInstance returns the nodes holding an instance of the object of
+// p, as their config, status or monitor says, copying none of them.
+func NodesWithInstance(p naming.Path) map[string]bool {
+	m := make(map[string]bool)
+	for _, n := range ConfigData.GetNodesByPath(p) {
+		m[n] = true
+	}
+	for _, n := range StatusData.GetNodesByPath(p) {
+		m[n] = true
+	}
+	for _, n := range MonitorData.GetNodesByPath(p) {
+		m[n] = true
+	}
+	return m
 }

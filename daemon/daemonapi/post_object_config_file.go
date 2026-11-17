@@ -42,7 +42,7 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 	// from the moment its configuration file is written, before the daemon
 	// knows it: two creates racing, the second is not one.
 	force := params.Force != nil && *params.Force
-	exists := len(instance.MonitorData.GetByPath(p)) > 0 || base.exists()
+	exists := len(instance.MonitorData.GetNodesByPath(p)) > 0 || base.exists()
 	if exists && !force {
 		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
 	}

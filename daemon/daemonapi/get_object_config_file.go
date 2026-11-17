@@ -56,7 +56,7 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 
 		return serveConfigFile(ctx, objPath, filename, redact)
 	}
-	for nodename := range instance.ConfigData.GetByPath(objPath) {
+	for _, nodename := range instance.ConfigData.GetNodesByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetObjectConfigFile(ctx.Request().Context(), namespace, kind, name, &params)
 		})

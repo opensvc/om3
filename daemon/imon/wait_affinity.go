@@ -90,7 +90,7 @@ func (t *Manager) hardAffinityNeverMet(nodes []string) string {
 		}
 		affineCfg, ok := t.affinityConfig(p)
 		if !ok {
-			if len(instance.StatusData.GetByPath(p)) == 0 {
+			if len(instance.StatusData.GetNodesByPath(p)) == 0 {
 				return fmt.Sprintf("hard affinity with %s: no such object", p)
 			}
 			continue

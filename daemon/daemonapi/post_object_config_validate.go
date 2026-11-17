@@ -45,7 +45,7 @@ func (a *DaemonAPI) PostObjectConfigValidate(ctx echo.Context, namespace string,
 	}
 	// An object exists from the moment its configuration file is written,
 	// before the daemon knows it, as a create judges it.
-	exists := len(instance.MonitorData.GetByPath(p)) > 0 || base.exists()
+	exists := len(instance.MonitorData.GetNodesByPath(p)) > 0 || base.exists()
 	if !exists {
 		// The configuration a create writes is the draft without what it
 		// recorded of the object it was copied from.

@@ -53,7 +53,7 @@ func (a *DaemonAPI) subscribeObjectKnown(name string, p naming.Path) *pubsub.Sub
 // follow a creation need it to: listed, which is how a selection names it,
 // and watched by an instance monitor, which is what an action is asked of.
 func isObjectKnown(p naming.Path) bool {
-	return object.StatusData.GetByPath(p) != nil && len(instance.MonitorData.GetByPath(p)) > 0
+	return object.StatusData.GetByPath(p) != nil && len(instance.MonitorData.GetNodesByPath(p)) > 0
 }
 
 // waitObjectKnown holds until this daemon knows p, or ctx ends, and says
