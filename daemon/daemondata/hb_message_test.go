@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -221,4 +222,60 @@ func TestPubMsgFromNodeInstanceDiffForNode(t *testing.T) {
 	assert.NotNil(t, instance.StatusData.GetByPathAndNode(kept, "n2"), "status still reported")
 	assert.NotNil(t, instance.MonitorData.GetByPathAndNode(kept, "n2"), "monitor still reported")
 	assert.NotNil(t, instance.StatusData.GetByPathAndNode(gone, "n3"), "instance of another peer")
+}
+
+type tombstonePubSpy struct {
+	msgs []pubsub.Messager
+}
+
+func (p *tombstonePubSpy) Pub(m pubsub.Messager, _ ...pubsub.Label) {
+	p.msgs = append(p.msgs, m)
+}
+
+// The records of a peer read from its full data are held and published as
+// they change: one no longer reported removed, one unchanged not published
+// again, one changed or new published.
+func TestPubMsgFromNodeTombstoneDiffForNode(t *testing.T) {
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	rec := func(id string, state tombstone.HolderState) tombstone.Record {
+		return tombstone.Record{OrchestrationID: id, Path: "system/sec/s1", Kind: tombstone.KindDeleted,
+			Holders: map[string]tombstone.Holder{"n3": {State: state, Mode: tombstone.HolderLive}}}
+	}
+	tombstone.Data.Set("n2", rec("gone", tombstone.HolderPending))
+	tombstone.Data.Set("n2", rec("same", tombstone.HolderPending))
+	tombstone.Data.Set("n2", rec("changed", tombstone.HolderPending))
+	spy := &tombstonePubSpy{}
+	d := &data{
+		localNode:          "n1",
+		previousRemoteInfo: map[string]remoteInfo{},
+		clusterData: &msgbus.ClusterData{Data: &clusterdump.Data{Cluster: clusterdump.Cluster{
+			Node: map[string]node.Node{"n2": {Tombstone: map[string]tombstone.Record{
+				"same":    rec("same", tombstone.HolderPending),
+				"changed": rec("changed", tombstone.HolderCleared),
+				"new":     rec("new", tombstone.HolderPending),
+			}}},
+		}}},
+		log:       plog.NewDefaultLogger(),
+		publisher: spy,
+	}
+	d.pubMsgFromNodeTombstoneDiffForNode("n2")
+	kinds := map[string]int{}
+	for _, m := range spy.msgs {
+		switch v := m.(type) {
+		case *msgbus.NodeTombstoneUpdated:
+			kinds["updated "+v.ID]++
+		case *msgbus.NodeTombstoneDeleted:
+			kinds["deleted "+v.ID]++
+		}
+	}
+	assert.Equal(t, map[string]int{"updated changed": 1, "updated new": 1, "deleted gone": 1}, kinds)
+	_, ok := tombstone.Data.Get("n2", "gone")
+	assert.False(t, ok)
+	r, _ := tombstone.Data.Get("n2", "changed")
+	assert.Equal(t, tombstone.HolderCleared, r.Holders["n3"].State)
+
+	spy.msgs = nil
+	d.pubMsgFromNodeTombstoneDiffForNode("n2")
+	assert.Empty(t, spy.msgs, "a second identical full publishes nothing")
 }

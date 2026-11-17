@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
@@ -234,6 +235,13 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.NodePoolStatusUpdated:
 		pool.StatusData.Set(c.Name, c.Node, c.Value.DeepCopy())
+		d.publisher.Pub(c, labelFromPeer)
+	// tombstone...
+	case *msgbus.NodeTombstoneDeleted:
+		tombstone.Data.Unset(c.Node, c.ID)
+		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.NodeTombstoneUpdated:
+		tombstone.Data.Set(c.Node, c.Value)
 		d.publisher.Pub(c, labelFromPeer)
 	// overload
 	case *msgbus.EnterOverloadPeriod:

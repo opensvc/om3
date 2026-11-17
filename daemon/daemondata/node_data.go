@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -84,39 +85,7 @@ func (d *data) dropPeer(peer string) {
 	hbcache.DropPeer(peer)
 	peerDropAt := time.Now()
 
-	// unset and publish deleted <peer> components instance and node (found from
-	// instance and node data holders).
-	d.log.Infof("unset and publish deleted peer %s components", peer)
-	for p := range instance.ConfigData.GetByNode(peer) {
-		instance.ConfigData.Unset(p, peer)
-		d.publisher.Pub(&msgbus.InstanceConfigDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
-	}
-	for p := range instance.StatusData.GetByNode(peer) {
-		instance.StatusData.Unset(p, peer)
-		d.publisher.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p, PeerDropAt: peerDropAt}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
-	}
-	for p := range instance.MonitorData.GetByNode(peer) {
-		instance.MonitorData.Unset(p, peer)
-		d.publisher.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
-	}
-	for _, p := range pool.StatusData.GetByNode(peer) {
-		pool.StatusData.Unset(p.Name, peer)
-		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Node: peer, Name: p.Name}, peerLabels...)
-	}
-	if v := node.MonitorData.GetByNode(peer); v != nil {
-		node.DropNode(peer)
-		// TODO: find a way to clear parts of cluster.node.<peer>.Status
-		d.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)
-
-		daemonsubsystem.DropNode(peer)
-		d.publisher.Pub(&msgbus.DaemonCollectorUpdated{Node: peer}, peerLabels...)
-		d.publisher.Pub(&msgbus.DaemonDataUpdated{Node: peer}, peerLabels...)
-		d.publisher.Pub(&msgbus.DaemonDnsUpdated{Node: peer}, peerLabels...)
-		d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: peer}, peerLabels...)
-		d.publisher.Pub(&msgbus.DaemonListenerUpdated{Node: peer}, peerLabels...)
-		d.publisher.Pub(&msgbus.DaemonRunnerImonUpdated{Node: peer}, peerLabels...)
-		d.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: peer}, peerLabels...)
-	}
+	d.dropPeerData(peer, peerLabels, peerDropAt)
 
 	// delete peer from internal caches
 	delete(d.hbGens, peer)
@@ -136,4 +105,49 @@ func (d *data) dropPeer(peer string) {
 
 	d.setDaemonHeartbeat()
 	d.publisher.Pub(&msgbus.ForgetPeer{Node: peer}, peerLabels...)
+}
+
+// dropPeerData unsets the data of a peer dropped and publishes their
+// deletion, its node monitor first: a reader finding the instance data of
+// the peer gone finds its node gone too, and does not take the instances for
+// deleted by a node still up, as a delete recording its tombstone.
+func (d *data) dropPeerData(peer string, peerLabels []pubsub.Label, peerDropAt time.Time) {
+	// unset and publish deleted <peer> components instance and node (found from
+	// instance and node data holders).
+	d.log.Infof("unset and publish deleted peer %s components", peer)
+	if v := node.MonitorData.GetByNode(peer); v != nil {
+		node.DropNode(peer)
+		// TODO: find a way to clear parts of cluster.node.<peer>.Status
+		d.publisher.Pub(&msgbus.NodeMonitorDeleted{Node: peer}, peerLabels...)
+
+		daemonsubsystem.DropNode(peer)
+		d.publisher.Pub(&msgbus.DaemonCollectorUpdated{Node: peer}, peerLabels...)
+		d.publisher.Pub(&msgbus.DaemonDataUpdated{Node: peer}, peerLabels...)
+		d.publisher.Pub(&msgbus.DaemonDnsUpdated{Node: peer}, peerLabels...)
+		d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: peer}, peerLabels...)
+		d.publisher.Pub(&msgbus.DaemonListenerUpdated{Node: peer}, peerLabels...)
+		d.publisher.Pub(&msgbus.DaemonRunnerImonUpdated{Node: peer}, peerLabels...)
+		d.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: peer}, peerLabels...)
+	}
+
+	for p := range instance.ConfigData.GetByNode(peer) {
+		instance.ConfigData.Unset(p, peer)
+		d.publisher.Pub(&msgbus.InstanceConfigDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
+	}
+	for p := range instance.StatusData.GetByNode(peer) {
+		instance.StatusData.Unset(p, peer)
+		d.publisher.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p, PeerDropAt: peerDropAt}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
+	}
+	for p := range instance.MonitorData.GetByNode(peer) {
+		instance.MonitorData.Unset(p, peer)
+		d.publisher.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
+	}
+	for _, p := range pool.StatusData.GetByNode(peer) {
+		pool.StatusData.Unset(p.Name, peer)
+		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Node: peer, Name: p.Name}, peerLabels...)
+	}
+	for id, rec := range tombstone.Data.GetByNode(peer) {
+		tombstone.Data.Unset(peer, id)
+		d.publisher.Pub(&msgbus.NodeTombstoneDeleted{Node: peer, ID: id, Path: rec.Path}, append(peerLabels, pubsub.Label{"path", rec.Path})...)
+	}
 }

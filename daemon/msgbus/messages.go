@@ -64,6 +64,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/label"
@@ -224,6 +225,10 @@ var (
 		"NodePoolStatusDeleted": func() any { return &NodePoolStatusDeleted{} },
 
 		"NodePoolStatusUpdated": func() any { return &NodePoolStatusUpdated{} },
+
+		"NodeTombstoneDeleted": func() any { return &NodeTombstoneDeleted{} },
+
+		"NodeTombstoneUpdated": func() any { return &NodeTombstoneUpdated{} },
 
 		"NodeStale": func() any { return &NodeStale{} },
 
@@ -916,6 +921,25 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 		Name       string      `json:"name" yaml:"name"`
 		Value      pool.Status `json:"pool_status" yaml:"pool_status"`
+	}
+
+	// NodeTombstoneDeleted is published when a node removes the record of
+	// a delete or a purge, all its holders cleared.
+	NodeTombstoneDeleted struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		ID         string `json:"id" yaml:"id"`
+		Path       string `json:"path" yaml:"path"`
+	}
+
+	// NodeTombstoneUpdated is published when a node writes or merges the
+	// record of a delete or a purge some nodes of the object did not run.
+	NodeTombstoneUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string           `json:"node" yaml:"node"`
+		ID         string           `json:"id" yaml:"id"`
+		Path       string           `json:"path" yaml:"path"`
+		Value      tombstone.Record `json:"tombstone" yaml:"tombstone"`
 	}
 
 	NodeSplitAction struct {
@@ -1865,6 +1889,22 @@ func (e *NodePoolStatusUpdated) Key() string {
 
 func (e *NodePoolStatusUpdated) Kind() string {
 	return "NodePoolStatusUpdated"
+}
+
+func (e *NodeTombstoneDeleted) Key() string {
+	return fmt.Sprintf("NodeTombstoneDeleted,node=%s,id=%s", e.Node, e.ID)
+}
+
+func (e *NodeTombstoneDeleted) Kind() string {
+	return "NodeTombstoneDeleted"
+}
+
+func (e *NodeTombstoneUpdated) Key() string {
+	return fmt.Sprintf("NodeTombstoneUpdated,node=%s,id=%s", e.Node, e.ID)
+}
+
+func (e *NodeTombstoneUpdated) Kind() string {
+	return "NodeTombstoneUpdated"
 }
 
 func (e *ProgressInstanceMonitor) Kind() string {
