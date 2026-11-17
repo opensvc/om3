@@ -37,6 +37,10 @@ func (t *Manager) orchestrate() {
 		t.log.Tracef("orchestrate return on no nodeStatus[o.localhost]")
 		return
 	}
+	if t.adoptTombstone() {
+		// Published before it runs, for the peers to see it.
+		return
+	}
 	if !t.isConvergedGlobalExpect() {
 		t.log.Tracef("orchestrate return on not isConvergedGlobalExpect")
 		return

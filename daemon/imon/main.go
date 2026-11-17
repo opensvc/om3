@@ -40,6 +40,7 @@ import (
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -100,6 +101,14 @@ type (
 		// seenCarrying is the orchestration id the monitor of each peer
 		// was last seen carrying, see recordTombstone.
 		seenCarrying map[string]uuid.UUID
+
+		// tombstones are the tombstones of the object, by orchestration
+		// id, the copies of every node merged.
+		tombstones map[string]tombstone.Record
+
+		// adoptedTombstone is the id of the tombstone the monitor took
+		// the orchestration of, see adoptTombstone.
+		adoptedTombstone string
 
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
@@ -494,6 +503,9 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	filters.Add(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
 	// A peer lost: its instance writes the data of the object no more.
 	filters.Add(&msgbus.InstanceStatusDeleted{}, t.labelPath)
+	// A tombstone naming this node a live holder hands it the delete.
+	filters.Add(&msgbus.NodeTombstoneUpdated{}, t.labelPath)
+	filters.Add(&msgbus.NodeTombstoneDeleted{}, t.labelPath)
 	sub.AddFilters(filters)
 	sub.Start()
 	t.sub = sub
@@ -546,6 +558,7 @@ func (t *Manager) worker(initialNodes []string) {
 		t.instMonitor[n] = *v
 		t.noteCarrying(n, *v)
 	}
+	t.tombstones = tombstone.Data.MergedOf(t.path.String())
 	for n, v := range instance.StatusData.GetByPath(t.path) {
 		t.instStatus[n] = *v
 	}
@@ -658,6 +671,10 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
+			case *msgbus.NodeTombstoneUpdated:
+				t.refreshTombstones()
+			case *msgbus.NodeTombstoneDeleted:
+				t.refreshTombstones()
 			case *msgbus.InstanceStatusUpdated:
 				t.onRelationInstanceStatusUpdated(c)
 			case *msgbus.InstanceMonitorUpdated:

@@ -2,6 +2,7 @@ package imon
 
 import (
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -56,6 +57,10 @@ func (t *Manager) recordTombstone() error {
 	if t.state.OrchestrationID == uuid.Nil {
 		return nil
 	}
+	if t.adoptedTombstone == t.state.OrchestrationID.String() {
+		// Adopted from a tombstone: the record names the holders.
+		return nil
+	}
 	holders := t.unseenHolders()
 	if len(holders) == 0 {
 		return nil
@@ -83,6 +88,66 @@ func (t *Manager) isNodeUp(nodename string) bool {
 	}
 	shared := node.MonitorData.GetByNode(nodename)
 	return shared != nil && !shared.State.IsAwayFromObjects()
+}
+
+// refreshTombstones reads the tombstones of the object, the copies of every
+// node merged, and looks at the orchestration again: a live holder of the
+// node adopts its delete or purge.
+func (t *Manager) refreshTombstones() {
+	t.tombstones = tombstone.Data.MergedOf(t.path.String())
+	t.onChange()
+}
+
+// adoptTombstone takes on the delete or the purge of a tombstone naming the
+// node a live holder, when no orchestration runs: the instance was not seen
+// running it, as one whose config manager had not started yet, and the node
+// accepting it, its monitor gone, can no longer be adopted from. It is the
+// orchestration completing, not a catch-up on a return: a node away, or
+// restarted since, is an away holder, and never deletes on its own.
+//
+// The global expect, its stamp and the orchestration id are the ones of the
+// record, as a peer monitor gives them. It says whether it adopted one.
+func (t *Manager) adoptTombstone() bool {
+	if t.state.GlobalExpect != instance.MonitorGlobalExpectNone || t.state.OrchestrationID != uuid.Nil {
+		return false
+	}
+	if t.nodeMonitor[t.localhost].State != node.MonitorStateIdle {
+		// Not before the rejoin: the record merged then turns the
+		// holder of the node away.
+		return false
+	}
+	for id, rec := range t.tombstones {
+		h, ok := rec.Holders[t.localhost]
+		if !ok || h.State != tombstone.HolderPending || h.Mode != tombstone.HolderLive {
+			continue
+		}
+		oid, err := uuid.Parse(id)
+		if err != nil || id == t.adoptedTombstone {
+			continue
+		}
+		if tombmon.WasRemoved(id) {
+			// A stale copy a peer publishes again: the node cleared
+			// its holder, and tombmon answers it.
+			continue
+		}
+		ge := instance.MonitorGlobalExpectPurged
+		if rec.Kind == tombstone.KindDeleted {
+			ge = instance.MonitorGlobalExpectDeleted
+		}
+		t.log.Infof("adopt the %s of the tombstone %s naming this node a live holder -> global expect %s", rec.Kind, id, ge)
+		t.change = true
+		t.state.GlobalExpect = ge
+		t.state.GlobalExpectUpdatedAt = rec.PurgedAt
+		t.state.GlobalExpectOptions = nil
+		t.state.OrchestrationID = oid
+		t.state.OrchestrationIsDone = false
+		t.state.State = instance.MonitorStateIdle
+		t.globalExpectSeenAt = time.Now()
+		t.adoptedTombstone = id
+		t.logSetOrchestrationID(oid)
+		return true
+	}
+	return false
 }
 
 // unseenHolders returns the scope nodes, cluster nodes but this one, still

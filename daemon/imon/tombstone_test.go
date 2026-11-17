@@ -3,6 +3,7 @@ package imon
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -117,4 +118,54 @@ func TestCrmDeleteFailsWithoutItsTombstone(t *testing.T) {
 		_, deleting := msg.(*msgbus.InstanceConfigDeleting)
 		assert.False(t, deleting, "the delete did not start")
 	}
+}
+
+func liveRecord(m *Manager, mode tombstone.HolderMode) (uuid.UUID, tombstone.Record) {
+	id := uuid.New()
+	return id, tombstone.Record{
+		OrchestrationID: id.String(),
+		Path:            m.path.String(),
+		Kind:            tombstone.KindDeleted,
+		PurgedAt:        time.Date(2026, 11, 17, 15, 33, 47, 0, time.UTC),
+		Holders:         map[string]tombstone.Holder{m.localhost: {State: tombstone.HolderPending, Mode: mode}},
+	}
+}
+
+// A live holder of the node takes on the delete of the tombstone, its
+// stamp and id, when no orchestration runs, and writes no tombstone of its
+// own for it.
+func TestAdoptTombstone(t *testing.T) {
+	m, _, recorded := newTombstoneTestManager(t)
+	m.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	m.state.OrchestrationID = uuid.Nil
+	m.nodeMonitor[m.localhost] = node.Monitor{State: node.MonitorStateIdle}
+	id, rec := liveRecord(m, tombstone.HolderLive)
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+
+	m.state.GlobalExpect = instance.MonitorGlobalExpectStarted
+	assert.False(t, m.adoptTombstone(), "another orchestration runs")
+	m.state.GlobalExpect = instance.MonitorGlobalExpectNone
+
+	m.nodeMonitor[m.localhost] = node.Monitor{State: node.MonitorStateRejoin}
+	assert.False(t, m.adoptTombstone(), "not before the rejoin")
+	m.nodeMonitor[m.localhost] = node.Monitor{State: node.MonitorStateIdle}
+
+	require.True(t, m.adoptTombstone())
+	assert.Equal(t, instance.MonitorGlobalExpectDeleted, m.state.GlobalExpect)
+	assert.Equal(t, id, m.state.OrchestrationID)
+	assert.True(t, rec.PurgedAt.Equal(m.state.GlobalExpectUpdatedAt))
+	require.NoError(t, m.recordTombstone())
+	assert.Empty(t, *recorded, "the record names the holders already")
+}
+
+// An away holder never deletes on its own.
+func TestAnAwayHolderAdoptsNothing(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	m.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	m.state.OrchestrationID = uuid.Nil
+	m.nodeMonitor[m.localhost] = node.Monitor{State: node.MonitorStateIdle}
+	id, rec := liveRecord(m, tombstone.HolderAway)
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	assert.False(t, m.adoptTombstone())
+	assert.Equal(t, instance.MonitorGlobalExpectNone, m.state.GlobalExpect)
 }
