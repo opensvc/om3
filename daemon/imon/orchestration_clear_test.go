@@ -322,6 +322,32 @@ func TestAPurgedVolumeWaitsForItsChildDeleted(t *testing.T) {
 	assert.False(t, m.setWaitChildren(), "its instance is gone")
 }
 
+// A request received as the orchestration before it is done here, its end
+// held back while a peer still runs it, is held too: accepted at once, it
+// ended the one before early, both running at once.
+func TestARequestIsHeldWhileTheEndBeforeIsHeldBack(t *testing.T) {
+	pub := &pubSpy{}
+	m := newClearTestManager(pub)
+	id := uuid.New()
+	m.state.OrchestrationID = id
+	m.setNextPendingOrchestration()
+	m.instMonitor["node2"] = instance.Monitor{OrchestrationID: id}
+	m.state.OrchestrationID = uuid.Nil
+	m.endOrchestrationWhenPeersCleared()
+	require.NotNil(t, m.orchestrationEnding)
+
+	c := stopRequest()
+	m.onSetInstanceMonitor(c)
+	assert.Nil(t, ended(pub), "the end before is still held back")
+	assert.Nil(t, acceptedWith(pub, c.Value.CandidateOrchestrationID))
+	assert.Same(t, c, m.heldRequest)
+
+	m.instMonitor["node2"] = instance.Monitor{}
+	m.onOrchestrationClearCheck()
+	assert.NotNil(t, ended(pub), "node2 cleared it")
+	assert.NotNil(t, acceptedWith(pub, c.Value.CandidateOrchestrationID), "then the request is taken on")
+}
+
 // A peer served the config, its monitor seen started, no longer counts as
 // starting once its monitor is gone, as its instance deleted by a purge:
 // the leader waited for it until the served mark expired, and with nothing
