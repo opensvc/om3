@@ -180,6 +180,14 @@ func waitState(t *testing.T, r *Runner, want State) {
 	require.Eventually(t, func() bool { return r.State() == want }, 2*time.Second, 5*time.Millisecond, "state %s, want %s", r.State(), want)
 }
 
+// waitRuns waits for the runs of the source to reach want: the state of the
+// runner is running once the source goroutine is started, maybe before its
+// Run counted the run.
+func waitRuns(t *testing.T, src *fakeSource, want int32) {
+	t.Helper()
+	require.Eventually(t, func() bool { return src.runs.Load() == want }, 2*time.Second, 5*time.Millisecond, "runs %d, want %d", src.runs.Load(), want)
+}
+
 // The source runs from the first resource on, once, and stops once none is
 // left past the grace delay, a resource back within it keeping the same run.
 func TestRunnerRunsOnDemand(t *testing.T) {
@@ -192,6 +200,7 @@ func TestRunnerRunsOnDemand(t *testing.T) {
 
 	r.SetDemand(1)
 	waitState(t, r, StateRunning)
+	waitRuns(t, src, 1)
 	r.SetDemand(2)
 	time.Sleep(30 * time.Millisecond)
 	assert.Equal(t, int32(1), src.runs.Load(), "a second resource runs no second source")
@@ -209,7 +218,7 @@ func TestRunnerRunsOnDemand(t *testing.T) {
 	waitState(t, r, StateIdle)
 	r.SetDemand(1)
 	waitState(t, r, StateRunning)
-	assert.Equal(t, int32(2), src.runs.Load())
+	waitRuns(t, src, 2)
 }
 
 // A source that can not run is disabled until no resource is left, then
