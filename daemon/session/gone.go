@@ -21,19 +21,6 @@ var goneTimeout = 10 * time.Second
 // lock.
 var awaitingGone = make(map[string]time.Time)
 
-// notWaited lists the node monitor states of a node a delete or a purge
-// does not wait for: a node down, starting, rejoining or shutting down keeps
-// the data of its instance in the cluster, which it runs no orchestration
-// on, and catches up as it rejoins.
-var notWaited = []node.MonitorState{
-	node.MonitorStateInit,
-	node.MonitorStateRejoin,
-	node.MonitorStateMaintenance,
-	node.MonitorStateShutdownProgress,
-	node.MonitorStateShutdownSuccess,
-	node.MonitorStateShutdownFailure,
-}
-
 // remainingInstances returns the nodes, but the ones not waited for, still
 // holding an instance of the object of path: its config, status or monitor.
 func remainingInstances(path string) []string {
@@ -56,7 +43,7 @@ func remainingInstances(path string) []string {
 		// A node without a monitor, forgotten or not heard from since
 		// this daemon started, runs no orchestration either, nor does a
 		// node upgrading its agent.
-		if mon := node.MonitorData.GetByNode(nodename); mon == nil || mon.State.IsMaintenance() || mon.State.IsOneOf(notWaited...) {
+		if mon := node.MonitorData.GetByNode(nodename); mon == nil || mon.State.IsAwayFromObjects() {
 			continue
 		}
 		l = append(l, nodename)
