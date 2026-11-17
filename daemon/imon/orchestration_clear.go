@@ -80,6 +80,9 @@ func (t *Manager) holdRequest(c *msgbus.SetInstanceMonitor) bool {
 		return false
 	case v.CandidateOrchestrationID == uuid.Nil:
 		return false
+	case t.orchestrationEnding != nil:
+		// Done here, its id cleared, its end held back while a peer
+		// still runs it: a request accepted now would end it early.
 	case t.state.OrchestrationID == uuid.Nil, !t.state.OrchestrationIsDone:
 		return false
 	}
@@ -142,7 +145,7 @@ func (t *Manager) onOrchestrationClearCheck() {
 	}
 	if c := t.heldRequest; c != nil {
 		switch {
-		case t.state.OrchestrationID == uuid.Nil:
+		case t.state.OrchestrationID == uuid.Nil && t.orchestrationEnding == nil:
 			t.heldRequest = nil
 			t.log.Infof("take on the request held for %s: the orchestration before it cleared", *c.Value.GlobalExpect)
 			t.onSetInstanceMonitor(c)
