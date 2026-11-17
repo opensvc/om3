@@ -419,6 +419,13 @@ var rules = map[string]Group{
 		"utsns":         namespaceRule,
 		"userns":        namespaceRule,
 		"environment":   environmentSourceRule,
+		// The apparmor profile confines what the processes of the
+		// container reach of the node: unconfined, or any profile loaded
+		// there, is root's to choose.
+		"apparmor_profile": {
+			Grant:  rbac.GrantRoot,
+			Reason: reasonRoot,
+		},
 		// The environment of the creation of a lxc container, whose type
 		// requires the root grant already, is held to the same rule as
 		// the environment of the other types.

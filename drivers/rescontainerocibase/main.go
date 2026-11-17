@@ -75,6 +75,7 @@ type (
 		Detach          bool           `json:"detach"`
 		Remove          bool           `json:"remove"`
 		Privileged      bool           `json:"privileged"`
+		AppArmorProfile string         `json:"apparmor_profile"`
 		Init            bool           `json:"init"`
 		Interactive     bool           `json:"interactive"`
 		TTY             bool           `json:"tty"`
@@ -241,6 +242,7 @@ type (
 		ID() string
 		ImageID() string
 		HostConfig() *InspectDataHostConfig
+		AppArmorProfile() string
 		ExitCode() int
 		PID() int
 		Running() bool
@@ -951,6 +953,10 @@ func (t *BT) Status(ctx context.Context) status.T {
 	if inspectHostConfig := inspect.HostConfig(); inspectHostConfig != nil {
 		if inspectHostConfig.Privileged != t.Privileged {
 			t.warnAttrDiff("privileged", fmt.Sprint(inspectHostConfig.Privileged), fmt.Sprint(t.Privileged))
+		}
+		// The engine reports no profile on a host without apparmor.
+		if profile := inspect.AppArmorProfile(); t.AppArmorProfile != "" && profile != "" && profile != t.AppArmorProfile {
+			t.warnAttrDiff("apparmor_profile", profile, t.AppArmorProfile)
 		}
 		if t.ReadOnly != "" && fmt.Sprint(inspectHostConfig.ReadonlyRootfs) != t.ReadOnly {
 			t.warnAttrDiff("read_only", fmt.Sprint(inspectHostConfig.ReadonlyRootfs), t.ReadOnly)
