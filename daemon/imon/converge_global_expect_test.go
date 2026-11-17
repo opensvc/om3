@@ -48,3 +48,24 @@ func TestAnAbortDoesNotWaitForTheMonitorOfADeletedPeerInstance(t *testing.T) {
 	assert.True(t, newManager(instance.MonitorGlobalExpectPurged).isConvergedGlobalExpect())
 	assert.False(t, newManager(instance.MonitorGlobalExpectStarted).isConvergedGlobalExpect())
 }
+
+// An orchestration does not wait for the monitor of a node in maintenance
+// or shutting down to adopt it: a forced unprovision with a node in
+// maintenance waited for it for good. A node starting is waited for.
+func TestConvergedWithoutANodeInMaintenance(t *testing.T) {
+	now := time.Now()
+	m := &Manager{
+		localhost:   "n1",
+		scopeNodes:  []string{"n1", "n3"},
+		instMonitor: map[string]instance.Monitor{},
+		nodeMonitor: map[string]node.Monitor{"n3": {State: node.MonitorStateIdle}},
+		instConfig:  instance.Config{UpdatedAt: now.Add(-time.Hour)},
+		state:       instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectUnprovisioned, GlobalExpectUpdatedAt: now},
+		log:         plog.NewDefaultLogger(),
+	}
+	assert.False(t, m.isConvergedGlobalExpect(), "n3 up has not adopted it yet")
+	m.nodeMonitor["n3"] = node.Monitor{State: node.MonitorStateMaintenance}
+	assert.True(t, m.isConvergedGlobalExpect())
+	m.nodeMonitor["n3"] = node.Monitor{State: node.MonitorStateInit}
+	assert.False(t, m.isConvergedGlobalExpect(), "n3 starting adopts it as its monitor starts")
+}
