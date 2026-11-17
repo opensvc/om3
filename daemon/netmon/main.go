@@ -6,7 +6,9 @@
 //
 // The netlink monitor subscribes to RTMGRP_LINK, RTMGRP_IPV4_IFADDR, and RTMGRP_IPV6_IFADDR
 // groups to receive real-time notifications of link and address changes, equivalent to
-// "ip monitor link address label". Other operating systems have no netlink:
+// "ip monitor link address label". A second socket hears the address changes of the
+// other network namespaces of the node, as the ones of the containers, equivalent to
+// "ip monitor address all-nsid". Other operating systems have no netlink:
 // there, the manager only relays the audit requests.
 package netmon
 
@@ -77,6 +79,12 @@ func (t *Manager) Start(parent context.Context) error {
 		defer t.wg.Done()
 		defer t.log.Infof("worker done")
 		t.worker()
+	}()
+
+	t.wg.Add(1)
+	go func() {
+		defer t.wg.Done()
+		t.nsidWorker()
 	}()
 
 	t.log.Infof("started")

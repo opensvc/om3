@@ -12,6 +12,8 @@ func (t *Manager) worker() {
 	t.log.Infof("no netlink on %s: the link and address events are not monitored", runtime.GOOS)
 }
 
+func (t *Manager) nsidWorker() {}
+
 // GetLocalIPs returns all non-loopback IP addresses assigned to the local node
 func GetLocalIPs() ([]net.IP, error) {
 	return nil, fmt.Errorf("not implemented on %s", runtime.GOOS)
