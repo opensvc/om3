@@ -14,39 +14,75 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
+// resubscribeDelay is the wait before subscribing again to the link and
+// address events, after a subscription ended on a receive error.
+var resubscribeDelay = time.Second
+
 func (t *Manager) worker() {
 	t.log.Infof("starting netlink monitor")
 
-	// Use high-level netlink subscription API
-	addrUpdates := make(chan netlink.AddrUpdate, 100)
-	linkUpdates := make(chan netlink.LinkUpdate, 100)
+	for {
+		// What was published before the subscription ended is
+		// forgotten: the events missed in between may have removed and
+		// added back the same address or link, whose next event would
+		// else be taken for a repeat and not published.
+		t.lastPublished = make(map[string]linkPublishState)
 
-	t.lastPublished = make(map[string]linkPublishState)
+		// done ends both subscriptions: the one still running once the
+		// other ended, or both as the daemon stops.
+		done := make(chan struct{})
+		addrUpdates := make(chan netlink.AddrUpdate, 100)
+		linkUpdates := make(chan netlink.LinkUpdate, 100)
+		onError := func(err error) {
+			t.log.Warnf("netlink subscription: %s", err)
+		}
+		if err := netlink.AddrSubscribeWithOptions(addrUpdates, done, netlink.AddrSubscribeOptions{ErrorCallback: onError}); err != nil {
+			close(done)
+			t.log.Errorf("failed to subscribe to address updates: %s", err)
+			return
+		}
+		if err := netlink.LinkSubscribeWithOptions(linkUpdates, done, netlink.LinkSubscribeOptions{ErrorCallback: onError}); err != nil {
+			close(done)
+			t.log.Errorf("failed to subscribe to link updates: %s", err)
+			return
+		}
+		t.log.Infof("netlink monitor subscribed to link and address events")
 
-	// Subscribe to address changes
-	if err := netlink.AddrSubscribe(addrUpdates, t.ctx.Done()); err != nil {
-		t.log.Errorf("failed to subscribe to address updates: %s", err)
-		return
+		ended := t.receive(addrUpdates, linkUpdates)
+		close(done)
+		if !ended {
+			t.log.Infof("context done, stopping netlink monitor")
+			return
+		}
+		// A subscription ends on a receive error, its channel closed, as
+		// on a receive buffer overflow: the events are subscribed to
+		// again rather than read from a closed channel for good.
+		t.log.Warnf("netlink subscription ended: subscribe again in %s, the events in between are missed", resubscribeDelay)
+		select {
+		case <-t.ctx.Done():
+			return
+		case <-time.After(resubscribeDelay):
+		}
 	}
-	// No AddrUnsubscribe function - subscription ends when done channel closes or channel is garbage collected
+}
 
-	// Subscribe to link changes
-	if err := netlink.LinkSubscribe(linkUpdates, t.ctx.Done()); err != nil {
-		t.log.Errorf("failed to subscribe to link updates: %s", err)
-		return
-	}
-	// No LinkUnsubscribe function - subscription ends when done channel closes or channel is garbage collected
-
-	t.log.Infof("netlink monitor subscribed to link and address events")
-
+// receive handles the link and address events until the context is done,
+// returning false, or until a subscription ends, its channel closed,
+// returning true.
+func (t *Manager) receive(addrUpdates <-chan netlink.AddrUpdate, linkUpdates <-chan netlink.LinkUpdate) bool {
 	for {
 		select {
 		case <-t.ctx.Done():
-			t.log.Infof("context done, stopping netlink monitor")
-			return
-		case update := <-addrUpdates:
+			return false
+		case update, ok := <-addrUpdates:
+			if !ok {
+				return true
+			}
 			t.handleAddrUpdate(update)
-		case update := <-linkUpdates:
+		case update, ok := <-linkUpdates:
+			if !ok {
+				return true
+			}
 			t.handleLinkUpdate(update)
 		}
 	}
