@@ -14,19 +14,6 @@ import (
 // freeze. Past it, the end is announced failed, naming them.
 var orchestrationEndingTimeout = 30 * time.Second
 
-// peerNotWaited lists the node monitor states of a peer an orchestration
-// does not wait for, as v2 waited for the live nodes only: a node starting,
-// rejoining, in maintenance or shutting down runs no orchestration, and one
-// that missed a freeze catches it as it rejoins.
-var peerNotWaited = []node.MonitorState{
-	node.MonitorStateInit,
-	node.MonitorStateRejoin,
-	node.MonitorStateMaintenance,
-	node.MonitorStateShutdownProgress,
-	node.MonitorStateShutdownSuccess,
-	node.MonitorStateShutdownFailure,
-}
-
 // holdsEndForPeers says whether the end of the orchestration waits for the
 // peers: a freeze, a thaw or an abort of the cluster runs on every node. A
 // drain is of this node alone, and an upgrade restarts the daemons, the
@@ -75,7 +62,7 @@ func (t *Manager) onOrchestrationEndingCheck() {
 			continue
 		}
 		switch {
-		case mon.State.IsOneOf(peerNotWaited...):
+		case mon.State.IsAway():
 		case mon.State.IsOneOf(node.MonitorStatesFailure...):
 			failed = append(failed, fmt.Sprintf("%s on %s", mon.State, nodename))
 		default:
@@ -141,5 +128,5 @@ func skipsClusterOrchestration(globalExpect node.MonitorGlobalExpect, local bool
 	if local {
 		return state.IsOneOf(node.MonitorStateInit, node.MonitorStateRejoin)
 	}
-	return state.IsOneOf(peerNotWaited...)
+	return state.IsAway()
 }
