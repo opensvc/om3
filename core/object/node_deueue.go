@@ -254,17 +254,14 @@ func (a *QueuedAction) exec(ctx context.Context) (QueuedActionDone, error) {
 	return result, err
 }
 
+// asCmd returns the om command of a queued action: a service action runs
+// under "svc -s <name>", a node action under "node", and an action of the
+// whole cluster, which the collector queues on one of its nodes as a command
+// starting with "cluster", runs as it is.
 func (a *QueuedAction) asCmd(ctx context.Context) (*command.T, error) {
-	var cmdArgs []string
-	if a.Svcname == "" && a.SvcId == "" {
-		cmdArgs = append(cmdArgs, "node")
-	} else if a.Svcname != "" {
-		cmdArgs = append(cmdArgs, "svc", "-s", a.Svcname)
-	}
-	if a, err := args.Parse(a.Command); err != nil {
-		return nil, fmt.Errorf("parse action command: %w", err)
-	} else {
-		cmdArgs = append(cmdArgs, a.Get()...)
+	cmdArgs, err := a.cmdArgs()
+	if err != nil {
+		return nil, err
 	}
 	cmd := command.New(
 		command.WithName(os.Args[0]),
@@ -274,4 +271,22 @@ func (a *QueuedAction) asCmd(ctx context.Context) (*command.T, error) {
 		command.WithBufferedStdout(),
 	)
 	return cmd, nil
+}
+
+func (a *QueuedAction) cmdArgs() ([]string, error) {
+	parsed, err := args.Parse(a.Command)
+	if err != nil {
+		return nil, fmt.Errorf("parse action command: %w", err)
+	}
+	words := parsed.Get()
+	var cmdArgs []string
+	switch {
+	case a.Svcname != "":
+		cmdArgs = append(cmdArgs, "svc", "-s", a.Svcname)
+	case a.SvcId != "":
+	case len(words) > 0 && words[0] == "cluster":
+	default:
+		cmdArgs = append(cmdArgs, "node")
+	}
+	return append(cmdArgs, words...), nil
 }
