@@ -138,6 +138,18 @@ type (
 		resp     chan<- error
 	}
 
+	// cmdSubAddFilters is the command adding several filters to a
+	// subscription in one operation of the bus.
+	cmdSubAddFilters struct {
+		id      uuid.UUID
+		filters []filter
+		resp    chan<- error
+	}
+
+	// Filters is a list of filters a subscription adds in one operation of
+	// the bus, see Subscription.AddFilters.
+	Filters []filter
+
 	// cmdBufferPublications is the command to enable or disable publication buffer
 	cmdBufferPublications struct {
 		enabled  bool
@@ -535,6 +547,8 @@ func (b *Bus) Start(ctx context.Context) {
 					b.onPubCmd(c)
 				case cmdSubAddFilter:
 					b.onSubAddFilter(c)
+				case cmdSubAddFilters:
+					b.onSubAddFilters(c)
 				case cmdSubDelFilter:
 					b.onSubDelFilter(c)
 				case cmdSub:
@@ -785,6 +799,19 @@ func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
 		dataType: c.dataType,
 		labels:   c.labels,
 	})
+	b.subs[c.id] = sub
+	b.subMap.Del(c.id, ":")
+	b.subMap.Add(c.id, sub.keys()...)
+	c.resp <- nil
+}
+
+func (b *Bus) onSubAddFilters(c cmdSubAddFilters) {
+	sub, ok := b.subs[c.id]
+	if !ok {
+		c.resp <- nil
+		return
+	}
+	sub.filters = append(sub.filters, c.filters...)
 	b.subs[c.id] = sub
 	b.subMap.Del(c.id, ":")
 	b.subMap.Add(c.id, sub.keys()...)
@@ -1229,6 +1256,45 @@ func (sub *Subscription) AddFilter(v any, labels ...Label) {
 	<-respC
 	subscriptionFilterTotal.Inc()
 	subscriptionFilterByKindTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
+}
+
+// Add appends to the list the filter of the messages of the type of v
+// carrying the labels, as Subscription.AddFilter takes it.
+func (l *Filters) Add(v any, labels ...Label) {
+	f := filter{labels: newLabels(labels...)}
+	if dataType := reflect.TypeOf(v); dataType != nil {
+		f.dataType = dataType.String()
+	}
+	*l = append(*l, f)
+}
+
+// AddFilters adds the filters of the list to the subscription in one
+// operation of the bus, as AddFilter adds one, each taking effect at once.
+//
+// The bus serves the operations of every component of the daemon one at a
+// time: a manager starting with a filter per kind of message waited for the
+// bus once per filter, which held up the start of the managers of many
+// objects at once behind the busy bus.
+func (sub *Subscription) AddFilters(l Filters) {
+	if len(l) == 0 {
+		return
+	}
+	respC := make(chan error)
+	op := cmdSubAddFilters{
+		id:      sub.id,
+		filters: append([]filter{}, l...),
+		resp:    respC,
+	}
+	select {
+	case sub.bus.cmdC <- op:
+	case <-sub.bus.ctx.Done():
+		return
+	}
+	<-respC
+	for _, f := range l {
+		subscriptionFilterTotal.Inc()
+		subscriptionFilterByKindTotal.With(prometheus.Labels{"kind": f.dataType}).Inc()
+	}
 }
 
 func (sub *Subscription) Start() {

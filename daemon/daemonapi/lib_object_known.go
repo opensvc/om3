@@ -41,8 +41,10 @@ func objectKnownContext(parent, waitCtx context.Context, waiting bool) (context.
 func (a *DaemonAPI) subscribeObjectKnown(name string, p naming.Path) *pubsub.Subscription {
 	sub := a.Bus.Sub(name)
 	label := pubsub.Label{"path", p.String()}
-	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, label)
-	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, label)
+	var filters pubsub.Filters
+	filters.Add(&msgbus.ObjectStatusUpdated{}, label)
+	filters.Add(&msgbus.InstanceMonitorUpdated{}, label)
+	sub.AddFilters(filters)
 	sub.Start()
 	return sub
 }

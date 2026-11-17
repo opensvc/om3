@@ -43,18 +43,20 @@ func (t *Manager) affinityPaths() naming.Paths {
 // watching the same object subscribing with the path label only.
 func (t *Manager) janitorAffinities() {
 	paths := t.affinityPaths()
+	var filters pubsub.Filters
 	for _, p := range paths {
 		if _, ok := t.affinitySubscribed[p]; ok {
 			continue
 		}
 		t.log.Infof("subscribe to %s instance status updates and deletes, named by an affinity", p)
-		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
-		t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		filters.Add(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		filters.Add(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		// The monitors of the object tell a wait for it whether it
 		// comes up.
-		t.sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+		filters.Add(&msgbus.InstanceMonitorUpdated{}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 		t.affinitySubscribed[p] = struct{}{}
 	}
+	t.sub.AddFilters(filters)
 	for p := range t.affinitySubscribed {
 		if slices.Contains(paths, p) {
 			continue

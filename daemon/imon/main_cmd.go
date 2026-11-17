@@ -133,32 +133,40 @@ func (t *Manager) initRelationAvailStatus() {
 		t.log.Infof("skip relations avail status cache init: no config cached yet")
 		return
 	}
+	// The filters of all the relations are added in one operation of the
+	// bus, before their statuses are read, for no update to fall between.
+	var filters pubsub.Filters
+	var inits []func()
 	do := func(relation naming.Relation, name string, cache map[string]status.T) {
 		relationS := relation.String()
 		if objectPath, node, err := relation.Split(); err != nil {
 			t.log.Warnf("init relation %s status cache: split %s: %s", name, relation, err)
 		} else if node == "" {
 			t.log.Infof("init relation subscribe to %s %s object avail status updates and deletes", name, objectPath)
-			t.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
-			t.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
-			if st := object.StatusData.GetByPath(objectPath); st != nil {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
-				cache[relationS] = st.Avail
-			} else {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
-				cache[relationS] = status.Undef
-			}
+			filters.Add(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
+			filters.Add(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
+			inits = append(inits, func() {
+				if st := object.StatusData.GetByPath(objectPath); st != nil {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
+					cache[relationS] = st.Avail
+				} else {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
+					cache[relationS] = status.Undef
+				}
+			})
 		} else {
 			t.log.Infof("subscribe to %s %s@%s instance avail status updates and deletes", name, objectPath, node)
-			t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
-			t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
-			if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
-				cache[relationS] = st.Avail
-			} else {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
-				cache[relationS] = status.Undef
-			}
+			filters.Add(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+			filters.Add(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+			inits = append(inits, func() {
+				if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
+					cache[relationS] = st.Avail
+				} else {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
+					cache[relationS] = status.Undef
+				}
+			})
 		}
 	}
 	if config.ActorConfig != nil {
@@ -168,6 +176,10 @@ func (t *Manager) initRelationAvailStatus() {
 		for _, relation := range config.ActorConfig.Parents {
 			do(relation, "Parent", t.state.Parents)
 		}
+	}
+	t.sub.AddFilters(filters)
+	for _, f := range inits {
+		f()
 	}
 }
 

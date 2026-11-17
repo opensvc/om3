@@ -198,51 +198,66 @@ func TestSub(t *testing.T) {
 			},
 		},
 	}
-	for s, c := range cases {
-		t.Run(s, func(t *testing.T) {
-			bus := newRun(t.Name())
-			defer bus.Stop()
-			sub := bus.Sub(t.Name())
-			for _, f := range c.filters {
-				sub.AddFilter(f.filterType, f.labels...)
+	// The filters added one at a time, or in one operation of the bus with
+	// AddFilters, select the same messages.
+	for _, batched := range []bool{false, true} {
+		for s, c := range cases {
+			if batched {
+				s += " (AddFilters)"
 			}
-			sub.Start()
-			defer func() {
-				assert.NoError(t, sub.Stop())
-			}()
-
-			var publisher Publisher = bus
-			for _, p := range c.pubs {
-				publisher.Pub(p.v, p.labels...)
-			}
-			maxDurationTimer := time.NewTimer(5 * time.Millisecond)
-			defer maxDurationTimer.Stop()
-			receivedC := make(chan []interface{})
-			go func() {
-				received := make([]interface{}, 0)
-				defer func() {
-					receivedC <- received
-				}()
-				for {
-					select {
-					case i := <-sub.C:
-						switch v := i.(type) {
-						case Valuer:
-							received = append(received, v.Value())
-						default:
-							received = append(received, v)
-						}
-					case <-maxDurationTimer.C:
-						return
+			t.Run(s, func(t *testing.T) {
+				bus := newRun(t.Name())
+				defer bus.Stop()
+				sub := bus.Sub(t.Name())
+				if batched {
+					var l Filters
+					for _, f := range c.filters {
+						l.Add(f.filterType, f.labels...)
+					}
+					sub.AddFilters(l)
+				} else {
+					for _, f := range c.filters {
+						sub.AddFilter(f.filterType, f.labels...)
 					}
 				}
-			}()
-			require.Equal(t, c.expected, <-receivedC)
-			//r := <-receivedC
-			//for i, v := range c.expected {
-			//	require.Equal(t, v, r[i].(Valuer).Value())
-			//}
-		})
+				sub.Start()
+				defer func() {
+					assert.NoError(t, sub.Stop())
+				}()
+
+				var publisher Publisher = bus
+				for _, p := range c.pubs {
+					publisher.Pub(p.v, p.labels...)
+				}
+				maxDurationTimer := time.NewTimer(5 * time.Millisecond)
+				defer maxDurationTimer.Stop()
+				receivedC := make(chan []interface{})
+				go func() {
+					received := make([]interface{}, 0)
+					defer func() {
+						receivedC <- received
+					}()
+					for {
+						select {
+						case i := <-sub.C:
+							switch v := i.(type) {
+							case Valuer:
+								received = append(received, v.Value())
+							default:
+								received = append(received, v)
+							}
+						case <-maxDurationTimer.C:
+							return
+						}
+					}
+				}()
+				require.Equal(t, c.expected, <-receivedC)
+				//r := <-receivedC
+				//for i, v := range c.expected {
+				//	require.Equal(t, v, r[i].(Valuer).Value())
+				//}
+			})
+		}
 	}
 }
 
