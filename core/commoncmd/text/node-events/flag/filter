@@ -75,6 +75,7 @@ Receive only events matching the filtering expression formatted as:
      NodeStatsUpdated
      NodeStatusUpdated
      NodeStatusArbitratorsUpdated, NodeStatusGenUpdates,
+     NodeTombstoneDeleted, NodeTombstoneUpdated
      NodeOrchestrationAccepted, NodeOrchestrationEnd, NodeOrchestrationRefused
      SetNodeMonitor
      

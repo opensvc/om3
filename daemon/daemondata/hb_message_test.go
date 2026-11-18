@@ -1,6 +1,8 @@
 package daemondata
 
 import (
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -221,4 +224,125 @@ func TestPubMsgFromNodeInstanceDiffForNode(t *testing.T) {
 	assert.NotNil(t, instance.StatusData.GetByPathAndNode(kept, "n2"), "status still reported")
 	assert.NotNil(t, instance.MonitorData.GetByPathAndNode(kept, "n2"), "monitor still reported")
 	assert.NotNil(t, instance.StatusData.GetByPathAndNode(gone, "n3"), "instance of another peer")
+}
+
+type tombstonePubSpy struct {
+	msgs []pubsub.Messager
+}
+
+func (p *tombstonePubSpy) Pub(m pubsub.Messager, _ ...pubsub.Label) {
+	p.msgs = append(p.msgs, m)
+}
+
+// The records of a peer read from its full data are held, untrusted, and
+// published as they come and go: one no longer reported removed, one held
+// not published again, one new published.
+func TestPubMsgFromNodeTombstoneDiffForNode(t *testing.T) {
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	node.InitData()
+	t.Cleanup(node.InitData)
+	version := time.Date(2026, 11, 17, 15, 33, 47, 0, time.UTC)
+	rec := func(id string) tombstone.Record {
+		return tombstone.Record{OrchestrationID: id, Path: "system/sec/s1", Kind: tombstone.KindDeleted, Version: version}
+	}
+	tombstone.Data.Set("n2", rec("gone"), false)
+	tombstone.Data.Set("n2", rec("same"), false)
+	spy := &tombstonePubSpy{}
+	d := &data{
+		localNode:          "n1",
+		previousRemoteInfo: map[string]remoteInfo{},
+		clusterData: &msgbus.ClusterData{Data: &clusterdump.Data{Cluster: clusterdump.Cluster{
+			Node: map[string]node.Node{"n2": {
+				Monitor: node.Monitor{State: node.MonitorStateIdle},
+				Tombstone: map[string]tombstone.Record{
+					"same": rec("same"),
+					"new":  rec("new"),
+				},
+			}},
+		}}},
+		log:       plog.NewDefaultLogger(),
+		publisher: spy,
+	}
+	d.pubMsgFromNodeTombstoneDiffForNode("n2")
+	kinds := map[string]int{}
+	for _, m := range spy.msgs {
+		switch v := m.(type) {
+		case *msgbus.NodeTombstoneUpdated:
+			kinds["updated "+v.ID]++
+		case *msgbus.NodeTombstoneDeleted:
+			kinds["deleted "+v.ID]++
+		}
+	}
+	assert.Equal(t, map[string]int{"updated new": 1, "deleted gone": 1}, kinds)
+	_, ok := tombstone.Data.Get("n2", "gone")
+	assert.False(t, ok)
+	for _, k := range tombstone.Data.KilledBy("system/sec/s1", version) {
+		assert.False(t, k.Trusted, "read from a full data")
+	}
+
+	spy.msgs = nil
+	d.pubMsgFromNodeTombstoneDiffForNode("n2")
+	assert.Empty(t, spy.msgs, "a second identical full publishes nothing")
+
+	assert.False(t, d.localUp(), "no node monitor of the local node")
+	node.MonitorData.Set("n1", &node.Monitor{State: node.MonitorStateIdle})
+	assert.True(t, d.localUp())
+}
+
+// A record heard in a patch is trusted when both nodes are up: one a peer
+// publishes as it starts or rejoins, loaded maybe of a delete it did not
+// complete, is not, and is not trusted when heard again once the peer is up.
+// A full data of a peer starting or rejoining, which may not have loaded its
+// records yet, removes none of the records held for it.
+func TestTombstoneTrustNeedsBothNodesUp(t *testing.T) {
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	node.InitData()
+	t.Cleanup(node.InitData)
+	version := time.Date(2026, 11, 17, 15, 33, 47, 0, time.UTC)
+	rec := func(id string) tombstone.Record {
+		return tombstone.Record{OrchestrationID: id, Path: "system/sec/s1", Kind: tombstone.KindDeleted, Version: version}
+	}
+	d := &data{
+		localNode:          "n1",
+		previousRemoteInfo: map[string]remoteInfo{},
+		clusterData: &msgbus.ClusterData{Data: &clusterdump.Data{Cluster: clusterdump.Cluster{
+			Node: map[string]node.Node{"n2": {}},
+		}}},
+		log:       plog.NewDefaultLogger(),
+		publisher: &tombstonePubSpy{},
+	}
+	hear := func(id string) {
+		ev := event.ToEvent(&msgbus.NodeTombstoneUpdated{Node: "n2", ID: id, Path: "system/sec/s1", Value: rec(id)}, 1)
+		require.NoError(t, d.setCacheAndPublish(*ev))
+	}
+	trusted := func(id string) bool {
+		for _, k := range tombstone.Data.KilledBy("system/sec/s1", version) {
+			if k.Record.OrchestrationID == id {
+				return k.Trusted
+			}
+		}
+		t.Fatalf("record %s not held", id)
+		return false
+	}
+	node.MonitorData.Set("n1", &node.Monitor{State: node.MonitorStateIdle})
+	node.MonitorData.Set("n2", &node.Monitor{State: node.MonitorStateRejoin})
+	hear("loaded")
+	assert.False(t, trusted("loaded"), "published as the peer rejoins")
+
+	node.MonitorData.Set("n2", &node.Monitor{State: node.MonitorStateIdle})
+	hear("live")
+	assert.True(t, trusted("live"), "both nodes up")
+	hear("loaded")
+	assert.False(t, trusted("loaded"), "heard again: not trusted anew")
+
+	// A full data of the peer rejoining, with no record yet: none removed.
+	d.clusterData.Cluster.Node["n2"] = node.Node{Monitor: node.Monitor{State: node.MonitorStateRejoin}}
+	d.pubMsgFromNodeTombstoneDiffForNode("n2")
+	assert.Len(t, tombstone.Data.GetByNode("n2"), 2)
+
+	d.clusterData.Cluster.Node["n2"] = node.Node{Monitor: node.Monitor{State: node.MonitorStateIdle}}
+	d.pubMsgFromNodeTombstoneDiffForNode("n2")
+	assert.Empty(t, tombstone.Data.GetByNode("n2"), "the peer up no longer publishes them")
 }

@@ -50,6 +50,10 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 		data.onPoolStatusDeleted(c)
 	case *NodePoolStatusUpdated:
 		data.onPoolStatusUpdated(c)
+	case *NodeTombstoneDeleted:
+		data.onNodeTombstoneDeleted(c)
+	case *NodeTombstoneUpdated:
+		data.onNodeTombstoneUpdated(c)
 	case *InstanceConfigDeleted:
 		data.onInstanceConfigDeleted(c)
 	case *InstanceConfigUpdated:
