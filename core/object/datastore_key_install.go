@@ -651,6 +651,12 @@ func (t *dataStore) postInstallSkipping(k string, skip func(p naming.Path, rid s
 		}
 		var onChange func(context.Context) error
 		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume, driver.GroupFS}) {
+			// A disabled resource uses no datastore: the daemon refreshes
+			// the keys of the ones the others use only.
+			if r.IsDisabled() {
+				t.log.Tracef("skip %s of %s: disabled", r.RID(), p)
+				continue
+			}
 			// A resource that failed to configure has none of the state its
 			// methods read, so it is skipped here as it is everywhere else a
 			// resource is acted upon. Its configuration error is what its
