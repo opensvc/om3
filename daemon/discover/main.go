@@ -206,7 +206,7 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	discovered.Reset()
-	t.keyInstaller = newKeyInstaller()
+	t.keyInstaller = newKeyInstaller(t.ctx, func() int { return nodeMaxParallel(t.localhost) }, t.refreshInstalledKeys)
 	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
 	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
 

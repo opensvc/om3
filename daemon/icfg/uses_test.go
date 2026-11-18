@@ -49,3 +49,18 @@ environment = DB_PASSWORD from ./sec/db key password
 	assert.Equal(t, []string{"repro/cfg/d", "repro/sec/d", "repro/sec/db", "repro/vol/d-data"}, usesOn("n1"))
 	assert.Equal(t, []string{"repro/cfg/d", "repro/cfg/n2only", "repro/sec/d", "repro/sec/db", "repro/vol/d-data"}, usesOn("n2"))
 }
+
+// A reference the node can't resolve leaves no datastore name in the line:
+// the instance uses no datastore through it, and the install command,
+// reading the same line, installs from none either.
+func TestGetUsesOfAnUnresolvedReference(t *testing.T) {
+	p, err := naming.ParsePath("repro/svc/d")
+	require.NoError(t, err)
+	for _, ref := range []string{"{env.missing}", "{missing.kw}"} {
+		conf := "[DEFAULT]\nnodes = n1\n\n[volume#1]\nname = data\ninstall = /etc/x from ./cfg/" + ref + " key k\n"
+		oc, err := object.NewConfigurer(p, object.WithConfigData([]byte(conf)), object.WithVolatile(true))
+		require.NoError(t, err)
+		m := &Manager{path: p}
+		assert.Equal(t, []string{"repro/vol/data"}, m.getUses(oc.Config()), ref)
+	}
+}
