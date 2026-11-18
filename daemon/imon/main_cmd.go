@@ -313,6 +313,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	}
 	if srcCmd.Node == t.localhost {
 		t.janitorVolumes()
+		// The stopped flag of an instance a tombstone blocks waits for
+		// a known status.
+		t.applyTombstoneIssue()
 	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()
@@ -439,6 +442,9 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 
 	t.releaseRemovedAddresses(t.instConfig, srcCmd.Value)
 	t.instConfig = srcCmd.Value
+	// Another version of the config: the records killing it change, as
+	// with a version kept by an edit or a touch.
+	t.refreshTombstones()
 	t.log.Tracef("refresh resource monitor states on local instance config updated")
 	t.initResourceMonitor()
 	janitorInstStatus(srcCmd.Value.Scope)
@@ -647,6 +653,16 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		// Clone global expect options to prevent data race when we have to update its
 		// value when we guess destinations
 		var globalExpectOptions any = c.Value.GlobalExpectOptions
+
+		// A tombstone kills the config here, and no delete of it is to
+		// come: nothing starts or provisions the instance until the
+		// operator purges it or keeps it here.
+		if issue, _ := t.tombstoneIssue(); issue != "" && refusedByTombstone(*c.Value.GlobalExpect) {
+			err := fmt.Errorf("%s", issue)
+			t.log.Infof("set instance monitor: %s", err)
+			globalExpectRefused()
+			return err
+		}
 
 		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
@@ -896,6 +912,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	instMon := c.Value
 	t.log.Tracef("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
+	t.noteCarrying(remote, instMon)
 	t.recordFilesSource(remote)
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
@@ -947,6 +964,9 @@ func (t *Manager) AllInstanceMonitors() map[string]instance.Monitor {
 }
 
 func (t *Manager) isHAOrchestrateable() (bool, string) {
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return false, issue
+	}
 	if (t.objStatus.Topology == topology.Failover) && (t.objStatus.Avail == status.Warn) {
 		return false, "failover object is warn state"
 	}
@@ -997,6 +1017,9 @@ func (t *Manager) hasInstanceMonitorAndStatusOnPeers() (bool, string) {
 // it is refused when none is, which would leave the orchestration with no
 // instance to start, and never ending.
 func (t *Manager) isRequestedStartable() (bool, string) {
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return false, issue
+	}
 	if ok, reason := t.isWarnFailoverStartable(); !ok {
 		return false, reason
 	}

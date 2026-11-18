@@ -67,6 +67,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Orchestration & Management
 
+* **Tombstones**: A node deleting its instance in a purge or a delete some nodes may not have run writes a tombstone, the version of the config deleted, its modification time, published to every node, so the object does not come back from a node holding that version: no node fetches it, nor serves it to a peer. A node up but not seen running the delete completes it. A node away keeps its instance, flagged stopped, the issue shown in its status: the daemon starts nothing of it on its own, and a start of the object is refused. The operator decides: `om <path> purge` there, an edit or a touch of its config, a newer version, to keep it, or `om <path> instance start` there to run it as it is. A tombstone is removed once every node is up, none holds the version deleted, and each node that may have held it was seen deleting its instance, or a day later.
+
 * **Live migration for KVM**: Full support for live migration of KVM instances with data on `disk.disk` and `disk.drbd` resources using `om <svc> switch --live` and `om <svc> takeover --live` commands.
 
 * **New placement policy**: `last start` policy uses the mtime of `<objvar>/last_start` as the candidate sort key, with more recent starts having higher priority.

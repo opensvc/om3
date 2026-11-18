@@ -800,6 +800,22 @@ func (t *board) loadObjectNotes() {
 			add(resource.ErrorLevel, "monitor", []string{nodename}, fmt.Sprintf("%s: the orchestration gave up, clear the instance to retry", t.states[nodename].Monitor.State))
 		}
 	}
+	// The issues the monitor of an instance says, as the version of its
+	// config a delete removed on the other nodes: a note per text, the
+	// nodes saying the same sharing it.
+	issueTexts := make([]string, 0)
+	issueNodes := make(map[string][]string)
+	for _, nodename := range t.nodesWith(func(s instance.States) bool { return len(s.Monitor.Issues) > 0 }) {
+		for _, text := range t.states[nodename].Monitor.Issues {
+			if _, ok := issueNodes[text]; !ok {
+				issueTexts = append(issueTexts, text)
+			}
+			issueNodes[text] = append(issueNodes[text], nodename)
+		}
+	}
+	for _, text := range issueTexts {
+		add(resource.WarnLevel, "issue", issueNodes[text], text)
+	}
 	if l := t.nodesWith(func(s instance.States) bool { return s.Status.IsFrozen() }); len(l) > 0 {
 		add(resource.InfoLevel, "frozen", l, "the daemon takes no initiative on the instance")
 	}

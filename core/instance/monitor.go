@@ -52,6 +52,11 @@ type (
 		// failure.
 		StateReason string `json:"state_reason,omitempty"`
 
+		// Issues says what keeps the instance from being orchestrated
+		// as usual, for the operator to act on, as a version of its
+		// config a delete or a purge removed elsewhere.
+		Issues []string `json:"issues,omitempty"`
+
 		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at"`
 		IsPreserved             bool             `json:"preserved"`
 		Resources               ResourceMonitors `json:"resources,omitempty"`
@@ -319,6 +324,9 @@ func (t ResourceMonitors) Unstructured() map[string]map[string]any {
 func (mon Monitor) DeepCopy() *Monitor {
 	v := mon
 	v.Resources = v.Resources.DeepCopy()
+	if mon.Issues != nil {
+		v.Issues = append([]string{}, mon.Issues...)
+	}
 	if mon.Parents != nil {
 		v.Parents = make(map[string]status.T, len(mon.Parents))
 		for k, s := range mon.Parents {
@@ -394,6 +402,9 @@ func (t Monitor) Unstructured() map[string]any {
 	}
 	if t.StateReason != "" {
 		m["state_reason"] = t.StateReason
+	}
+	if len(t.Issues) > 0 {
+		m["issues"] = append([]string{}, t.Issues...)
 	}
 	if len(t.Resources) > 0 {
 		m["resources"] = t.Resources.Unstructured()
