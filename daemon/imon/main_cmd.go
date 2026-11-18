@@ -287,6 +287,9 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 }
 
 func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
+	// The node publishes its status again: its last one, kept while it
+	// was away, is stale.
+	delete(t.awayStatus, srcCmd.Node)
 	if srcCmd.Node == t.localhost {
 		// Armed from the status kept, which may be newer than the one
 		// of the event: the first refresh stores its status before its
@@ -458,7 +461,8 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 }
 
 func (t *Manager) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
-	if _, ok := t.instStatus[c.Node]; ok {
+	if st, ok := t.instStatus[c.Node]; ok {
+		t.noteAwayStatus(c.Node, st)
 		t.setStonith(c.Node, c.PeerDropAt)
 		t.log.Tracef("drop deleted instance status from node %s", c.Node)
 		delete(t.instStatus, c.Node)
@@ -725,6 +729,9 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			if reason == "" && *c.Value.GlobalExpect == instance.MonitorGlobalExpectPurged {
 				reason = t.usedByProtectedRefusal()
 			}
+			if reason == "" && *c.Value.GlobalExpect != instance.MonitorGlobalExpectProvisioned && !forceAway(c.Value.GlobalExpectOptions) {
+				reason = t.awayInstancesRefusal(*c.Value.GlobalExpect)
+			}
 			if reason != "" {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: %s", err)
@@ -732,7 +739,11 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				return err
 			}
 		case instance.MonitorGlobalExpectDeleted:
-			if reason := t.usedByProtectedRefusal(); reason != "" {
+			reason := t.usedByProtectedRefusal()
+			if reason == "" && !forceAway(c.Value.GlobalExpectOptions) {
+				reason = t.awayInstancesRefusal(*c.Value.GlobalExpect)
+			}
+			if reason != "" {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: %s", err)
 				globalExpectRefused()
@@ -878,6 +889,11 @@ func (t *Manager) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 
 func (t *Manager) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.nodeMonitor[c.Node] = c.Value
+	if !c.Value.State.IsAwayFromObjects() {
+		// Back, the node publishes its instance status, if it has
+		// one: what it was away with is history.
+		delete(t.awayStatus, c.Node)
+	}
 	t.onChange()
 }
 

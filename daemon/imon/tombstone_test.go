@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/tombstone"
@@ -235,10 +236,87 @@ func TestTombstoneStoppedFlag(t *testing.T) {
 	assert.False(t, refusedByTombstone(instance.MonitorGlobalExpectPurged))
 }
 
+// A purge, a delete or an unprovision is refused naming the nodes away whose
+// instance is up or provisioned, provisioned only for an unprovision; a
+// node up, or a node with no status known, needs no force.
+func TestAwayInstancesRefusal(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	// node3, in maintenance, published its instance up and not provisioned.
+	m.instStatus["node3"] = instance.Status{Avail: status.Up, Provisioned: provisioned.False}
+	m.instStatus["node2"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	reason := m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged)
+	assert.Contains(t, reason, "node3 away")
+	assert.NotContains(t, reason, "node2", "node2 is up")
+	assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectDeleted), "node3")
+	assert.Empty(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectUnprovisioned), "up but not provisioned")
+
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectUnprovisioned), "node3")
+	delete(m.instStatus, "node3")
+	assert.Empty(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "no status known")
+
+	assert.True(t, forceAway(instance.MonitorGlobalExpectOptionsPurged{Force: true}))
+	assert.True(t, forceAway(instance.MonitorGlobalExpectOptionsDeleted{Force: true}))
+	assert.True(t, forceAway(instance.MonitorGlobalExpectOptionsUnprovisioned{Force: true}))
+	assert.False(t, forceAway(nil))
+}
+
+// A node stopping deletes the statuses of its instances once it announced
+// its shutdown: the last one is kept for the refusal, and forgotten as the
+// node publishes again.
+func TestAwayStatusKeptOnDeletion(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	m.nodeMonitor["node3"] = node.Monitor{State: node.MonitorStateShutdownProgress}
+	m.instStatus["node3"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.onMyInstanceStatusDeleted(&msgbus.InstanceStatusDeleted{Path: m.path, Node: "node3"})
+	assert.NotContains(t, m.instStatus, "node3")
+	assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "node3")
+
+	m.instStatus["node2"] = instance.Status{Provisioned: provisioned.True}
+	m.onMyInstanceStatusDeleted(&msgbus.InstanceStatusDeleted{Path: m.path, Node: "node2"})
+	assert.NotContains(t, m.awayStatus, "node2", "node2 is up: its instance is gone")
+
+	m.onMyInstanceStatusUpdated("node3", &msgbus.InstanceStatusUpdated{Path: m.path, Node: "node3", Value: instance.Status{}})
+	assert.NotContains(t, m.awayStatus, "node3")
+}
+
+// A peer dropped while up, as one crashed, loses its node data before its
+// instance statuses, and its node monitor as this monitor heard it only at
+// ForgetPeer: its last status is kept for the refusal, whichever of the
+// status deletion and ForgetPeer comes first.
+func TestAwayStatusKeptOnADrop(t *testing.T) {
+	for _, forgetFirst := range []bool{false, true} {
+		m, _, _ := newTombstoneTestManager(t)
+		m.instStatus["node2"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+		node.DropNode("node2")
+		assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "node2", "dropped, not forgotten yet")
+		if forgetFirst {
+			m.onForgetPeer(&msgbus.ForgetPeer{Node: "node2"})
+		}
+		m.onMyInstanceStatusDeleted(&msgbus.InstanceStatusDeleted{Path: m.path, Node: "node2"})
+		if !forgetFirst {
+			m.onForgetPeer(&msgbus.ForgetPeer{Node: "node2"})
+		}
+		assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "node2", "forget first: %v", forgetFirst)
+	}
+}
+
+// A peer back from away forgets the status it was away with.
+func TestAwayStatusForgottenOnReturn(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	m.awayStatus = map[string]instance.Status{"node2": {Avail: status.Up}}
+	m.onNodeMonitorUpdated(&msgbus.NodeMonitorUpdated{Node: "node2", Value: node.Monitor{State: node.MonitorStateMaintenance}})
+	assert.Contains(t, m.awayStatus, "node2")
+	m.onNodeMonitorUpdated(&msgbus.NodeMonitorUpdated{Node: "node2", Value: node.Monitor{State: node.MonitorStateIdle}})
+	assert.NotContains(t, m.awayStatus, "node2")
+}
+
 // A node upgrading its packages, its daemon restarting, may hold the
-// instance.
-func TestUpgradingNodeMayHold(t *testing.T) {
+// instance, and its instance up refuses a purge without --force.
+func TestUpgradingNodeIsAway(t *testing.T) {
 	m, _, _ := newTombstoneTestManager(t)
 	setNodeState(m, "node2", node.MonitorStateUpgrade)
 	assert.Contains(t, m.mayHold(), "node2")
+	m.instStatus["node2"] = instance.Status{Avail: status.Up, Provisioned: provisioned.True}
+	assert.Contains(t, m.awayInstancesRefusal(instance.MonitorGlobalExpectPurged), "node2")
 }

@@ -492,6 +492,17 @@ func childInstanceProvisioned(relation string) string {
 	return fmt.Sprintf("is provisioned (%s)", st.Provisioned)
 }
 
+// skipsNodeAway says whether the leader of an unprovision or a purge goes on
+// without the instance of a peer away: only if the request was forced. A
+// node away with an instance up or provisioned as the request came was
+// refused it without --force; one that left since, as one restarting its
+// daemon or entering a maintenance, is waited for, until it is back and runs
+// its part or the maintenance grace period drops its data: the leader does
+// not release shared resources under it unless the operator forced it.
+func (t *Manager) skipsNodeAway(nodename string) bool {
+	return t.isNodeAway(nodename) && forceAway(t.state.GlobalExpectOptions)
+}
+
 // isNodeAway says the peer is away, its daemon stopped, starting, rejoining,
 // shutting down or upgrading: its instance, its data kept in the cluster, runs no
 // orchestration, and the leader of an unprovision or a purge waited for its

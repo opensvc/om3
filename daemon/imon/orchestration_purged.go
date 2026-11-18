@@ -127,7 +127,7 @@ func (t *Manager) purgedFromWaitNonLeader() {
 // unprovisioning.
 func (t *Manager) nonLeaderProvisionedWithState(states ...instance.MonitorState) (string, bool) {
 	for node, instStatus := range t.instStatus {
-		if t.isUnprovisionLeaderNode(node) || t.isNodeAway(node) {
+		if t.isUnprovisionLeaderNode(node) || t.skipsNodeAway(node) {
 			continue
 		}
 		if !instStatus.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {

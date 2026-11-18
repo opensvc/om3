@@ -116,6 +116,10 @@ type (
 		// adoptTombstone.
 		carried map[uuid.UUID]bool
 
+		// awayStatus is the last instance status of the peers deleted
+		// while their node was away, see noteAwayStatus.
+		awayStatus map[string]instance.Status
+
 		// tombstoneStopped is the id of the tombstone the instance was
 		// flagged stopped for, see applyTombstoneIssue.
 		tombstoneStopped string

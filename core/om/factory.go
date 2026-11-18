@@ -2372,6 +2372,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagForceAway(flags, &options.Force)
 	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
 	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
@@ -3922,7 +3923,7 @@ To remove the instance of a node only, unprovision it with "instance unprovision
 	commoncmd.HiddenFlagsEncap(flags, &options.OptsEncap)
 	commoncmd.HiddenFlagsResourceSelectorWithCompletion(cmd, &options.OptsResourceSelector)
 	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
-	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.FlagForceAway(flags, &options.Force)
 	commoncmd.HiddenFlagLeader(flags, &options.Leader)
 	hiddenFlagLocal(flags, &options.Local)
 	return cmd
@@ -4436,7 +4437,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
 	commoncmd.HiddenFlagsResourceSelectorWithCompletion(cmd, &options.OptsResourceSelector)
 	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
-	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.FlagForceAway(flags, &options.Force)
 	commoncmd.HiddenFlagLeader(flags, &options.Leader)
 	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)

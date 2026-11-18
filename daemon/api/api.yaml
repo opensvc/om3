@@ -6694,6 +6694,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK
@@ -6848,6 +6849,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK
@@ -7116,6 +7118,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK

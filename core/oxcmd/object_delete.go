@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -18,6 +19,7 @@ type (
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		NodeSelector string
+		Force        bool
 	}
 )
 
@@ -30,6 +32,7 @@ func (t *CmdObjectDelete) Run(kind string) error {
 		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithAsyncTarget("deleted"),
+		objectaction.WithAsyncTargetOptions(instance.MonitorGlobalExpectOptionsDeleted{Force: t.Force}),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),

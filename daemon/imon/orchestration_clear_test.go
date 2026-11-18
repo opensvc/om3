@@ -384,9 +384,11 @@ func TestAServedMarkExpiringLooksAtTheOrchestrationAgain(t *testing.T) {
 	assert.Empty(t, m.peersStarting())
 }
 
-// The leader of an unprovision or a purge does not wait for the retained
-// status of the instance of a node away: it waited for it until the
-// maintenance grace period dropped it.
+// The leader of a forced unprovision or purge does not wait for the
+// retained status of the instance of a node away: it waited for it until the
+// maintenance grace period dropped it. Unforced, it waits for a node that
+// left after the request was accepted: it releases no shared resources under
+// a provisioned instance.
 func TestTheLeaderDoesNotWaitForANodeAway(t *testing.T) {
 	m := newClearTestManager(&pubSpy{})
 	m.nodeMonitor = map[string]node.Monitor{"node2": {State: node.MonitorStateIdle}}
@@ -398,5 +400,10 @@ func TestTheLeaderDoesNotWaitForANodeAway(t *testing.T) {
 	assert.True(t, m.hasNonLeaderProvisioned(), "node2 live and provisioned")
 
 	m.nodeMonitor["node2"] = node.Monitor{State: node.MonitorStateMaintenance}
-	assert.False(t, m.hasNonLeaderProvisioned(), "node2 in maintenance")
+	assert.True(t, m.hasNonLeaderProvisioned(), "node2 left after the request: waited for, unforced")
+
+	m.state.GlobalExpectOptions = instance.MonitorGlobalExpectOptionsUnprovisioned{Force: true}
+	assert.False(t, m.hasNonLeaderProvisioned(), "node2 in maintenance, forced")
+	m.state.GlobalExpectOptions = instance.MonitorGlobalExpectOptionsPurged{Force: true}
+	assert.False(t, m.hasNonLeaderProvisioned(), "the same for a purge")
 }

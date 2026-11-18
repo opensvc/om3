@@ -114,6 +114,28 @@ type (
 		Adopt bool `json:"adopt,omitempty"`
 	}
 
+	// MonitorGlobalExpectOptionsPurged carries whether a purge goes on
+	// without the instance a node away holds up or provisioned, which it
+	// can not release, maybe the only copy of the data: that instance is
+	// kept stopped on the return of its node, to purge or keep there.
+	MonitorGlobalExpectOptionsPurged struct {
+		Force bool `json:"force,omitempty"`
+	}
+
+	// MonitorGlobalExpectOptionsDeleted is MonitorGlobalExpectOptionsPurged
+	// for a delete.
+	MonitorGlobalExpectOptionsDeleted struct {
+		Force bool `json:"force,omitempty"`
+	}
+
+	// MonitorGlobalExpectOptionsUnprovisioned carries whether an unprovision
+	// goes on without the instance a node away holds provisioned, which it
+	// does not wait for: the leader may release shared resources that
+	// instance still uses.
+	MonitorGlobalExpectOptionsUnprovisioned struct {
+		Force bool `json:"force,omitempty"`
+	}
+
 	// MonitorGlobalExpectOptionsResized carries the configuration a resize is
 	// for, so a node does not grow to the size it held before the request.
 	MonitorGlobalExpectOptionsResized struct {
@@ -192,6 +214,12 @@ func (t *Monitor) UnmarshalJSON(b []byte) error {
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsStopped](mon.GlobalExpectOptions)
 	case MonitorGlobalExpectProvisioned:
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsProvisioned](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectPurged:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsPurged](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectDeleted:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsDeleted](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectUnprovisioned:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsUnprovisioned](mon.GlobalExpectOptions)
 	}
 	if err != nil {
 		return err
@@ -351,7 +379,8 @@ func (mon Monitor) DeepCopy() *Monitor {
 			// TODO Don't ignore following error
 			_ = json.Unmarshal(b, &placedAt)
 			v.GlobalExpectOptions = placedAt
-		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped, MonitorGlobalExpectRestarted, MonitorGlobalExpectStopped, MonitorGlobalExpectProvisioned:
+		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped, MonitorGlobalExpectRestarted, MonitorGlobalExpectStopped, MonitorGlobalExpectProvisioned,
+			MonitorGlobalExpectPurged, MonitorGlobalExpectDeleted, MonitorGlobalExpectUnprovisioned:
 			// Values holding no reference: a copy of the value is a deep
 			// copy, and keeps the type the orchestrations read them as.
 			v.GlobalExpectOptions = mon.GlobalExpectOptions
