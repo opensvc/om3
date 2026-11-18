@@ -727,6 +727,30 @@ func DemoteLocal(path, id string) error {
 	return nil
 }
 
+// ClearLocalRecord clears the pending holder of the node in the record of
+// the orchestration id of path, as by: its instance is of another object,
+// created again under the same path, so it holds nothing of the one the
+// record deleted.
+func ClearLocalRecord(path, id string, by tombstone.ClearedBy) error {
+	mu.Lock()
+	defer mu.Unlock()
+	if st == nil {
+		return ErrNotStarted
+	}
+	rec, ok := st.adoptPeerCopy(path, id)
+	if !ok || !rec.IsPending(st.localhost) {
+		return nil
+	}
+	h := rec.Holders[st.localhost]
+	h.State = tombstone.HolderCleared
+	h.ClearedBy = by
+	rec.Holders[st.localhost] = h
+	st.upsert(rec)
+	st.log.Infof("tombstone %s of %s: holder %s cleared, %s: its instance is of an object created again", id, path, st.localhost, by)
+	st.removeIfDone(id)
+	return nil
+}
+
 // adoptPeerCopy returns a copy of the local record of id of path, adopting
 // the copy the peers publish if the node keeps none. The caller holds mu.
 func (s *state) adoptPeerCopy(path, id string) (tombstone.Record, bool) {

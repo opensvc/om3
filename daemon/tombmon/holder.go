@@ -16,7 +16,8 @@ import (
 // its start and rejoin. The caller holds mu.
 //
 // The holder is cleared as purged or deleted once the instance is gone
-// there: its config file and config data absent, as the operator purged it.
+// there: its config file and config data absent, as the operator purged it,
+// or its config of another object, created again under the path.
 // It is cleared as kept once its config file changes, the operator editing
 // or touching it to keep the instance: its config then propagates again.
 //
@@ -53,7 +54,15 @@ func (s *state) evaluateLocal(path string) {
 			continue
 		}
 		mtime := file.ModTime(p.ConfigFile())
-		if mtime.IsZero() && instance.ConfigData.GetByPathAndNode(p, s.localhost) == nil {
+		cfg := instance.ConfigData.GetByPathAndNode(p, s.localhost)
+		if mtime.IsZero() && cfg == nil {
+			s.clearLocal(rec, rec.Kind.GoneBy())
+			continue
+		}
+		if cfg != nil && rec.OfAnotherObject(cfg.ID) {
+			// An object created again under the path, as by a
+			// create --force here: it holds nothing of the one the
+			// record deleted.
 			s.clearLocal(rec, rec.Kind.GoneBy())
 			continue
 		}

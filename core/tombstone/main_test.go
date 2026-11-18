@@ -119,3 +119,20 @@ func TestDataPendingHolders(t *testing.T) {
 	d.Unset("n2", rec(nil).OrchestrationID)
 	assert.Empty(t, d.PendingHolders("system/sec/s1", ""))
 }
+
+// The object id merges as the other fields, and a record tells an instance
+// of another object, unknown ids telling nothing.
+func TestObjectID(t *testing.T) {
+	a := rec(map[string]Holder{"n2": pendingLive})
+	b := a.DeepCopy()
+	b.ObjectID = "o1"
+	m, changed := Merge(a, b)
+	assert.True(t, changed)
+	assert.Equal(t, "o1", m.ObjectID)
+	m2, _ := Merge(b, a)
+	assert.True(t, m.Equal(m2), "commutative")
+	assert.True(t, b.OfAnotherObject("o2"))
+	assert.False(t, b.OfAnotherObject("o1"))
+	assert.False(t, b.OfAnotherObject(""))
+	assert.False(t, a.OfAnotherObject("o2"))
+}

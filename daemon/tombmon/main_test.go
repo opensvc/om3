@@ -233,6 +233,20 @@ func TestDemoteLocal(t *testing.T) {
 	assert.NotContains(t, s.records, "removed", "a record removed is not taken in again")
 }
 
+// ClearLocalRecord clears the holder of the node in one record, as one whose
+// instance is of an object created again under the path.
+func TestClearLocalRecord(t *testing.T) {
+	s, _ := newTestState(t)
+	allUp("n1")
+	rec := record(map[string]tombstone.Holder{"n1": pending(tombstone.HolderLive), "n2": pending(tombstone.HolderAway)})
+	tombstone.Data.Set("n2", rec)
+	require.NoError(t, ClearLocalRecord("system/sec/s1", id, tombstone.ClearedByDeleted))
+	h := s.records[id].Holders["n1"]
+	assert.Equal(t, tombstone.HolderCleared, h.State)
+	assert.Equal(t, tombstone.ClearedByDeleted, h.ClearedBy)
+	assert.True(t, s.records[id].IsPending("n2"), "the other holders are left alone")
+}
+
 // Drop clears every pending holder of the path, adopting the copies of the
 // records the node does not keep.
 func TestDrop(t *testing.T) {

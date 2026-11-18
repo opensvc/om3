@@ -391,6 +391,32 @@ func TestAwayHolderStoppedFlagRetried(t *testing.T) {
 	assert.True(t, m.isStopped())
 }
 
+// A live holder whose instance is of another object, created again under the
+// path, does not adopt the delete of the record: its holder is cleared.
+func TestNoAdoptionByAnotherObject(t *testing.T) {
+	m, _, _ := newTombstoneTestManager(t)
+	var cleared []string
+	saved := clearTombstoneFunc
+	clearTombstoneFunc = func(path, id string, by tombstone.ClearedBy) error {
+		cleared = append(cleared, id+" "+string(by))
+		return nil
+	}
+	t.Cleanup(func() { clearTombstoneFunc = saved })
+	m.state.GlobalExpect = instance.MonitorGlobalExpectNone
+	m.state.OrchestrationID = uuid.Nil
+	m.nodeMonitor[m.localhost] = node.Monitor{State: node.MonitorStateIdle}
+	id, rec := liveRecord(m, tombstone.HolderLive)
+	rec.ObjectID = "old"
+	m.tombstones = map[string]tombstone.Record{id.String(): rec}
+	m.instConfig.ID = "new"
+	assert.False(t, m.adoptTombstone())
+	assert.Equal(t, instance.MonitorGlobalExpectNone, m.state.GlobalExpect)
+	assert.Equal(t, []string{id.String() + " deleted"}, cleared)
+
+	m.instConfig.ID = "old"
+	assert.True(t, m.adoptTombstone(), "the same object adopts it")
+}
+
 // A delete going on after a stop failed, as from idle, does not turn the live
 // holder away: only the failures ending the orchestration do.
 func TestLiveHolderNotTurnedAwayOnARecoverableFailure(t *testing.T) {
@@ -411,4 +437,13 @@ func TestLiveHolderNotTurnedAwayOnARecoverableFailure(t *testing.T) {
 	m.state.State = instance.MonitorStateDeleteFailure
 	m.demoteTombstoneIfFailed()
 	assert.Equal(t, []string{rec.OrchestrationID}, demoted, "with the id of the failed orchestration")
+}
+
+// The record names the object it deletes.
+func TestRecordNamesTheObject(t *testing.T) {
+	m, _, recorded := newTombstoneTestManager(t)
+	m.instConfig.ID = "obj-id"
+	require.NoError(t, m.recordTombstone())
+	require.Len(t, *recorded, 1)
+	assert.Equal(t, "obj-id", (*recorded)[0].ObjectID)
 }

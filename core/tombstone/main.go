@@ -54,6 +54,11 @@ type (
 		Path            string `json:"path"`
 		Kind            Kind   `json:"kind"`
 
+		// ObjectID is the id of the object purged or deleted, empty if
+		// unknown: a holder whose instance is of another object, created
+		// again under the same path, holds nothing of this one.
+		ObjectID string `json:"object_id,omitempty"`
+
 		// PurgedAt is the global expect stamp of the orchestration, as
 		// the node accepting it set it: carried for the live holders to
 		// adopt it, the stamp the peers carry, and shown. Never compared
@@ -147,6 +152,13 @@ func (t Record) PendingHolders(mode HolderMode) []string {
 	return l
 }
 
+// OfAnotherObject says whether an instance of the object of id is another
+// object than the one the record purged or deleted, created again under the
+// same path. Unknown, either id empty, it is not.
+func (t Record) OfAnotherObject(id string) bool {
+	return t.ObjectID != "" && id != "" && t.ObjectID != id
+}
+
 // IsPending says whether node is a pending holder of the record.
 func (t Record) IsPending(node string) bool {
 	h, ok := t.Holders[node]
@@ -168,6 +180,9 @@ func Merge(a, b Record) (Record, bool) {
 	}
 	if b.Kind > m.Kind {
 		m.Kind = b.Kind
+	}
+	if b.ObjectID > m.ObjectID {
+		m.ObjectID = b.ObjectID
 	}
 	if b.OrchestrationID > m.OrchestrationID {
 		m.OrchestrationID = b.OrchestrationID
@@ -205,7 +220,7 @@ func mergeHolder(a, b Holder) Holder {
 
 // Equal says whether two records are the same.
 func (t Record) Equal(o Record) bool {
-	if t.OrchestrationID != o.OrchestrationID || t.Path != o.Path || t.Kind != o.Kind || !t.PurgedAt.Equal(o.PurgedAt) {
+	if t.OrchestrationID != o.OrchestrationID || t.Path != o.Path || t.Kind != o.Kind || t.ObjectID != o.ObjectID || !t.PurgedAt.Equal(o.PurgedAt) {
 		return false
 	}
 	if len(t.Holders) != len(o.Holders) {

@@ -10505,6 +10505,9 @@ components:
       properties:
         app:
           type: string
+        id:
+          description: the id of the object, an object created again under the same path having another
+          type: string
         checksum:
           type: string
         children:

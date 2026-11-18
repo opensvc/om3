@@ -25,6 +25,10 @@ var (
 	// demoteTombstoneFunc turns away the live holder of the node in a
 	// tombstone of a path: a variable for the tests to stub.
 	demoteTombstoneFunc = tombmon.DemoteLocal
+
+	// clearTombstoneFunc clears the holder of the node in a tombstone of a
+	// path: a variable for the tests to stub.
+	clearTombstoneFunc = tombmon.ClearLocalRecord
 )
 
 // noteCarrying records that the monitor of node was seen carrying the
@@ -79,6 +83,7 @@ func (t *Manager) recordTombstone() error {
 		OrchestrationID: t.state.OrchestrationID.String(),
 		Path:            t.path.String(),
 		Kind:            kind,
+		ObjectID:        t.instConfig.ID,
 		PurgedAt:        t.state.GlobalExpectUpdatedAt,
 		Holders:         holders,
 	}
@@ -152,6 +157,15 @@ func (t *Manager) adoptTombstone() bool {
 				if err := demoteTombstoneFunc(t.path.String(), id); err != nil {
 					t.log.Warnf("turn the live holder of the tombstone %s away: %s", id, err)
 				}
+			}
+			continue
+		}
+		if t.instConfig.ID != "" && rec.OfAnotherObject(t.instConfig.ID) {
+			// The instance is of an object created again under the
+			// path: it holds nothing of the one the record deleted,
+			// and adopting the delete would delete the new one.
+			if err := clearTombstoneFunc(t.path.String(), id, rec.Kind.GoneBy()); err != nil {
+				t.log.Warnf("clear the holder of the tombstone %s: %s", id, err)
 			}
 			continue
 		}

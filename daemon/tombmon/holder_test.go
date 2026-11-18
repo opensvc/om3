@@ -101,3 +101,21 @@ func TestReadsOnly(t *testing.T) {
 	assert.False(t, readsOnly("/usr/bin/om tombtest/svc/h1 instance unprovision"))
 	assert.False(t, readsOnly("/usr/bin/om tombtest/svc/h1 instance provision"))
 }
+
+// An away holder whose instance is of another object, created again under
+// the path, is cleared: it holds nothing of the one the record deleted.
+func TestHolderOfAnotherObject(t *testing.T) {
+	s, p, _ := newHolderState(t, tombstone.HolderAway)
+	node.MonitorData.Set("n1", &node.Monitor{State: node.MonitorStateIdle})
+	rec := s.records[id].DeepCopy()
+	rec.ObjectID = "old"
+	s.set(rec)
+	instance.ConfigData.Set(p, "n1", &instance.Config{Path: p, ID: "old"})
+	s.evaluateLocal(p.String())
+	assert.True(t, s.records[id].IsPending("n1"), "the same object")
+	instance.ConfigData.Set(p, "n1", &instance.Config{Path: p, ID: "new"})
+	s.evaluateLocal(p.String())
+	h := s.records[id].Holders["n1"]
+	assert.Equal(t, tombstone.HolderCleared, h.State)
+	assert.Equal(t, tombstone.ClearedByPurged, h.ClearedBy)
+}

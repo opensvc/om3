@@ -83,6 +83,7 @@ var (
 	standbyDefaultRestart = 2
 
 	keyApp              = key.New("DEFAULT", "app")
+	keyID               = key.New("DEFAULT", "id")
 	keyChildren         = key.New("DEFAULT", "children")
 	keyDisable          = key.New("DEFAULT", "disable")
 	keyEnv              = key.New("DEFAULT", "env")
@@ -385,6 +386,7 @@ func (t *Manager) configFileCheck() error {
 	}
 
 	cfg := t.instanceConfig
+	cfg.ID = cf.GetString(keyID)
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
 	cfg.Scope = scope
 	cfg.UpdatedAt = mtime
