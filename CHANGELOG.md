@@ -679,6 +679,12 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     om svc1 purge --force  # purged on the nodes up, n3 kept stopped on its return
     ```
 
+* **A create of another object under a name a node may still hold is refused without `--force`:**
+    `om <path> create`, `ox` and the api refuse a name purged or deleted while a node publishes the version of
+    the config deleted, or a node away may hold it, naming them: purge it there, or retry once the node is back.
+    A restore of the same object, its id kept, is not refused. `--force` creates it anyway: a node holding the deleted
+    version then takes the new config, newer, over its instance.
+
 * **Configuration updates and queries use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
