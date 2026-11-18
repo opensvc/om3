@@ -825,6 +825,32 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/tombstone:
+    get:
+      description: |
+        Return the tombstones of the deletes and purges, a record per node
+        deleting its instance, with the nodes still publishing the version of
+        the config deleted. A user other than root sees the ones of the
+        namespaces it is guest of.
+      operationId: GetClusterTombstones
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TombstoneList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /api/cluster/lock:
     get:
       description: |
@@ -9373,6 +9399,64 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClusterLock'
+
+    Tombstone:
+      type: object
+      required:
+        - orchestration_id
+        - node
+        - path
+        - kind
+        - version
+        - deleted_at
+        - holders
+      properties:
+        orchestration_id:
+          description: the orchestration of the delete or the purge
+          type: string
+          x-go-name: OrchestrationID
+        node:
+          description: the node that deleted its instance and wrote the tombstone
+          type: string
+        path:
+          type: string
+        kind:
+          type: string
+          enum:
+            - purged
+            - deleted
+        object_id:
+          description: the id of the object deleted
+          type: string
+          x-go-name: ObjectID
+        version:
+          description: the modification time of the config deleted; a config of that version or older is the deleted one
+          type: string
+          format: date-time
+        deleted_at:
+          description: when the orchestration was accepted, as the node accepting it stamped it
+          type: string
+          format: date-time
+        holders:
+          description: the nodes publishing a config the tombstone kills, the deleted version
+          type: array
+          items:
+            type: string
+
+    TombstoneList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - TombstoneList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tombstone'
 
     PostClusterLock:
       type: object

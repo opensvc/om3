@@ -182,6 +182,9 @@ type ClientInterface interface {
 	// GetClusterStatus request
 	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetClusterTombstones request
+	GetClusterTombstones(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostComputeClaimWithBody request with any body
 	PostComputeClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1244,6 +1247,18 @@ func (c *Client) PostClusterRegister(ctx context.Context, body PostClusterRegist
 
 func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterStatusRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterTombstones(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterTombstonesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -5298,6 +5313,33 @@ func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterTombstonesRequest generates requests for GetClusterTombstones
+func NewGetClusterTombstonesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/tombstone")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -21825,6 +21867,9 @@ type ClientWithResponsesInterface interface {
 	// GetClusterStatusWithResponse request
 	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
 
+	// GetClusterTombstonesWithResponse request
+	GetClusterTombstonesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterTombstonesResponse, error)
+
 	// PostComputeClaimWithBodyWithResponse request with any body
 	PostComputeClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error)
 
@@ -23423,6 +23468,39 @@ func (r GetClusterStatusResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClusterStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetClusterTombstonesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TombstoneList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterTombstonesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterTombstonesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClusterTombstonesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31065,6 +31143,15 @@ func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, 
 	return ParseGetClusterStatusResponse(rsp)
 }
 
+// GetClusterTombstonesWithResponse request returning *GetClusterTombstonesResponse
+func (c *ClientWithResponses) GetClusterTombstonesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterTombstonesResponse, error) {
+	rsp, err := c.GetClusterTombstones(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterTombstonesResponse(rsp)
+}
+
 // PostComputeClaimWithBodyWithResponse request with arbitrary body returning *PostComputeClaimResponse
 func (c *ClientWithResponses) PostComputeClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error) {
 	rsp, err := c.PostComputeClaimWithBody(ctx, contentType, body, reqEditors...)
@@ -34623,6 +34710,53 @@ func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ClusterStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterTombstonesResponse parses an HTTP response from a GetClusterTombstonesWithResponse call
+func ParseGetClusterTombstonesResponse(rsp *http.Response) (*GetClusterTombstonesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterTombstonesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TombstoneList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
