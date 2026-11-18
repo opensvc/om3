@@ -48,6 +48,10 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 			log.Infof("%s: config file not found: %s", logName, filename)
 			return JSONProblemf(ctx, http.StatusNotFound, "Not found", "config file not found: %s", filename)
 		}
+		// A version a delete or a purge removed, held here as the node
+		// was away, is served: this endpoint serves the operators and
+		// clients reading or editing the config, as to keep it. The
+		// peers fetch through the instance endpoint, which refuses it.
 
 		ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 		requester := userFromContext(ctx).Username

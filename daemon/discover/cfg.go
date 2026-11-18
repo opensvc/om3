@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/configannounce"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
@@ -768,6 +769,13 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			c.Err <- nil
 			return
 		}
+		if tombstone.Data.Kills(c.Path.String(), file.ModTime(c.File)) {
+			// A record of its delete heard during the fetch.
+			log.Infof("cfg: drop the %s config fetched from node %s: its version was deleted", c.Path, c.Node)
+			_ = os.Remove(c.File)
+			c.Err <- nil
+			return
+		}
 		confFile := c.Path.ConfigFile()
 		if err := handleStoppedFlag(confFile); err != nil {
 			c.Err <- err
@@ -842,6 +850,12 @@ func (t *Manager) fetchConfigFromRemote(a fetchArgs) {
 		// Checked here, where every path to a fetch goes, so none starts
 		// one the delete would race.
 		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: the object is being removed", s, peer)
+		return
+	}
+	if tombstone.Data.Kills(s, updatedAt) {
+		// The version a delete or a purge removed, as one a node away
+		// then still holds: fetched, it would bring the object back.
+		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: its version %s was deleted", s, peer, updatedAt.Format(time.RFC3339Nano))
 		return
 	}
 	if n, ok := t.fetcherFrom[s]; ok {
