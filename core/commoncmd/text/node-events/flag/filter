@@ -18,6 +18,10 @@ Receive only events matching the filtering expression formatted as:
 
 ## Event Kinds
 
+### Audit
+
+     AuditStart, AuditStop
+
 ### Cluster
  
      ClusterConfigUpdated, ClusterStatusUpdated
@@ -53,17 +57,21 @@ Receive only events matching the filtering expression formatted as:
 
      FileInstalled
      InstanceActionPending, InstanceActionSent
-     InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
+     InstanceConfigDeleted, InstanceConfigDeleting, InstanceConfigFor
+     InstanceConfigManagerDone, InstanceConfigServed, InstanceConfigUpdated
      InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
      InstanceMonitorAction, InstanceMonitorDeleted, InstanceMonitorUpdated
      InstanceResourceInfoUpdated
+     InstanceStateFileUpdated
      InstanceStatusDeleted, InstanceStatusPost, InstanceStatusUpdated
+     InstanceStoppedFileRemoved, InstanceStoppedFileUpdated
      ProgressInstanceMonitor, SetInstanceMonitorRefused
      RunFileUpdated, RunFileRemoved
      SetInstanceMonitor
 
 ### Node
 
+     EnterOverloadPeriod, LeaveOverloadPeriod
      NodeAlive, NodeStale
      NodeConfigUpdated, NodeDataUpdated, NodeFrozen
      NodeFrozenFileRemoved, NodeFrozenFileUpdated
@@ -81,6 +89,7 @@ Receive only events matching the filtering expression formatted as:
      
 ### Object
 
+     ObjectCreated, ObjectDeleted
      ObjectOrchestrationAccepted, ObjectOrchestrationEnd, ObjectOrchestrationRefused
      ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
 
@@ -90,7 +99,13 @@ Receive only events matching the filtering expression formatted as:
 
 ### Network
 
-     NetworkPeersUpdated
+     NetworkPeersUpdated, NetworkSetupRequest
+
+### Resources
+
+     ContainerUpdated, VirtDomainUpdated
+     DrbdResourceUpdated, MdArrayUpdated
+     FSMounted, FSRemounted, FSUmounted
 
 ### Event Subscription
 

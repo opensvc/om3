@@ -46,6 +46,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -316,6 +317,16 @@ var (
 	}
 )
 
+// Kinds returns the names of the event kinds, sorted.
+func Kinds() []string {
+	l := make([]string, 0, len(kindToT))
+	for k := range kindToT {
+		l = append(l, k)
+	}
+	slices.Sort(l)
+	return l
+}
+
 func KindToT(kind string) (any, error) {
 	if f, ok := kindToT[kind]; ok {
 		return f(), nil
@@ -345,12 +356,18 @@ type (
 		ErrS       string `json:"error" yaml:"error"`
 	}
 
+	// AuditStart is published by the api when a client starts an audit of
+	// the daemon: the subsystems named send their log messages to Q, for
+	// the client to read them, until AuditStop.
 	AuditStart struct {
 		pubsub.Msg `yaml:",inline"`
 		Q          chan plog.LogMessage `json:"-" yaml:"-"`
 		Subsystems []string             `json:"subsystems" yaml:"subsystems"`
 	}
 
+	// AuditStop is published by the api when the client of an audit is
+	// gone or done: the subsystems named stop sending their log messages
+	// to Q.
 	AuditStop struct {
 		pubsub.Msg `yaml:",inline"`
 		Q          chan plog.LogMessage `json:"-" yaml:"-"`
@@ -462,6 +479,9 @@ type (
 		Status     string `json:"status" yaml:"status"`
 	}
 
+	// EnterOverloadPeriod is published by the node monitor when the node
+	// goes overloaded: its available memory or swap below the minimum the
+	// node configuration sets.
 	EnterOverloadPeriod struct {
 		pubsub.Msg `yaml:",inline"`
 	}
@@ -653,8 +673,6 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 	}
 
-	// InstanceConfigFor message is published by a node during analyse of
-	// instance config file that is scoped for foreign nodes (peers).
 	// InstanceConfigServed says this node served the config file of the
 	// object to the peer Node, as one installing it: the peer has an
 	// instance coming, which an orchestration deleting the object waits
@@ -665,6 +683,8 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 	}
 
+	// InstanceConfigFor message is published by a node during analyse of
+	// instance config file that is scoped for foreign nodes (peers).
 	InstanceConfigFor struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
@@ -822,6 +842,9 @@ type (
 		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
+	// LeaveOverloadPeriod is published by the node monitor when the node is
+	// no longer overloaded: its available memory and swap above the
+	// minimum the node configuration sets.
 	LeaveOverloadPeriod struct {
 		pubsub.Msg `yaml:",inline"`
 	}

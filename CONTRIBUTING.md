@@ -147,3 +147,18 @@ imports every package of `drivers/` to register it, and never imports one from
 
 A package holding the fakes for `foo` is named `footest`, as the standard
 library names `httptest` and `iotest`. It sits next to `foo`.
+
+# Events
+
+## Document every event kind in the help of the event filter
+
+A new event kind of the daemon bus, registered in `daemon/msgbus/messages.go`,
+is listed in its group of `core/commoncmd/text/node-events/flag/filter`, the
+help `daemon events` and `node events` show for `--filter`, in the same change.
+Its struct comment says when it is published.
+
+An operator writing a filter reads that list to know what to filter on: a kind
+missing from it does not exist for them. `TestTheEventFilterHelpListsEveryKind`
+compares the list with `msgbus.Kinds()` both ways, so a kind left out, or a
+name listed that is no kind, fails the build. A kind registered but never
+published, as `Exit`, is the one exception, named in the test.
