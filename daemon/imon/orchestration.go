@@ -474,6 +474,23 @@ func childInstanceBeingDeleted(relation string) string {
 	return fmt.Sprintf("is being deleted (%s)", mon.State)
 }
 
+// keepsUnconfiguredRelation returns why a relation the configuration no
+// longer lists is kept, or empty: a child instance still purged or deleted.
+// A service purged unprovisions its volume resources first, which unclaim the
+// volume, removing the service from its children before the service instance
+// is gone: a purge of the volume then waits for it all the same, as
+// setWaitChildren does for a child configured. It goes with a later
+// configuration update, once the instance is gone.
+func keepsUnconfiguredRelation(name, relation string) string {
+	if name != "Child" {
+		return ""
+	}
+	if reason := childInstanceBeingDeleted(relation); reason != "" {
+		return "the instance " + reason
+	}
+	return ""
+}
+
 func childInstanceProvisioned(relation string) string {
 	p, node, err := naming.Relation(relation).Split()
 	if err != nil || node == "" {

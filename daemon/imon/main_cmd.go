@@ -425,6 +425,10 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		droppedRelations := make([]string, 0)
 		for relationS := range currentRelations {
 			if _, ok := m[relationS]; !ok {
+				if reason := keepsUnconfiguredRelation(name, relationS); reason != "" {
+					t.log.Infof("janitor relations keep %s %s: %s", name, relationS, reason)
+					continue
+				}
 				droppedRelations = append(droppedRelations, relationS)
 				t.log.Infof("janitor relations unsubscribe from %s %s avail status updates and deletes", name, relationS)
 				objectPath, node, _ := naming.Relation(relationS).Split()
