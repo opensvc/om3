@@ -561,7 +561,11 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				if o.Required {
 					return err
 				}
-				r.Log().Tracef("%s keyword eval: %s", k, err)
+				if !errors.Is(err, xconfig.ErrNoValue) {
+					// An empty value is the keyword unset: the
+					// zero value of the attribute is meant.
+					r.Log().Tracef("%s keyword eval: %s", k, err)
+				}
 				continue
 			}
 			if err := o.SetValue(r, val); err != nil {

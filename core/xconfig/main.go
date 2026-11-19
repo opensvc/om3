@@ -108,6 +108,11 @@ var (
 	ErrType                       = errors.New("type error")
 	ErrUnknownReference           = errors.New("unknown reference")
 
+	// ErrNoValue is the error of a keyword evaluated to an empty value its
+	// converter refuses, as an integer unset with no default: the caller
+	// keeps its zero value.
+	ErrNoValue = errors.New("no value")
+
 	// ErrRefNotAvailable is the error of a strict evaluation naming a
 	// reference its RefJudge refused.
 	ErrRefNotAvailable = errors.New("reference not available")
@@ -1243,7 +1248,11 @@ func (t *T) convert(v string, kw *keywords.Keyword) (any, error) {
 	if kw.Converter == nil {
 		return v, nil
 	}
-	return kw.Converter.Convert(v)
+	i, err := kw.Converter.Convert(v)
+	if err != nil && v == "" {
+		return nil, fmt.Errorf("%w: %w", ErrNoValue, err)
+	}
+	return i, err
 }
 
 func (t *T) mayDescope(k key.T, kw *keywords.Keyword, impersonate string) (string, error) {
