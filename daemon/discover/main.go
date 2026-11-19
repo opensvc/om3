@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/discovered"
 	"github.com/opensvc/om3/v3/daemon/imon"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/omon"
@@ -81,6 +82,16 @@ type (
 
 		// fetcherNodeCancel map[node]map[svc] cancel func for node
 		fetcherNodeCancel map[string]map[string]context.CancelFunc
+
+		// scanPending is the set of the objects of the configuration files
+		// the initial walk found, not discovered yet: an object is
+		// discovered once its status is known, or its configuration
+		// failed to load. nil until the walk ends.
+		scanPending map[naming.Path]bool
+
+		// scanSettleTimeout bounds the initial discovery: an object whose
+		// status never shows does not hold the api answers forever.
+		scanSettleTimeout time.Duration
 
 		// debouncers is a map of delayed publications to cope with fs event storms
 		debouncers map[string]*Debouncer
@@ -144,6 +155,8 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		cfgCmdC:  make(chan any),
 		cfgMTime: make(map[string]time.Time),
 
+		scanSettleTimeout: 30 * time.Second,
+
 		retainForeignConfigFor: make(map[naming.Path][]string),
 
 		instanceConfigFor: make(map[naming.Path]*msgbus.InstanceConfigFor),
@@ -192,6 +205,7 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 	}
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
+	discovered.Reset()
 	t.keyInstaller = newKeyInstaller()
 	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
 	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))

@@ -117,7 +117,7 @@ func (t *Manager) UnprovisionedFromWaitNonLeader() {
 
 func (t *Manager) hasNonLeaderWithState(states ...instance.MonitorState) bool {
 	for node, instMon := range t.instMonitor {
-		if t.isUnprovisionLeaderNode(node) {
+		if t.isUnprovisionLeaderNode(node) || t.skipsNodeAway(node) {
 			continue
 		}
 		if instMon.State.IsOneOf(states...) {
@@ -129,7 +129,7 @@ func (t *Manager) hasNonLeaderWithState(states ...instance.MonitorState) bool {
 
 func (t *Manager) hasNonLeaderProvisioned() bool {
 	for node, otherInstStatus := range t.instStatus {
-		if t.isUnprovisionLeaderNode(node) {
+		if t.isUnprovisionLeaderNode(node) || t.skipsNodeAway(node) {
 			continue
 		}
 		if otherInstStatus.Provisioned.IsOneOf(provisioned.True, provisioned.Mixed) {

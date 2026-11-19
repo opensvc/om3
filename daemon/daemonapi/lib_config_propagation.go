@@ -25,9 +25,11 @@ var configPropagationSafetyTick = time.Second
 func (a *DaemonAPI) subscribeConfigPropagation(name string, p naming.Path) *pubsub.Subscription {
 	sub := a.Bus.Sub(name)
 	label := pubsub.Label{"path", p.String()}
-	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, label)
-	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, label)
-	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
+	var filters pubsub.Filters
+	filters.Add(&msgbus.InstanceConfigUpdated{}, label)
+	filters.Add(&msgbus.InstanceConfigDeleted{}, label)
+	filters.Add(&msgbus.NodeMonitorDeleted{})
+	sub.AddFilters(filters)
 	sub.Start()
 	return sub
 }

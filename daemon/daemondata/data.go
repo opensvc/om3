@@ -487,6 +487,8 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodePoolStatusDeleted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodePoolStatusUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeTombstoneDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeTombstoneUpdated{}, d.labelLocalhost)
 
 	sub.AddFilter(&msgbus.EnterOverloadPeriod{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveOverloadPeriod{}, d.labelLocalhost)
@@ -560,6 +562,10 @@ func localEventMustBeForwarded(i interface{}) bool {
 	// pool...
 	case *msgbus.NodePoolStatusDeleted:
 	case *msgbus.NodePoolStatusUpdated:
+
+	// tombstone...
+	case *msgbus.NodeTombstoneDeleted:
+	case *msgbus.NodeTombstoneUpdated:
 
 	// overload
 	case *msgbus.EnterOverloadPeriod:

@@ -18,6 +18,10 @@ type (
 			SandboxKey string
 		}
 		State InspectDataState
+
+		// InspectAppArmorProfile is the apparmor profile the processes
+		// of the container run under, empty on a host without apparmor.
+		InspectAppArmorProfile string `json:"AppArmorProfile"`
 	}
 
 	InspectDataConfig struct {
@@ -81,6 +85,15 @@ func (i *InspectData) BindSources() []string {
 		}
 	}
 	return l
+}
+
+// AppArmorProfile returns the apparmor profile the processes of the
+// container run under, empty on a host without apparmor.
+func (i *InspectData) AppArmorProfile() string {
+	if i == nil {
+		return ""
+	}
+	return i.InspectAppArmorProfile
 }
 
 func (i *InspectData) HostConfig() *InspectDataHostConfig {

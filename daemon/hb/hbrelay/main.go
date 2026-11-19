@@ -72,7 +72,7 @@ func (t *T) Configure(ctx context.Context) error {
 	if minTimeout := 4*interval + 1*time.Second; timeout < minTimeout {
 		oldTimeout := timeout
 		timeout = minTimeout
-		log.Warnf("readjust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
+		hbcfg.WarnOnce(log, t.Name(), "readjust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
 	}
 	relay := t.GetString("relay")
 	if relay == "" {

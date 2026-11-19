@@ -469,7 +469,11 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectDeleted:
-		resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		params := api.PostObjectActionDeleteParams{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsDeleted); ok && options.Force {
+			params.Force = &options.Force
+		}
+		resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return nil, err
 		}
@@ -491,7 +495,11 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectPurged:
-		resp, err := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		params := api.PostObjectActionPurgeParams{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsPurged); ok && options.Force {
+			params.Force = &options.Force
+		}
+		resp, err := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return nil, err
 		}
@@ -557,7 +565,11 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectUnprovisioned:
-		resp, err := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		params := api.PostObjectActionUnprovisionParams{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsUnprovisioned); ok && options.Force {
+			params.Force = &options.Force
+		}
+		resp, err := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return nil, err
 		}

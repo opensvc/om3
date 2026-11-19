@@ -40,6 +40,7 @@ import (
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -96,6 +97,32 @@ type (
 		// ObjectStatusUpdated for path events where srcEvent is InstanceMonitorDeleted
 		// or InstanceMonitorUpdated from other nodes.
 		instMonitor map[string]instance.Monitor
+
+		// seenCarrying is the orchestration id the monitor of each peer
+		// was last seen carrying, see recordTombstone.
+		seenCarrying map[string]uuid.UUID
+
+		// killers are the tombstone records killing the local config,
+		// see refreshTombstones.
+		killers []tombstone.Killer
+
+		// adoptedTombstone is the id of the tombstone the monitor took
+		// the orchestration of, see adoptTombstone.
+		adoptedTombstone string
+
+		// carried are the orchestrations the instance carried since the
+		// monitor started: a tombstone of one is never adopted, as of a
+		// purge failed and aborted, the abort another orchestration, see
+		// adoptTombstone.
+		carried map[uuid.UUID]bool
+
+		// awayStatus is the last instance status of the peers deleted
+		// while their node was away, see noteAwayStatus.
+		awayStatus map[string]instance.Status
+
+		// tombstoneStopped is the id of the tombstone the instance was
+		// flagged stopped for, see applyTombstoneIssue.
+		tombstoneStopped string
 
 		nodeMonitor   map[string]node.Monitor
 		nodeStats     map[string]node.Stats
@@ -160,6 +187,30 @@ type (
 		waitAffinitySince    time.Time
 		waitAffinityFailedID uuid.UUID
 
+		// orchestrationEnding is the end of the orchestration this node
+		// accepted, held back from orchestrationEndingSince until every
+		// peer cleared the orchestration: the requester waiting for the
+		// end then finds every node ready for its next request.
+		orchestrationEnding      *msgbus.ObjectOrchestrationEnd
+		orchestrationEndingSince time.Time
+
+		// heldRequest is a request for a new orchestration received from
+		// heldRequestSince while the orchestration of this monitor is done
+		// here and not cleared yet, as its peers are not seen done: it is
+		// taken on once the orchestration clears, or refused as already
+		// in progress after heldRequestTimeout.
+		heldRequest      *msgbus.SetInstanceMonitor
+		heldRequestSince time.Time
+
+		// orchestrationClearTimer bounds the waits of orchestrationEnding
+		// and heldRequest.
+		orchestrationClearTimer *time.Timer
+
+		// globalExpectSeenAt is the time of the local clock this monitor
+		// set or adopted its global expect at: the stamp of the global
+		// expect orders the requests, and may be of the clock of a peer.
+		globalExpectSeenAt time.Time
+
 		// fetchHoldTimer fires when the orchestration has held its actions
 		// for the resource files fetch and ingest long enough.
 		fetchHoldTimer *time.Timer
@@ -197,6 +248,10 @@ type (
 		// waitPeersStartingMsg is the last message logged waiting for
 		// the instance monitors of peers starting.
 		waitPeersStartingMsg string
+
+		// servedAt is the local time this node served the config of the
+		// object to each peer, as one installing it, its instance coming.
+		servedAt map[string]time.Time
 
 		// orchestrationPending represents the ObjectOrchestrationEnd event for the
 		// orchestration that has been accepted
@@ -372,6 +427,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		files:         newFilesManager(),
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
+		seenCarrying:  make(map[string]uuid.UUID),
 		nodeMonitor:   make(map[string]node.Monitor),
 		nodeStats:     make(map[string]node.Stats),
 		nodeStatus:    make(map[string]node.Status),
@@ -424,40 +480,53 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 // logSetOrchestrationID names in the logs the orchestration this instance
 // monitor is running, and names none when it is running none: an id of
 // zeroes would match nothing a client can ask for, and every entry of every
-// idle monitor would carry it.
+// idle monitor would carry it. It remembers the orchestration as one the
+// instance carried, see adoptTombstone.
 func (t *Manager) logSetOrchestrationID(i uuid.UUID) {
 	if i == uuid.Nil {
 		t.log = t.logBase
 		return
 	}
+	if t.carried == nil {
+		t.carried = make(map[uuid.UUID]bool)
+	}
+	t.carried[i] = true
 	t.log = t.logBase.Attr("orchestration_id", i.String())
 }
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.imon "+t.id, qs)
-	sub.AddFilter(&msgbus.AuditStart{})
-	sub.AddFilter(&msgbus.AuditStop{})
-	sub.AddFilter(&msgbus.ForgetPeer{})
-	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
-	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.NodeStatusUpdated{})
-	sub.AddFilter(&msgbus.NodeStatsUpdated{})
-	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, t.labelPath)
-	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, t.labelPath)
-	sub.AddFilter(&msgbus.SetInstanceMonitor{}, t.labelPath)
-	sub.AddFilter(&msgbus.NetIPAddrAdded{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.NetIPAddrDeleted{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.FSMounted{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.FSUmounted{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.DrbdResourceUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.VirtDomainUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.ContainerUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.MdArrayUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
+	// One operation of the bus for all the filters: see pubsub.Subscription.AddFilters.
+	var filters pubsub.Filters
+	filters.Add(&msgbus.AuditStart{})
+	filters.Add(&msgbus.AuditStop{})
+	filters.Add(&msgbus.ForgetPeer{})
+	filters.Add(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
+	filters.Add(&msgbus.NodeMonitorUpdated{})
+	filters.Add(&msgbus.NodeRejoin{}, t.labelLocalhost)
+	filters.Add(&msgbus.NodeStatusUpdated{})
+	filters.Add(&msgbus.NodeStatsUpdated{})
+	filters.Add(&msgbus.ObjectStatusUpdated{}, t.labelPath)
+	filters.Add(&msgbus.ProgressInstanceMonitor{}, t.labelPath)
+	filters.Add(&msgbus.SetInstanceMonitor{}, t.labelPath)
+	filters.Add(&msgbus.InstanceConfigServed{}, t.labelPath, t.labelLocalhost)
+	filters.Add(&msgbus.NetIPAddrAdded{}, t.labelLocalhost)
+	filters.Add(&msgbus.NetIPAddrDeleted{}, t.labelLocalhost)
+	filters.Add(&msgbus.FSMounted{}, t.labelLocalhost)
+	filters.Add(&msgbus.FSUmounted{}, t.labelLocalhost)
+	filters.Add(&msgbus.FSRemounted{}, t.labelLocalhost)
+	filters.Add(&msgbus.DrbdResourceUpdated{}, t.labelLocalhost)
+	filters.Add(&msgbus.VirtDomainUpdated{}, t.labelLocalhost)
+	filters.Add(&msgbus.ContainerUpdated{}, t.labelLocalhost)
+	filters.Add(&msgbus.MdArrayUpdated{}, t.labelLocalhost)
+	filters.Add(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
 	// A peer lost: its instance writes the data of the object no more.
-	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelPath)
+	filters.Add(&msgbus.InstanceStatusDeleted{}, t.labelPath)
+	// A tombstone killing the local config hands the instance its
+	// delete, or blocks it.
+	filters.Add(&msgbus.NodeTombstoneUpdated{}, t.labelPath)
+	filters.Add(&msgbus.NodeTombstoneDeleted{}, t.labelPath)
+	sub.AddFilters(filters)
 	sub.Start()
 	t.sub = sub
 }
@@ -507,10 +576,17 @@ func (t *Manager) worker(initialNodes []string) {
 			continue
 		}
 		t.instMonitor[n] = *v
+		t.noteCarrying(n, *v)
 	}
 	for n, v := range instance.StatusData.GetByPath(t.path) {
 		t.instStatus[n] = *v
 	}
+	// After the statuses: whether the instance is flagged stopped depends
+	// on whether it is up.
+	if !t.instConfig.UpdatedAt.IsZero() {
+		t.killers = tombstone.Data.KilledBy(t.path.String(), t.instConfig.UpdatedAt)
+	}
+	t.applyTombstoneIssue()
 	// A peer up under an orchestration as the worker starts is the source
 	// of the placement it does, as recordFilesSource would have recorded it
 	// on the events published before the subscription.
@@ -540,6 +616,8 @@ func (t *Manager) worker(initialNodes []string) {
 	t.waitFilesTimer.Stop()
 	t.waitAffinityTimer = time.NewTimer(time.Hour)
 	t.waitAffinityTimer.Stop()
+	t.orchestrationClearTimer = time.NewTimer(time.Hour)
+	t.orchestrationClearTimer.Stop()
 	t.fetchHoldTimer = time.NewTimer(time.Hour)
 	t.fetchHoldTimer.Stop()
 
@@ -574,6 +652,11 @@ func (t *Manager) worker(initialNodes []string) {
 
 		// a last chance to publish any pending aborted orchestration
 		t.publishOrchestrationAborted()
+
+		// The orchestration ended: its peers clearing it are not waited
+		// for any more. A request held is refused, no monitor to take it.
+		t.publishOrchestrationEnding()
+		t.refuseHeldRequest("the instance monitor is stopping")
 
 		t.abortPendingNotEndedByDeletion()
 
@@ -613,6 +696,10 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
+			case *msgbus.NodeTombstoneUpdated:
+				t.refreshTombstones()
+			case *msgbus.NodeTombstoneDeleted:
+				t.refreshTombstones()
 			case *msgbus.InstanceStatusUpdated:
 				t.onRelationInstanceStatusUpdated(c)
 			case *msgbus.InstanceMonitorUpdated:
@@ -625,6 +712,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onObjectStatusUpdated(c)
 			case *msgbus.ProgressInstanceMonitor:
 				t.onProgressInstanceMonitor(c)
+			case *msgbus.InstanceConfigServed:
+				t.onInstanceConfigServed(c)
 			case *msgbus.SetInstanceMonitor:
 				t.onSetInstanceMonitor(c)
 			case *msgbus.NodeConfigUpdated:
@@ -687,6 +776,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onWaitFilesTimer()
 		case <-t.waitAffinityTimer.C:
 			t.onChange()
+		case <-t.orchestrationClearTimer.C:
+			t.onOrchestrationClearTimer()
 		case <-t.fetchHoldTimer.C:
 			t.onChange()
 		}

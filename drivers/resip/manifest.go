@@ -4,6 +4,7 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/util/converters"
 )
 
@@ -20,6 +21,33 @@ var (
 		Group:     GroupDNS.ID,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/wait_dns"),
+	}
+
+	// KeywordPublish is the ports of the node forwarded to the address of
+	// the ip drivers plumbing one in a network namespace, ip.netns and
+	// ip.cni.
+	KeywordPublish = keywords.Keyword{
+		Attr:      "Publish",
+		Converter: converters.List,
+		Example:   "25489:80/tcp 192.168.1.10:8443:443/tcp",
+		Option:    "publish",
+		Group:     GroupPublish.ID,
+		Scopable:  true,
+		// The forwardings of a resource up are the ones of the value it
+		// started with: a value changed or removed while it runs would
+		// leave them in place, and its status would check the new one.
+		StopToChange: true,
+		Validate:     network.ValidatePublish,
+		Text:         keywords.NewText(fs, "text/kw/publish"),
+	}
+
+	// GroupPublish is the group of the keywords saying the ports of the
+	// node forwarded to the address.
+	GroupPublish = keywords.Group{
+		ID:    "publish",
+		Name:  "Published ports",
+		Text:  keywords.NewText(fs, "text/group/publish"),
+		Order: 50,
 	}
 
 	// GroupAddressing is the group of the keywords saying the address of

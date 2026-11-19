@@ -108,3 +108,20 @@ func TestGlobalExpectOptionsKeepTheirTypeThroughEncodingAndCopy(t *testing.T) {
 		require.Equal(t, tc.options, decoded.DeepCopy().GlobalExpectOptions, "copied")
 	}
 }
+
+// The force of a purge, a delete or an unprovision reaches the peers adopting
+// it in the type the orchestration reads.
+func TestForceAwayOptionsRoundTrip(t *testing.T) {
+	for ge, opts := range map[MonitorGlobalExpect]any{
+		MonitorGlobalExpectPurged:        MonitorGlobalExpectOptionsPurged{Force: true},
+		MonitorGlobalExpectDeleted:       MonitorGlobalExpectOptionsDeleted{Force: true},
+		MonitorGlobalExpectUnprovisioned: MonitorGlobalExpectOptionsUnprovisioned{Force: true},
+	} {
+		b, err := json.Marshal(Monitor{GlobalExpect: ge, GlobalExpectOptions: opts})
+		require.NoError(t, err)
+		var mon Monitor
+		require.NoError(t, json.Unmarshal(b, &mon))
+		require.Equal(t, opts, mon.GlobalExpectOptions, ge.String())
+		require.Equal(t, opts, mon.DeepCopy().GlobalExpectOptions, ge.String())
+	}
+}

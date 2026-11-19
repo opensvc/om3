@@ -46,6 +46,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,6 +65,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/label"
@@ -157,6 +159,8 @@ var (
 
 		"InstanceConfigFor": func() any { return &InstanceConfigFor{} },
 
+		"InstanceConfigServed": func() any { return &InstanceConfigServed{} },
+
 		"InstanceConfigUpdated": func() any { return &InstanceConfigUpdated{} },
 
 		"InstanceFrozenFileRemoved": func() any { return &InstanceFrozenFileRemoved{} },
@@ -222,6 +226,10 @@ var (
 		"NodePoolStatusDeleted": func() any { return &NodePoolStatusDeleted{} },
 
 		"NodePoolStatusUpdated": func() any { return &NodePoolStatusUpdated{} },
+
+		"NodeTombstoneDeleted": func() any { return &NodeTombstoneDeleted{} },
+
+		"NodeTombstoneUpdated": func() any { return &NodeTombstoneUpdated{} },
 
 		"NodeStale": func() any { return &NodeStale{} },
 
@@ -309,6 +317,16 @@ var (
 	}
 )
 
+// Kinds returns the names of the event kinds, sorted.
+func Kinds() []string {
+	l := make([]string, 0, len(kindToT))
+	for k := range kindToT {
+		l = append(l, k)
+	}
+	slices.Sort(l)
+	return l
+}
+
 func KindToT(kind string) (any, error) {
 	if f, ok := kindToT[kind]; ok {
 		return f(), nil
@@ -338,12 +356,18 @@ type (
 		ErrS       string `json:"error" yaml:"error"`
 	}
 
+	// AuditStart is published by the api when a client starts an audit of
+	// the daemon: the subsystems named send their log messages to Q, for
+	// the client to read them, until AuditStop.
 	AuditStart struct {
 		pubsub.Msg `yaml:",inline"`
 		Q          chan plog.LogMessage `json:"-" yaml:"-"`
 		Subsystems []string             `json:"subsystems" yaml:"subsystems"`
 	}
 
+	// AuditStop is published by the api when the client of an audit is
+	// gone or done: the subsystems named stop sending their log messages
+	// to Q.
 	AuditStop struct {
 		pubsub.Msg `yaml:",inline"`
 		Q          chan plog.LogMessage `json:"-" yaml:"-"`
@@ -455,6 +479,9 @@ type (
 		Status     string `json:"status" yaml:"status"`
 	}
 
+	// EnterOverloadPeriod is published by the node monitor when the node
+	// goes overloaded: its available memory or swap below the minimum the
+	// node configuration sets.
 	EnterOverloadPeriod struct {
 		pubsub.Msg `yaml:",inline"`
 	}
@@ -646,6 +673,16 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 	}
 
+	// InstanceConfigServed says this node served the config file of the
+	// object to the peer Node, as one installing it: the peer has an
+	// instance coming, which an orchestration deleting the object waits
+	// for, as its monitor may not have reached this node yet.
+	InstanceConfigServed struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+	}
+
 	// InstanceConfigFor message is published by a node during analyse of
 	// instance config file that is scoped for foreign nodes (peers).
 	InstanceConfigFor struct {
@@ -805,6 +842,9 @@ type (
 		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
+	// LeaveOverloadPeriod is published by the node monitor when the node is
+	// no longer overloaded: its available memory and swap above the
+	// minimum the node configuration sets.
 	LeaveOverloadPeriod struct {
 		pubsub.Msg `yaml:",inline"`
 	}
@@ -904,6 +944,29 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 		Name       string      `json:"name" yaml:"name"`
 		Value      pool.Status `json:"pool_status" yaml:"pool_status"`
+	}
+
+	// NodeTombstoneDeleted is published when a node removes its record of a
+	// delete or a purge: every node up, none publishing the version of the
+	// config it deleted, and each node that may have held it seen deleting
+	// its instance, or a day later.
+	NodeTombstoneDeleted struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		ID         string `json:"id" yaml:"id"`
+		Path       string `json:"path" yaml:"path"`
+	}
+
+	// NodeTombstoneUpdated is published when a node writes its record of a
+	// delete or a purge, the version of the config it deleted, as a node
+	// may still hold it, or loads it at start, and when a peer's record is
+	// received. A record never changes.
+	NodeTombstoneUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string           `json:"node" yaml:"node"`
+		ID         string           `json:"id" yaml:"id"`
+		Path       string           `json:"path" yaml:"path"`
+		Value      tombstone.Record `json:"tombstone" yaml:"tombstone"`
 	}
 
 	NodeSplitAction struct {
@@ -1244,18 +1307,26 @@ type (
 	NetIPAddrAdded struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
-		LinkIndex  int    `json:"link_index" yaml:"link_index"`
-		LinkName   string `json:"link_name" yaml:"link_name"`
-		Address    string `json:"address" yaml:"address"`
+		// NSID is the id the namespace of the daemon holds for the
+		// network namespace of the link, as the one of a container, nil
+		// for a link of the namespace of the daemon.
+		NSID      *int   `json:"nsid,omitempty" yaml:"nsid,omitempty"`
+		LinkIndex int    `json:"link_index" yaml:"link_index"`
+		LinkName  string `json:"link_name" yaml:"link_name"`
+		Address   string `json:"address" yaml:"address"`
 	}
 
 	// NetIPAddrDeleted is published when an IP address is deleted from a link
 	NetIPAddrDeleted struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
-		LinkIndex  int    `json:"link_index" yaml:"link_index"`
-		LinkName   string `json:"link_name" yaml:"link_name"`
-		Address    string `json:"address" yaml:"address"`
+		// NSID is the id the namespace of the daemon holds for the
+		// network namespace of the link, nil for a link of the namespace
+		// of the daemon.
+		NSID      *int   `json:"nsid,omitempty" yaml:"nsid,omitempty"`
+		LinkIndex int    `json:"link_index" yaml:"link_index"`
+		LinkName  string `json:"link_name" yaml:"link_name"`
+		Address   string `json:"address" yaml:"address"`
 	}
 
 	// FSMounted is published when a filesystem is mounted
@@ -1551,6 +1622,10 @@ func (e *InstanceConfigFor) Kind() string {
 	return "InstanceConfigFor"
 }
 
+func (e *InstanceConfigServed) Kind() string {
+	return "InstanceConfigServed"
+}
+
 func (e *InstanceConfigUpdated) Kind() string {
 	return "InstanceConfigUpdated"
 }
@@ -1843,6 +1918,22 @@ func (e *NodePoolStatusUpdated) Kind() string {
 	return "NodePoolStatusUpdated"
 }
 
+func (e *NodeTombstoneDeleted) Key() string {
+	return fmt.Sprintf("NodeTombstoneDeleted,node=%s,id=%s", e.Node, e.ID)
+}
+
+func (e *NodeTombstoneDeleted) Kind() string {
+	return "NodeTombstoneDeleted"
+}
+
+func (e *NodeTombstoneUpdated) Key() string {
+	return fmt.Sprintf("NodeTombstoneUpdated,node=%s,id=%s", e.Node, e.ID)
+}
+
+func (e *NodeTombstoneUpdated) Kind() string {
+	return "NodeTombstoneUpdated"
+}
+
 func (e *ProgressInstanceMonitor) Kind() string {
 	return "ProgressInstanceMonitor"
 }
@@ -1949,7 +2040,7 @@ func (e *NetIPAddrAdded) Kind() string {
 }
 
 func (e *NetIPAddrAdded) Key() string {
-	return fmt.Sprintf("NetIPAddrAdded,node=%s,link_name=%s,address=%s", e.Node, e.LinkName, e.Address)
+	return fmt.Sprintf("NetIPAddrAdded,node=%s,%slink_name=%s,address=%s", e.Node, nsidKey(e.NSID), e.LinkName, e.Address)
 }
 
 func (e *NetIPAddrDeleted) Kind() string {
@@ -1957,7 +2048,16 @@ func (e *NetIPAddrDeleted) Kind() string {
 }
 
 func (e *NetIPAddrDeleted) Key() string {
-	return fmt.Sprintf("NetIPAddrDeleted,node=%s,link_name=%s,address=%s", e.Node, e.LinkName, e.Address)
+	return fmt.Sprintf("NetIPAddrDeleted,node=%s,%slink_name=%s,address=%s", e.Node, nsidKey(e.NSID), e.LinkName, e.Address)
+}
+
+// nsidKey is the nsid part of the key of a network event, empty for an
+// event of the namespace of the daemon.
+func nsidKey(nsid *int) string {
+	if nsid == nil {
+		return ""
+	}
+	return fmt.Sprintf("nsid=%d,", *nsid)
 }
 
 func (e *FSMounted) Kind() string {

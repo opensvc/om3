@@ -64,6 +64,44 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 	require.ElementsMatchf(t, expected, base.Get(), "want: %s\ngot:  %s", expected, base.Get())
 }
 
+// apparmor_profile runs the container under the profile it names, the one
+// run_args sets dropped, its other security options kept; unset, the
+// engine picks its default profile.
+func TestRunArgsBaseAppArmorProfile(t *testing.T) {
+	run := func(profile string) []string {
+		bt := &BT{
+			T:               resource.T{ResourceID: &resourceid.T{Name: "container#1"}},
+			Path:            naming.Path{Name: "foo", Kind: naming.KindSvc},
+			AppArmorProfile: profile,
+			RunArgs:         []string{"--security-opt", "apparmor=other", "--security-opt=apparmor:another", "--security-opt", "no-new-privileges", "--security-opt=label=disable"},
+		}
+		require.NoError(t, bt.Configure())
+		a, err := (&ExecutorArg{BT: bt}).RunArgsBase(context.Background())
+		require.NoError(t, err)
+		return a.Get()
+	}
+	got := strings.Join(run("unconfined"), " ")
+	require.Contains(t, got, "--security-opt apparmor=unconfined")
+	require.NotContains(t, got, "apparmor=other")
+	require.NotContains(t, got, "apparmor:another", "the equals form too")
+	require.Contains(t, got, "--security-opt no-new-privileges")
+	require.Contains(t, got, "--security-opt=label=disable")
+
+	got = strings.Join(run(""), " ")
+	require.Contains(t, got, "--security-opt apparmor=other", "run_args decides without the keyword")
+	require.NotContains(t, got, "apparmor=unconfined")
+}
+
+// The profile the engine reports the container runs under is read from its
+// inspect, docker and podman naming it AppArmorProfile.
+func TestInspectAppArmorProfile(t *testing.T) {
+	i, err := (&ExecutorArg{}).InspectParser([]byte(`{"Id":"x","AppArmorProfile":"docker-default"}`))
+	require.NoError(t, err)
+	require.Equal(t, "docker-default", i.AppArmorProfile())
+	var none *InspectData
+	require.Equal(t, "", none.AppArmorProfile())
+}
+
 // Podman stops reading options at the first argument that is not one, so the
 // name of the container comes last or the options read as more names.
 func TestLogsArgsPutTheContainerNameLast(t *testing.T) {

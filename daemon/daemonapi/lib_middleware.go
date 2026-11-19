@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/allenai/go-swaggerui"
 	"github.com/google/uuid"
@@ -265,7 +266,9 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				// which is for the log and not for the caller: it tells
 				// an unauthenticated client whether a username exists,
 				// and which strategies this listener runs.
-				log.Errorf("authenticating request from %s: %s", r.RemoteAddr, err)
+				// The refusal is of the client, logged as a warning,
+				// its repeats paced.
+				refusedAuth.log(log, time.Now(), r.RemoteAddr, r.URL.Path, err)
 				c.Response().Header().Set("WWW-Authenticate", daemonauth.Challenge(r, err))
 				code := http.StatusUnauthorized
 				return JSONProblem(c, code, http.StatusText(code), "Invalid or missing credentials")

@@ -89,7 +89,7 @@ func (t *T) Configure(ctx context.Context) error {
 	if timeout < MinTimeout(interval) {
 		oldTimeout := timeout
 		timeout = MinTimeout(interval)
-		log.Warnf("readjust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		hbcfg.WarnOnce(log, t.Name(), "readjust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 
 	nodes := t.GetStrings("nodes")

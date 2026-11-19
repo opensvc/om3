@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 )
 
@@ -18,6 +19,10 @@ type (
 		Config   Config                       `json:"config"`
 
 		Daemon daemonsubsystem.Daemon `json:"daemon"`
+
+		// Tombstone holds the records of the deletes and purges the node
+		// keeps, by orchestration id.
+		Tombstone map[string]tombstone.Record `json:"tombstone,omitempty"`
 
 		//Locks map[string]Lock `json:"locks"`
 	}
@@ -50,5 +55,11 @@ func (n *Node) DeepCopy() *Node {
 	c.Os = n.Os.DeepCopy()
 	c.Config = *n.Config.DeepCopy()
 	c.Daemon = *n.Daemon.DeepCopy()
+	if n.Tombstone != nil {
+		c.Tombstone = make(map[string]tombstone.Record, len(n.Tombstone))
+		for id, rec := range n.Tombstone {
+			c.Tombstone[id] = rec.DeepCopy()
+		}
+	}
 	return &c
 }

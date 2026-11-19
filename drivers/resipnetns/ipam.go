@@ -54,6 +54,13 @@ func (t *T) onLan() bool {
 	return ok
 }
 
+// publishIgnored says the publish keyword is set and not applied: an
+// address of a lan network is on the segment of its clients, which reach it
+// directly, so no port of the node is forwarded to it, whatever the mode.
+func (t *T) publishIgnored() bool {
+	return len(t.Publish) > 0 && t.onLan()
+}
+
 // keeps says the resource keeps its address from a start to the next, until
 // it is unprovisioned, as ip.host does, rather than draw one at each start
 // and release it at each stop.
@@ -133,6 +140,7 @@ func (t *T) networkDev() string {
 func (t *T) Configure() error {
 	nw, err := t.resolveNetwork()
 	t.configureMode(nw)
+	t.configurePublish()
 	t.configureVLAN(nw)
 	if err != nil {
 		return err
@@ -196,6 +204,26 @@ func (t *T) configureMode(nw network.Networker) {
 		t.Mode = "bridge"
 	case len(modes) > 0 && !slices.Contains(modes, t.Mode):
 		t.netErr = fmt.Errorf("mode %s is not one of the modes of network %s: %s", t.Mode, nw.Name(), strings.Join(modes, " "))
+	}
+}
+
+// configurePublish refuses the publish keyword in a mode the node does not
+// reach the address in: the forwarding of a port of the node to it would
+// never get an answer. The address of such a mode is on its segment, and
+// reached there directly.
+//
+// A lan network is not refused: its publishes are ignored, and the status
+// says so, see publishIgnored.
+func (t *T) configurePublish() {
+	if len(t.Publish) == 0 || t.netErr != nil || t.onLan() {
+		return
+	}
+	mode := t.Mode
+	if t.Tags.Has(tagDedicated) {
+		mode = "dedicated"
+	}
+	if slices.Contains(resip.PublishModesRefused, mode) {
+		t.netErr = fmt.Errorf("publish is not supported in the %s mode, where the node does not reach the address: use the bridge or ovs mode, or reach the address directly on its segment", mode)
 	}
 }
 

@@ -58,6 +58,9 @@ func (t *CmdObjectList) Run(kind string) error {
 		return fmt.Errorf("%s", resp.JSON403)
 	case 500:
 		return fmt.Errorf("%s", resp.JSON500)
+	case 503:
+		// The daemon is starting, its objects not discovered yet.
+		return fmt.Errorf("%s", resp.JSON503)
 	default:
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}

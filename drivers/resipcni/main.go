@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actionresdeps"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -43,6 +44,7 @@ type (
 
 		// config
 		Expose        []string `json:"expose"`
+		Publish       []string `json:"publish"`
 		NetNS         string   `json:"netns"`
 		NSDev         string   `json:"nsdev"`
 		Network       string   `json:"network"`
@@ -265,7 +267,7 @@ func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
 	if ip, _, err := t.ipNet(ctx); (err == nil) && (len(ip) > 0) {
 		data["ipaddr"] = ip.String()
 	}
-	data["expose"] = t.Expose
+	data["publish"], data["expose"] = resip.PublishInfo(t.publishKey(), t.Publish, t.Expose)
 	if hostname, _ := t.getResourceHostname(ctx); hostname != "" {
 		if t.DNSNameSuffix != "" {
 			hostname += t.DNSNameSuffix
@@ -306,11 +308,16 @@ func (t *T) ProvisionStart(ctx context.Context) error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if t.Status(ctx) == status.Up {
+	// Warn is an address up with its published ports not forwarded.
+	if s := t.Status(ctx); s == status.Up || s == status.Warn {
 		t.Log().Infof("already up")
 		// The policy routing of an address set up by a former agent,
-		// or lost, is set again: a start not setting it fails.
-		return t.startSourceRoute(ctx)
+		// or lost, is set again: a start not setting it fails. So are
+		// the published ports.
+		if err := t.startSourceRoute(ctx); err != nil {
+			return err
+		}
+		return t.startPublish(ctx)
 	}
 	if err := t.addObjectNetNS(); err != nil {
 		return err
@@ -324,13 +331,43 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startSourceRoute(ctx); err != nil {
 		return err
 	}
+	if err := t.startPublish(ctx); err != nil {
+		return err
+	}
 	if err := resip.WaitDNSRecord(ctx, t.WaitDNS, t.ObjectFQDN, t.DNS); err != nil {
 		return err
 	}
 	return nil
 }
 
+// publishKey is the key the forwardings of the published ports of the
+// resource are recorded under on the node.
+func (t *T) publishKey() network.PublishOwner {
+	return resip.PublishOwner(t.Path, t.RID())
+}
+
+// startPublish forwards the published ports to the address the cni plugins
+// gave the namespace.
+func (t *T) startPublish(ctx context.Context) error {
+	if len(t.Publish) == 0 {
+		return nil
+	}
+	ip, ipnet, err := t.ipNetCtx(ctx)
+	if err != nil {
+		return err
+	}
+	if ip == nil {
+		return fmt.Errorf("publish: no address of the network %s in the namespace", t.Network)
+	}
+	return resip.StartPublish(ctx, t.Log(), t.publishKey(), t.Publish, ip, ipnet)
+}
+
 func (t *T) Stop(ctx context.Context) error {
+	// The forwardings go first, while the address they go to is still the
+	// resource's, and whatever the state of the namespace.
+	if err := resip.StopPublish(ctx, t.Log(), t.publishKey()); err != nil {
+		return err
+	}
 	if t.Status(ctx) == status.Down && t.leftGuestDev(ctx) == "" {
 		t.Log().Infof("already down")
 		return nil
@@ -402,6 +439,10 @@ func (t *T) Status(ctx context.Context) status.T {
 			if err := r.Check(netns); err != nil {
 				t.StatusLog().Warn("%s", err)
 			}
+		}
+		if len(t.Publish) > 0 {
+			ip, _, _ := t.nsIPNet(netns)
+			return resip.StatusPublish(t.StatusLog(), t.publishKey(), t.Publish, ip, status.Up)
 		}
 		return status.Up
 	}

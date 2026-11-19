@@ -8,6 +8,13 @@ func (t *Manager) orchestrateFrozen() {
 		t.frozenFromIdle()
 	case node.MonitorStateFreezeSuccess:
 		t.frozenFromFrozen()
+	case node.MonitorStateUnfreezeSuccess:
+		// A thaw done here, the node not back to idle yet: a freeze asked
+		// meanwhile starts from idle.
+		t.log.Infof("freeze asked as the thaw is done here: back to idle")
+		t.state.State = node.MonitorStateIdle
+		t.change = true
+		t.frozenFromIdle()
 	}
 }
 

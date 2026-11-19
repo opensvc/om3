@@ -129,6 +129,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 	//
 	// Add directory watch for head and its subdirs, and for .conf files
 	//
+	var scanned naming.Paths
 	initDirWatches := func(head string) error {
 		return filepath.WalkDir(
 			head,
@@ -161,6 +162,9 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 							log.Debug().Msgf("daemon: discover: fs: add file %s", filename)
 						}
 					*/
+					if filename != nodeConf {
+						scanned = append(scanned, p)
+					}
 					log.Tracef("publish msgbus.ConfigFileUpdated config file %s", filename)
 					t.pubConfigFileUpdatedDebounce(filename, p)
 				}
@@ -201,6 +205,13 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 
 		if err := initDirWatches(rawconfig.Paths.Etc); err != nil {
 			log.Errorf("init fs watches walking %s: %s", rawconfig.Paths.Etc, err)
+		}
+		// cfg settles the initial discovery once the objects of the
+		// configuration files found are discovered.
+		select {
+		case <-ctx.Done():
+			return
+		case t.cfgCmdC <- &initialScan{paths: scanned}:
 		}
 
 		// watcher-events handler loop

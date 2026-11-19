@@ -112,6 +112,17 @@ type (
 		// orchestration being run, held until it ends.
 		orchestrationPending *msgbus.NodeOrchestrationEnd
 
+		// orchestrationEnding is the end of a cluster orchestration done
+		// here, held back from orchestrationEndingSince until no live peer
+		// carries the orchestration any more: a --wait ending as the node
+		// answering it is done said the cluster frozen with its peers
+		// still freezing, and a thaw asked then reached them mid-way.
+		orchestrationEnding      *msgbus.NodeOrchestrationEnd
+		orchestrationEndingSince time.Time
+
+		// orchestrationClearTimer bounds the hold of orchestrationEnding.
+		orchestrationClearTimer *time.Timer
+
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
@@ -568,6 +579,13 @@ func (t *Manager) worker() {
 	statsTicker := time.NewTicker(statsInterval)
 	defer statsTicker.Stop()
 
+	t.orchestrationClearTimer = time.NewTimer(time.Hour)
+	t.orchestrationClearTimer.Stop()
+	defer t.orchestrationClearTimer.Stop()
+	// The end held back is announced as the monitor stops: its part is
+	// done, and nothing would announce it later.
+	defer t.publishOrchestrationEnding()
+
 	arbitratorTicker := time.NewTicker(arbitratorInterval)
 	defer arbitratorTicker.Stop()
 	defer t.touchLastShutdown()
@@ -659,6 +677,8 @@ func (t *Manager) worker() {
 		case <-certTicker.C:
 			t.checkCert()
 			t.refreshNodeIssues()
+		case <-t.orchestrationClearTimer.C:
+			t.onOrchestrationEndingCheck()
 		}
 	}
 }

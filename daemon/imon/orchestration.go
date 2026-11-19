@@ -37,6 +37,10 @@ func (t *Manager) orchestrate() {
 		t.log.Tracef("orchestrate return on no nodeStatus[o.localhost]")
 		return
 	}
+	if t.adoptTombstone() {
+		// Published before it runs, for the peers to see it.
+		return
+	}
 	if !t.isConvergedGlobalExpect() {
 		t.log.Tracef("orchestrate return on not isConvergedGlobalExpect")
 		return
@@ -189,6 +193,9 @@ func (t *Manager) setWaitChildren() bool {
 			reason = fmt.Sprintf("avail status is %s", availStatus)
 		} else if teardown {
 			reason = childInstanceProvisioned(relation)
+			if reason == "" && t.state.GlobalExpect == instance.MonitorGlobalExpectPurged {
+				reason = childInstanceBeingDeleted(relation)
+			}
 		}
 		if reason != "" {
 			if t.state.State != instance.MonitorStateWaitChildren {
@@ -214,7 +221,9 @@ func (t *Manager) endOrchestration() {
 	t.setOrchestrationVerdict()
 	if !t.endWithDeletion {
 		// Else the end goes with the InstanceMonitorDeleted event.
-		defer t.publishOrchestrationEnded()
+		// The end is announced once every peer cleared the orchestration
+		// too, for a next request to find none in progress anywhere.
+		defer t.endOrchestrationWhenPeersCleared()
 	}
 
 	t.clearStateSpokenToPeers()
@@ -434,6 +443,54 @@ func (t *Manager) isLocalStatusCurrent() bool {
 // parent goes on, and the verdict of the orchestration says what failed.
 // A relation to a whole object is not looked at, its instances may live on
 // other nodes.
+// childInstanceBeingDeleted returns why the purge of a parent waits for the
+// instance of a child node relation still being purged or deleted, "" when
+// it does not: a volume purged as the service using it was unprovisioned,
+// and before its instance was deleted, was gone with the configuration of
+// the service naming it still there, kept for good by a delete failing
+// (qatests 512.07.3). A child whose purge or delete failed holds nothing.
+func childInstanceBeingDeleted(relation string) string {
+	p, node, err := naming.Relation(relation).Split()
+	if err != nil || node == "" {
+		return ""
+	}
+	// Its status unset is the instance gone: the deletion of the status,
+	// announced as its monitor is unset, is what wakes the parent.
+	if instance.StatusData.GetByPathAndNode(p, node) == nil {
+		return ""
+	}
+	mon := instance.MonitorData.GetByPathAndNode(p, node)
+	if mon == nil {
+		return ""
+	}
+	switch mon.GlobalExpect {
+	case instance.MonitorGlobalExpectPurged, instance.MonitorGlobalExpectDeleted:
+	default:
+		return ""
+	}
+	if mon.State.IsOneOf(instance.MonitorStatesFailure...) {
+		return ""
+	}
+	return fmt.Sprintf("is being deleted (%s)", mon.State)
+}
+
+// keepsUnconfiguredRelation returns why a relation the configuration no
+// longer lists is kept, or empty: a child instance still purged or deleted.
+// A service purged unprovisions its volume resources first, which unclaim the
+// volume, removing the service from its children before the service instance
+// is gone: a purge of the volume then waits for it all the same, as
+// setWaitChildren does for a child configured. It goes with a later
+// configuration update, once the instance is gone.
+func keepsUnconfiguredRelation(name, relation string) string {
+	if name != "Child" {
+		return ""
+	}
+	if reason := childInstanceBeingDeleted(relation); reason != "" {
+		return "the instance " + reason
+	}
+	return ""
+}
+
 func childInstanceProvisioned(relation string) string {
 	p, node, err := naming.Relation(relation).Split()
 	if err != nil || node == "" {
@@ -450,4 +507,27 @@ func childInstanceProvisioned(relation string) string {
 		}
 	}
 	return fmt.Sprintf("is provisioned (%s)", st.Provisioned)
+}
+
+// skipsNodeAway says whether the leader of an unprovision or a purge goes on
+// without the instance of a peer away: only if the request was forced. A
+// node away with an instance up or provisioned as the request came was
+// refused it without --force; one that left since, as one restarting its
+// daemon or entering a maintenance, is waited for, until it is back and runs
+// its part or the maintenance grace period drops its data: the leader does
+// not release shared resources under it unless the operator forced it.
+func (t *Manager) skipsNodeAway(nodename string) bool {
+	return t.isNodeAway(nodename) && forceAway(t.state.GlobalExpectOptions)
+}
+
+// isNodeAway says the peer is away, its daemon stopped, starting, rejoining,
+// shutting down or upgrading: its instance, its data kept in the cluster, runs no
+// orchestration, and the leader of an unprovision or a purge waited for its
+// retained status until the maintenance grace period dropped it.
+func (t *Manager) isNodeAway(nodename string) bool {
+	if nodename == t.localhost {
+		return false
+	}
+	mon, ok := t.nodeMonitor[nodename]
+	return ok && mon.State.IsAwayFromObjects()
 }

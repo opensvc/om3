@@ -318,6 +318,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	sub := a.Bus.Sub(name, pubsub.Timeout(time.Second), a.SubQS)
 
+	var subFilters pubsub.Filters
 	for _, filter := range filters {
 		if filter.Kind == nil {
 			log.Tracef("filtering %v %v", filter.Kind, filter.Labels)
@@ -336,7 +337,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			log.Warnf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
 			continue
 		}
-		sub.AddFilter(filter.Kind, filter.Labels...)
+		subFilters.Add(filter.Kind, filter.Labels...)
 	}
 	if hasSelector && len(requestedFilterByFilterIdentifier) == 0 {
 		// no filters => all events must be forwarded, add ObjectCreated &
@@ -354,15 +355,17 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		createdMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectCreated", createdMsg) {
 			log.Tracef("add hidden filtering: ObjectCreated")
-			sub.AddFilter(&msgbus.ObjectCreated{})
+			subFilters.Add(&msgbus.ObjectCreated{})
 		}
 		deleteMsg := &msgbus.ObjectDeleted{}
 		deleteMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectDeleted", deleteMsg) {
 			log.Tracef("add hidden filtering: ObjectDeleted,node=%s", a.localhost)
-			sub.AddFilter(&msgbus.ObjectDeleted{}, a.LabelLocalhost)
+			subFilters.Add(&msgbus.ObjectDeleted{}, a.LabelLocalhost)
 		}
 	}
+	// One operation of the bus for all the filters a client asks for.
+	sub.AddFilters(subFilters)
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {

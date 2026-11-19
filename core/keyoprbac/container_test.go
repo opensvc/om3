@@ -79,3 +79,14 @@ func TestTheNamespacesJoinedAreTheObjects(t *testing.T) {
 	assert.Error(t, Denied(admin, naming.KindSvc, "ip#1", "netns", "container:othersvc.container.0", none))
 	assert.Error(t, Denied(admin, naming.KindSvc, "ip#1", "netns", "ns:/proc/1/ns/net", none))
 }
+
+// The apparmor profile of a container, whatever its value, unconfined or
+// a profile loaded on the node, needs the root grant.
+func TestContainerAppArmorProfileNeedsRoot(t *testing.T) {
+	admin := rbac.Grants{rbac.NewGrant(rbac.RoleAdmin, "ns1")}
+	root := rbac.Grants{rbac.GrantRoot}
+	for _, v := range []string{"unconfined", "docker-default", "my-profile"} {
+		assert.Errorf(t, Denied(admin, naming.KindSvc, "container#1", "apparmor_profile", v, none), "admin sets %s", v)
+		assert.NoErrorf(t, Denied(root, naming.KindSvc, "container#1", "apparmor_profile", v, none), "root sets %s", v)
+	}
+}

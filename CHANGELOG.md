@@ -67,6 +67,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Orchestration & Management
 
+* **Tombstones**: A node deleting its instance in a purge or a delete some nodes may not have run writes a tombstone, the version of the config deleted, its modification time, published to every node, so the object does not come back from a node holding that version: no node fetches it, nor serves it to a peer. A node up but not seen running the delete completes it. A node away keeps its instance, flagged stopped, the issue shown in its status: the daemon starts nothing of it on its own, and a start of the object is refused. The operator decides: `om <path> purge` there, an edit or a touch of its config, a newer version, to keep it, or `om <path> instance start` there to run it as it is. A tombstone is removed once every node is up, none holds the version deleted, and each node that may have held it was seen deleting its instance, or a day later. `om cluster tombstone ls`, `ox cluster tombstone ls` and `GET /api/cluster/tombstone` list them.
+
 * **Live migration for KVM**: Full support for live migration of KVM instances with data on `disk.disk` and `disk.drbd` resources using `om <svc> switch --live` and `om <svc> takeover --live` commands.
 
 * **New placement policy**: `last start` policy uses the mtime of `<objvar>/last_start` as the candidate sort key, with more recent starts having higher priority.
@@ -662,6 +664,26 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     provision, where it ran with an empty path.
 
 ### Commands
+
+* **A purge, a delete or an unprovision leaving the instance of a node away needs `--force`:**
+    `om <path> purge`, `delete` and `unprovision`, and their `ox` and api counterparts, are refused when a node
+    down, in maintenance or unknown last published its instance up or provisioned, provisioned only for an
+    unprovision, naming that node. The orchestration does not wait for a node away: a purge or a delete can not
+    release its instance, maybe the only copy of the data, and an unprovision may release resources it still uses.
+    `--force` goes on without it; a purge or a delete then leaves a tombstone, its instance kept stopped on its
+    return, see `om cluster tombstone ls`. The `--force` of `purge` and `unprovision`, hidden before and allowing the dangerous
+    operations of a `--local` action, is shown and keeps that meaning too.
+
+    ```
+    om svc1 purge          # refused: n3 away with an instance up or provisioned
+    om svc1 purge --force  # purged on the nodes up, n3 kept stopped on its return
+    ```
+
+* **A create of another object under a name a node may still hold is refused without `--force`:**
+    `om <path> create`, `ox` and the api refuse a name purged or deleted while a node publishes the version of
+    the config deleted, or a node away may hold it, naming them: purge it there, or retry once the node is back.
+    A restore of the same object, its id kept, is not refused. `--force` creates it anyway: a node holding the deleted
+    version then takes the new config, newer, over its instance.
 
 * **Configuration updates and queries use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.

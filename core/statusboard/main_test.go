@@ -372,6 +372,20 @@ func TestANoteNoCellPointsToStartsWithADot(t *testing.T) {
 	assert.Contains(t, lines, "· info frozen n1", "a dot where a numbered note has its number: %v", lines)
 }
 
+// The issues the monitors of the instances say are notes, the nodes saying
+// the same sharing one.
+func TestTheIssuesOfTheMonitorsAreNotes(t *testing.T) {
+	p := naming.Path{Namespace: "root", Kind: naming.KindSvc, Name: "s1"}
+	issue := "purged at 2026-11-18T22:39:19+01:00, this version of the config deleted: run om root/svc/s1 purge, or edit or touch its config to keep it"
+	n1 := newInstance(p, "n1", status.Down)
+	n1.Monitor.Issues = []string{issue}
+	n3 := newInstance(p, "n3", status.Down)
+	n3.Monitor.Issues = []string{issue}
+	board := Render(newDigest(n1, newInstance(p, "n2", status.Up), n3), 100)
+	assert.Contains(t, noteLines(t, board), "· warn issue n1 n3", "the nodes of the same issue share its note")
+	assert.Contains(t, notesOf(t, board), "this version of the config deleted")
+}
+
 // An instance down beside instances in excess is not the issue to stress:
 // the excess is, which a note says.
 func TestDownIsGrayBesideInstancesInExcess(t *testing.T) {

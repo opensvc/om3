@@ -50,6 +50,7 @@ func (t *T) startCertWatch(ctx context.Context) {
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{}, labelLocalhost)
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, labelLocalhost)
 	sub.Start()
 	go func() {
 		defer func() {
@@ -63,20 +64,42 @@ func (t *T) startCertWatch(ctx context.Context) {
 			status := node.StatusData.GetByNode(localhost)
 			return status != nil && status.IsLeader
 		}
+		// A daemon starting is alone in its live peers until it hears
+		// them, and elects itself the speaker for that moment: a node
+		// just joined then reissued the certificate the cluster then took
+		// over the one of the speaker. The speaker renews once its node
+		// rejoined its peers, the renewals asked meanwhile left pending.
+		rejoined := func() bool {
+			mon := node.MonitorData.GetByNode(localhost)
+			return mon != nil && !mon.State.IsOneOf(node.MonitorStateInit, node.MonitorStateRejoin)
+		}
+		renewPending := false
+		speaker := func() bool {
+			if !isLeader() {
+				return false
+			}
+			if !rejoined() {
+				renewPending = true
+				return false
+			}
+			return true
+		}
 		caSecPaths := clusterCASecPaths()
 		// The speaker may have been elected before the subscription.
 		isSpeaker := false
 		if isLeader() {
 			isSpeaker = true
-			t.renewCA(ctx)
-			t.renewCert(ctx)
+			if speaker() {
+				t.renewCA(ctx)
+				t.renewCert(ctx)
+			}
 		}
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if isLeader() {
+				if speaker() {
 					t.renewCA(ctx)
 					t.renewCert(ctx)
 				}
@@ -90,14 +113,14 @@ func (t *T) startCertWatch(ctx context.Context) {
 						// rewrites the sec too, and comes back here
 						// with a certificate naming them, which is
 						// not due.
-						if isLeader() {
+						if speaker() {
 							t.renewCert(ctx)
 						}
 					case m.Path == caPath:
 						t.reinstallCaFiles()
 						// The chain of the certificate holds the
 						// certificate of the ca.
-						if isLeader() {
+						if speaker() {
 							t.renewCert(ctx)
 						}
 					case slices.Contains(caSecPaths, m.Path.String()):
@@ -111,15 +134,24 @@ func (t *T) startCertWatch(ctx context.Context) {
 					if len(m.NodesAdded) == 0 && len(m.NodesRemoved) == 0 {
 						continue
 					}
-					if isLeader() {
+					if speaker() {
 						t.renewCert(ctx)
 					}
 				case *msgbus.NodeStatusUpdated:
-					if m.Value.IsLeader && !isSpeaker {
+					if m.Value.IsLeader && !isSpeaker && speaker() {
 						t.renewCA(ctx)
 						t.renewCert(ctx)
 					}
 					isSpeaker = m.Value.IsLeader
+					if !isSpeaker {
+						renewPending = false
+					}
+				case *msgbus.NodeMonitorUpdated:
+					if renewPending && speaker() {
+						renewPending = false
+						t.renewCA(ctx)
+						t.renewCert(ctx)
+					}
 				}
 			}
 		}

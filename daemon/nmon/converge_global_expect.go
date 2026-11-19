@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/expectstamp"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value
@@ -27,16 +28,22 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			continue
 		}
 		nodeTime := data.GlobalExpectUpdatedAt
-		if mostRecentUpdated.Before(nodeTime) {
+		if mostRecentNode == "" || expectstamp.NewerCandidate(nodeTime, data.OrchestrationID, mostRecentUpdated, t.nodeMonitor[mostRecentNode].OrchestrationID) {
 			mostRecentNode = nodename
 			mostRecentUpdated = nodeTime
 		}
 	}
-	if mostRecentUpdated.IsZero() {
+	if mostRecentUpdated.IsZero() || mostRecentEndedUpdated.After(mostRecentUpdated) {
+		// No request running on a peer, or the one running is older
+		// than one a peer ended since, as a peer lagging behind
+		// carries it still: not adopted, to run after the request
+		// that replaced it.
 		t.alignEndedGlobalExpect(mostRecentEndedNode, mostRecentEndedUpdated)
 		return
 	}
-	if mostRecentUpdated.After(t.state.GlobalExpectUpdatedAt) {
+	// Of a peer stamping its global expect the same as this node, the one
+	// of the greater orchestration id is kept on both.
+	if expectstamp.Newer(mostRecentUpdated, t.nodeMonitor[mostRecentNode].OrchestrationID, t.state.GlobalExpectUpdatedAt, t.state.OrchestrationID) {
 		t.change = true
 		t.state.GlobalExpect = t.nodeMonitor[mostRecentNode].GlobalExpect
 		t.state.GlobalExpectUpdatedAt = t.nodeMonitor[mostRecentNode].GlobalExpectUpdatedAt
@@ -92,7 +99,14 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 		if s == t.localhost {
 			continue
 		}
-		if localUpdated.After(data.GlobalExpectUpdatedAt) {
+		if data.State.IsAway() && t.state.GlobalExpect != node.MonitorGlobalExpectUpgraded {
+			// A peer stopped, starting or rejoining adopts nothing
+			// now: one rejoining adopts it then, one that missed a
+			// cluster freeze catches it as it rejoins. An upgrade
+			// waits for every node.
+			continue
+		}
+		if expectstamp.Newer(localUpdated, t.state.OrchestrationID, data.GlobalExpectUpdatedAt, data.OrchestrationID) {
 			t.log.Tracef("wait global expect propagation on %s", s)
 			return false
 		}

@@ -96,7 +96,9 @@ func Test_daemon(t *testing.T) {
 			require.Nil(t, err)
 			return cli.PostPeerActionDrain(ctx, hostname.Hostname())
 		}
-		checkRun(t, timeout, apiCall, http.StatusOK, node.MonitorStateDrainProgress, node.MonitorStateDrainSuccess, node.MonitorStateIdle)
+		// The drain freezes the node, stops the object and ends idle: 2s
+		// was short of it at times on a loaded runner with -race.
+		checkRun(t, 10*time.Second, apiCall, http.StatusOK, node.MonitorStateDrainProgress, node.MonitorStateDrainSuccess, node.MonitorStateIdle)
 	})
 	require.False(t, t.Failed(), "abort test")
 

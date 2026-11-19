@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/expectstamp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
@@ -288,6 +289,12 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		}
 		if *c.Value.GlobalExpect != node.MonitorGlobalExpectAborted {
 			for nodename, data := range t.nodeMonitor {
+				// A node left out of the orchestration is so whatever
+				// it carries, as a down peer the global expect of an
+				// earlier one.
+				if skipsClusterOrchestration(*c.Value.GlobalExpect, nodename == t.localhost, data.State) {
+					continue
+				}
 				if data.GlobalExpect == *c.Value.GlobalExpect {
 					err := fmt.Errorf("%w %s: more recent value %s on node %s", node.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, data.GlobalExpect, nodename)
 					t.log.Infof("%s", err)
@@ -310,7 +317,13 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 			t.log.Infof("set global expect %s -> %s", t.state.GlobalExpect, *c.Value.GlobalExpect)
 			t.change = true
 			t.state.GlobalExpect = *c.Value.GlobalExpect
-			t.state.GlobalExpectUpdatedAt = time.Now()
+			// Stamped after every stamp seen, whatever the skew of the
+			// clock of this node with the ones of the peers.
+			seen := []time.Time{t.state.GlobalExpectUpdatedAt}
+			for _, data := range t.nodeMonitor {
+				seen = append(seen, data.GlobalExpectUpdatedAt)
+			}
+			t.state.GlobalExpectUpdatedAt = expectstamp.Next(time.Now(), seen...)
 			resetFailedState()
 		}
 		return nil
@@ -370,6 +383,9 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 	delete(t.hbSecretChecksumByNodename, c.Node)
 
 	t.saveNodesInfo()
+
+	// A peer forgotten is not waited for to end an orchestration.
+	t.onOrchestrationEndingCheck()
 
 	var forgetType string
 	if !slices.Contains(clusternode.Get(), c.Node) {
@@ -459,6 +475,7 @@ func (t *Manager) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
 	t.updateIfChange()
 	t.orchestrate()
 	t.updateIfChange()
+	t.onOrchestrationEndingCheck()
 }
 
 func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
@@ -473,6 +490,7 @@ func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.updateIfChange()
 	t.orchestrate()
 	t.updateIfChange()
+	t.onOrchestrationEndingCheck()
 }
 
 func missingNodes(nodes, joinedNodes []string) []string {

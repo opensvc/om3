@@ -24,6 +24,7 @@ var (
 
 	kws = []*keywords.Keyword{
 		&resip.KeywordWaitDNS,
+		&resip.KeywordPublish,
 		{
 			Attr:     "DNSNameSuffix",
 			Example:  "-backup",
@@ -192,7 +193,7 @@ var (
 		{
 			Attr:      "Expose",
 			Converter: converters.List,
-			Example:   "443/tcp:8443 53/udp",
+			Example:   "8443:443/tcp 53/udp",
 			Option:    "expose",
 			Group:     resip.GroupDNS.ID,
 			Scopable:  true,
@@ -221,6 +222,6 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(kws...)
-	m.AddGroups(resip.GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS)
+	m.AddGroups(resip.GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS, resip.GroupPublish)
 	return m
 }

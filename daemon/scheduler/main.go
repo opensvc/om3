@@ -70,6 +70,10 @@ type (
 		schedules           Schedules
 		isCollectorJoinable bool
 
+		// collectors is the last collector status of each node: the one of
+		// the speaker says whether the collector answers.
+		collectors map[string]daemonsubsystem.Collector
+
 		wg sync.WaitGroup
 
 		// running counts the jobs running in the background.
@@ -613,7 +617,8 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{}, labelLocalhost)
-	sub.AddFilter(&msgbus.DaemonCollectorUpdated{}, labelLocalhost)
+	// Of every node: the speaker says whether the collector answers.
+	sub.AddFilter(&msgbus.DaemonCollectorUpdated{})
 	sub.AddFilter(&msgbus.NetworkPeersUpdated{}, labelLocalhost)
 	sub.AddFilter(&msgbus.FileInstalled{}, labelLocalhost)
 	sub.Start()
@@ -904,21 +909,55 @@ func (t *T) writeLastRunOnFile(path naming.Path, rid, nodename string, tm time.T
 }
 
 func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
-	previousIsCollectorJoinable := t.isCollectorJoinable
-	switch c.Value.State {
-	case "speaker", "speaker-candidate":
-		t.isCollectorJoinable = true
-		if !previousIsCollectorJoinable {
-			t.log.Infof("enable jobs requiring a joinable collector")
-			t.scheduleAll()
-		}
-	default:
-		t.isCollectorJoinable = false
-		if previousIsCollectorJoinable {
-			t.log.Infof("disable jobs requiring a joinable collector")
-			t.scheduleAll()
-		}
+	if t.collectors == nil {
+		t.collectors = make(map[string]daemonsubsystem.Collector)
 	}
+	t.collectors[c.Node] = c.Value
+	previousIsCollectorJoinable := t.isCollectorJoinable
+	joinable, reason := collectorJoinable(t.localhost, t.collectors)
+	t.isCollectorJoinable = joinable
+	switch {
+	case joinable && !previousIsCollectorJoinable:
+		t.log.Infof("enable jobs requiring a joinable collector")
+		t.scheduleAll()
+	case !joinable && previousIsCollectorJoinable:
+		t.log.Infof("disable jobs requiring a joinable collector: %s", reason)
+		t.scheduleAll()
+	}
+}
+
+// collectorJoinable says whether the jobs requiring the collector run, and
+// why not: the collector of the node is to be able to speak, and the
+// speaker, this node or the one it follows, is not to find the collector
+// unreachable. The jobs feeding an unreachable collector each failed the
+// same way, logged as errors at each run: they are held until it answers
+// again, the next runs sending what they would have, as a stats push
+// sending all the stats since the last one pushed.
+func collectorJoinable(localhost string, collectors map[string]daemonsubsystem.Collector) (bool, string) {
+	local, ok := collectors[localhost]
+	if !ok {
+		return false, "collector state unknown"
+	}
+	switch local.State {
+	case "speaker", "speaker-candidate":
+	default:
+		return false, "collector " + local.State
+	}
+	speaker := localhost
+	if local.State != "speaker" && local.Speaker != "" {
+		speaker = local.Speaker
+	}
+	s, ok := collectors[speaker]
+	if speaker != localhost && (!ok || s.State == "") {
+		// The speaker this node follows says whether the collector
+		// answers: the jobs wait for its status, as at the start of
+		// the daemon.
+		return false, fmt.Sprintf("the collector status of the speaker %s is not known yet", speaker)
+	}
+	if ok && s.UnreachableSince != nil && s.Url == local.Url {
+		return false, fmt.Sprintf("the collector %s is unreachable from %s since %s", s.Url, speaker, s.UnreachableSince.Format(time.RFC3339))
+	}
+	return true, ""
 }
 
 func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {

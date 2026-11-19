@@ -248,15 +248,24 @@ func (r daemonDataResult) apply(t *T) {
 		}
 		t.log.Debugf("send daemon %s: %s", r.kind(), r.err)
 		t.daemonStatusFailure.update(t.log, now, r.err, 0)
+		if isUnreachable(r.err) {
+			t.setUnreachable(now)
+		} else if !r.respondedAt.IsZero() {
+			// An answer refusing the send, as a 500, is an answer:
+			// the collector is reached.
+			t.setReachable()
+		}
 	case r.statusCode == r.resyncCode():
 		// The collector detects a break of the changes chain: send the
 		// full dataset.
 		t.log.Infof("%s %s status code %d", http.MethodPost, r.path(), r.statusCode)
 		t.initChanges()
 		t.daemonStatusFailure.update(t.log, now, nil, 0)
+		t.setReachable()
 	default:
 		t.previousUpdatedAt = r.now
 		t.daemonStatusFailure.update(t.log, now, nil, 0)
+		t.setReachable()
 		t.handlePingOrStatusResponse(r)
 	}
 }

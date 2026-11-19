@@ -159,3 +159,19 @@ func TestInstallLockPath(t *testing.T) {
 	assert.Equal(t, "/tmp/x/.foo.conf.lock", installLockPath("/tmp/x/foo.conf"))
 	assert.Equal(t, "/etc/.opensvc.lock", installLockPath("/etc/opensvc"))
 }
+
+// A file synced by its writer is installed by a rename alone, under the
+// lock: its content in place, the source gone.
+func TestInstallSyncedFile(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "a.conf.1.tmp")
+	dst := filepath.Join(dir, "a.conf")
+	require.NoError(t, os.WriteFile(dst, []byte("[DEFAULT]\nold = 1\n"), 0o600))
+	require.NoError(t, os.WriteFile(src, []byte("[DEFAULT]\nnew = 1\n"), 0o600))
+	require.NoError(t, InstallSyncedFile(src, dst))
+	b, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	require.Equal(t, "[DEFAULT]\nnew = 1\n", string(b))
+	_, err = os.Stat(src)
+	require.True(t, os.IsNotExist(err))
+}

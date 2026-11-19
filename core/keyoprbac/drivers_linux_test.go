@@ -56,6 +56,15 @@ func TestIPCNIKeepsEveryKeywordItHad(t *testing.T) {
 				"trigger %s must stay refused", option)
 			continue
 		}
+		if option == "publish" {
+			// Added after the default: open for a port of the node
+			// drawn, refused on purpose for one named.
+			assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "80/tcp", section("network")),
+				"ip.cni keyword %s draws a port of the node", option)
+			assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "25489:80", section("network")),
+				"ip.cni keyword %s names a port of the node", option)
+			continue
+		}
 		value := "x"
 		if option == "netns" {
 			// A namespace is one of a container of the object.
@@ -74,6 +83,7 @@ func TestIPNetnsAddressKeywordsAreRefused(t *testing.T) {
 		"name": true, "dev": true, "gateway": true, "netmask": true,
 		"macaddr": true, "mode": true, "alias": true, "vlan_tag": true,
 		"vlan_mode": true, "del_net_route": true, "check_carrier": true,
+		"publish": true,
 	}
 	seen := make(map[string]bool)
 	for _, option := range sectionOptions(resipnetns.New()) {

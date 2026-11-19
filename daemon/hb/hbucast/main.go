@@ -63,7 +63,7 @@ func (t *T) Configure(ctx context.Context) error {
 	if timeout < 2*interval+1*time.Second {
 		oldTimeout := timeout
 		timeout = interval*2 + 1*time.Second
-		log.Warnf("readjust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		hbcfg.WarnOnce(log, t.Name(), "readjust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 	addr := t.GetString("addr")
 	portI := t.GetInt("port")

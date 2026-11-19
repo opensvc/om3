@@ -1,0 +1,127 @@
+package daemonapi
+
+import (
+	"github.com/opensvc/om3/v3/core/tombstone"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/file"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/plog"
+)
+
+// The config of an object a purge or a delete removes is not served: a peer
+// installing it would bring back an instance the orchestration deletes, as
+// v2 refused to fetch a config then (qatests 308).
+func TestTheConfigOfAnObjectBeingPurgedIsNotServed(t *testing.T) {
+	p := naming.Path{Namespace: "c308", Kind: naming.KindSvc, Name: "purge"}
+	instance.ConfigData.Set(p, "n1", &instance.Config{})
+	instance.MonitorData.Set(p, "n1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged})
+	t.Cleanup(func() {
+		instance.ConfigData.Unset(p, "n1")
+		instance.MonitorData.Unset(p, "n1")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("logger", plog.NewDefaultLogger())
+	c.Set("grants", rbac.Grants{rbac.GrantRoot})
+	a := &DaemonAPI{localhost: "n1"}
+	require.NoError(t, a.GetObjectConfigFile(c, p.Namespace, p.Kind, p.Name, api.GetObjectConfigFileParams{}))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "being deleted")
+}
+
+// The instance config endpoint, the one discover fetches a peer config
+// through, refuses the config of an object being purged too.
+func TestTheInstanceConfigOfAnObjectBeingPurgedIsNotServed(t *testing.T) {
+	p := naming.Path{Namespace: "c308", Kind: naming.KindSvc, Name: "purge2"}
+	instance.MonitorData.Set(p, "n1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectDeleted})
+	t.Cleanup(func() { instance.MonitorData.Unset(p, "n1") })
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("logger", plog.NewDefaultLogger())
+	c.Set("grants", rbac.Grants{rbac.GrantRoot})
+	a := &DaemonAPI{localhost: "n1"}
+	require.NoError(t, a.GetInstanceConfigFile(c, "n1", p.Namespace, p.Kind, p.Name))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "being deleted")
+}
+
+// The config of an object the local monitor deletes is not served from a
+// peer either, the local config record gone already.
+func TestTheConfigOfAnObjectBeingDeletedIsNotProxied(t *testing.T) {
+	p := naming.Path{Namespace: "c308", Kind: naming.KindSvc, Name: "purge3"}
+	instance.MonitorData.Set(p, "n1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged})
+	instance.ConfigData.Set(p, "n2", &instance.Config{})
+	t.Cleanup(func() {
+		instance.MonitorData.Unset(p, "n1")
+		instance.ConfigData.Unset(p, "n2")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("logger", plog.NewDefaultLogger())
+	c.Set("grants", rbac.Grants{rbac.GrantRoot})
+	a := &DaemonAPI{localhost: "n1"}
+	require.NoError(t, a.GetObjectConfigFile(c, p.Namespace, p.Kind, p.Name, api.GetObjectConfigFileParams{}))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// The version of a config a delete or a purge removed is not served by the
+// instance endpoint, the one discover fetches through: a node back from away
+// holding it would else give it to the peers. The object endpoint serves it:
+// the operator reads or edits it there, as to keep it.
+func TestAKilledVersionIsNotServed(t *testing.T) {
+	testhelper.Setup(t)
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	p := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "killed"}
+	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\n"), 0o644))
+	version := file.ModTime(p.ConfigFile())
+	instance.ConfigData.Set(p, "n1", &instance.Config{Path: p, UpdatedAt: version})
+	t.Cleanup(func() { instance.ConfigData.Unset(p, "n1") })
+	tombstone.Data.Set("n2", tombstone.Record{OrchestrationID: "a", Path: p.String(), Kind: tombstone.KindPurged, Version: version}, true)
+	get := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := echo.New().NewContext(req, rec)
+		c.Set("logger", plog.NewDefaultLogger())
+		c.Set("grants", rbac.Grants{rbac.GrantRoot})
+		c.Set("user", &daemonauth.Info{Username: "root"})
+		require.NoError(t, (&DaemonAPI{localhost: "n1"}).GetObjectConfigFile(c, p.Namespace, p.Kind, p.Name, api.GetObjectConfigFileParams{}))
+		return rec
+	}
+	rec := get()
+	assert.Equal(t, http.StatusOK, rec.Code, "the object endpoint serves it, for the operator to edit")
+	assert.Contains(t, rec.Body.String(), "[DEFAULT]")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("logger", plog.NewDefaultLogger())
+	c.Set("grants", rbac.Grants{rbac.GrantRoot})
+	require.NoError(t, (&DaemonAPI{localhost: "n1"}).GetInstanceConfigFile(c, "n1", p.Namespace, p.Kind, p.Name))
+	assert.Equal(t, http.StatusNotFound, rec.Code, "the instance endpoint")
+	assert.Contains(t, rec.Body.String(), "was deleted")
+
+	// Kept by a touch: a newer version, served.
+	later := version.Add(time.Second)
+	require.NoError(t, os.Chtimes(p.ConfigFile(), later, later))
+	assert.False(t, tombstone.Data.Kills(p.String(), file.ModTime(p.ConfigFile())))
+}

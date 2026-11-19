@@ -21,12 +21,17 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		Path      naming.Path `json:"-"`
-		Checksum  string      `json:"csum"`
-		Priority  priority.T  `json:"priority"`
-		Scope     []string    `json:"scope"`
-		UpdatedAt time.Time   `json:"updated_at"`
-		Labels    label.M     `json:"labels,omitempty"`
+		Path naming.Path `json:"-"`
+
+		// ID is the id of the object, its DEFAULT.id: an object created
+		// again under the same path has another.
+		ID string `json:"id,omitempty"`
+
+		Checksum  string     `json:"csum"`
+		Priority  priority.T `json:"priority"`
+		Scope     []string   `json:"scope"`
+		UpdatedAt time.Time  `json:"updated_at"`
+		Labels    label.M    `json:"labels,omitempty"`
 
 		*ActorConfig
 		*VolConfig
@@ -261,6 +266,9 @@ func (t Config) Unstructured() map[string]any {
 		"priority":   t.Priority,
 		"scope":      t.Scope,
 		"updated_at": t.UpdatedAt,
+	}
+	if t.ID != "" {
+		m["id"] = t.ID
 	}
 	if t.ActorConfig != nil {
 		m["app"] = t.App

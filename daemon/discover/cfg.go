@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/configannounce"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
@@ -88,10 +89,14 @@ func (t *Manager) cfg(started chan<- bool) {
 		t.onClusterConfigUpdated(msg)
 	}
 	started <- true
+	settleTimer := time.NewTimer(t.scanSettleTimeout)
+	defer settleTimer.Stop()
 	for {
 		select {
 		case <-t.ctx.Done():
 			return
+		case <-settleTimer.C:
+			t.onScanSettleTimeout()
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.ClusterConfigUpdated:
@@ -129,6 +134,8 @@ func (t *Manager) cfg(started chan<- bool) {
 				t.onFetchFailed(c)
 			case *fetchRetry:
 				t.onFetchRetry(c)
+			case *initialScan:
+				t.onInitialScan(c)
 			default:
 				t.log.Errorf("cfg: unsupported command bus message type: %#v", i)
 			}
@@ -272,10 +279,12 @@ func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 
 func (t *Manager) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	t.objectList.Add(c.Path.String())
+	t.scanDiscovered(c.Path)
 }
 
 func (t *Manager) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.objectList.Del(c.Path.String())
+	t.scanDiscovered(c.Path)
 }
 
 func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
@@ -288,12 +297,14 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 	mtime := file.ModTime(c.File)
 	if mtime.IsZero() {
 		log.Infof("cfg: config file %s mtime is zero", c.File)
+		t.scanDiscovered(c.Path)
 		return
 	}
 	if _, ok := t.cfgMTime[s]; !ok {
 		log.Infof("cfg: config file updated for %s: start icfg", c.Path)
 		if err := icfg.Start(t.ctx, c.Path, c.File, t.cfgCmdC); err != nil {
 			log.Infof("cfg: can't start icfg for %s: %s", c.Path, err)
+			t.scanDiscovered(c.Path)
 			return
 		} else {
 			t.cfgMTime[s] = mtime
@@ -340,6 +351,15 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDone) {
 	filename := c.File
 	p := c.Path
+	// The object is discovered as its configuration manager is done, but
+	// for one recovering the configuration from a peer or starting again
+	// on a newer file: its status, or its failure, settles it then.
+	settled := true
+	defer func() {
+		if settled {
+			t.scanDiscovered(p)
+		}
+	}()
 	s := p.String()
 	log := t.objectLogger(p)
 
@@ -363,6 +383,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 		} else {
 			if peer, instanceConfig := t.mostRecentPeerConfig(p); instanceConfig != nil {
 				log.Infof("cfg: icfg is done, recovering config file for %s from %s", p, peer)
+				settled = false
 				cleanup()
 				t.onInstanceConfigUpdated(&msgbus.InstanceConfigUpdated{
 					Path:  p,
@@ -385,6 +406,7 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 				cleanup()
 				return
 			} else {
+				settled = false
 				t.cfgMTime[s] = mtime
 			}
 		}
@@ -747,6 +769,13 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			c.Err <- nil
 			return
 		}
+		if tombstone.Data.Kills(c.Path.String(), file.ModTime(c.File)) {
+			// A record of its delete heard during the fetch.
+			log.Infof("cfg: drop the %s config fetched from node %s: its version was deleted", c.Path, c.Node)
+			_ = os.Remove(c.File)
+			c.Err <- nil
+			return
+		}
 		confFile := c.Path.ConfigFile()
 		if err := handleStoppedFlag(confFile); err != nil {
 			c.Err <- err
@@ -754,9 +783,13 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		}
 		// Installed under the lock every writer of the file takes, so a
 		// local write checked against the file this replaces does not land
-		// over it, and the file is synced to stable storage, so a reboot
-		// does not find it absent or empty.
-		if err := xconfig.InstallFile(c.File, confFile); err != nil {
+		// over it. The fetch synced the file to stable storage, so a
+		// reboot does not find it empty: the loop only renames it. A sync
+		// here, on a disk busy with many objects at once, held up the
+		// loop, and the start of the config managers of every object with
+		// it, up to 80s for 850 objects: a delete ran meanwhile on the
+		// nodes whose instance had no manager yet, and was not seen there.
+		if err := xconfig.InstallSyncedFile(c.File, confFile); err != nil {
 			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
 			c.Err <- err
 		} else {
@@ -817,6 +850,12 @@ func (t *Manager) fetchConfigFromRemote(a fetchArgs) {
 		// Checked here, where every path to a fetch goes, so none starts
 		// one the delete would race.
 		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: the object is being removed", s, peer)
+		return
+	}
+	if tombstone.Data.Kills(s, updatedAt) {
+		// The version a delete or a purge removed, as one a node away
+		// then still holds: fetched, it would bring the object back.
+		t.objectLogger(p).Infof("cfg: ignore the %s config of node %s: its version %s was deleted", s, peer, updatedAt.Format(time.RFC3339Nano))
 		return
 	}
 	if n, ok := t.fetcherFrom[s]; ok {

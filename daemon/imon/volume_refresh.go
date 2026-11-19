@@ -42,13 +42,23 @@ func (t *Manager) janitorVolumes() {
 		t.volumeSeen = make(map[naming.Path]string)
 	}
 	paths := t.volumePaths()
+	// The filters are added in one operation of the bus, before the
+	// statuses are read, for no update to fall between.
+	var (
+		filters pubsub.Filters
+		added   []naming.Path
+	)
 	for _, p := range paths {
 		if _, ok := t.volumeSeen[p]; ok {
 			continue
 		}
 		t.log.Infof("subscribe to %s@%s instance status updates and deletes, used by a volume resource", p, t.localhost)
-		t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, volumeLabels(p, t.localhost)...)
-		t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, volumeLabels(p, t.localhost)...)
+		filters.Add(&msgbus.InstanceStatusUpdated{}, volumeLabels(p, t.localhost)...)
+		filters.Add(&msgbus.InstanceStatusDeleted{}, volumeLabels(p, t.localhost)...)
+		added = append(added, p)
+	}
+	t.sub.AddFilters(filters)
+	for _, p := range added {
 		t.volumeSeen[p] = ""
 		if st := instance.StatusData.GetByPathAndNode(p, t.localhost); st != nil {
 			t.volumeSeen[p] = volumeSignature(*st)
