@@ -24,6 +24,10 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		onReceiveQueueOperationTotal.With(prometheus.Labels{"operation": "patch"}).Inc()
 
 	case "full":
+		if d.isStaleFull(msg) {
+			d.log.Debugf("drop msg %s from %s gens: %v: older than the applied peer gen %d of the same run", msg.Kind, msg.Nodename, msg.Gen, d.hbGens[d.localNode][msg.Nodename])
+			return
+		}
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
 		if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
 			// already have most recent version of peer
@@ -56,6 +60,21 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		delete(d.previousRemoteInfo, msg.Nodename)
 		onReceiveQueueOperationTotal.With(prometheus.Labels{"operation": "ping"}).Inc()
 	}
+}
+
+// isStaleFull says whether msg is a full message of the known run of its
+// peer older than the data applied of it: the gens of a run only grow, so a
+// lower gen is a message delivered late, which would roll the data of the
+// peer back, its tombstones and instance configs included. A peer telling no
+// run is left to the gen check: a gen going back is how it shows a restart.
+// After a restart, the applied gen is reset and the full of the new run is
+// applied.
+func (d *data) isStaleFull(msg *hbtype.Msg) bool {
+	if msg.RunID == "" {
+		return false
+	}
+	applied := d.hbGens[d.localNode][msg.Nodename]
+	return applied != 0 && msg.Gen[msg.Nodename] < applied
 }
 
 func (d *data) setFromPeerMsg(peer, msgType string, length int, gen node.Gen) {

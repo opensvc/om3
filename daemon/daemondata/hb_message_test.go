@@ -67,6 +67,35 @@ func TestSetNextMsgType(t *testing.T) {
 	}
 }
 
+// A full message of the known run of a peer older than the data applied of
+// it is dropped, nothing of it recorded: it would roll the peer data back. A
+// peer telling no run, or a new run, the applied gen reset, is not.
+func TestAStaleFullIsDropped(t *testing.T) {
+	t0 := time.Date(2026, 11, 19, 10, 0, 0, 0, time.UTC)
+	d := &data{
+		localNode:         "n1",
+		hbGens:            map[string]node.Gen{"n1": {"n1": 5, "n2": 10}},
+		hbPatchMsgUpdated: map[string]time.Time{},
+		peerRuns:          map[string]peerRun{"n2": {id: "run1", updatedAt: t0}},
+		peerRunCandidates: map[string]peerRunCandidate{},
+		log:               plog.NewDefaultLogger(),
+	}
+	full := func(run string, gen uint64) *hbtype.Msg {
+		return &hbtype.Msg{Kind: "full", Nodename: "n2", RunID: run, UpdatedAt: t0, Gen: node.Gen{"n2": gen, "n1": 1}}
+	}
+	assert.True(t, d.isStaleFull(full("run1", 8)))
+	assert.False(t, d.isStaleFull(full("run1", 10)), "the gen applied: skipped further, not stale")
+	assert.False(t, d.isStaleFull(full("run1", 12)))
+	assert.False(t, d.isStaleFull(full("", 8)), "a peer telling no run: a gen going back is its restart")
+
+	d.onReceiveHbMsg(full("run1", 8))
+	assert.Equal(t, uint64(10), d.hbGens["n1"]["n2"], "the applied gen is kept")
+	assert.NotContains(t, d.hbGens, "n2", "the gens the stale message carries are not recorded")
+
+	d.hbGens["n1"]["n2"] = 0
+	assert.False(t, d.isStaleFull(full("run1", 8)), "the applied gen reset, as on a new run")
+}
+
 // TestAcceptPeerRun pins the detection of a peer restart by its daemon run id:
 // it asks the peer a full message even when the gen of the new run does not
 // go back below the one applied, as when the first messages of the new run
