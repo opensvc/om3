@@ -354,6 +354,7 @@ var (
 		nodeGroupNodes,
 		nodeGroupCredentials,
 		nodeGroupInterface,
+		nodeGroupMesh,
 		nodeGroupCertificates,
 		nodeGroupCreation,
 		nodeGroupHook,
@@ -387,7 +388,8 @@ var (
 	// the type, the other keywords naming it in the one of the
 	// configuration.
 	nodeDriverGroups = map[string][]keywords.Group{
-		"array.hp3par": {nodeGroupHP3PARCredentials},
+		"array.hp3par":      {nodeGroupHP3PARCredentials},
+		"network.l2_bridge": {nodeGroupL2BridgeMesh},
 	}
 
 	// nodeConfigIndex says which keywords are the ones of the node and

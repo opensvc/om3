@@ -1,0 +1,4 @@
+The vlan om creates on each of the `ports`, as the interface `eno2.100`, to
+enslave instead of the port: the bridges of the nodes share that vlan, and
+the network configuration of the nodes needs no change. The interfaces om
+created are deleted once no longer listed.

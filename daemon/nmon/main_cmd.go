@@ -106,7 +106,14 @@ func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
 		BackendDevName() string
 	}
 
-	// Find networks that use this link as their backend device
+	// portDevNamer is the interface for networks enslaving devices of the
+	// node to their bridge, a device missing at the setup being enslaved
+	// once its link comes up.
+	type portDevNamer interface {
+		PortDevNames() []string
+	}
+
+	// Find networks that use this link as their backend device or a port
 	var matchingNetworks []string
 	for _, nw := range networks {
 		// Check if this network implements backendDevNamer
@@ -114,7 +121,12 @@ func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
 			if backendDevName := backendNamer.BackendDevName(); backendDevName == c.LinkName {
 				matchingNetworks = append(matchingNetworks, nw.Name())
 				t.log.Infof("netlink up: found network %s using backend device %s", nw.Name(), c.LinkName)
+				continue
 			}
+		}
+		if portNamer, ok := nw.(portDevNamer); ok && slices.Contains(portNamer.PortDevNames(), c.LinkName) {
+			matchingNetworks = append(matchingNetworks, nw.Name())
+			t.log.Infof("netlink up: found network %s using port device %s", nw.Name(), c.LinkName)
 		}
 	}
 
