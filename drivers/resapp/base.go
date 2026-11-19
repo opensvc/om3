@@ -29,6 +29,13 @@ type BaseT struct {
 	StopTimeout  *time.Duration `json:"stop_timeout"`
 	Umask        *os.FileMode   `json:"umask"`
 	ObjectID     uuid.UUID      `json:"objectID"`
+
+	// NoNewPrivileges and CapabilityBoundingSet restrict the privileges
+	// of the commands, applied by om exec. They are kept as written and
+	// converted when a command is built, so a value that is not one fails
+	// the command instead of leaving it unrestricted.
+	NoNewPrivileges       string `json:"no_new_privileges"`
+	CapabilityBoundingSet string `json:"capability_bounding_set"`
 }
 
 func (t *T) getEnv(ctx context.Context, onIgnoreCallback func(err error)) (env []string, err error) {

@@ -1,0 +1,7 @@
+Set the no_new_privs flag of the commands of the resource: neither the
+process nor its children can gain privileges by executing a setuid or
+setgid program, or a program with file capabilities. Applied by om exec
+after the user and the limits, just before the command is executed. The
+flag can not be lowered by the process.
+
+Refused on an operating system other than Linux, rather than ignored.

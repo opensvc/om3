@@ -348,7 +348,11 @@ func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, exe
 	cred = t.credential(baseCommandSlice)
 	var args []string
 	args = append(args, prog, "exec")
-	args = append(args, t.toCaps(cred).Argv()...)
+	caps, err := t.toCaps(cred)
+	if err != nil {
+		return nil, cred, err
+	}
+	args = append(args, caps.Argv()...)
 	args = append(args, "--")
 	if t.NetNS != "" {
 		netNS, err := t.NetNSPath(ctx)

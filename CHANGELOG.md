@@ -187,6 +187,23 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Security
 
+* **Privilege restrictions for the app and host task commands**: `no_new_privileges` and
+    `capability_bounding_set`, on the `app.simple`, `app.forking` and `task.host` resources, are applied
+    by om exec to every command of the resource. `no_new_privileges = true` sets the no_new_privs flag:
+    neither the process nor its children gain privileges by a setuid, setgid or file capability program.
+    `capability_bounding_set` lists the capabilities kept, all others dropped from the bounding and
+    inheritable sets, or, prefixed with `~`, the ones dropped, as the `CapabilityBoundingSet` of systemd;
+    an unknown capability name is refused by the validation. Both are set on Linux only, and refused
+    elsewhere rather than ignored.
+
+    ```
+    [app#web]
+    type = simple
+    start = /usr/bin/myapp --listen :80
+    no_new_privileges = true
+    capability_bounding_set = CAP_NET_BIND_SERVICE
+    ```
+
 * **SSRF protection for HTTP fetches**: 
 
     All configuration, cfg, and secret 

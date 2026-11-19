@@ -74,6 +74,8 @@ func (t *T) Manifest() *manifest.T {
 		&resapp.BaseKeywordEnv,
 		&resapp.BaseKeywordRetCodes,
 		&resapp.BaseKeywordUmask,
+		&resapp.BaseKeywordNoNewPrivileges,
+		&resapp.BaseKeywordCapabilityBoundingSet,
 		&resapp.UnixKeywordCwd,
 		&resapp.UnixKeywordUser,
 		&resapp.UnixKeywordGroup,

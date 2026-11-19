@@ -85,6 +85,25 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/umask"),
 	}
 
+	BaseKeywordNoNewPrivileges = keywords.Keyword{
+		Attr:     "NoNewPrivileges",
+		Validate: validateBool,
+		Example:  "true",
+		Option:   "no_new_privileges",
+		Group:    GroupProcess.ID,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/no_new_privileges"),
+	}
+	BaseKeywordCapabilityBoundingSet = keywords.Keyword{
+		Attr:     "CapabilityBoundingSet",
+		Validate: validateCapabilityBoundingSet,
+		Example:  "CAP_NET_BIND_SERVICE CAP_CHOWN",
+		Option:   "capability_bounding_set",
+		Group:    GroupProcess.ID,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/capability_bounding_set"),
+	}
+
 	BaseKeywords = []*keywords.Keyword{
 		&BaseKeywordDesc,
 		&BaseKeywordTimeout,
@@ -94,5 +113,7 @@ var (
 		&BaseKeywordEnv,
 		&BaseKeywordRetCodes,
 		&BaseKeywordUmask,
+		&BaseKeywordNoNewPrivileges,
+		&BaseKeywordCapabilityBoundingSet,
 	}
 )

@@ -48,6 +48,9 @@ type T struct {
 	Umask       *os.FileMode   `json:"umask"`
 	ObjectID    uuid.UUID      `json:"objectID"`
 
+	NoNewPrivileges       string `json:"no_new_privileges"`
+	CapabilityBoundingSet string `json:"capability_bounding_set"`
+
 	// From resapp.T
 	Path    naming.Path   `json:"path"`
 	Nodes   []string      `json:"nodes"`
@@ -83,6 +86,9 @@ func (t *T) App() *resapp.T {
 			Umask:       t.Umask,
 			ObjectID:    t.ObjectID,
 			StopTimeout: t.StopTimeout,
+
+			NoNewPrivileges:       t.NoNewPrivileges,
+			CapabilityBoundingSet: t.CapabilityBoundingSet,
 		},
 		Path:    t.Path,
 		Nodes:   t.Nodes,
