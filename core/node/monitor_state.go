@@ -63,6 +63,21 @@ var (
 		MonitorStateUpgradeFailure,
 	}
 
+	// MonitorStatesAway is the node monitor states of a node away, its
+	// daemon stopped, starting, rejoining or shutting down: it runs no
+	// orchestration, and keeps the data of its instances in the cluster,
+	// which the orchestrations of its peers do not wait for. A node
+	// rejoining adopts the orchestrations running, and catches up with the
+	// ones it missed.
+	MonitorStatesAway = []MonitorState{
+		MonitorStateInit,
+		MonitorStateRejoin,
+		MonitorStateMaintenance,
+		MonitorStateShutdownProgress,
+		MonitorStateShutdownSuccess,
+		MonitorStateShutdownFailure,
+	}
+
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
 		MonitorStateInit:             nil,
@@ -113,4 +128,16 @@ func init() {
 		MonitorStateStrings[stateString.state] = stateString.str
 		MonitorStateValues[stateString.str] = stateString.state
 	}
+}
+
+// IsAway says the node of this monitor state is away: see MonitorStatesAway.
+func (t MonitorState) IsAway() bool {
+	return t.IsOneOf(MonitorStatesAway...)
+}
+
+// IsAwayFromObjects says the node of this monitor state runs no object
+// orchestration: away, or upgrading its packages, which restarts its daemon.
+// The node orchestrations, an upgrade among them, judge with IsAway.
+func (t MonitorState) IsAwayFromObjects() bool {
+	return t.IsAway() || t.IsMaintenance()
 }

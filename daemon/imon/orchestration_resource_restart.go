@@ -232,6 +232,15 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
+	// ignore an instance down a tombstone blocks: the daemon starts
+	// nothing of it on its own, standby resources included. One still up
+	// keeps its restarts: a blocked instance is never stopped here.
+	if issue, _ := t.tombstoneIssue(); issue != "" && !t.instStatus[t.localhost].Avail.Is(status.Up, status.Warn) {
+		t.log.Tracef("skip restart: %s", issue)
+		t.cancelResourceOrchestrateSchedules()
+		return
+	}
+
 	if t.state.LocalExpect == instance.MonitorLocalExpectEvicted && t.state.State == instance.MonitorStateStopFailure {
 		if action, ok := t.getValidMonitorAction(1); ok {
 			t.disableMonitor("initial monitor action failed, try alternate monitor action %s", action)

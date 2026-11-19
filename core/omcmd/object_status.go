@@ -38,10 +38,13 @@ func (t *CmdObjectStatus) Run(kind string) error {
 	if err != nil {
 		return err
 	}
+	// The daemon knows the objects of every node: an object with no
+	// instance here, as one left on another node by a partial purge, is
+	// shown too. With no daemon, the selection falls back to the local
+	// configurations.
 	sel := objectselector.New(
 		mergedSelector,
 		objectselector.WithClient(c),
-		objectselector.WithLocal(true),
 	)
 	paths, err := sel.MustExpand()
 	if err != nil {

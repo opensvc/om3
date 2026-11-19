@@ -1,0 +1,15 @@
+The apparmor profile the processes of the container run under, instead of
+the default profile of the engine (docker-default for docker,
+containers-default for podman): the name of a profile loaded on the node, or
+unconfined.
+
+The default profiles of docker and podman deny the processes of a container
+signalling one another when the kernel stacks the profile, as Ubuntu 26.04
+does with kernel.apparmor_restrict_unprivileged_unconfined=1 (moby/moby
+issue 54099): a master process can not stop its workers, as haproxy on a
+reload. A profile allowing those signals, or unconfined, works around it.
+
+Scopable, for the nodes needing it only. Without apparmor on the node, the
+engine ignores the profile.
+
+Setting it requires the root grant.

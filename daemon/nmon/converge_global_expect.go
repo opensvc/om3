@@ -99,7 +99,7 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 		if s == t.localhost {
 			continue
 		}
-		if data.State.IsOneOf(peerNotWaited...) && t.state.GlobalExpect != node.MonitorGlobalExpectUpgraded {
+		if data.State.IsAway() && t.state.GlobalExpect != node.MonitorGlobalExpectUpgraded {
 			// A peer stopped, starting or rejoining adopts nothing
 			// now: one rejoining adopts it then, one that missed a
 			// cluster freeze catches it as it rejoins. An upgrade

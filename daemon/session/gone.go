@@ -21,19 +21,6 @@ var goneTimeout = 10 * time.Second
 // lock.
 var awaitingGone = make(map[string]time.Time)
 
-// notWaited lists the node monitor states of a node a delete or a purge
-// does not wait for: a node down, starting, rejoining or shutting down keeps
-// the data of its instance in the cluster, which it runs no orchestration
-// on, and catches up as it rejoins.
-var notWaited = []node.MonitorState{
-	node.MonitorStateInit,
-	node.MonitorStateRejoin,
-	node.MonitorStateMaintenance,
-	node.MonitorStateShutdownProgress,
-	node.MonitorStateShutdownSuccess,
-	node.MonitorStateShutdownFailure,
-}
-
 // remainingInstances returns the nodes, but the ones not waited for, still
 // holding an instance of the object of path: its config, status or monitor.
 func remainingInstances(path string) []string {
@@ -41,22 +28,16 @@ func remainingInstances(path string) []string {
 	if err != nil {
 		return nil
 	}
-	m := make(map[string]bool)
-	for nodename := range instance.ConfigData.GetByPath(p) {
-		m[nodename] = true
-	}
-	for nodename := range instance.StatusData.GetByPath(p) {
-		m[nodename] = true
-	}
-	for nodename := range instance.MonitorData.GetByPath(p) {
-		m[nodename] = true
-	}
+	// The node names only: a copy of the data of every node, statuses
+	// with all their resources, was made for each orchestration waiting,
+	// at each event.
+	m := instance.NodesWithInstance(p)
 	var l []string
 	for nodename := range m {
 		// A node without a monitor, forgotten or not heard from since
 		// this daemon started, runs no orchestration either, nor does a
 		// node upgrading its agent.
-		if mon := node.MonitorData.GetByNode(nodename); mon == nil || mon.State.IsMaintenance() || mon.State.IsOneOf(notWaited...) {
+		if mon := node.MonitorData.GetByNode(nodename); mon == nil || mon.State.IsAwayFromObjects() {
 			continue
 		}
 		l = append(l, nodename)
@@ -95,6 +76,22 @@ func endIfGone(id string, o *Orchestration, now time.Time) bool {
 // CheckGone ends the deleting orchestrations waiting for their object to be
 // gone, once it is, or past the timeout.
 func CheckGone() {
+	checkGone("")
+}
+
+// CheckGoneOf ends the deleting orchestrations of the object of path waiting
+// for it to be gone, once it is, or past the timeout: an event about one
+// object changes nothing for the others.
+func CheckGoneOf(path string) {
+	if path == "" {
+		return
+	}
+	checkGone(path)
+}
+
+// checkGone checks the orchestrations waiting of the object of path, or
+// all of them for an empty path.
+func checkGone(path string) {
 	mu.Lock()
 	defer mu.Unlock()
 	now := time.Now()
@@ -102,6 +99,9 @@ func CheckGone() {
 		o, ok := orchestrations[id]
 		if !ok || o.EndedAt != nil {
 			delete(awaitingGone, id)
+			continue
+		}
+		if path != "" && o.Path != path {
 			continue
 		}
 		if endIfGone(id, o, now) {

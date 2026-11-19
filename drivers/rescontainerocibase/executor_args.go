@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -115,6 +116,15 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	if bt.Privileged {
 		runArgs.DropOption("--privileged")
 		a.Append("--privileged")
+	}
+
+	if bt.AppArmorProfile != "" {
+		// The --security-opt of run_args setting another profile is
+		// dropped, in either form, the others kept: the engines apply
+		// the last profile given.
+		runArgs.DropOptionAndMatchingValue("--security-opt", "^apparmor[=:]")
+		runArgs.Set(slices.DeleteFunc(runArgs.Get(), isAppArmorSecurityOpt))
+		a.Append("--security-opt", "apparmor="+bt.AppArmorProfile)
 	}
 
 	if bt.ReadOnly != "" {
@@ -438,4 +448,11 @@ func HasNetworkOption(l []string) bool {
 		}
 	}
 	return false
+}
+
+// isAppArmorSecurityOpt says whether arg sets an apparmor profile in the
+// --security-opt=<value> form.
+func isAppArmorSecurityOpt(arg string) bool {
+	v, ok := strings.CutPrefix(arg, "--security-opt=")
+	return ok && (strings.HasPrefix(v, "apparmor=") || strings.HasPrefix(v, "apparmor:"))
 }

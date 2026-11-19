@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/file"
 )
@@ -35,6 +36,13 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 		}
 		filename := objPath.ConfigFile()
 		mtime := file.ModTime(filename)
+		if tombstone.Data.Kills(objPath.String(), mtime) {
+			// The version a delete or a purge removed, as one a node
+			// away then still holds: installed by a peer, it would
+			// bring the object back.
+			log.Infof("%s: the version of %s here was deleted: config file not served", logName, objPath)
+			return JSONProblemf(ctx, http.StatusNotFound, "Not found", "%s: the version of this node was deleted", objPath)
+		}
 		if !mtime.IsZero() {
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 			requester := userFromContext(ctx).Username

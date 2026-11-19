@@ -1500,7 +1500,7 @@ func (t *App) actionPurge(paths map[string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		_, _ = t.client.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 
@@ -1511,7 +1511,7 @@ func (t *App) actionDelete(paths map[string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		_, _ = t.client.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 
@@ -1544,7 +1544,7 @@ func (t *App) actionUnprovision(paths map[string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		_, _ = t.client.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 

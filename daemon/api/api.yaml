@@ -825,6 +825,32 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/tombstone:
+    get:
+      description: |
+        Return the tombstones of the deletes and purges, a record per node
+        deleting its instance, with the nodes still publishing the version of
+        the config deleted. A user other than root sees the ones of the
+        namespaces it is guest of.
+      operationId: GetClusterTombstones
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TombstoneList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
   /api/cluster/lock:
     get:
       description: |
@@ -6668,6 +6694,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK
@@ -6822,6 +6849,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK
@@ -7090,6 +7118,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryForce'
       responses:
         200:
           description: OK
@@ -9374,6 +9403,64 @@ components:
           items:
             $ref: '#/components/schemas/ClusterLock'
 
+    Tombstone:
+      type: object
+      required:
+        - orchestration_id
+        - node
+        - path
+        - kind
+        - version
+        - deleted_at
+        - holders
+      properties:
+        orchestration_id:
+          description: the orchestration of the delete or the purge
+          type: string
+          x-go-name: OrchestrationID
+        node:
+          description: the node that deleted its instance and wrote the tombstone
+          type: string
+        path:
+          type: string
+        kind:
+          type: string
+          enum:
+            - purged
+            - deleted
+        object_id:
+          description: the id of the object deleted
+          type: string
+          x-go-name: ObjectID
+        version:
+          description: the modification time of the config deleted; a config of that version or older is the deleted one
+          type: string
+          format: date-time
+        deleted_at:
+          description: when the orchestration was accepted, as the node accepting it stamped it
+          type: string
+          format: date-time
+        holders:
+          description: the nodes publishing a config the tombstone kills, the deleted version
+          type: array
+          items:
+            type: string
+
+    TombstoneList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - TombstoneList
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tombstone'
+
     PostClusterLock:
       type: object
       required:
@@ -10399,6 +10486,9 @@ components:
       properties:
         app:
           type: string
+        id:
+          description: the id of the object, an object created again under the same path having another
+          type: string
         checksum:
           type: string
         children:
@@ -10648,6 +10738,11 @@ components:
         state_reason:
           type: string
           description: why the instance is in a failure state, when the state alone does not say it
+        issues:
+          description: what keeps the instance from being orchestrated as usual, for the operator to act on
+          type: array
+          items:
+            type: string
         monitor_action_executed_at:
           type: string
           format: date-time

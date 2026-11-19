@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -135,4 +136,43 @@ func TestTheEndOfAPurgeAnnouncedDoesNotSkipTheWaitForTheObjectGone(t *testing.T)
 	CheckGone()
 	o, _ = GetOrchestration(id.String())
 	assert.Equal(t, StateSucceeded, o.State, "the object is gone")
+}
+
+// An event about one object rechecks the deletes of that object only: the
+// one of another object gone meanwhile ends on its own event, or on the
+// check of every orchestration waiting the ticker makes.
+func TestCheckGoneOfChecksTheObjectOfTheEventOnly(t *testing.T) {
+	reset()
+	m := &Manager{}
+	ida, idb := uuid.New(), uuid.New()
+	pa := naming.Path{Namespace: "c850", Name: "a", Kind: naming.KindSec}
+	pb := naming.Path{Namespace: "c850", Name: "b", Kind: naming.KindSec}
+	node.MonitorData.Set("n2", &node.Monitor{State: node.MonitorStateIdle})
+	t.Cleanup(func() {
+		node.MonitorData.Unset("n2")
+		instance.ConfigData.Unset(pa, "n2")
+		instance.ConfigData.Unset(pb, "n2")
+		awaitingGone = make(map[string]time.Time)
+	})
+	for _, c := range []struct {
+		id uuid.UUID
+		p  naming.Path
+	}{{ida, pa}, {idb, pb}} {
+		m.handle(&msgbus.InstanceMonitorUpdated{Path: c.p, Node: "n1", Value: instance.Monitor{OrchestrationID: c.id, GlobalExpect: instance.MonitorGlobalExpectDeleted}})
+		instance.ConfigData.Set(c.p, "n2", &instance.Config{})
+		m.handle(&msgbus.InstanceMonitorDeleted{Path: c.p, Node: "n1"})
+	}
+	instance.ConfigData.Unset(pa, "n2")
+	ev := &msgbus.InstanceConfigDeleted{Path: pb, Node: "n2"}
+	path, ok := eventPath(ev)
+	require.True(t, ok)
+	CheckGoneOf(path)
+	o, _ := GetOrchestration(ida.String())
+	assert.Equal(t, StateRunning, o.State, "an event of b does not check a")
+
+	CheckGoneOf(pa.String())
+	o, _ = GetOrchestration(ida.String())
+	assert.Equal(t, StateSucceeded, o.State, "an event of a ends it, a gone")
+	o, _ = GetOrchestration(idb.String())
+	assert.Equal(t, StateRunning, o.State, "b holds an instance on n2 still")
 }

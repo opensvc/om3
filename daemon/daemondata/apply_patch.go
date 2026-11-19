@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
@@ -235,6 +236,18 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.NodePoolStatusUpdated:
 		pool.StatusData.Set(c.Name, c.Node, c.Value.DeepCopy())
 		d.publisher.Pub(c, labelFromPeer)
+	// tombstone...
+	case *msgbus.NodeTombstoneDeleted:
+		tombstone.Data.Unset(c.Node, c.ID)
+		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.NodeTombstoneUpdated:
+		// Heard live from the peer: trusted when both nodes are up. A
+		// record written by a delete comes from a node up; one a peer
+		// publishes as it starts or rejoins is one it loaded, maybe of a
+		// delete it did not complete, and the local node starting or
+		// rejoining was away.
+		tombstone.Data.Set(c.Node, c.Value, d.localUp() && peerUp(c.Node))
+		d.publisher.Pub(c, labelFromPeer)
 	// overload
 	case *msgbus.EnterOverloadPeriod:
 		d.publisher.Pub(c, labelFromPeer)
@@ -244,4 +257,17 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		d.log.Errorf("drop msg kind %s %d : %+v\n", ev.Kind, ev.ID, ev.Data)
 	}
 	return nil
+}
+
+// localUp says whether the local node is up, out of its start and rejoin:
+// a record heard then is one of a delete running while it was there.
+func (d *data) localUp() bool {
+	return peerUp(d.localNode)
+}
+
+// peerUp says whether the node monitor of nodename, as the node data holds
+// it, runs object orchestrations.
+func peerUp(nodename string) bool {
+	mon := node.MonitorData.GetByNode(nodename)
+	return mon != nil && !mon.State.IsAwayFromObjects()
 }

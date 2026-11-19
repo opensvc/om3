@@ -337,7 +337,7 @@ func (t *T) deleteSec(ctx context.Context, p naming.Path, domain string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+	resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	if err != nil {
 		return err
 	}

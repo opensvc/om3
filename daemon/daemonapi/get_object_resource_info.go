@@ -21,7 +21,7 @@ func (a *DaemonAPI) GetObjectResourceInfo(ctx echo.Context, namespace string, ki
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
 	}
 	items := make(api.ResourceInfoItems, 0)
-	for nodename := range instance.MonitorData.GetByPath(path) {
+	for _, nodename := range instance.MonitorData.GetNodesByPath(path) {
 		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)

@@ -1212,6 +1212,39 @@ func (e SyncSnapshotListKind) Valid() bool {
 	}
 }
 
+// Defines values for TombstoneKind.
+const (
+	Deleted TombstoneKind = "deleted"
+	Purged  TombstoneKind = "purged"
+)
+
+// Valid indicates whether the value is a known member of the TombstoneKind enum.
+func (e TombstoneKind) Valid() bool {
+	switch e {
+	case Deleted:
+		return true
+	case Purged:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TombstoneListKind.
+const (
+	TombstoneListKindTombstoneList TombstoneListKind = "TombstoneList"
+)
+
+// Valid indicates whether the value is a known member of the TombstoneListKind enum.
+func (e TombstoneListKind) Valid() bool {
+	switch e {
+	case TombstoneListKindTombstoneList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Topology.
 const (
 	Failover Topology = "failover"
@@ -3774,6 +3807,41 @@ type SyncSnapshotList struct {
 // SyncSnapshotListKind defines model for SyncSnapshotList.Kind.
 type SyncSnapshotListKind string
 
+// Tombstone defines model for Tombstone.
+type Tombstone struct {
+	// DeletedAt when the orchestration was accepted, as the node accepting it stamped it
+	DeletedAt time.Time `json:"deleted_at"`
+
+	// Holders the nodes publishing a config the tombstone kills, the deleted version
+	Holders []string      `json:"holders"`
+	Kind    TombstoneKind `json:"kind"`
+
+	// Node the node that deleted its instance and wrote the tombstone
+	Node string `json:"node"`
+
+	// ObjectID the id of the object deleted
+	ObjectID *string `json:"object_id,omitempty"`
+
+	// OrchestrationID the orchestration of the delete or the purge
+	OrchestrationID string `json:"orchestration_id"`
+	Path            string `json:"path"`
+
+	// Version the modification time of the config deleted; a config of that version or older is the deleted one
+	Version time.Time `json:"version"`
+}
+
+// TombstoneKind defines model for Tombstone.Kind.
+type TombstoneKind string
+
+// TombstoneList defines model for TombstoneList.
+type TombstoneList struct {
+	Items []Tombstone       `json:"items"`
+	Kind  TombstoneListKind `json:"kind"`
+}
+
+// TombstoneListKind defines model for TombstoneList.Kind.
+type TombstoneListKind string
+
 // Topology object topology
 type Topology string
 
@@ -5850,12 +5918,22 @@ type PostObjectActionCapParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostObjectActionDeleteParams defines parameters for PostObjectActionDelete.
+type PostObjectActionDeleteParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
+}
+
 // PostObjectActionProvisionParams defines parameters for PostObjectActionProvision.
 type PostObjectActionProvisionParams struct {
 	// Adopt Take over the system resources found holding what the provision would
 	// take, as replicated storage a restored object finds, rather than
 	// refusing them.
 	Adopt *InQueryAdopt `form:"adopt,omitempty" json:"adopt,omitempty"`
+}
+
+// PostObjectActionPurgeParams defines parameters for PostObjectActionPurge.
+type PostObjectActionPurgeParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PostObjectActionResizeParams defines parameters for PostObjectActionResize.
@@ -5880,6 +5958,11 @@ type PostObjectActionStopParams struct {
 	// InterruptSyncs End the syncs running on the instance before stopping it, instead of
 	// waiting for them to end.
 	InterruptSyncs *InQueryInterruptSyncs `form:"interrupt_syncs,omitempty" json:"interrupt_syncs,omitempty"`
+}
+
+// PostObjectActionUnprovisionParams defines parameters for PostObjectActionUnprovision.
+type PostObjectActionUnprovisionParams struct {
+	Force *InQueryForce `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PostObjectCertificateRenewParams defines parameters for PostObjectCertificateRenew.

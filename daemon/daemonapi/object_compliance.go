@@ -19,7 +19,7 @@ func clusterObjectPath(ctx echo.Context, namespace string, kind naming.Kind, nam
 	if err != nil {
 		return naming.Path{}, JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
-	if len(instance.ConfigData.GetByPath(p)) == 0 {
+	if len(instance.ConfigData.GetNodesByPath(p)) == 0 {
 		return naming.Path{}, JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", p)
 	}
 	return p, nil

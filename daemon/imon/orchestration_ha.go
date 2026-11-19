@@ -139,6 +139,9 @@ func (t *Manager) bootStartBusyPeer() (string, instance.MonitorState) {
 // this node, for the boot start decision to say it.
 func (t *Manager) bootStartNoopReason() string {
 	local := t.instStatus[t.localhost]
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return issue
+	}
 	switch {
 	case local.IsFrozen():
 		return "the instance is frozen"

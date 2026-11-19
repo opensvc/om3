@@ -182,6 +182,9 @@ type ClientInterface interface {
 	// GetClusterStatus request
 	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetClusterTombstones request
+	GetClusterTombstones(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostComputeClaimWithBody request with any body
 	PostComputeClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -685,7 +688,7 @@ type ClientInterface interface {
 	PostObjectActionCap(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionCapParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionDelete request
-	PostObjectActionDelete(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionDelete(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionFreeze request
 	PostObjectActionFreeze(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -697,7 +700,7 @@ type ClientInterface interface {
 	PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionPurge request
-	PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPurgeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionResizeWithBody request with any body
 	PostObjectActionResizeWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -724,7 +727,7 @@ type ClientInterface interface {
 	PostObjectActionUnfreeze(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionUnprovision request
-	PostObjectActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionUnprovisionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectCertificateCreate request
 	PostObjectCertificateCreate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1244,6 +1247,18 @@ func (c *Client) PostClusterRegister(ctx context.Context, body PostClusterRegist
 
 func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterStatusRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterTombstones(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterTombstonesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -3306,8 +3321,8 @@ func (c *Client) PostObjectActionCap(ctx context.Context, namespace InPathNamesp
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionDelete(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectActionDeleteRequest(c.Server, namespace, kind, name)
+func (c *Client) PostObjectActionDelete(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionDeleteRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3354,8 +3369,8 @@ func (c *Client) PostObjectActionProvision(ctx context.Context, namespace InPath
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectActionPurgeRequest(c.Server, namespace, kind, name)
+func (c *Client) PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPurgeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionPurgeRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3474,8 +3489,8 @@ func (c *Client) PostObjectActionUnfreeze(ctx context.Context, namespace InPathN
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectActionUnprovisionRequest(c.Server, namespace, kind, name)
+func (c *Client) PostObjectActionUnprovision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionUnprovisionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionUnprovisionRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5298,6 +5313,33 @@ func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterTombstonesRequest generates requests for GetClusterTombstones
+func NewGetClusterTombstonesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/tombstone")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -18051,7 +18093,7 @@ func NewPostObjectActionCapRequest(server string, namespace InPathNamespace, kin
 }
 
 // NewPostObjectActionDeleteRequest generates requests for PostObjectActionDelete
-func NewPostObjectActionDeleteRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewPostObjectActionDeleteRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionDeleteParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18088,6 +18130,33 @@ func NewPostObjectActionDeleteRequest(server string, namespace InPathNamespace, 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "force", *params.Force, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
@@ -18270,7 +18339,7 @@ func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespac
 }
 
 // NewPostObjectActionPurgeRequest generates requests for PostObjectActionPurge
-func NewPostObjectActionPurgeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewPostObjectActionPurgeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPurgeParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18307,6 +18376,33 @@ func NewPostObjectActionPurgeRequest(server string, namespace InPathNamespace, k
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "force", *params.Force, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
@@ -18699,7 +18795,7 @@ func NewPostObjectActionUnfreezeRequest(server string, namespace InPathNamespace
 }
 
 // NewPostObjectActionUnprovisionRequest generates requests for PostObjectActionUnprovision
-func NewPostObjectActionUnprovisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewPostObjectActionUnprovisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionUnprovisionParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18736,6 +18832,33 @@ func NewPostObjectActionUnprovisionRequest(server string, namespace InPathNamesp
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "force", *params.Force, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
@@ -21825,6 +21948,9 @@ type ClientWithResponsesInterface interface {
 	// GetClusterStatusWithResponse request
 	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
 
+	// GetClusterTombstonesWithResponse request
+	GetClusterTombstonesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterTombstonesResponse, error)
+
 	// PostComputeClaimWithBodyWithResponse request with any body
 	PostComputeClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error)
 
@@ -22328,7 +22454,7 @@ type ClientWithResponsesInterface interface {
 	PostObjectActionCapWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionCapParams, reqEditors ...RequestEditorFn) (*PostObjectActionCapResponse, error)
 
 	// PostObjectActionDeleteWithResponse request
-	PostObjectActionDeleteWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error)
+	PostObjectActionDeleteWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionDeleteParams, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error)
 
 	// PostObjectActionFreezeWithResponse request
 	PostObjectActionFreezeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionFreezeResponse, error)
@@ -22340,7 +22466,7 @@ type ClientWithResponsesInterface interface {
 	PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionProvisionParams, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error)
 
 	// PostObjectActionPurgeWithResponse request
-	PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error)
+	PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPurgeParams, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error)
 
 	// PostObjectActionResizeWithBodyWithResponse request with any body
 	PostObjectActionResizeWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionResizeResponse, error)
@@ -22367,7 +22493,7 @@ type ClientWithResponsesInterface interface {
 	PostObjectActionUnfreezeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnfreezeResponse, error)
 
 	// PostObjectActionUnprovisionWithResponse request
-	PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error)
+	PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionUnprovisionParams, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error)
 
 	// PostObjectCertificateCreateWithResponse request
 	PostObjectCertificateCreateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectCertificateCreateResponse, error)
@@ -23423,6 +23549,39 @@ func (r GetClusterStatusResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClusterStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetClusterTombstonesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TombstoneList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterTombstonesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterTombstonesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClusterTombstonesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31065,6 +31224,15 @@ func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, 
 	return ParseGetClusterStatusResponse(rsp)
 }
 
+// GetClusterTombstonesWithResponse request returning *GetClusterTombstonesResponse
+func (c *ClientWithResponses) GetClusterTombstonesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterTombstonesResponse, error) {
+	rsp, err := c.GetClusterTombstones(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterTombstonesResponse(rsp)
+}
+
 // PostComputeClaimWithBodyWithResponse request with arbitrary body returning *PostComputeClaimResponse
 func (c *ClientWithResponses) PostComputeClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error) {
 	rsp, err := c.PostComputeClaimWithBody(ctx, contentType, body, reqEditors...)
@@ -32594,8 +32762,8 @@ func (c *ClientWithResponses) PostObjectActionCapWithResponse(ctx context.Contex
 }
 
 // PostObjectActionDeleteWithResponse request returning *PostObjectActionDeleteResponse
-func (c *ClientWithResponses) PostObjectActionDeleteWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error) {
-	rsp, err := c.PostObjectActionDelete(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) PostObjectActionDeleteWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionDeleteParams, reqEditors ...RequestEditorFn) (*PostObjectActionDeleteResponse, error) {
+	rsp, err := c.PostObjectActionDelete(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -32630,8 +32798,8 @@ func (c *ClientWithResponses) PostObjectActionProvisionWithResponse(ctx context.
 }
 
 // PostObjectActionPurgeWithResponse request returning *PostObjectActionPurgeResponse
-func (c *ClientWithResponses) PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error) {
-	rsp, err := c.PostObjectActionPurge(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPurgeParams, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error) {
+	rsp, err := c.PostObjectActionPurge(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -32717,8 +32885,8 @@ func (c *ClientWithResponses) PostObjectActionUnfreezeWithResponse(ctx context.C
 }
 
 // PostObjectActionUnprovisionWithResponse request returning *PostObjectActionUnprovisionResponse
-func (c *ClientWithResponses) PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error) {
-	rsp, err := c.PostObjectActionUnprovision(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) PostObjectActionUnprovisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionUnprovisionParams, reqEditors ...RequestEditorFn) (*PostObjectActionUnprovisionResponse, error) {
+	rsp, err := c.PostObjectActionUnprovision(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34623,6 +34791,53 @@ func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ClusterStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterTombstonesResponse parses an HTTP response from a GetClusterTombstonesWithResponse call
+func ParseGetClusterTombstonesResponse(rsp *http.Response) (*GetClusterTombstonesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterTombstonesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TombstoneList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

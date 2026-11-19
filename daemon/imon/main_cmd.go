@@ -133,32 +133,40 @@ func (t *Manager) initRelationAvailStatus() {
 		t.log.Infof("skip relations avail status cache init: no config cached yet")
 		return
 	}
+	// The filters of all the relations are added in one operation of the
+	// bus, before their statuses are read, for no update to fall between.
+	var filters pubsub.Filters
+	var inits []func()
 	do := func(relation naming.Relation, name string, cache map[string]status.T) {
 		relationS := relation.String()
 		if objectPath, node, err := relation.Split(); err != nil {
 			t.log.Warnf("init relation %s status cache: split %s: %s", name, relation, err)
 		} else if node == "" {
 			t.log.Infof("init relation subscribe to %s %s object avail status updates and deletes", name, objectPath)
-			t.sub.AddFilter(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
-			t.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
-			if st := object.StatusData.GetByPath(objectPath); st != nil {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
-				cache[relationS] = st.Avail
-			} else {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
-				cache[relationS] = status.Undef
-			}
+			filters.Add(&msgbus.ObjectStatusUpdated{}, pubsub.Label{"path", objectPath.String()})
+			filters.Add(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
+			inits = append(inits, func() {
+				if st := object.StatusData.GetByPath(objectPath); st != nil {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
+					cache[relationS] = st.Avail
+				} else {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
+					cache[relationS] = status.Undef
+				}
+			})
 		} else {
 			t.log.Infof("subscribe to %s %s@%s instance avail status updates and deletes", name, objectPath, node)
-			t.sub.AddFilter(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
-			t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
-			if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
-				cache[relationS] = st.Avail
-			} else {
-				t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
-				cache[relationS] = status.Undef
-			}
+			filters.Add(&msgbus.InstanceStatusUpdated{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+			filters.Add(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
+			inits = append(inits, func() {
+				if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, st.Avail)
+					cache[relationS] = st.Avail
+				} else {
+					t.log.Infof("init relation %s %s avail status init to %s", name, relation, status.Undef)
+					cache[relationS] = status.Undef
+				}
+			})
 		}
 	}
 	if config.ActorConfig != nil {
@@ -168,6 +176,10 @@ func (t *Manager) initRelationAvailStatus() {
 		for _, relation := range config.ActorConfig.Parents {
 			do(relation, "Parent", t.state.Parents)
 		}
+	}
+	t.sub.AddFilters(filters)
+	for _, f := range inits {
+		f()
 	}
 }
 
@@ -275,6 +287,9 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 }
 
 func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
+	// The node publishes its status again: its last one, kept while it
+	// was away, is stale.
+	delete(t.awayStatus, srcCmd.Node)
 	if srcCmd.Node == t.localhost {
 		// Armed from the status kept, which may be newer than the one
 		// of the event: the first refresh stores its status before its
@@ -301,6 +316,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	}
 	if srcCmd.Node == t.localhost {
 		t.janitorVolumes()
+		// The stopped flag of an instance a tombstone blocks waits for
+		// a known status.
+		t.applyTombstoneIssue()
 	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()
@@ -407,6 +425,10 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		droppedRelations := make([]string, 0)
 		for relationS := range currentRelations {
 			if _, ok := m[relationS]; !ok {
+				if reason := keepsUnconfiguredRelation(name, relationS); reason != "" {
+					t.log.Infof("janitor relations keep %s %s: %s", name, relationS, reason)
+					continue
+				}
 				droppedRelations = append(droppedRelations, relationS)
 				t.log.Infof("janitor relations unsubscribe from %s %s avail status updates and deletes", name, relationS)
 				objectPath, node, _ := naming.Relation(relationS).Split()
@@ -427,6 +449,9 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 
 	t.releaseRemovedAddresses(t.instConfig, srcCmd.Value)
 	t.instConfig = srcCmd.Value
+	// Another version of the config: the records killing it change, as
+	// with a version kept by an edit or a touch.
+	t.refreshTombstones()
 	t.log.Tracef("refresh resource monitor states on local instance config updated")
 	t.initResourceMonitor()
 	janitorInstStatus(srcCmd.Value.Scope)
@@ -440,7 +465,8 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 }
 
 func (t *Manager) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
-	if _, ok := t.instStatus[c.Node]; ok {
+	if st, ok := t.instStatus[c.Node]; ok {
+		t.noteAwayStatus(c.Node, st)
 		t.setStonith(c.Node, c.PeerDropAt)
 		t.log.Tracef("drop deleted instance status from node %s", c.Node)
 		delete(t.instStatus, c.Node)
@@ -636,6 +662,16 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		// value when we guess destinations
 		var globalExpectOptions any = c.Value.GlobalExpectOptions
 
+		// A tombstone kills the config here, and no delete of it is to
+		// come: nothing starts or provisions the instance until the
+		// operator purges it or keeps it here.
+		if issue, _ := t.tombstoneIssue(); issue != "" && refusedByTombstone(*c.Value.GlobalExpect) {
+			err := fmt.Errorf("%s", issue)
+			t.log.Infof("set instance monitor: %s", err)
+			globalExpectRefused()
+			return err
+		}
+
 		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
 			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
@@ -697,6 +733,9 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			if reason == "" && *c.Value.GlobalExpect == instance.MonitorGlobalExpectPurged {
 				reason = t.usedByProtectedRefusal()
 			}
+			if reason == "" && *c.Value.GlobalExpect != instance.MonitorGlobalExpectProvisioned && !forceAway(c.Value.GlobalExpectOptions) {
+				reason = t.awayInstancesRefusal(*c.Value.GlobalExpect)
+			}
 			if reason != "" {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: %s", err)
@@ -704,7 +743,11 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				return err
 			}
 		case instance.MonitorGlobalExpectDeleted:
-			if reason := t.usedByProtectedRefusal(); reason != "" {
+			reason := t.usedByProtectedRefusal()
+			if reason == "" && !forceAway(c.Value.GlobalExpectOptions) {
+				reason = t.awayInstancesRefusal(*c.Value.GlobalExpect)
+			}
+			if reason != "" {
 				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor: %s", err)
 				globalExpectRefused()
@@ -850,6 +893,11 @@ func (t *Manager) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 
 func (t *Manager) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.nodeMonitor[c.Node] = c.Value
+	if !c.Value.State.IsAwayFromObjects() {
+		// Back, the node publishes its instance status, if it has
+		// one: what it was away with is history.
+		delete(t.awayStatus, c.Node)
+	}
 	t.onChange()
 }
 
@@ -884,6 +932,7 @@ func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdate
 	instMon := c.Value
 	t.log.Tracef("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
+	t.noteCarrying(remote, instMon)
 	t.recordFilesSource(remote)
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
@@ -935,6 +984,9 @@ func (t *Manager) AllInstanceMonitors() map[string]instance.Monitor {
 }
 
 func (t *Manager) isHAOrchestrateable() (bool, string) {
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return false, issue
+	}
 	if (t.objStatus.Topology == topology.Failover) && (t.objStatus.Avail == status.Warn) {
 		return false, "failover object is warn state"
 	}
@@ -985,6 +1037,9 @@ func (t *Manager) hasInstanceMonitorAndStatusOnPeers() (bool, string) {
 // it is refused when none is, which would leave the orchestration with no
 // instance to start, and never ending.
 func (t *Manager) isRequestedStartable() (bool, string) {
+	if issue, _ := t.tombstoneIssue(); issue != "" {
+		return false, issue
+	}
 	if ok, reason := t.isWarnFailoverStartable(); !ok {
 		return false, reason
 	}

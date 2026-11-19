@@ -1,9 +1,16 @@
 package daemonapi
 
 import (
+	"github.com/opensvc/om3/v3/core/tombstone"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/file"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -73,4 +80,48 @@ func TestTheConfigOfAnObjectBeingDeletedIsNotProxied(t *testing.T) {
 	a := &DaemonAPI{localhost: "n1"}
 	require.NoError(t, a.GetObjectConfigFile(c, p.Namespace, p.Kind, p.Name, api.GetObjectConfigFileParams{}))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// The version of a config a delete or a purge removed is not served by the
+// instance endpoint, the one discover fetches through: a node back from away
+// holding it would else give it to the peers. The object endpoint serves it:
+// the operator reads or edits it there, as to keep it.
+func TestAKilledVersionIsNotServed(t *testing.T) {
+	testhelper.Setup(t)
+	tombstone.InitData()
+	t.Cleanup(tombstone.InitData)
+	p := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "killed"}
+	require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+	require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\n"), 0o644))
+	version := file.ModTime(p.ConfigFile())
+	instance.ConfigData.Set(p, "n1", &instance.Config{Path: p, UpdatedAt: version})
+	t.Cleanup(func() { instance.ConfigData.Unset(p, "n1") })
+	tombstone.Data.Set("n2", tombstone.Record{OrchestrationID: "a", Path: p.String(), Kind: tombstone.KindPurged, Version: version}, true)
+	get := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := echo.New().NewContext(req, rec)
+		c.Set("logger", plog.NewDefaultLogger())
+		c.Set("grants", rbac.Grants{rbac.GrantRoot})
+		c.Set("user", &daemonauth.Info{Username: "root"})
+		require.NoError(t, (&DaemonAPI{localhost: "n1"}).GetObjectConfigFile(c, p.Namespace, p.Kind, p.Name, api.GetObjectConfigFileParams{}))
+		return rec
+	}
+	rec := get()
+	assert.Equal(t, http.StatusOK, rec.Code, "the object endpoint serves it, for the operator to edit")
+	assert.Contains(t, rec.Body.String(), "[DEFAULT]")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("logger", plog.NewDefaultLogger())
+	c.Set("grants", rbac.Grants{rbac.GrantRoot})
+	require.NoError(t, (&DaemonAPI{localhost: "n1"}).GetInstanceConfigFile(c, "n1", p.Namespace, p.Kind, p.Name))
+	assert.Equal(t, http.StatusNotFound, rec.Code, "the instance endpoint")
+	assert.Contains(t, rec.Body.String(), "was deleted")
+
+	// Kept by a touch: a newer version, served.
+	later := version.Add(time.Second)
+	require.NoError(t, os.Chtimes(p.ConfigFile(), later, later))
+	assert.False(t, tombstone.Data.Kills(p.String(), file.ModTime(p.ConfigFile())))
 }

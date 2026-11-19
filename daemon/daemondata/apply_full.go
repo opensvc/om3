@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -95,6 +96,9 @@ func (d *data) pubPeerDataChanges(peer string) {
 	d.pubMsgFromNodeRunnerImonDiffForNode(peer, current)
 	d.pubMsgFromNodeSchedulerDiffForNode(peer, current)
 	d.pubMsgFromNodeMonitorDiffForNode(peer, current)
+	// The tombstones before the instances: a config of a version they
+	// kill is not fetched on its event.
+	d.pubMsgFromNodeTombstoneDiffForNode(peer)
 	d.pubMsgFromNodeInstanceDiffForNode(peer, current)
 	d.pubMsgFromNodePoolDiffForNode(peer, current)
 	d.previousRemoteInfo[peer] = *current
@@ -448,6 +452,50 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 			labelFromPeer,
 		)
 	}
+}
+
+// pubMsgFromNodeTombstoneDiffForNode publishes what changed in the tombstone
+// records of a peer, read from its full data: the records it publishes
+// against the ones held for it. A record never changes, so a record held is
+// the same. A record read from a full data is not trusted: it may be one the
+// local node missed while it was down or cut from the peer.
+//
+// A peer starting or rejoining may not have loaded its records yet: its full
+// data then removes none of the records held for it.
+func (d *data) pubMsgFromNodeTombstoneDiffForNode(peer string) {
+	peerNode := d.clusterData.Cluster.Node[peer]
+	records := peerNode.Tombstone
+	held := tombstone.Data.GetByNode(peer)
+	for id, rec := range records {
+		if _, ok := held[id]; ok {
+			continue
+		}
+		tombstone.Data.Set(peer, rec, false)
+		d.publisher.Pub(&msgbus.NodeTombstoneUpdated{Node: peer, ID: id, Path: rec.Path, Value: rec},
+			tombstoneLabels(peer, rec.Path)...,
+		)
+	}
+	if peerNode.Monitor.State.IsAwayFromObjects() {
+		return
+	}
+	for id, h := range held {
+		if _, ok := records[id]; ok {
+			continue
+		}
+		tombstone.Data.Unset(peer, id)
+		d.publisher.Pub(&msgbus.NodeTombstoneDeleted{Node: peer, ID: id, Path: h.Path},
+			tombstoneLabels(peer, h.Path)...,
+		)
+	}
+}
+
+// tombstoneLabels returns the labels of a tombstone event of a peer.
+func tombstoneLabels(peer, path string) []pubsub.Label {
+	l := []pubsub.Label{{"node", peer}, labelFromPeer, {"path", path}}
+	if p, err := naming.ParsePath(path); err == nil {
+		l = append(l, pubsub.Label{"namespace", p.Namespace})
+	}
+	return l
 }
 
 // pubMsgFromNodePoolDiffForNode publishes what changed in the pools of a peer

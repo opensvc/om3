@@ -126,9 +126,46 @@ func (t *Manager) loop() {
 		case i := <-sub.C:
 			t.handle(i)
 			if awaitingAny() {
-				CheckGone()
+				// A node leaving changes which nodes are waited
+				// for, for every object; an object event changes
+				// its own only. Checking every orchestration waiting
+				// at each event made the session fall behind the
+				// events with many objects deleted at once.
+				if path, ok := eventPath(i); ok {
+					CheckGoneOf(path)
+				} else {
+					CheckGone()
+				}
 			}
 		}
+	}
+}
+
+// eventPath returns the path of the object an event is about, false for an
+// event about a node.
+func eventPath(i any) (string, bool) {
+	switch m := i.(type) {
+	case *msgbus.InstanceMonitorUpdated:
+		return m.Path.String(), true
+	case *msgbus.InstanceMonitorDeleted:
+		return m.Path.String(), true
+	case *msgbus.InstanceConfigDeleted:
+		return m.Path.String(), true
+	case *msgbus.InstanceStatusDeleted:
+		return m.Path.String(), true
+	case *msgbus.ObjectStatusDeleted:
+		return m.Path.String(), true
+	case *msgbus.ObjectOrchestrationAccepted:
+		return m.Path.String(), true
+	case *msgbus.ObjectOrchestrationEnd:
+		return m.Path.String(), true
+	case *msgbus.ObjectOrchestrationRefused:
+		return m.Path.String(), true
+	case *msgbus.Exec, *msgbus.ExecSuccess, *msgbus.ExecFailed:
+		// No change of the instances of any object.
+		return "", true
+	default:
+		return "", false
 	}
 }
 

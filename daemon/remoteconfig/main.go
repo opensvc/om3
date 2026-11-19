@@ -50,6 +50,10 @@ func FetchObjectConfigFile(cli *client.T, p naming.Path) (filename string, updat
 	if err = os.Chtimes(filename, updated, updated); err != nil {
 		return
 	}
+	// Synced here, in the fetch, rather than as it is installed: the
+	// install renames it in the discovery loop, which a sync waiting on a
+	// busy disk held up, and the config managers of every object with it.
+	err = tmpFile.Sync()
 	return
 }
 

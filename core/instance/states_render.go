@@ -51,11 +51,15 @@ func (t States) LoadTreeNode(head *tree.Node) {
 	switch t.Path.Kind {
 	case naming.KindSec, naming.KindCfg, naming.KindCcfg, naming.KindUsr, naming.KindNscfg:
 		head.AddColumn()
-		head.AddColumn().AddText(t.descString())
+		desc := head.AddColumn()
+		desc.AddText(t.descString())
+		t.addIssues(desc)
 		return
 	}
 	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Colorize))
-	head.AddColumn().AddText(t.descString())
+	desc := head.AddColumn()
+	desc.AddText(t.descString())
+	t.addIssues(desc)
 
 	resNode := head.AddNode()
 	resNode.AddColumn().AddText("resources")
@@ -128,6 +132,14 @@ func (t States) LoadTreeNode(head *tree.Node) {
 	}
 	t.loadTreeNodeParents(head)
 	t.loadTreeNodeChildren(head)
+}
+
+// addIssues adds the issues of the instance monitor, what the operator is
+// to act on, as lines of the description column of the instance head.
+func (t States) addIssues(desc *tree.Column) {
+	for _, issue := range t.Monitor.Issues {
+		desc.AddText("issue: " + issue).SetColor(rawconfig.Color.Warning)
+	}
 }
 
 func (t States) descString() string {

@@ -255,3 +255,33 @@ func TestADroppedRestartGivesBackItsRetry(t *testing.T) {
 	m.orchestrateResourceRestart()
 	assert.Equal(t, 0, m.state.Resources.Get("disk#3").Restart.Remaining)
 }
+
+// The daemon restarts no resource of a blocked instance down, standby ones
+// included: a restart armed is cancelled, as on a node frozen. A blocked
+// instance still up keeps its restarts.
+func TestNoRestartOfABlockedInstanceDown(t *testing.T) {
+	arm := func(local status.T) (*Manager, chan struct{}) {
+		m := newRestartTestManager(local, status.Down)
+		m.regularResourceOrchestrate.log = m.log
+		m.standbyResourceOrchestrate.log = m.log
+		m.regularResourceOrchestrate.scheduled = map[string]bool{}
+		m.standbyResourceOrchestrate.scheduled = map[string]bool{"disk#1": true}
+		fired := make(chan struct{}, 1)
+		m.standbyResourceOrchestrate.scheduler = time.AfterFunc(50*time.Millisecond, func() { fired <- struct{}{} })
+		setKillers(m, false)
+		return m, fired
+	}
+	m, fired := arm(status.Down)
+	m.orchestrateResourceRestart()
+	assert.Nil(t, m.standbyResourceOrchestrate.scheduler, "blocked and down: the standby restart is cancelled")
+	select {
+	case <-fired:
+		t.Fatal("the restart of a blocked instance down fired")
+	case <-time.After(150 * time.Millisecond):
+	}
+
+	m, _ = arm(status.Warn)
+	m.orchestrateResourceRestart()
+	assert.NotNil(t, m.standbyResourceOrchestrate.scheduler, "blocked and up: its restarts stay")
+	m.standbyResourceOrchestrate.cancelSchedule()
+}

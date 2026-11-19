@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -322,6 +323,40 @@ func TestAPurgedVolumeWaitsForItsChildDeleted(t *testing.T) {
 	assert.False(t, m.setWaitChildren(), "its instance is gone")
 }
 
+// A child the configuration of the volume no longer lists is kept while its
+// instance is purged or deleted: the service purged unclaims the volume as
+// it unprovisions, before its instance is gone, and the purge of the volume
+// went on at once (qatests 512.07.2). A parent, or a child gone or whose
+// purge failed, is dropped as before.
+func TestAnUnclaimingChildBeingDeletedIsKept(t *testing.T) {
+	child := naming.Path{Namespace: "c512", Kind: naming.KindSvc, Name: "nfs2"}
+	relation := child.String() + "@node1"
+	t.Cleanup(func() {
+		instance.StatusData.Unset(child, "node1")
+		instance.MonitorData.Unset(child, "node1")
+	})
+	assert.Empty(t, keepsUnconfiguredRelation("Child", relation), "no instance")
+
+	instance.StatusData.Set(child, "node1", &instance.Status{Avail: status.Down, Provisioned: provisioned.False})
+	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStateUnprovisionSuccess})
+	assert.Contains(t, keepsUnconfiguredRelation("Child", relation), "being deleted")
+	assert.Empty(t, keepsUnconfiguredRelation("Parent", relation), "a parent")
+	assert.Empty(t, keepsUnconfiguredRelation("Child", child.String()), "an object relation")
+
+	m := newClearTestManager(&pubSpy{})
+	m.state.GlobalExpect = instance.MonitorGlobalExpectPurged
+	m.state.Children = map[string]status.T{relation: status.Down}
+	assert.True(t, m.setWaitChildren(), "the kept child is waited for")
+
+	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStatePurgeFailed})
+	assert.Empty(t, keepsUnconfiguredRelation("Child", relation), "its purge failed")
+
+	instance.MonitorData.Set(child, "node1", &instance.Monitor{GlobalExpect: instance.MonitorGlobalExpectPurged, State: instance.MonitorStateDeleteProgress})
+	instance.StatusData.Unset(child, "node1")
+	assert.Empty(t, keepsUnconfiguredRelation("Child", relation), "its instance is gone")
+	assert.False(t, m.setWaitChildren())
+}
+
 // A request received as the orchestration before it is done here, its end
 // held back while a peer still runs it, is held too: accepted at once, it
 // ended the one before early, both running at once.
@@ -381,4 +416,28 @@ func TestAServedMarkExpiringLooksAtTheOrchestrationAgain(t *testing.T) {
 	m.onOrchestrationClearTimer()
 	assert.True(t, m.delayOrchestrateEnabled, "the orchestration is looked at again")
 	assert.Empty(t, m.peersStarting())
+}
+
+// The leader of a forced unprovision or purge does not wait for the
+// retained status of the instance of a node away: it waited for it until the
+// maintenance grace period dropped it. Unforced, it waits for a node that
+// left after the request was accepted: it releases no shared resources under
+// a provisioned instance.
+func TestTheLeaderDoesNotWaitForANodeAway(t *testing.T) {
+	m := newClearTestManager(&pubSpy{})
+	m.nodeMonitor = map[string]node.Monitor{"node2": {State: node.MonitorStateIdle}}
+	m.instStatus["node2"] = instance.Status{Avail: status.Down, Provisioned: provisioned.True}
+	m.instMonitor["node2"] = instance.Monitor{State: instance.MonitorStateIdle}
+	// node1, the local node, leads.
+	m.objStatus.Topology = topology.Flex
+	m.state.IsLeader = true
+	assert.True(t, m.hasNonLeaderProvisioned(), "node2 live and provisioned")
+
+	m.nodeMonitor["node2"] = node.Monitor{State: node.MonitorStateMaintenance}
+	assert.True(t, m.hasNonLeaderProvisioned(), "node2 left after the request: waited for, unforced")
+
+	m.state.GlobalExpectOptions = instance.MonitorGlobalExpectOptionsUnprovisioned{Force: true}
+	assert.False(t, m.hasNonLeaderProvisioned(), "node2 in maintenance, forced")
+	m.state.GlobalExpectOptions = instance.MonitorGlobalExpectOptionsPurged{Force: true}
+	assert.False(t, m.hasNonLeaderProvisioned(), "the same for a purge")
 }

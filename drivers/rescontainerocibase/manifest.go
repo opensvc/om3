@@ -144,6 +144,14 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/privileged"),
 		},
 		{
+			Option:   "apparmor_profile",
+			Group:    GroupIsolation.ID,
+			Attr:     "AppArmorProfile",
+			Scopable: true,
+			Example:  "unconfined",
+			Text:     keywords.NewText(fs, "text/kw/apparmor_profile"),
+		},
+		{
 			Option:    "init",
 			Group:     GroupProcess.ID,
 			Attr:      "Init",
