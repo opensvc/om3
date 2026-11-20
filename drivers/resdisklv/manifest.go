@@ -58,11 +58,12 @@ var (
 			Group:                resdisk.GroupCreation.ID,
 			Provisioning:         true,
 			ProvisioningRequired: true,
-			// A size computed from the free space or the capacity of
-			// the volume group is read at provision only: computed at
-			// every load, it ran a vgs each time, for a size the
-			// provision alone reads, and that says 0 once the volume
-			// took the group.
+			// A size computed from the free space of the volume group
+			// is read at provision only: computed at every load, it ran
+			// a vgs each time, for a size the provision alone reads,
+			// and that says 0 once the volume took the group. A size
+			// computed from its capacity is computed at the load, and
+			// charged to the pool of the group.
 			EvalAtProvision: true,
 			Scopable:        true,
 			Text:            keywords.NewText(fs, "text/kw/size"),

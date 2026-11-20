@@ -205,9 +205,9 @@ func (t *actor) lockedProvision(ctx context.Context) error {
 }
 
 // resolveProvisionKeywords sets the keywords of r read at provision only,
-// whose value names a reference measuring a resource: the load of the
-// object leaves them unset, so as not to measure at every load what only
-// the provision reads. Resolved here, after the resources provisioned
+// whose value names the free space of a resource: the load of the object
+// leaves them unset, so as not to measure at every load what only the
+// provision, and the estimate of what the object takes of its pools, read. Resolved here, after the resources provisioned
 // before r, the measure is the one r is provisioned from: the free space of
 // the volume group provisioned just before a logical volume.
 //
@@ -225,7 +225,7 @@ func (t *actor) resolveProvisionKeywords(r resource.Driver) {
 			continue
 		}
 		k := key.New(rid, kw.Option)
-		if _, err := t.config.EvalKeywordDeferringAs(k, kw, "", isMeasuredReference); !errors.Is(err, xconfig.ErrRefDeferred) {
+		if _, err := t.config.EvalKeywordDeferringAs(k, kw, "", isFreeReference); !errors.Is(err, xconfig.ErrRefDeferred) {
 			// Set by the load of the object already, or failing as it
 			// did then.
 			continue

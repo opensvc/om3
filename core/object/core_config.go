@@ -454,15 +454,14 @@ func isRuntimeReference(ref string) bool {
 }
 
 // isMeasuredReference says whether ref measures a resource, as the free
-// space or the capacity of a volume group: resolving it runs a command. A
-// keyword read at provision only resolves it then. See
-// keywords.Keyword.EvalAtProvision.
+// space or the capacity of a volume group: resolving it runs a command.
 func isMeasuredReference(ref string) bool {
-	return strings.HasSuffix(ref, ".capacity") || strings.HasSuffix(ref, ".free")
+	return strings.HasSuffix(ref, ".capacity") || isFreeReference(ref)
 }
 
 // isFreeReference says whether ref measures what a resource has left, as
-// the free space of a volume group.
+// the free space of a volume group. A keyword read at provision only
+// resolves it then. See keywords.Keyword.EvalAtProvision.
 func isFreeReference(ref string) bool {
 	return strings.HasSuffix(ref, ".free")
 }

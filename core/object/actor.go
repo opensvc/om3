@@ -561,7 +561,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				err error
 			)
 			if o.EvalAtProvision {
-				val, err = t.config.EvalKeywordDeferringAs(k, o, "", isMeasuredReference)
+				val, err = t.config.EvalKeywordDeferringAs(k, o, "", isFreeReference)
 			} else {
 				val, err = t.config.EvalKeywordAs(k, o, "")
 			}

@@ -93,8 +93,9 @@ func (t *T) Start(ctx context.Context) error {
 //
 // A size that is a share of the group, "100%FREE" and the like, is not a
 // number the group can be rationed by, and is answered as none. So is a size
-// computed from what another resource measures, as the free space of the
-// group: it is resolved at provision only, and is no number before.
+// computed from the free space of the group when the volume is loaded: it is
+// resolved at provision, and for the estimate of the claim, only. A size
+// computed from the capacity of the group is a number, and is charged.
 func (t *T) PoolCharge() (string, int64) {
 	size, err := sizeconv.FromSize(t.Size)
 	if err != nil {

@@ -139,20 +139,21 @@ func lvSize(t *testing.T, o any, rid string) (resource.Driver, string) {
 	return r, lv.Size
 }
 
-// The size of a logical volume computed from what another resource
-// measures is read at provision only: the load of the object leaves it
-// unset, measuring nothing, and the provision resolves it, from the measure
-// taken then. A size measuring nothing is set at the load, as before.
-func TestASizeMeasuredFromAResourceIsResolvedAtProvision(t *testing.T) {
+// The size of a logical volume computed from the free space of another
+// resource is read at provision only: the load of the object leaves it
+// unset, measuring nothing, directly or through the keyword it references.
+// A size computed from a capacity is a stable size, and is set at the load,
+// as one measuring nothing is.
+func TestASizeFromAFreeSpaceIsLeftToTheProvision(t *testing.T) {
 	o, _ := withLoopFile(t, 100*1024*1024, fmt.Sprintf(`
 [env]
-half = $(50%% * {disk#0.capacity})
+left = $(100%% * {disk#0.free})
 
 [disk#1]
 type = lv
 vg = vgtest
-name = measured
-size = $(50%% * {disk#0.capacity})
+name = free
+size = $(100%% * {disk#0.free})
 
 [disk#2]
 type = lv
@@ -177,55 +178,57 @@ size@%s = $(25%% * {disk#0.capacity})
 type = lv
 vg = vgtest
 name = nested
-size = {env.half}
+size = {env.left}
+
+[disk#6]
+type = lv
+vg = vgtest
+name = capacity
+size = $(50%% * {disk#0.capacity})
 `, hostname.Hostname()))
 
 	for _, tc := range []struct {
-		rid      string
-		atLoad   string
-		resolved string
+		rid    string
+		atLoad string
 	}{
-		{"disk#1", "", "52428800"},
-		{"disk#2", "10m", "10m"},
-		{"disk#3", "100%FREE", "100%FREE"},
-		{"disk#4", "", "26214400"},
-		{"disk#5", "", "52428800"},
+		{"disk#1", ""},
+		{"disk#2", "10m"},
+		{"disk#3", "100%FREE"},
+		{"disk#4", "26214400"},
+		{"disk#5", ""},
+		{"disk#6", "52428800"},
 	} {
 		t.Run(tc.rid, func(t *testing.T) {
-			r, size := lvSize(t, o, tc.rid)
+			_, size := lvSize(t, o, tc.rid)
 			assert.Equal(t, tc.atLoad, size, "at the load of the object")
-			object.ResolveProvisionKeywords(o, r)
-			_, size = lvSize(t, o, tc.rid)
-			assert.Equal(t, tc.resolved, size, "at provision")
 		})
 	}
 
-	// The configuration still evaluates it when asked.
-	v, err := o.Config().Eval(key.New("disk#1", "size"))
-	require.NoError(t, err)
-	assert.Equal(t, "52428800", v)
+	// A size computed from a capacity is charged to the group.
+	r, _ := lvSize(t, o, "disk#6")
+	head, size := r.(resource.PoolCharger).PoolCharge()
+	assert.Equal(t, "vgtest", head)
+	assert.Equal(t, int64(52428800), size)
 }
 
 // A reload of a resource, as each action runs on its turn, does not keep a
 // size a provision resolved: it is resolved again at the next provision,
-// from the measure taken then.
+// from the free space measured then.
 func TestASizeResolvedAtProvisionIsNotKeptByAReload(t *testing.T) {
-	o, _ := withLoopFile(t, 100*1024*1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = measured\nsize = $(50% * {disk#0.capacity})\n")
+	o, _ := withLoopFile(t, 100*1024*1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = free\nsize = $(100% * {disk#0.free})\n")
 	r, _ := lvSize(t, o, "disk#1")
-	object.ResolveProvisionKeywords(o, r)
-	_, size := lvSize(t, o, "disk#1")
-	require.Equal(t, "52428800", size)
+	r.(*resdisklv.T).Size = "52428800" // as a provision resolved it
 
 	require.NoError(t, o.(interface{ ReconfigureResource(resource.Driver) error }).ReconfigureResource(r))
-	_, size = lvSize(t, o, "disk#1")
+	_, size := lvSize(t, o, "disk#1")
 	assert.Equal(t, "", size)
 }
 
 // A size that can't be resolved at provision is left unset, for the
-// resource to say it can't provision without one.
+// resource to say it can't provision without one: a loop disk says no free
+// space.
 func TestASizeThatCannotBeResolvedAtProvision(t *testing.T) {
-	o, path := withLoopFile(t, 1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = measured\nsize = $(50% * {disk#0.capacity})\n")
-	require.NoError(t, os.Remove(path))
+	o, _ := withLoopFile(t, 1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = free\nsize = $(100% * {disk#0.free})\n")
 	r, _ := lvSize(t, o, "disk#1")
 	object.ResolveProvisionKeywords(o, r)
 	_, size := lvSize(t, o, "disk#1")

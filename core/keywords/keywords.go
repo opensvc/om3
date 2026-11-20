@@ -81,11 +81,17 @@ type (
 		Provisioning bool
 
 		// EvalAtProvision means the value is read when the resource is
-		// provisioned only. A reference it names measuring another
-		// resource, as {disk#vg.free} or {disk#vg.capacity}, is resolved
-		// then, rather than at every load of the object: a measure is a
-		// command run, as a vgs, for a value nothing else reads. The
-		// value is unset until the provision resolves it.
+		// provisioned only. A reference it names to the free space of
+		// another resource, as {disk#vg.free}, is resolved then, rather
+		// than at every load of the object: a measure is a command run,
+		// as a vgs, for a value nothing else reads, and that says 0 once
+		// the resource took the space. The value is unset until the
+		// provision, or the estimate of what the object takes of its
+		// pools, resolves it.
+		//
+		// A reference to a capacity, as {disk#vg.capacity}, is resolved
+		// at the load: the share of a capacity is a stable size, which
+		// the pools the object takes of are charged.
 		//
 		// Provisioning alone does not say it: a Provisioning keyword may
 		// be read by other actions, as the size of a tmpfs at its mount.
