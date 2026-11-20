@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -28,6 +29,7 @@ type (
 	// each network, as the last setup of the network on the node made it.
 	CmdNetworkPeerList struct {
 		CmdNetworkNodeList
+		PeerSelector string
 	}
 )
 
@@ -89,6 +91,7 @@ func NewCmdNetworkPeerList() *cobra.Command {
 		},
 	}
 	options.flags(cmd)
+	FlagPeerSelectorFilter(cmd.Flags(), &options.PeerSelector)
 	return cmd
 }
 
@@ -155,9 +158,24 @@ func (t *CmdNetworkPeerList) Run() error {
 	if err != nil {
 		return err
 	}
+	// The peers the selector names, expanded through the api, as the nodes
+	// are: a selector may name labels.
+	var peerMap nodeselector.ResultMap
+	if t.PeerSelector != "" {
+		c, err := client.New()
+		if err != nil {
+			return err
+		}
+		if peerMap, err = nodeselector.New(t.PeerSelector, nodeselector.WithClient(c)).ExpandMap(); err != nil {
+			return err
+		}
+	}
 	l := make(unstructured.List, 0)
 	for _, item := range data.Items {
 		for _, p := range item.Peers {
+			if peerMap != nil && !peerMap.Has(p.Nodename) {
+				continue
+			}
 			row := map[string]any{
 				"name":   item.Name,
 				"node":   item.Node,
@@ -173,6 +191,13 @@ func (t *CmdNetworkPeerList) Run() error {
 			}
 			if p.TunnelMode != nil {
 				row["mode"] = *p.TunnelMode
+			}
+			// A value the peer has not, as the tunnel of one routed to, is
+			// no key: the table says "-", and the json leaves it out.
+			for k, v := range row {
+				if v == "" {
+					delete(row, k)
+				}
 			}
 			l = append(l, row)
 		}
