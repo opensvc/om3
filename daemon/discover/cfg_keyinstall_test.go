@@ -212,3 +212,31 @@ func TestOnLocalConfigUpdatedRefreshesTheDatastoresNewlyUsed(t *testing.T) {
 	update(vol, uses{"fs#1": {"ns1/cfg/a"}})
 	assert.Empty(t, update(vol, uses{"fs#1": {"ns1/cfg/a", "ns1/cfg/b"}}), "a vol installs no key")
 }
+
+// The datastores a pattern names are the local ones it matches, whatever
+// object filter the environment of the daemon holds.
+func TestLocalDataStoresOfAPattern(t *testing.T) {
+	testhelper.Setup(t)
+	for _, s := range []string{"ns1/sec/web-a", "ns1/sec/web-b", "ns1/cfg/web-c", "ns1/svc/web-d", "ns2/sec/web-e"} {
+		p, err := naming.ParsePath(s)
+		require.NoError(t, err)
+		require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+		require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\n"), 0o600))
+	}
+	names := func(l []naming.Path) []string {
+		var s []string
+		for _, p := range l {
+			s = append(s, p.String())
+		}
+		slices.Sort(s)
+		return s
+	}
+	assert.Equal(t, []string{"ns1/sec/web-a", "ns1/sec/web-b"}, names(localDataStoresOf("ns1/sec/web-*")))
+	assert.Empty(t, localDataStoresOf("ns1/*/web-*"), "a pattern names objects of one kind, as an install line does")
+	assert.Empty(t, localDataStoresOf("ns1/svc/web-*"), "a svc is no datastore")
+
+	t.Setenv("OSVC_NAMESPACE", "other")
+	t.Setenv("OSVC_KIND", "svc")
+	assert.Equal(t, []string{"ns1/sec/web-a", "ns1/sec/web-b"}, names(localDataStoresOf("ns1/sec/web-*")),
+		"the object filter of the environment is not applied")
+}

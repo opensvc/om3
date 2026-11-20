@@ -235,13 +235,12 @@ func localDataStoresOf(use string) []naming.Path {
 	if err != nil {
 		return nil
 	}
-	paths, err := naming.InstalledPaths()
-	if err != nil {
-		return nil
-	}
+	// Read from the configuration files the pattern names, not from
+	// naming.InstalledPaths, which a daemon run with OSVC_NAMESPACE or
+	// OSVC_KIND in its environment filters on.
 	var l []naming.Path
-	for _, p := range paths {
-		if pattern.MatchPath(p) && isLocalDataStore(p) {
+	for _, p := range pattern.InstalledPaths() {
+		if isLocalDataStore(p) {
 			l = append(l, p)
 		}
 	}
