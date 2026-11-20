@@ -461,6 +461,12 @@ func isMeasuredReference(ref string) bool {
 	return strings.HasSuffix(ref, ".capacity") || strings.HasSuffix(ref, ".free")
 }
 
+// isFreeReference says whether ref measures what a resource has left, as
+// the free space of a volume group.
+func isFreeReference(ref string) bool {
+	return strings.HasSuffix(ref, ".free")
+}
+
 func (t *core) Dereference(ref string) (string, error) {
 	if t.staticReferences && isRuntimeReference(ref) {
 		return ref, fmt.Errorf("%w: %s", ErrRuntimeReference, ref)

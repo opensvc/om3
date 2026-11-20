@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -588,6 +589,15 @@ func (t *actor) resizeShortfall(ctx context.Context, r resource.Driver) string {
 		// for its own metadata. Comparing a link to it warns for ever about
 		// a shortfall the layout has by construction.
 		return t.resizeSpanShortfall(ctx, r, current)
+	}
+	if _, err := t.config.EvalDeferring(k, isFreeReference); errors.Is(err, xconfig.ErrRefDeferred) {
+		// A size computed from the free space of another resource, as of
+		// a volume group, is taken at provision, and is no target after:
+		// it says take what is left, as "100%FREE" does, and is 0 once the
+		// resource took it. Measuring it here ran a command at every
+		// status for nothing. A size computed from a capacity is a target,
+		// and is compared.
+		return ""
 	}
 	configured := t.config.GetSize(k)
 	if configured == nil || *configured <= 0 {

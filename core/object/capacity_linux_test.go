@@ -231,3 +231,33 @@ func TestASizeThatCannotBeResolvedAtProvision(t *testing.T) {
 	_, size := lvSize(t, o, "disk#1")
 	assert.Equal(t, "", size)
 }
+
+// A size computed from what a resource has left is taken at provision, and
+// is no target after, so the status does not measure it to compare: it is 0
+// once the resource took what was left. A size computed from a capacity is a
+// target, and a resource short of it is said to be.
+func TestTheStatusComparesASizeToACapacityNotToAFreeSpace(t *testing.T) {
+	small := filepath.Join(t.TempDir(), "small.img")
+	f, err := os.Create(small)
+	require.NoError(t, err)
+	require.NoError(t, f.Truncate(10*1024*1024))
+	require.NoError(t, f.Close())
+
+	o, _ := withLoopFile(t, 100*1024*1024, fmt.Sprintf(`
+[disk#1]
+type = loop
+file = %[1]s
+size = $(50%% * {disk#0.capacity})
+
+[disk#2]
+type = loop
+file = %[1]s
+size = $(100%% * {disk#0.free})
+`, small))
+	lister := o.(interface{ ResourceByID(string) resource.Driver })
+
+	assert.Contains(t, object.ResizeShortfall(o, lister.ResourceByID("disk#1")), "configured to hold",
+		"10m held of the 50m half the capacity says")
+	assert.Empty(t, object.ResizeShortfall(o, lister.ResourceByID("disk#2")),
+		"what is left is no target")
+}
