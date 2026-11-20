@@ -20,4 +20,9 @@ func TestPoolCharge(t *testing.T) {
 
 	head, _ = (&T{VGName: "data", Size: "100%FREE"}).PoolCharge()
 	assert.Empty(t, head)
+
+	// A size computed from the free space of the group is resolved at
+	// provision only, and is unset when the volume is loaded.
+	head, _ = (&T{VGName: "data", Size: ""}).PoolCharge()
+	assert.Empty(t, head)
 }

@@ -92,7 +92,9 @@ func (t *T) Start(ctx context.Context) error {
 // it is seen with being the most it can take.
 //
 // A size that is a share of the group, "100%FREE" and the like, is not a
-// number the group can be rationed by, and is answered as none.
+// number the group can be rationed by, and is answered as none. So is a size
+// computed from what another resource measures, as the free space of the
+// group: it is resolved at provision only, and is no number before.
 func (t *T) PoolCharge() (string, int64) {
 	size, err := sizeconv.FromSize(t.Size)
 	if err != nil {
@@ -182,7 +184,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return nil
 	}
 	if t.Size == "" {
-		return fmt.Errorf("a logical volume is created with a size, and none is configured")
+		return fmt.Errorf("a logical volume is created with a size, and none is configured, or its expression could not be computed")
 	}
 	if t.ThinPool != "" {
 		lvti, ok := lv.(LVDriverThinProvisioner)

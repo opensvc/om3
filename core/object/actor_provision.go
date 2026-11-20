@@ -9,6 +9,8 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
@@ -191,6 +193,7 @@ func (t *actor) lockedProvision(ctx context.Context) error {
 				wasProvisioned = st == provisioned.True
 			}
 		}
+		t.resolveProvisionKeywords(r)
 		if err := resource.Provision(ctx, r, leader); err != nil {
 			return err
 		}
@@ -199,6 +202,45 @@ func (t *actor) lockedProvision(ctx context.Context) error {
 		}
 		return nil
 	})
+}
+
+// resolveProvisionKeywords sets the keywords of r read at provision only,
+// whose value names a reference measuring a resource: the load of the
+// object leaves them unset, so as not to measure at every load what only
+// the provision reads. Resolved here, after the resources provisioned
+// before r, the measure is the one r is provisioned from: the free space of
+// the volume group provisioned just before a logical volume.
+//
+// A value that can't be resolved is said and left unset: the resource says
+// what it can't provision without, and a resource provisioned already does
+// not need it.
+func (t *actor) resolveProvisionKeywords(r resource.Driver) {
+	if r.IsDisabled() || r.IsActionDisabled() || r.IsProvisionDisabled() {
+		return
+	}
+	rid := r.RID()
+	for _, a := range manifest.Get(r).Attrs {
+		kw, ok := a.(*keywords.Keyword)
+		if !ok || !kw.EvalAtProvision {
+			continue
+		}
+		k := key.New(rid, kw.Option)
+		if _, err := t.config.EvalKeywordDeferringAs(k, kw, "", isMeasuredReference); !errors.Is(err, xconfig.ErrRefDeferred) {
+			// Set by the load of the object already, or failing as it
+			// did then.
+			continue
+		}
+		val, err := t.config.EvalKeywordAs(k, kw, "")
+		if err != nil {
+			r.Log().Warnf("%s: %s", k, err)
+			continue
+		}
+		if err := kw.SetValue(r, val); err != nil {
+			r.Log().Warnf("%s: %s", k, err)
+			continue
+		}
+		r.Log().Tracef("%s resolved at provision: %v", k, val)
+	}
 }
 
 // ErrProvisionConflict is the refusal of a provision finding on the node a

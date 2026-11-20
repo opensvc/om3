@@ -14,7 +14,9 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/drivers/resdisklv"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 
 	_ "github.com/opensvc/om3/v3/core/driverdb"
@@ -124,4 +126,108 @@ func TestTheFreeOfAResourceThatCannotSayIt(t *testing.T) {
 	o, _ := withLoopFile(t, 1024, "\n[disk#1]\ntype = loop\nfile = /var/tmp/does-not-matter.img\nsize = {disk#0.free}\n")
 	_, err := o.Config().Eval(key.New("disk#1", "size"))
 	require.Error(t, err)
+}
+
+// lvSize returns the size the logical volume resource rid of o is configured
+// with, as its load or a provision set it.
+func lvSize(t *testing.T, o any, rid string) (resource.Driver, string) {
+	t.Helper()
+	r := o.(interface{ ResourceByID(string) resource.Driver }).ResourceByID(rid)
+	require.NotNil(t, r, rid)
+	lv, ok := r.(*resdisklv.T)
+	require.True(t, ok, "%s is a logical volume", rid)
+	return r, lv.Size
+}
+
+// The size of a logical volume computed from what another resource
+// measures is read at provision only: the load of the object leaves it
+// unset, measuring nothing, and the provision resolves it, from the measure
+// taken then. A size measuring nothing is set at the load, as before.
+func TestASizeMeasuredFromAResourceIsResolvedAtProvision(t *testing.T) {
+	o, _ := withLoopFile(t, 100*1024*1024, fmt.Sprintf(`
+[env]
+half = $(50%% * {disk#0.capacity})
+
+[disk#1]
+type = lv
+vg = vgtest
+name = measured
+size = $(50%% * {disk#0.capacity})
+
+[disk#2]
+type = lv
+vg = vgtest
+name = literal
+size = 10m
+
+[disk#3]
+type = lv
+vg = vgtest
+name = share
+size = 100%%FREE
+
+[disk#4]
+type = lv
+vg = vgtest
+name = scoped
+size = 1g
+size@%s = $(25%% * {disk#0.capacity})
+
+[disk#5]
+type = lv
+vg = vgtest
+name = nested
+size = {env.half}
+`, hostname.Hostname()))
+
+	for _, tc := range []struct {
+		rid      string
+		atLoad   string
+		resolved string
+	}{
+		{"disk#1", "", "52428800"},
+		{"disk#2", "10m", "10m"},
+		{"disk#3", "100%FREE", "100%FREE"},
+		{"disk#4", "", "26214400"},
+		{"disk#5", "", "52428800"},
+	} {
+		t.Run(tc.rid, func(t *testing.T) {
+			r, size := lvSize(t, o, tc.rid)
+			assert.Equal(t, tc.atLoad, size, "at the load of the object")
+			object.ResolveProvisionKeywords(o, r)
+			_, size = lvSize(t, o, tc.rid)
+			assert.Equal(t, tc.resolved, size, "at provision")
+		})
+	}
+
+	// The configuration still evaluates it when asked.
+	v, err := o.Config().Eval(key.New("disk#1", "size"))
+	require.NoError(t, err)
+	assert.Equal(t, "52428800", v)
+}
+
+// A reload of a resource, as each action runs on its turn, does not keep a
+// size a provision resolved: it is resolved again at the next provision,
+// from the measure taken then.
+func TestASizeResolvedAtProvisionIsNotKeptByAReload(t *testing.T) {
+	o, _ := withLoopFile(t, 100*1024*1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = measured\nsize = $(50% * {disk#0.capacity})\n")
+	r, _ := lvSize(t, o, "disk#1")
+	object.ResolveProvisionKeywords(o, r)
+	_, size := lvSize(t, o, "disk#1")
+	require.Equal(t, "52428800", size)
+
+	require.NoError(t, o.(interface{ ReconfigureResource(resource.Driver) error }).ReconfigureResource(r))
+	_, size = lvSize(t, o, "disk#1")
+	assert.Equal(t, "", size)
+}
+
+// A size that can't be resolved at provision is left unset, for the
+// resource to say it can't provision without one.
+func TestASizeThatCannotBeResolvedAtProvision(t *testing.T) {
+	o, path := withLoopFile(t, 1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = measured\nsize = $(50% * {disk#0.capacity})\n")
+	require.NoError(t, os.Remove(path))
+	r, _ := lvSize(t, o, "disk#1")
+	object.ResolveProvisionKeywords(o, r)
+	_, size := lvSize(t, o, "disk#1")
+	assert.Equal(t, "", size)
 }

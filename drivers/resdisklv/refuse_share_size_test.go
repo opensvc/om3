@@ -21,7 +21,9 @@ func TestRefuseShareSize(t *testing.T) {
 		})
 	}
 
-	// A size, and a size om computed, are both sizes.
+	// A size, and a size om computed, are both sizes. A size computed from
+	// what the group measures is unset outside the provision, and a resize
+	// measures the group itself: it is no share either.
 	for _, size := range []string{"10m", "1g", "1073741824", ""} {
 		t.Run("size "+size, func(t *testing.T) {
 			assert.NoError(t, (&T{Size: size}).refuseShareSize())

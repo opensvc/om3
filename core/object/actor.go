@@ -556,7 +556,26 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 		switch o := attr.(type) {
 		case *keywords.Keyword:
 			k := key.New(rid, o.Option)
-			val, err := t.config.EvalKeywordAs(k, o, "")
+			var (
+				val any
+				err error
+			)
+			if o.EvalAtProvision {
+				val, err = t.config.EvalKeywordDeferringAs(k, o, "", isMeasuredReference)
+			} else {
+				val, err = t.config.EvalKeywordAs(k, o, "")
+			}
+			if errors.Is(err, xconfig.ErrRefDeferred) {
+				// Resolved by the provision, the only action reading it.
+				// A value set by a former configuration, or a former
+				// provision, is not kept: it is not the one the
+				// configuration says now.
+				r.Log().Tracef("%s keyword eval deferred to the provision: %s", k, err)
+				if err := o.ResetValue(r); err != nil {
+					return fmt.Errorf("%s.%s: %w", rid, o.Option, err)
+				}
+				continue
+			}
 			if err != nil {
 				if o.Required {
 					return err
