@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -61,6 +62,12 @@ type (
 		// kept, or, prefixed with ~, the ones dropped. Not set, the command
 		// inherits the one of om exec.
 		CapabilityBoundingSet *string
+
+		// SdNotify tells the systemd service unit om exec runs as the
+		// main process of that the command takes over, last before its
+		// execve: the unit, of type notify, is started then, and a
+		// failure before is a failure to start it.
+		SdNotify *bool
 	}
 )
 
@@ -152,6 +159,9 @@ func (t T) Argv() []string {
 	}
 	if t.CapabilityBoundingSet != nil && *t.CapabilityBoundingSet != "" {
 		argv = append(argv, "--capability-bounding-set", *t.CapabilityBoundingSet)
+	}
+	if t.SdNotify != nil && *t.SdNotify {
+		argv = append(argv, "--sd-notify")
 	}
 	return argv
 }
@@ -395,6 +405,7 @@ func (t *T) FlagSet(flags *pflag.FlagSet) {
 	t.Group = flags.String("group", "", "execute the command as group")
 	t.Umask = flags.String("umask", "", "the umask of the command, in octal, as 022")
 	t.NoNewPrivileges = flags.Bool("no-new-privileges", false, "set the no_new_privs flag of the command, so it gains no privilege by executing a setuid, setgid or file capability program")
+	t.SdNotify = flags.Bool("sd-notify", false, "tell the systemd service unit om exec is the main process of that the command takes over, last before it is executed")
 	t.CapabilityBoundingSet = flags.String("capability-bounding-set", "", "the capabilities the command keeps in its bounding set, all others dropped, or, prefixed with ~, the ones dropped, as \"CAP_NET_BIND_SERVICE CAP_CHOWN\"")
 }
 
@@ -524,7 +535,17 @@ func (t T) Exec(args []string) {
 	if err := t.setNoNewPrivileges(); err != nil {
 		fail(err)
 	}
+	env := os.Environ()
+	if t.SdNotify != nil && *t.SdNotify {
+		if err := sdNotifyReady(); err != nil {
+			fail(err)
+		}
+		// The command is not to speak for the unit: it did not take
+		// over the notification, a READY or a STOPPING of its own
+		// would be taken for one of the unit.
+		env = slices.DeleteFunc(env, func(s string) bool { return strings.HasPrefix(s, "NOTIFY_SOCKET=") })
+	}
 	// returns only on failure: the command did not take over.
-	err = syscall.Exec(prog, args, os.Environ())
+	err = syscall.Exec(prog, args, env)
 	fail(fmt.Errorf("exec %s: %w", prog, err))
 }

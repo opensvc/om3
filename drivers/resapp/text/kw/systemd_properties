@@ -1,0 +1,32 @@
+The properties of the transient systemd service unit the start command, or
+the run command of a task, is run in, as `systemd-run -p` takes them: the
+sandbox of the command, as `ProtectSystem=strict ReadWritePaths=/srv/data
+PrivateTmp=yes`. A word starting with a property name and `=` starts a
+property, and the words after it, up to the next property, are its value,
+so a list of paths needs no quotes. Quote a value with blanks a property
+does not split. Not set, the command runs in no unit.
+
+The unit is named after the process group of the resource, as
+`opensvc-ns.prod-svc.web-app.main.service`, and placed in it: the
+`pg_*` cappings apply to it. Its command is om exec, which sets the user,
+the group, the umask, the limits, `capability_bounding_set` and
+`no_new_privileges` as without a unit, inside the sandbox. The environment
+is given to the unit in a file only root reads, not as properties every
+user sees. The check, info, stop, quiesce and resume commands run in the
+namespaces of the unit while it runs, so they see the files the command
+sees, as its private `/tmp`.
+
+The unit is ordered before the om daemon, and never stopped by a stop
+job: the stop of the resource ends its processes, and the unit with them,
+so a reboot stops the resource with the object, in order, before systemd
+stops what is left. A property systemd does not know fails the start,
+never running the command unsandboxed. So does a node not running systemd.
+
+The properties om sets itself are refused: the type, the command, the
+identity, the environment, the slice, the dependencies and ordering, the
+restarts, the timeouts, the limits, `KillMode`, `NoNewPrivileges` and
+`CapabilityBoundingSet`, whose keywords om exec applies.
+
+To share properties between resources, set them in a key of the `env`
+section and reference it, as `systemd_properties = {env.sandbox}
+ReadWritePaths=/srv/data`.

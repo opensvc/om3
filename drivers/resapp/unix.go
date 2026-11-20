@@ -347,10 +347,20 @@ func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, exe
 	}
 	cred = t.credential(baseCommandSlice)
 	var args []string
+	// A command of a resource whose start command runs in a unit runs
+	// in the namespaces of the unit, while it runs.
+	args = append(args, t.unitNsenter(ctx, action)...)
 	args = append(args, prog, "exec")
 	caps, err := t.toCaps(cred)
 	if err != nil {
 		return nil, cred, err
+	}
+	if t.UnitMode() {
+		// The unit is placed in the process group: om exec moving the
+		// command out of the cgroup of the unit would lose it. The
+		// other commands, in the namespaces of the unit, may not
+		// write the cgroups.
+		caps.PGID = nil
 	}
 	args = append(args, caps.Argv()...)
 	args = append(args, "--")

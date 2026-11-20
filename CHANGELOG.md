@@ -204,6 +204,30 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     capability_bounding_set = CAP_NET_BIND_SERVICE
     ```
 
+* **Systemd sandbox for the app and host task commands**: `systemd_properties`, on the `app.simple`,
+    `app.forking` and `task.host` resources, runs the start command, or the run command of a task, in a
+    transient systemd service unit with these properties, as `systemd-run -p` takes them: the sandbox of
+    the command, as `ProtectSystem=strict ReadWritePaths=/srv/data PrivateTmp=yes`. The unit is named after
+    the process group of the resource and placed in it, its command is om exec, which still sets the
+    user, the limits and the privilege restrictions, and the environment is given to it in a file only root
+    reads. The check, info, stop, quiesce and resume commands run in the namespaces of the unit while it
+    runs. The unit is ordered before the om daemon and never stopped by a stop job: the stop of the
+    resource ends its processes, so a reboot stops the resource with its object, in order. A property
+    systemd does not know, or a node not running systemd, fails the start, never running the command
+    unsandboxed, and the properties om sets itself are refused. Properties shared by resources are set in
+    a key of the `env` section and referenced.
+
+    ```
+    [env]
+    sandbox = ProtectSystem=strict ProtectHome=yes PrivateTmp=yes PrivateDevices=yes
+
+    [app#web]
+    type = simple
+    start = /usr/bin/myapp --listen :8080
+    user = myapp
+    systemd_properties = {env.sandbox} ReadWritePaths=/srv/myapp/data
+    ```
+
 * **SSRF protection for HTTP fetches**: 
 
     All configuration, cfg, and secret 

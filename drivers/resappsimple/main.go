@@ -28,6 +28,7 @@ import (
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/proc"
+	"github.com/opensvc/om3/v3/util/sdunit"
 )
 
 // T is the driver structure.
@@ -72,6 +73,9 @@ func (t *T) Start(ctx context.Context) (err error) {
 	if appStatus == status.Up {
 		t.Log().Infof("already up")
 		return nil
+	}
+	if t.UnitMode() {
+		return t.startUnit(ctx)
 	}
 	// om exec closes the write end of the pipe when the command takes
 	// over, or writes why it could not run it: the start waits for it
@@ -126,6 +130,57 @@ func (t *T) Start(ctx context.Context) (err error) {
 	return nil
 }
 
+// startUnit runs the start command in the transient service unit of the
+// resource, of type notify: om exec tells the unit it started last before
+// the command takes over, so systemd-run returns once it did, or with the
+// failure om exec logged in the unit. The process the unit runs is recorded
+// as the one the start command launched. With kill=parent, the processes
+// the command starts are left running when it ends, as without a unit.
+func (t *T) startUnit(ctx context.Context) error {
+	r := sdunit.Run{
+		Type:          "notify",
+		OwnProperties: []sdunit.Property{t.UnitStartTimeout()},
+	}
+	if t.Kill == killParent {
+		r.OwnProperties = append(r.OwnProperties, sdunit.Property{Key: "KillMode", Value: "process"})
+	}
+	opts, cleanup, err := t.UnitRun(ctx, t.StartCmd, "start", r)
+	defer cleanup()
+	if err != nil || len(opts) == 0 {
+		return err
+	}
+	opts = append(opts,
+		command.WithLogger(t.Log()),
+		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	cmd := command.New(opts...)
+	t.loggerWithCmd(cmd).Infof("run: %s", cmd)
+	if err := cmd.Run(); err != nil {
+		return t.UnitFailure(ctx, err)
+	}
+	actionrollback.Register(ctx, func(ctx context.Context) error {
+		return t.Stop(ctx)
+	})
+	// The command may fail right after it took over, as one exiting
+	// immediately.
+	time.Sleep(20 * time.Millisecond)
+	st, err := sdunit.GetState(ctx, t.UnitName())
+	if err != nil {
+		return err
+	}
+	if !st.IsActive() {
+		return t.UnitFailure(ctx, fmt.Errorf("the command exited immediately: %s", st.Result))
+	}
+	if st.MainPID > 0 {
+		if err := t.recordStarted(st.MainPID); err != nil {
+			t.Log().Warnf("record the started process: %s", err)
+		}
+	}
+	return nil
+}
+
 // waitReady waits for om exec to hand over to the command, bounded by the
 // start timeout, a minute when none is set: the pipe closes when the command
 // takes over, its cgroup joined, its limits and identity set, and om exec
@@ -172,6 +227,11 @@ func (t *T) Stop(ctx context.Context) error {
 		return nil
 	default:
 		err = errors.Join(t.CommonStop(ctx, t), t.stop(ctx, true))
+	}
+	if t.UnitMode() && t.Kill != killParent {
+		// The processes the stop left in the unit, as the ones that
+		// cleared the resource identity from their environment.
+		err = errors.Join(err, t.UnitTerminate(ctx))
 	}
 	if err != nil {
 		if !actioncontext.HasResourceSelector(ctx) {
