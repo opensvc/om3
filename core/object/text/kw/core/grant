@@ -37,9 +37,10 @@ Pervasive roles:
   Read how the networks are set up on the nodes: the networks, their
   addresses, and the setup status of each on each node, with the addresses
   the nodes reach each other at, the devices, ports and tunnels, through
-  the api, the cluster status and the events. Nothing else of the api: a
-  guest role reads the rest. The network setup status is left out of the
-  cluster status and the events for the other roles, `root` aside.
+  `GET /api/network`, `/api/network/ip` and `/api/network/node`, and
+  nothing else of the api. The cluster status and the events leave the
+  network setup status out for the other roles, `root` aside: held with a
+  guest role, `inspector` keeps it there.
 
 * `<per-namespace role>:<namespace selector>`
  

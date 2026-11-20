@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/event/sseevent"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
@@ -222,6 +223,10 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	// isAllowed returns false if a message is about a namespace that
 	// doesn't match any of the user's guest grant.
 	seesNetworks := seesNetworkSetup(userGrants)
+	// A role on no namespace in particular reads the instances of every
+	// namespace, as in the cluster status, and so do the join and leave
+	// tokens of a node.
+	seesAllInstances := userGrants.HasRoleOn("", rbac.RoleRoot, rbac.RoleAdmin, rbac.RoleOperator, rbac.RoleGuest, rbac.RoleJoin, rbac.RoleLeave)
 	isAllowed := func(msg pubsub.Messager) bool {
 		if hasRoot {
 			return true
@@ -476,6 +481,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 					// unexpected event type, skip it
 					continue
 				}
+				anyE = redactNodeData(anyE, seesNetworks, seesAllInstances, allowedOn)
 				if err := doEvent(anyE); err != nil {
 					log.Tracef("do event failed on %v: %s", anyE, err)
 					return nil
@@ -563,6 +569,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				}
 			}
 
+			i = redactNodeData(i, seesNetworks, seesAllInstances, allowedOn)
 			if err := doEvent(i); err != nil {
 				log.Warnf("doEvent error for %v: %s", i, err)
 				return nil
@@ -600,6 +607,37 @@ func isNetworkSetupEvent(msg pubsub.Messager) bool {
 	default:
 		return false
 	}
+}
+
+// redactNodeData returns the event i as the user reads it: the node data of
+// a NodeDataUpdated without how the networks are set up on the node unless
+// seesNetworks, and with the instances of the namespaces allowedOn accepts
+// only unless seesAllInstances, as the cluster status filters them. It
+// carries no namespace, and gave every guest the instances of every
+// namespace and the addresses the nodes reach each other at.
+//
+// The event is copied, not modified: the message is shared with the other
+// subscribers. Any other event is returned as is.
+func redactNodeData(i any, seesNetworks, seesAllInstances bool, allowedOn func(string) bool) any {
+	msg, ok := i.(*msgbus.NodeDataUpdated)
+	if !ok || (seesNetworks && seesAllInstances) {
+		return i
+	}
+	c := *msg
+	if !seesNetworks {
+		c.Value.Network = nil
+	}
+	if !seesAllInstances && msg.Value.Instance != nil {
+		c.Value.Instance = make(map[string]instance.Instance, len(msg.Value.Instance))
+		for ps, inst := range msg.Value.Instance {
+			p, err := naming.ParsePath(ps)
+			if err != nil || !allowedOn(p.Namespace) {
+				continue
+			}
+			c.Value.Instance[ps] = inst
+		}
+	}
+	return &c
 }
 
 // isEventAllowedOn returns false if msg is about a namespace allowedOn
