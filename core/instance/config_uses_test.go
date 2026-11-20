@@ -36,3 +36,26 @@ func TestActorConfigUsesObject(t *testing.T) {
 	assert.Equal(t, cfg.Uses, back.Uses, "published with the instance configuration")
 	assert.Equal(t, cfg.Uses, (&Config{ActorConfig: cfg}).DeepCopy().Uses)
 }
+
+// Two configurations of the same file differ when the objects the instance
+// or one of its resources uses do: they are evaluated for the node, and a
+// reference to a node label, as ./cfg/{node.labels.env}, changes them while
+// the file stays the same.
+func TestConfigEqualComparesTheUses(t *testing.T) {
+	config := func(uses []string, resources ResourceConfigs) *Config {
+		return &Config{Checksum: "c1", Scope: []string{"n1"}, ActorConfig: &ActorConfig{Uses: uses, Resources: resources}}
+	}
+	base := config([]string{"ns1/cfg/prd"}, ResourceConfigs{"fs#1": {Uses: []string{"ns1/cfg/prd"}}})
+
+	assert.True(t, ConfigEqual(base, config([]string{"ns1/cfg/prd"}, ResourceConfigs{"fs#1": {Uses: []string{"ns1/cfg/prd"}}})))
+	assert.False(t, ConfigEqual(base, config([]string{"ns1/cfg/dev"}, ResourceConfigs{"fs#1": {Uses: []string{"ns1/cfg/dev"}}})),
+		"the object uses another datastore")
+	assert.False(t, ConfigEqual(base, config([]string{"ns1/cfg/prd"}, ResourceConfigs{"fs#1": {Uses: []string{"ns1/cfg/prd"}}, "fs#2": {Uses: []string{"ns1/cfg/prd"}}})),
+		"another resource uses the same datastore")
+	assert.False(t, ConfigEqual(base, config([]string{"ns1/cfg/prd"}, ResourceConfigs{"fs#1": {}, "fs#2": {Uses: []string{"ns1/cfg/prd"}}})),
+		"the datastore is used by another resource")
+	assert.True(t, ConfigEqual(base, config([]string{"ns1/cfg/prd"}, ResourceConfigs{"fs#1": {Uses: []string{"ns1/cfg/prd"}}, "app#1": {}})),
+		"a resource using nothing")
+	assert.False(t, ConfigEqual(base, &Config{Checksum: "c1", Scope: []string{"n1"}}), "a configuration of no actor")
+	assert.True(t, ConfigEqual(&Config{Checksum: "c1"}, &Config{Checksum: "c1"}), "two configurations of no actor")
+}

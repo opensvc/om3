@@ -391,10 +391,18 @@ func (t *vol) Access() (volaccess.T, error) {
 // what the volume will take elsewhere is only known by reading what the
 // keywords describe. They are read as the configuration they will become,
 // which is the same reading PoolCharges does of a volume that exists.
+//
+// The keywords read at provision only are resolved: a logical volume sized
+// from the free space of a volume group of a pool takes that space of the
+// pool, and the claim is weighed for it. The volume loaded leaves them
+// unset, as nothing else reads them.
 func (t *vol) PoolChargesOf(configData []byte) (map[string]int64, error) {
 	o, err := NewVol(t.path, WithConfigData(configData), WithVolatile(true))
 	if err != nil {
 		return nil, err
+	}
+	for _, r := range o.Resources() {
+		o.resolveProvisionKeywords(r)
 	}
 	return o.PoolCharges(), nil
 }

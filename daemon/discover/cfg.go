@@ -367,6 +367,10 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 		delete(t.cfgMTime, s)
 		delete(t.cfgDeleting, p)
 		delete(t.disableRecover, p)
+		// The local instance is gone, whatever removed its
+		// configuration: one made again is new, and what it uses is
+		// what its first configuration says.
+		delete(t.localUses, p)
 	}
 
 	if mtime := file.ModTime(filename); mtime.IsZero() {
@@ -435,6 +439,7 @@ func (t *Manager) mostRecentPeerConfig(p naming.Path) (peer string, cfg *instanc
 
 func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	if c.Node == t.localhost {
+		t.onLocalConfigUpdated(c.Path, c.Value)
 		return
 	}
 	t.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
@@ -577,6 +582,7 @@ func (t *Manager) onInstanceConfigDeleting(c *msgbus.InstanceConfigDeleting) {
 		return
 	}
 	t.cfgDeleting[c.Path] = true
+	delete(t.localUses, c.Path)
 	// A fetch started before is for a configuration the delete is about to
 	// remove: installed after it, it would bring the object back.
 	t.cancelFetcher(c.Path.String())

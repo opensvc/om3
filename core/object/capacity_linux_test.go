@@ -14,7 +14,9 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/drivers/resdisklv"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 
 	_ "github.com/opensvc/om3/v3/core/driverdb"
@@ -124,4 +126,141 @@ func TestTheFreeOfAResourceThatCannotSayIt(t *testing.T) {
 	o, _ := withLoopFile(t, 1024, "\n[disk#1]\ntype = loop\nfile = /var/tmp/does-not-matter.img\nsize = {disk#0.free}\n")
 	_, err := o.Config().Eval(key.New("disk#1", "size"))
 	require.Error(t, err)
+}
+
+// lvSize returns the size the logical volume resource rid of o is configured
+// with, as its load or a provision set it.
+func lvSize(t *testing.T, o any, rid string) (resource.Driver, string) {
+	t.Helper()
+	r := o.(interface{ ResourceByID(string) resource.Driver }).ResourceByID(rid)
+	require.NotNil(t, r, rid)
+	lv, ok := r.(*resdisklv.T)
+	require.True(t, ok, "%s is a logical volume", rid)
+	return r, lv.Size
+}
+
+// The size of a logical volume computed from the free space of another
+// resource is read at provision only: the load of the object leaves it
+// unset, measuring nothing, directly or through the keyword it references.
+// A size computed from a capacity is a stable size, and is set at the load,
+// as one measuring nothing is.
+func TestASizeFromAFreeSpaceIsLeftToTheProvision(t *testing.T) {
+	o, _ := withLoopFile(t, 100*1024*1024, fmt.Sprintf(`
+[env]
+left = $(100%% * {disk#0.free})
+
+[disk#1]
+type = lv
+vg = vgtest
+name = free
+size = $(100%% * {disk#0.free})
+
+[disk#2]
+type = lv
+vg = vgtest
+name = literal
+size = 10m
+
+[disk#3]
+type = lv
+vg = vgtest
+name = share
+size = 100%%FREE
+
+[disk#4]
+type = lv
+vg = vgtest
+name = scoped
+size = 1g
+size@%s = $(25%% * {disk#0.capacity})
+
+[disk#5]
+type = lv
+vg = vgtest
+name = nested
+size = {env.left}
+
+[disk#6]
+type = lv
+vg = vgtest
+name = capacity
+size = $(50%% * {disk#0.capacity})
+`, hostname.Hostname()))
+
+	for _, tc := range []struct {
+		rid    string
+		atLoad string
+	}{
+		{"disk#1", ""},
+		{"disk#2", "10m"},
+		{"disk#3", "100%FREE"},
+		{"disk#4", "26214400"},
+		{"disk#5", ""},
+		{"disk#6", "52428800"},
+	} {
+		t.Run(tc.rid, func(t *testing.T) {
+			_, size := lvSize(t, o, tc.rid)
+			assert.Equal(t, tc.atLoad, size, "at the load of the object")
+		})
+	}
+
+	// A size computed from a capacity is charged to the group.
+	r, _ := lvSize(t, o, "disk#6")
+	head, size := r.(resource.PoolCharger).PoolCharge()
+	assert.Equal(t, "vgtest", head)
+	assert.Equal(t, int64(52428800), size)
+}
+
+// A reload of a resource, as each action runs on its turn, does not keep a
+// size a provision resolved: it is resolved again at the next provision,
+// from the free space measured then.
+func TestASizeResolvedAtProvisionIsNotKeptByAReload(t *testing.T) {
+	o, _ := withLoopFile(t, 100*1024*1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = free\nsize = $(100% * {disk#0.free})\n")
+	r, _ := lvSize(t, o, "disk#1")
+	r.(*resdisklv.T).Size = "52428800" // as a provision resolved it
+
+	require.NoError(t, o.(interface{ ReconfigureResource(resource.Driver) error }).ReconfigureResource(r))
+	_, size := lvSize(t, o, "disk#1")
+	assert.Equal(t, "", size)
+}
+
+// A size that can't be resolved at provision is left unset, for the
+// resource to say it can't provision without one: a loop disk says no free
+// space.
+func TestASizeThatCannotBeResolvedAtProvision(t *testing.T) {
+	o, _ := withLoopFile(t, 1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = free\nsize = $(100% * {disk#0.free})\n")
+	r, _ := lvSize(t, o, "disk#1")
+	object.ResolveProvisionKeywords(o, r)
+	_, size := lvSize(t, o, "disk#1")
+	assert.Equal(t, "", size)
+}
+
+// A size computed from what a resource has left is taken at provision, and
+// is no target after, so the status does not measure it to compare: it is 0
+// once the resource took what was left. A size computed from a capacity is a
+// target, and a resource short of it is said to be.
+func TestTheStatusComparesASizeToACapacityNotToAFreeSpace(t *testing.T) {
+	small := filepath.Join(t.TempDir(), "small.img")
+	f, err := os.Create(small)
+	require.NoError(t, err)
+	require.NoError(t, f.Truncate(10*1024*1024))
+	require.NoError(t, f.Close())
+
+	o, _ := withLoopFile(t, 100*1024*1024, fmt.Sprintf(`
+[disk#1]
+type = loop
+file = %[1]s
+size = $(50%% * {disk#0.capacity})
+
+[disk#2]
+type = loop
+file = %[1]s
+size = $(100%% * {disk#0.free})
+`, small))
+	lister := o.(interface{ ResourceByID(string) resource.Driver })
+
+	assert.Contains(t, object.ResizeShortfall(o, lister.ResourceByID("disk#1")), "configured to hold",
+		"10m held of the 50m half the capacity says")
+	assert.Empty(t, object.ResizeShortfall(o, lister.ResourceByID("disk#2")),
+		"what is left is no target")
 }

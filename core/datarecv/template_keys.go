@@ -43,7 +43,13 @@ func (t *DataRecv) templateKeysFile() string {
 	if !ok {
 		return ""
 	}
-	return filepath.Join(o.Path().VarDir(), r.RID(), "template_keys")
+	return templateKeysPath(o.Path(), r.RID())
+}
+
+// templateKeysPath returns the file recording the keys the templates of the
+// resource rid of the object obj read.
+func templateKeysPath(obj naming.Path, rid string) string {
+	return filepath.Join(obj.VarDir(), rid, "template_keys")
 }
 
 func readTemplateKeys(filename string) templateKeys {
@@ -129,4 +135,11 @@ func (m templateKeys) readsFrom(path naming.Path, k string) bool {
 		}
 	}
 	return false
+}
+
+// TemplateReadsFrom says if a template of the resource rid of the object
+// obj read a key of the datastore store at its last render: a change of the
+// datastore is to render it again.
+func TemplateReadsFrom(obj naming.Path, rid string, store naming.Path) bool {
+	return readTemplateKeys(templateKeysPath(obj, rid)).readsFrom(store, "")
 }

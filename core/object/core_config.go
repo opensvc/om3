@@ -445,12 +445,25 @@ func isRuntimeReference(ref string) bool {
 		return true
 	case strings.Contains(ref, ".exposed_devs"):
 		return true
-	case strings.HasSuffix(ref, ".capacity"), strings.HasSuffix(ref, ".free"):
+	case isMeasuredReference(ref):
 		return true
 	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
 		return true
 	}
 	return false
+}
+
+// isMeasuredReference says whether ref measures a resource, as the free
+// space or the capacity of a volume group: resolving it runs a command.
+func isMeasuredReference(ref string) bool {
+	return strings.HasSuffix(ref, ".capacity") || isFreeReference(ref)
+}
+
+// isFreeReference says whether ref measures what a resource has left, as
+// the free space of a volume group. A keyword read at provision only
+// resolves it then. See keywords.Keyword.EvalAtProvision.
+func isFreeReference(ref string) bool {
+	return strings.HasSuffix(ref, ".free")
 }
 
 func (t *core) Dereference(ref string) (string, error) {

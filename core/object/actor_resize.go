@@ -1366,6 +1366,11 @@ func (t ResizeStep) recordSize(ctx context.Context, limit int64) error {
 	if ref, ok := referencedKey(was); ok {
 		keys = []key.T{ref}
 		was = t.owner.config.Get(ref)
+	} else if !isRecordableSize(was) {
+		// Checked before the claim, which evaluates the size: a size
+		// computed from the free space of a volume group measures it, for
+		// nothing, since it is left as written.
+		return nil
 	} else if claim, ok := t.claimSizeKey(k); ok {
 		keys = append(keys, claim)
 	}

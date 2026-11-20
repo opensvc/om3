@@ -590,6 +590,7 @@ func (t *Manager) getResources(cf *xconfig.T) instance.ResourceConfigs {
 			IsDisabled:   cf.GetBool(key.New(section, "disable")),
 			IsMonitored:  cf.GetBool(key.New(section, "monitor")),
 			IsStandby:    isStandby,
+			Uses:         t.getSectionUses(cf, section),
 		}
 	}
 	return m

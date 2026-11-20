@@ -80,6 +80,23 @@ type (
 		// Provisioning is set to true for keywords only used for resource provisioning
 		Provisioning bool
 
+		// EvalAtProvision means the value is read when the resource is
+		// provisioned only. A reference it names to the free space of
+		// another resource, as {disk#vg.free}, is resolved then, rather
+		// than at every load of the object: a measure is a command run,
+		// as a vgs, for a value nothing else reads, and that says 0 once
+		// the resource took the space. The value is unset until the
+		// provision, or the estimate of what the object takes of its
+		// pools, resolves it.
+		//
+		// A reference to a capacity, as {disk#vg.capacity}, is resolved
+		// at the load: the share of a capacity is a stable size, which
+		// the pools the object takes of are charged.
+		//
+		// Provisioning alone does not say it: a Provisioning keyword may
+		// be read by other actions, as the size of a tmpfs at its mount.
+		EvalAtProvision bool
+
 		// ProvisioningRequired means the provision of the resource fails
 		// without a value: the size of a logical volume, the devices of a
 		// md. It is set on Provisioning keywords only, and not on one with
@@ -871,6 +888,33 @@ func (t *Keyword) SetValue(r, v interface{}) error {
 	if err := attr.SetValue(o, elements[n-1], v); err != nil {
 		return fmt.Errorf("set keyword %s = %s: %w", t.Option, elements[n-1], err)
 	}
+	return nil
+}
+
+// ResetValue sets the attribute of r the keyword configures to its zero
+// value: a value the keyword no longer sets is not left from a former one.
+func (t *Keyword) ResetValue(r interface{}) error {
+	elements := strings.Split(t.Attr, ".")
+	o := r
+	var err error
+	for i := 0; i < len(elements)-1; i = i + 1 {
+		o, err = getValueAddr(o, elements[i])
+		if err != nil {
+			return fmt.Errorf("reset keyword %s=%s: %w", t.Option, elements[i], err)
+		}
+	}
+	objValue, err := getReflectValue(o)
+	if err != nil {
+		return fmt.Errorf("reset keyword %s: %w", t.Option, err)
+	}
+	fieldValue := objValue.FieldByName(elements[len(elements)-1])
+	if !fieldValue.IsValid() {
+		return fmt.Errorf("reset keyword %s: %w", t.Option, attr.ErrNoField)
+	}
+	if !fieldValue.CanSet() {
+		return fmt.Errorf("reset keyword %s: %w", t.Option, attr.ErrUnexportedField)
+	}
+	fieldValue.Set(reflect.Zero(fieldValue.Type()))
 	return nil
 }
 

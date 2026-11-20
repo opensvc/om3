@@ -50,6 +50,12 @@ type (
 		// cfgDeleting is a map of local crm deleting call indexed by object path
 		cfgDeleting map[naming.Path]bool
 
+		// localUses are the datastores and vols each resource of each
+		// local svc instance uses, as its last configuration said, to
+		// refresh the keys of the datastores a resource of a new
+		// configuration starts using.
+		localUses map[naming.Path]map[string][]string
+
 		// cfgMTime is a map of local instance config file time, indexed by object
 		// path string representation.
 		// More recent remote config files are fetched.
@@ -151,6 +157,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	localhost := hostname.Hostname()
 	return &Manager{
 		cfgDeleting: make(map[naming.Path]bool),
+		localUses:   make(map[naming.Path]map[string][]string),
 
 		cfgCmdC:  make(chan any),
 		cfgMTime: make(map[string]time.Time),
@@ -206,7 +213,7 @@ func (t *Manager) Start(ctx context.Context) (err error) {
 
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	discovered.Reset()
-	t.keyInstaller = newKeyInstaller()
+	t.keyInstaller = newKeyInstaller(t.ctx, func() int { return nodeMaxParallel(t.localhost) }, t.refreshInstalledKeys)
 	t.nodeList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.nodes"))
 	t.objectList = newObjectList(t.ctx, filepath.Join(rawconfig.Paths.Var, "list.objects"))
 
