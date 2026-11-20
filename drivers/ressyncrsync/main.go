@@ -174,11 +174,18 @@ func (t *T) snapper() snapper {
 	return t.snapSet()
 }
 
+// CopiesSyncSnapshot implements resource.SyncSnapshotCopier: a resource
+// copying a snapshot takes it with the ones of the other sync resources of
+// the action, unless delay_snap has it take it just before its own transfer.
+func (t *T) CopiesSyncSnapshot() bool {
+	return t.Snap && !t.DelaySnap
+}
+
 // WillPrepareSync implements resource.SyncPreparer: a resource copying a
 // snapshot takes it before the transfers of the action, unless delay_snap
 // has it take it just before its own, or it would transfer nothing.
 func (t *T) WillPrepareSync(ctx context.Context) bool {
-	if !t.Snap || t.DelaySnap {
+	if !t.CopiesSyncSnapshot() {
 		return false
 	}
 	nodenames, sources, err := t.plan(ctx, actioncontext.Target(ctx), true)

@@ -1233,6 +1233,15 @@ func WillPrepareSync(ctx context.Context, r Driver) bool {
 	return s.WillPrepareSync(ctx)
 }
 
+// CopiesSyncSnapshot says the configuration has r take a snapshot its
+// transfer copies to the peers, with the ones of the other sync resources of
+// an action: the state of the node is not looked at.
+func CopiesSyncSnapshot(r Driver) bool {
+	var i any = r
+	s, ok := i.(SyncSnapshotCopier)
+	return ok && s.CopiesSyncSnapshot()
+}
+
 // requiresMet says the resources r requires for the action are in the states
 // it requires, as the status bus knows them now: the check of checkRequires,
 // with no wait and no transition flagged.

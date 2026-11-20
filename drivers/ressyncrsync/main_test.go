@@ -21,4 +21,7 @@ func TestWillPrepareSyncOnlyWithSnap(t *testing.T) {
 	ctx := context.Background()
 	assert.False(t, (&T{}).WillPrepareSync(ctx), "no snap")
 	assert.False(t, (&T{Snap: true, DelaySnap: true}).WillPrepareSync(ctx), "delay_snap")
+	assert.True(t, (&T{Snap: true}).CopiesSyncSnapshot())
+	assert.False(t, (&T{}).CopiesSyncSnapshot(), "no snap")
+	assert.False(t, (&T{Snap: true, DelaySnap: true}).CopiesSyncSnapshot(), "delay_snap")
 }

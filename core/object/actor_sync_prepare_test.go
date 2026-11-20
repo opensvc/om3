@@ -22,6 +22,7 @@ type preparingResource struct {
 	will       bool
 	optional   bool
 	disabled   bool
+	snapOnly   bool
 	prepareErr error
 	journal    *[]string
 }
@@ -33,6 +34,10 @@ func (t *preparingResource) IsOptional() bool                     { return t.opt
 func (t *preparingResource) Log() *plog.Logger                    { return plog.NewDefaultLogger() }
 func (t *preparingResource) Requires(string) *resourcereqs.T      { return resourcereqs.New("") }
 func (t *preparingResource) WillPrepareSync(context.Context) bool { return t.will }
+
+// CopiesSyncSnapshot is false for a resource whose snapshot is its whole
+// job, as a sync.zfssnap, and for one taking none.
+func (t *preparingResource) CopiesSyncSnapshot() bool { return t.will && !t.snapOnly }
 
 func (t *preparingResource) PrepareSync(context.Context) (func() error, error) {
 	if t.prepareErr != nil {
@@ -140,4 +145,34 @@ func TestSyncsLeftOut(t *testing.T) {
 	assert.Equal(t, []string{"sync#1"}, syncsLeftOut(updateContext(), []resource.Driver{s2}, all))
 	assert.Empty(t, syncsLeftOut(updateContext(), all, all))
 	assert.Nil(t, syncsLeftOut(updateContext(), []resource.Driver{s3}, all), "a run taking no snapshot")
+
+	// A resource whose snapshot is its whole job, as a sync.zfssnap, runs
+	// on a schedule of its own: its run names no other, and the run of
+	// the others does not name it.
+	s4 := &preparingResource{rid: "sync#4", will: true, snapOnly: true, journal: &journal}
+	all = append(all, s4)
+	assert.Nil(t, syncsLeftOut(updateContext(), []resource.Driver{s4}, all), "a run of snapshots kept, not copied")
+	assert.Empty(t, syncsLeftOut(updateContext(), []resource.Driver{s1, s2}, all))
+}
+
+// TestPrepareSyncsTakesTheSnapshotsOfEveryDriver pins that the grouping is
+// not of a driver: the resources copying a snapshot and the ones only
+// keeping theirs, as a sync.rsync, a sync.zfs, a sync.btrfs and a
+// sync.zfssnap of one action, take them under the same quiesce, in the order
+// of the action, so the snapshots kept are in what the others send.
+func TestPrepareSyncsTakesTheSnapshotsOfEveryDriver(t *testing.T) {
+	var journal []string
+	l := []resource.Driver{
+		&preparingResource{rid: "sync#zfssnap", will: true, snapOnly: true, journal: &journal},
+		&preparingResource{rid: "sync#rsync", will: true, journal: &journal},
+		&preparingResource{rid: "sync#zfs", will: true, journal: &journal},
+		&preparingResource{rid: "sync#btrfs", will: true, journal: &journal},
+	}
+	release, err := prepareSyncs(updateContext(), plog.NewDefaultLogger(), l, quiesceJournal(&journal))
+	require.NoError(t, err)
+	release()
+	assert.Equal(t, []string{
+		"quiesce", "snap sync#zfssnap", "snap sync#rsync", "snap sync#zfs", "snap sync#btrfs", "resume",
+		"release sync#btrfs", "release sync#zfs", "release sync#rsync", "release sync#zfssnap",
+	}, journal)
 }

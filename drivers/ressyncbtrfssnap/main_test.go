@@ -1,6 +1,7 @@
 package ressyncbtrfssnap
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func TestParseSnapName(t *testing.T) {
@@ -154,4 +160,75 @@ func TestMountOfSubvolOfTheLabel(t *testing.T) {
 	assert.False(t, ok, "no filesystem has the label on this node")
 	_, ok = mountOfSubvol(mi, []string{"/dev/loop1"}, "data/x")
 	assert.False(t, ok)
+}
+
+// fakeObject is the object of a resource under test: its var directory.
+type fakeObject struct {
+	varDir string
+}
+
+func (o fakeObject) Log() *plog.Logger                   { return plog.NewDefaultLogger() }
+func (o fakeObject) VarDir() string                      { return o.varDir }
+func (o fakeObject) ResourceByID(string) resource.Driver { return nil }
+func (o fakeObject) ResourcesByDrivergroups([]driver.Group) resource.Drivers {
+	return nil
+}
+
+// fakeMount has the subvolume data of the btrfs labeled fs1 mounted at dir.
+func fakeMount(t *testing.T, dir string) {
+	t.Helper()
+	prevDevices, prevMountinfo := labelDevices, readMountinfo
+	t.Cleanup(func() { labelDevices, readMountinfo = prevDevices, prevMountinfo })
+	labelDevices = func(label string) ([]string, error) {
+		if label != "fs1" {
+			return nil, nil
+		}
+		return []string{"/dev/loop1"}, nil
+	}
+	readMountinfo = func() ([]byte, error) {
+		return []byte(fmt.Sprintf("480 22 7:1 /data %s rw,relatime shared:250 - btrfs /dev/loop1 rw,subvol=/data\n", dir)), nil
+	}
+}
+
+// TestPrepareSyncTakesTheSnapshots pins that the snapshots of the subvolumes
+// mounted are taken before the first transfer of the action, with the ones
+// of its other sync resources, the update of the action then only pruning,
+// and that the release has the next update take its own.
+func TestPrepareSyncTakesTheSnapshots(t *testing.T) {
+	// The final sync of a switch is not asked where the instance runs,
+	// which takes the status of the resources of an object to tell.
+	ctx := actioncontext.WithFinalSync(context.Background(), true)
+	calls := fakeBtrfs(t)
+	dir := t.TempDir()
+	fakeMount(t, dir)
+	o := &T{Name: "daily", Keep: 1, Subvol: []string{"fs1:data", "fs1:notmounted"}}
+	require.NoError(t, o.SetRID("sync#1"))
+	o.SetObject(fakeObject{varDir: t.TempDir()})
+
+	assert.True(t, o.WillPrepareSync(ctx))
+	assert.False(t, (&T{}).WillPrepareSync(ctx), "no subvolume")
+	assert.False(t, (&T{Name: "a/b", Subvol: o.Subvol}).WillPrepareSync(ctx), "a name the update refuses")
+
+	release, err := o.PrepareSync(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, release)
+	require.Len(t, *calls, 1)
+	assert.Equal(t, []string{"subvolume", "snapshot", "-r", dir}, (*calls)[0][:4])
+	assert.Equal(t, map[string]bool{dir: true}, o.prepared)
+
+	require.NoError(t, o.Update(ctx))
+	l, _, err := o.snapshots(dir)
+	require.NoError(t, err)
+	assert.Len(t, l, 1)
+	assert.Len(t, *calls, 1, "the update takes no snapshot again")
+
+	require.NoError(t, release())
+	assert.Nil(t, o.prepared)
+
+	time.Sleep(time.Millisecond)
+	require.NoError(t, o.Update(ctx))
+	assert.Len(t, *calls, 3, "released, the next update takes its own, and prunes the former")
+	l, _, err = o.snapshots(dir)
+	require.NoError(t, err)
+	assert.Len(t, l, 1)
 }

@@ -32,6 +32,11 @@ type (
 		Keep      int
 		Name      string
 		Recursive bool
+
+		// prepared is the directories PrepareSync took the snapshot of
+		// the subvolume mounted at, nil when it took none: the update of
+		// the action takes the others only, and prunes them all.
+		prepared map[string]bool
 	}
 
 	// snapshot is a snapshot of the resource in a .snap directory.
@@ -286,6 +291,49 @@ func (t *T) checkName() error {
 	return nil
 }
 
+// WillPrepareSync implements resource.SyncPreparer: the snapshots are taken
+// with the ones of the other sync resources of the action, before its first
+// transfer, as the ones of a sync.zfssnap. None is taken on a node not
+// holding the started instance.
+func (t *T) WillPrepareSync(ctx context.Context) bool {
+	if len(t.Subvol) == 0 || t.checkName() != nil {
+		return false
+	}
+	v, _ := t.IsInstanceSufficientlyStarted(ctx)
+	return v
+}
+
+// PrepareSync implements resource.SyncPreparer: it takes the snapshot of
+// each subvolume mounted, which the update of the action then only prunes.
+// The snapshots are what the resource keeps: the release leaves them. On an
+// error, the subvolumes snapshotted are remembered, so the update of an
+// optional resource, run nevertheless, takes the missing ones only.
+func (t *T) PrepareSync(ctx context.Context) (func() error, error) {
+	if err := t.checkName(); err != nil {
+		return nil, err
+	}
+	if v, _ := t.IsInstanceSufficientlyStarted(ctx); !v {
+		return nil, nil
+	}
+	release := func() error {
+		t.prepared = nil
+		return nil
+	}
+	t.prepared = make(map[string]bool)
+	now := time.Now()
+	err := t.eachDir(func(dir string) error {
+		if err := t.snap(dir, now); err != nil {
+			return err
+		}
+		t.prepared[dir] = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return release, nil
+}
+
 func (t *T) Update(ctx context.Context) error {
 	if err := t.checkName(); err != nil {
 		return err
@@ -299,8 +347,23 @@ func (t *T) Update(ctx context.Context) error {
 		return err
 	}
 	defer done()
-	var errs error
 	now := time.Now()
+	return t.eachDir(func(dir string) error {
+		// The action took the snapshot before its first transfer, or
+		// it is taken now.
+		if !t.prepared[dir] {
+			if err := t.snap(dir, now); err != nil {
+				return err
+			}
+		}
+		return t.prune(dir)
+	})
+}
+
+// eachDir calls fn with each directory a subvolume to snapshot is mounted
+// at, a subvolume not mounted being left out, and returns all the errors.
+func (t *T) eachDir(fn func(dir string) error) error {
+	var errs error
 	for _, s := range t.Subvol {
 		loc, err := btrfs.ParseLocation(s)
 		if err != nil {
@@ -317,7 +380,7 @@ func (t *T) Update(ctx context.Context) error {
 			continue
 		}
 		for _, dir := range dirs {
-			if err := t.snapAndPrune(dir, now); err != nil {
+			if err := fn(dir); err != nil {
 				errs = errors.Join(errs, err)
 			}
 		}
@@ -328,14 +391,26 @@ func (t *T) Update(ctx context.Context) error {
 // snapAndPrune takes a snapshot of the subvolume mounted at dir, and deletes
 // its oldest snapshots beyond keep.
 func (t *T) snapAndPrune(dir string, now time.Time) error {
+	if err := t.snap(dir, now); err != nil {
+		return err
+	}
+	return t.prune(dir)
+}
+
+// snap takes a snapshot of the subvolume mounted at dir.
+func (t *T) snap(dir string, now time.Time) error {
 	if err := os.MkdirAll(filepath.Join(dir, snapDir), 0755); err != nil {
 		return err
 	}
 	snap := filepath.Join(dir, snapDir, t.snapName(now))
 	t.Log().Infof("btrfs subvolume snapshot -r %s %s", dir, snap)
-	if _, err := btrfsCmd("subvolume", "snapshot", "-r", dir, snap); err != nil {
-		return err
-	}
+	_, err := btrfsCmd("subvolume", "snapshot", "-r", dir, snap)
+	return err
+}
+
+// prune deletes the oldest snapshots of the subvolume mounted at dir beyond
+// keep, and the empty directories snapshots left in place of them.
+func (t *T) prune(dir string) error {
 	l, placeholders, err := t.snapshots(dir)
 	if err != nil {
 		return err

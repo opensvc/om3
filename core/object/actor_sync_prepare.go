@@ -55,22 +55,28 @@ func (t *actor) prepareSync(ctx context.Context, selected resource.Drivers) (fun
 }
 
 // syncsLeftOut returns the sync resources of all that would take a snapshot
-// before the transfers, as the selected ones of an action do, but are not
-// selected: a run of a part of them takes its snapshots apart from theirs.
-// None when no selected one takes a snapshot.
+// their transfer copies before the transfers, as the selected ones of an
+// action do, but are not selected: a run of a part of them takes its
+// snapshots apart from theirs. None when no selected one takes such a
+// snapshot. A resource whose snapshot is its whole job, as a sync.zfssnap,
+// runs on a schedule of its own, and neither is named nor has the others
+// named.
 func syncsLeftOut(ctx context.Context, selected []resource.Driver, all []resource.Driver) []string {
+	copies := func(r resource.Driver) bool {
+		return resource.CopiesSyncSnapshot(r) && resource.WillPrepareSync(ctx, r)
+	}
 	isSelected := make(map[string]bool, len(selected))
 	preparing := false
 	for _, r := range selected {
 		isSelected[r.RID()] = true
-		preparing = preparing || resource.WillPrepareSync(ctx, r)
+		preparing = preparing || copies(r)
 	}
 	if !preparing {
 		return nil
 	}
 	l := make([]string, 0)
 	for _, r := range all {
-		if !isSelected[r.RID()] && resource.WillPrepareSync(ctx, r) {
+		if !isSelected[r.RID()] && copies(r) {
 			l = append(l, r.RID())
 		}
 	}
@@ -132,7 +138,7 @@ func prepareSyncs(ctx context.Context, log *plog.Logger, l []resource.Driver, qu
 		return nil, errs
 	}
 	if len(rids) > 1 {
-		log.Infof("the syncs %v copy from snapshots taken at one moment", rids)
+		log.Infof("the syncs %v took their snapshots at one moment", rids)
 	}
 	return release, nil
 }

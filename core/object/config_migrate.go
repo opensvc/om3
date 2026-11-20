@@ -86,19 +86,28 @@ var ObjectMigrationRules = MigrationRules{
 		apply: migrateSnapTriggers,
 	},
 	{
-		Doc: "The delay_snap tag of a sync resource becomes its delay_snap keyword, set to true, " +
+		Doc: "The delay_snap tag of a sync.rsync, sync.zfs or sync.btrfs resource becomes its delay_snap keyword, set to true, " +
 			"and is removed from its tags: the resource takes its snapshot just before its own transfer, " +
 			"rather than with the other sync resources of the action, before the first transfer.",
 		apply: migrateDelaySnapTag,
 	},
 }
 
-// migrateDelaySnapTag turns the delay_snap tag v2 read on a sync resource
-// into the delay_snap keyword om reads, for the scope the tags were written
-// for, and removes it from the tags, unset when it was the only one.
+// delaySnapTypes are the sync drivers reading the delay_snap keyword, the
+// ones v2 read the delay_snap tag of: an unset type is the rsync one.
+var delaySnapTypes = []string{"", "rsync", "zfs", "btrfs"}
+
+// migrateDelaySnapTag turns the delay_snap tag v2 read on a sync.rsync,
+// sync.zfs or sync.btrfs resource into the delay_snap keyword om reads, for
+// the scope the tags were written for, and removes it from the tags, unset
+// when it was the only one. A sync resource of another type keeps the tag,
+// which v2 did not read on it, and has no such keyword.
 func migrateDelaySnapTag(cfg *xconfig.T, m *Migration) {
 	for _, section := range cfg.SectionStrings() {
 		if !strings.HasPrefix(section, "sync#") {
+			continue
+		}
+		if !slices.Contains(delaySnapTypes, cfg.Get(key.T{Section: section, Option: "type"})) {
 			continue
 		}
 		for _, option := range cfg.Keys(section) {

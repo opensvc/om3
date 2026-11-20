@@ -1475,22 +1475,28 @@ which share the same executor.
     left are removed by the next, the status warning of them meanwhile.
 
 * **The snapshots of the sync resources of an action are taken at one moment:**
-    as v2 did, a sync update or full takes the snapshots of all its `snap = true` resources before the first transfer,
-    and removes them after the last, so the copies of data spread over filesystems are of one point in time. They
+    as v2 did, a sync update or full takes the snapshots of all its sync resources before the first transfer, so
+    the copies of data spread over filesystems are of one point in time, whatever the drivers copying them: the
+    snapshots a `sync.rsync` setting `snap` copies from, removed after the last transfer, the ones a `sync.zfs` or a
+    `sync.btrfs` sends, kept as the base of its next update, and the ones a `sync.zfssnap` or a `sync.btrfssnap`
+    keeps, which a `sync.zfs` of the same action then sends. A `sync.store` backup still takes its own. They
     are taken under a quiesce of the resources of the object that quiesce, as an app or a container setting `quiesce`,
     resumed as soon as the snapshots are taken, which v2 left to the `presnap_trigger` and `postsnap_trigger`
     commands. A snapshot failing fails the action before any transfer, unless its resource is optional. A thick
     volume holds the writes of its snapshot for the whole action rather than for its own transfer.
-    `delay_snap = true` has a resource take its snapshot just before its own transfer, as each did so far: the
-    `delay_snap` tag of v2 becomes this keyword in the configuration migration.
+    The snapshot of a `sync.zfs` or a `sync.btrfs` no transfer sent, the action having failed before, is removed.
+    `delay_snap = true` has a `sync.rsync`, `sync.zfs` or `sync.btrfs` resource take its snapshot just before its
+    own transfer, as each did so far: the `delay_snap` tag v2 read on these becomes this keyword in the
+    configuration migration.
 
 * **The scheduled updates of an object due at once run in one exec:**
     the update jobs of the sync resources of an object due in the same tick run as one `instance update --rid a,b`,
     each recording its own last run and last success, and held together when one of them is held, rather than one exec each, which met on the lock of the object,
     the later failing when the earlier lasted longer than the 30 seconds it waits for the lock. The snapshots of the
-    syncs run together are taken at one moment. `validate config` warns of a `snap` sync whose schedule differs from
-    the one of the first, as their snapshots are taken in separate runs, and a run of a part of the `snap` syncs
-    names the ones it leaves out.
+    syncs run together are taken at one moment. `validate config` warns of a sync copying a snapshot, a `sync.rsync`
+    setting `snap`, a `sync.zfs` or a `sync.btrfs`, `delay_snap` not set, whose schedule differs from the one of the
+    first, as their snapshots are taken in separate runs, and a run of a part of them names the ones it leaves out.
+    A `sync.zfssnap` or a `sync.btrfssnap` keeps a schedule of its own, and is not warned of.
 
 ### Driver: sync.zfs
 
