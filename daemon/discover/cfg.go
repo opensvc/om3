@@ -367,6 +367,10 @@ func (t *Manager) onInstanceConfigManagerDone(c *msgbus.InstanceConfigManagerDon
 		delete(t.cfgMTime, s)
 		delete(t.cfgDeleting, p)
 		delete(t.disableRecover, p)
+		// The local instance is gone, whatever removed its
+		// configuration: one made again is new, and what it uses is
+		// what its first configuration says.
+		delete(t.localUses, p)
 	}
 
 	if mtime := file.ModTime(filename); mtime.IsZero() {
