@@ -26,6 +26,22 @@ var (
 	ErrInvalidType = errors.New("invalid network type")
 )
 
+// PartialError is the error of a setup that left the network usable on the
+// node, its failures confined to a part of it, as the route or the tunnel to
+// one peer: the rest of the network is set up all the same, and its cni
+// configuration written, so the objects of the node use it.
+type PartialError struct {
+	Err error
+}
+
+func (t *PartialError) Error() string {
+	return t.Err.Error()
+}
+
+func (t *PartialError) Unwrap() error {
+	return t.Err
+}
+
 // setupFirewall applies the firewall rules of the networks, replaced by the
 // tests.
 var setupFirewall = setupFW
@@ -184,15 +200,17 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 		nw.Log().Infof("network setup: skip invalid network")
 		return nil
 	}
+	var setupErr error
 	if i, ok := nw.(Setuper); ok {
 		if err := i.Setup(); err != nil {
-			return err
+			var partial *PartialError
+			if !errors.As(err, &partial) {
+				return err
+			}
+			setupErr = err
 		}
 	}
-	if err := setupNetworkCNI(n, dir, nw); err != nil {
-		return err
-	}
-	return nil
+	return errors.Join(setupErr, setupNetworkCNI(n, dir, nw))
 }
 
 func mkCNIConfigDir(n *object.Node) (string, error) {

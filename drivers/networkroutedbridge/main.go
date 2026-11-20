@@ -3,6 +3,7 @@
 package networkroutedbridge
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"math/big"
@@ -333,10 +334,16 @@ func (t *T) Setup() error {
 	if err != nil {
 		return err
 	}
+	// A peer failing leaves the network usable with the others: they are
+	// set up all the same.
+	var errs []error
 	for idx, nodename := range nodes {
 		if err := t.setupNode(nodename, idx, localIP, brIP); err != nil {
-			return fmt.Errorf("setup network to node %s: %w", nodename, err)
+			errs = append(errs, fmt.Errorf("setup network to node %s: %w", nodename, err))
 		}
+	}
+	if len(errs) > 0 {
+		return &network.PartialError{Err: errors.Join(errs...)}
 	}
 	return nil
 }
