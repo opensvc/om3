@@ -72,6 +72,8 @@ func UsageFlagEventFilter() string {
 
 func NewCmdDaemonEvents() *cobra.Command {
 	cmd := &cobra.Command{
+		// A subsystem: it holds the doc of the events.
+		GroupID: GroupIDSubsystems,
 		Use:     "events",
 		Short:   "print the daemon event stream",
 		Long:    "Print the daemon event stream\n\n" + UsageFlagEventFilter() + "\n" + UsageFlagEventTemplate(),

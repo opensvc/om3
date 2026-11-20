@@ -1,0 +1,3 @@
+The status of an instance changed.
+
+Published by the instance status manager, and for a peer by the daemon data: its availability, its resources, their logs, its frozen state.

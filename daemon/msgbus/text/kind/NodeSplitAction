@@ -1,0 +1,3 @@
+The node acted on a cluster split.
+
+Published by the node monitor when the node lost the quorum: the action it took, as a crash or a reboot, and the votes of the nodes and the arbitrators it counted.

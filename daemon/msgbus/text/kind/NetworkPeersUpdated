@@ -1,0 +1,3 @@
+The peers of a network of the node changed, after its setup.
+
+Published by the node monitor when a node joined or left the network, an address of a node changed, or the tunnel to a node: a file rendered from the peers is to be rendered again.

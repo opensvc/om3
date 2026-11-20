@@ -1,0 +1,3 @@
+A peer node is alive.
+
+Published by the heartbeat controller when a heartbeat hears the peer again, the first of its heartbeats to do so.

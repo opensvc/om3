@@ -1,0 +1,3 @@
+A configuration file of the node is scoped for other nodes.
+
+Published by the discover manager when it reads an object configuration whose nodes are peers, not this node: those peers fetch it.

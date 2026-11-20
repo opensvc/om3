@@ -1,0 +1,3 @@
+A node wrote its record of a delete or a purge.
+
+Published with the version of the configuration it deleted, as a node may still hold it, when the record is written, loaded at start, or received from a peer. A record never changes.

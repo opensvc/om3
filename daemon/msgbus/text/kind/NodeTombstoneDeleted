@@ -1,0 +1,3 @@
+A node removed its record of a delete or a purge.
+
+Published when every node is up, none publishing the version of the configuration it deleted, and each node that may have held it was seen deleting its instance, or a day later.

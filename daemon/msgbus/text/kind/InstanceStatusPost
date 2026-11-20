@@ -1,0 +1,3 @@
+A status of an instance was posted.
+
+Published by the api when an om command posts the status it evaluated, and by the instance monitor after an action: the instance status manager takes it.

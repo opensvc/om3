@@ -1,0 +1,3 @@
+The node monitor took an orchestration on, under the id it carries.
+
+The node version of ObjectOrchestrationAccepted: a target state asked of the nodes, as a drain or a freeze, run by the node monitor rather than an instance monitor.

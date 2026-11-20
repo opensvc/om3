@@ -1,0 +1,3 @@
+A client asked to change the monitor of an instance.
+
+Published by the api: a global or local expectation, as a target state of an orchestration, or a clear of a failed state. The instance monitor applies it, or publishes SetInstanceMonitorRefused.

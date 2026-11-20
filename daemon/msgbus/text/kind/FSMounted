@@ -1,0 +1,3 @@
+A file system was mounted on the node.
+
+Published by the mount monitor, with the mount point, the type, the source and the options. The status of the instances holding it is evaluated again.

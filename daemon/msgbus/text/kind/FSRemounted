@@ -1,0 +1,3 @@
+A file system of the node was mounted again, its options changed.
+
+Published by the mount monitor, as a file system going read-only on an error.

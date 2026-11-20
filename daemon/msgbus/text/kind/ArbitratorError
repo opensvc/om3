@@ -1,0 +1,3 @@
+An arbitrator of the node did not answer.
+
+Published by the node monitor when a check of an arbitrator fails: name is the arbitrator, error why. The arbitrators vote for a node when the cluster splits.

@@ -1,0 +1,3 @@
+A node refreshed the resource info cache of one of its instances.
+
+A signal only: the key-values are not carried, the collector client fetches them from the node when it is ready to report them.

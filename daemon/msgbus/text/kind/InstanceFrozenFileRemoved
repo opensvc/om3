@@ -1,0 +1,3 @@
+The frozen flag of an instance was lowered.
+
+Published by the instance monitor when it removes the frozen file of the instance, as an unfreeze does.

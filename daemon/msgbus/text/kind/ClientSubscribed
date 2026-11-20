@@ -1,0 +1,3 @@
+An api client subscribed to the event stream of the daemon.
+
+Published by the api when a client opens its event stream, name saying the client and its filters.

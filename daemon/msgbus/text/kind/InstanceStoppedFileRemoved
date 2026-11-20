@@ -1,0 +1,3 @@
+The flag saying the instance was stopped on purpose was lowered.
+
+Published by the instance monitor, as a start does: the daemon may start the instance on its own again.

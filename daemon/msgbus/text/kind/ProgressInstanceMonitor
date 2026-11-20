@@ -1,0 +1,3 @@
+An om command running an action of an instance reported its progress.
+
+Published by the api: the state of the instance monitor, as starting or stopping, while the action runs out of the daemon.

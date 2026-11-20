@@ -1,0 +1,3 @@
+The queue of a subscription of the bus crossed a threshold.
+
+Published by the bus when the messages waiting for a subscriber grow past a threshold, or shrink back below it: a subscriber slower than the messages it receives.

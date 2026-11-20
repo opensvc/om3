@@ -1,0 +1,3 @@
+An api client closed its subscription to the event stream.
+
+Published by the api when the event stream of a client ends.

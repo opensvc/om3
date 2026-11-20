@@ -1,0 +1,3 @@
+The frozen state of the node changed.
+
+Published by the node monitor when the node frozen flag was raised or lowered: the daemon takes no initiative on a frozen node.

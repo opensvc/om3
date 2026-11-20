@@ -1,0 +1,3 @@
+A client started an audit of the daemon.
+
+Published by the api: the subsystems named send their log messages to the audit, for the client to read them, until AuditStop.

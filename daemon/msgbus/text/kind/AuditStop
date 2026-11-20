@@ -1,0 +1,3 @@
+The client of an audit is done, or gone.
+
+Published by the api: the subsystems named stop sending their log messages to the audit.

@@ -1,0 +1,3 @@
+An object was deleted.
+
+Published by the object monitor when no node holds a configuration of the object anymore.

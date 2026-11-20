@@ -1,0 +1,3 @@
+A record of the cluster dns zone was added or changed.
+
+Published by the dns manager when an instance holds an address of a cluster network: the name, the type, the ttl and the content of the record.

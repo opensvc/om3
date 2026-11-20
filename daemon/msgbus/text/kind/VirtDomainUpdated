@@ -1,0 +1,3 @@
+A libvirt domain an instance of the node holds changed state.
+
+Published by the virtualization monitor when the domain started, stopped, was shut down by its guest, crashed, was suspended or migrated. The instance status is evaluated again.

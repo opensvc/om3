@@ -1,0 +1,3 @@
+The node served the configuration file of an object to a peer installing it.
+
+Published by the api: the peer has an instance coming, which an orchestration deleting the object waits for, as its monitor may not have reached this node yet.

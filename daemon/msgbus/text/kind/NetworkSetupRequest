@@ -1,0 +1,3 @@
+A client asked the node monitor to set up networks.
+
+Published by the api: names are the networks to set up, all of them when none is named, and the error of the setup is answered once it ran.
