@@ -221,9 +221,13 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	// isAllowed returns false if a message is about a namespace that
 	// doesn't match any of the user's guest grant.
+	seesNetworks := seesNetworkSetup(userGrants)
 	isAllowed := func(msg pubsub.Messager) bool {
 		if hasRoot {
 			return true
+		}
+		if !seesNetworks && isNetworkSetupEvent(msg) {
+			return false
 		}
 		return isEventAllowedOn(allowedOn, msg)
 	}
@@ -583,6 +587,19 @@ func isEventAllowedForGuest(grants rbac.Grants, msg pubsub.Messager) bool {
 	return isEventAllowedOn(func(namespace string) bool {
 		return hasRoleGuestOn(grants, namespace)
 	}, msg)
+}
+
+// isNetworkSetupEvent says msg tells how a network is set up on a node, the
+// addresses the nodes reach each other at included, which the root and
+// inspector grants read only. It carries no namespace, and would reach every
+// guest else.
+func isNetworkSetupEvent(msg pubsub.Messager) bool {
+	switch msg.(type) {
+	case *msgbus.NodeNetworkStatusUpdated, *msgbus.NodeNetworkStatusDeleted:
+		return true
+	default:
+		return false
+	}
 }
 
 // isEventAllowedOn returns false if msg is about a namespace allowedOn

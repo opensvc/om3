@@ -52,7 +52,10 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 	// The guest:ns1 grant is sufficient to see all objects in ns1, so a
 	// grant on no namespace in particular is what means "everything".
 	seesEverything := userGrants.HasRoleOn("", rbac.RoleRoot, rbac.RoleAdmin, rbac.RoleOperator, rbac.RoleGuest)
-	if params.Selector == nil && params.Namespace == nil && seesEverything {
+	// How the networks are set up on the nodes is left out for a caller
+	// with neither the root nor the inspector grant.
+	seesNetworks := seesNetworkSetup(userGrants)
+	if params.Selector == nil && params.Namespace == nil && seesEverything && seesNetworks {
 		b, err := a.Daemondata.ClusterDataJSON()
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "marshal cluster data: %s", err)
@@ -83,6 +86,10 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 	if !seesEverything {
 		// Filter out all objects from namespaces the user has no role for.
 		status = status.WithNamespace(userGrants.Namespaces()...)
+	}
+
+	if !seesNetworks {
+		status = status.WithoutNodeNetworks()
 	}
 
 	return ctx.JSON(http.StatusOK, status)

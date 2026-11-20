@@ -108,6 +108,22 @@ func (s *Data) ObjectPaths() naming.Paths {
 	return allPaths
 }
 
+// WithoutNodeNetworks returns a view of the dataset without how the networks
+// are set up on the nodes, the addresses the nodes reach each other at
+// included, which the root and inspector grants read only.
+//
+// The receiver is left untouched, as by filter: Cluster.Node is rebuilt,
+// and the rest is shared with the receiver.
+func (s *Data) WithoutNodeNetworks() *Data {
+	filtered := *s
+	filtered.Cluster.Node = make(map[string]node.Node, len(s.Cluster.Node))
+	for nodename, nodeData := range s.Cluster.Node {
+		nodeData.Network = nil
+		filtered.Cluster.Node[nodename] = nodeData
+	}
+	return &filtered
+}
+
 // filter returns a view of the dataset restricted to the object paths keep
 // accepts.
 //

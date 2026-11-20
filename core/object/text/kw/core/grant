@@ -32,6 +32,15 @@ Pervasive roles:
   Read every metric of the nodes, at `/metrics`, `/metrics/<subsystem>` and
   through the api, and nothing else of the api. The role of a prometheus.
 
+* `inspector`
+
+  Read how the networks are set up on the nodes: the networks, their
+  addresses, and the setup status of each on each node, with the addresses
+  the nodes reach each other at, the devices, ports and tunnels, through
+  the api, the cluster status and the events. Nothing else of the api: a
+  guest role reads the rest. The network setup status is left out of the
+  cluster status and the events for the other roles, `root` aside.
+
 * `<per-namespace role>:<namespace selector>`
  
 Per-namespace roles:

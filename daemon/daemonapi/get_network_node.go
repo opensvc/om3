@@ -12,10 +12,10 @@ import (
 )
 
 // GetNetworkNodes returns what the last setup of each network made on each
-// node, as the nodes published it: the root grant reads it, as it exposes
-// the addresses the nodes reach each other at.
+// node, as the nodes published it: the root and inspector grants read it, as
+// it exposes the addresses the nodes reach each other at.
 func (a *DaemonAPI) GetNetworkNodes(ctx echo.Context, params api.GetNetworkNodesParams) error {
-	if v, err := assertRoot(ctx); !v {
+	if v, err := assertInspector(ctx); !v {
 		return err
 	}
 	var nodeMap nodeselector.ResultMap

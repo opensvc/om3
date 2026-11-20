@@ -1243,7 +1243,8 @@ paths:
         it set up, the part of the network the node hands out, how the node
         reaches each other node of the network, by a route or a tunnel, and
         what failed. Each node records it for itself and publishes it in the
-        cluster data.
+        cluster data. The root and inspector grants read it: it is left out
+        of the cluster status and of the events for the others.
       tags:
         - network
       security:
@@ -13431,6 +13432,7 @@ components:
         - blacklistadmin
         - guest
         - heartbeat
+        - inspector
         - join
         - leave
         - operator

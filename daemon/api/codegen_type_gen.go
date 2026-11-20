@@ -1026,6 +1026,7 @@ const (
 	Blacklistadmin Role = "blacklistadmin"
 	Guest          Role = "guest"
 	Heartbeat      Role = "heartbeat"
+	Inspector      Role = "inspector"
 	Join           Role = "join"
 	Leave          Role = "leave"
 	Operator       Role = "operator"
@@ -1045,6 +1046,8 @@ func (e Role) Valid() bool {
 	case Guest:
 		return true
 	case Heartbeat:
+		return true
+	case Inspector:
 		return true
 	case Join:
 		return true

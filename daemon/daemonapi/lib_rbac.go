@@ -849,6 +849,21 @@ func assertScraper(ctx echo.Context) (bool, error) {
 	return assertGrant(ctx, rbac.GrantScraper, rbac.GrantRoot)
 }
 
+// assertInspector asserts that the authenticated user can read how the
+// networks are set up on the nodes, which the "inspector" role allows with
+// nothing else of the api, and "root" along with the rest.
+func assertInspector(ctx echo.Context) (bool, error) {
+	return assertGrant(ctx, rbac.GrantInspector, rbac.GrantRoot)
+}
+
+// seesNetworkSetup says the grants read how the networks are set up on the
+// nodes: the addresses the nodes reach each other at, the devices and the
+// ports. The cluster status and the event stream leave it out for the
+// others.
+func seesNetworkSetup(userGrants rbac.Grants) bool {
+	return userGrants.HasGrant(rbac.GrantInspector, rbac.GrantRoot)
+}
+
 func assertStrategy(ctx echo.Context, expected string) (bool, error) {
 	if strategy := strategyFromContext(ctx); strategy != expected {
 		return false, JSONForbiddenStrategy(ctx, strategy, expected)

@@ -2,9 +2,11 @@ package daemonapi
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-json"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/event"
@@ -246,5 +248,30 @@ func TestIsEventAllowedForAGuestOfAPattern(t *testing.T) {
 	for ns, allowed := range map[string]bool{"prod": true, "prod-eu": true, "dev": false, "system": false} {
 		msg := &msgbus.InstanceStatusUpdated{Msg: pubsub.Msg{Labels: pubsub.NewLabels("namespace", ns)}}
 		require.Equal(t, allowed, isEventAllowedForGuest(grants, msg), ns)
+	}
+}
+
+// The network setup status of the nodes, the addresses the nodes reach each
+// other at, is read by the root and inspector grants only: its events carry
+// no namespace, and reached every guest.
+func TestNetworkSetupIsReadByRootAndInspectorOnly(t *testing.T) {
+	for grants, sees := range map[string]bool{
+		"root":                 true,
+		"inspector":            true,
+		"guest,inspector":      true,
+		"guest":                false,
+		"guest:ns1":            false,
+		"admin":                false,
+		"scraper":              false,
+		"inspector:ns1,guest":  false,
+		"operator,prioritizer": false,
+	} {
+		assert.Equal(t, sees, seesNetworkSetup(rbac.NewGrants(strings.Split(grants, ",")...)), grants)
+	}
+	for _, msg := range []pubsub.Messager{&msgbus.NodeNetworkStatusUpdated{}, &msgbus.NodeNetworkStatusDeleted{}} {
+		assert.True(t, isNetworkSetupEvent(msg), "%T", msg)
+	}
+	for _, msg := range []pubsub.Messager{&msgbus.NetworkPeersUpdated{}, &msgbus.NodePoolStatusUpdated{}, &msgbus.InstanceStatusUpdated{}} {
+		assert.False(t, isNetworkSetupEvent(msg), "%T", msg)
 	}
 }
