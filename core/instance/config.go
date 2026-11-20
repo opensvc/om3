@@ -243,7 +243,11 @@ func (cfg *ActorConfig) UsesObject(p naming.Path) bool {
 
 // ConfigEqual returns a boolean reporting whether a == b
 //
-// Nodename and Path are not compared
+// Nodename and Path are not compared.
+//
+// The objects the instance and its resources use are compared: they are
+// evaluated for the node, and change with what a reference names, as a
+// node label, while the file does not.
 func ConfigEqual(a, b *Config) bool {
 	if a.UpdatedAt != b.UpdatedAt {
 		return false
@@ -256,6 +260,31 @@ func ConfigEqual(a, b *Config) bool {
 	}
 	if !maps.Equal(a.Labels, b.Labels) {
 		return false
+	}
+	if !usesEqual(a.ActorConfig, b.ActorConfig) {
+		return false
+	}
+	return true
+}
+
+// usesEqual says whether two actor configurations use the same objects, for
+// the object and for each of its resources.
+func usesEqual(a, b *ActorConfig) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if !slices.Equal(a.Uses, b.Uses) {
+		return false
+	}
+	for rid, ra := range a.Resources {
+		if !slices.Equal(ra.Uses, b.Resources[rid].Uses) {
+			return false
+		}
+	}
+	for rid, rb := range b.Resources {
+		if _, ok := a.Resources[rid]; !ok && len(rb.Uses) > 0 {
+			return false
+		}
 	}
 	return true
 }
