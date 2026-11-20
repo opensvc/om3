@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
@@ -18,8 +17,9 @@ func (t *actor) ValidateConfig(ctx context.Context) (xconfig.Alerts, error) {
 	if err != nil {
 		return alerts, err
 	}
-	syncs := t.ResourcesByDrivergroups([]driver.Group{driver.GroupSync})
-	return append(alerts, snapScheduleAlerts(t.config, syncs)...), nil
+	// The syncs this node runs only: an encap sync never shares a run with
+	// the ones of its host, whatever their schedules.
+	return append(alerts, snapScheduleAlerts(t.config, t.syncsRunHere())...), nil
 }
 
 // snapScheduleAlerts warns of the sync resources taking the snapshots they

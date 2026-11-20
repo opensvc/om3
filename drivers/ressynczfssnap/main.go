@@ -59,8 +59,9 @@ func (t *T) SortKey() string {
 
 // WillPrepareSync implements resource.SyncPreparer: the snapshots are taken
 // with the ones of the other sync resources of the action, before its first
-// transfer, as v2 took them, so a sync.zfs of the action sends them. None is
-// taken on a node not holding the started instance.
+// transfer, as v2 took them, so a sync.zfs of the action sends them, with
+// intermediary set, as by default. None is taken on a node not holding the
+// started instance.
 func (t *T) WillPrepareSync(ctx context.Context) bool {
 	if len(t.Dataset) == 0 || t.DelaySnap {
 		return false

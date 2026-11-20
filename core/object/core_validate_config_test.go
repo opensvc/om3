@@ -162,3 +162,58 @@ func TestTheSnapshottingSyncDriversPrepare(t *testing.T) {
 		"sync#10": false,
 	}, copies)
 }
+
+// An encap sync never shares a run with the syncs of its host: on a node
+// not of the encap nodes, it is not compared with them, whatever their
+// schedules, and the syncs of the host still are among themselves.
+func TestSnapScheduleAlertsLeaveTheEncapSyncsOut(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+	p, err := naming.ParsePath("test/svc/snapencap")
+	require.NoError(t, err)
+	o, err := object.NewSvc(p, object.WithConfigData([]byte(`[DEFAULT]
+encapnodes = encap1
+
+[sync#1]
+type = zfs
+src = pool/e
+dst = pool/e
+target = nodes
+encap = true
+schedule = @1d
+
+[sync#2]
+type = zfs
+src = pool/a
+dst = pool/a
+target = nodes
+schedule = @1h
+
+[sync#3]
+type = zfs
+src = pool/b
+dst = pool/b
+target = nodes
+schedule = @1h
+
+[sync#4]
+type = zfs
+src = pool/c
+dst = pool/c
+target = nodes
+schedule = @2h
+`)), object.WithVolatile(true))
+	require.NoError(t, err)
+	all, err := o.ValidateConfig(context.Background())
+	require.NoError(t, err)
+	var keys []string
+	for _, a := range all {
+		if strings.Contains(a.Comment, "taken in separate runs") {
+			keys = append(keys, a.Key.String()+" "+a.Comment[:strings.Index(a.Comment, ":")])
+		}
+	}
+	assert.Equal(t, []string{"sync#4.schedule differs from sync#2.schedule"}, keys)
+}

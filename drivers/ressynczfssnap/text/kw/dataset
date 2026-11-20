@@ -3,4 +3,6 @@ A whitespace separated list of datasets to snapshot.
 The snapshots are taken at the start of the update, before the first
 transfer of the sync resources updated with this one, at the moment they
 take theirs, under a quiesce of the resources of the object that quiesce: a
-`sync.zfs` resource of the same update sends them.
+`sync.zfs` resource of the same update sends them with its own, as its
+`intermediary` keyword, set by default, has it send the snapshots taken since
+its last update.

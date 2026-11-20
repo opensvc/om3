@@ -48,10 +48,23 @@ func (t *actor) prepareSync(ctx context.Context, selected resource.Drivers) (fun
 		rs.Reverse()
 		return resource.QuiesceAll(ctx, rs)
 	}
-	if left := syncsLeftOut(ctx, l, t.ResourcesByDrivergroups([]driver.Group{driver.GroupSync})); len(left) > 0 {
+	if left := syncsLeftOut(ctx, l, t.syncsRunHere()); len(left) > 0 {
 		t.log.Infof("the syncs %s take their snapshots too, not in this run: theirs are not of this moment", strings.Join(left, " "))
 	}
 	return prepareSyncs(ctx, t.log, l, quiesce)
+}
+
+// syncsRunHere returns the sync resources this node runs: on a node of the
+// encap nodes the encap ones, on the others the ones not encap. The others
+// never share a run with them.
+func (t *actor) syncsRunHere() []resource.Driver {
+	l := make([]resource.Driver, 0)
+	for _, r := range t.ResourcesByDrivergroups([]driver.Group{driver.GroupSync}) {
+		if v, err := t.isEncapNodeMatchingResource(r); err == nil && v {
+			l = append(l, r)
+		}
+	}
+	return l
 }
 
 // syncsLeftOut returns the sync resources of all that would take a snapshot
