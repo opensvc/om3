@@ -11559,6 +11559,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NetworkPeer'
+        ports:
+          type: array
+          description: the devices of the node the setup enslaved to the device of the network
+          items:
+            $ref: '#/components/schemas/NetworkPort'
         skipped:
           type: string
           description: why the setup left the network alone, as a network disabled
@@ -11611,9 +11616,37 @@ components:
         tunnel:
           type: string
           description: the tunnel device carrying the network to the peer, empty when the network is routed to it
+        via:
+          type: string
+          description: how the node reaches the peer
+          enum:
+            - tunnel
+            - route
+            - vxlan
+          x-enum-varnames:
+            - NetworkPeerViaTunnel
+            - NetworkPeerViaRoute
+            - NetworkPeerViaVXLAN
         error:
           type: string
           description: why the setup could not reach the peer
+
+    NetworkPort:
+      type: object
+      description: a device of the node the setup of a network enslaved, or failed to
+      required:
+        - name
+        - dev
+      properties:
+        name:
+          type: string
+          description: the port the configuration names
+        dev:
+          type: string
+          description: the device enslaved, the port or the vlan interface created on it
+        error:
+          type: string
+          description: why the setup could not enslave it
 
     NetworkList:
       type: object

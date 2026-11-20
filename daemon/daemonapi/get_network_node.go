@@ -83,7 +83,22 @@ func newNetworkNode(e netstatus.Element) api.NetworkNode {
 		if p.Error != "" {
 			peer.Error = &p.Error
 		}
+		if p.Via != "" {
+			via := api.NetworkPeerVia(p.Via)
+			peer.Via = &via
+		}
 		item.Peers = append(item.Peers, peer)
+	}
+	if len(st.Ports) > 0 {
+		ports := make([]api.NetworkPort, 0, len(st.Ports))
+		for _, p := range st.Ports {
+			port := api.NetworkPort{Name: p.Name, Dev: p.Dev}
+			if p.Error != "" {
+				port.Error = &p.Error
+			}
+			ports = append(ports, port)
+		}
+		item.Ports = &ports
 	}
 	return item
 }

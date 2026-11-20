@@ -134,6 +134,12 @@ func NewSetupStatus(nw Networker, err error) netstatus.Status {
 	if i, ok := nw.(backendDevNamer); ok {
 		st.Dev = i.BackendDevName()
 	}
+	if i, ok := nw.(HostDever); ok && st.Dev == "" && st.Skipped == "" {
+		// The device of the node the addresses of a lan go on.
+		if dev, err := i.HostDev(); err == nil {
+			st.Dev = dev
+		}
+	}
 	if i, ok := nw.(Reporter); ok {
 		i.Report(&st)
 	} else if i, ok := nw.(Peerer); ok && st.Skipped == "" {

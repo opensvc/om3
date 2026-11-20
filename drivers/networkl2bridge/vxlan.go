@@ -8,6 +8,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -49,11 +50,35 @@ func sameVXLAN(link netlink.Link, s settings) bool {
 	return ok && v.VxlanId == s.vni && v.Port == s.vxlanPort && v.SrcAddr.Equal(s.local)
 }
 
-// applyVXLAN enslaves to br the vxlan device of s, created or created again
+// applyVXLAN sets up the vxlan of s, as setupVXLAN does, and records in the
+// report of s the peers it sends to, each with the failure of the setup.
+func applyVXLAN(log *plog.Logger, s settings, mtu int, br netlink.Link, st *state) error {
+	err := setupVXLAN(log, s, mtu, br, st)
+	if s.report == nil || s.vni == 0 {
+		return err
+	}
+	name := vxlanName(s.name)
+	for i, ip := range s.peers {
+		peer := netstatus.Peer{
+			Nodename: s.peerNodes[i],
+			Local:    s.local,
+			Remote:   ip,
+			Tunnel:   name,
+			Via:      netstatus.ViaVXLAN,
+		}
+		if err != nil {
+			peer.Error = err.Error()
+		}
+		s.report.Peers = append(s.report.Peers, peer)
+	}
+	return err
+}
+
+// setupVXLAN enslaves to br the vxlan device of s, created or created again
 // when its identifier, port or local address changed, with a forwarding
 // entry to each peer and none to a node no longer one. Without a vxlan in s,
 // the device st records om created is deleted.
-func applyVXLAN(log *plog.Logger, s settings, mtu int, br netlink.Link, st *state) error {
+func setupVXLAN(log *plog.Logger, s settings, mtu int, br netlink.Link, st *state) error {
 	name := vxlanName(s.name)
 	if s.vni == 0 {
 		if st.VXLAN != "" {

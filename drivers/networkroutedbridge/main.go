@@ -445,6 +445,9 @@ func (t *T) peer(nodename string, localIP net.IP, subnets map[string]string) (ne
 		return network.Peer{}, fmt.Errorf("must tunnel: %w", err)
 	} else if v {
 		peer.Tunnel = tunName(localIP, peerIP)
+		peer.Via = netstatus.ViaTunnel
+	} else {
+		peer.Via = netstatus.ViaRoute
 	}
 	return peer, nil
 }

@@ -39,6 +39,10 @@ type (
 		// itself, by a route or a tunnel, as the setup reached them.
 		Peers []Peer `json:"peers,omitempty"`
 
+		// Ports are the devices of the node the setup enslaved to the
+		// device of the network, as the ports of a l2_bridge.
+		Ports []Port `json:"ports,omitempty"`
+
 		// Skipped says why the setup left the network alone, as a
 		// network disabled.
 		Skipped string `json:"skipped,omitempty"`
@@ -67,8 +71,26 @@ type (
 		// peer, empty when the network is routed to it.
 		Tunnel string `json:"tunnel"`
 
+		// Via says how the node reaches the peer: ViaTunnel, ViaRoute or
+		// ViaVXLAN.
+		Via string `json:"via,omitempty"`
+
 		// Error is why the setup could not reach the peer, empty when it
 		// did.
+		Error string `json:"error,omitempty"`
+	}
+
+	// Port is a device of the node the setup of a network enslaved, or
+	// failed to.
+	Port struct {
+		// Name is the port the configuration names.
+		Name string `json:"name"`
+
+		// Dev is the device enslaved: the port, or the vlan interface the
+		// setup created on it.
+		Dev string `json:"dev"`
+
+		// Error is why the setup could not enslave it, empty when it did.
 		Error string `json:"error,omitempty"`
 	}
 
@@ -84,6 +106,13 @@ type (
 		sync.RWMutex
 		data map[[2]string]*Status
 	}
+)
+
+// The ways a node reaches a peer of a network.
+const (
+	ViaTunnel = "tunnel"
+	ViaRoute  = "route"
+	ViaVXLAN  = "vxlan"
 )
 
 // StatusData holds the statuses of the networks on every node the daemon
@@ -109,6 +138,7 @@ func (t *Status) DeepCopy() *Status {
 			c.Peers[i].Remote = slices.Clone(p.Remote)
 		}
 	}
+	c.Ports = slices.Clone(t.Ports)
 	return &c
 }
 

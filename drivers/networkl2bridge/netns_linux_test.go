@@ -13,6 +13,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -156,9 +157,10 @@ func TestBridgePorts(t *testing.T) {
 	inNetns(t, func(t *testing.T) {
 		log := plog.NewDefaultLogger()
 		addVeth(t, "va", "vb")
-		s := settings{name: "l2", bridge: "obr_l2", ports: []string{"va"}, hairpin: true}
+		s := settings{name: "l2", bridge: "obr_l2", ports: []string{"va"}, hairpin: true, report: &netstatus.Status{}}
 		var st state
 		require.NoError(t, apply(log, s, &st))
+		assert.Equal(t, []netstatus.Port{{Name: "va", Dev: "va"}}, s.report.Ports)
 		assert.Equal(t, "obr_l2", masterOf(t, "va"))
 		assert.Contains(t, ipDetails(t, "va"), "hairpin on ")
 		assert.Equal(t, []string{"va"}, st.Ports)
@@ -196,9 +198,14 @@ func TestBridgePorts(t *testing.T) {
 		s.ports = []string{"va"}
 		require.ErrorContains(t, apply(log, s, &st), "enslaved to br1")
 
-		// A missing port is an error.
+		// A missing port is an error, and is reported.
 		s.ports = []string{"nope"}
+		s.report = &netstatus.Status{}
 		require.ErrorContains(t, apply(log, s, &st), "port nope")
+		if assert.Len(t, s.report.Ports, 1) {
+			assert.Equal(t, "nope", s.report.Ports[0].Name)
+			assert.Contains(t, s.report.Ports[0].Error, "port nope")
+		}
 	})
 }
 
@@ -257,9 +264,21 @@ func TestBridgeVXLAN(t *testing.T) {
 			vxlanPort: defaultVXLANPort,
 			local:     net.ParseIP("10.9.0.1"),
 			peers:     []net.IP{net.ParseIP("10.9.0.2"), net.ParseIP("10.9.0.3")},
+			peerNodes: []string{"n2", "n3"},
+			report:    &netstatus.Status{},
 		}
 		var st state
 		require.NoError(t, apply(log, s, &st))
+		if assert.Len(t, s.report.Peers, 2) {
+			p := s.report.Peers[1]
+			assert.Equal(t, "n3", p.Nodename)
+			assert.Equal(t, "10.9.0.3", p.Remote.String())
+			assert.Equal(t, "10.9.0.1", p.Local.String())
+			assert.Equal(t, "vx_l2", p.Tunnel)
+			assert.Equal(t, netstatus.ViaVXLAN, p.Via)
+			assert.Empty(t, p.Error)
+		}
+		s.report = nil
 		vx, ok := link(t, "vx_l2").(*netlink.Vxlan)
 		require.True(t, ok)
 		assert.Equal(t, 42, vx.VxlanId)
@@ -272,6 +291,7 @@ func TestBridgeVXLAN(t *testing.T) {
 
 		// A node leaves.
 		s.peers = s.peers[:1]
+		s.peerNodes = s.peerNodes[:1]
 		require.NoError(t, apply(log, s, &st))
 		assert.ElementsMatch(t, []string{"10.9.0.2"}, fdbPeers(t, "vx_l2"))
 

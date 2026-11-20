@@ -128,7 +128,7 @@ func (t *CmdNetworkNodeList) Run() error {
 		return err
 	}
 	return output.Renderer{
-		DefaultOutput: "tab=NAME:name,NODE:node,TYPE:type,DEV:dev,SUBNET:subnet,PEERS:peers[*].nodename,SKIPPED:skipped,ERROR:error,APPLIED_AT:applied_at",
+		DefaultOutput: "tab=NAME:name,NODE:node,TYPE:type,DEV:dev,SUBNET:subnet,PORTS:ports[*].dev,PEERS:peers[*].nodename,SKIPPED:skipped,ERROR:error,APPLIED_AT:applied_at",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
@@ -137,12 +137,17 @@ func (t *CmdNetworkNodeList) Run() error {
 	}.Print()
 }
 
-// peerVia says how a node reaches a peer: through a tunnel, or a route.
+// peerVia says how a node reaches a peer: through a tunnel, a route or a
+// vxlan, as the node said, else by its tunnel.
 func peerVia(p api.NetworkPeer) string {
-	if p.Tunnel != "" {
+	switch {
+	case p.Via != nil:
+		return string(*p.Via)
+	case p.Tunnel != "":
 		return "tunnel"
+	default:
+		return "route"
 	}
-	return "route"
 }
 
 func (t *CmdNetworkPeerList) Run() error {
@@ -162,7 +167,6 @@ func (t *CmdNetworkPeerList) Run() error {
 				"local":  p.Local,
 				"remote": p.Remote,
 				"subnet": p.Subnet,
-				"error":  "",
 			}
 			if p.Error != nil {
 				row["error"] = *p.Error

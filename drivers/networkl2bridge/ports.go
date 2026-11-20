@@ -7,6 +7,7 @@ import (
 
 	"github.com/vishvananda/netlink"
 
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -22,23 +23,34 @@ import (
 func applyPorts(log *plog.Logger, s settings, mtu int, br netlink.Link, st *state) error {
 	want := make([]string, 0, len(s.ports))
 	var errs []error
+	record := func(port, dev string, err error) {
+		if err != nil {
+			errs = append(errs, err)
+		}
+		if s.report == nil {
+			return
+		}
+		p := netstatus.Port{Name: port, Dev: dev}
+		if err != nil {
+			p.Error = err.Error()
+		}
+		s.report.Ports = append(s.report.Ports, p)
+	}
 	for _, port := range s.ports {
 		dev := port
 		if s.vlan > 0 {
 			dev = vlanName(port, s.vlan)
 			if len(dev) >= maxDevNameLen {
-				errs = append(errs, fmt.Errorf("the vlan interface name %s is longer than %d characters", dev, maxDevNameLen-1))
+				record(port, dev, fmt.Errorf("the vlan interface name %s is longer than %d characters", dev, maxDevNameLen-1))
 				continue
 			}
 			if err := ensureVLAN(log, port, dev, s.vlan, st); err != nil {
-				errs = append(errs, err)
+				record(port, dev, err)
 				continue
 			}
 		}
 		want = append(want, dev)
-		if err := enslavePort(log, dev, mtu, s.hairpin, br, st); err != nil {
-			errs = append(errs, err)
-		}
+		record(port, dev, enslavePort(log, dev, mtu, s.hairpin, br, st))
 	}
 	for _, dev := range slices.Clone(st.Ports) {
 		if slices.Contains(want, dev) {

@@ -609,6 +609,27 @@ func (e NetworkNodeListKind) Valid() bool {
 	}
 }
 
+// Defines values for NetworkPeerVia.
+const (
+	NetworkPeerViaRoute  NetworkPeerVia = "route"
+	NetworkPeerViaTunnel NetworkPeerVia = "tunnel"
+	NetworkPeerViaVXLAN  NetworkPeerVia = "vxlan"
+)
+
+// Valid indicates whether the value is a known member of the NetworkPeerVia enum.
+func (e NetworkPeerVia) Valid() bool {
+	switch e {
+	case NetworkPeerViaRoute:
+		return true
+	case NetworkPeerViaTunnel:
+		return true
+	case NetworkPeerViaVXLAN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NetworkReservationListKind.
 const (
 	NetworkReservationListKindNetworkReservationList NetworkReservationListKind = "NetworkReservationList"
@@ -2641,6 +2662,9 @@ type NetworkNode struct {
 	Node    string        `json:"node"`
 	Peers   []NetworkPeer `json:"peers"`
 
+	// Ports the devices of the node the setup enslaved to the device of the network
+	Ports *[]NetworkPort `json:"ports,omitempty"`
+
 	// Skipped why the setup left the network alone, as a network disabled
 	Skipped *string `json:"skipped,omitempty"`
 
@@ -2678,6 +2702,24 @@ type NetworkPeer struct {
 
 	// Tunnel the tunnel device carrying the network to the peer, empty when the network is routed to it
 	Tunnel string `json:"tunnel"`
+
+	// Via how the node reaches the peer
+	Via *NetworkPeerVia `json:"via,omitempty"`
+}
+
+// NetworkPeerVia how the node reaches the peer
+type NetworkPeerVia string
+
+// NetworkPort a device of the node the setup of a network enslaved, or failed to
+type NetworkPort struct {
+	// Dev the device enslaved, the port or the vlan interface created on it
+	Dev string `json:"dev"`
+
+	// Error why the setup could not enslave it
+	Error *string `json:"error,omitempty"`
+
+	// Name the port the configuration names
+	Name string `json:"name"`
 }
 
 // NetworkReservation defines model for NetworkReservation.

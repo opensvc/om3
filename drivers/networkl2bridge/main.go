@@ -32,6 +32,7 @@ import (
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/converters"
@@ -42,6 +43,10 @@ import (
 type (
 	T struct {
 		network.T
+
+		// report is what the last setup enslaved and reached, for the
+		// status of the setup.
+		report netstatus.Status
 	}
 
 	// settings are what the setup of the bridge of this node applies, read
@@ -85,6 +90,13 @@ type (
 		vxlanPort int
 		local     net.IP
 		peers     []net.IP
+
+		// peerNodes are the names of the nodes of peers, in their order.
+		peerNodes []string
+
+		// report, when set, records the ports the setup enslaved and
+		// the peers its vxlan sends to, with their failures.
+		report *netstatus.Status
 	}
 )
 
@@ -279,6 +291,7 @@ func (t *T) settings() (settings, error) {
 			return s, fmt.Errorf("vxlan address of node %s: %w", nodename, err)
 		}
 		s.peers = append(s.peers, ip)
+		s.peerNodes = append(s.peerNodes, nodename)
 	}
 	return s, nil
 }
@@ -323,6 +336,8 @@ func (t *T) Setup() error {
 	if err != nil {
 		return err
 	}
+	t.report = netstatus.Status{}
+	s.report = &t.report
 	p := t.statePath()
 	st, err := loadState(p)
 	if err != nil {
@@ -333,6 +348,13 @@ func (t *T) Setup() error {
 		err = fmt.Errorf("save the state %s: %w", p, serr)
 	}
 	return err
+}
+
+// Report adds to the status of the setup the ports it enslaved, and the
+// nodes its vxlan sends to, with their failures.
+func (t *T) Report(st *netstatus.Status) {
+	st.Ports = t.report.Ports
+	st.Peers = t.report.Peers
 }
 
 // Teardown undoes the setup, the configuration of the network removed: the
