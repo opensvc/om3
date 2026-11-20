@@ -43,12 +43,35 @@ type (
 		Target         []string
 		ResetOptions   bool
 		Snap           bool
+		DelaySnap      bool
 		Snooze         *time.Duration
 		Nodes          []string
 		DRPNodes       []string
 		ObjectID       uuid.UUID
 		Timeout        *time.Duration
 		Topology       topology.T
+
+		// prepared is what PrepareSync took for the transfers of the
+		// action, nil when it took nothing: the transfers copy from
+		// it, the lock and the run held until its release.
+		prepared *preparedSync
+
+		// newSnapper returns the snapshots of an update, replaced by the
+		// tests.
+		newSnapper func() snapper
+	}
+
+	// preparedSync is the snapshots PrepareSync took.
+	preparedSync struct {
+		// sources are the paths the transfers copy, in the snapshots.
+		sources []string
+	}
+
+	// snapper takes the snapshots the transfers copy from, and removes
+	// them: a *fssnap.Set.
+	snapper interface {
+		Create(ctx context.Context, paths []string) ([]string, error)
+		RemoveDetached() error
 	}
 
 	modeT uint
@@ -77,67 +100,144 @@ func New() resource.Driver {
 }
 
 func (t *T) Full(ctx context.Context) error {
-	disable := actioncontext.IsLockDisabled(ctx)
-	timeout := actioncontext.LockTimeout(ctx)
-	target := actioncontext.Target(ctx)
-	unlock, err := t.Lock(disable, timeout, lockName)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	return t.lockedSync(ctx, modeFull, target)
+	return t.sync(ctx, modeFull)
 }
 
 func (t *T) Update(ctx context.Context) error {
+	return t.sync(ctx, modeIncr)
+}
+
+// sync runs an update or a full, under the lock of the resource, which a
+// PrepareSync of the action holds already.
+func (t *T) sync(ctx context.Context, mode modeT) error {
+	target := actioncontext.Target(ctx)
+	if t.prepared != nil {
+		return t.lockedSync(ctx, mode, target)
+	}
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
-	target := actioncontext.Target(ctx)
 	unlock, err := t.Lock(disable, timeout, lockName)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	return t.lockedSync(ctx, modeIncr, target)
+	return t.lockedSync(ctx, mode, target)
+}
+
+// plan returns the peers an update or a full sends to, and the sources it
+// copies, no peer when it sends nothing, as the environment, or no peer to
+// send to, says, logged unless quiet. An error is a refusal, as a flex
+// instance not primary.
+func (t *T) plan(ctx context.Context, target []string, quiet bool) ([]string, []string, error) {
+	isCron := actioncontext.IsCron(ctx)
+	if t.isFlexAndNotPrimary() {
+		if !quiet {
+			t.Log().Errorf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
+		}
+		return nil, nil, fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
+	}
+	if reason := t.EnvSkipReason(); reason != "" {
+		switch {
+		case quiet:
+		case isCron:
+			t.Log().Tracef("%s", reason)
+		default:
+			t.Log().Infof("%s", reason)
+		}
+		return nil, nil, nil
+	}
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		return nil, nil, fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", reason)
+	}
+	nodenames, err := t.SelectPeernames(target, t.Target, t.Nodes, t.DRPNodes)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(nodenames) == 0 {
+		if !quiet {
+			t.Log().Infof("no peer to sync")
+		}
+		return nil, nil, nil
+	}
+	sources, err := filepath.Glob(t.Src)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nodenames, sources, nil
+}
+
+// snapper returns the snapshots of an update.
+func (t *T) snapper() snapper {
+	if t.newSnapper != nil {
+		return t.newSnapper()
+	}
+	return t.snapSet()
+}
+
+// WillPrepareSync implements resource.SyncPreparer: a resource copying a
+// snapshot takes it before the transfers of the action, unless delay_snap
+// has it take it just before its own, or it would transfer nothing.
+func (t *T) WillPrepareSync(ctx context.Context) bool {
+	if !t.Snap || t.DelaySnap {
+		return false
+	}
+	nodenames, sources, err := t.plan(ctx, actioncontext.Target(ctx), true)
+	return err == nil && len(nodenames) > 0 && len(sources) > 0
+}
+
+// PrepareSync implements resource.SyncPreparer: it takes the snapshots the
+// transfers of the action copy from, under the lock of the resource, held
+// with the run until the release, which removes them. A concurrent update
+// would remove the snapshots it took, as left by an interrupted run.
+func (t *T) PrepareSync(ctx context.Context) (func() error, error) {
+	unlock, err := t.Lock(actioncontext.IsLockDisabled(ctx), actioncontext.LockTimeout(ctx), lockName)
+	if err != nil {
+		return nil, err
+	}
+	done, err := t.StartRun()
+	if err != nil {
+		unlock()
+		return nil, err
+	}
+	set := t.snapper()
+	release := func() error {
+		t.prepared = nil
+		defer unlock()
+		defer done()
+		if err := set.RemoveDetached(); err != nil {
+			return fmt.Errorf("remove the snapshots: %w", err)
+		}
+		return nil
+	}
+	_, sources, err := t.plan(ctx, actioncontext.Target(ctx), true)
+	if err == nil {
+		sources, err = set.Create(ctx, sources)
+	}
+	if err != nil {
+		return nil, errors.Join(err, release())
+	}
+	t.prepared = &preparedSync{sources: sources}
+	return release, nil
 }
 
 func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
 	isCron := actioncontext.IsCron(ctx)
-
-	if t.isFlexAndNotPrimary() {
-		t.Log().Errorf("This flex instance is not primary. Only %s can sync", t.Nodes[0])
-		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
+	nodenames, sources, err := t.plan(ctx, target, false)
+	if err != nil || len(nodenames) == 0 {
+		return err
 	}
-
-	if reason := t.EnvSkipReason(); reason != "" {
-		if isCron {
-			t.Log().Tracef("%s", reason)
-		} else {
-			t.Log().Infof("%s", reason)
+	if t.prepared != nil {
+		// The snapshots the action took before its first transfer.
+		sources = t.prepared.sources
+	} else {
+		done, err := t.StartRun()
+		if err != nil {
+			return err
 		}
-		return nil
+		defer done()
 	}
-	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
-		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", reason)
-	}
-	nodenames, err := t.SelectPeernames(target, t.Target, t.Nodes, t.DRPNodes)
-	if err != nil {
-		return err
-	}
-	if len(nodenames) == 0 {
-		t.Log().Infof("no peer to sync")
-		return nil
-	}
-	done, err := t.StartRun()
-	if err != nil {
-		return err
-	}
-	defer done()
-	sources, err := filepath.Glob(t.Src)
-	if err != nil {
-		return err
-	}
-	if t.Snap && len(sources) > 0 {
-		set := t.snapSet()
+	if t.prepared == nil && t.Snap && len(sources) > 0 {
+		set := t.snapper()
 		// Whatever the outcome, and the snapshots of an interrupted run
 		// with them: a snapshot left fills its volume, and a mount left
 		// is a mount nobody asked for.

@@ -1214,6 +1214,50 @@ func Update(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// WillPrepareSync says the sync update or full action would have r take
+// something before the transfers, as its snapshot: a resource disabled, or
+// whose requirements are not met, takes nothing, its update failing or
+// skipped anyway.
+func WillPrepareSync(ctx context.Context, r Driver) bool {
+	var i any = r
+	s, ok := i.(SyncPreparer)
+	if !ok {
+		return false
+	}
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return false
+	}
+	if !requiresMet(ctx, r) {
+		return false
+	}
+	return s.WillPrepareSync(ctx)
+}
+
+// requiresMet says the resources r requires for the action are in the states
+// it requires, as the status bus knows them now: the check of checkRequires,
+// with no wait and no transition flagged.
+func requiresMet(ctx context.Context, r Driver) bool {
+	props := actioncontext.Props(ctx)
+	sb := statusbus.FromContext(ctx)
+	for rid, reqStates := range r.Requires(props.Name).Requirements() {
+		if sb == nil || !reqStates.Has(sb.Get(rid)) {
+			return false
+		}
+	}
+	return true
+}
+
+// PrepareSync has r take what its transfer copies from, before the first
+// transfer of the action, and returns how to release it. A resource
+// WillPrepareSync says takes nothing returns a nil release.
+func PrepareSync(ctx context.Context, r Driver) (func() error, error) {
+	if !WillPrepareSync(ctx, r) {
+		return nil, nil
+	}
+	Setenv(r)
+	return r.(SyncPreparer).PrepareSync(ctx)
+}
+
 // Restore executes the resource Restore function, if implemented by the
 // driver: the data of a sync resource written back from a snapshot.
 func Restore(ctx context.Context, r Driver) error {

@@ -1466,6 +1466,16 @@ which share the same executor.
     remove its copy on the peers. The snapshots are removed when the update ends, and the ones an interrupted update
     left are removed by the next, the status warning of them meanwhile.
 
+* **The snapshots of the sync resources of an action are taken at one moment:**
+    as v2 did, a sync update or full takes the snapshots of all its `snap = true` resources before the first transfer,
+    and removes them after the last, so the copies of data spread over filesystems are of one point in time. They
+    are taken under a quiesce of the resources of the object that quiesce, as an app or a container setting `quiesce`,
+    resumed as soon as the snapshots are taken, which v2 left to the `presnap_trigger` and `postsnap_trigger`
+    commands. A snapshot failing fails the action before any transfer, unless its resource is optional. A thick
+    volume holds the writes of its snapshot for the whole action rather than for its own transfer.
+    `delay_snap = true` has a resource take its snapshot just before its own transfer, as each did so far: the
+    `delay_snap` tag of v2 becomes this keyword in the configuration migration.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**
