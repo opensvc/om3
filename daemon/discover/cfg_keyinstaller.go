@@ -30,6 +30,13 @@ type (
 	// when it runs. A refresh asked while one runs is queued again once it
 	// ends, at the tail, so a datastore changing in a loop does not hold a
 	// slot while others wait.
+	//
+	// A refresh submitted decides first whether a local instance may
+	// install the keys, and does not run when none may. A refresh asked
+	// meanwhile may be for an instance that just started using the
+	// datastore, which the decision may not have seen: one submitted and
+	// ending without running is queued again when asked meanwhile, to
+	// decide again.
 	keyInstaller struct {
 		ctx context.Context
 
@@ -52,7 +59,11 @@ type (
 		// running are the datastores whose refresh started.
 		running map[naming.Path]bool
 
-		// again are the running datastores asked a refresh again.
+		// submittedWaiting are the datastores submitted and not started yet.
+		submittedWaiting map[naming.Path]bool
+
+		// again are the datastores submitted, or running, asked a refresh
+		// again.
 		again map[naming.Path]bool
 
 		// submitted is the number of refreshes submitted and not ended.
@@ -62,12 +73,13 @@ type (
 
 func newKeyInstaller(ctx context.Context, maxParallel func() int, refresh func(context.Context, naming.Path, func())) *keyInstaller {
 	return &keyInstaller{
-		ctx:         ctx,
-		maxParallel: maxParallel,
-		refresh:     refresh,
-		waiting:     make(map[naming.Path]bool),
-		running:     make(map[naming.Path]bool),
-		again:       make(map[naming.Path]bool),
+		ctx:              ctx,
+		maxParallel:      maxParallel,
+		refresh:          refresh,
+		waiting:          make(map[naming.Path]bool),
+		submittedWaiting: make(map[naming.Path]bool),
+		running:          make(map[naming.Path]bool),
+		again:            make(map[naming.Path]bool),
 	}
 }
 
@@ -76,6 +88,9 @@ func (ki *keyInstaller) request(p naming.Path) {
 	ki.mu.Lock()
 	defer ki.mu.Unlock()
 	switch {
+	case ki.submittedWaiting[p]:
+		ki.again[p] = true
+		return
 	case ki.waiting[p]:
 		return
 	case ki.running[p]:
@@ -110,6 +125,7 @@ func (ki *keyInstaller) dispatch() {
 		ki.queue[0] = naming.Path{}
 		ki.queue = ki.queue[1:]
 		ki.submitted++
+		ki.submittedWaiting[p] = true
 		go ki.do(p)
 	}
 }
@@ -119,6 +135,10 @@ func (ki *keyInstaller) do(p naming.Path) {
 		ki.mu.Lock()
 		defer ki.mu.Unlock()
 		delete(ki.waiting, p)
+		delete(ki.submittedWaiting, p)
+		// The run reads the newest configuration: a refresh asked
+		// before it started is this one.
+		delete(ki.again, p)
 		ki.running[p] = true
 	})
 	ki.mu.Lock()
@@ -126,6 +146,7 @@ func (ki *keyInstaller) do(p naming.Path) {
 	ki.submitted--
 	// A refresh skipped never started: it was still waiting.
 	delete(ki.waiting, p)
+	delete(ki.submittedWaiting, p)
 	delete(ki.running, p)
 	if ki.again[p] {
 		delete(ki.again, p)

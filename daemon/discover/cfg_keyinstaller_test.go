@@ -74,7 +74,8 @@ func sec(i int) naming.Path {
 func (ki *keyInstaller) idle() bool {
 	ki.mu.Lock()
 	defer ki.mu.Unlock()
-	return ki.submitted == 0 && len(ki.queue) == 0 && len(ki.waiting) == 0 && len(ki.running) == 0 && len(ki.again) == 0
+	return ki.submitted == 0 && len(ki.queue) == 0 && len(ki.waiting) == 0 && len(ki.submittedWaiting) == 0 &&
+		len(ki.running) == 0 && len(ki.again) == 0
 }
 
 // Many datastores fetched at once run at most max parallel refreshes at a
@@ -230,4 +231,44 @@ func TestKeyInstallerStops(t *testing.T) {
 	require.Eventually(t, ki.idle, 5*time.Second, time.Millisecond)
 	runs, _, _ := f.state()
 	assert.Len(t, runs, 2)
+}
+
+// A refresh asked while a submitted one decides whether a local instance may
+// install the keys may be for an instance the decision did not see: the
+// submitted one ending without running decides again.
+func TestKeyInstallerDecidesAgainAfterASkipAskedMeanwhile(t *testing.T) {
+	deciding := make(chan struct{})
+	decide := make(chan bool)
+	var decisions, runs atomic.Int32
+	ki := newKeyInstaller(context.Background(), func() int { return 1 }, func(ctx context.Context, p naming.Path, starting func()) {
+		decisions.Add(1)
+		deciding <- struct{}{}
+		if !<-decide {
+			return
+		}
+		starting()
+		runs.Add(1)
+	})
+	ki.request(sec(0))
+	<-deciding
+	ki.request(sec(0)) // an instance starts using it meanwhile
+	decide <- false    // the decision did not see it
+	select {
+	case <-deciding:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the refresh asked meanwhile is not decided again")
+	}
+	decide <- true // deciding again, it does
+	require.Eventually(t, ki.idle, 5*time.Second, time.Millisecond)
+	assert.Equal(t, int32(2), decisions.Load())
+	assert.Equal(t, int32(1), runs.Load())
+
+	// A skip nothing was asked during is not decided again.
+	go func() {
+		<-deciding
+		decide <- false
+	}()
+	ki.request(sec(1))
+	require.Eventually(t, ki.idle, 5*time.Second, time.Millisecond)
+	assert.Equal(t, int32(3), decisions.Load())
 }
