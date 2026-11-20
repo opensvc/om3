@@ -171,6 +171,83 @@ func (t *Manager) keyRefreshPriority(p naming.Path) (priority.T, bool) {
 	return prio, found
 }
 
+// onLocalConfigUpdated refreshes the keys of the datastores a resource of a
+// new configuration of a local svc instance starts using, as a resource
+// enabled again, or given an install line: nothing installs them otherwise
+// until the resource starts, or the datastore changes.
+//
+// It is said resource by resource: a resource enabled again starts using a
+// datastore another resource of the object uses already, which the uses of
+// the object do not say.
+//
+// The first configuration of an instance seen, at the start of the daemon or
+// of the object, only records what it uses: a start, or a provision,
+// installs what it uses.
+func (t *Manager) onLocalConfigUpdated(p naming.Path, cfg instance.Config) {
+	if p.Kind != naming.KindSvc {
+		return
+	}
+	uses := make(map[string][]string)
+	if cfg.ActorConfig != nil {
+		for rid, rcfg := range cfg.Resources {
+			if len(rcfg.Uses) > 0 {
+				uses[rid] = slices.Clone(rcfg.Uses)
+			}
+		}
+	}
+	former, known := t.localUses[p]
+	t.localUses[p] = uses
+	if !known {
+		return
+	}
+	var started []string
+	for rid, l := range uses {
+		for _, use := range l {
+			if !slices.Contains(former[rid], use) && !slices.Contains(started, use) {
+				started = append(started, use)
+			}
+		}
+	}
+	slices.Sort(started)
+	for _, use := range started {
+		for _, store := range localDataStoresOf(use) {
+			t.objectLogger(p).Infof("cfg: %s starts using %s: refresh its keys", p, store)
+			t.keyInstaller.request(store)
+		}
+	}
+}
+
+// localDataStoresOf returns the local datastores an entry of the uses of an
+// instance names: the datastore, when it exists, or the ones its pattern
+// matches. A vol is no datastore.
+func localDataStoresOf(use string) []naming.Path {
+	isLocalDataStore := func(p naming.Path) bool {
+		return slices.Contains(naming.KindDataStore, p.Kind) && p.Exists()
+	}
+	if !naming.IsPathPattern(use) {
+		p, err := naming.ParsePath(use)
+		if err != nil || !isLocalDataStore(p) {
+			return nil
+		}
+		return []naming.Path{p}
+	}
+	pattern, err := naming.ParsePathPatternRel(use, naming.NsRoot)
+	if err != nil {
+		return nil
+	}
+	paths, err := naming.InstalledPaths()
+	if err != nil {
+		return nil
+	}
+	var l []naming.Path
+	for _, p := range paths {
+		if pattern.MatchPath(p) && isLocalDataStore(p) {
+			l = append(l, p)
+		}
+	}
+	return l
+}
+
 // onDataStoreConfigFetched refreshes the keys of the datastore p installed in
 // the local volumes.
 func (t *Manager) onDataStoreConfigFetched(p naming.Path) {

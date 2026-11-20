@@ -1,8 +1,11 @@
 package discover
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -130,4 +134,81 @@ func TestKeyRefreshPriority(t *testing.T) {
 	prio, ok = m.keyRefreshPriority(store)
 	assert.True(t, ok)
 	assert.Equal(t, priority.T(20), prio, "the datastore is shared with ns2")
+}
+
+// A new configuration of a local svc instance whose resource starts to use a
+// datastore, as a resource enabled again or given an install line, refreshes
+// its keys, even when another resource of the object used it already. The
+// first configuration seen only records what the resources use, and a
+// datastore a resource stops using, a vol, or a datastore that does not
+// exist here, refreshes nothing.
+func TestOnLocalConfigUpdatedRefreshesTheDatastoresNewlyUsed(t *testing.T) {
+	testhelper.Setup(t)
+	for _, s := range []string{"ns1/cfg/a", "ns1/cfg/b", "ns1/sec/web-a", "ns1/sec/web-b", "ns1/cfg/web-c"} {
+		p, err := naming.ParsePath(s)
+		require.NoError(t, err)
+		require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0o755))
+		require.NoError(t, os.WriteFile(p.ConfigFile(), []byte("[DEFAULT]\n"), 0o600))
+	}
+
+	var (
+		mu        sync.Mutex
+		refreshed []string
+	)
+	ki := newKeyInstaller(context.Background(), func() int { return 4 }, func(_ context.Context, p naming.Path, starting func()) {
+		starting()
+		mu.Lock()
+		refreshed = append(refreshed, p.String())
+		mu.Unlock()
+	})
+	m := &Manager{
+		localhost:    "n1",
+		log:          plog.NewDefaultLogger(),
+		keyInstaller: ki,
+		localUses:    make(map[naming.Path]map[string][]string),
+		cfgDeleting:  make(map[naming.Path]bool),
+	}
+	svc := naming.Path{Namespace: "ns1", Kind: naming.KindSvc, Name: "web"}
+
+	// update publishes a configuration of p whose resources use what uses
+	// says, by rid, and returns the datastores refreshed.
+	update := func(p naming.Path, uses map[string][]string) []string {
+		t.Helper()
+		mu.Lock()
+		refreshed = nil
+		mu.Unlock()
+		resources := make(instance.ResourceConfigs)
+		var all []string
+		for rid, l := range uses {
+			resources[rid] = instance.ResourceConfig{Uses: l}
+			all = append(all, l...)
+		}
+		m.onInstanceConfigUpdated(&msgbus.InstanceConfigUpdated{Path: p, Node: "n1", Value: instance.Config{
+			ActorConfig: &instance.ActorConfig{Resources: resources, Uses: all},
+		}})
+		require.Eventually(t, ki.idle, 5*time.Second, time.Millisecond)
+		mu.Lock()
+		defer mu.Unlock()
+		l := append([]string{}, refreshed...)
+		slices.Sort(l)
+		return l
+	}
+	type uses = map[string][]string
+
+	assert.Empty(t, update(svc, uses{"fs#1": {"ns1/cfg/a"}}), "the first configuration seen records what it uses")
+	assert.Empty(t, update(svc, uses{"fs#1": {"ns1/cfg/a"}}), "nothing newly used")
+	assert.Equal(t, []string{"ns1/cfg/a"}, update(svc, uses{"fs#1": {"ns1/cfg/a"}, "fs#2": {"ns1/cfg/a"}}),
+		"a resource enabled again using a datastore another resource uses already")
+	assert.Equal(t, []string{"ns1/cfg/b"}, update(svc, uses{"fs#1": {"ns1/cfg/a", "ns1/cfg/b", "ns1/cfg/missing", "ns1/vol/data"}, "fs#2": {"ns1/cfg/a"}}),
+		"a datastore newly used, not one missing here nor a vol")
+	assert.Empty(t, update(svc, uses{"fs#1": {"ns1/cfg/b"}}), "datastores no longer used, a resource disabled")
+	assert.Equal(t, []string{"ns1/sec/web-a", "ns1/sec/web-b"}, update(svc, uses{"fs#1": {"ns1/cfg/b"}, "volume#1": {"ns1/sec/web-*"}}),
+		"the datastores a pattern newly used matches")
+
+	m.onInstanceConfigDeleting(&msgbus.InstanceConfigDeleting{Path: svc, Node: "n1"})
+	assert.Empty(t, update(svc, uses{"fs#1": {"ns1/cfg/a", "ns1/cfg/b"}}), "a configuration seen first again only records")
+
+	vol := naming.Path{Namespace: "ns1", Kind: naming.KindVol, Name: "data"}
+	update(vol, uses{"fs#1": {"ns1/cfg/a"}})
+	assert.Empty(t, update(vol, uses{"fs#1": {"ns1/cfg/a", "ns1/cfg/b"}}), "a vol installs no key")
 }

@@ -1,6 +1,7 @@
 package icfg
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +64,46 @@ func TestGetUsesOfAnUnresolvedReference(t *testing.T) {
 		m := &Manager{path: p}
 		assert.Equal(t, []string{"repro/vol/data"}, m.getUses(oc.Config()), ref)
 	}
+}
+
+// Each resource publishes what it uses, as the object does for all of them:
+// a resource enabled again says the datastores it starts using even when
+// another resource uses them already. A disabled resource uses nothing.
+func TestGetResourcesSayWhatEachUses(t *testing.T) {
+	p, err := naming.ParsePath("repro/svc/d")
+	require.NoError(t, err)
+	conf := `
+[DEFAULT]
+nodes = n1
+
+[volume#1]
+name = data
+install = /k1.conf from ./cfg/demo key k1.conf
+
+[volume#2]
+name = data2
+install = /k1.conf from ./cfg/demo key k1.conf
+disable = true
+
+[app#1]
+environment = DB_PASSWORD from ./sec/db key password
+`
+	oc, err := object.NewConfigurer(p, object.WithConfigData([]byte(conf)), object.WithVolatile(true))
+	require.NoError(t, err)
+	m := &Manager{path: p}
+	defer hostname.Impersonate("n1")()
+
+	resources := m.getResources(oc.Config())
+	assert.Equal(t, []string{"repro/cfg/demo", "repro/vol/data"}, resources["volume#1"].Uses)
+	assert.Empty(t, resources["volume#2"].Uses, "a disabled resource uses nothing")
+	assert.Equal(t, []string{"repro/sec/db"}, resources["app#1"].Uses)
+	assert.Equal(t, []string{"repro/cfg/demo", "repro/sec/db", "repro/vol/data"}, m.getUses(oc.Config()),
+		"the object uses what its resources do")
+
+	enabled, err := object.NewConfigurer(p, object.WithConfigData([]byte(strings.Replace(conf, "disable = true", "disable = false", 1))), object.WithVolatile(true))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"repro/cfg/demo", "repro/vol/data2"}, m.getResources(enabled.Config())["volume#2"].Uses,
+		"enabled again, it uses the datastore volume#1 uses already")
+	assert.Equal(t, []string{"repro/cfg/demo", "repro/sec/db", "repro/vol/data", "repro/vol/data2"}, m.getUses(enabled.Config()),
+		"while the object only starts using the vol, not the datastore")
 }

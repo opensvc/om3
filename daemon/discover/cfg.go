@@ -435,6 +435,7 @@ func (t *Manager) mostRecentPeerConfig(p naming.Path) (peer string, cfg *instanc
 
 func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	if c.Node == t.localhost {
+		t.onLocalConfigUpdated(c.Path, c.Value)
 		return
 	}
 	t.onRemoteConfigUpdated(c.Path, c.Node, c.Value)
@@ -577,6 +578,7 @@ func (t *Manager) onInstanceConfigDeleting(c *msgbus.InstanceConfigDeleting) {
 		return
 	}
 	t.cfgDeleting[c.Path] = true
+	delete(t.localUses, c.Path)
 	// A fetch started before is for a configuration the delete is about to
 	// remove: installed after it, it would bring the object back.
 	t.cancelFetcher(c.Path.String())

@@ -140,6 +140,14 @@ type (
 		// configuration written is refused when it holds one of them on
 		// the same node.
 		Holds resource.Holds `json:"holds,omitempty"`
+
+		// Uses are the cfg, sec and vol objects the resource uses, as the
+		// node evaluates its configuration, sorted, as ActorConfig.Uses
+		// says them for the object: none for a disabled resource. A
+		// resource enabled again, or given an install line, says the
+		// datastores it starts using even when another resource of the
+		// object uses them already.
+		Uses []string `json:"uses,omitempty"`
 	}
 	SubsetConfig struct {
 		Parallel bool `json:"parallel,omitempty"`
@@ -157,6 +165,7 @@ func (m ResourceConfigs) DeepCopy() ResourceConfigs {
 			newCfg.RestartDelay = &restartDelay
 		}
 		newCfg.Holds = slices.Clone(cfg.Holds)
+		newCfg.Uses = slices.Clone(cfg.Uses)
 		newM[rid] = newCfg
 	}
 	return newM
@@ -317,6 +326,9 @@ func (t ResourceConfig) Unstructured() map[string]any {
 	}
 	if t.RestartDelay != nil {
 		m["restart_delay"] = t.RestartDelay
+	}
+	if len(t.Uses) > 0 {
+		m["uses"] = t.Uses
 	}
 	return m
 }
