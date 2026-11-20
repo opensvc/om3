@@ -84,6 +84,10 @@ type (
 		// judge, set by a strict evaluation, refuses a reference it
 		// can not act on.
 		judge RefJudge
+
+		// deferred, set by a deferring evaluation, names the references
+		// not to resolve now.
+		deferred RefDeferrer
 	}
 
 	// RefJudge judges a reference a strict evaluation resolved: ref is the
@@ -91,6 +95,13 @@ type (
 	// what it evaluated to. It returns the reason the evaluation must fail,
 	// or nil to go on with val, or err.
 	RefJudge func(ref, val string, err error) error
+
+	// RefDeferrer says whether a reference is not to be resolved by a
+	// deferring evaluation: ref is the reference, without its braces,
+	// modifier or index. It is asked before the reference is resolved, so
+	// a reference costly to resolve, as one measuring a resource, costs
+	// nothing.
+	RefDeferrer func(ref string) bool
 
 	ErrPostponedRef struct {
 		Ref string
@@ -116,6 +127,11 @@ var (
 	// ErrRefNotAvailable is the error of a strict evaluation naming a
 	// reference its RefJudge refused.
 	ErrRefNotAvailable = errors.New("reference not available")
+
+	// ErrRefDeferred is the error of a deferring evaluation naming a
+	// reference its RefDeferrer defers. It wraps ErrRefNotAvailable, so an
+	// inherited keyword does not fall back to the value it inherits.
+	ErrRefDeferred = errors.New("reference evaluation deferred")
 
 	DriverGroups = set.New("ip", "volume", "disk", "fs", "share", "container", "app", "sync", "task")
 )
@@ -1084,6 +1100,33 @@ func (t *T) EvalKeywordAs(k key.T, kw *keywords.Keyword, impersonate string) (in
 	return t.convert(v, kw)
 }
 
+// EvalDeferring returns the value of the key k as EvalKeywordDeferringAs
+// does, with the keyword the referrer declares for it.
+func (t *T) EvalDeferring(k key.T, deferred RefDeferrer) (any, error) {
+	if t == nil {
+		return nil, errors.New("unreadable config")
+	}
+	kw, err := t.getKeyword(k)
+	if err != nil {
+		return nil, err
+	}
+	return t.EvalKeywordDeferringAs(k, kw, "", deferred)
+}
+
+// EvalKeywordDeferringAs returns the value of the key k as EvalKeywordAs
+// does, and fails with ErrRefDeferred, before resolving it, when the value
+// names a reference deferred says is not to be resolved now, directly or
+// through the keywords it references.
+func (t *T) EvalKeywordDeferringAs(k key.T, kw *keywords.Keyword, impersonate string, deferred RefDeferrer) (interface{}, error) {
+	trace := newDereferenceTrace()
+	trace.deferred = deferred
+	v, err := t.evalStringAs(k, kw, impersonate, false, trace)
+	if err != nil {
+		return nil, err
+	}
+	return t.convert(v, kw)
+}
+
 func getKeyword(k key.T, sectionType string, referrer Referrer) (*keywords.Keyword, error) {
 	var kw *keywords.Keyword
 	if referrer == nil {
@@ -1533,6 +1576,9 @@ func (t T) dereference(ref string, section string, impersonate string, count boo
 		}
 	}
 
+	if trace != nil && trace.deferred != nil && trace.deferred(ref) {
+		return ref, fmt.Errorf("%w: %w: {%s}", ErrRefNotAvailable, ErrRefDeferred, ref)
+	}
 	switch {
 	case strings.HasPrefix(ref, "node."):
 		val, err = t.dereferenceNodeKey(ref, impersonate, count)
@@ -1630,7 +1676,7 @@ func (t *dereferenceTrace) Unset(doneKey string) {
 }
 
 func (t *dereferenceTrace) Clone() *dereferenceTrace {
-	trace := dereferenceTrace{m: make(map[string]any), judge: t.judge}
+	trace := dereferenceTrace{m: make(map[string]any), judge: t.judge, deferred: t.deferred}
 	for k := range t.m {
 		trace.m[k] = nil
 	}
@@ -1718,6 +1764,10 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 	if v, err := t.dereferenceKey(ref, section, impersonate, count, trace); err == nil {
 		return v, nil
 	} else if errors.Is(err, ErrInfiniteDeferenceRecursion) {
+		return "", err
+	} else if errors.Is(err, ErrRefDeferred) {
+		// The keyword referenced names a reference deferred: the value
+		// referencing it is deferred too, not left with the reference.
 		return "", err
 	}
 	return ref, fmt.Errorf("%w: %s", ErrUnknownReference, ref)
