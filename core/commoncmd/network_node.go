@@ -171,11 +171,14 @@ func (t *CmdNetworkPeerList) Run() error {
 			if p.Error != nil {
 				row["error"] = *p.Error
 			}
+			if p.TunnelMode != nil {
+				row["mode"] = *p.TunnelMode
+			}
 			l = append(l, row)
 		}
 	}
 	return output.Renderer{
-		DefaultOutput: "tab=NAME:name,NODE:node,PEER:peer,VIA:via,TUNNEL:tunnel,LOCAL:local,REMOTE:remote,SUBNET:subnet,ERROR:error",
+		DefaultOutput: "tab=NAME:name,NODE:node,PEER:peer,VIA:via,TUNNEL:tunnel,MODE:mode,LOCAL:local,REMOTE:remote,SUBNET:subnet,ERROR:error",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,

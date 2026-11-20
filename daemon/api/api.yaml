@@ -11616,6 +11616,9 @@ components:
         tunnel:
           type: string
           description: the tunnel device carrying the network to the peer, empty when the network is routed to it
+        tunnel_mode:
+          type: string
+          description: the mode of the tunnel, as ipip, ip6ip6 or gre, absent when the peer is reached by no tunnel
         via:
           type: string
           description: how the node reaches the peer

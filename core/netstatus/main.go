@@ -71,9 +71,13 @@ type (
 		// peer, empty when the network is routed to it.
 		Tunnel string `json:"tunnel"`
 
+		// TunnelMode is the mode of the tunnel, as ipip, ip6ip6 or gre,
+		// empty when the peer is reached by no tunnel.
+		TunnelMode string `json:"tunnel_mode"`
+
 		// Via says how the node reaches the peer: ViaTunnel, ViaRoute or
 		// ViaVXLAN.
-		Via string `json:"via,omitempty"`
+		Via string `json:"via"`
 
 		// Error is why the setup could not reach the peer, empty when it
 		// did.

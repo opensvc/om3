@@ -175,15 +175,15 @@ func TestTemplateKeys(t *testing.T) {
 // data has no value for is still one, as the tunnel of a routed peer.
 func TestTemplateDataIsSnakeCase(t *testing.T) {
 	peers := []network.Peer{
-		{Nodename: "n2", Local: net.ParseIP("10.0.0.1"), Remote: net.ParseIP("10.0.0.2"), Subnet: "10.100.1.0/24", Tunnel: "tun10002"},
-		{Nodename: "n3", Local: net.ParseIP("10.0.0.1"), Remote: net.ParseIP("10.0.0.3"), Subnet: "10.100.2.0/24"},
+		{Nodename: "n2", Local: net.ParseIP("10.0.0.1"), Remote: net.ParseIP("10.0.0.2"), Subnet: "10.100.1.0/24", Tunnel: "tun10002", TunnelMode: "ipip", Via: "tunnel"},
+		{Nodename: "n3", Local: net.ParseIP("10.0.0.1"), Remote: net.ParseIP("10.0.0.3"), Subnet: "10.100.2.0/24", Via: "route"},
 	}
 	data, err := asTemplateData(peers, nil)
 	require.NoError(t, err)
-	tmpl := template.Must(template.New("t").Option("missingkey=error").Parse(`{{range .}}{{.nodename}}-{{.tunnel}} {{.local}} {{.remote}} {{.subnet}};{{end}}`))
+	tmpl := template.Must(template.New("t").Option("missingkey=error").Parse(`{{range .}}{{.nodename}}-{{.tunnel}} {{.local}} {{.remote}} {{.subnet}} [{{.via}} {{.tunnel_mode}}];{{end}}`))
 	var buf bytes.Buffer
 	require.NoError(t, tmpl.Execute(&buf, data))
-	assert.Equal(t, "n2-tun10002 10.0.0.1 10.0.0.2 10.100.1.0/24;n3- 10.0.0.1 10.0.0.3 10.100.2.0/24;", buf.String())
+	assert.Equal(t, "n2-tun10002 10.0.0.1 10.0.0.2 10.100.1.0/24 [tunnel ipip];n3- 10.0.0.1 10.0.0.3 10.100.2.0/24 [route ];", buf.String())
 
 	nw, err := asTemplateData(templateNetwork{Name: "a", Type: "routed_bridge", Network: "10.100.0.0/16", Peers: peers, ReverseZones: []string{"100.10.in-addr.arpa"}}, nil)
 	require.NoError(t, err)

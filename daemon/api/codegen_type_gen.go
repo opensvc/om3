@@ -2703,6 +2703,9 @@ type NetworkPeer struct {
 	// Tunnel the tunnel device carrying the network to the peer, empty when the network is routed to it
 	Tunnel string `json:"tunnel"`
 
+	// TunnelMode the mode of the tunnel, as ipip, ip6ip6 or gre, absent when the peer is reached by no tunnel
+	TunnelMode *string `json:"tunnel_mode,omitempty"`
+
 	// Via how the node reaches the peer
 	Via *NetworkPeerVia `json:"via,omitempty"`
 }

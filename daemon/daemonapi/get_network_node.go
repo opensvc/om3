@@ -83,6 +83,9 @@ func newNetworkNode(e netstatus.Element) api.NetworkNode {
 		if p.Error != "" {
 			peer.Error = &p.Error
 		}
+		if p.TunnelMode != "" {
+			peer.TunnelMode = &p.TunnelMode
+		}
 		if p.Via != "" {
 			via := api.NetworkPeerVia(p.Via)
 			peer.Via = &via

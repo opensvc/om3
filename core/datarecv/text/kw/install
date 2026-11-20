@@ -113,8 +113,8 @@ Where:
     * `network "<name>"`: the network `<name>`, with the fields `name`, `type`, `network`, `peers` and
       `reverse_zones`, named as the api names them. A routed_bridge network lists the other nodes in `peers`, as
       this node reaches them, with the fields `nodename`, `local` and `remote` (the addresses of this node and the
-      peer the network joins), `subnet`, and `tunnel` (the tunnel device, empty when the network is routed to the
-      peer). Other networks list none. `reverse_zones` are the reverse zones of the addresses the network hands
+      peer the network joins), `subnet`, `via` (`tunnel` or `route`), and `tunnel` and `tunnel_mode` (the tunnel
+      device and its mode, as `ipip`, `ip6ip6` or `gre`, empty when the network is routed to the peer). Other networks list none. `reverse_zones` are the reverse zones of the addresses the network hands
       out, which the cluster nameservers answer for, none when `cluster.dns_reverse` is false: a resolver forwards
       them to the cluster nameservers, e.g. `{{range networks}}{{range .reverse_zones}}{{.}}=10.0.0.1,{{end}}{{end}}`.
     * `networks`: the networks of the node, each as `network` returns it.

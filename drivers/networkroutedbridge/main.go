@@ -445,6 +445,7 @@ func (t *T) peer(nodename string, localIP net.IP, subnets map[string]string) (ne
 		return network.Peer{}, fmt.Errorf("must tunnel: %w", err)
 	} else if v {
 		peer.Tunnel = tunName(localIP, peerIP)
+		peer.TunnelMode = t.tunnelMode(localIP)
 		peer.Via = netstatus.ViaTunnel
 	} else {
 		peer.Via = netstatus.ViaRoute
@@ -481,6 +482,16 @@ func (t *T) Peers() ([]network.Peer, error) {
 	return peers, nil
 }
 
+// tunnelMode returns the mode of the tunnels from localIP: the tunnel_mode
+// keyword, ipip carried over ipv6 being ip6ip6.
+func (t *T) tunnelMode(localIP net.IP) string {
+	mode := t.GetString("tunnel_mode")
+	if mode == "ipip" && localIP.To4() == nil {
+		mode = "ip6ip6"
+	}
+	return mode
+}
+
 func (t *T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 	if tunnel == "never" {
 		return false, nil
@@ -500,10 +511,7 @@ func (t *T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 }
 
 func (t *T) setupNodeTunnelLink(nodename, name string, localIP, peerIP net.IP) error {
-	mode := t.GetString("tunnel_mode")
-	if mode == "ipip" && localIP.To4() == nil {
-		mode = "ip6ip6"
-	}
+	mode := t.tunnelMode(localIP)
 
 	// clean up existing tunnels with same endpoints but different name
 	link, err := t.getTunnelByEndpoints(localIP, peerIP)
