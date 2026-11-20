@@ -72,9 +72,12 @@ var (
 
 	// labelDevices returns the devices of the btrfs labeled label on this
 	// node, none when no filesystem has the label, replaced by the tests.
+	// A device of the label is kept only of the btrfs type: a zfs pool of
+	// the same name labels its members so, and blkid searches one token at
+	// a time.
 	labelDevices = func(label string) ([]string, error) {
 		var stdout bytes.Buffer
-		cmd := exec.Command("blkid", "-o", "device", "-t", "LABEL="+label)
+		cmd := exec.Command("blkid", "-o", "export", "-t", "LABEL="+label)
 		cmd.Stdout = &stdout
 		if err := cmd.Run(); err != nil {
 			var ee *exec.ExitError
@@ -84,7 +87,7 @@ var (
 			}
 			return nil, fmt.Errorf("%s: %w", cmd, err)
 		}
-		return strings.Fields(stdout.String()), nil
+		return btrfsDevicesOf(stdout.String()), nil
 	}
 
 	// readMountinfo returns the mounts of the node, replaced by the tests.
@@ -544,4 +547,30 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 		m = append(m, resource.InfoKey{Key: "max_delay", Value: t.MaxDelay.String()})
 	}
 	return m, nil
+}
+
+// btrfsDevicesOf returns the devices of the btrfs type in the "blkid -o
+// export" output b: blocks of NAME=value lines, one block per device, its
+// DEVNAME and its TYPE among them.
+func btrfsDevicesOf(b string) []string {
+	var l []string
+	for _, block := range strings.Split(b, "\n\n") {
+		var dev, typ string
+		for _, line := range strings.Split(block, "\n") {
+			k, v, ok := strings.Cut(strings.TrimSpace(line), "=")
+			if !ok {
+				continue
+			}
+			switch k {
+			case "DEVNAME":
+				dev = v
+			case "TYPE":
+				typ = v
+			}
+		}
+		if dev != "" && typ == "btrfs" {
+			l = append(l, dev)
+		}
+	}
+	return l
 }

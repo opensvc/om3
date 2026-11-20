@@ -232,3 +232,11 @@ func TestPrepareSyncTakesTheSnapshots(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, l, 1)
 }
+
+// TestBtrfsDevicesOf pins that the devices of a label are the btrfs ones
+// only: a zfs pool of the same name labels its members so.
+func TestBtrfsDevicesOf(t *testing.T) {
+	out := "DEVNAME=/dev/loop1\nLABEL=tank\nUUID=1\nTYPE=zfs_member\n\nDEVNAME=/dev/loop2\nLABEL=tank\nUUID=2\nTYPE=btrfs\n\nDEVNAME=/dev/loop3\nLABEL=tank\nTYPE=btrfs\n"
+	assert.Equal(t, []string{"/dev/loop2", "/dev/loop3"}, btrfsDevicesOf(out))
+	assert.Empty(t, btrfsDevicesOf(""))
+}
