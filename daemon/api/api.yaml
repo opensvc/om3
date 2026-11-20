@@ -10462,35 +10462,27 @@ components:
       x-go-type-import:
         path: github.com/opensvc/om3/v3/core/instance
       type: object
+      description: |
+        The configuration of an instance, as the node publishing it
+        evaluates it. The properties of an actor, a svc or a vol, are not
+        said for a cfg, sec, usr or nscfg instance, and pool, size and
+        charges are said for a vol only.
       required:
-        - app
-        - checksum
-        - children
-        - drp
-        - env
-        - monitor_action
-        - pre_monitor_action
-        - nodename
-        - orchestrate
-        - path
-        - parents
-        - placement_policy
+        - csum
         - priority
-        - resources
-        - schedules
         - scope
-        - subsets
-        - topology
         - updated_at
-        - stonith
       properties:
         app:
           type: string
-        id:
-          description: the id of the object, an object created again under the same path having another
-          type: string
-        checksum:
-          type: string
+        charges:
+          description: |
+            the bytes the vol takes of each pool other than its own, by
+            pool name
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
         children:
           type: array
           items:
@@ -10504,34 +10496,56 @@ components:
           additionalProperties:
             type: integer
             format: int64
+        csum:
+          description: the checksum of the configuration file
+          type: string
         drp:
           type: boolean
         env:
           type: string
         flex:
           $ref: '#/components/schemas/FlexConfig'
+        hard_affinity:
+          description: the objects whose instance must be up on a node for the object to start there
+          type: array
+          items:
+            type: string
+        hard_anti_affinity:
+          description: the objects whose instance must not be up on a node for the object to start there
+          type: array
+          items:
+            type: string
+        id:
+          description: the id of the object, an object created again under the same path having another
+          type: string
+        is_disabled:
+          description: DEFAULT.disable
+          type: boolean
+        labels:
+          type: object
+          additionalProperties:
+            type: string
         monitor_action:
           type: array
           items:
             type: string
-        pre_monitor_action:
-          type: string
-        nodename:
-          type: string
         orchestrate:
           $ref: '#/components/schemas/Orchestrate'
-        path:
-          type: string
         parents:
           type: array
           items:
             type: string
-        pool:
-          type: string
         placement_policy:
           $ref: '#/components/schemas/PlacementPolicy'
+        pool:
+          type: string
+        pre_monitor_action:
+          type: string
         priority:
           type: integer
+        provision_disabled:
+          description: provision=false, the resources being the sysadmin's to make
+          type: boolean
         resources:
           type: object
           additionalProperties:
@@ -10547,15 +10561,44 @@ components:
         size:
           type: integer
           format: int64
+        soft_affinity:
+          description: the objects whose instance up on a node ranks the node first
+          type: array
+          items:
+            type: string
+        soft_anti_affinity:
+          description: the objects whose instance up on a node ranks the node last
+          type: array
+          items:
+            type: string
+        start_timeout:
+          description: how long a start may take, in nanoseconds
+          type: integer
+          format: int64
+        stonith:
+          type: boolean
         subsets:
           $ref: '#/components/schemas/SubsetsConfig'
         topology:
           $ref: '#/components/schemas/Topology'
+        unprovision_disabled:
+          description: unprovision=false, the resources being the sysadmin's to free
+          type: boolean
         updated_at:
           type: string
           format: date-time
-        stonith:
-          type: boolean
+        uses:
+          description: |
+            the cfg, sec and vol objects the resources of the object use, as
+            the node evaluates the configuration, sorted: a datastore named
+            by a pattern of its name, as ns1/sec/web-*, is the pattern
+          type: array
+          items:
+            type: string
+        wait_syncs_timeout:
+          description: how long a stop or a switch waits for the syncs running, in nanoseconds
+          type: integer
+          format: int64
 
     InstanceItem:
       type: object
@@ -12862,19 +12905,39 @@ components:
         - is_disabled
         - is_monitored
         - is_standby
-        - restart
       properties:
+        holds:
+          description: |
+            the values the resource holds on the node publishing the
+            configuration, or on every node when shared, by class code, as
+            {"mnt": ["/srv/app"], "bdev": ["/dev/sdb"]}
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
         is_disabled:
           type: boolean
         is_monitored:
+          type: boolean
+        is_shared:
+          description: what the resource holds is reachable from every cluster node, and held on every one
           type: boolean
         is_standby:
           type: boolean
         restart:
           type: integer
         restart_delay:
-          type: string
-          format: duration
+          description: the delay between two restarts, in nanoseconds
+          type: integer
+          format: int64
+        uses:
+          description: |
+            the cfg, sec and vol objects the resource uses, as the node
+            evaluates the configuration, sorted: none for a disabled resource
+          type: array
+          items:
+            type: string
 
     ResourceFile:
       type: object

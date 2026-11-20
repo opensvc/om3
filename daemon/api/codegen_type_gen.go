@@ -2276,6 +2276,10 @@ type IPAddressListKind string
 
 // Instance defines model for Instance.
 type Instance struct {
+	// Config The configuration of an instance, as the node publishing it
+	// evaluates it. The properties of an actor, a svc or a vol, are not
+	// said for a cfg, sec, usr or nscfg instance, and pool, size and
+	// charges are said for a vol only.
 	Config  *InstanceConfig  `json:"config,omitempty"`
 	Monitor *InstanceMonitor `json:"monitor,omitempty"`
 	Status  *InstanceStatus  `json:"status,omitempty"`
@@ -2288,7 +2292,10 @@ type InstanceActionAccepted struct {
 	SessionID openapi_types.UUID `json:"session_id"`
 }
 
-// InstanceConfig defines model for InstanceConfig.
+// InstanceConfig The configuration of an instance, as the node publishing it
+// evaluates it. The properties of an actor, a svc or a vol, are not
+// said for a cfg, sec, usr or nscfg instance, and pool, size and
+// charges are said for a vol only.
 type InstanceConfig = instance.Config
 
 // InstanceDevice defines model for InstanceDevice.
