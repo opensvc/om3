@@ -207,7 +207,9 @@ type fwNetwork struct {
 	// VXLANPort is the udp port of the vxlan of a network meshing its
 	// bridges by one, 0 for none, VXLANLocal the address of this node it
 	// receives on, and VXLANPeers the addresses of the nodes it receives
-	// from: the vxlan of any other host is dropped.
+	// from: the vxlan of any other host is dropped. A port with no
+	// VXLANLocal is a vxlan the network could not describe: all of it is
+	// dropped.
 	VXLANPort  int
 	VXLANLocal net.IP
 	VXLANPeers []net.IP
@@ -350,7 +352,9 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 			if isDevNameValid(nw.Dev) {
 				devs = append(devs, nw.Dev)
 			}
-			if nw.VXLANPort > 0 && nw.VXLANLocal != nil && ipFamily(nw.VXLANLocal) == family {
+			// A vxlan with no address of this node is one its
+			// network could not describe: dropped in both families.
+			if nw.VXLANPort > 0 && (nw.VXLANLocal == nil || ipFamily(nw.VXLANLocal) == family) {
 				if _, ok := vxlans[nw.VXLANPort]; !ok {
 					vxlanPorts = append(vxlanPorts, nw.VXLANPort)
 					vxlans[nw.VXLANPort] = []string{}

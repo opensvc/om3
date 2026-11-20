@@ -16,10 +16,11 @@ A filesystem mounted below `src` is not in the snapshot: the update is
 refused unless the rsync options keep the copy on one filesystem, as the
 default `-x` does.
 
-The snapshots of all the sync resources of an update or a full action are
-taken at one moment, before the first transfer, under a quiesce of the
-resources of the object that quiesce, as the apps and containers setting
-`quiesce`, and removed after the last transfer: the copies are of the same
+The snapshots of all the sync.rsync resources setting `snap` of an update
+or a full action are taken at one moment, before the first transfer, under a
+quiesce of the resources of the object that quiesce, as the apps and
+containers setting `quiesce`, and removed after the last transfer: the
+copies are of the same
 point in time, as the data of an application spread over filesystems has to
 be. `delay_snap` has a resource take its snapshot just before its own
 transfer instead. A thick volume holds the writes of its snapshot for the

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -59,4 +60,16 @@ func TestSubscriptionFilter(t *testing.T) {
 		t.Fatalf("unexpected message received %v", i)
 	case <-time.After(time.Millisecond):
 	}
+}
+
+// TestDeletedStatusForgetsTheCachedKey pins that the diff output forgets the
+// status of a network or a pool torn down: the key its deleted event names
+// is the one its updated event is cached under.
+func TestDeletedStatusForgetsTheCachedKey(t *testing.T) {
+	assert.Equal(t,
+		[]string{(&NodeNetworkStatusUpdated{Node: "n1", Name: "l2"}).Key()},
+		(&NodeNetworkStatusDeleted{Node: "n1", Name: "l2"}).KeysToDelete())
+	assert.Equal(t,
+		[]string{(&NodePoolStatusUpdated{Node: "n1", Name: "p1"}).Key()},
+		(&NodePoolStatusDeleted{Node: "n1", Name: "p1"}).KeysToDelete())
 }

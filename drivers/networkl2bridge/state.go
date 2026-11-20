@@ -13,6 +13,11 @@ import (
 // made only: a port om did not enslave, a vlan interface it did not create, a
 // bridge it adopted are never touched.
 type state struct {
+	// Bridge is the bridge the state is of: a setup of another, as the dev
+	// keyword set to adopt one, first undoes what the state records of
+	// this one.
+	Bridge string `json:"bridge,omitempty"`
+
 	// CreatedBridge says the bridge was created by om, rather than adopted.
 	CreatedBridge bool `json:"created_bridge,omitempty"`
 

@@ -150,6 +150,33 @@ func TestBridgeAdopted(t *testing.T) {
 	})
 }
 
+// TestBridgeCreatedThenAdopted pins that a network whose bridge om created,
+// then set to adopt another with dev, undoes the setup of the former first:
+// the state kept, the bridge adopted was taken for one om created, its ipv6
+// disabled, and deleted at the teardown.
+func TestBridgeCreatedThenAdopted(t *testing.T) {
+	inNetns(t, func(t *testing.T) {
+		log := plog.NewDefaultLogger()
+		var st state
+		require.NoError(t, apply(log, settings{name: "l2", nodename: "n1", bridge: "obr_l2"}, &st))
+		require.True(t, st.CreatedBridge)
+		la := netlink.NewLinkAttrs()
+		la.Name = "br0"
+		require.NoError(t, netlink.LinkAdd(&netlink.Bridge{LinkAttrs: la}))
+
+		require.NoError(t, apply(log, settings{name: "l2", nodename: "n1", bridge: "br0"}, &st))
+		absent(t, "obr_l2")
+		assert.False(t, st.CreatedBridge, "br0 is adopted")
+		assert.Equal(t, "br0", st.Bridge)
+		b, err := os.ReadFile("/proc/sys/net/ipv6/conf/br0/disable_ipv6")
+		if err == nil {
+			assert.Equal(t, "0", strings.TrimSpace(string(b)), "the ipv6 of the bridge adopted is left")
+		}
+		require.NoError(t, teardown(log, st.Bridge, &st))
+		link(t, "br0")
+	})
+}
+
 // TestBridgePorts meshes the bridge by ports, then a vlan of them, then
 // releases them, and refuses a port holding an address or enslaved
 // elsewhere.

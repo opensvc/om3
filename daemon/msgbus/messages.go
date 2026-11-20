@@ -1930,6 +1930,14 @@ func (e *ObjectStatusUpdated) Kind() string {
 	return "ObjectStatusUpdated"
 }
 
+// KeysToDelete returns the key the status of the network is cached under,
+// for the diff output to forget it.
+func (e *NodeNetworkStatusDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("NetworkStatusUpdated,node=%s,name=%s", e.Node, e.Name),
+	}
+}
+
 func (e *NodeNetworkStatusDeleted) Kind() string {
 	return "NodeNetworkStatusDeleted"
 }
@@ -1940,6 +1948,14 @@ func (e *NodeNetworkStatusUpdated) Key() string {
 
 func (e *NodeNetworkStatusUpdated) Kind() string {
 	return "NodeNetworkStatusUpdated"
+}
+
+// KeysToDelete returns the key the status of the pool is cached under, for
+// the diff output to forget it.
+func (e *NodePoolStatusDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("PoolStatusUpdated,node=%s,name=%s", e.Node, e.Name),
+	}
 }
 
 func (e *NodePoolStatusDeleted) Kind() string {

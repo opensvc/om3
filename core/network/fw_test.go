@@ -310,6 +310,16 @@ func TestFWRulesetDropsTheVXLANOfAnyHostButTheNodes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, got, "udp dport 4789 counter drop")
 	checkNft(t, got)
+
+	// A vxlan its network could not describe, an address of a node not
+	// resolving, has no address of this node: all of it is dropped, in
+	// both families, its device left up by the previous setup.
+	got, err = fwRuleset([]fwNetwork{
+		{Dev: "obr_l2", VXLANPort: 4789},
+	}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 2, strings.Count(got, "udp dport 4789 counter drop"), "in the ip and ip6 tables")
+	checkNft(t, got)
 }
 
 // TestFWDockerDevsListsTheBridgeOfANetworkWithNoAddress pins that docker's

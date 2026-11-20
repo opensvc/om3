@@ -323,12 +323,31 @@ func (t *T) vxlanAddr(nodename, af string) (net.IP, error) {
 // for the firewall to drop the vxlan of any
 // other host: vxlan is neither authenticated nor encrypted. A port of 0 is
 // no vxlan.
+//
+// A vxlan the configuration asks for but that it cannot describe, an
+// address of a node not resolving for example, is the port with no address:
+// the firewall drops all of it. Its setup fails before the device, which
+// the previous setup made and is left up, and the vxlan of any host would
+// reach the bridge else.
 func (t *T) VXLAN() (int, net.IP, []net.IP) {
 	s, err := t.settings()
-	if err != nil || s.vni == 0 {
+	if err == nil {
+		if s.vni == 0 {
+			return 0, nil, nil
+		}
+		return s.vxlanPort, s.local, s.peers
+	}
+	if t.GetString("vxlan_vni") == "" {
 		return 0, nil, nil
 	}
-	return s.vxlanPort, s.local, s.peers
+	port := defaultVXLANPort
+	if v := t.GetString("vxlan_port"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i > 0 {
+			port = i
+		}
+	}
+	t.Log().Warnf("vxlan dropped by the firewall: %s", err)
+	return port, nil, nil
 }
 
 func (t *T) Setup() error {
@@ -367,7 +386,11 @@ func (t *T) Teardown() error {
 	if err != nil {
 		return fmt.Errorf("load the state %s: %w", p, err)
 	}
-	if err := teardown(t.Log(), t.brName(), &st); err != nil {
+	bridge := t.brName()
+	if st.Bridge != "" {
+		bridge = st.Bridge
+	}
+	if err := teardown(t.Log(), bridge, &st); err != nil {
 		if serr := st.save(p); serr != nil {
 			t.Log().Warnf("save the state %s: %s", p, serr)
 		}
@@ -433,6 +456,16 @@ func apply(log *plog.Logger, s settings, st *state) error {
 		// Both would join the segment twice to the other nodes: a loop.
 		return fmt.Errorf("ports and vxlan_vni are two ways to mesh the bridges of the nodes, set one")
 	}
+	if st.Bridge != "" && st.Bridge != s.bridge {
+		// What the state records is of the former bridge: kept, the
+		// bridge adopted would be taken for one om created, its ipv6
+		// disabled and itself deleted at the teardown.
+		log.Infof("the bridge is now %s: undo the setup of %s", s.bridge, st.Bridge)
+		if err := teardown(log, st.Bridge, st); err != nil {
+			return fmt.Errorf("undo the setup of the former bridge %s: %w", st.Bridge, err)
+		}
+	}
+	st.Bridge = s.bridge
 	br, err := ensureBridge(log, s, st)
 	if err != nil {
 		return err
@@ -518,11 +551,13 @@ func teardown(log *plog.Logger, bridge string, st *state) error {
 	}
 	if !st.CreatedBridge {
 		log.Infof("leave the bridge %s om did not create", bridge)
+		st.Bridge = ""
 		return nil
 	}
 	br, err := netlink.LinkByName(bridge)
 	if _, ok := err.(netlink.LinkNotFoundError); ok {
 		st.CreatedBridge = false
+		st.Bridge = ""
 		return nil
 	} else if err != nil {
 		return err
@@ -534,6 +569,7 @@ func teardown(log *plog.Logger, bridge string, st *state) error {
 		return err
 	}
 	st.CreatedBridge = false
+	st.Bridge = ""
 	return nil
 }
 
