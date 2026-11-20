@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -47,7 +48,33 @@ func (t *actor) prepareSync(ctx context.Context, selected resource.Drivers) (fun
 		rs.Reverse()
 		return resource.QuiesceAll(ctx, rs)
 	}
+	if left := syncsLeftOut(ctx, l, t.ResourcesByDrivergroups([]driver.Group{driver.GroupSync})); len(left) > 0 {
+		t.log.Infof("the syncs %s take their snapshots too, not in this run: theirs are not of this moment", strings.Join(left, " "))
+	}
 	return prepareSyncs(ctx, t.log, l, quiesce)
+}
+
+// syncsLeftOut returns the sync resources of all that would take a snapshot
+// before the transfers, as the selected ones of an action do, but are not
+// selected: a run of a part of them takes its snapshots apart from theirs.
+// None when no selected one takes a snapshot.
+func syncsLeftOut(ctx context.Context, selected []resource.Driver, all []resource.Driver) []string {
+	isSelected := make(map[string]bool, len(selected))
+	preparing := false
+	for _, r := range selected {
+		isSelected[r.RID()] = true
+		preparing = preparing || resource.WillPrepareSync(ctx, r)
+	}
+	if !preparing {
+		return nil
+	}
+	l := make([]string, 0)
+	for _, r := range all {
+		if !isSelected[r.RID()] && resource.WillPrepareSync(ctx, r) {
+			l = append(l, r.RID())
+		}
+	}
+	return l
 }
 
 // prepareSyncs has the resources of l that will take something before the

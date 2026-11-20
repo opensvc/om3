@@ -59,6 +59,23 @@ var (
 	}
 )
 
+// CmdArgsFor returns the om argv the scheduler runs for the entry, its
+// resources rids rather than its own when given: the update jobs of an
+// object due at once run in one exec.
+func CmdArgsFor(e schedule.Entry, rids []string) ([]string, error) {
+	argv, err := CmdArgs(e)
+	if err != nil || len(rids) == 0 {
+		return argv, err
+	}
+	for i := 0; i < len(argv)-1; i++ {
+		if argv[i] == "--rid" {
+			argv[i+1] = strings.Join(rids, ",")
+			return argv, nil
+		}
+	}
+	return nil, fmt.Errorf("scheduler action %s selects no resource to run %s for", e.Action, strings.Join(rids, ","))
+}
+
 // CmdArgs returns the om argv the scheduler runs for the entry.
 //
 // These words are a contract with the om command tree, and nothing but that
@@ -133,7 +150,7 @@ func expectedExitCodes(action string) []int {
 	return nil
 }
 
-func (o *T) action(e schedule.Entry) error {
+func (o *T) action(e schedule.Entry, rids []string) error {
 	logger := o.jobLogger(e)
 	execID := xsession.NewExecID()
 	sessionID := xsession.NewSessionID()
@@ -141,10 +158,14 @@ func (o *T) action(e schedule.Entry) error {
 	if !e.Path.IsZero() {
 		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", e.Path.String()})
 	}
-	cmdArgs, err := CmdArgs(e)
+	cmdArgs, err := CmdArgsFor(e, rids)
 	if err != nil {
 		logger.Errorf("%s", err)
 		return err
+	}
+	rid := e.RID()
+	if len(rids) > 0 {
+		rid = strings.Join(rids, ",")
 	}
 	var cmdEnv []string
 	cmdEnv = append(
@@ -188,7 +209,7 @@ func (o *T) action(e schedule.Entry) error {
 		Command:   cmd.String(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
-		RID:       e.RID(),
+		RID:       rid,
 		ExecID:    execID,
 		SessionID: sessionID,
 		StartedAt: startTime,

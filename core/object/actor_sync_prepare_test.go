@@ -127,3 +127,17 @@ func TestPrepareSyncsTakesNothingWhenTheQuiesceFails(t *testing.T) {
 	assert.ErrorContains(t, err, "quiesce before the snapshots of the syncs: app#1: paused already")
 	assert.Empty(t, journal)
 }
+
+// TestSyncsLeftOut pins that a run of a part of the snapshot syncs names the
+// others, whose snapshots are not of its moment, and that a run taking no
+// snapshot names none.
+func TestSyncsLeftOut(t *testing.T) {
+	var journal []string
+	s1 := &preparingResource{rid: "sync#1", will: true, journal: &journal}
+	s2 := &preparingResource{rid: "sync#2", will: true, journal: &journal}
+	s3 := &preparingResource{rid: "sync#3", will: false, journal: &journal}
+	all := []resource.Driver{s1, s2, s3}
+	assert.Equal(t, []string{"sync#1"}, syncsLeftOut(updateContext(), []resource.Driver{s2}, all))
+	assert.Empty(t, syncsLeftOut(updateContext(), all, all))
+	assert.Nil(t, syncsLeftOut(updateContext(), []resource.Driver{s3}, all), "a run taking no snapshot")
+}

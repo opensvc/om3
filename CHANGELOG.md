@@ -1476,6 +1476,14 @@ which share the same executor.
     `delay_snap = true` has a resource take its snapshot just before its own transfer, as each did so far: the
     `delay_snap` tag of v2 becomes this keyword in the configuration migration.
 
+* **The scheduled updates of an object due at once run in one exec:**
+    the update jobs of the sync resources of an object due in the same tick run as one `instance update --rid a,b`,
+    each recording its own last run and last success, and held together when one of them is held, rather than one exec each, which met on the lock of the object,
+    the later failing when the earlier lasted longer than the 30 seconds it waits for the lock. The snapshots of the
+    syncs run together are taken at one moment. `validate config` warns of a `snap` sync whose schedule differs from
+    the one of the first, as their snapshots are taken in separate runs, and a run of a part of the `snap` syncs
+    names the ones it leaves out.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**
