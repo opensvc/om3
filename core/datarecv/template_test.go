@@ -1,9 +1,12 @@
 package datarecv
 
 import (
+	"bytes"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
+	"text/template"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -65,8 +68,8 @@ func TestRender(t *testing.T) {
 		{name: "unknown ref", tmpl: `{{ref "nope"}}`, wantErr: true},
 		{name: "missing key", tmpl: `{{key "./cfg/web" "nope"}}`, wantErr: true},
 		{name: "not a datastore", tmpl: `{{key "./svc/web" "psk"}}`, wantErr: true},
-		{name: "reverse zones", tmpl: `{{with network "default"}}{{range .ReverseZones}}{{.}} {{end}}{{end}}`, want: "22.10.in-addr.arpa "},
-		{name: "no reverse zone of lo", tmpl: `{{with network "lo"}}[{{range .ReverseZones}}{{.}}{{end}}]{{end}}`, want: "[]"},
+		{name: "reverse zones", tmpl: `{{with network "default"}}{{range .reverse_zones}}{{.}} {{end}}{{end}}`, want: "22.10.in-addr.arpa "},
+		{name: "no reverse zone of lo", tmpl: `{{with network "lo"}}[{{range .reverse_zones}}{{.}}{{end}}]{{end}}`, want: "[]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			b, err := recv.render("k", []byte(tc.tmpl), &[]templateKey{})
@@ -99,7 +102,7 @@ func TestRenderNoReverseZones(t *testing.T) {
 	o, err := object.NewCore(p)
 	require.NoError(t, err)
 	recv := &DataRecv{to: templateReceiver{o: o}}
-	b, err := recv.render("k", []byte(`{{with network "default"}}[{{range .ReverseZones}}{{.}}{{end}}]{{end}}`), &[]templateKey{})
+	b, err := recv.render("k", []byte(`{{with network "default"}}[{{range .reverse_zones}}{{.}}{{end}}]{{end}}`), &[]templateKey{})
 	require.NoError(t, err)
 	assert.Equal(t, "[]", string(b))
 }
@@ -165,4 +168,27 @@ func TestTemplateKeys(t *testing.T) {
 
 	require.NoError(t, writeTemplateKeys(filename, templateKeys{}))
 	assert.NoFileExists(t, filename)
+}
+
+// TestTemplateDataIsSnakeCase pins that a template reads the networks and
+// their peers as the api names them, in snake case, and that a field the
+// data has no value for is still one, as the tunnel of a routed peer.
+func TestTemplateDataIsSnakeCase(t *testing.T) {
+	peers := []network.Peer{
+		{Nodename: "n2", Local: net.ParseIP("10.0.0.1"), Remote: net.ParseIP("10.0.0.2"), Subnet: "10.100.1.0/24", Tunnel: "tun10002"},
+		{Nodename: "n3", Local: net.ParseIP("10.0.0.1"), Remote: net.ParseIP("10.0.0.3"), Subnet: "10.100.2.0/24"},
+	}
+	data, err := asTemplateData(peers, nil)
+	require.NoError(t, err)
+	tmpl := template.Must(template.New("t").Option("missingkey=error").Parse(`{{range .}}{{.nodename}}-{{.tunnel}} {{.local}} {{.remote}} {{.subnet}};{{end}}`))
+	var buf bytes.Buffer
+	require.NoError(t, tmpl.Execute(&buf, data))
+	assert.Equal(t, "n2-tun10002 10.0.0.1 10.0.0.2 10.100.1.0/24;n3- 10.0.0.1 10.0.0.3 10.100.2.0/24;", buf.String())
+
+	nw, err := asTemplateData(templateNetwork{Name: "a", Type: "routed_bridge", Network: "10.100.0.0/16", Peers: peers, ReverseZones: []string{"100.10.in-addr.arpa"}}, nil)
+	require.NoError(t, err)
+	tmpl = template.Must(template.New("t").Option("missingkey=error").Parse(`{{.name}} {{.type}} {{.network}} {{len .peers}} {{range .reverse_zones}}{{.}}{{end}}`))
+	buf.Reset()
+	require.NoError(t, tmpl.Execute(&buf, nw))
+	assert.Equal(t, "a routed_bridge 10.100.0.0/16 2 100.10.in-addr.arpa", buf.String())
 }

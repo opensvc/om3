@@ -206,19 +206,19 @@ type (
 	// Peer is another node of a network, as this node reaches it.
 	Peer struct {
 		// Nodename is the name of the peer node.
-		Nodename string
+		Nodename string `json:"nodename"`
 
 		// Local is the address of this node the network reaches the peer
 		// from, and Remote the address of the peer it reaches.
-		Local  net.IP
-		Remote net.IP
+		Local  net.IP `json:"local"`
+		Remote net.IP `json:"remote"`
 
 		// Subnet is the part of the network the peer hands out.
-		Subnet string
+		Subnet string `json:"subnet"`
 
 		// Tunnel is the device of the tunnel carrying the network to the
 		// peer, empty when the network is routed to it.
-		Tunnel string
+		Tunnel string `json:"tunnel"`
 	}
 
 	logger interface {
