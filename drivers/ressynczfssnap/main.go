@@ -24,6 +24,7 @@ type (
 		Recursive bool
 		Keep      int
 		Name      string
+		DelaySnap bool
 
 		// prepared is the datasets PrepareSync took the snapshot of, nil
 		// when it took none: the update of the action takes the others
@@ -61,7 +62,7 @@ func (t *T) SortKey() string {
 // transfer, as v2 took them, so a sync.zfs of the action sends them. None is
 // taken on a node not holding the started instance.
 func (t *T) WillPrepareSync(ctx context.Context) bool {
-	if len(t.Dataset) == 0 {
+	if len(t.Dataset) == 0 || t.DelaySnap {
 		return false
 	}
 	v, _ := t.IsInstanceSufficientlyStarted(ctx)

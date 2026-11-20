@@ -1487,7 +1487,8 @@ which share the same executor.
     The snapshot of a `sync.zfs` or a `sync.btrfs` no transfer sent, the action having failed before, is removed.
     `delay_snap = true` has a `sync.rsync`, `sync.zfs` or `sync.btrfs` resource take its snapshot just before its
     own transfer, as each did so far: the `delay_snap` tag v2 read on these becomes this keyword in the
-    configuration migration.
+    configuration migration. On a `sync.zfssnap` or a `sync.btrfssnap`, `delay_snap = true` has the snapshots taken
+    in its own update, with no quiesce, as for hourly snapshots whose apps are not to be paused at each.
 
 * **The scheduled updates of an object due at once run in one exec:**
     the update jobs of the sync resources of an object due in the same tick run as one `instance update --rid a,b`,

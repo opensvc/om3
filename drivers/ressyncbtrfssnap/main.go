@@ -32,6 +32,7 @@ type (
 		Keep      int
 		Name      string
 		Recursive bool
+		DelaySnap bool
 
 		// prepared is the directories PrepareSync took the snapshot of
 		// the subvolume mounted at, nil when it took none: the update of
@@ -299,7 +300,7 @@ func (t *T) checkName() error {
 // transfer, as the ones of a sync.zfssnap. None is taken on a node not
 // holding the started instance.
 func (t *T) WillPrepareSync(ctx context.Context) bool {
-	if len(t.Subvol) == 0 || t.checkName() != nil {
+	if len(t.Subvol) == 0 || t.DelaySnap || t.checkName() != nil {
 		return false
 	}
 	v, _ := t.IsInstanceSufficientlyStarted(ctx)

@@ -207,6 +207,7 @@ func TestPrepareSyncTakesTheSnapshots(t *testing.T) {
 
 	assert.True(t, o.WillPrepareSync(ctx))
 	assert.False(t, (&T{}).WillPrepareSync(ctx), "no subvolume")
+	assert.False(t, (&T{Subvol: o.Subvol, DelaySnap: true}).WillPrepareSync(ctx), "delay_snap: taken in its own update, with no quiesce")
 	assert.False(t, (&T{Name: "a/b", Subvol: o.Subvol}).WillPrepareSync(ctx), "a name the update refuses")
 
 	release, err := o.PrepareSync(ctx)

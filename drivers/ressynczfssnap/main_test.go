@@ -33,6 +33,7 @@ func TestPrepareSyncTakesTheSnapshots(t *testing.T) {
 	}
 	assert.True(t, d.WillPrepareSync(ctx))
 	assert.False(t, (&T{}).WillPrepareSync(ctx), "no dataset")
+	assert.False(t, (&T{Dataset: d.Dataset, DelaySnap: true}).WillPrepareSync(ctx), "delay_snap: taken in its own update, with no quiesce")
 
 	release, err := d.PrepareSync(ctx)
 	require.NoError(t, err)
