@@ -35,8 +35,14 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 	}
 	p := t.lockPath(props.LockGroup)
 	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
+	// The holder is probed with a lock object of its own. A probe finding
+	// the lock free takes it and releases it, which removes the lock file
+	// and keeps the file open: the action locking the same object after
+	// it would lock the removed file, which the action of another process
+	// does not see, creating the file again and locking it too.
+	probe := flock.New(p, xsession.SessionID().String(), fcntllock.New)
 	timeout := actioncontext.LockTimeout(ctx)
-	syncHolder := t.syncHoldingLock(ctx, lock)
+	syncHolder := t.syncHoldingLock(ctx, probe)
 	if syncHolder != nil {
 		// A stop waits for a sync as long as an orchestrated one
 		// does, not the time a lock is usually waited for, unless the
@@ -46,7 +52,7 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 		}
 		t.log.Infof("wait for the %s of the syncs (pid %d, running for %s) to end, %s at most: --interrupt-syncs ends them instead",
 			syncHolder.Intent, syncHolder.PID, time.Since(syncHolder.At).Round(time.Second), timeout)
-	} else if ingestHolder := t.ingestHoldingLock(lock); ingestHolder != nil {
+	} else if ingestHolder := t.ingestHoldingLock(probe); ingestHolder != nil {
 		// The ingest of the resource files the daemon fetched from a
 		// peer holds the lock for the time its resources take, longer
 		// than a lock is usually waited for: an action meeting it, as
