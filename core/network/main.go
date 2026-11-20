@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -204,21 +205,14 @@ type (
 	}
 
 	// Peer is another node of a network, as this node reaches it.
-	Peer struct {
-		// Nodename is the name of the peer node.
-		Nodename string `json:"nodename"`
+	Peer = netstatus.Peer
 
-		// Local is the address of this node the network reaches the peer
-		// from, and Remote the address of the peer it reaches.
-		Local  net.IP `json:"local"`
-		Remote net.IP `json:"remote"`
-
-		// Subnet is the part of the network the peer hands out.
-		Subnet string `json:"subnet"`
-
-		// Tunnel is the device of the tunnel carrying the network to the
-		// peer, empty when the network is routed to it.
-		Tunnel string `json:"tunnel"`
+	// Reporter is implemented by the network drivers saying what their
+	// setup made on the node beyond what every network says: the part of
+	// the network the node hands out, and the peers as the setup reached
+	// them, with the failure of each.
+	Reporter interface {
+		Report(*netstatus.Status)
 	}
 
 	logger interface {

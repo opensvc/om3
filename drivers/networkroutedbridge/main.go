@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -25,6 +26,10 @@ type (
 	T struct {
 		network.T
 		subnetMap map[string]string
+
+		// peers are the other nodes as the last setup reached them, or
+		// failed to, for the report of the setup.
+		peers []network.Peer
 	}
 )
 
@@ -337,9 +342,16 @@ func (t *T) Setup() error {
 	// A peer failing leaves the network usable with the others: they are
 	// set up all the same.
 	var errs []error
+	t.peers = make([]network.Peer, 0, len(nodes))
 	for idx, nodename := range nodes {
-		if err := t.setupNode(nodename, idx, localIP, brIP); err != nil {
+		peer, err := t.setupNode(nodename, idx, localIP, brIP)
+		if err != nil {
 			errs = append(errs, fmt.Errorf("setup network to node %s: %w", nodename, err))
+			peer.Nodename = nodename
+			peer.Error = err.Error()
+		}
+		if nodename != hostname.Hostname() {
+			t.peers = append(t.peers, peer)
 		}
 	}
 	if len(errs) > 0 {
@@ -348,15 +360,17 @@ func (t *T) Setup() error {
 	return nil
 }
 
-func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) error {
+// setupNode sets up the route, and the tunnel, to nodename, and returns how
+// this node reaches it, as far as it got.
+func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) (network.Peer, error) {
 	var route network.Route
 	peer, err := t.peer(nodename, localIP, t.subnetMap)
 	if err != nil {
-		return err
+		return peer, err
 	}
 	_, dst, err := net.ParseCIDR(peer.Subnet)
 	if err != nil {
-		return fmt.Errorf("parse peer subnet %s: %w", peer.Subnet, err)
+		return peer, fmt.Errorf("parse peer subnet %s: %w", peer.Subnet, err)
 	}
 	switch {
 	case hostname.Hostname() == nodename:
@@ -367,10 +381,10 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 		}
 	case peer.Tunnel != "":
 		if err := t.setupNodeTunnelLink(nodename, peer.Tunnel, localIP, peer.Remote); err != nil {
-			return fmt.Errorf("setup tunnel: %w", err)
+			return peer, fmt.Errorf("setup tunnel: %w", err)
 		}
 		if err := t.setupNodeTunnelLinkUp(peer.Tunnel); err != nil {
-			return fmt.Errorf("setup tunnel: %w", err)
+			return peer, fmt.Errorf("setup tunnel: %w", err)
 		}
 		route = network.Route{
 			Nodename: nodename,
@@ -387,12 +401,23 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 	}
 	if route.Gateway == nil && route.Dev == "" {
 		t.Log().Infof("skip route setup because no gateway and no dev of node %s", nodename)
-		return nil
+		return peer, nil
 	}
 	if err := t.setupNodeRoutes(route); err != nil {
-		return fmt.Errorf("setup route: %w", err)
+		return peer, fmt.Errorf("setup route: %w", err)
 	}
-	return nil
+	return peer, nil
+}
+
+// Report adds to the status of the setup the part of the network this node
+// hands out, and the other nodes as the setup reached them, or failed to.
+func (t *T) Report(st *netstatus.Status) {
+	if s, ok := t.subnetMap[hostname.Hostname()]; ok {
+		st.Subnet = s
+	}
+	if t.peers != nil {
+		st.Peers = t.peers
+	}
 }
 
 // peer returns how this node, at localIP, reaches nodename: the address of

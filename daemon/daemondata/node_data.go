@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -144,6 +145,10 @@ func (d *data) dropPeerData(peer string, peerLabels []pubsub.Label, peerDropAt t
 	for _, p := range pool.StatusData.GetByNode(peer) {
 		pool.StatusData.Unset(p.Name, peer)
 		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Node: peer, Name: p.Name}, peerLabels...)
+	}
+	for _, e := range netstatus.StatusData.GetByNode(peer) {
+		netstatus.StatusData.Unset(e.Name, peer)
+		d.publisher.Pub(&msgbus.NodeNetworkStatusDeleted{Node: peer, Name: e.Name}, peerLabels...)
 	}
 	// The tombstones of the peer are kept: a node away may hold the
 	// version one deleted, and a record the peer alone wrote would

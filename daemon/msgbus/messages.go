@@ -62,6 +62,7 @@ import (
 	"github.com/opensvc/om3/v3/core/hbsecret"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
@@ -222,6 +223,10 @@ var (
 		"NodeMonitorUpdated": func() any { return &NodeMonitorUpdated{} },
 
 		"NodeOsPathsUpdated": func() any { return &NodeOsPathsUpdated{} },
+
+		"NodeNetworkStatusDeleted": func() any { return &NodeNetworkStatusDeleted{} },
+
+		"NodeNetworkStatusUpdated": func() any { return &NodeNetworkStatusUpdated{} },
 
 		"NodePoolStatusDeleted": func() any { return &NodePoolStatusDeleted{} },
 
@@ -931,6 +936,25 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string    `json:"node" yaml:"node"`
 		Value      san.Paths `json:"san_paths" yaml:"san_paths"`
+	}
+
+	// NodeNetworkStatusDeleted is published when the status of the setup of
+	// a network on a node is gone: the network was torn down, its
+	// configuration removed, or the node left.
+	NodeNetworkStatusDeleted struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+	}
+
+	// NodeNetworkStatusUpdated is published when a node set up a network,
+	// with what the setup made on the node: its device, its subnet, how it
+	// reaches each other node, and what failed.
+	NodeNetworkStatusUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string           `json:"node" yaml:"node"`
+		Name       string           `json:"name" yaml:"name"`
+		Value      netstatus.Status `json:"network_status" yaml:"network_status"`
 	}
 
 	NodePoolStatusDeleted struct {
@@ -1904,6 +1928,18 @@ func (e *ObjectStatusUpdated) Key() string {
 
 func (e *ObjectStatusUpdated) Kind() string {
 	return "ObjectStatusUpdated"
+}
+
+func (e *NodeNetworkStatusDeleted) Kind() string {
+	return "NodeNetworkStatusDeleted"
+}
+
+func (e *NodeNetworkStatusUpdated) Key() string {
+	return fmt.Sprintf("NetworkStatusUpdated,node=%s,name=%s", e.Node, e.Name)
+}
+
+func (e *NodeNetworkStatusUpdated) Kind() string {
+	return "NodeNetworkStatusUpdated"
 }
 
 func (e *NodePoolStatusDeleted) Kind() string {

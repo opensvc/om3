@@ -1235,6 +1235,42 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/network/node:
+    get:
+      operationId: GetNetworkNodes
+      description: |
+        What the last setup of each network made on each node: the device
+        it set up, the part of the network the node hands out, how the node
+        reaches each other node of the network, by a route or a tunnel, and
+        what failed. Each node records it for itself and publishes it in the
+        cluster data.
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: name
+          description: the name of a cluster network
+          required: false
+          schema:
+            type: string
+        - $ref: '#/components/parameters/inQueryNodeSelector'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkNodeList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/network/claim:
     post:
       operationId: PostNetworkClaim
@@ -11492,6 +11528,92 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Network'
+
+    NetworkNode:
+      type: object
+      description: what the last setup of a network made on a node
+      required:
+        - name
+        - node
+        - type
+        - network
+        - peers
+        - applied_at
+      properties:
+        name:
+          type: string
+        node:
+          type: string
+        type:
+          type: string
+        network:
+          type: string
+          description: the address range of the network, empty for a network with no address
+        dev:
+          type: string
+          description: the device of the node the network is on, as its bridge
+        subnet:
+          type: string
+          description: the part of the network the node hands out
+        peers:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkPeer'
+        skipped:
+          type: string
+          description: why the setup left the network alone, as a network disabled
+        error:
+          type: string
+          description: the failure of the setup
+        applied_at:
+          type: string
+          format: date-time
+
+    NetworkNodeItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/NetworkNode'
+
+    NetworkNodeList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - NetworkNodeList
+        items:
+          $ref: '#/components/schemas/NetworkNodeItems'
+
+    NetworkPeer:
+      type: object
+      description: another node of a network, as the node reaches it
+      required:
+        - nodename
+        - local
+        - remote
+        - subnet
+        - tunnel
+      properties:
+        nodename:
+          type: string
+        local:
+          type: string
+          description: the address of the node the network reaches the peer from
+        remote:
+          type: string
+          description: the address of the peer the network reaches
+        subnet:
+          type: string
+          description: the part of the network the peer hands out
+        tunnel:
+          type: string
+          description: the tunnel device carrying the network to the peer, empty when the network is routed to it
+        error:
+          type: string
+          description: why the setup could not reach the peer
 
     NetworkList:
       type: object

@@ -594,6 +594,21 @@ func (e NetworkListKind) Valid() bool {
 	}
 }
 
+// Defines values for NetworkNodeListKind.
+const (
+	NetworkNodeListKindNetworkNodeList NetworkNodeListKind = "NetworkNodeList"
+)
+
+// Valid indicates whether the value is a known member of the NetworkNodeListKind enum.
+func (e NetworkNodeListKind) Valid() bool {
+	switch e {
+	case NetworkNodeListKindNetworkNodeList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NetworkReservationListKind.
 const (
 	NetworkReservationListKindNetworkReservationList NetworkReservationListKind = "NetworkReservationList"
@@ -2610,6 +2625,61 @@ type NetworkList struct {
 // NetworkListKind defines model for NetworkList.Kind.
 type NetworkListKind string
 
+// NetworkNode what the last setup of a network made on a node
+type NetworkNode struct {
+	AppliedAt time.Time `json:"applied_at"`
+
+	// Dev the device of the node the network is on, as its bridge
+	Dev *string `json:"dev,omitempty"`
+
+	// Error the failure of the setup
+	Error *string `json:"error,omitempty"`
+	Name  string  `json:"name"`
+
+	// Network the address range of the network, empty for a network with no address
+	Network string        `json:"network"`
+	Node    string        `json:"node"`
+	Peers   []NetworkPeer `json:"peers"`
+
+	// Skipped why the setup left the network alone, as a network disabled
+	Skipped *string `json:"skipped,omitempty"`
+
+	// Subnet the part of the network the node hands out
+	Subnet *string `json:"subnet,omitempty"`
+	Type   string  `json:"type"`
+}
+
+// NetworkNodeItems defines model for NetworkNodeItems.
+type NetworkNodeItems = []NetworkNode
+
+// NetworkNodeList defines model for NetworkNodeList.
+type NetworkNodeList struct {
+	Items NetworkNodeItems    `json:"items"`
+	Kind  NetworkNodeListKind `json:"kind"`
+}
+
+// NetworkNodeListKind defines model for NetworkNodeList.Kind.
+type NetworkNodeListKind string
+
+// NetworkPeer another node of a network, as the node reaches it
+type NetworkPeer struct {
+	// Error why the setup could not reach the peer
+	Error *string `json:"error,omitempty"`
+
+	// Local the address of the node the network reaches the peer from
+	Local    string `json:"local"`
+	Nodename string `json:"nodename"`
+
+	// Remote the address of the peer the network reaches
+	Remote string `json:"remote"`
+
+	// Subnet the part of the network the peer hands out
+	Subnet string `json:"subnet"`
+
+	// Tunnel the tunnel device carrying the network to the peer, empty when the network is routed to it
+	Tunnel string `json:"tunnel"`
+}
+
 // NetworkReservation defines model for NetworkReservation.
 type NetworkReservation struct {
 	IP      string `json:"ip"`
@@ -4484,6 +4554,15 @@ type GetNetworksParams struct {
 type GetNetworkIPParams struct {
 	// Name the name of a cluster backend network
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNetworkNodesParams defines parameters for GetNetworkNodes.
+type GetNetworkNodesParams struct {
+	// Name the name of a cluster network
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+
+	// Node a node selector expression like `n[123]`, `n*`, `mylabel=myvalue`
+	Node *InQueryNodeSelector `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetNodesParams defines parameters for GetNodes.

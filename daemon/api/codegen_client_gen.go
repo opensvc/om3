@@ -214,6 +214,9 @@ type ClientInterface interface {
 	// GetNetworkIP request
 	GetNetworkIP(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNetworkNodes request
+	GetNetworkNodes(ctx context.Context, params *GetNetworkNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodes request
 	GetNodes(ctx context.Context, params *GetNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1391,6 +1394,18 @@ func (c *Client) PostNetworkClaim(ctx context.Context, body PostNetworkClaimJSON
 
 func (c *Client) GetNetworkIP(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNetworkIPRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNetworkNodes(ctx context.Context, params *GetNetworkNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNetworkNodesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5703,6 +5718,72 @@ func NewGetNetworkIPRequest(server string, params *GetNetworkIPParams) (*http.Re
 		if params.Name != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNetworkNodesRequest generates requests for GetNetworkNodes
+func NewGetNetworkNodesRequest(server string, params *GetNetworkNodesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/network/node")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Name != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Node != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "node", *params.Node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -21980,6 +22061,9 @@ type ClientWithResponsesInterface interface {
 	// GetNetworkIPWithResponse request
 	GetNetworkIPWithResponse(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*GetNetworkIPResponse, error)
 
+	// GetNetworkNodesWithResponse request
+	GetNetworkNodesWithResponse(ctx context.Context, params *GetNetworkNodesParams, reqEditors ...RequestEditorFn) (*GetNetworkNodesResponse, error)
+
 	// GetNodesWithResponse request
 	GetNodesWithResponse(ctx context.Context, params *GetNodesParams, reqEditors ...RequestEditorFn) (*GetNodesResponse, error)
 
@@ -23817,6 +23901,39 @@ func (r GetNetworkIPResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNetworkIPResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNetworkNodesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NetworkNodeList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNetworkNodesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNetworkNodesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNetworkNodesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31328,6 +31445,15 @@ func (c *ClientWithResponses) GetNetworkIPWithResponse(ctx context.Context, para
 	return ParseGetNetworkIPResponse(rsp)
 }
 
+// GetNetworkNodesWithResponse request returning *GetNetworkNodesResponse
+func (c *ClientWithResponses) GetNetworkNodesWithResponse(ctx context.Context, params *GetNetworkNodesParams, reqEditors ...RequestEditorFn) (*GetNetworkNodesResponse, error) {
+	rsp, err := c.GetNetworkNodes(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNetworkNodesResponse(rsp)
+}
+
 // GetNodesWithResponse request returning *GetNodesResponse
 func (c *ClientWithResponses) GetNodesWithResponse(ctx context.Context, params *GetNodesParams, reqEditors ...RequestEditorFn) (*GetNodesResponse, error) {
 	rsp, err := c.GetNodes(ctx, params, reqEditors...)
@@ -35195,6 +35321,53 @@ func ParseGetNetworkIPResponse(rsp *http.Response) (*GetNetworkIPResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest NetworkIPList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNetworkNodesResponse parses an HTTP response from a GetNetworkNodesWithResponse call
+func ParseGetNetworkNodesResponse(rsp *http.Response) (*GetNetworkNodesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNetworkNodesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NetworkNodeList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
