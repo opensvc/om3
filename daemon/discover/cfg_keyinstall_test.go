@@ -26,6 +26,10 @@ func withResources(rs map[string]status.T) *instance.Status {
 	return st
 }
 
+func withTypedResources(rs map[string]resource.Status) *instance.Status {
+	return &instance.Status{Resources: instance.ResourceStatuses(rs)}
+}
+
 // A datastore fetched is refreshed in the local volumes when a local svc
 // instance with a volume or fs resource up uses it, as its configuration
 // says, and when its configuration can't tell: the install command is not
@@ -54,6 +58,10 @@ func TestMayInstallKeysOf(t *testing.T) {
 		{"an fs up", withResources(map[string]status.T{"fs#1": status.Up}), uses("testigw/sec/web-tls"), mtime, noTemplate, true},
 		{"a volume standby up", withResources(map[string]status.T{"volume#1": status.StandbyUp}), uses("testigw/sec/web-tls"), mtime, noTemplate, true},
 		{"a volume down", withResources(map[string]status.T{"volume#1": status.Down}), uses("testigw/sec/web-tls"), mtime, noTemplate, false},
+		{"a directory, whose status does not apply", withTypedResources(map[string]resource.Status{"fs#1": {Type: "fs.directory", Status: status.NotApplicable}}), uses("testigw/sec/web-tls"), mtime, noTemplate, true},
+		{"a filesystem whose status does not apply, as with no device", withTypedResources(map[string]resource.Status{"fs#1": {Type: "fs.host", Status: status.NotApplicable}}), uses("testigw/sec/web-tls"), mtime, noTemplate, false},
+		{"a volume whose status does not apply, as failing to configure", withTypedResources(map[string]resource.Status{"volume#1": {Type: "volume", Status: status.NotApplicable}}), uses("testigw/sec/web-tls"), mtime, noTemplate, false},
+		{"a directory missing", withResources(map[string]status.T{"fs#1": status.Down}), uses("testigw/sec/web-tls"), mtime, noTemplate, false},
 		{"no volume nor fs", withResources(map[string]status.T{"container#1": status.Up, "ip#1": status.Up}), uses("testigw/sec/web-tls"), mtime, noTemplate, false},
 		{"no status", nil, uses("testigw/sec/web-tls"), mtime, noTemplate, false},
 		{"no configuration known yet", upVolume, nil, mtime, noTemplate, true},

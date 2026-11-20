@@ -20,6 +20,9 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
+// fsDirectoryType is the type a directory resource says in its status.
+var fsDirectoryType = driver.NewID(driver.GroupFS, "directory").String()
+
 // keyInstallTimeout bounds an install, which signals resources, as a
 // container, with timeouts of their own.
 const keyInstallTimeout = 2 * time.Minute
@@ -48,10 +51,16 @@ func nodeMaxParallel(nodename string) int {
 	return object.MinNodeMaxParallel
 }
 
-// upVolumeRIDs returns the volume and fs resources of an instance status,
-// and whether one of them is up: the instance holds volumes keys are
-// installed in.
-func upVolumeRIDs(st *instance.Status) (rids []string, up bool) {
+// keyReceiverRIDs returns the volume and fs resources of an instance status,
+// and whether one of them may receive keys now: one up, or a directory that
+// exists, whose status does not apply, and which keys are installed in
+// whether the instance runs or not.
+//
+// Only a directory: other resources say their status does not apply when
+// they hold nothing to install in, as a filesystem with no device or mount
+// point, a resource failing to configure, or a driver the agent does not
+// have.
+func keyReceiverRIDs(st *instance.Status) (rids []string, up bool) {
 	if st == nil {
 		return nil, false
 	}
@@ -66,7 +75,10 @@ func upVolumeRIDs(st *instance.Status) (rids []string, up bool) {
 			continue
 		}
 		rids = append(rids, rid)
-		if rst.Status.Is(status.Up, status.StandbyUp) {
+		switch {
+		case rst.Status.Is(status.Up, status.StandbyUp):
+			up = true
+		case rst.Status == status.NotApplicable && rst.Type == fsDirectoryType:
 			up = true
 		}
 	}
@@ -77,16 +89,16 @@ func upVolumeRIDs(st *instance.Status) (rids []string, up bool) {
 // keys of the datastore p, its status st and its configuration cfg as the
 // daemon holds them.
 //
-// The instance needs a volume or fs resource up. Then its configuration
-// says: the datastores its resources use, the ones named by patterns
-// included, as the node evaluates it, a datastore not existing yet
+// The instance needs a volume or fs resource up, or a directory. Then its
+// configuration says: the datastores its resources use, the ones named by
+// patterns included, as the node evaluates it, a datastore not existing yet
 // included. A configuration not known yet, or older than the file of the
 // configuration, as when a svc changes its install lines, says yes: the
 // install command run reads the lines themselves, and changes nothing where
 // they name another datastore. A template of a volume reading a key of p at
 // its last render says yes too.
 func mayInstallKeysOf(p naming.Path, st *instance.Status, cfg *instance.Config, configMtime func() time.Time, templateReadsFrom func(rid string) bool) bool {
-	rids, up := upVolumeRIDs(st)
+	rids, up := keyReceiverRIDs(st)
 	if !up {
 		return false
 	}
