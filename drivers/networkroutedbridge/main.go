@@ -392,7 +392,7 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 // the node, its subnet, and the tunnel carrying the network to it, when it
 // is not routed. This node reaches itself through the bridge, by no tunnel.
 func (t *T) peer(nodename string, localIP net.IP, subnets map[string]string) (network.Peer, error) {
-	peerIP, err := t.getNodeIP(nodename)
+	peerIP, err := t.getPeerIP(nodename)
 	if err != nil {
 		return network.Peer{}, fmt.Errorf("get peer ip: %w", err)
 	}
@@ -556,6 +556,9 @@ func (t *T) getTunnelByEndpoints(localIP, peerIP net.IP) (netlink.Link, error) {
 	for _, link := range links {
 		var local, remote net.IP
 		switch tun := link.(type) {
+		case *netlink.Gretun:
+			local = tun.Local
+			remote = tun.Remote
 		case *netlink.Iptun:
 			local = tun.Local
 			remote = tun.Remote
@@ -648,7 +651,7 @@ func (t *T) loggerWithLink(link any) *plog.Logger {
 }
 
 func (t *T) modTunnelGre(name string, localIP, peerIP net.IP) error {
-	link := &netlink.Ip6tnl{
+	link := &netlink.Gretun{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
 			EncapType: "gretun",
@@ -657,12 +660,7 @@ func (t *T) modTunnelGre(name string, localIP, peerIP net.IP) error {
 		Remote: peerIP,
 	}
 	t.loggerWithLink(link).Infof("modify gre tun %s", name)
-	if h, err := netlink.NewHandle(); err != nil {
-		defer h.Delete()
-		return h.LinkModify(link)
-	} else {
-		return err
-	}
+	return linkModify(link)
 }
 
 func (t *T) modTunnelIp6(name string, localIP, peerIP net.IP) error {
@@ -675,12 +673,7 @@ func (t *T) modTunnelIp6(name string, localIP, peerIP net.IP) error {
 		Remote: peerIP,
 	}
 	t.loggerWithLink(link).Infof("modify ipip tun %s", name)
-	if h, err := netlink.NewHandle(); err != nil {
-		defer h.Delete()
-		return h.LinkModify(link)
-	} else {
-		return err
-	}
+	return linkModify(link)
 }
 
 func (t *T) modTunnelIp4(name string, localIP, peerIP net.IP) error {
@@ -693,12 +686,18 @@ func (t *T) modTunnelIp4(name string, localIP, peerIP net.IP) error {
 		Remote: peerIP,
 	}
 	t.loggerWithLink(link).Infof("modify ipip tun %s", name)
-	if h, err := netlink.NewHandle(); err != nil {
-		defer h.Delete()
-		return h.LinkModify(link)
-	} else {
+	return linkModify(link)
+}
+
+// linkModify changes the existing link of the name of link to the
+// attributes of link, as its tunnel endpoints, the routes through it kept.
+func linkModify(link netlink.Link) error {
+	h, err := netlink.NewHandle()
+	if err != nil {
 		return err
 	}
+	defer h.Close()
+	return h.LinkModify(link)
 }
 
 func (t *T) addTunnelGre(name string, localIP, peerIP net.IP) error {
@@ -922,6 +921,47 @@ func (t *T) getNodeIP(nodename string) (net.IP, error) {
 		return nil, fmt.Errorf("the address %s of node %s is in the network %s itself, which the tunnels and routes to the node carry: set addr@%s to an address of the node out of it", ip, nodename, ipnet, nodename)
 	}
 	return ip, nil
+}
+
+// getPeerIP returns the address this node reaches nodename at, the gateway
+// of the routes to its subnet and the remote endpoint of the tunnel to it:
+// the gateway keyword scoped to nodename, as v2 read it, else the address of
+// the node, as getNodeIP returns it. This node reaches itself through the
+// bridge, at its own address.
+func (t *T) getPeerIP(nodename string) (net.IP, error) {
+	if nodename == hostname.Hostname() {
+		return t.getNodeIP(nodename)
+	}
+	ipnet, _ := t.IPNet()
+	return peerIP(nodename, t.GetStringAs("gateway", nodename), t.getAF(), ipnet, func() (net.IP, error) {
+		return t.getNodeIP(nodename)
+	})
+}
+
+// peerIP returns the address of the peer nodename: its gateway, an address
+// or a name resolved in the family af, refused in the network ipnet the
+// tunnels and routes carry, else the address nodeIP returns.
+func peerIP(nodename, gateway, af string, ipnet *net.IPNet, nodeIP func() (net.IP, error)) (net.IP, error) {
+	if gateway == "" {
+		return nodeIP()
+	}
+	ip, err := resolveAddr(gateway, af)
+	if err != nil {
+		return nil, fmt.Errorf("gateway@%s: %w", nodename, err)
+	}
+	if ipnet != nil && ipnet.Contains(ip) {
+		return nil, fmt.Errorf("the gateway %s of node %s is in the network %s itself, which the tunnels and routes to the node carry: set gateway@%s to an address out of it", ip, nodename, ipnet, nodename)
+	}
+	return ip, nil
+}
+
+// resolveAddr returns addr as an address, parsed, or resolved in the
+// address family af when it is a name.
+var resolveAddr = func(addr, af string) (net.IP, error) {
+	if ip := net.ParseIP(addr); ip != nil {
+		return ip, nil
+	}
+	return network.GetNodeAddr(addr, af)
 }
 
 func (t *T) nodeIP(nodename string) (net.IP, error) {

@@ -1,1 +1,8 @@
-The gateway to use to reach the network segment of the node specified as scope.
+The address the other nodes reach the node specified as scope at, as
+`gateway@n2 = 10.0.0.2`: the gateway of their routes to its subnet, and the
+remote endpoint of their tunnels to it. An address, or a name resolved in
+the address family of the network, out of the network itself.
+
+Not set, the address of the node: its `addr`, else the address its name
+resolves to. Set it when the other nodes reach the node at an address other
+than the one it sends from, as through a router or a NAT.
