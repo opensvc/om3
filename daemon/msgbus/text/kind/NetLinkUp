@@ -1,0 +1,3 @@
+A network link of the node went up.
+
+Published by the network monitor. The node monitor sets up again the networks on the link, as the bridge of a network or a port of a l2_bridge.

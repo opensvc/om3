@@ -10,9 +10,10 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-// GetNetworks returns network status list.
+// GetNetworks returns network status list: the root and inspector grants
+// read it.
 func (a *DaemonAPI) GetNetworks(ctx echo.Context, params api.GetNetworksParams) error {
-	if v, err := assertRoot(ctx); !v {
+	if v, err := assertInspector(ctx); !v {
 		return err
 	}
 	items := make(api.NetworkItems, 0)

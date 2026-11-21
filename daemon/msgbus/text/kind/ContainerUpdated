@@ -1,0 +1,3 @@
+A container an instance of the node holds changed state.
+
+Published by the container monitor when a podman or docker container started, exited, was killed for memory, paused, removed, or its health changed: type is the driver type of the resources of the engine, as container.podman. The instance status is evaluated again.

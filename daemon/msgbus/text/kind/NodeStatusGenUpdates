@@ -1,0 +1,3 @@
+The generations of the heartbeat messages of the node changed.
+
+Published by the daemon data: each node counts the messages it applied of each other node, which tells a peer to send a patch or a full message.

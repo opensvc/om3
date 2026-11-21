@@ -5,6 +5,7 @@ package network
 import (
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/google/nftables"
@@ -55,6 +56,7 @@ const (
 	fwChainMasq        = "osvc-masq"
 	fwChainMasqLocal   = "osvc-masq-local"
 	fwChainForward     = "osvc-forward"
+	fwChainInput       = "osvc-input"
 )
 
 // The priorities of the base chains, written as the numbers the "srcnat" and
@@ -201,6 +203,21 @@ type fwNetwork struct {
 	CIDR      string
 	Dev       string
 	NodeLocal bool
+
+	// VXLANPort is the udp port of the vxlan of a network meshing its
+	// bridges by one, 0 for none, VXLANLocal the address of this node it
+	// receives on, and VXLANPeers the addresses of the nodes it receives
+	// from: the vxlan of any other host is dropped. A port with no
+	// VXLANLocal is a vxlan the network could not describe: all of it is
+	// dropped.
+	VXLANPort  int
+	VXLANLocal net.IP
+	VXLANPeers []net.IP
+}
+
+// vxlaner is implemented by the networks meshing their bridges by a vxlan.
+type vxlaner interface {
+	VXLAN() (port int, local net.IP, peers []net.IP)
 }
 
 // legacyChain names a chain om left in a table it no longer writes to.
@@ -251,6 +268,9 @@ func fwNetworks(nws []Networker) []fwNetwork {
 		n := fwNetwork{CIDR: nw.Network()}
 		if i, ok := nw.(nodeLocaler); ok {
 			n.NodeLocal = i.IsNodeLocal()
+		}
+		if i, ok := nw.(vxlaner); ok {
+			n.VXLANPort, n.VXLANLocal, n.VXLANPeers = i.VXLAN()
 		}
 		if i, ok := nw.(backendDevNamer); ok {
 			n.Dev = i.BackendDevName()
@@ -320,7 +340,33 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 	var returns, jumps, devs []string
 	var hasNodeLocal bool
 	name := fmtFamily(family)
+	vxlans := make(map[int][]string)
+	var vxlanPorts []int
 	for _, nw := range networks {
+		if nw.CIDR == "" {
+			// A network with no address, as a l2_bridge: the frames
+			// bridged on it cross the forward chain where br_netfilter
+			// is loaded, and are accepted there, in either family. Its
+			// vxlan is received from the nodes only, in the family of
+			// its address.
+			if isDevNameValid(nw.Dev) {
+				devs = append(devs, nw.Dev)
+			}
+			// A vxlan with no address of this node is one its
+			// network could not describe: dropped in both families.
+			if nw.VXLANPort > 0 && (nw.VXLANLocal == nil || ipFamily(nw.VXLANLocal) == family) {
+				if _, ok := vxlans[nw.VXLANPort]; !ok {
+					vxlanPorts = append(vxlanPorts, nw.VXLANPort)
+					vxlans[nw.VXLANPort] = []string{}
+				}
+				for _, ip := range nw.VXLANPeers {
+					if ipFamily(ip) == family {
+						vxlans[nw.VXLANPort] = append(vxlans[nw.VXLANPort], ip.String())
+					}
+				}
+			}
+			continue
+		}
 		ip, ipnet, err := net.ParseCIDR(nw.CIDR)
 		if err != nil {
 			return "", fmt.Errorf("network %s: %w", nw.CIDR, err)
@@ -343,7 +389,7 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 		}
 		devs = append(devs, nw.Dev)
 	}
-	if len(returns) == 0 {
+	if len(returns) == 0 && len(devs) == 0 && len(vxlanPorts) == 0 {
 		return "", nil
 	}
 	if family == nftables.TableFamilyIPv4 {
@@ -380,7 +426,25 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 		fmt.Fprintf(&sb, "\t\tiifname \"%s\" counter accept\n", dev)
 		fmt.Fprintf(&sb, "\t\toifname \"%s\" counter accept\n", dev)
 	}
-	sb.WriteString("\t}\n}\n")
+	sb.WriteString("\t}\n")
+
+	if len(vxlanPorts) > 0 {
+		fmt.Fprintf(&sb, "\tchain %s {\n", fwChainInput)
+		fmt.Fprintf(&sb, "\t\ttype filter hook input priority %d; policy accept;\n", fwPriorityFilter)
+		slices.Sort(vxlanPorts)
+		for _, port := range vxlanPorts {
+			peers := vxlans[port]
+			if len(peers) == 0 {
+				fmt.Fprintf(&sb, "\t\tudp dport %d counter drop\n", port)
+				continue
+			}
+			slices.Sort(peers)
+			peers = slices.Compact(peers)
+			fmt.Fprintf(&sb, "\t\tudp dport %d %s saddr != { %s } counter drop\n", port, name, strings.Join(peers, ", "))
+		}
+		sb.WriteString("\t}\n")
+	}
+	sb.WriteString("}\n")
 
 	return sb.String(), nil
 }

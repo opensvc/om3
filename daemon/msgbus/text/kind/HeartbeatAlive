@@ -1,0 +1,3 @@
+A heartbeat of the node hears a peer again.
+
+Published by the heartbeat controller for the heartbeat hb_id and the peer node.

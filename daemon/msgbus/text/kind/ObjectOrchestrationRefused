@@ -1,0 +1,3 @@
+An instance monitor refused an orchestration of the object.
+
+Published with its id, the target state asked and why, as an object frozen or an orchestration already running.

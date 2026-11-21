@@ -85,6 +85,55 @@ var ObjectMigrationRules = MigrationRules{
 			"or sync.rsync with snap set.",
 		apply: migrateSnapTriggers,
 	},
+	{
+		Doc: "The delay_snap tag of a sync.rsync, sync.zfs or sync.btrfs resource becomes its delay_snap keyword, set to true, " +
+			"and is removed from its tags: the resource takes its snapshot just before its own transfer, " +
+			"rather than with the other sync resources of the action, before the first transfer.",
+		apply: migrateDelaySnapTag,
+	},
+}
+
+// delaySnapTypes are the sync drivers reading the delay_snap keyword, the
+// ones v2 read the delay_snap tag of: an unset type is the rsync one.
+var delaySnapTypes = []string{"", "rsync", "zfs", "btrfs"}
+
+// migrateDelaySnapTag turns the delay_snap tag v2 read on a sync.rsync,
+// sync.zfs or sync.btrfs resource into the delay_snap keyword om reads, for
+// the scope the tags were written for, and removes it from the tags, unset
+// when it was the only one. A sync resource of another type keeps the tag,
+// which v2 did not read on it, and has no such keyword.
+func migrateDelaySnapTag(cfg *xconfig.T, m *Migration) {
+	for _, section := range cfg.SectionStrings() {
+		if !strings.HasPrefix(section, "sync#") {
+			continue
+		}
+		if !slices.Contains(delaySnapTypes, cfg.Get(key.T{Section: section, Option: "type"})) {
+			continue
+		}
+		for _, option := range cfg.Keys(section) {
+			base, scope := cutScope(option)
+			if base != "tags" {
+				continue
+			}
+			k := key.New(section, option)
+			tags := strings.Fields(cfg.Get(k))
+			if !slices.Contains(tags, "delay_snap") {
+				continue
+			}
+			kept := slices.DeleteFunc(tags, func(s string) bool { return s == "delay_snap" })
+			delaySnap := "delay_snap"
+			if scope != "" {
+				delaySnap += "@" + scope
+			}
+			m.Sets = append(m.Sets, set(section, delaySnap, "true"))
+			if len(kept) == 0 {
+				m.Unsets = append(m.Unsets, k)
+			} else {
+				m.Sets = append(m.Sets, set(section, option, strings.Join(kept, " ")))
+			}
+			m.Notes = append(m.Notes, fmt.Sprintf("%s: the delay_snap tag becomes %s = true", section, delaySnap))
+		}
+	}
 }
 
 // removedSnapTriggers are the keywords of the commands v2 ran before and

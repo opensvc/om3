@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/core/tombstone"
@@ -228,6 +229,13 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.ObjectOrchestrationRefused:
 		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
+		d.publisher.Pub(c, labelFromPeer)
+	// network...
+	case *msgbus.NodeNetworkStatusDeleted:
+		netstatus.StatusData.Unset(c.Name, c.Node)
+		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.NodeNetworkStatusUpdated:
+		netstatus.StatusData.Set(c.Name, c.Node, c.Value.DeepCopy())
 		d.publisher.Pub(c, labelFromPeer)
 	// pool...
 	case *msgbus.NodePoolStatusDeleted:

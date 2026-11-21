@@ -1,0 +1,3 @@
+The daemon of the node started or stopped.
+
+Published by the daemon itself, with its version and status.

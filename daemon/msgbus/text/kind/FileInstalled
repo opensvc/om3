@@ -1,0 +1,3 @@
+An install of a resource of a local instance wrote files.
+
+Published when a start, a provision, a task or a change of a key installed files, and not when it found them up to date: what reads them is to read them again, as a task triggered on this event.

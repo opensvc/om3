@@ -31,9 +31,10 @@ func GetClusterIPs() clusterip.L {
 	return clusterIPs
 }
 
-// GetNetworkIP returns network status list.
+// GetNetworkIP returns network status list: the root and inspector grants
+// read it.
 func (a *DaemonAPI) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams) error {
-	if v, err := assertRoot(ctx); !v {
+	if v, err := assertInspector(ctx); !v {
 		return err
 	}
 	n, err := object.NewNode(object.WithVolatile(true))

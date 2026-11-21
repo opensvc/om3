@@ -1,0 +1,3 @@
+An action command the daemon ran failed.
+
+Published when the command ends with an error or an exit code the action does not take for a success: its duration, its error and its exit code.

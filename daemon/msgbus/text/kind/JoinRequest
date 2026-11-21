@@ -1,0 +1,3 @@
+A node asked to join the cluster.
+
+Published by the api of the node it asked, with the candidate node.

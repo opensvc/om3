@@ -2,6 +2,7 @@ package datarecv
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -17,19 +18,19 @@ import (
 type (
 	// templateNetwork is a network as a template reads it.
 	templateNetwork struct {
-		Name    string
-		Type    string
-		Network string
+		Name    string `json:"name"`
+		Type    string `json:"type"`
+		Network string `json:"network"`
 
 		// Peers are the other nodes of a network reaching them itself, as
 		// this node reaches them, and none for the other networks.
-		Peers []network.Peer
+		Peers []network.Peer `json:"peers"`
 
 		// ReverseZones are the reverse zones of the addresses the network
 		// hands out, which the cluster nameservers answer for, none when
 		// cluster.dns_reverse is false: a resolver forwards them to the
 		// cluster nameservers.
-		ReverseZones []string
+		ReverseZones []string `json:"reverse_zones"`
 	}
 
 	ridder interface {
@@ -91,13 +92,19 @@ func (t *DataRecv) render(k string, b []byte, keys *[]templateKey) ([]byte, erro
 			return s, nil
 		},
 		// network returns the network name, and its peers.
-		"network": templateNetworkOf,
+		"network": func(name string) (any, error) {
+			return asTemplateData(templateNetworkOf(name))
+		},
 		// networks returns the networks of the node, and their peers.
-		"networks": templateNetworks,
+		"networks": func() (any, error) {
+			return asTemplateData(templateNetworks())
+		},
 		// tunnels returns the tunnels the networks of the node carry
 		// their addresses to the other nodes by, once each: networks
 		// joining the same two addresses share a tunnel.
-		"tunnels": templateTunnels,
+		"tunnels": func() (any, error) {
+			return asTemplateData(templateTunnels())
+		},
 	}
 	tmpl, err := template.New(k).Option("missingkey=error").Funcs(funcs).Parse(string(b))
 	if err != nil {
@@ -137,6 +144,23 @@ func readTemplateKey(namespace, path, name string) (naming.Path, string, error) 
 		return p, "", err
 	}
 	return p, string(b), nil
+}
+
+// asTemplateData returns v as a template reads it: its json form, so the
+// fields are named as the api names them, in snake case, as .nodename.
+func asTemplateData[T any](v T, err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var data any
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func templateNetworkOf(name string) (templateNetwork, error) {

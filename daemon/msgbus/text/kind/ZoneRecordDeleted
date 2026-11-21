@@ -1,0 +1,3 @@
+A record of the cluster dns zone was deleted.
+
+Published by the dns manager when an address an instance held was released: the name, the type, the ttl and the content of the record.

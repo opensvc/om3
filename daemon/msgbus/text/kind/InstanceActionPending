@@ -1,0 +1,3 @@
+The begin or the end of an instance action awaits the acknowledgement of the collector.
+
+Published by the node the action ran on, again until the collector client acknowledges it with InstanceActionSent. It carries no log line: the collector client reads them from the node.

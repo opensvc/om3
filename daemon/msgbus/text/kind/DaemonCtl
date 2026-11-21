@@ -1,0 +1,3 @@
+The api asked a component of the daemon to start, stop or restart.
+
+Published by the api for a daemon action, as a heartbeat restart or the daemon stop: component is the one asked, action what is asked.

@@ -3,11 +3,13 @@
 package network
 
 import (
+	"net"
 	"os/exec"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/google/nftables"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -256,4 +258,75 @@ func TestNFTError(t *testing.T) {
 		nftError([]byte("/dev/stdin:11:52-57: Error: syntax error, unexpected string, expecting - or number\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\t                                                   ^^^^^^\n")))
 	assert.Equal(t, "something went wrong", nftError([]byte("\nsomething went wrong\nmore\n")))
 	assert.Equal(t, "", nftError(nil))
+}
+
+// TestFWRulesetAcceptsTheBridgeOfANetworkWithNoAddress pins that a network
+// with no address, as a l2_bridge, has its bridge accepted in the forward
+// chain of both families, the frames it bridges being of either, and is
+// neither masqueraded nor returned from the masquerade of the others, having
+// no subnet to name.
+func TestFWRulesetAcceptsTheBridgeOfANetworkWithNoAddress(t *testing.T) {
+	got, err := fwRuleset([]fwNetwork{
+		{Dev: "obr_l2"},
+	}, nil)
+	require.NoError(t, err)
+	assert.Contains(t, got, "table ip osvc {")
+	assert.Contains(t, got, "table ip6 osvc {")
+	assert.Equal(t, 2, strings.Count(got, `iifname "obr_l2" counter accept`))
+	assert.NotContains(t, got, "jump osvc-masq")
+	assert.NotContains(t, got, osvcInputHook)
+	checkNft(t, got)
+}
+
+// osvcInputHook is the declaration of the input chain, which the ruleset has
+// only for a network meshed by a vxlan.
+const osvcInputHook = "type filter hook input"
+
+// TestFWRulesetDropsTheVXLANOfAnyHostButTheNodes pins that the vxlan of a
+// l2_bridge network is received from the other nodes only, vxlan being
+// neither authenticated nor encrypted, in the family of the address of the
+// node: a host sending to its port would otherwise inject frames on the
+// bridge.
+func TestFWRulesetDropsTheVXLANOfAnyHostButTheNodes(t *testing.T) {
+	got, err := fwRuleset([]fwNetwork{
+		{CIDR: "10.22.0.0/16", Dev: "obr_default"},
+		{
+			Dev:        "obr_l2",
+			VXLANPort:  4789,
+			VXLANLocal: net.ParseIP("192.168.1.1"),
+			VXLANPeers: []net.IP{net.ParseIP("192.168.1.3"), net.ParseIP("192.168.1.2")},
+		},
+	}, nil)
+	require.NoError(t, err)
+	assert.Contains(t, got, "udp dport 4789 ip saddr != { 192.168.1.2, 192.168.1.3 } counter drop")
+	assert.Equal(t, 1, strings.Count(got, osvcInputHook), "in the ip table only")
+	checkNft(t, got)
+
+	// A single node cluster has no peer: the vxlan of every host is
+	// dropped.
+	got, err = fwRuleset([]fwNetwork{
+		{Dev: "obr_l2", VXLANPort: 4789, VXLANLocal: net.ParseIP("fd00::1")},
+	}, nil)
+	require.NoError(t, err)
+	assert.Contains(t, got, "udp dport 4789 counter drop")
+	checkNft(t, got)
+
+	// A vxlan its network could not describe, an address of a node not
+	// resolving, has no address of this node: all of it is dropped, in
+	// both families, its device left up by the previous setup.
+	got, err = fwRuleset([]fwNetwork{
+		{Dev: "obr_l2", VXLANPort: 4789},
+	}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 2, strings.Count(got, "udp dport 4789 counter drop"), "in the ip and ip6 tables")
+	checkNft(t, got)
+}
+
+// TestFWDockerDevsListsTheBridgeOfANetworkWithNoAddress pins that docker's
+// forward chain, which drops what docker did not accept, accepts the frames
+// a l2_bridge bridges, in both families.
+func TestFWDockerDevsListsTheBridgeOfANetworkWithNoAddress(t *testing.T) {
+	networks := []fwNetwork{{Dev: "obr_l2"}, {CIDR: "10.22.0.0/16", Dev: "obr_default"}}
+	assert.Equal(t, []string{"obr_l2", "obr_default"}, fwDockerDevs(nftables.TableFamilyIPv4, networks))
+	assert.Equal(t, []string{"obr_l2"}, fwDockerDevs(nftables.TableFamilyIPv6, networks))
 }

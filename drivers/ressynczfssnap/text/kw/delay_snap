@@ -1,0 +1,8 @@
+If `true`, the update of this resource takes its snapshots in its own
+update, with no quiesce, rather than with the snapshots of the other sync
+resources of the action, at one moment before the first transfer, under a
+quiesce of the object.
+
+Set it for a resource scheduled on its own, often, as hourly snapshots,
+whose apps and containers setting `quiesce` are not to be paused at each,
+or whose datasets are independent of the data the other syncs copy.

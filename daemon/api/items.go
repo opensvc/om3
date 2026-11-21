@@ -85,6 +85,10 @@ func (t NetworkList) GetItems() any {
 	return t.Items
 }
 
+func (t NetworkNodeList) GetItems() any {
+	return t.Items
+}
+
 func (t PoolList) GetItems() any {
 	return t.Items
 }

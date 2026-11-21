@@ -1,0 +1,3 @@
+Set the hairpin mode of the devices om enslaves to the bridge: a frame
+received on one may be sent back out of it, as a switch reflecting the
+traffic between the guests of a node needs.

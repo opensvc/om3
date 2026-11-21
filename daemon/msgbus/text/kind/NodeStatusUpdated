@@ -1,0 +1,3 @@
+The status of a node changed.
+
+Published by the node monitor, and for a peer by the daemon data. The generations it carries may be outdated: the daemon data has the latest.

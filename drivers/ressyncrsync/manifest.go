@@ -86,6 +86,13 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/snap"),
 		},
 		{
+			Attr:      "DelaySnap",
+			Converter: converters.Bool,
+			Option:    "delay_snap",
+			Group:     ressync.GroupTransfer.ID,
+			Text:      keywords.NewText(fs, "text/kw/delay_snap"),
+		},
+		{
 			Attr:   "BandwidthLimit",
 			Option: "bwlimit",
 			Group:  ressync.GroupTransfer.ID,

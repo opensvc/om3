@@ -1,0 +1,3 @@
+The daemon started an action command.
+
+Published by an instance monitor, the node monitor or the scheduler when it runs a command, as an instance start or a scheduled task: the command, its origin and its ids, for the clients following the action.

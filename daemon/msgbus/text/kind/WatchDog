@@ -1,0 +1,3 @@
+The watchdog of a bus fired.
+
+Published by the daemon to check the bus named still delivers its messages.

@@ -24,6 +24,15 @@ type (
 		Recursive bool
 		Keep      int
 		Name      string
+		DelaySnap bool
+
+		// prepared is the datasets PrepareSync took the snapshot of, nil
+		// when it took none: the update of the action takes the others
+		// only, and rotates them all.
+		prepared map[string]bool
+
+		// takeSnap takes the snapshot name, replaced by the tests.
+		takeSnap func(name string) error
 	}
 
 	modeT uint
@@ -48,6 +57,42 @@ func (t *T) SortKey() string {
 	return "+" + t.ResourceID.Name
 }
 
+// WillPrepareSync implements resource.SyncPreparer: the snapshots are taken
+// with the ones of the other sync resources of the action, before its first
+// transfer, as v2 took them, so a sync.zfs of the action sends them, with
+// intermediary set, as by default. None is taken on a node not holding the
+// started instance.
+func (t *T) WillPrepareSync(ctx context.Context) bool {
+	if len(t.Dataset) == 0 || t.DelaySnap {
+		return false
+	}
+	v, _ := t.IsInstanceSufficientlyStarted(ctx)
+	return v
+}
+
+// PrepareSync implements resource.SyncPreparer: it takes the snapshot of
+// each dataset, which the update of the action then only rotates. The
+// snapshots are what the resource keeps: the release leaves them. On an
+// error, the datasets snapshotted are remembered, so the update of an
+// optional resource, run nevertheless, takes the missing ones only.
+func (t *T) PrepareSync(ctx context.Context) (func() error, error) {
+	if v, _ := t.IsInstanceSufficientlyStarted(ctx); !v {
+		return nil, nil
+	}
+	release := func() error {
+		t.prepared = nil
+		return nil
+	}
+	t.prepared = make(map[string]bool)
+	for _, dataset := range t.Dataset {
+		if err := t.createSnap(dataset); err != nil {
+			return nil, err
+		}
+		t.prepared[dataset] = true
+	}
+	return release, nil
+}
+
 func (t *T) Update(ctx context.Context) error {
 	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
 		t.Log().Tracef("the instance is not sufficiently started (%s). refuse to create snapshots", reason)
@@ -59,8 +104,12 @@ func (t *T) Update(ctx context.Context) error {
 	}
 	defer done()
 	for _, dataset := range t.Dataset {
-		if err := t.createSnap(dataset); err != nil {
-			return err
+		// The action took the snapshot before its first transfer, or
+		// it is taken now.
+		if !t.prepared[dataset] {
+			if err := t.createSnap(dataset); err != nil {
+				return err
+			}
 		}
 		if err := t.removeSnap(dataset); err != nil {
 			return err
@@ -254,10 +303,10 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 
 func (t *T) createSnap(dataset string) error {
 	snapName := t.snapName(dataset)
-	if err := t.zfs(snapName).Snapshot(zfs.FilesystemSnapshotWithRecursive(t.Recursive)); err != nil {
-		return err
+	if t.takeSnap != nil {
+		return t.takeSnap(snapName)
 	}
-	return nil
+	return t.zfs(snapName).Snapshot(zfs.FilesystemSnapshotWithRecursive(t.Recursive))
 }
 
 func (t *T) snapPrefix(dataset string) string {

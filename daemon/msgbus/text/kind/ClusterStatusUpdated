@@ -1,0 +1,3 @@
+The cluster status changed.
+
+Published by the cluster status manager when the status it computes from the nodes and objects changed: the overall state, the frozen state, the compatibility of the nodes.

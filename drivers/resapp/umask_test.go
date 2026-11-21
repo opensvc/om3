@@ -23,10 +23,13 @@ func TestToCapsUmask(t *testing.T) {
 	for umask, want := range map[os.FileMode]string{0o022: "022", 0o007: "007", 0: "000"} {
 		r := newT()
 		r.Umask = m(umask)
-		caps := r.toCaps(execCredential{})
+		caps, err := r.toCaps(execCredential{})
+		assert.NoError(t, err)
 		if assert.NotNil(t, caps.Umask) {
 			assert.Equal(t, want, *caps.Umask)
 		}
 	}
-	assert.Nil(t, newT().toCaps(execCredential{}).Umask)
+	caps, err := newT().toCaps(execCredential{})
+	assert.NoError(t, err)
+	assert.Nil(t, caps.Umask)
 }

@@ -1,0 +1,3 @@
+The frozen flag of the node was raised.
+
+Published by the file system watcher. The node monitor updates the node status, which publishes NodeFrozen.

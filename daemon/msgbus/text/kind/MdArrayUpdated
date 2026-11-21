@@ -1,0 +1,3 @@
+An md array of the node changed state.
+
+Published by the md monitor as the kernel tells: a resync or a recovery started or ended, a device failed, was added or removed, an array started or stopped. Name is the kernel name of the array, as md127. The instance status is evaluated again.

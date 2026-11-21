@@ -3,6 +3,7 @@ package clusterdump
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"testing"
@@ -95,6 +96,12 @@ func fill(t testing.TB, v reflect.Value, n *int, depth int) {
 		fill(t, p.Elem(), n, depth+1)
 		v.Set(p)
 	case reflect.Slice:
+		if v.Type() == reflect.TypeOf(net.IP{}) {
+			// An address is 4 or 16 bytes, or it does not marshal.
+			*n++
+			v.Set(reflect.ValueOf(net.IPv4(10, 0, byte(*n>>8), byte(*n))))
+			return
+		}
 		s := reflect.MakeSlice(v.Type(), 2, 2)
 		for i := range 2 {
 			fill(t, s.Index(i), n, depth+1)

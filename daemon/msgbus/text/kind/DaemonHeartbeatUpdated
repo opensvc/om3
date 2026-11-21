@@ -1,0 +1,3 @@
+The state of the heartbeats of a node changed.
+
+Published by the daemon data when a heartbeat of the node or of a peer starts, stops, or sees a peer beat or go stale.

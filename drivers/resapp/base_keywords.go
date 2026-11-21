@@ -4,6 +4,7 @@ import (
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/util/converters"
+	"github.com/opensvc/om3/v3/util/sdunit"
 )
 
 var (
@@ -85,6 +86,35 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/umask"),
 	}
 
+	BaseKeywordNoNewPrivileges = keywords.Keyword{
+		Attr:     "NoNewPrivileges",
+		Validate: validateBool,
+		Example:  "true",
+		Option:   "no_new_privileges",
+		Group:    GroupProcess.ID,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/no_new_privileges"),
+	}
+	BaseKeywordCapabilityBoundingSet = keywords.Keyword{
+		Attr:     "CapabilityBoundingSet",
+		Validate: validateCapabilityBoundingSet,
+		Example:  "CAP_NET_BIND_SERVICE CAP_CHOWN",
+		Option:   "capability_bounding_set",
+		Group:    GroupProcess.ID,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/capability_bounding_set"),
+	}
+
+	BaseKeywordSystemdProperties = keywords.Keyword{
+		Attr:     "SystemdProperties",
+		Validate: sdunit.Validate,
+		Example:  "ProtectSystem=strict ReadWritePaths=/srv/app/data PrivateTmp=yes ProtectHome=yes",
+		Option:   "systemd_properties",
+		Group:    GroupProcess.ID,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/systemd_properties"),
+	}
+
 	BaseKeywords = []*keywords.Keyword{
 		&BaseKeywordDesc,
 		&BaseKeywordTimeout,
@@ -94,5 +124,8 @@ var (
 		&BaseKeywordEnv,
 		&BaseKeywordRetCodes,
 		&BaseKeywordUmask,
+		&BaseKeywordNoNewPrivileges,
+		&BaseKeywordCapabilityBoundingSet,
+		&BaseKeywordSystemdProperties,
 	}
 )

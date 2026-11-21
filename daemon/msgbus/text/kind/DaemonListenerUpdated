@@ -1,0 +1,3 @@
+The state of the api listener of a node changed.
+
+Published by the listener of the node, and for a peer by the daemon data when its data says so.

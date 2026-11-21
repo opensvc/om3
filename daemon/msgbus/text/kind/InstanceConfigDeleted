@@ -1,0 +1,3 @@
+The configuration of an instance is gone.
+
+Published by the instance configuration manager when the configuration file of the object is removed from the node, and for a peer by the daemon data.

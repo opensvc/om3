@@ -1,0 +1,14 @@
+The capabilities the commands of the resource keep in their bounding set,
+all others dropped: a process can never gain a capability out of its
+bounding set, by a setuid root program or file capabilities included, and
+a command run as root only has the capabilities listed. Prefixed with `~`,
+the list is of the capabilities dropped, all others kept, as the
+`CapabilityBoundingSet` of systemd.
+
+The names are the Linux ones, as `CAP_NET_BIND_SERVICE`, in any case. An
+unknown name is refused by the validation. The capabilities dropped are
+removed from the inheritable set too. Applied by om exec before the
+demotion to the user, which still works, and inherited by the children of
+the command. Not set, the commands keep the bounding set of the daemon.
+
+Refused on an operating system other than Linux, rather than ignored.

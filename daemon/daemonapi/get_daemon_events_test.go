@@ -2,13 +2,18 @@ package daemonapi
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-json"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/netstatus"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -247,4 +252,82 @@ func TestIsEventAllowedForAGuestOfAPattern(t *testing.T) {
 		msg := &msgbus.InstanceStatusUpdated{Msg: pubsub.Msg{Labels: pubsub.NewLabels("namespace", ns)}}
 		require.Equal(t, allowed, isEventAllowedForGuest(grants, msg), ns)
 	}
+}
+
+// The network setup status of the nodes, the addresses the nodes reach each
+// other at, is read by the root and inspector grants only: its events carry
+// no namespace, and reached every guest.
+func TestNetworkSetupIsReadByRootAndInspectorOnly(t *testing.T) {
+	for grants, sees := range map[string]bool{
+		"root":                 true,
+		"inspector":            true,
+		"guest,inspector":      true,
+		"guest":                false,
+		"guest:ns1":            false,
+		"admin":                false,
+		"scraper":              false,
+		"inspector:ns1,guest":  false,
+		"operator,prioritizer": false,
+	} {
+		assert.Equal(t, sees, seesNetworkSetup(rbac.NewGrants(strings.Split(grants, ",")...)), grants)
+	}
+	for _, msg := range []pubsub.Messager{&msgbus.NodeNetworkStatusUpdated{}, &msgbus.NodeNetworkStatusDeleted{}} {
+		assert.True(t, isNetworkSetupEvent(msg), "%T", msg)
+	}
+	for _, msg := range []pubsub.Messager{&msgbus.NetworkPeersUpdated{}, &msgbus.NodePoolStatusUpdated{}, &msgbus.InstanceStatusUpdated{}} {
+		assert.False(t, isNetworkSetupEvent(msg), "%T", msg)
+	}
+}
+
+// The node data of a NodeDataUpdated carries no namespace, and gave every
+// guest the instances of every namespace and how the networks are set up on
+// the node. A subscriber reads a copy without the network setup unless it
+// holds the root or inspector grant, and with the instances of its
+// namespaces only unless it holds a role on every namespace. The message,
+// shared with the other subscribers, is left untouched.
+func TestNodeDataIsRedactedForTheSubscriber(t *testing.T) {
+	newMsg := func() *msgbus.NodeDataUpdated {
+		return &msgbus.NodeDataUpdated{Node: "n1", Value: node.Node{
+			Instance: map[string]instance.Instance{"ns1/svc/a": {}, "ns2/svc/b": {}, "svc/c": {}},
+			Network:  map[string]netstatus.Status{"l2": {}},
+		}}
+	}
+	view := func(grants string) *msgbus.NodeDataUpdated {
+		userGrants := rbac.NewGrants(strings.Split(grants, " ")...)
+		seesAll := userGrants.HasRoleOn("", rbac.RoleRoot, rbac.RoleAdmin, rbac.RoleOperator, rbac.RoleGuest, rbac.RoleJoin, rbac.RoleLeave)
+		return redactNodeData(newMsg(), seesNetworkSetup(userGrants), seesAll, guestOn(userGrants)).(*msgbus.NodeDataUpdated)
+	}
+	keys := func(m map[string]instance.Instance) []string {
+		l := make([]string, 0, len(m))
+		for k := range m {
+			l = append(l, k)
+		}
+		sort.Strings(l)
+		return l
+	}
+	all := []string{"ns1/svc/a", "ns2/svc/b", "svc/c"}
+
+	v := view("guest:ns1")
+	assert.Equal(t, []string{"ns1/svc/a"}, keys(v.Value.Instance))
+	assert.Nil(t, v.Value.Network)
+
+	v = view("guest")
+	assert.Equal(t, all, keys(v.Value.Instance))
+	assert.Nil(t, v.Value.Network)
+
+	v = view("guest:ns1 inspector")
+	assert.Equal(t, []string{"ns1/svc/a"}, keys(v.Value.Instance))
+	assert.Len(t, v.Value.Network, 1)
+
+	v = view("root")
+	assert.Equal(t, all, keys(v.Value.Instance))
+	assert.Len(t, v.Value.Network, 1)
+
+	msg := newMsg()
+	_ = redactNodeData(msg, false, false, guestOn(rbac.NewGrants("guest:ns1")))
+	assert.Len(t, msg.Value.Instance, 3, "the shared message is untouched")
+	assert.Len(t, msg.Value.Network, 1, "the shared message is untouched")
+
+	other := &msgbus.NodeStatusUpdated{}
+	assert.Same(t, other, redactNodeData(other, false, false, guestOn(nil)), "other events are left as is")
 }

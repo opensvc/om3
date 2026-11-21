@@ -1,0 +1,3 @@
+An object configuration file was removed from the etc directory of the node.
+
+Published by the file system watcher. The instance configuration manager of the object ends, and the daemon data publishes InstanceConfigDeleted.

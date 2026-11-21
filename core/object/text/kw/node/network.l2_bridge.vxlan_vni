@@ -1,0 +1,11 @@
+The vxlan network identifier, from 1 to 16777215, meshing the bridges of
+the nodes through a vxlan when they share no lan: each node enslaves a
+vxlan device sending to every other node, which needs no multicast of the
+network between them. The same on every node, and different from the one
+of any other vxlan between them.
+
+The vxlan adds 50 bytes to a frame over ipv4, 70 over ipv6: the mtu of the
+bridge is the one of the interface sending the vxlan less those, unless
+`mtu` sets it, and the guests are to use it. The vxlan of any host other
+than the nodes is dropped, as vxlan is neither authenticated nor
+encrypted.

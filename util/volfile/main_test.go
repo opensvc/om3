@@ -132,15 +132,18 @@ func TestWriteSeesTheOtherTransfers(t *testing.T) {
 	go func() { first <- Write(head, ".", "a", pr, 5, Upload{}) }()
 	_, err := pw.Write([]byte("123"))
 	require.NoError(t, err)
-	// pw.Write returns with the bytes read, which are written before the next read.
-	require.Eventually(t, func() bool {
-		l, err := filepath.Glob(filepath.Join(head, uploadPrefix+"*"))
-		if err != nil || len(l) != 1 {
-			return false
-		}
-		info, err := os.Stat(l[0])
-		return err == nil && info.Size() == 3
-	}, 5*time.Second, time.Millisecond)
+	// pw.Write returns with the bytes read, before the first wrote them and
+	// counted the room the others take: counting late, it saw the transfer
+	// of b, ended full, and left the next write blocked with no reader. An
+	// empty write returns once the first reads again, its count done.
+	_, err = pw.Write(nil)
+	require.NoError(t, err)
+	l, err := filepath.Glob(filepath.Join(head, uploadPrefix+"*"))
+	require.NoError(t, err)
+	require.Len(t, l, 1)
+	info, err := os.Stat(l[0])
+	require.NoError(t, err)
+	require.Equal(t, int64(3), info.Size())
 
 	assert.ErrorIs(t, Write(head, ".", "b", strings.NewReader("123"), 5, Upload{}), ErrFull, "the first took the room")
 	require.NoError(t, Write(head, ".", "c", strings.NewReader("12"), 5, Upload{}), "there is room for this one")

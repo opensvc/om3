@@ -1,0 +1,10 @@
+The devices of the node the bridge enslaves, for the bridges of the nodes
+to share the lan they are on: a nic, a bond or a vlan interface, its name
+scoped per node where it differs, as `ports@n1 = eno2`. With `vlan`, the
+bridge enslaves the vlan interface om creates on each instead.
+
+A device holding an address is refused, as the node's own interface on the
+segment would stop answering once enslaved: bridge it in the network
+configuration of the node and name that bridge in `dev`. A device enslaved
+to another one is refused too. A device missing is enslaved once its link
+comes up, and a device no longer listed is released.

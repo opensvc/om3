@@ -1,0 +1,3 @@
+Registered, never published.
+
+The daemon logs go to the journal and the audits, not to the event stream.

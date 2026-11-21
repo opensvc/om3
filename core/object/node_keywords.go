@@ -1706,7 +1706,7 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/hook.command"),
 	}
 	kwNodeNetworkType = keywords.Keyword{
-		Candidates: []string{"bridge", "routed_bridge", "lan"},
+		Candidates: []string{"bridge", "routed_bridge", "lan", "l2_bridge"},
 		Default:    "bridge",
 		Option:     "type",
 		Group:      nodeGroupIdentity.ID,
@@ -1880,7 +1880,7 @@ var (
 		Group:   nodeGroupInterface.ID,
 		Section: "network",
 		Text:    keywords.NewText(fs, "text/kw/node/network.dev"),
-		Types:   []string{"bridge", "routed_bridge"},
+		Types:   []string{"bridge", "routed_bridge", "l2_bridge"},
 	}
 	kwNodeNetworkPublic = keywords.Keyword{
 		Converter: converters.Bool,
@@ -2451,6 +2451,17 @@ var (
 		&kwNodeNetworkLANVLANTag,
 		&kwNodeNetworkLANVLANMode,
 		&kwNodeNetworkDNS,
+		&kwNodeNetworkL2BridgePorts,
+		&kwNodeNetworkL2BridgeVLAN,
+		&kwNodeNetworkL2BridgeVXLANVNI,
+		&kwNodeNetworkL2BridgeVXLANPort,
+		&kwNodeNetworkL2BridgeVXLANAddr,
+		&kwNodeNetworkL2BridgeMTU,
+		&kwNodeNetworkL2BridgeSTP,
+		&kwNodeNetworkL2BridgeHairpin,
+		&kwNodeNetworkL2BridgeMcastSnooping,
+		&kwNodeNetworkL2BridgeAgeingTime,
+		&kwNodeNetworkL2BridgeMAC,
 		&kwNodeSwitchType,
 		&kwNodeSwitchName,
 		&kwNodeSwitchMethod,

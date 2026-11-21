@@ -153,6 +153,7 @@ func newCmdDaemonEvents() *cobra.Command {
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagEventLimit(flags, &options.Limit)
+	cmd.AddCommand(commoncmd.NewCmdDaemonEventsDoc())
 	return cmd
 }
 

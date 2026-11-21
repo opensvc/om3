@@ -1,0 +1,3 @@
+The san paths of the node changed.
+
+Published by the node monitor when it read the initiator and target paths of the node again.

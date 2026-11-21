@@ -1,0 +1,3 @@
+The frozen flag of an instance was raised.
+
+Published by the instance monitor when it creates or changes the frozen file of the instance, as a freeze does: the daemon takes no initiative on a frozen instance.
