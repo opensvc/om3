@@ -2,15 +2,18 @@ package nmon
 
 import (
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (
@@ -194,6 +197,7 @@ func (t *Manager) onNetworkSetupDone(r networkSetupResult) {
 		t.log.Infof("network setup %v: %s", r.names, r.err)
 	}
 	t.publishNetworkPeersUpdated(r.sigs)
+	t.publishNetworkStatus()
 	for _, waiter := range r.waiters {
 		waiter.Send(r.err)
 	}
@@ -246,4 +250,40 @@ func (t *Manager) onNetworkSetupRequest(c *msgbus.NetworkSetupRequest) {
 	}
 	t.log.Infof("set up the networks %v on request", c.Names)
 	t.requestNetworkSetup(c.Names, c.Err, c.SessionID)
+}
+
+// publishNetworkStatus publishes the statuses the network setups of the node
+// saved: the ones of a setup ended since the last published, as one an om
+// network setup run with no daemon made, and the end of the ones no longer
+// saved, the networks torn down.
+func (t *Manager) publishNetworkStatus() {
+	saved, err := netstatus.Load(network.StatusDir())
+	if err != nil {
+		t.log.Warnf("load the network setup statuses: %s", err)
+		return
+	}
+	held := make(map[string]time.Time)
+	for _, e := range netstatus.StatusData.GetByNode(t.localhost) {
+		held[e.Name] = e.Value.AppliedAt
+	}
+	names := make([]string, 0, len(saved))
+	for name := range saved {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		st := saved[name]
+		if appliedAt, ok := held[name]; ok && !st.AppliedAt.After(appliedAt) {
+			continue
+		}
+		netstatus.StatusData.Set(name, t.localhost, st.DeepCopy())
+		t.publisher.Pub(&msgbus.NodeNetworkStatusUpdated{Node: t.localhost, Name: name, Value: st}, t.labelLocalhost, pubsub.Label{"name", name})
+	}
+	for name := range held {
+		if _, ok := saved[name]; ok {
+			continue
+		}
+		netstatus.StatusData.Unset(name, t.localhost)
+		t.publisher.Pub(&msgbus.NodeNetworkStatusDeleted{Node: t.localhost, Name: name}, t.labelLocalhost, pubsub.Label{"name", name})
+	}
 }

@@ -64,6 +64,14 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/recursive"),
 		},
 		{
+			Attr:      "DelaySnap",
+			Converter: converters.Bool,
+			Option:    "delay_snap",
+			Group:     ressync.GroupTransfer.ID,
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/delay_snap"),
+		},
+		{
 			Attr:      "MaxLagAge",
 			Converter: converters.Duration,
 			Default:   "24h",

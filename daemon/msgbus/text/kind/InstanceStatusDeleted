@@ -1,0 +1,3 @@
+The status of an instance is gone.
+
+Published by the instance status manager or the instance monitor when the instance is deleted, and for a peer by the daemon data: peer_drop_at when it went with a peer dropped.

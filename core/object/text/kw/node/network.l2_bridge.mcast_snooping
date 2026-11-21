@@ -1,0 +1,3 @@
+Snoop the multicast group memberships on the bridge, to send a multicast
+frame to the ports with a member only. Not set, the bridge keeps the state
+it has, on on a bridge om creates.

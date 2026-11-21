@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 // testScheduler is a scheduler whose clock the test sets, and whose runs it
@@ -43,7 +44,7 @@ func newTestScheduler(t *testing.T) *testScheduler {
 	s.enabled = true
 	s.isCollectorJoinable = true
 	s.now = func() time.Time { return s.clock }
-	s.exec = func(e schedule.Entry) error {
+	s.exec = func(e schedule.Entry, rids []string) error {
 		s.runs <- e
 		return nil
 	}
@@ -179,7 +180,7 @@ func TestJobIsHeldWhileTheNodeRunsMaxParallelJobs(t *testing.T) {
 	s := newTestScheduler(t)
 	s.maxRunning = 2
 	release := make(chan struct{})
-	s.exec = func(e schedule.Entry) error {
+	s.exec = func(e schedule.Entry, rids []string) error {
 		s.runs <- e
 		<-release
 		return nil
@@ -591,4 +592,115 @@ func TestRebuiltTriggerPacesFromTheLastScheduledRun(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, g.onEvent(s.clock), "an event within the pace of the scheduled run does not run at once")
 	assert.True(t, g.dueAt.Equal(s.clock.Add(20*time.Second)), "it runs at the end of the pace: %s", g.dueAt)
+}
+
+// The update jobs of an object due in the same tick run in one exec, their
+// resources selected together: run apart, the later waited for the earlier
+// on the lock of the object, and failed when its sync lasted longer than the
+// lock is waited for. Each records its last run and its last success. A job
+// of another action, or of another object, runs on its own.
+func TestUpdatesOfAnObjectDueAtOnceRunTogether(t *testing.T) {
+	s := newTestScheduler(t)
+	type ran struct {
+		path naming.Path
+		key  string
+		rids []string
+	}
+	runs := make(chan ran, 10)
+	s.exec = func(e schedule.Entry, rids []string) error {
+		runs <- ran{e.Path, e.Key, rids}
+		return nil
+	}
+	other := naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "other"}
+	entry := func(p naming.Path, key, action string) schedule.Entry {
+		e := s.entry(p, key, "@10m")
+		e.Action = action
+		s.schedules.Add(p, e)
+		s.planJob(e, s.clock)
+		return e
+	}
+	sync1 := entry(testPath, "sync#1.schedule", "update")
+	sync2 := entry(testPath, "sync#2.schedule", "update")
+	task := entry(testPath, "task#1.schedule", "run")
+	otherSync := entry(other, "sync#1.schedule", "update")
+	due := s.job(t, sync1).entry.NextRunAt
+
+	s.clock = due
+	s.onTick()
+	s.running.Wait()
+	close(runs)
+	got := make(map[string]ran)
+	for r := range runs {
+		got[r.path.String()+" "+r.key] = r
+	}
+	require.Len(t, got, 3, "%v", got)
+	together, ok := got[testPath.String()+" sync#1.schedule"]
+	require.True(t, ok, "%v", got)
+	assert.Equal(t, []string{"sync#1", "sync#2"}, together.rids, "the updates of the object in one exec")
+	assert.Nil(t, got[testPath.String()+" task#1.schedule"].rids, "a run job on its own")
+	assert.Nil(t, got[other.String()+" sync#1.schedule"].rids, "the update of another object on its own")
+	for _, e := range []schedule.Entry{sync1, sync2, task, otherSync} {
+		assert.True(t, e.GetLastRun().Equal(due), "%s records its last run", e.Key)
+		assert.Equal(t, due.Add(10*time.Minute), s.job(t, e).entry.NextRunAt, "%s planned for its next period", e.Key)
+	}
+	assert.True(t, file.ModTime(sync2.LastSuccessFile()).Equal(due), "the jobs run together record their last success")
+}
+
+// The argv of the update jobs run together selects their resources.
+func TestCmdArgsForTheUpdatesRunTogether(t *testing.T) {
+	e := schedule.Entry{Path: testPath, Config: schedule.Config{Action: "update", Key: "sync#1.schedule"}}
+	argv, err := CmdArgsFor(e, []string{"sync#1", "sync#2"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{testPath.String(), "instance", "update", "--rid", "sync#1,sync#2"}, argv)
+	argv, err = CmdArgsFor(e, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{testPath.String(), "instance", "update", "--rid", "sync#1"}, argv)
+}
+
+// The update jobs of an object due at once are held together when one of
+// them is: held alone, it ran a moment after the others, its period shifted
+// from theirs, and apart from them from then on.
+func TestUpdatesOfAnObjectDueAtOnceAreHeldTogether(t *testing.T) {
+	s := newTestScheduler(t)
+	type ran struct {
+		key  string
+		rids []string
+	}
+	runs := make(chan ran, 10)
+	s.exec = func(e schedule.Entry, rids []string) error {
+		runs <- ran{e.Key, rids}
+		return nil
+	}
+	entry := func(key, require string) schedule.Entry {
+		e := s.entry(testPath, key, "@10m")
+		e.Action = "update"
+		e.Require = require
+		s.schedules.Add(testPath, e)
+		s.reqSatisfied.Set(testPath, key, nil)
+		s.planJob(e, s.clock)
+		return e
+	}
+	sync1 := entry("sync#1.schedule", "")
+	sync2 := entry("sync#2.schedule", "fs#1(up)")
+	due := s.job(t, sync1).entry.NextRunAt
+
+	instance.MonitorData.Set(testPath, s.localhost, &instance.Monitor{State: instance.MonitorStateProvisionProgress})
+	t.Cleanup(func() { instance.MonitorData.Unset(testPath, s.localhost) })
+	s.clock = due
+	s.onTick()
+	s.running.Wait()
+	require.Len(t, runs, 0, "sync#1 is held with sync#2")
+	for _, e := range []schedule.Entry{sync1, sync2} {
+		assert.Equal(t, due.Add(holdRetryDelay), s.job(t, e).entry.NextRunAt, "%s tried again in a moment", e.Key)
+	}
+
+	instance.MonitorData.Set(testPath, s.localhost, &instance.Monitor{State: instance.MonitorStateIdle})
+	s.clock = due.Add(holdRetryDelay)
+	s.onTick()
+	s.running.Wait()
+	require.Len(t, runs, 1)
+	assert.Equal(t, []string{"sync#1", "sync#2"}, (<-runs).rids, "run together once the action is over")
+	for _, e := range []schedule.Entry{sync1, sync2} {
+		assert.Equal(t, s.job(t, sync1).entry.NextRunAt, s.job(t, e).entry.NextRunAt, "%s keeps the period of the others", e.Key)
+	}
 }

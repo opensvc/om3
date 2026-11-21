@@ -187,6 +187,47 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Security
 
+* **Privilege restrictions for the app and host task commands**: `no_new_privileges` and
+    `capability_bounding_set`, on the `app.simple`, `app.forking` and `task.host` resources, are applied
+    by om exec to every command of the resource. `no_new_privileges = true` sets the no_new_privs flag:
+    neither the process nor its children gain privileges by a setuid, setgid or file capability program.
+    `capability_bounding_set` lists the capabilities kept, all others dropped from the bounding and
+    inheritable sets, or, prefixed with `~`, the ones dropped, as the `CapabilityBoundingSet` of systemd;
+    an unknown capability name is refused by the validation. Both are set on Linux only, and refused
+    elsewhere rather than ignored.
+
+    ```
+    [app#web]
+    type = simple
+    start = /usr/bin/myapp --listen :80
+    no_new_privileges = true
+    capability_bounding_set = CAP_NET_BIND_SERVICE
+    ```
+
+* **Systemd sandbox for the app and host task commands**: `systemd_properties`, on the `app.simple`,
+    `app.forking` and `task.host` resources, runs the start command, or the run command of a task, in a
+    transient systemd service unit with these properties, as `systemd-run -p` takes them: the sandbox of
+    the command, as `ProtectSystem=strict ReadWritePaths=/srv/data PrivateTmp=yes`. The unit is named after
+    the process group of the resource and placed in it, its command is om exec, which still sets the
+    user, the limits and the privilege restrictions, and the environment is given to it in a file only root
+    reads. The check, info, stop, quiesce and resume commands run in the namespaces of the unit while it
+    runs. The unit is ordered before the om daemon and never stopped by a stop job: the stop of the
+    resource ends its processes, so a reboot stops the resource with its object, in order. A property
+    systemd does not know, or a node not running systemd, fails the start, never running the command
+    unsandboxed, and the properties om sets itself are refused. Properties shared by resources are set in
+    a key of the `env` section and referenced.
+
+    ```
+    [env]
+    sandbox = ProtectSystem=strict ProtectHome=yes PrivateTmp=yes PrivateDevices=yes
+
+    [app#web]
+    type = simple
+    start = /usr/bin/myapp --listen :8080
+    user = myapp
+    systemd_properties = {env.sandbox} ReadWritePaths=/srv/myapp/data
+    ```
+
 * **SSRF protection for HTTP fetches**: 
 
     All configuration, cfg, and secret 
@@ -272,7 +313,21 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Floating addresses from a cluster network**: The new `lan` network type is a range of a segment the nodes share, whose addresses om hands out to the cluster rather than to a node. An `ip.host` resource naming such a network and no address draws one, the same on every node: a failover service takes it along to the node it moves to, and the address other resources hold anywhere in the cluster is never drawn twice.
 
-* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup. A file it installs takes the mode its line sets, else the `perm` keyword of the resource, else `0600` for a sec key and `0644` for a cfg key, as the `secrets` and `configs` keywords read `perm`. A `template` line renders its key on each node at each install, with the `[env]` section as data and functions reading the node's references, other datastore keys and network peers, and a change of a key it read installs the file again, as a change of the template does. A host task's new `container` keyword runs its command in a container resource, whatever its runtime, so a container reads again the files an install changed.
+* **The event kinds documented**: `om|ox daemon events doc` lists the event kinds of the daemon, each with a summary, and `daemon events doc <NAME> ...` says for each named when it is published, by what, and what it means, with the keys of its data and their types, as an event of the stream carries them.
+
+* **What the network setup made on each node**: each node records what the last setup of each network made on it: its device, the host device of a `lan`, the part of the network the node hands out, the ports a `l2_bridge` enslaved, how it reaches each other node, by a named tunnel of its mode, a route or a vxlan, from which address to which, and what failed, the failure of one peer no longer stopping the setup of the others. The nodes publish it in the cluster data, with the `NodeNetworkStatusUpdated` and `NodeNetworkStatusDeleted` events, and `GET /api/network/node` serves it, for the root and the new `inspector` grants. The cluster status and the events leave it out for the other roles: a guest reads the objects, not the addresses the nodes reach each other at. `om|ox network node list` lists a row per network and node, and `om|ox network peer list` a row per network, node and peer: each node says its own side, as a tunnel `auto` decides on what the node alone knows.
+
+* **The `inspector` role**: reads how the networks are set up on the nodes, and nothing else of the api: `GET /api/network`, `GET /api/network/ip` and `GET /api/network/node`, root only until now. Pair it with `guest` to read the objects too, with the network setup status in the cluster status and the events, as the web app needs.
+
+    ```
+    om system/usr/netops create --kw grant="inspector guest"
+    ```
+
+* **The node data events filtered for the guests**: the `NodeDataUpdated` events of the event stream carry the instances of the node, and gave a guest of a namespace the configuration, status and monitor of the instances of every namespace. A subscriber now gets the instances of its namespaces only, as the cluster status does, unless it holds a role on every namespace, and the network setup status of the node only with the `root` or `inspector` grant.
+
+* **Layer 2 bridges**: The new `l2_bridge` network type is a bridge with no address on every node, which om neither addresses nor routes, for the guests and containers of the nodes to share a segment a gateway guest serves. Alone on its node, or meshed with the bridges of the other nodes, two ways the keywords of the `mesh` group choose: `ports` enslaves the devices of each node on a lan the nodes share, or with `vlan` the vlan interfaces om creates on them; `vxlan_vni` enslaves a vxlan device sending to every other node, which needs no multicast of their network, its udp port received from the nodes only. The bridge options are keywords: `mtu`, `stp`, `hairpin`, `mcast_snooping`, `ageing_time` and `mac`. A bridge om creates gets a stable address derived from the names of the network and of the node, and no ipv6 link local address. A port holding an address, or enslaved elsewhere, is refused; a port missing is enslaved once its link comes up. The teardown releases and deletes only what om enslaved or created, and deletes a bridge it created once no device it did not enslave, as the tap of a guest, is left on it. An existing bridge named in `dev` is adopted as it is.
+
+* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup. A file it installs takes the mode its line sets, else the `perm` keyword of the resource, else `0600` for a sec key and `0644` for a cfg key, as the `secrets` and `configs` keywords read `perm`. A `template` line renders its key on each node at each install, with the `[env]` section as data and functions reading the node's references, other datastore keys and network peers, the networks and their peers named as the api names them, in snake case (`{{range tunnels}}{{.nodename}} {{.remote}}{{end}}`), and a change of a key it read installs the file again, as a change of the template does. A host task's new `container` keyword runs its command in a container resource, whatever its runtime, so a container reads again the files an install changed.
 
 * **Namespace claims on cluster resources**: A namespace can be capped on what it takes of a resource its peers share, declared in its configuration as a `claim` section:
 
@@ -1418,6 +1473,31 @@ which share the same executor.
     keep the copy on one filesystem, as the default `-x` does: the snapshot does not hold it, and `--delete` would
     remove its copy on the peers. The snapshots are removed when the update ends, and the ones an interrupted update
     left are removed by the next, the status warning of them meanwhile.
+
+* **The snapshots of the sync resources of an action are taken at one moment:**
+    as v2 did, a sync update or full takes the snapshots of all its sync resources before the first transfer, so
+    the copies of data spread over filesystems are of one point in time, whatever the drivers copying them: the
+    snapshots a `sync.rsync` setting `snap` copies from, removed after the last transfer, the ones a `sync.zfs` or a
+    `sync.btrfs` sends, kept as the base of its next update, and the ones a `sync.zfssnap` or a `sync.btrfssnap`
+    keeps, which a `sync.zfs` of the same action then sends. A `sync.store` backup still takes its own. They
+    are taken under a quiesce of the resources of the object that quiesce, as an app or a container setting `quiesce`,
+    resumed as soon as the snapshots are taken, which v2 left to the `presnap_trigger` and `postsnap_trigger`
+    commands. A snapshot failing fails the action before any transfer, unless its resource is optional. A thick
+    volume holds the writes of its snapshot for the whole action rather than for its own transfer.
+    The snapshot of a `sync.zfs` or a `sync.btrfs` no transfer sent, the action having failed before, is removed.
+    `delay_snap = true` has a `sync.rsync`, `sync.zfs` or `sync.btrfs` resource take its snapshot just before its
+    own transfer, as each did so far: the `delay_snap` tag v2 read on these becomes this keyword in the
+    configuration migration. On a `sync.zfssnap` or a `sync.btrfssnap`, `delay_snap = true` has the snapshots taken
+    in its own update, with no quiesce, as for hourly snapshots whose apps are not to be paused at each.
+
+* **The scheduled updates of an object due at once run in one exec:**
+    the update jobs of the sync resources of an object due in the same tick run as one `instance update --rid a,b`,
+    each recording its own last run and last success, and held together when one of them is held, rather than one exec each, which met on the lock of the object,
+    the later failing when the earlier lasted longer than the 30 seconds it waits for the lock. The snapshots of the
+    syncs run together are taken at one moment. `validate config` warns of a sync copying a snapshot, a `sync.rsync`
+    setting `snap`, a `sync.zfs` or a `sync.btrfs`, `delay_snap` not set, whose schedule differs from the one of the
+    first, as their snapshots are taken in separate runs, and a run of a part of them names the ones it leaves out.
+    A `sync.zfssnap` or a `sync.btrfssnap` keeps a schedule of its own, and is not warned of.
 
 ### Driver: sync.zfs
 

@@ -803,6 +803,20 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
+	// The syncs of a sync update or full copy from snapshots taken at one
+	// moment, before the first transfer, released after the last, before
+	// the status of the instance is evaluated again.
+	releaseSyncs := func() {}
+	if action.Name == actioncontext.SyncUpdate.Name || action.Name == actioncontext.SyncFull.Name {
+		release, err := t.prepareSync(ctxWithTimeout, resourceSelector.Resources())
+		if err != nil {
+			_, _ = t.statusEval(ctxWithTimeout)
+			t.announceFailure(ctxWithTimeout)
+			return err
+		}
+		releaseSyncs = sync.OnceFunc(release)
+		defer releaseSyncs()
+	}
 	if action.PG {
 		if pgErr := t.registerNamespacePG(ctxWithTimeout); pgErr != nil {
 			t.log.Warnf("register namespace pg: %s", pgErr)
@@ -837,6 +851,7 @@ func (t *actor) doAction(ctx context.Context, fn resourceset.DoFunc) error {
 			break
 		}
 	}
+	releaseSyncs()
 	if err := actionErr; errors.Is(err, resource.ErrBarrier) {
 		// pass
 	} else if err != nil {

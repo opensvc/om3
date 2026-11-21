@@ -1,0 +1,3 @@
+How the bridge of a node reaches the bridges of the other nodes: through
+a lan or vlan the nodes share, or a vxlan when they share none. Neither
+set, the bridge is alone on its node.

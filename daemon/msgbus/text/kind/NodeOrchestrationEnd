@@ -1,0 +1,3 @@
+An orchestration of the node monitor ended.
+
+Published with its id, whether it was aborted or failed, and its error.

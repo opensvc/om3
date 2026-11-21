@@ -485,6 +485,8 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ObjectOrchestrationEnd{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectOrchestrationRefused{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeNetworkStatusDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeNetworkStatusUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodePoolStatusDeleted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodePoolStatusUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeTombstoneDeleted{}, d.labelLocalhost)
@@ -558,6 +560,10 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.ObjectOrchestrationEnd:
 	case *msgbus.ObjectOrchestrationRefused:
 	case *msgbus.ObjectStatusDeleted:
+
+	// network...
+	case *msgbus.NodeNetworkStatusDeleted:
+	case *msgbus.NodeNetworkStatusUpdated:
 
 	// pool...
 	case *msgbus.NodePoolStatusDeleted:

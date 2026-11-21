@@ -1,0 +1,3 @@
+An action command the daemon ran succeeded.
+
+Published when the command ends with an exit code the action takes for a success, with its duration.

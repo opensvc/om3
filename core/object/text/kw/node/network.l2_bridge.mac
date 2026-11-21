@@ -1,0 +1,5 @@
+The address of the bridge, scoped per node, as `mac@n1 = 02:00:00:00:00:01`:
+the bridges of a mesh share a segment, where two with the same address
+collide. Not set, a bridge om creates gets one derived from the names of
+the network and of the node, so it does not change as the taps of the
+guests come and go, and a bridge om adopts keeps its own.

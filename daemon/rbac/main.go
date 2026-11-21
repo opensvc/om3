@@ -29,6 +29,12 @@ const (
 	RoleJoin           Role = "join"
 	RoleLeave          Role = "leave"
 	RoleScraper        Role = "scraper"
+
+	// RoleInspector reads how the networks of the cluster are set up on
+	// each node, as the addresses the nodes reach each other at, which
+	// the guests do not: the networks, their addresses and their setup
+	// status. It grants nothing else of the api.
+	RoleInspector Role = "inspector"
 )
 
 var (
@@ -48,6 +54,7 @@ var (
 		"join":           RoleJoin,
 		"leave":          RoleLeave,
 		"scraper":        RoleScraper,
+		"inspector":      RoleInspector,
 	}
 
 	GrantRoot           = NewGrant("root", "")
@@ -58,6 +65,7 @@ var (
 	GrantLeave          = NewGrant("leave", "")
 	GrantPrioritizer    = NewGrant("prioritizer", "")
 	GrantScraper        = NewGrant("scraper", "")
+	GrantInspector      = NewGrant("inspector", "")
 )
 
 func NewGrants(l ...string) Grants {

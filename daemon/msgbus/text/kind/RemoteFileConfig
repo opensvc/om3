@@ -1,0 +1,3 @@
+A configuration file fetched from a peer awaits install.
+
+Internal to the discover manager, which passes it to the configuration manager of the object: never published on the bus.

@@ -1,0 +1,3 @@
+An instance monitor applied the monitor action of the object.
+
+Published when a monitored resource stayed down after its restarts: the action is the monitor_action of the object, as reboot, crash, freezestop or switch, rid the resource.

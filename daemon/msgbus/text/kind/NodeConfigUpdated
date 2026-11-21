@@ -1,0 +1,3 @@
+The configuration of a node changed.
+
+Published by the node monitor, and for a peer by the daemon data: the keywords of the node configuration the daemon reads.

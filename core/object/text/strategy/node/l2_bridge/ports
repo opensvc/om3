@@ -1,0 +1,5 @@
+The bridge enslaves the `ports` of each node on the lan the nodes share,
+or the `vlan` om creates on them.
+
+Choose it when the nodes share a lan or a vlan, which costs nothing of the
+mtu.

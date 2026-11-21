@@ -1,0 +1,3 @@
+The status of an object changed.
+
+Published by the object monitor when the status it aggregates from the instances changed: its availability, its overall state, its placement, its frozen state. source_event is the event that changed it.

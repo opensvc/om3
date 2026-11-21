@@ -1,0 +1,3 @@
+The daemon data forgot a peer.
+
+Published when a peer is dropped from the data of the node, as gone stale on every heartbeat or removed from the cluster: its instances, its monitor and its statuses go with it.

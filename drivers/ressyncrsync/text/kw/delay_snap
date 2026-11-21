@@ -1,0 +1,9 @@
+If `true`, with `snap`, the update or full of this resource takes its
+snapshot just before its own transfer and removes it right after, rather
+than take it with the snapshots of the other sync resources of the action,
+at one moment before the first transfer. Its copy is then of another point
+in time than theirs, and taken with no quiesce.
+
+Set it for a resource whose data is independent of the others, or whose
+thick volume has no room to hold the writes of a snapshot for the whole
+action.

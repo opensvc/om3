@@ -28,6 +28,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.heartbeatStale(labels)
 	case *ObjectStatusUpdated:
 		return data.objectStatusUpdated(labels)
+	case *NodeNetworkStatusUpdated:
+		return data.networkStatusUpdated(labels)
 	case *NodePoolStatusUpdated:
 		return data.poolStatusUpdated(labels)
 	case *NodeTombstoneUpdated:
@@ -67,9 +69,10 @@ var (
 	//
 	// Keep ordered with NodeDataUpdated first, then with other events in the natural
 	// emission order.
-	ExtractableEvents = [25]any{
+	ExtractableEvents = [26]any{
 		&NodeDataUpdated{},
 		&NodePoolStatusUpdated{},
+		&NodeNetworkStatusUpdated{},
 		&NodeTombstoneUpdated{},
 		&NodeAlive{},
 		&NodeStale{},

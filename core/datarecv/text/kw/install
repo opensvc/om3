@@ -110,16 +110,16 @@ Where:
     * `key "<obj_path|obj_relpath>" "<key>"`: the content of a datastore key, the datastore sharing its keys with
       the installing object namespace. The installed file mode is the line's, so a file rendering a sec key
       wants a `mode` as tight as the key's.
-    * `network "<name>"`: the network `<name>`, with the fields `Name`, `Type`, `Network`, `Peers` and
-      `ReverseZones`. A routed_bridge network lists the other nodes in `Peers`, as this node reaches them, with
-      the fields `Nodename`, `Local` and `Remote` (the addresses of this node and the peer the network joins),
-      `Subnet`, and `Tunnel` (the tunnel device, empty when the network is routed to the peer). Other networks
-      list none. `ReverseZones` are the reverse zones of the addresses the network hands out, which the cluster
-      nameservers answer for, none when `cluster.dns_reverse` is false: a resolver forwards them to the cluster
-      nameservers, e.g. `{{range networks}}{{range .ReverseZones}}{{.}}=10.0.0.1,{{end}}{{end}}`.
+    * `network "<name>"`: the network `<name>`, with the fields `name`, `type`, `network`, `peers` and
+      `reverse_zones`, named as the api names them. A routed_bridge network lists the other nodes in `peers`, as
+      this node reaches them, with the fields `nodename`, `local` and `remote` (the addresses of this node and the
+      peer the network joins), `subnet`, `via` (`tunnel` or `route`), and `tunnel` and `tunnel_mode` (the tunnel
+      device and its mode, as `ipip`, `ip6ip6` or `gre`, empty when the network is routed to the peer). Other networks list none. `reverse_zones` are the reverse zones of the addresses the network hands
+      out, which the cluster nameservers answer for, none when `cluster.dns_reverse` is false: a resolver forwards
+      them to the cluster nameservers, e.g. `{{range networks}}{{range .reverse_zones}}{{.}}=10.0.0.1,{{end}}{{end}}`.
     * `networks`: the networks of the node, each as `network` returns it.
     * `tunnels`: the peers the networks of the node reach by a tunnel, each tunnel once, as networks joining the
-      same two addresses share one. e.g. `{{range tunnels}}{{.Nodename}} {{.Local}} {{.Remote}}{{end}}`.
+      same two addresses share one. e.g. `{{range tunnels}}{{.nodename}} {{.local}} {{.remote}}{{end}}`.
   * the file is compared to what the template renders at each install, so the `signal` follows a change of
     what the template reads too, at the next install.
   * a change of a key the `key` function read at the last render installs the file again, on each node, as a

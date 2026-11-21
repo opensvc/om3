@@ -1,0 +1,3 @@
+A new object was detected.
+
+Published when the node sees the configuration of an object it did not know, created here or received from a peer.

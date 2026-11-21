@@ -1,0 +1,3 @@
+A peer node is stale.
+
+Published by the heartbeat controller when no heartbeat hears the peer anymore.

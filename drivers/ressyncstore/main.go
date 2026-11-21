@@ -148,39 +148,11 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 // in the order of a start. A quiesce failing aborts the run, and resumes the
 // resources already quiesced.
 func (t *T) quiesce(ctx context.Context) (func(context.Context) error, error) {
-	sb := statusbus.FromContext(ctx)
 	rs := t.GetObjectDriver().ResourcesByDrivergroups(allGroups)
 	rs.Reverse()
-	resumes := make([]func(context.Context) error, 0)
-	resume := func(ctx context.Context) error {
-		var errs error
-		for i := len(resumes) - 1; i >= 0; i-- {
-			errs = errors.Join(errs, resumes[i](ctx))
-		}
-		return errs
-	}
-	for _, r := range rs {
-		q, ok := r.(resource.Quiescer)
-		if !ok || r.IsDisabled() || !isUp(sb, r.RID()) {
-			continue
-		}
-		rid := r.RID()
-		f, err := q.Quiesce(ctx)
-		if err != nil {
-			err = fmt.Errorf("%s: %w: no run", rid, err)
-			if rerr := resume(ctx); rerr != nil {
-				err = errors.Join(err, rerr)
-			}
-			return nil, err
-		}
-		if f != nil {
-			resumes = append(resumes, func(ctx context.Context) error {
-				if err := f(ctx); err != nil {
-					return fmt.Errorf("%s: %w", rid, err)
-				}
-				return nil
-			})
-		}
+	resume, err := resource.QuiesceAll(ctx, rs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: no run", err)
 	}
 	return resume, nil
 }

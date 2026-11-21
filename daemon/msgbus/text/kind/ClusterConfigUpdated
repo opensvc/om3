@@ -1,0 +1,3 @@
+The cluster configuration changed.
+
+Published by the cluster configuration manager once the change is loaded: nodes_added and nodes_removed are the nodes joining and leaving, network_changed whether a network section changed, which sets the networks up again.

@@ -1,0 +1,3 @@
+A client asked to change the monitor of a node.
+
+Published by the api: a global or local expectation, as a drain or a freeze of the nodes, or a clear of a failed state. The node monitor applies it.

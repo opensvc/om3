@@ -55,6 +55,7 @@ const (
 	alertKindMissingStrategy
 	alertKindMissingKeyword
 	alertKindIgnoredKeyword
+	alertKindSchedules
 )
 
 var (
@@ -82,6 +83,7 @@ var (
 	alertKindConfigureStr       = "resource configuration error"
 	alertKindKeySourceStr       = "key source error"
 	alertKindStrategiesStr      = "conflicting strategies"
+	alertKindSchedulesStr       = "differing schedules"
 	alertKindUnknownResourceStr = "unknown resource"
 	alertKindReferenceGroupStr  = "unsupported resource group"
 	alertKindMissingStrategyStr = "missing strategy"
@@ -102,6 +104,7 @@ var (
 		alertKindConfigure:       alertKindConfigureStr,
 		alertKindKeySource:       alertKindKeySourceStr,
 		alertKindStrategies:      alertKindStrategiesStr,
+		alertKindSchedules:       alertKindSchedulesStr,
 		alertKindUnknownResource: alertKindUnknownResourceStr,
 		alertKindReferenceGroup:  alertKindReferenceGroupStr,
 		alertKindMissingStrategy: alertKindMissingStrategyStr,
@@ -123,6 +126,7 @@ var (
 		alertKindConfigureStr:       alertKindConfigure,
 		alertKindKeySourceStr:       alertKindKeySource,
 		alertKindStrategiesStr:      alertKindStrategies,
+		alertKindSchedulesStr:       alertKindSchedules,
 		alertKindUnknownResourceStr: alertKindUnknownResource,
 		alertKindReferenceGroupStr:  alertKindReferenceGroup,
 		alertKindMissingStrategyStr: alertKindMissingStrategy,
@@ -319,6 +323,20 @@ func (t T) NewAlertStrategies(k key.T, did driver.ID, comment string) Alert {
 	return Alert{
 		Path:    t.Path,
 		Kind:    alertKindStrategies,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertSchedules warns of a schedule differing from the one of resources
+// meant to run with it, as the syncs taking their snapshots at one moment,
+// in one run.
+func (t T) NewAlertSchedules(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindSchedules,
 		Level:   alertLevelWarn,
 		Key:     k,
 		Driver:  did,

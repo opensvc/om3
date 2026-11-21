@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -53,7 +54,7 @@ type (
 		// now and exec are the clock and the job runner, which the tests
 		// replace.
 		now  func() time.Time
-		exec func(schedule.Entry) error
+		exec func(e schedule.Entry, rids []string) error
 
 		provisioned map[naming.Path]bool
 		failover    map[naming.Path]bool
@@ -334,12 +335,96 @@ func (t *T) planJob(e schedule.Entry, now time.Time) {
 }
 
 // onTick takes the jobs that are due.
+//
+// The update jobs of an object due in the same tick run in one exec, its
+// resources selected together: run apart, they meet on the lock of the
+// object, the later waiting for the earlier, and failing when its sync
+// lasts longer than the lock is waited for. Run together, the syncs copying
+// snapshots take them at one moment.
 func (t *T) onTick() {
 	now := t.now()
+	updates := make(map[naming.Path][]*job)
+	paths := make([]naming.Path, 0)
 	for _, j := range t.jobs.popDue(now) {
-		t.onJobDue(j, now)
+		if j.entry.Action != "update" || j.entry.Path.IsZero() {
+			t.onJobDue(j, now)
+			continue
+		}
+		if _, ok := updates[j.entry.Path]; !ok {
+			paths = append(paths, j.entry.Path)
+		}
+		updates[j.entry.Path] = append(updates[j.entry.Path], j)
+	}
+	for _, p := range paths {
+		t.onUpdatesDue(updates[p], now)
 	}
 	t.onTriggersDue(now)
+}
+
+// onUpdatesDue takes the update jobs of an object due in the same tick, and
+// runs together the ones to run.
+//
+// They are held together: one of them held while the others run would be
+// tried again a moment later, its period shifted from theirs, and run apart
+// from them from then on.
+func (t *T) onUpdatesDue(l []*job, now time.Time) {
+	if t.holdTogether(l, now) {
+		return
+	}
+	admitted := make([]admittedJob, 0, len(l))
+	for _, j := range l {
+		if a, ok := t.admitJob(j, now); ok {
+			admitted = append(admitted, a)
+		}
+	}
+	switch len(admitted) {
+	case 0:
+	case 1:
+		t.run(admitted[0].entry, admitted[0].last, admitted[0].logger)
+	default:
+		t.runTogether(admitted)
+	}
+}
+
+// holdTogether holds all the jobs of l when one of them is held, as
+// admitJob would hold it, and says whether it did. A job whose schedule is
+// deleted is left to admitJob, which unschedules it.
+func (t *T) holdTogether(l []*job, now time.Time) bool {
+	type held struct {
+		due, e schedule.Entry
+	}
+	reason := t.fullReason()
+	debug := reason != ""
+	hl := make([]held, 0, len(l))
+	for _, j := range l {
+		e, ok := t.schedules.Get(j.entry.Path, j.entry.Key)
+		if !ok {
+			continue
+		}
+		hl = append(hl, held{due: j.entry, e: e})
+		if reason == "" {
+			reason = t.holdReason(e)
+		}
+	}
+	if reason == "" {
+		return false
+	}
+	for _, j := range l {
+		if _, ok := t.schedules.Get(j.entry.Path, j.entry.Key); !ok {
+			t.admitJob(j, now)
+		}
+	}
+	for _, h := range hl {
+		if logger := t.jobLogger(h.e); debug {
+			// As in admitJob, many jobs are held together while the
+			// node is full: not logged above the debug level.
+			logger.Debugf("hold (%s)", reason)
+		} else {
+			logger.Infof("hold (%s)", reason)
+		}
+		t.holdJob(h.due, h.e, now)
+	}
+	return true
 }
 
 // armTimer sets the timer to wake the loop when the soonest job is due, and
@@ -377,12 +462,29 @@ func (t *T) nextWake(now time.Time) (time.Duration, bool) {
 // with an orchestration, or because its node was being drained, runs again
 // at its next period.
 func (t *T) onJobDue(j *job, now time.Time) {
+	if a, ok := t.admitJob(j, now); ok {
+		t.run(a.entry, a.last, a.logger)
+	}
+}
+
+// admittedJob is a job due that is to run: its entry, the last run it
+// records, and its logger.
+type admittedJob struct {
+	entry  schedule.Entry
+	last   time.Time
+	logger *plog.Logger
+}
+
+// admitJob takes a job that is due, as onJobDue says, and says whether it
+// is to run, rather than run it: the caller runs it, alone or with the
+// other update jobs of its object due in the same tick.
+func (t *T) admitJob(j *job, now time.Time) (admittedJob, bool) {
 	due := j.entry
 	e, ok := t.schedules.Get(due.Path, due.Key)
 	if !ok {
 		t.jobLogger(due).Infof("unschedule (schedule deleted)")
 		t.jobs.del(due.Path, due.Key)
-		return
+		return admittedJob{}, false
 	}
 	logger := t.jobLogger(e)
 
@@ -391,7 +493,7 @@ func (t *T) onJobDue(j *job, now time.Time) {
 		e.LastRunAt = tm
 		t.planJob(e, now)
 		t.updateExposedSchedules(e.Path)
-		return
+		return admittedJob{}, false
 	}
 
 	if reason := t.holdReason(e); reason != "" {
@@ -400,7 +502,7 @@ func (t *T) onJobDue(j *job, now time.Time) {
 		// due during a start would skip a day.
 		logger.Infof("hold (%s)", reason)
 		t.holdJob(due, e, now)
-		return
+		return admittedJob{}, false
 	}
 	if reason := t.fullReason(); reason != "" {
 		// As above, a job ends in moments. Many jobs are held together
@@ -408,7 +510,7 @@ func (t *T) onJobDue(j *job, now time.Time) {
 		// the debug level.
 		logger.Debugf("hold (%s)", reason)
 		t.holdJob(due, e, now)
-		return
+		return admittedJob{}, false
 	}
 
 	last := due.NextRunAt
@@ -421,20 +523,20 @@ func (t *T) onJobDue(j *job, now time.Time) {
 
 	if reason := t.skipReason(e); reason != "" {
 		logger.Infof("skip (%s)", reason)
-		return
+		return admittedJob{}, false
 	}
 	if n, err := t.runningCount(e); err != nil {
 		logger.Warnf("skip (%s)", err)
-		return
+		return admittedJob{}, false
 	} else if n >= e.MaxParallel {
 		logger.Infof("skip (%d/%d jobs already running)", n, e.MaxParallel)
-		return
+		return admittedJob{}, false
 	}
 
 	// Update the by-node last run cache
 	t.lastRunOnAllPeers.Set(e.Path, e.Key, last)
 
-	t.run(e, last, logger)
+	return admittedJob{entry: e, last: last, logger: logger}, true
 }
 
 // holdJob plans the job e, due as due, to be tried again in holdRetryDelay,
@@ -472,11 +574,47 @@ func (t *T) run(e schedule.Entry, last time.Time, logger *plog.Logger) {
 	go func() {
 		defer t.running.Done()
 		defer t.active.Add(-1)
-		if err := t.exec(e); err != nil {
+		if err := t.exec(e, nil); err != nil {
 			logger.Errorf("on exec: %s", err)
 		} else if err := e.SetLastSuccess(last); err != nil {
 			// remember last success, for users benefit
 			logger.Errorf("on update last success: %s", err)
+		}
+	}()
+}
+
+// runTogether runs the update jobs of one object in one exec, their
+// resources selected together, in the background: each records its own last
+// run, before the run, and its own last success, once the run succeeded. The
+// exec logs its runs when one of the jobs asks it.
+func (t *T) runTogether(l []admittedJob) {
+	slices.SortFunc(l, func(a, b admittedJob) int { return strings.Compare(a.entry.RID(), b.entry.RID()) })
+	rids := make([]string, len(l))
+	e := l[0].entry
+	for i, a := range l {
+		rids[i] = a.entry.RID()
+		e.Log = e.Log || a.entry.Log
+		if err := a.entry.SetLastRun(a.last); err != nil {
+			a.logger.Errorf("on update last run: %s", err)
+		}
+		jobRunCount.WithLabelValues(a.entry.Action).Inc()
+		jobRunByPathCount.WithLabelValues(a.entry.Action, a.entry.Path.String()).Inc()
+		jobRunByPathKeyCount.WithLabelValues(a.entry.Action, a.entry.Path.String(), a.entry.Key).Inc()
+	}
+	t.loggerWithPath(e.Path).Infof("update %s together, due at once", strings.Join(rids, " "))
+	t.running.Add(1)
+	t.active.Add(1)
+	go func() {
+		defer t.running.Done()
+		defer t.active.Add(-1)
+		if err := t.exec(e, rids); err != nil {
+			t.loggerWithPath(e.Path).Errorf("on exec of %s: %s", strings.Join(rids, " "), err)
+			return
+		}
+		for _, a := range l {
+			if err := a.entry.SetLastSuccess(a.last); err != nil {
+				a.logger.Errorf("on update last success: %s", err)
+			}
 		}
 	}()
 }

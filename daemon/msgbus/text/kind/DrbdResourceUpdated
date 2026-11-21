@@ -1,0 +1,3 @@
+The state of a drbd resource of the node changed.
+
+Published by the drbd monitor when a role, a disk or peer disk state, a connection or a replication state changed, as a peer connects or a resync ends. The instance status is evaluated again.

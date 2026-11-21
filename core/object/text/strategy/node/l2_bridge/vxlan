@@ -1,0 +1,4 @@
+The bridge enslaves a vxlan device of identifier `vxlan_vni` sending to
+the other nodes over their ip network.
+
+Choose it when the nodes share no lan, as nodes in different sites.

@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"os"
 	"slices"
 	"strings"
@@ -46,6 +47,9 @@ func teardownRemoved(n *object.Node, nws []Networker) error {
 		for _, nw := range removed(former, nws) {
 			if skip := teardownSkip(nw, invalid[nw.Name()]); skip != "" {
 				nw.Log().Infof("network teardown: skip, %s", skip)
+				if err := netstatus.Remove(StatusDir(), nw.Name()); err != nil {
+					nw.Log().Warnf("remove the status of the network setup: %s", err)
+				}
 				continue
 			}
 			if err := teardownNetwork(applied, nw); err != nil {
@@ -103,6 +107,9 @@ func teardownNetwork(n *object.Node, nw Networker) error {
 		if err := i.Teardown(); err != nil {
 			return err
 		}
+	}
+	if err := netstatus.Remove(StatusDir(), nw.Name()); err != nil {
+		nw.Log().Warnf("remove the status of the network setup: %s", err)
 	}
 	if _, ok := nw.(CNIer); !ok {
 		return nil

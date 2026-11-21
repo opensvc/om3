@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/xmap"
@@ -71,4 +72,15 @@ func TestFiltersDoNotModifyTheReceiver(t *testing.T) {
 		assert.Equal(t, ns1, paths(data.WithSelector("*/svc/*").WithNamespace("ns1")))
 		assert.Equal(t, all, paths(data))
 	})
+}
+
+// TestWithoutNodeNetworks pins that the view left to the callers with
+// neither the root nor the inspector grant has no network setup status of
+// the nodes, the addresses the nodes reach each other at, and leaves the
+// receiver, shared by concurrent callers, untouched.
+func TestWithoutNodeNetworks(t *testing.T) {
+	data := NewData("n1")
+	data.Cluster.Node["n1"] = node.Node{Network: map[string]netstatus.Status{"l2": {}}}
+	assert.Nil(t, data.WithoutNodeNetworks().Cluster.Node["n1"].Network)
+	assert.Len(t, data.Cluster.Node["n1"].Network, 1, "the receiver is untouched")
 }

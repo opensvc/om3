@@ -29,6 +29,18 @@ type BaseT struct {
 	StopTimeout  *time.Duration `json:"stop_timeout"`
 	Umask        *os.FileMode   `json:"umask"`
 	ObjectID     uuid.UUID      `json:"objectID"`
+
+	// NoNewPrivileges and CapabilityBoundingSet restrict the privileges
+	// of the commands, applied by om exec. They are kept as written and
+	// converted when a command is built, so a value that is not one fails
+	// the command instead of leaving it unrestricted.
+	NoNewPrivileges       string `json:"no_new_privileges"`
+	CapabilityBoundingSet string `json:"capability_bounding_set"`
+
+	// SystemdProperties are the properties of the transient systemd
+	// service unit the start command runs in, as systemd-run -p takes
+	// them, kept as written: empty, the command runs in no unit.
+	SystemdProperties string `json:"systemd_properties"`
 }
 
 func (t *T) getEnv(ctx context.Context, onIgnoreCallback func(err error)) (env []string, err error) {

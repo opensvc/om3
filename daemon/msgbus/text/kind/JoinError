@@ -1,0 +1,3 @@
+A node failed to join the cluster.
+
+Published by the node monitor, with the candidate node and why.

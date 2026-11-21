@@ -162,3 +162,14 @@ missing from it does not exist for them. `TestTheEventFilterHelpListsEveryKind`
 compares the list with `msgbus.Kinds()` both ways, so a kind left out, or a
 name listed that is no kind, fails the build. A kind registered but never
 published, as `Exit`, is the one exception, named in the test.
+
+## Give every event kind its text
+
+A new event kind comes with its text, `daemon/msgbus/text/kind/<Kind>`, in the
+same change: a first line saying what happened, then when it is published, by
+what, and what a reader of the stream does with it. `daemon events doc` lists
+the kinds by that first line, and shows the text of the ones named, with the
+keys of their data read from the struct.
+
+`TestEveryKindHasAText` compares the texts with `msgbus.Kinds()` both ways: a
+kind with no text, or a text of no kind, fails the build.

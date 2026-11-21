@@ -29,6 +29,7 @@ import (
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/proc"
+	"github.com/opensvc/om3/v3/util/sdunit"
 	"github.com/opensvc/om3/v3/util/signalrelay"
 	"github.com/opensvc/om3/v3/util/ulimit"
 )
@@ -47,6 +48,10 @@ type T struct {
 	StopTimeout *time.Duration `json:"stop_timeout"`
 	Umask       *os.FileMode   `json:"umask"`
 	ObjectID    uuid.UUID      `json:"objectID"`
+
+	NoNewPrivileges       string `json:"no_new_privileges"`
+	CapabilityBoundingSet string `json:"capability_bounding_set"`
+	SystemdProperties     string `json:"systemd_properties"`
 
 	// From resapp.T
 	Path    naming.Path   `json:"path"`
@@ -83,6 +88,10 @@ func (t *T) App() *resapp.T {
 			Umask:       t.Umask,
 			ObjectID:    t.ObjectID,
 			StopTimeout: t.StopTimeout,
+
+			NoNewPrivileges:       t.NoNewPrivileges,
+			CapabilityBoundingSet: t.CapabilityBoundingSet,
+			SystemdProperties:     t.SystemdProperties,
 		},
 		Path:    t.Path,
 		Nodes:   t.Nodes,
@@ -122,6 +131,9 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	if t.Container != "" {
 		return t.lockedRunInContainer(ctx)
 	}
+	if t.SystemdProperties != "" {
+		return t.lockedRunInUnit(ctx)
+	}
 	var opts []funcopt.O
 	app := t.App()
 	if opts, err = app.GetFuncOpts(ctx, t.RunCmd, "run"); err != nil {
@@ -155,6 +167,99 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 	if err != nil {
 		// The error of the command, as its timeout: the last run is
 		// written already.
+		t.Log().Errorf("run: %s", err)
+		if err := t.onError(ctx); err != nil {
+			t.Log().Warnf("on error: %s", err)
+		}
+	}
+	if s, err := t.BaseTask.ExitCodeToStatus(exitCode); err != nil {
+		return err
+	} else if s != status.Up {
+		return fmt.Errorf("command exited with code %d", exitCode)
+	}
+	return nil
+}
+
+// lockedRunInUnit runs the command in the transient service unit of the
+// resource, systemd-run waiting for it to end, its outputs connected to the
+// ones of systemd-run, and exiting with its exit code.
+//
+// A signal the run receives is sent to the processes of the unit, which is
+// no stop job, and a run it reached ended as the signal made it, 128 + the
+// signal, as the shell reports it: systemd takes a command ended by a
+// SIGTERM for one that succeeded. The processes the run leaves in the unit,
+// as the ones of a run that outlasted its timeout, are ended.
+func (t *T) lockedRunInUnit(ctx context.Context) error {
+	app := t.App()
+	opts, cleanup, err := app.UnitRun(ctx, t.RunCmd, "run", sdunit.Run{
+		Type: "simple",
+		Wait: true,
+	})
+	defer cleanup()
+	if err != nil {
+		return err
+	}
+	if len(opts) == 0 {
+		return nil
+	}
+	// The errors of systemd-run, as a property systemd does not know,
+	// come on its standard error, with the ones of the command: they are
+	// logged whatever log_outputs says.
+	opts = append(opts,
+		command.WithLogger(t.Log()),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	if t.LogOutputs {
+		opts = append(opts, command.WithStdoutLogLevel(zerolog.InfoLevel))
+	}
+	opts = append(opts,
+		command.WithTimeout(t.RunTimeLimit(t.Timeout)),
+		command.WithIgnoredExitCodes(),
+	)
+	unit := app.UnitName()
+	var (
+		mu       sync.Mutex
+		signaled syscall.Signal
+	)
+	if sigC, unsubscribe := signalrelay.Subscribe(ctx); sigC != nil {
+		defer unsubscribe()
+		done := make(chan struct{})
+		defer close(done)
+		go func() {
+			select {
+			case sig := <-sigC:
+				s, ok := sig.(syscall.Signal)
+				if !ok {
+					return
+				}
+				t.Log().Infof("pass the signal %s on to the unit %s", sig, unit)
+				if err := sdunit.Kill(ctx, unit, s); err != nil {
+					t.Log().Warnf("%s", err)
+					return
+				}
+				mu.Lock()
+				signaled = s
+				mu.Unlock()
+			case <-done:
+			}
+		}()
+	}
+	cmd := command.New(opts...)
+	t.loggerWithCmd(cmd).Infof("run %s", cmd)
+	err = cmd.Run()
+	exitCode := cmd.NormalizedExitCode()
+	mu.Lock()
+	if signaled != 0 {
+		exitCode = 128 + int(signaled)
+	}
+	mu.Unlock()
+	if terr := app.UnitTerminate(ctx); terr != nil {
+		t.Log().Warnf("%s", terr)
+	}
+	if err := t.WriteLastRun(exitCode); err != nil {
+		return err
+	}
+	if err != nil {
 		t.Log().Errorf("run: %s", err)
 		if err := t.onError(ctx); err != nil {
 			t.Log().Warnf("on error: %s", err)

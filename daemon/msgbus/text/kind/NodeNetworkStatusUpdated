@@ -1,0 +1,3 @@
+A node set up a network.
+
+Published with what the setup made on the node: its device, its subnet, its ports, how it reaches each other node, by a named tunnel of its mode, a route or a vxlan, and what failed.

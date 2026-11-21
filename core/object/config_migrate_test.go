@@ -551,3 +551,76 @@ postsnap_trigger = /bin/true
 	}
 	assert.Equal(t, 3, notes, "%v", m.Notes)
 }
+
+// The delay_snap tag v2 read on a sync resource becomes its delay_snap
+// keyword, for the scope the tags were written for, and leaves the tags,
+// unset when it was the only one.
+func TestTheDelaySnapTagBecomesAKeyword(t *testing.T) {
+	node := hostname.Hostname()
+	m := migrationOf(t, `
+[DEFAULT]
+nodes = `+node+`
+
+[sync#1]
+type = rsync
+src = /srv/a/
+snap = true
+tags = delay_snap
+
+[sync#2]
+type = rsync
+src = /srv/b/
+snap = true
+tags = nightly delay_snap other
+tags@`+node+` = delay_snap
+
+[sync#3]
+type = zfs
+src = pool/a
+dst = pool/a
+tags = delay_snap
+
+[sync#4]
+type = btrfs
+src = fs1:data
+target = nodes
+tags = delay_snap
+
+[sync#5]
+type = zfssnap
+dataset = pool/a
+tags = delay_snap
+
+[app#1]
+tags = delay_snap
+`)
+	v, ok := setOf(m, "sync#1.delay_snap")
+	require.True(t, ok)
+	assert.Equal(t, "true", v)
+	assert.True(t, unset(m, "sync#1.tags"), "the only tag: unset")
+
+	v, ok = setOf(m, "sync#2.tags")
+	require.True(t, ok)
+	assert.Equal(t, "nightly other", v)
+	v, ok = setOf(m, "sync#2.delay_snap")
+	require.True(t, ok)
+	assert.Equal(t, "true", v)
+	v, ok = setOf(m, "sync#2.delay_snap@"+node)
+	require.True(t, ok, "for the scope of the tags")
+	assert.Equal(t, "true", v)
+	assert.True(t, unset(m, "sync#2.tags@"+node))
+
+	for _, section := range []string{"sync#3", "sync#4"} {
+		v, ok = setOf(m, section+".delay_snap")
+		require.True(t, ok, "%s: sync.zfs and sync.btrfs read the keyword too", section)
+		assert.Equal(t, "true", v)
+		assert.True(t, unset(m, section+".tags"))
+	}
+
+	_, ok = setOf(m, "sync#5.delay_snap")
+	assert.False(t, ok, "a sync type with no delay_snap keyword keeps its tags")
+	assert.False(t, unset(m, "sync#5.tags"))
+
+	_, ok = setOf(m, "app#1.delay_snap")
+	assert.False(t, ok, "a resource other than a sync keeps its tags")
+}

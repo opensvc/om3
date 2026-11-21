@@ -10,10 +10,13 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/file"
 )
 
@@ -25,6 +28,22 @@ const (
 var (
 	ErrInvalidType = errors.New("invalid network type")
 )
+
+// PartialError is the error of a setup that left the network usable on the
+// node, its failures confined to a part of it, as the route or the tunnel to
+// one peer: the rest of the network is set up all the same, and its cni
+// configuration written, so the objects of the node use it.
+type PartialError struct {
+	Err error
+}
+
+func (t *PartialError) Error() string {
+	return t.Err.Error()
+}
+
+func (t *PartialError) Unwrap() error {
+	return t.Err
+}
 
 // setupFirewall applies the firewall rules of the networks, replaced by the
 // tests.
@@ -61,12 +80,15 @@ func Setup(n *object.Node, names ...string) error {
 		if err := invalid[nw.Name()]; err != nil {
 			nw.Log().Errorf("network setup: %s", err)
 			errs = append(errs, err)
+			saveStatus(nw, err)
 			continue
 		}
-		if err := setupNetwork(n, nw, dir); err != nil {
+		err := setupNetwork(n, nw, dir)
+		if err != nil {
 			nw.Log().Errorf("network setup: %s", err)
 			errs = append(errs, err)
 		}
+		saveStatus(nw, err)
 		if nw.NeedCommit() {
 			needCommit = append(needCommit, nw.Name())
 			kops = append(kops, nw.Kops()...)
@@ -86,6 +108,54 @@ func Setup(n *object.Node, names ...string) error {
 		return fmt.Errorf("network setup: %s", errs)
 	}
 	return nil
+}
+
+// StatusDir is the directory the setup saves the status of each network in.
+func StatusDir() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "network")
+}
+
+// NewSetupStatus returns what the setup of nw made on the node, err its failure.
+func NewSetupStatus(nw Networker, err error) netstatus.Status {
+	st := netstatus.Status{
+		Type:      nw.Type(),
+		Network:   nw.Network(),
+		AppliedAt: time.Now(),
+	}
+	switch {
+	case IsDisabled(nw):
+		st.Skipped = "disabled"
+	case !IsValid(nw):
+		st.Skipped = "invalid network " + nw.Network()
+	}
+	if err != nil {
+		st.Error = err.Error()
+	}
+	if i, ok := nw.(backendDevNamer); ok {
+		st.Dev = i.BackendDevName()
+	}
+	if i, ok := nw.(HostDever); ok && st.Dev == "" && st.Skipped == "" {
+		// The device of the node the addresses of a lan go on.
+		if dev, err := i.HostDev(); err == nil {
+			st.Dev = dev
+		}
+	}
+	if i, ok := nw.(Reporter); ok {
+		i.Report(&st)
+	} else if i, ok := nw.(Peerer); ok && st.Skipped == "" {
+		if peers, err := i.Peers(); err == nil {
+			st.Peers = peers
+		}
+	}
+	return st
+}
+
+// saveStatus saves the status of the setup of nw, err its failure, for the
+// daemon to publish it, as the om network setup run with no daemon does.
+func saveStatus(nw Networker, err error) {
+	if serr := netstatus.Save(StatusDir(), nw.Name(), NewSetupStatus(nw, err)); serr != nil {
+		nw.Log().Warnf("save the status of the network setup: %s", serr)
+	}
 }
 
 // named returns the networks named, all of them when none is named.
@@ -184,15 +254,17 @@ func setupNetwork(n *object.Node, nw Networker, dir string) error {
 		nw.Log().Infof("network setup: skip invalid network")
 		return nil
 	}
+	var setupErr error
 	if i, ok := nw.(Setuper); ok {
 		if err := i.Setup(); err != nil {
-			return err
+			var partial *PartialError
+			if !errors.As(err, &partial) {
+				return err
+			}
+			setupErr = err
 		}
 	}
-	if err := setupNetworkCNI(n, dir, nw); err != nil {
-		return err
-	}
-	return nil
+	return errors.Join(setupErr, setupNetworkCNI(n, dir, nw))
 }
 
 func mkCNIConfigDir(n *object.Node) (string, error) {

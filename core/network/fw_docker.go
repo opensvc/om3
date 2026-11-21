@@ -73,6 +73,14 @@ var (
 func fwDockerDevs(family nftables.TableFamily, networks []fwNetwork) []string {
 	l := make([]string, 0)
 	for _, nw := range networks {
+		if nw.CIDR == "" {
+			// A network with no address, as a l2_bridge, bridges
+			// frames of either family.
+			if isDevNameValid(nw.Dev) {
+				l = append(l, nw.Dev)
+			}
+			continue
+		}
 		ip, _, err := net.ParseCIDR(nw.CIDR)
 		if err != nil || ipFamily(ip) != family || !isDevNameValid(nw.Dev) {
 			continue

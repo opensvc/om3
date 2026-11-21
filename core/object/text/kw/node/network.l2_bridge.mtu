@@ -1,0 +1,4 @@
+The mtu of the bridge and of the devices om enslaves to it. Not set, the
+mtu of a bridge meshed by a vxlan is the one of the interface sending the
+vxlan less the bytes vxlan adds, and the one of another bridge is left as
+it is.

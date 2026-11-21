@@ -1,0 +1,3 @@
+The statistics of a node were refreshed.
+
+Published by the node monitor, and for a peer by the daemon data: the load, the memory, the swap.

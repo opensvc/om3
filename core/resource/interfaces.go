@@ -198,6 +198,37 @@ type (
 		Quiesce(context.Context) (func(context.Context) error, error)
 	}
 
+	// SyncPreparer is a sync resource taking what its transfer copies
+	// from, as a snapshot of its source, before the first transfer of a
+	// sync update or full action: the resources of the action take it at
+	// one moment, under one quiesce, rather than each just before its own
+	// transfer, so their copies are of the same point in time.
+	SyncPreparer interface {
+		// WillPrepareSync says the action would have the resource take
+		// something before the transfers: false when it takes nothing,
+		// or would transfer nothing.
+		WillPrepareSync(ctx context.Context) bool
+
+		// PrepareSync takes it, and returns how to release it once the
+		// action is done. The update or full of the resource in the
+		// action copies from it.
+		PrepareSync(ctx context.Context) (release func() error, err error)
+	}
+
+	// SyncSnapshotCopier is a SyncPreparer whose transfer copies the
+	// snapshot it takes to the peers, as sync.rsync with snap, sync.zfs
+	// and sync.btrfs: its copy is meant to be of the moment of the other
+	// copies of the object, so one scheduled apart from them, or left
+	// out of a run, is warned of. A resource whose snapshot is its whole
+	// job, kept on a schedule of its own, as sync.zfssnap, is not one.
+	SyncSnapshotCopier interface {
+		// CopiesSyncSnapshot says the configuration has the resource
+		// take its snapshot with the ones of the other sync resources
+		// of an action, whatever the state of the node: false for a
+		// resource taking none, or delaying it to its own transfer.
+		CopiesSyncSnapshot() bool
+	}
+
 	// HeadSnapshotter is a resource whose head its storage takes
 	// point-in-time snapshots of: a run of a sync resource copies the
 	// snapshot rather than the head, so the writes it quiesced resume

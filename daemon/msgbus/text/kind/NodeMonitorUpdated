@@ -1,0 +1,3 @@
+The monitor of a node changed.
+
+Published by the node monitor, and for a peer by the daemon data: its state, its local and global expectations, its orchestration.

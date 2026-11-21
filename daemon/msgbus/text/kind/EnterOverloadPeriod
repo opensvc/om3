@@ -1,0 +1,3 @@
+The node went overloaded.
+
+Published by the node monitor when the available memory or swap of the node fell below the minimum the node configuration sets: the node status says it overloaded until LeaveOverloadPeriod.

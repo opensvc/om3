@@ -117,10 +117,15 @@ func (o *execOps) root(nodename, label string) (string, error) {
 	// The device is found by probing, as a loop device has no
 	// /dev/disk/by-label link for "mount LABEL=", nor "blkid -l", to find
 	// it by, and the devices of a btrfs spanning several are scanned for
-	// the mount to assemble them.
+	// the mount to assemble them. A device of the label is kept only of
+	// the btrfs type: a zfs pool of the same name labels its members so,
+	// and blkid searches one token at a time.
 	script := fmt.Sprintf(`set -e
-d=$(blkid -o device -t %[3]s | head -n 1)
-if [ -z "$d" ]; then echo "no device labeled "%[2]s >&2; exit 1; fi
+d=
+for x in $(blkid -o device -t %[3]s); do
+	if [ "$(blkid -o value -s TYPE "$x")" = btrfs ]; then d=$x; break; fi
+done
+if [ -z "$d" ]; then echo "no btrfs device labeled "%[2]s >&2; exit 1; fi
 btrfs device scan >/dev/null 2>&1 || true
 mkdir -p %[1]s
 p=$(mktemp -d %[4]s)

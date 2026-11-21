@@ -1,0 +1,3 @@
+The monitor of an instance ended.
+
+Published by the instance monitor as it stops, and for a peer by the daemon data: orchestration_end when it ended an orchestration, as a delete.

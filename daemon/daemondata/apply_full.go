@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/core/tombstone"
@@ -101,6 +102,7 @@ func (d *data) pubPeerDataChanges(peer string) {
 	d.pubMsgFromNodeTombstoneDiffForNode(peer)
 	d.pubMsgFromNodeInstanceDiffForNode(peer, current)
 	d.pubMsgFromNodePoolDiffForNode(peer, current)
+	d.pubMsgFromNodeNetworkDiffForNode(peer)
 	d.previousRemoteInfo[peer] = *current
 }
 
@@ -496,6 +498,38 @@ func tombstoneLabels(peer, path string) []pubsub.Label {
 		l = append(l, pubsub.Label{"namespace", p.Namespace})
 	}
 	return l
+}
+
+// pubMsgFromNodeNetworkDiffForNode publishes what changed in the statuses of
+// the network setups of a peer since the ones held: the ones it reports set
+// up again since, by their end, and the ones it no longer reports, as the
+// pools are.
+func (d *data) pubMsgFromNodeNetworkDiffForNode(peer string) {
+	held := make(map[string]time.Time)
+	for _, e := range netstatus.StatusData.GetByNode(peer) {
+		held[e.Name] = e.Value.AppliedAt
+	}
+	networks := d.clusterData.Cluster.Node[peer].Network
+	for name, st := range networks {
+		if appliedAt, ok := held[name]; ok && !st.AppliedAt.After(appliedAt) {
+			continue
+		}
+		netstatus.StatusData.Set(name, peer, st.DeepCopy())
+		d.publisher.Pub(&msgbus.NodeNetworkStatusUpdated{Name: name, Node: peer, Value: *st.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+	}
+	for name := range held {
+		if _, ok := networks[name]; ok {
+			continue
+		}
+		netstatus.StatusData.Unset(name, peer)
+		d.publisher.Pub(&msgbus.NodeNetworkStatusDeleted{Name: name, Node: peer},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+	}
 }
 
 // pubMsgFromNodePoolDiffForNode publishes what changed in the pools of a peer

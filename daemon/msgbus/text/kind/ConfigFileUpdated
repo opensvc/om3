@@ -1,0 +1,3 @@
+An object configuration file was created or changed in the etc directory of the node.
+
+Published by the file system watcher, and by the config announcer. The instance configuration manager of the object loads it, and the daemon data publishes InstanceConfigUpdated.

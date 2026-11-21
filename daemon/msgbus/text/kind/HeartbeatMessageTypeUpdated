@@ -1,0 +1,3 @@
+The type of the heartbeat messages the node sends changed.
+
+Published by the daemon data when it switches between full, patch and ping messages, as a peer joins and needs a full one: the old and new types, and the nodes the switch is for.

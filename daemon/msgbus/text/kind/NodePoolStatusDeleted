@@ -1,0 +1,3 @@
+The status of a pool of a node is gone.
+
+Published by the node monitor when the pool was removed from the configuration, and for a peer by the daemon data.

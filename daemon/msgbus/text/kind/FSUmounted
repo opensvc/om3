@@ -1,0 +1,3 @@
+A file system was unmounted from the node.
+
+Published by the mount monitor. The status of the instances holding it is evaluated again.

@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/netstatus"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -19,6 +20,10 @@ type (
 		Config   Config                       `json:"config"`
 
 		Daemon daemonsubsystem.Daemon `json:"daemon"`
+
+		// Network holds what the last setup of each network of the node
+		// made on it, by network name.
+		Network map[string]netstatus.Status `json:"network,omitempty"`
 
 		// Tombstone holds the records of the deletes and purges the node
 		// keeps, by orchestration id.
@@ -47,6 +52,12 @@ func (n *Node) DeepCopy() *Node {
 		c.Pool = make(map[string]pool.Status, len(n.Pool))
 		for name, poolData := range n.Pool {
 			c.Pool[name] = *poolData.DeepCopy()
+		}
+	}
+	if n.Network != nil {
+		c.Network = make(map[string]netstatus.Status, len(n.Network))
+		for name, st := range n.Network {
+			c.Network[name] = *st.DeepCopy()
 		}
 	}
 	c.Monitor = *n.Monitor.DeepCopy()

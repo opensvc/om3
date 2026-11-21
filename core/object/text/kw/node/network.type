@@ -7,8 +7,12 @@ The type of network.
 * `lan`: ranges of a segment the nodes share, the addresses of which an
   object takes along when it moves to another node, as the floating address
   of a failover service.
+* `l2_bridge`: a bridge on each node with no address, for the guests and
+  containers of the node to share a segment om neither addresses nor
+  routes. Alone on its node, or meshed with the bridges of the other nodes
+  through a lan or vlan they share (`ports`), or a vxlan (`vxlan_vni`).
 
-The traffic the nodes forward for the `bridge` and `routed_bridge` networks
+The traffic the nodes forward for the `bridge`, `routed_bridge` and `l2_bridge` networks
 is accepted in the om nft table, and, on a node running docker, whose
 forward chain drops what docker did not accept, in a chain the docker
 `DOCKER-USER` chain jumps to.
