@@ -129,7 +129,7 @@ func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
 
 // GetRaw fetches an event json RawMessage stream from the agent api
 func (t *GetEvents) GetRaw() (chan []byte, error) {
-	resp, err := t.eventsBase()
+	resp, err := t.eventsBase(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -165,9 +165,11 @@ func (t *GetEvents) Do() (chan event.Event, error) {
 	return out, nil
 }
 
-// GetReader returns event.ReadCloser with context set to ctx
+// GetReader returns event.ReadCloser with context set to ctx. The request is
+// made with ctx too: a cancel interrupts a stream not answering yet, and
+// closes the connection of one answering.
 func (t *GetEvents) GetReader(ctx context.Context) (event.ReadCloser, error) {
-	resp, err := t.eventsBase()
+	resp, err := t.eventsBase(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +183,7 @@ func (t *GetEvents) GetReader(ctx context.Context) (event.ReadCloser, error) {
 // NewTimeoutReader returns a non-blocking event.ReadCloser that yields nil
 // if no events are read within the specified timeout
 func (t *GetEvents) NewTimeoutReader(timeout time.Duration) (event.ReadCloser, error) {
-	resp, err := t.eventsBase()
+	resp, err := t.eventsBase(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +208,7 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (t *GetEvents) eventsBase() (*http.Response, error) {
+func (t *GetEvents) eventsBase(ctx context.Context) (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
 		Filter:   &t.Filters,
 		Selector: t.selector,
@@ -220,7 +222,7 @@ func (t *GetEvents) eventsBase() (*http.Response, error) {
 		s := t.Duration.String()
 		params.Duration = &s
 	}
-	resp, err := t.client.GetDaemonEvents(context.Background(), t.nodename, &params)
+	resp, err := t.client.GetDaemonEvents(ctx, t.nodename, &params)
 	if err != nil {
 		return resp, err
 	}
