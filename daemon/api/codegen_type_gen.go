@@ -4785,6 +4785,19 @@ type PostPeerActionUnfreezeParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostNodeActionWolParams defines parameters for PostNodeActionWol.
+type PostNodeActionWolParams struct {
+	// Mac the mac addresses of the nodes to wake
+	Mac []string `form:"mac" json:"mac"`
+
+	// Broadcast the ipv4 broadcast addresses of the lan of the nodes to wake
+	Broadcast []string `form:"broadcast" json:"broadcast"`
+
+	// Port the udp ports to send the magic packets to, 9 when not set
+	Port      *[]int     `form:"port,omitempty" json:"port,omitempty"`
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+}
+
 // PostNodeComplianceActionAutoParams defines parameters for PostNodeComplianceActionAuto.
 type PostNodeComplianceActionAutoParams struct {
 	// Moduleset The modulesets to select, comma separated.
