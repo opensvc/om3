@@ -94,6 +94,8 @@ func newData() *clusterdump.Data {
 					},
 				},
 				"prod/cfg/db": {Config: &instance.Config{Checksum: "c1"}},
+				"prod/sec/db": {Config: &instance.Config{Checksum: "s1"}},
+				"prod/cfg/f":  {Config: &instance.Config{Checksum: "f1"}},
 			},
 			Network: map[string]netstatus.Status{"backend": {Type: "routed_bridge", Network: "10.1.0.0/16"}},
 		}
@@ -304,4 +306,23 @@ func assertSubscription(t *testing.T, kinds []string, selector string, got Subsc
 	t.Helper()
 	assert.ElementsMatch(t, kinds, got.Kinds)
 	assert.Equal(t, selector, got.Selector)
+}
+
+// The api answers an empty value for a key of a datastore no node has: the
+// cluster data tells it does not exist.
+func TestKeyOfAMissingDataStore(t *testing.T) {
+	f := &fakeFetcher{}
+	st := NewState(newData())
+	_, err := newRenderer(`{{ key "prod/cfg/none" "host" }}`, f).Render(context.Background(), st)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.ErrorContains(t, err, "datastore prod/cfg/none")
+
+	out, res := doRender(t, newRenderer(`{{ keyOr "prod/cfg/none" "host" "dflt" }} {{ keyExists "prod/cfg/none" "host" }} {{ len (keyNames "prod/cfg/none") }}`, f), st)
+	assert.Equal(t, "dflt false 0", out)
+	assert.Equal(t, 0, f.fetches, "no api call for a datastore no node has")
+
+	// The datastore created, the reads change.
+	n := st.Data.Cluster.Node["n1"]
+	n.Instance["prod/cfg/none"] = instance.Instance{Config: &instance.Config{Checksum: "x"}}
+	assert.Len(t, Changed(res.Reads, st), 2)
 }
