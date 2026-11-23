@@ -29,10 +29,15 @@ func (t *CmdObjectKeyList) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	paths, err := objectselector.New(
-		mergedSelector,
-		objectselector.WithClient(c),
-	).Expand()
+	// A selector selecting no object is an error, as om answers it,
+	// unless --ignore-not-found.
+	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
+	var paths naming.Paths
+	if t.IgnoreNotFound {
+		paths, err = sel.ExpandRelaxed()
+	} else {
+		paths, err = sel.MustExpand()
+	}
 	if err != nil {
 		return err
 	}
