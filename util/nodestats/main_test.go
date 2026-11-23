@@ -167,3 +167,36 @@ func TestAddSadfCPULoadAll(t *testing.T) {
 		t.Errorf("the other groups: %v", stats)
 	}
 }
+
+// TestAddSadfTimezone pins the reading of the times of the samples in UTC
+// on a node whose zone is not: sysstat 12.7.1 dropped the "utc": 1 of the
+// timestamps for "tz": "UTC", and its samples were read as local times,
+// shifted out of the range asked for. A test run in UTC would see no shift:
+// the local zone is set to one with an offset.
+func TestAddSadfTimezone(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	require.NoError(t, err)
+	local := time.Local
+	time.Local = paris
+	t.Cleanup(func() { time.Local = local })
+
+	begin := time.Date(2026, 9, 30, 22, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 9, 30, 22, 15, 0, 0, time.UTC)
+	for _, fixture := range []string{"testdata/sadf.json", "testdata/sadf-12.7.json"} {
+		b, err := os.ReadFile(fixture)
+		require.NoError(t, err)
+		stats := Stats{}
+		require.NoError(t, stats.addSadf(b, begin, end), fixture)
+		cpu := stats["cpu"]
+		require.Len(t, cpu.Rows, 3, "%s: the sample in the range", fixture)
+		assert.Equal(t, "2026-09-30T22:10:03Z", cpu.Rows[0][0], fixture)
+		assert.Len(t, stats["mem_u"].Rows, 1, fixture)
+	}
+
+	// A zone other than UTC, from sadf -T, is the local one.
+	b := []byte(`{"sysstat": {"hosts": [{"statistics": [{"timestamp": {"date": "2026-10-01", "time": "00:10:03", "tz": "CEST"}, "queue": {"runq-sz": 1, "plist-sz": 2, "ldavg-1": 0.1, "ldavg-5": 0.1, "ldavg-15": 0.1, "blocked": 0}}]}]}}`)
+	stats := Stats{}
+	require.NoError(t, stats.addSadf(b, begin, end))
+	require.Len(t, stats["proc"].Rows, 1, "00:10:03 in Paris is 22:10:03 UTC, in the range")
+	assert.Equal(t, "2026-09-30T22:10:03Z", stats["proc"].Rows[0][0])
+}
