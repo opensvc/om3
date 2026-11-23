@@ -79,10 +79,19 @@ func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind na
 		}
 		if resp, err := c.GetObjectDataKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+		} else if resp.StatusCode() == http.StatusOK {
+			// The value of the key, as the peer answers it: an
+			// empty one is a value too.
+			contentType := resp.HTTPResponse.Header.Get(echo.HeaderContentType)
+			if contentType == "" {
+				contentType = "text/plain"
+			}
+			return ctx.Blob(http.StatusOK, contentType, resp.Body)
 		} else if len(resp.Body) > 0 {
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
 		}
 	}
 
-	return nil
+	// No node has an instance of the datastore.
+	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object %s not found", p)
 }
