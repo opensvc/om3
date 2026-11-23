@@ -2,11 +2,16 @@ package oxcmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/signal"
+	"slices"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/danwakefield/fnmatch"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusterdump"
@@ -54,8 +59,15 @@ type (
 		settling bool
 
 		// force asks a render at the next timer, whether a read
-		// changed or not.
-		force bool
+		// changed or not, for the reason forceReason.
+		force       bool
+		forceReason string
+
+		// pending are the events applied since the last render, and
+		// replayed the count of the events the stream replayed, kept
+		// with --debug only.
+		pending  []pendingEvent
+		replayed int
 
 		// dirtySince is the time of the first event not rendered yet,
 		// zero when none.
@@ -73,7 +85,21 @@ type (
 		gen int
 		err error
 	}
+
+	// pendingEvent is an event applied, as --debug tells it.
+	pendingEvent struct {
+		id   uint64
+		kind string
+		path string
+		node string
+	}
 )
+
+// maxPendingEvents bounds the events kept to tell which led to a render.
+const maxPendingEvents = 1000
+
+// maxLoggedEvents bounds the events logged for a render.
+const maxLoggedEvents = 20
 
 const (
 	reconnectMin = 100 * time.Millisecond
@@ -99,7 +125,7 @@ func (t *CmdTemplate) watch(r *tmplrender.Renderer, out *templateOutput) error {
 	if err != nil {
 		return err
 	}
-	r.Fetcher = &templateFetcher{c: c}
+	r.Fetcher = &templateFetcher{c: c, debugf: t.debugFunc()}
 	w := &templateWatcher{
 		cmd: t,
 		r:   r,
@@ -113,12 +139,14 @@ func (t *CmdTemplate) watch(r *tmplrender.Renderer, out *templateOutput) error {
 			if t.Node != "" {
 				getter = getter.SetNodename(t.Node)
 			}
+			t.debugf("api: GET /api/node/name/%s/daemon/event?replay=true filter=%s selector=%q",
+				nodeOrLocalhost(t.Node), strings.Join(sub.Filters(), ","), sub.Selector)
 			return getter.GetReader(ctx)
 		},
 	}
 	// The first render reads the cluster data of the api: one failing,
 	// as on a typo, ends the command.
-	data, err := getClusterData(c)
+	data, err := getClusterData(c, t.debugFunc())
 	if err != nil {
 		return err
 	}
@@ -127,6 +155,17 @@ func (t *CmdTemplate) watch(r *tmplrender.Renderer, out *templateOutput) error {
 
 func (w *templateWatcher) logf(format string, args ...any) {
 	w.cmd.logf(format, args...)
+}
+
+func (w *templateWatcher) debugf(format string, args ...any) {
+	w.cmd.debugf(format, args...)
+}
+
+func nodeOrLocalhost(node string) string {
+	if node == "" {
+		return "localhost"
+	}
+	return node
 }
 
 // run renders the template from data, writes it, and renders it again each
@@ -143,6 +182,7 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 	defer w.closeStream()
 
 	w.st = tmplrender.NewState(data)
+	w.debugf("render: first render, from the cluster status")
 	res, err := w.r.Render(ctx, w.st)
 	if err != nil {
 		return err
@@ -163,6 +203,7 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 			}
 			w.logf("template read again")
 			w.force = true
+			w.forceReason = "template read again on SIGHUP"
 			if !w.settling {
 				// While the stream replays, the render waits for
 				// the end of the replay.
@@ -215,6 +256,8 @@ func (w *templateWatcher) open(ctx context.Context) {
 	if g, ok := reader.(event.ServedByGetter); ok {
 		servedBy = g.GetServedBy()
 	}
+	w.debugf("events stream: subscribed to %s, selector %q, served by %s",
+		strings.Join(w.sub.Kinds, ","), w.sub.Selector, servedBy)
 	w.gen++
 	w.reader = reader
 	w.nextID = 0
@@ -223,6 +266,9 @@ func (w *templateWatcher) open(ctx context.Context) {
 	w.cdata = msgbus.NewClusterData(data)
 	w.settling = true
 	w.force = true
+	w.forceReason = "events stream opened, its replay settled"
+	w.pending = nil
+	w.replayed = 0
 	w.dirtySince = time.Now()
 	w.arm(w.quiet())
 	go func(gen int, reader event.ReadCloser) {
@@ -285,6 +331,9 @@ func (w *templateWatcher) onEvent(ctx context.Context, ev *event.Event) {
 		w.logf("event %d %s: %s", ev.ID, ev.Kind, err)
 		return
 	}
+	if w.cmd.Debug {
+		w.recordEvent(ev)
+	}
 	if m, ok := msg.(*msgbus.InstanceResourceInfoUpdated); ok {
 		w.st.ResourceInfo[tmplrender.ResourceInfoID(m.Path.String(), m.Node)] = m.Checksum
 	} else {
@@ -297,9 +346,17 @@ func (w *templateWatcher) onEvent(ctx context.Context, ev *event.Event) {
 }
 
 func (w *templateWatcher) onTimer(ctx context.Context) {
+	if w.settling {
+		w.debugf("events stream: replay settled, %d events applied", w.replayed)
+		w.replayed = 0
+	}
 	w.settling = false
 	w.dirtySince = time.Time{}
 	changed := tmplrender.Changed(w.reads, w.st)
+	if w.cmd.Debug {
+		w.logCauses(changed)
+	}
+	w.pending = nil
 	if !w.force && len(changed) == 0 {
 		return
 	}
@@ -371,4 +428,84 @@ func mergeReads(former, l []tmplrender.Read) []tmplrender.Read {
 		}
 	}
 	return merged
+}
+
+// recordEvent records the event ev applied, to tell which led to the next
+// render: during the replay, it is counted only.
+func (w *templateWatcher) recordEvent(ev *event.Event) {
+	if w.settling {
+		w.replayed++
+		return
+	}
+	if len(w.pending) >= maxPendingEvents {
+		return
+	}
+	var data struct {
+		Path string `json:"path"`
+		Node string `json:"node"`
+	}
+	_ = json.Unmarshal(ev.Data, &data)
+	w.pending = append(w.pending, pendingEvent{id: ev.ID, kind: ev.Kind, path: data.Path, node: data.Node})
+}
+
+// logCauses logs why a render is done, or not: the reads changed, and the
+// events applied since the last render that may have changed them.
+func (w *templateWatcher) logCauses(changed []string) {
+	if len(changed) == 0 {
+		if w.force {
+			w.debugf("render: %s", w.forceReason)
+		} else if len(w.pending) > 0 {
+			w.debugf("no render: %d events applied, no read changed", len(w.pending))
+		}
+		return
+	}
+	if w.force {
+		w.debugf("render: %s, and reads changed: %s", w.forceReason, strings.Join(changed, ", "))
+	} else {
+		w.debugf("render: reads changed: %s", strings.Join(changed, ", "))
+	}
+	reads := make(map[string]tmplrender.Read, len(w.reads))
+	for _, r := range w.reads {
+		reads[r.ID] = r
+	}
+	var causes []pendingEvent
+	for _, ev := range w.pending {
+		for _, id := range changed {
+			if eventConcerns(ev, reads[id]) {
+				causes = append(causes, ev)
+				break
+			}
+		}
+	}
+	for i, ev := range causes {
+		if i == maxLoggedEvents {
+			w.debugf("render: and %d events more", len(causes)-i)
+			break
+		}
+		at := ev.path
+		if ev.node != "" {
+			at += "@" + ev.node
+		}
+		w.debugf("render: caused by event %d %s %s", ev.id, ev.kind, strings.TrimPrefix(at, "@"))
+	}
+}
+
+// eventConcerns returns true when ev is of a kind the read r follows, of an
+// object it reads: the selection of r is matched term by term, a negation
+// ignored, which may tell a few events more than the ones selected.
+func eventConcerns(ev pendingEvent, r tmplrender.Read) bool {
+	if !slices.Contains(r.Kinds, ev.kind) {
+		return false
+	}
+	if r.Selection == "" || r.AllObjects || ev.path == "" {
+		return true
+	}
+	for _, term := range strings.Split(r.Selection, ",") {
+		for _, sub := range strings.Split(term, "+") {
+			if !strings.HasPrefix(sub, "!") && fnmatch.Match(sub, ev.path, 0) {
+				return true
+			}
+		}
+	}
+	return false
 }
