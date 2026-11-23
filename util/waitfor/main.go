@@ -70,8 +70,24 @@ func BoolCtx(ctx context.Context, expected bool, timeout, interval time.Duration
 			if fn() == expected {
 				return true
 			}
-			time.Sleep(interval)
+			if !sleepCtx(ctx, interval) {
+				return false
+			}
 		}
+	}
+}
+
+// sleepCtx sleeps interval, or until ctx is done, and says whether it slept
+// the whole interval: a wait ends with its timeout, not up to an interval
+// after, which a caller may have kept for what follows the wait.
+func sleepCtx(ctx context.Context, interval time.Duration) bool {
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
 	}
 }
 
@@ -115,7 +131,9 @@ func BoolNoErrorCtx(ctx context.Context, expected bool, timeout, interval time.D
 			} else if v == expected {
 				return true, nil
 			}
-			time.Sleep(interval)
+			if !sleepCtx(ctx, interval) {
+				return false, nil
+			}
 		}
 	}
 }
