@@ -202,6 +202,7 @@ func init() {
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
 		newCmdNodeUpdatepkg(),
+		newCmdNodeWol(),
 	)
 	cmdNodeConfig.AddCommand(
 		omcmd.NewCmdNodeConfigDoc(),

@@ -192,6 +192,7 @@ func init() {
 		newCmdNodeUnfreeze(),
 		newCmdNodeUpdate(),
 		newCmdNodeUnset(),
+		newCmdNodeWol(),
 	)
 	cmdNodePrint.AddCommand(
 		newCmdNodePrintConfig(),

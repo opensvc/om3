@@ -1450,6 +1450,29 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeWol() *cobra.Command {
+	var options commands.CmdNodeWol
+	cmd := &cobra.Command{
+		Use:     "wol",
+		Short:   "wake nodes on lan",
+		Long:    "Send Wake-on-LAN magic packets to wake the nodes with the --mac addresses, through each --broadcast address of their lan and each --port. The packets are sent from the local node, or from the --node selected nodes, which must be on the lan of the nodes to wake. The nodes to wake must have Wake-on-LAN enabled in their firmware and network interface.",
+		Example: "  ox node wol --mac 52:54:00:aa:bb:cc --broadcast 10.0.0.255\n  ox node wol --mac 52:54:00:aa:bb:cc,52:54:00:aa:bb:cd --broadcast 10.0.0.255 --port 7,9 --node n1",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagsWol(flags, &options.Macs, &options.Broadcasts, &options.Ports)
+	for _, name := range []string{"mac", "broadcast"} {
+		if err := cmd.MarkFlagRequired(name); err != nil {
+			panic(err)
+		}
+	}
+	return cmd
+}
+
 func newCmdObjectAbort(kind string) *cobra.Command {
 	var options commands.CmdObjectAbort
 	cmd := &cobra.Command{
