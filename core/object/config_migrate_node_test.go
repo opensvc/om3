@@ -241,6 +241,8 @@ dbcompliance = https://collector.example.com/init/compliance/call/xmlrpc
 
 [reboot]
 schedule = @1d
+once = false
+pre = yum upgrade -y
 
 [dequeue_actions]
 schedule = @1m
@@ -260,12 +262,13 @@ secret = abc
 [stats]
 schedule = @10m
 `)
-	assert.True(t, deleted(m, "reboot"))
+	assert.False(t, deleted(m, "reboot"), "the reboot triggers are read")
 	assert.True(t, deleted(m, "dequeue_actions"))
 	assert.False(t, deleted(m, "stats"), "the stats section is read")
-	for _, k := range []string{"node.default_mon_format", "node.dbopensvc", "node.dbcompliance", "arbitrator#1.timeout", "arbitrator#1.secret", "hb#1.secret"} {
+	for _, k := range []string{"node.default_mon_format", "node.dbopensvc", "node.dbcompliance", "reboot.schedule", "reboot.once", "arbitrator#1.timeout", "arbitrator#1.secret", "hb#1.secret"} {
 		assert.True(t, unset(m, k), "%s is dropped", k)
 	}
+	assert.False(t, unset(m, "reboot.pre"), "the reboot pre trigger is read")
 	assert.Empty(t, m.Refusals)
 }
 

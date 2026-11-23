@@ -124,6 +124,16 @@ var (
 		Order: 20,
 	}
 
+	// nodeGroupTriggers holds the commands the node runs around a node
+	// action, as the reboot. It keeps the id, name and order of the
+	// triggers group of the resource drivers.
+	nodeGroupTriggers = keywords.Group{
+		ID:    "triggers",
+		Name:  "Triggers",
+		Text:  keywords.NewText(fs, "text/group/node/triggers"),
+		Order: 140,
+	}
+
 	// nodeGroupAuthentication holds who the api accepts, and what it
 	// grants them.
 	nodeGroupAuthentication = keywords.Group{
@@ -358,6 +368,7 @@ var (
 		nodeGroupCertificates,
 		nodeGroupCreation,
 		nodeGroupHook,
+		nodeGroupTriggers,
 		nodeGroupAuthentication,
 		nodeGroupTools,
 		nodeGroupFilesystem,

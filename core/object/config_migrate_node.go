@@ -47,7 +47,8 @@ var NodeMigrationRules = MigrationRules{
 		apply: migrateBrocadeSchedule,
 	},
 	{
-		Doc: "What om no longer reads is removed: the reboot, rotate_root_pw, stats_collection and dequeue_actions sections, " +
+		Doc: "What om no longer reads is removed: the rotate_root_pw, stats_collection and dequeue_actions sections, " +
+			"the schedule and once of the reboot section, which om node reboot no longer runs on, " +
 			"node.default_mon_format, the timeout and the secret of an arbitrator, " +
 			"and the secret of a relay heartbeat that authenticates with a username.",
 		apply: migrateRemovedKeywords,
@@ -64,7 +65,7 @@ var NodeMigrationRules = MigrationRules{
 
 // removedNodeSections is the sections of a node or cluster configuration om
 // no longer reads anything of.
-var removedNodeSections = []string{"reboot", "rotate_root_pw", "stats_collection", "dequeue_actions"}
+var removedNodeSections = []string{"rotate_root_pw", "stats_collection", "dequeue_actions"}
 
 // migrateAliases writes the keywords written under a former name under their
 // name.
@@ -291,6 +292,7 @@ func migrateRemovedKeywords(cfg *xconfig.T, m *Migration) {
 		}
 	}
 	unset("node", "default_mon_format", "dbopensvc", "dbcompliance")
+	unset("reboot", "schedule", "once")
 	for _, section := range sectionsOf(cfg, "arbitrator") {
 		unset(section, "timeout", "secret")
 	}
