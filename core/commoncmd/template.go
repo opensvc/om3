@@ -20,6 +20,9 @@ a condition, in a range, or of a computed name, is followed when the data led
 the render to it. A render failing, as on a key removed, keeps the last file,
 and the command goes on watching. SIGHUP reads the template again.
 
+--debug logs the events stream subscription, the reads changed and the events
+leading to each render, and the api calls, never the values they return.
+
 Paths:
   A path is a full path, as prod/cfg/db, or relative to --namespace when its
   namespace is ".", as ./cfg/db. A path of two elements, as cfg/db, is of

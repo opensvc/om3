@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -18,6 +19,10 @@ type (
 	// event carries.
 	templateFetcher struct {
 		c *client.T
+
+		// debugf logs the api calls, never the values they return,
+		// when not nil.
+		debugf func(string, ...any)
 	}
 
 	statusCoder interface {
@@ -25,6 +30,21 @@ type (
 		Status() string
 	}
 )
+
+// logCall logs an api call begun at begin, with its response, or err.
+func (t *templateFetcher) logCall(begin time.Time, resp *http.Response, err error) {
+	if t.debugf == nil {
+		return
+	}
+	d := time.Since(begin).Round(time.Millisecond)
+	switch {
+	case err != nil:
+		t.debugf("api: %s", err)
+	case resp == nil || resp.Request == nil:
+	default:
+		t.debugf("api: %s %s: %s in %s", resp.Request.Method, resp.Request.URL.RequestURI(), resp.Status, d)
+	}
+}
 
 // apiError returns the error of a response neither 200 nor 404, with the
 // detail the api gives, never the value asked.
@@ -44,7 +64,9 @@ func apiError(what string, resp statusCoder, body []byte) error {
 }
 
 func (t *templateFetcher) DataKey(ctx context.Context, p naming.Path, name string) ([]byte, error) {
+	begin := time.Now()
 	resp, err := t.c.GetObjectDataKeyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &api.GetObjectDataKeyParams{Name: name})
+	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +81,9 @@ func (t *templateFetcher) DataKey(ctx context.Context, p naming.Path, name strin
 }
 
 func (t *templateFetcher) DataKeyNames(ctx context.Context, p naming.Path) ([]string, error) {
+	begin := time.Now()
 	resp, err := t.c.GetObjectDataKeysWithResponse(ctx, p.Namespace, p.Kind, p.Name, &api.GetObjectDataKeysParams{})
+	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +107,9 @@ func (t *templateFetcher) ConfigValue(ctx context.Context, p naming.Path, kw, no
 	if node != "" {
 		params.Impersonate = &node
 	}
+	begin := time.Now()
 	resp, err := t.c.GetObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
 		return "", err
 	}
@@ -105,7 +131,9 @@ func (t *templateFetcher) ConfigValue(ctx context.Context, p naming.Path, kw, no
 }
 
 func (t *templateFetcher) ResourceInfo(ctx context.Context, p naming.Path, node, rid, key string) (string, error) {
+	begin := time.Now()
 	resp, err := t.c.GetObjectResourceInfoWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
 		return "", err
 	}
@@ -123,4 +151,30 @@ func (t *templateFetcher) ResourceInfo(ctx context.Context, p naming.Path, node,
 	default:
 		return "", apiError(what, resp, resp.Body)
 	}
+}
+
+// httpResponse returns the http response of resp, nil when the call failed.
+func httpResponse(resp interface{ StatusCode() int }) *http.Response {
+	if resp == nil {
+		return nil
+	}
+	switch r := resp.(type) {
+	case *api.GetObjectDataKeyResponse:
+		if r != nil {
+			return r.HTTPResponse
+		}
+	case *api.GetObjectDataKeysResponse:
+		if r != nil {
+			return r.HTTPResponse
+		}
+	case *api.GetObjectConfigResponse:
+		if r != nil {
+			return r.HTTPResponse
+		}
+	case *api.GetObjectResourceInfoResponse:
+		if r != nil {
+			return r.HTTPResponse
+		}
+	}
+	return nil
 }

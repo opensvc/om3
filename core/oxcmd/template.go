@@ -33,6 +33,10 @@ type (
 		Namespace     string
 		Node          string
 		Vars          []string
+
+		// Debug logs the events subscribed, the events leading to a
+		// render, and the api calls.
+		Debug bool
 	}
 )
 
@@ -115,8 +119,8 @@ func (t *CmdTemplate) Run() error {
 	if err != nil {
 		return err
 	}
-	r.Fetcher = &templateFetcher{c: c}
-	data, err := getClusterData(c)
+	r.Fetcher = &templateFetcher{c: c, debugf: t.debugFunc()}
+	data, err := getClusterData(c, t.debugFunc())
 	if err != nil {
 		return err
 	}
@@ -145,8 +149,12 @@ func (t *CmdTemplate) Run() error {
 
 // getClusterData returns the cluster data, as the node serving the api sees
 // it.
-func getClusterData(c *client.T) (*clusterdump.Data, error) {
+func getClusterData(c *client.T, debugf func(string, ...any)) (*clusterdump.Data, error) {
+	begin := time.Now()
 	b, err := c.NewGetClusterStatus().Get()
+	if debugf != nil {
+		debugf("api: GET /api/cluster/status: %d bytes in %s, error: %v", len(b), time.Since(begin).Round(time.Millisecond), err)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +169,21 @@ func (t *CmdTemplate) warnMode(out *templateOutput, res tmplrender.Result) {
 	if res.ReadsSecret && out.isGroupOrWorldReadable() {
 		t.logf("warning: %s holds sec keys, and its mode %04o lets others than its owner read it", t.Out, *out.mode)
 	}
+}
+
+// debugf logs a message on the standard error with --debug.
+func (t *CmdTemplate) debugf(format string, args ...any) {
+	if t.Debug {
+		t.logf("debug: "+format, args...)
+	}
+}
+
+// debugFunc returns debugf with --debug, nil without.
+func (t *CmdTemplate) debugFunc() func(string, ...any) {
+	if !t.Debug {
+		return nil
+	}
+	return t.debugf
 }
 
 // logf logs a message on the standard error. A message never holds a value

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -205,7 +206,7 @@ type watchTest struct {
 
 // startWatch watches the template text, with the object prod/svc/web up in
 // the first cluster data.
-func startWatch(t *testing.T, text string) *watchTest {
+func startWatch(t *testing.T, text string, opts ...func(*CmdTemplate)) *watchTest {
 	settleQuiet = 50 * time.Millisecond
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in.tpl")
@@ -227,6 +228,9 @@ func startWatch(t *testing.T, text string) *watchTest {
 		MaxDelay:      time.Second,
 		ReloadTimeout: time.Second,
 	}
+	for _, opt := range opts {
+		opt(cmd)
+	}
 	r, out, err := cmd.prepare()
 	require.NoError(t, err)
 	w := &templateWatcher{cmd: cmd, r: r, out: out, openStream: wt.streams.open}
@@ -244,6 +248,7 @@ func (wt *watchTest) stop() {
 	wt.cancel()
 	select {
 	case <-wt.done:
+		wt.done <- nil
 	case <-time.After(5 * time.Second):
 		wt.t.Error("the watch did not stop")
 	}
@@ -377,4 +382,49 @@ func TestWatchKeepsItsSubscriptionOnAFailedRender(t *testing.T) {
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web2", status.Down, time.Now()))
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
 	wt.eventually(func() bool { return wt.content() == "up down" }, "render with both")
+}
+
+func TestEventConcerns(t *testing.T) {
+	read := tmplrender.Read{Kinds: []string{"ObjectStatusUpdated"}, Selection: "prod/svc/web*,prod/cfg/*+!prod/cfg/x"}
+	assert.True(t, eventConcerns(pendingEvent{kind: "ObjectStatusUpdated", path: "prod/svc/web1"}, read))
+	assert.True(t, eventConcerns(pendingEvent{kind: "ObjectStatusUpdated", path: "prod/cfg/db"}, read))
+	assert.False(t, eventConcerns(pendingEvent{kind: "ObjectStatusUpdated", path: "prod/svc/db"}, read))
+	assert.False(t, eventConcerns(pendingEvent{kind: "InstanceStatusUpdated", path: "prod/svc/web1"}, read))
+
+	// A read of node data, or of every object, is concerned by any event
+	// of its kinds.
+	all := tmplrender.Read{Kinds: []string{"NodeConfigUpdated"}}
+	assert.True(t, eventConcerns(pendingEvent{kind: "NodeConfigUpdated", node: "n1"}, all))
+}
+
+func TestWatchDebug(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	stderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = stderr }()
+
+	wt := startWatch(t, `{{ avail "prod/svc/web" }}`, func(c *CmdTemplate) { c.Debug = true })
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "down" }, "render")
+	wt.stop()
+	_ = w.Close()
+	os.Stderr = stderr
+	b, _ := io.ReadAll(r)
+	log := string(b)
+	for _, s := range []string{
+		"debug: render: first render, from the cluster status",
+		"debug: events stream: subscribed to ObjectStatusDeleted,ObjectStatusUpdated, selector \"prod/svc/web\", served by n1",
+		"debug: events stream: replay settled, 1 events applied",
+		"debug: no render: 1 events applied, no read changed",
+		"debug: render: reads changed: avail prod/svc/web",
+		"debug: render: caused by event 3 ObjectStatusUpdated prod/svc/web@n1",
+	} {
+		assert.Contains(t, log, s)
+	}
 }
