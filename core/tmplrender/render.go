@@ -249,7 +249,17 @@ func (r *render) dataStoreRead(id string, p naming.Path) {
 	})
 }
 
+// dataStoreExists returns true when a node has an instance of the datastore
+// p. The api answers no error for a key of a datastore no node has, but an
+// empty value.
+func (r *render) dataStoreExists(p naming.Path) bool {
+	return len(dataStoreChecksums(r.st.Data, p.String())) > 0
+}
+
 func (r *render) fetchKey(p naming.Path, name string) (string, error) {
+	if !r.dataStoreExists(p) {
+		return "", ErrNotFound
+	}
 	b, err := fetch(r, "key "+p.String()+" "+name, func() ([]byte, error) {
 		return r.t.Fetcher.DataKey(r.ctx, p, name)
 	})
@@ -266,6 +276,9 @@ func (r *render) key(path, name string) (string, error) {
 	r.dataStoreRead("key "+p.String()+" "+name, p)
 	s, err := r.fetchKey(p, name)
 	if errors.Is(err, ErrNotFound) {
+		if !r.dataStoreExists(p) {
+			return "", fmt.Errorf("datastore %s: %w", p, ErrNotFound)
+		}
 		return "", fmt.Errorf("key %s of %s: %w", name, p, ErrNotFound)
 	}
 	return s, err
@@ -303,6 +316,9 @@ func (r *render) keyNames(path string, pattern ...string) ([]string, error) {
 		return nil, err
 	}
 	r.dataStoreRead("keyNames "+p.String(), p)
+	if !r.dataStoreExists(p) {
+		return []string{}, nil
+	}
 	l, err := fetch(r, "keyNames "+p.String(), func() ([]string, error) {
 		return r.t.Fetcher.DataKeyNames(r.ctx, p)
 	})
