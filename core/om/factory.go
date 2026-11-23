@@ -1613,6 +1613,40 @@ over a service declaring stonith=true`,
 	return cmd
 }
 
+func newCmdNodeReboot() *cobra.Command {
+	var options commands.CmdNodeReboot
+	cmd := &cobra.Command{
+		Use:   "reboot",
+		Short: "reboot the node",
+		Long:  "Reboot the node, after the reboot.pre trigger, whose errors are ignored, and the reboot.blocking_pre trigger, whose errors abort the reboot. The services are not drained first: the init system stops the daemon and the services it runs on the way down, use om node drain before to move them to a peer. With --node, the answer is sent before the node goes down, and does not tell it went down.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdNodeShutdown() *cobra.Command {
+	var options commands.CmdNodeShutdown
+	cmd := &cobra.Command{
+		Use:   "shutdown",
+		Short: "power off the node",
+		Long:  "Power off the node. The services are not drained first: the init system stops the daemon and the services it runs on the way down, use om node drain before to move them to a peer. With --node, the answer is sent before the node goes down, and does not tell it went down.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
+	return cmd
+}
+
 func newCmdNodeSysreport() *cobra.Command {
 	var options commands.CmdNodeSysreport
 	cmd := &cobra.Command{
