@@ -43,7 +43,6 @@ type (
 		MountOptions    string         `json:"mnt_opt"`
 		StatTimeout     *time.Duration `json:"stat_timeout"`
 		Zone            string         `json:"zone"`
-		PRKey           string         `json:"prkey"`
 		MKFSOptions     []string       `json:"mkfs_opt"`
 		User            *user.User     `json:"user"`
 		Group           *user.Group    `json:"group"`

@@ -1,1 +1,6 @@
 The scsi3 persistent reservation key used by the pr resources.
+
+The key is set on every node, whether or not a resource enables the scsi
+persistent reservation: it is registered only on the devices of the
+resources setting `scsireserv=true`. Each node must have a key of its own:
+the daemon warns when peers share one.
