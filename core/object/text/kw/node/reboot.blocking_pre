@@ -1,0 +1,4 @@
+A command or script to execute before `om node reboot`, after `reboot.pre`.
+
+Errors abort the reboot, as a patching command that failed would leave the
+node half updated.

@@ -4644,6 +4644,11 @@ type PostNodeActionPushPkgParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostNodeActionRebootParams defines parameters for PostNodeActionReboot.
+type PostNodeActionRebootParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+}
+
 // PostNodeActionRegisterParams defines parameters for PostNodeActionRegister.
 type PostNodeActionRegisterParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
@@ -4666,6 +4671,11 @@ type PostNodeActionSCSIScanParams struct {
 
 	// Lun Specify a logical unit number to scan for new block devices.
 	Lun *InQueryLUN `form:"lun,omitempty" json:"lun,omitempty"`
+}
+
+// PostNodeActionShutdownParams defines parameters for PostNodeActionShutdown.
+type PostNodeActionShutdownParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
 // PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.

@@ -250,6 +250,9 @@ type ClientInterface interface {
 	// PostNodeActionPushPkg request
 	PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionReboot request
+	PostNodeActionReboot(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRebootParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNodeActionRegisterWithBody request with any body
 	PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -260,6 +263,9 @@ type ClientInterface interface {
 
 	// PostNodeActionSCSIScan request
 	PostNodeActionSCSIScan(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeActionShutdown request
+	PostNodeActionShutdown(ctx context.Context, nodename InPathNodeName, params *PostNodeActionShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostNodeActionSysreport request
 	PostNodeActionSysreport(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1548,6 +1554,18 @@ func (c *Client) PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeN
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostNodeActionReboot(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRebootParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionRebootRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeActionRegisterRequestWithBody(c.Server, nodename, params, contentType, body)
 	if err != nil {
@@ -1586,6 +1604,18 @@ func (c *Client) PostNodeActionScanCapabilities(ctx context.Context, nodename In
 
 func (c *Client) PostNodeActionSCSIScan(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeActionSCSIScanRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionShutdown(ctx context.Context, nodename InPathNodeName, params *PostNodeActionShutdownParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionShutdownRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -6329,6 +6359,67 @@ func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, par
 	return req, nil
 }
 
+// NewPostNodeActionRebootRequest generates requests for PostNodeActionReboot
+func NewPostNodeActionRebootRequest(server string, nodename InPathNodeName, params *PostNodeActionRebootParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/reboot", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostNodeActionRegisterRequest calls the generic PostNodeActionRegister builder with application/json body
 func NewPostNodeActionRegisterRequest(server string, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -6538,6 +6629,67 @@ func NewPostNodeActionSCSIScanRequest(server string, nodename InPathNodeName, pa
 		if params.Lun != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "lun", *params.Lun, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionShutdownRequest generates requests for PostNodeActionShutdown
+func NewPostNodeActionShutdownRequest(server string, nodename InPathNodeName, params *PostNodeActionShutdownParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/shutdown", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -22097,6 +22249,9 @@ type ClientWithResponsesInterface interface {
 	// PostNodeActionPushPkgWithResponse request
 	PostNodeActionPushPkgWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPkgResponse, error)
 
+	// PostNodeActionRebootWithResponse request
+	PostNodeActionRebootWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRebootParams, reqEditors ...RequestEditorFn) (*PostNodeActionRebootResponse, error)
+
 	// PostNodeActionRegisterWithBodyWithResponse request with any body
 	PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
 
@@ -22107,6 +22262,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostNodeActionSCSIScanWithResponse request
 	PostNodeActionSCSIScanWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*PostNodeActionSCSIScanResponse, error)
+
+	// PostNodeActionShutdownWithResponse request
+	PostNodeActionShutdownWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionShutdownParams, reqEditors ...RequestEditorFn) (*PostNodeActionShutdownResponse, error)
 
 	// PostNodeActionSysreportWithResponse request
 	PostNodeActionSysreportWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*PostNodeActionSysreportResponse, error)
@@ -24314,6 +24472,39 @@ func (r PostNodeActionPushPkgResponse) ContentType() string {
 	return ""
 }
 
+type PostNodeActionRebootResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionRebootResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionRebootResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostNodeActionRebootResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PostNodeActionRegisterResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24408,6 +24599,39 @@ func (r PostNodeActionSCSIScanResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostNodeActionSCSIScanResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostNodeActionShutdownResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionShutdownResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionShutdownResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostNodeActionShutdownResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31553,6 +31777,15 @@ func (c *ClientWithResponses) PostNodeActionPushPkgWithResponse(ctx context.Cont
 	return ParsePostNodeActionPushPkgResponse(rsp)
 }
 
+// PostNodeActionRebootWithResponse request returning *PostNodeActionRebootResponse
+func (c *ClientWithResponses) PostNodeActionRebootWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRebootParams, reqEditors ...RequestEditorFn) (*PostNodeActionRebootResponse, error) {
+	rsp, err := c.PostNodeActionReboot(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionRebootResponse(rsp)
+}
+
 // PostNodeActionRegisterWithBodyWithResponse request with arbitrary body returning *PostNodeActionRegisterResponse
 func (c *ClientWithResponses) PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
 	rsp, err := c.PostNodeActionRegisterWithBody(ctx, nodename, params, contentType, body, reqEditors...)
@@ -31586,6 +31819,15 @@ func (c *ClientWithResponses) PostNodeActionSCSIScanWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePostNodeActionSCSIScanResponse(rsp)
+}
+
+// PostNodeActionShutdownWithResponse request returning *PostNodeActionShutdownResponse
+func (c *ClientWithResponses) PostNodeActionShutdownWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionShutdownParams, reqEditors ...RequestEditorFn) (*PostNodeActionShutdownResponse, error) {
+	rsp, err := c.PostNodeActionShutdown(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionShutdownResponse(rsp)
 }
 
 // PostNodeActionSysreportWithResponse request returning *PostNodeActionSysreportResponse
@@ -35993,6 +36235,53 @@ func ParsePostNodeActionPushPkgResponse(rsp *http.Response) (*PostNodeActionPush
 	return response, nil
 }
 
+// ParsePostNodeActionRebootResponse parses an HTTP response from a PostNodeActionRebootWithResponse call
+func ParsePostNodeActionRebootResponse(rsp *http.Response) (*PostNodeActionRebootResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionRebootResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostNodeActionRegisterResponse parses an HTTP response from a PostNodeActionRegisterWithResponse call
 func ParsePostNodeActionRegisterResponse(rsp *http.Response) (*PostNodeActionRegisterResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -36103,6 +36392,53 @@ func ParsePostNodeActionSCSIScanResponse(rsp *http.Response) (*PostNodeActionSCS
 	}
 
 	response := &PostNodeActionSCSIScanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionShutdownResponse parses an HTTP response from a PostNodeActionShutdownWithResponse call
+func ParsePostNodeActionShutdownResponse(rsp *http.Response) (*PostNodeActionShutdownResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionShutdownResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

@@ -1141,6 +1141,20 @@ var (
 		Section:   "stonith",
 		Text:      keywords.NewText(fs, "text/kw/node/stonith.command"),
 	}
+	kwNodeRebootPre = keywords.Keyword{
+		Example: "yum upgrade -y",
+		Option:  "pre",
+		Group:   nodeGroupTriggers.ID,
+		Section: "reboot",
+		Text:    keywords.NewText(fs, "text/kw/node/reboot.pre"),
+	}
+	kwNodeRebootBlockingPre = keywords.Keyword{
+		Example: "yum upgrade -y",
+		Option:  "blocking_pre",
+		Group:   nodeGroupTriggers.ID,
+		Section: "reboot",
+		Text:    keywords.NewText(fs, "text/kw/node/reboot.blocking_pre"),
+	}
 	kwNodeHBType = keywords.Keyword{
 		Candidates: []string{"unicast", "multicast", "disk", "relay"},
 		Option:     "type",
@@ -2363,6 +2377,8 @@ var (
 		&kwNodeArbitratorInsecure,
 		&kwNodeArbitratorWeight,
 		&kwNodeStonithCommand,
+		&kwNodeRebootPre,
+		&kwNodeRebootBlockingPre,
 		&kwNodeHBType,
 		&kwNodeHBUnicastAddr,
 		&kwNodeHBUnicastIntf,

@@ -1,0 +1,3 @@
+A command or script to execute before `om node reboot`.
+
+Errors are logged and ignored: the node reboots anyway.
