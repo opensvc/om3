@@ -84,7 +84,9 @@ func apiError(what string, resp statusCoder, body []byte) error {
 		detail += " (reading a sec key needs the secreader or the admin role on its namespace)"
 	}
 	err := fmt.Errorf("%s: %s", what, detail)
-	if resp.StatusCode() >= http.StatusInternalServerError {
+	// A daemon limiting the rate of the requests, or failing, may answer
+	// later: the render is tried again.
+	if resp.StatusCode() == http.StatusTooManyRequests || resp.StatusCode() >= http.StatusInternalServerError {
 		return transient(err)
 	}
 	return err

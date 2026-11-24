@@ -74,13 +74,18 @@ func dropVolatile(v any) {
 // all of them when sel is empty. Only the path terms of the selector syntax
 // are allowed: a term about the configuration, as app=foo, needs the
 // configuration files, a client does not have.
+//
+// The terms are combined here, the union of the comma separated ones, the
+// intersection of the + separated ones, the complement of a ! one, each
+// expanded alone: a term naming an object not there selects none, rather
+// than failing the selector, so !prod/svc/gone selects all the objects.
 func selectPaths(sel string, paths []string) (map[string]bool, error) {
-	m := make(map[string]bool)
+	all := make(map[string]bool, len(paths))
+	for _, s := range paths {
+		all[s] = true
+	}
 	if sel == "" {
-		for _, s := range paths {
-			m[s] = true
-		}
-		return m, nil
+		return all, nil
 	}
 	l := make(naming.Paths, 0, len(paths))
 	for _, s := range paths {
@@ -88,20 +93,64 @@ func selectPaths(sel string, paths []string) (map[string]bool, error) {
 			l = append(l, p)
 		}
 	}
-	selection := objectselector.New(sel,
-		objectselector.WithPaths(l),
-		objectselector.WithLocal(true),
-		objectselector.WithConfigFilterDisabled(),
-	)
-	if err := selection.CheckFilters(); err != nil {
+	check := objectselector.New(sel, objectselector.WithPaths(l), objectselector.WithConfigFilterDisabled())
+	if err := check.CheckFilters(); err != nil {
 		return nil, err
 	}
-	selected, err := selection.Expand()
-	if err != nil && !errors.Is(err, xerrors.ObjectNotFound) {
-		return nil, err
+	expandOne := func(term string) (map[string]bool, error) {
+		selection := objectselector.New(term,
+			objectselector.WithPaths(l),
+			objectselector.WithLocal(true),
+			objectselector.WithConfigFilterDisabled(),
+		)
+		selected, err := selection.Expand()
+		if err != nil && !errors.Is(err, xerrors.ObjectNotFound) {
+			return nil, err
+		}
+		m := make(map[string]bool, len(selected))
+		for _, p := range selected {
+			m[p.String()] = true
+		}
+		return m, nil
 	}
-	for _, p := range selected {
-		m[p.String()] = true
+	m := make(map[string]bool)
+	for _, union := range strings.Split(sel, ",") {
+		if union == "" {
+			continue
+		}
+		var inter map[string]bool
+		for _, term := range strings.Split(union, "+") {
+			negate := strings.HasPrefix(term, "!")
+			term = strings.TrimLeft(term, "!")
+			if term == "" {
+				continue
+			}
+			sub, err := expandOne(term)
+			if err != nil {
+				return nil, err
+			}
+			if negate {
+				complement := make(map[string]bool, len(all))
+				for s := range all {
+					if !sub[s] {
+						complement[s] = true
+					}
+				}
+				sub = complement
+			}
+			if inter == nil {
+				inter = sub
+				continue
+			}
+			for s := range inter {
+				if !sub[s] {
+					delete(inter, s)
+				}
+			}
+		}
+		for s := range inter {
+			m[s] = true
+		}
 	}
 	return m, nil
 }

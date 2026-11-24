@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/tmplrender"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
@@ -115,9 +117,21 @@ func TestCheckReloadCommand(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "notexec")
 	require.NoError(t, os.WriteFile(p, []byte("x"), 0o644))
-	require.ErrorContains(t, checkReloadCommand(p), "not an executable")
-	require.Error(t, checkReloadCommand(filepath.Join(dir, "missing")))
-	require.NoError(t, checkReloadCommand(""))
+	_, err := checkReloadCommand(p)
+	require.ErrorContains(t, err, "not an executable")
+	_, err = checkReloadCommand(filepath.Join(dir, "missing"))
+	require.Error(t, err)
+	abs, err := checkReloadCommand("")
+	require.NoError(t, err)
+	assert.Empty(t, abs)
+
+	// A name with no slash is the file of the current directory, run by
+	// its absolute path, not looked up in the PATH.
+	writeScript(t, dir, "reload", "true")
+	t.Chdir(dir)
+	abs, err = checkReloadCommand("reload")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, "reload"), abs)
 }
 
 // fakeStream is an events stream a test feeds.
@@ -507,13 +521,17 @@ templates:
 	_, err = (&CmdTemplate{Config: cfg, In: a}).prepare()
 	require.ErrorContains(t, err, "--config names the templates")
 
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
 	for name, content := range map[string]string{
-		"unknown key": "templates:\n  - in: " + a + "\n    out: x\n    oops: 1\n",
-		"no out":      "templates:\n  - in: " + a + "\n",
-		"stdout":      "templates:\n  - in: " + a + "\n    out: \"-\"\n",
-		"same out":    "templates:\n  - in: " + a + "\n    out: x\n  - in: " + b + "\n    out: ./x\n",
-		"empty":       "",
-		"bad timeout": "templates:\n  - in: " + a + "\n    out: x\n    reload_timeout: soon\n",
+		"unknown key":   "templates:\n  - in: " + a + "\n    out: x\n    oops: 1\n",
+		"no out":        "templates:\n  - in: " + a + "\n",
+		"stdout":        "templates:\n  - in: " + a + "\n    out: \"-\"\n",
+		"same out":      "templates:\n  - in: " + a + "\n    out: x\n  - in: " + b + "\n    out: ./x\n",
+		"empty":         "",
+		"bad timeout":   "templates:\n  - in: " + a + "\n    out: x\n    reload_timeout: soon\n",
+		"two documents": "templates:\n  - in: " + a + "\n    out: x\n---\ntemplates:\n  - in: " + b + "\n    out: y\n",
+		"aliased out":   "templates:\n  - in: " + a + "\n    out: x\n  - in: " + b + "\n    out: " + filepath.Join(cwd, "x") + "\n",
 	} {
 		p := writeFile(t, dir, "bad.yaml", content)
 		_, err := (&CmdTemplate{Config: p}).prepare()
@@ -674,10 +692,9 @@ func TestWatchServedByFallsBackToNode(t *testing.T) {
 	in := writeFile(t, dir, "in.tpl", `{{ avail "prod/svc/web" }}`)
 	wt := &watchTest{t: t, out: filepath.Join(dir, "out"), streams: &fakeStreams{noServedBy: true}, done: make(chan error, 1), hupC: make(chan os.Signal, 1)}
 	wt.run(&CmdTemplate{In: in, Out: wt.out, Watch: true, Node: "n1", Delay: 50 * time.Millisecond, MaxDelay: time.Second})
-	wt.eventually(func() bool { return wt.content() == "up" }, "first render")
 	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
-	time.Sleep(200 * time.Millisecond)
+	wt.eventually(func() bool { return wt.content() == "up" }, "first file, from the events of the node asked")
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
 	wt.eventually(func() bool { return wt.content() == "down" }, "the status of the node asked is followed")
 }
@@ -904,4 +921,28 @@ func TestWatchReopensWithNoReplayDone(t *testing.T) {
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
 	wt.streams.sendReplayDone(t)
 	wt.eventually(func() bool { return wt.content() == "down" }, "render at the end of the replay")
+}
+
+// A daemon limiting the rate of the requests answers later: a 429 is retried
+// as a failure of the daemon is.
+func TestAPIErrorTransient(t *testing.T) {
+	for code, want := range map[int]bool{429: true, 500: true, 503: true, 400: false, 403: false} {
+		resp := &api.GetObjectDataKeyResponse{HTTPResponse: &http.Response{StatusCode: code, Status: http.StatusText(code)}}
+		assert.Equal(t, want, isTransient(apiError("key", resp, nil)), code)
+	}
+}
+
+// With --node, the first render, from the cluster data of the node serving the
+// api, is not written: the file is written from the events of the node asked.
+func TestWatchWithNodeWritesFromItsEvents(t *testing.T) {
+	settleQuiet = 50 * time.Millisecond
+	dir := t.TempDir()
+	in := writeFile(t, dir, "in.tpl", `{{ avail "prod/svc/web" }}`)
+	wt := &watchTest{t: t, out: filepath.Join(dir, "out"), streams: &fakeStreams{}, done: make(chan error, 1), hupC: make(chan os.Signal, 1)}
+	wt.run(&CmdTemplate{In: in, Out: wt.out, Watch: true, Node: "n1", Delay: 50 * time.Millisecond, MaxDelay: time.Second})
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	_, err := os.Stat(wt.out)
+	assert.True(t, os.IsNotExist(err), "no file from the cluster data of the api")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "down" }, "file written from the events of the node asked")
 }

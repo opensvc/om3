@@ -221,7 +221,16 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-	retry := w.apply(w.jobs, results)
+	var retry bool
+	if w.cmd.Node == "" {
+		retry = w.apply(w.jobs, results)
+	} else {
+		// The cluster data of the api is the one of the node serving
+		// it, not of the --node asked: the first render tells the
+		// templates render, and what they read, but the files are
+		// written from the events of the node asked, once replayed.
+		w.debugf("render: first render not written: the files are written from the events of %s", w.cmd.Node)
+	}
 	w.open(ctx)
 	if retry && w.reader == nil {
 		w.arm(writeRetry)
@@ -275,6 +284,8 @@ func (w *templateWatcher) backoff() time.Duration {
 // and renders once it replayed the current data. With no event to ask, the
 // template reads nothing to watch, and no stream is opened.
 func (w *templateWatcher) open(ctx context.Context) {
+	// A reconnect armed by a former stream's error would close this one.
+	w.reconnect.Stop()
 	w.closeStream()
 	w.sub = tmplrender.SubscriptionOf(w.reads())
 	if len(w.sub.Kinds) == 0 {

@@ -91,7 +91,7 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     * the nodes and the networks: `nodes`, by name pattern or `label=value`, `nodeLabel`, `networks`.
     * the helpers `contains hasPrefix hasSuffix lower upper trim trimPrefix trimSuffix replace split fields join quote indent nindent default toJSON fromJSON toYAML b64enc b64dec sha256sum reMatch fnMatch sortAlpha`, none reading the environment or running a command.
 
-    A range takes an object selector of path patterns joined by `,`, `+` and `!`, and follows the events of every object of the cluster when it has none. The fields are named as the api names them, in snake case: `.path`, `.node`, `.avail`, `.status`, `.rid`. A path is the full one, `prod/cfg/db`, or relative to `--namespace` in the `.` namespace, `./cfg/db`, `cfg/db` naming one of the root namespace.
+    A range takes an object selector of path patterns joined by `,`, `+` and `!`, a term naming an object not there selecting none and its negation all, and follows the events of every object of the cluster when it has none. The fields are named as the api names them, in snake case: `.path`, `.node`, `.avail`, `.status`, `.rid`. A path is the full one, `prod/cfg/db`, or relative to `--namespace` in the `.` namespace, `./cfg/db`, `cfg/db` naming one of the root namespace.
 
     A hosts file of the up ip resources, kept up to date:
 

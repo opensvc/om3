@@ -5177,7 +5177,7 @@ func newCmdTemplate() *cobra.Command {
 	flags.StringVar(&options.User, "user", "", "the owner of the file, by name or id (default: the owner of the file replaced)")
 	flags.StringVar(&options.Group, "group", "", "the group of the file, by name or id (default: the group of the file replaced)")
 	flags.StringVar(&options.Namespace, "namespace", "", "the namespace of the paths of the \".\" namespace, as ./cfg/db")
-	flags.StringVar(&options.Node, "node", "", "with --watch, the node serving the events (default: the node serving the api)")
+	flags.StringVar(&options.Node, "node", "", "with --watch, the node serving the events, whose cluster data the files are written from (default: the node serving the api)")
 	flags.StringArrayVar(&options.Vars, "var", nil, "a template data key=value, read as .key (repeatable)")
 	flags.BoolVar(&options.Debug, "debug", false, "log the events subscribed, the events leading to a render, and the api calls")
 	return cmd

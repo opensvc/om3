@@ -326,3 +326,21 @@ func TestKeyOfAMissingDataStore(t *testing.T) {
 	n.Instance["prod/cfg/none"] = instance.Instance{Config: &instance.Config{Checksum: "x"}}
 	assert.Len(t, Changed(res.Reads, st), 2)
 }
+
+// A term naming an object not there selects none, rather than failing the
+// selector: a negation of it selects every object.
+func TestSelectorTerms(t *testing.T) {
+	st := NewState(newData())
+	for sel, want := range map[string]string{
+		"!prod/svc/missing":             "prod/cfg/db prod/svc/db prod/svc/web ",
+		"prod/svc/*+!prod/svc/db":       "prod/svc/web ",
+		"prod/svc/missing,prod/svc/web": "prod/svc/web ",
+		"prod/svc/*+!prod/svc/missing":  "prod/svc/db prod/svc/web ",
+		"prod/svc/missing":              "",
+		"prod/svc/web,prod/cfg/*":       "prod/cfg/db prod/svc/web ",
+		"prod/svc/*+prod/svc/w*":        "prod/svc/web ",
+	} {
+		out, _ := doRender(t, newRenderer(`{{ range objects "`+sel+`" }}{{ .path }} {{ end }}`, nil), st)
+		assert.Equal(t, want, out, sel)
+	}
+}

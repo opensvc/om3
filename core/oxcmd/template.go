@@ -134,6 +134,13 @@ func (t *CmdTemplate) prepareConfig() ([]*templateJob, error) {
 	if err := dec.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("%s: %w", t.Config, err)
 	}
+	// A second yaml document would be ignored: the file is refused, as
+	// on SIGHUP the former templates are kept rather than the first
+	// document's taken.
+	var more any
+	if err := dec.Decode(&more); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%s: a single yaml document is expected", t.Config)
+	}
 	if len(cfg.Templates) == 0 {
 		return nil, fmt.Errorf("%s: no templates", t.Config)
 	}
@@ -151,7 +158,12 @@ func (t *CmdTemplate) prepareConfig() ([]*templateJob, error) {
 		if e.In == "-" || e.Out == "-" {
 			return nil, fmt.Errorf("%s: the standard input and output are for --in and --out", where)
 		}
-		out := filepath.Clean(e.Out)
+		// Compared as absolute paths: generated.cfg and
+		// /current/dir/generated.cfg are one file.
+		out, err := filepath.Abs(e.Out)
+		if err != nil {
+			return nil, fmt.Errorf("%s: out: %w", where, err)
+		}
 		if j, ok := outs[out]; ok {
 			return nil, fmt.Errorf("%s: out %s is the out of templates[%d] too", where, e.Out, j)
 		}
@@ -189,7 +201,8 @@ func (t *CmdTemplate) data(vars map[string]string) (map[string]any, error) {
 }
 
 func (t *CmdTemplate) newJob(in, out, mode, usr, grp, reloadCommand string, reloadTimeout time.Duration, data map[string]any) (*templateJob, error) {
-	if err := checkReloadCommand(reloadCommand); err != nil {
+	reloadCommand, err := checkReloadCommand(reloadCommand)
+	if err != nil {
 		return nil, err
 	}
 	job := &templateJob{
@@ -355,6 +368,11 @@ func getClusterData(c *client.T, debugf func(string, ...any)) (*clusterdump.Data
 		debugf("api: GET /api/cluster/status: %d bytes in %s, error: %v", len(b), time.Since(begin).Round(time.Millisecond), err)
 	}
 	if err != nil {
+		if strings.Contains(err.Error(), "403") {
+			// A secreader alone reads the sec keys, not the
+			// cluster data the templates are rendered from.
+			return nil, fmt.Errorf("get the cluster data, which needs the guest role along with the secreader one: %w", err)
+		}
 		return nil, err
 	}
 	data := clusterdump.NewData("")

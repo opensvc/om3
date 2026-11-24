@@ -69,7 +69,8 @@ Datastore keys (cfg and sec, read through the api):
   keyNames "path" ["glob"]     the sorted key names
 
   Reading a sec key needs the secreader role on its namespace, which reads
-  the sec keys and nothing else, or the admin one. A sec read with a --mode
+  the sec keys and nothing else, or the admin one; the cluster data and the
+  key names need the guest one with it. A sec read with a --mode
   letting others read the file is warned about.
 
 Keywords, as a node evaluates them:
@@ -98,7 +99,8 @@ Nodes and networks:
   networks ["name pattern"]    the networks of the nodes
 
   A selector of objects is made of path patterns, as prod/svc/web*, joined
-  by , (or), + (and), ! (not). A range with no selector follows the events
+  by , (or), + (and), ! (not): a term naming an object not there selects
+  none, its negation all. A range with no selector follows the events
   of every object of the cluster.
 
   The fields are named as the api names them, in snake case: .path .node

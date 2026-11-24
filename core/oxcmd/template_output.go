@@ -251,20 +251,27 @@ func (t *templateOutput) hardenIfSame(b []byte) (bool, error) {
 	return true, f.Chown(t.uid, t.gid)
 }
 
-// checkReloadCommand returns an error when the reload command p is not an
-// executable file.
-func checkReloadCommand(p string) error {
+// checkReloadCommand returns the absolute path of the reload command p, and
+// an error when it is not an executable file.
+//
+// The command is run by this absolute path: a name with no slash is not looked
+// up in the PATH, which could name another executable than the one checked.
+func checkReloadCommand(p string) (string, error) {
 	if p == "" {
-		return nil
+		return "", nil
 	}
-	fi, err := os.Stat(p)
+	abs, err := filepath.Abs(p)
 	if err != nil {
-		return fmt.Errorf("reload command: %w", err)
+		return "", fmt.Errorf("reload command: %w", err)
+	}
+	fi, err := os.Stat(abs)
+	if err != nil {
+		return "", fmt.Errorf("reload command: %w", err)
 	}
 	if !fi.Mode().IsRegular() || fi.Mode().Perm()&0o111 == 0 {
-		return fmt.Errorf("reload command %s is not an executable file", p)
+		return "", fmt.Errorf("reload command %s is not an executable file", p)
 	}
-	return nil
+	return abs, nil
 }
 
 // runReload runs the reload command p, with no argument and no shell, in a
