@@ -1,0 +1,9 @@
+The passphrase of the Kloset store, written `from <sec> key <key>`: a
+passphrase is never written in the section.
+
+The node keeps it in a file only root reads, which plakar reads with
+`-keyfile`: it is never in a command line nor in the environment. Losing the
+passphrase loses the runs of the store.
+
+In a store declared in a sec, `from .` is that sec, a relative path is of its
+namespace, and the key is read as the object using the store.

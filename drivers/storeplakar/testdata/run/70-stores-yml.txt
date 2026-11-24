@@ -1,0 +1,4 @@
+version: v1.0.0
+stores:
+    lab:
+        location: fs:///tmp/fix/store

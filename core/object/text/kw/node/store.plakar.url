@@ -1,0 +1,8 @@
+The location of the Kloset store: an absolute path or a `fs://` url for a
+directory of the node, created at first use, or a url plakar reaches by
+itself, as `sftp://` or `s3://`, the plakar package of its scheme installed
+on every node and the store created by hand.
+
+The store is never inside a head it backs up. A store declared in a sec is
+reached over the network: the daemon reads and writes a store as root, and a
+namespace does not choose a directory of the node.

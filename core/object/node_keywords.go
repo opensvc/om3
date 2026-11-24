@@ -226,7 +226,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/store.schedule"),
 	}
 	kwNodeStoreType = keywords.Keyword{
-		Candidates: []string{"tar"},
+		Candidates: []string{"plakar", "tar"},
 		Option:     "type",
 		Group:      nodeGroupIdentity.ID,
 		Required:   true,
@@ -267,6 +267,23 @@ var (
 		Section:  "store",
 		Text:     keywords.NewText(fs, "text/kw/node/store.tar.url"),
 		Types:    []string{"tar"},
+	}
+	kwNodeStorePlakarPassphrase = keywords.Keyword{
+		Example:      "from system/sec/backup key passphrase",
+		Option:       "passphrase",
+		RedactSecret: true,
+		Required:     true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.passphrase"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarURL = keywords.Keyword{
+		Example:  "/srv/plakar",
+		Option:   "url",
+		Required: true,
+		Section:  "store",
+		Text:     keywords.NewText(fs, "text/kw/node/store.plakar.url"),
+		Types:    []string{"plakar"},
 	}
 	kwNodeStoreKeep = keywords.Keyword{
 		Example: "24h 7d 4w 6m",
@@ -2331,6 +2348,8 @@ var (
 		&kwNodeStoreHostKey,
 		&kwNodeStoreSSHPrivateKey,
 		&kwNodeStoreShared,
+		&kwNodeStorePlakarPassphrase,
+		&kwNodeStorePlakarURL,
 		&kwNodeStoreKeep,
 		&kwNodeUXGroupGrant,
 		&kwNodeArrayXtremioName,
