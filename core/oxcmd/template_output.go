@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -145,11 +146,8 @@ func (t *templateOutput) write(b []byte) (bool, error) {
 		mode = fi.Mode().Perm()
 	}
 	if fi != nil {
-		if current, err := os.ReadFile(t.path); err == nil && bytes.Equal(current, b) {
-			// The content is the one rendered: the mode and the
-			// owner asked are set still, as a file holding secrets
-			// asked 0600 is not left readable by others.
-			return false, t.harden(fi)
+		if same, err := t.hardenIfSame(b); err != nil || same {
+			return false, err
 		}
 	}
 	uid, gid := t.uid, t.gid
@@ -205,23 +203,48 @@ func (t *templateOutput) write(b []byte) (bool, error) {
 	return true, nil
 }
 
-// harden sets on the existing output, described by fi, the mode and the owner
-// asked, when they differ.
-func (t *templateOutput) harden(fi fs.FileInfo) error {
+// hardenIfSame returns true when the existing output holds b already, after
+// setting on it the mode and the owner asked, when they differ: a file holding
+// secrets asked 0600 is not left readable by others.
+//
+// The file is opened not following a symbolic link, and read and changed
+// through this open file: a path swapped for a link after the check is never
+// followed to another file.
+func (t *templateOutput) hardenIfSame(b []byte) (bool, error) {
+	f, err := os.OpenFile(t.path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	} else if errors.Is(err, syscall.ELOOP) {
+		return false, fmt.Errorf("%s is a symbolic link: refused, name the file it points to", t.path)
+	} else if err != nil {
+		return false, err
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		return false, err
+	}
+	if !fi.Mode().IsRegular() {
+		return false, fmt.Errorf("%s is not a regular file", t.path)
+	}
+	current, err := io.ReadAll(f)
+	if err != nil || !bytes.Equal(current, b) {
+		return false, nil
+	}
 	if t.mode != nil && fi.Mode().Perm() != *t.mode {
-		if err := os.Chmod(t.path, *t.mode); err != nil {
-			return err
+		if err := f.Chmod(*t.mode); err != nil {
+			return true, err
 		}
 	}
 	if t.uid < 0 && t.gid < 0 {
-		return nil
+		return true, nil
 	}
 	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
 		if (t.uid < 0 || int(st.Uid) == t.uid) && (t.gid < 0 || int(st.Gid) == t.gid) {
-			return nil
+			return true, nil
 		}
 	}
-	return os.Lchown(t.path, t.uid, t.gid)
+	return true, f.Chown(t.uid, t.gid)
 }
 
 // checkReloadCommand returns an error when the reload command p is not an

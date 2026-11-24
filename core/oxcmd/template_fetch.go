@@ -25,11 +25,34 @@ type (
 		debugf func(string, ...any)
 	}
 
+	// transientError is an api not answering, or answering an error of
+	// its own: a render failing on it is tried again, no event telling
+	// the api answers again.
+	transientError struct {
+		err error
+	}
+
 	statusCoder interface {
 		StatusCode() int
 		Status() string
 	}
 )
+
+func (t *transientError) Error() string {
+	return t.err.Error()
+}
+
+func (t *transientError) Unwrap() error {
+	return t.err
+}
+
+// transient returns err as a transientError, nil for nil.
+func transient(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &transientError{err: err}
+}
 
 // logCall logs an api call begun at begin, with its response, or err.
 func (t *templateFetcher) logCall(begin time.Time, resp *http.Response, err error) {
@@ -60,7 +83,11 @@ func apiError(what string, resp statusCoder, body []byte) error {
 	if resp.StatusCode() == http.StatusForbidden {
 		detail += " (reading a sec key needs the secreader or the admin role on its namespace)"
 	}
-	return fmt.Errorf("%s: %s", what, detail)
+	err := fmt.Errorf("%s: %s", what, detail)
+	if resp.StatusCode() >= http.StatusInternalServerError {
+		return transient(err)
+	}
+	return err
 }
 
 func (t *templateFetcher) DataKey(ctx context.Context, p naming.Path, name string) ([]byte, error) {
@@ -68,7 +95,7 @@ func (t *templateFetcher) DataKey(ctx context.Context, p naming.Path, name strin
 	resp, err := t.c.GetObjectDataKeyWithResponse(ctx, p.Namespace, p.Kind, p.Name, &api.GetObjectDataKeyParams{Name: name})
 	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
-		return nil, err
+		return nil, transient(err)
 	}
 	switch resp.StatusCode() {
 	case http.StatusOK:
@@ -85,7 +112,7 @@ func (t *templateFetcher) DataKeyNames(ctx context.Context, p naming.Path) ([]st
 	resp, err := t.c.GetObjectDataKeysWithResponse(ctx, p.Namespace, p.Kind, p.Name, &api.GetObjectDataKeysParams{})
 	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
-		return nil, err
+		return nil, transient(err)
 	}
 	switch resp.StatusCode() {
 	case http.StatusOK:
@@ -111,7 +138,7 @@ func (t *templateFetcher) ConfigValue(ctx context.Context, p naming.Path, kw, no
 	resp, err := t.c.GetObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
-		return "", err
+		return "", transient(err)
 	}
 	what := fmt.Sprintf("keyword %s of %s", kw, p)
 	switch resp.StatusCode() {
@@ -135,7 +162,7 @@ func (t *templateFetcher) ResourceInfo(ctx context.Context, p naming.Path, node,
 	resp, err := t.c.GetObjectResourceInfoWithResponse(ctx, p.Namespace, p.Kind, p.Name)
 	t.logCall(begin, httpResponse(resp), err)
 	if err != nil {
-		return "", err
+		return "", transient(err)
 	}
 	what := fmt.Sprintf("information %s of %s %s on %s", key, p, rid, node)
 	switch resp.StatusCode() {
