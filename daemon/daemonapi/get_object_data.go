@@ -71,5 +71,6 @@ func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind namin
 		}
 	}
 
-	return nil
+	// No node has an instance of the datastore.
+	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object %s not found", p)
 }

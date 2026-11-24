@@ -30562,6 +30562,7 @@ type GetObjectDataResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON404      *N404
 	JSON500      *N500
 }
 
@@ -30665,7 +30666,7 @@ type GetObjectDataKeyResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
-	JSON404      *N403
+	JSON404      *N404
 	JSON500      *N500
 }
 
@@ -46474,6 +46475,13 @@ func ParseGetObjectDataResponse(rsp *http.Response) (*GetObjectDataResponse, err
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -46644,7 +46652,7 @@ func ParseGetObjectDataKeyResponse(rsp *http.Response) (*GetObjectDataKeyRespons
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest N403
+		var dest N404
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
