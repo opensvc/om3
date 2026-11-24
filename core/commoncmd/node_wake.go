@@ -149,6 +149,13 @@ func (t *CmdNodeWake) runRemote() error {
 		return err
 	}
 
+	// A relay answers once its wake ended, later than a client allows an
+	// answer by default: the context bounds it instead.
+	wakeClient, err := client.New(client.WithTimeout(0))
+	if err != nil {
+		return err
+	}
+
 	var (
 		errs    error
 		pending []string
@@ -159,7 +166,7 @@ func (t *CmdNodeWake) runRemote() error {
 			_, _ = fmt.Fprintf(os.Stdout, "%s: already awake: its heartbeat beats\n", target)
 			continue
 		}
-		relays, err := t.wakeOne(ctx, c, data, target)
+		relays, err := t.wakeOne(ctx, c, wakeClient, data, target)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", target, err))
 			continue
@@ -174,8 +181,8 @@ func (t *CmdNodeWake) runRemote() error {
 }
 
 // wakeOne asks every relay up to wake target, and returns the relays that
-// accepted.
-func (t *CmdNodeWake) wakeOne(ctx context.Context, c *client.T, data clusterdump.Data, target string) ([]string, error) {
+// woke it: a relay answers once its wake ended, with the reason it failed.
+func (t *CmdNodeWake) wakeOne(ctx context.Context, c, wakeClient *client.T, data clusterdump.Data, target string) ([]string, error) {
 	cfg, err := getWakeConfig(ctx, c, target)
 	if err != nil {
 		return nil, err
@@ -199,7 +206,7 @@ func (t *CmdNodeWake) wakeOne(ctx context.Context, c *client.T, data clusterdump
 		errs     error
 	)
 	for _, relay := range relays {
-		if err := postNodeActionWake(ctx, c, relay, params); err != nil {
+		if err := postNodeActionWake(ctx, wakeClient, relay, params); err != nil {
 			errs = errors.Join(errs, err)
 			continue
 		}
