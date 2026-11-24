@@ -17,6 +17,10 @@
 // the passphrase goes through a pipe only, never in a file, the command line
 // or the environment.
 //
+// A remote store reaches its location with the credentials its keywords
+// name, keys of a sec, never with what the node holds for the user om runs
+// as: see credentials.
+//
 // plakar derives the key of the store from the passphrase at each call, a
 // second of work and 256 MiB: the driver lists the snapshots once and serves
 // the lookups that follow from that listing, until it writes. Only a call

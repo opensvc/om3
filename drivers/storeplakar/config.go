@@ -30,10 +30,11 @@ const (
 
 type (
 	// dirs are the private directories of the store on this node: the
-	// plakar configuration (stores.yml) under the run directory, the cache
-	// and the packages under var.
+	// plakar configuration (stores.yml) and the credential files under the
+	// run directory, a memory filesystem commands are not run from, the
+	// cache, the ssh command of a sftp store and the packages under var.
 	dirs struct {
-		config, cache, data string
+		config, cache, bin, data string
 	}
 )
 
@@ -74,6 +75,7 @@ func (t *T) dirs() (dirs, error) {
 	return dirs{
 		config: filepath.Join(rawconfig.Paths.Run, "store", "plakar", rel),
 		cache:  filepath.Join(rawconfig.Paths.Var, "plakar", rel, "cache"),
+		bin:    filepath.Join(rawconfig.Paths.Var, "plakar", rel, "bin"),
 		data:   dataDir(),
 	}, nil
 }
@@ -158,16 +160,17 @@ func (t *T) decodeKey(option string, km datarecv.KeyMeta) ([]byte, error) {
 	return b, nil
 }
 
-// checkPassphrase refuses a passphrase plakar cannot read from the one line
-// passphrase_cmd prints: empty, or holding a line break other than a
-// trailing newline. The error never holds the passphrase.
-func checkPassphrase(b []byte) error {
+// checkOneLine refuses a secret plakar cannot read as one line, the one
+// passphrase_cmd prints or the value of an option of stores.yml: empty, or
+// holding a line break other than a trailing newline. The error never holds
+// the secret.
+func checkOneLine(option string, b []byte) error {
 	b = bytes.TrimSuffix(b, []byte("\n"))
 	switch {
 	case len(b) == 0:
-		return fmt.Errorf("passphrase: the key is empty")
+		return fmt.Errorf("%s: the key is empty", option)
 	case bytes.ContainsAny(b, "\r\n"):
-		return fmt.Errorf("passphrase: the key holds a line break: plakar reads one line")
+		return fmt.Errorf("%s: the key holds a line break: plakar reads one line", option)
 	}
 	return nil
 }
@@ -184,9 +187,9 @@ func passphraseCmd(km datarecv.KeyMeta) (string, error) {
 	return shellquote.Join(om, km.Path.String(), "key", "decode", "--", km.Key), nil
 }
 
-// storesYML is what plakar store add writes for one store and its
-// passphrase_cmd.
-func (t *T) storesYML(location string) ([]byte, error) {
+// storesYML is what plakar store add writes for one store, its
+// passphrase_cmd and the options of its credentials.
+func (t *T) storesYML(location string, options map[string]string) ([]byte, error) {
 	km, err := t.keyMeta("passphrase")
 	if err != nil {
 		return nil, err
@@ -195,17 +198,19 @@ func (t *T) storesYML(location string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	entry := map[string]string{
+		"location":       location,
+		"passphrase_cmd": cmd,
+	}
+	for k, v := range options {
+		entry[k] = v
+	}
 	return yaml.Marshal(struct {
 		Version string                       `yaml:"version"`
 		Stores  map[string]map[string]string `yaml:"stores"`
 	}{
 		Version: "v1.0.0",
-		Stores: map[string]map[string]string{
-			strings.TrimPrefix(alias, "@"): {
-				"location":       location,
-				"passphrase_cmd": cmd,
-			},
-		},
+		Stores:  map[string]map[string]string{strings.TrimPrefix(alias, "@"): entry},
 	})
 }
 
@@ -243,12 +248,23 @@ func runDisableSecurityCheck(d dirs) error {
 }
 
 func writeFile(dir, name string, b []byte) error {
+	return writeFileMode(dir, name, b, filePerm)
+}
+
+// writeFileMode writes b as the file name of dir, with the mode perm, in
+// place once complete. The file is made readable by its owner only, and
+// given its mode before it has its name.
+func writeFileMode(dir, name string, b []byte, perm os.FileMode) error {
 	f, err := os.CreateTemp(dir, "."+name+".*")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = os.Remove(f.Name()) }()
 	if _, err := f.Write(b); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Chmod(perm); err != nil {
 		_ = f.Close()
 		return err
 	}
@@ -289,11 +305,20 @@ func mkdirPrivate(path string) error {
 // directory of a store of the node, empty for a remote store.
 //
 // The passphrase is decoded and checked, then dropped: plakar reads it
-// through passphrase_cmd.
+// through passphrase_cmd. The credentials of a remote location are decoded
+// into the options of stores.yml and the files of the configuration
+// directory, and a location missing the ones of its scheme is refused here,
+// before any plakar call.
 //
 // plakar empties stores.yml when it misses sources.yml or destinations.yml
 // of its configuration directory, so the three are written.
 func (t *T) prepare() (string, error) {
+	return t.configure(false)
+}
+
+// configure is prepare, writing stores.yml again when rewrite is set, even
+// when it holds what it should: plakar said it could not resolve the store.
+func (t *T) configure(rewrite bool) (string, error) {
 	location, dir, err := t.location()
 	if err != nil {
 		return "", err
@@ -310,10 +335,14 @@ func (t *T) prepare() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := checkPassphrase(passphrase); err != nil {
+	if err := checkOneLine("passphrase", passphrase); err != nil {
 		return "", err
 	}
-	stores, err := t.storesYML(location)
+	creds, err := t.credentials(location, d)
+	if err != nil {
+		return "", err
+	}
+	stores, err := t.storesYML(location, creds.options)
 	if err != nil {
 		return "", err
 	}
@@ -327,12 +356,15 @@ func (t *T) prepare() (string, error) {
 	if err := os.MkdirAll(d.data, dirPerm); err != nil {
 		return "", err
 	}
+	if err := creds.install(d); err != nil {
+		return "", err
+	}
 	for name, b := range map[string][]byte{
 		"stores.yml":       stores,
 		"sources.yml":      []byte("version: v1.0.0\nsources: {}\n"),
 		"destinations.yml": []byte("version: v1.0.0\ndestinations: {}\n"),
 	} {
-		if got, err := os.ReadFile(filepath.Join(d.config, name)); err == nil && bytes.Equal(got, b) {
+		if upToDate(filepath.Join(d.config, name), b, filePerm) && !(rewrite && name == "stores.yml") {
 			continue
 		}
 		if err := writeFile(d.config, name, b); err != nil {

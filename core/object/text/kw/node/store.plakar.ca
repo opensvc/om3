@@ -1,0 +1,7 @@
+The certificate authorities the server of a `https://` store is verified
+with, written `from <datastore> key <key>`, the key of a cfg or a sec holding
+their certificates in PEM. Refused with another url than `https://`.
+
+Unset, the server is verified with the certificate authorities of the
+system. Set, with these only: a server whose certificate one of the system
+signed is refused.

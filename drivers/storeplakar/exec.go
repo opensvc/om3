@@ -34,7 +34,8 @@ var (
 )
 
 // commandAt builds one plakar call against the store alias, resolved
-// through stores.yml with its passphrase_cmd. The output goes raw to w when
+// through stores.yml with its passphrase_cmd and the options of its
+// credentials, in the environment of the store. The output goes raw to w when
 // given, else to the buffer Stdout returns, line by line in the log.
 func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, verb string, args ...string) (*command.T, error) {
 	p := getPath("plakar")
@@ -61,6 +62,7 @@ func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, ver
 		command.WithCommandLogLevel(level),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithBufferedStderr(),
+		command.WithEnv(t.env(d)),
 	}
 	var cmd *command.T
 	if w == nil {
@@ -87,20 +89,8 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 		if !strings.Contains(string(cmd.Stderr()), unresolvedMessage) {
 			return nil, cmdError(verb, cmd, err)
 		}
-		location, _, err := t.location()
-		if err != nil {
-			return nil, err
-		}
-		stores, err := t.storesYML(location)
-		if err != nil {
-			return nil, err
-		}
 		t.Log().Infof("plakar %s: store unresolved, write stores.yml again and retry", verb)
-		d, err := t.dirs()
-		if err != nil {
-			return nil, err
-		}
-		if err := writeFile(d.config, "stores.yml", stores); err != nil {
+		if _, err := t.configure(true); err != nil {
 			return nil, err
 		}
 		cmd, err = t.commandAt(ctx, level, nil, verb, args...)

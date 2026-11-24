@@ -1,0 +1,7 @@
+The access key id a `s3://` store signs its requests with, written
+`from <sec> key <key>`, the key holding one line. Required by a `s3://` url,
+with `secret_key`, and refused with another: a store never signs with the
+credentials of the node, as the role of its instance.
+
+In a store declared in a sec, `from .` is that sec, a relative path is of its
+namespace, and the key is read as the object using the store.

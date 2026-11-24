@@ -16,9 +16,18 @@ The other locations, as `sftp://` or `s3://`, need the plakar package of
 their scheme on every node, installed by the operator with `plakar pkg add`
 as the user om runs as, root: the stores use the data directory plakar
 installs the packages in for that user, `~/.local/share/plakar` of its home.
-The driver has no keyword for the credentials of a location yet: a location
-is one plakar reaches with what the url and the node hold, the sftp package
-running the ssh of the node, with the keys and the known hosts of root.
+
+A `sftp://`, `s3://` or `https://` store never reaches its location with
+what the node holds for root. A `sftp://` store logs in with `ssh_private_key` and recognizes its server by
+`host_key`, both required: the sftp package runs the ssh of the node, which
+the driver keeps off the keys, the agent, the configuration and the known
+hosts of root. A `s3://` store signs with `access_key` and `secret_key`,
+both required, never with the role of the instance. A `https://` store may
+send a `token`, and verify its server with the certificate authorities of
+`ca` instead of the ones of the system. A credential keyword of another
+scheme than the one of the url is refused. A store with another scheme has
+no credential keyword: plakar reaches it with what its url and the node
+hold.
 
 The store is never inside a head it backs up. A store declared in a sec is
 reached over the network: the daemon reads and writes a store as root, and a

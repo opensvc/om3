@@ -278,6 +278,58 @@ var (
 		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.passphrase"),
 		Types:        []string{"plakar"},
 	}
+	kwNodeStorePlakarSSHPrivateKey = keywords.Keyword{
+		Example:      "from system/sec/backup key ssh_private_key",
+		Option:       "ssh_private_key",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.ssh_private_key"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarHostKey = keywords.Keyword{
+		Example: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBc1nVQ6Ck8M6zKQ1dHoRcgYzBH9Cf2rBG7aJ1LGq2xp",
+		Option:  "host_key",
+		Group:   nodeGroupEndpoint.ID,
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.host_key"),
+		Types:   []string{"plakar"},
+	}
+	kwNodeStorePlakarAccessKey = keywords.Keyword{
+		Example:      "from system/sec/backup key access_key",
+		Option:       "access_key",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.access_key"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarSecretKey = keywords.Keyword{
+		Example:      "from system/sec/backup key secret_key",
+		Option:       "secret_key",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.secret_key"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarToken = keywords.Keyword{
+		Example:      "from system/sec/backup key token",
+		Option:       "token",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.token"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarCA = keywords.Keyword{
+		Example: "from system/cfg/backup key ca",
+		Option:  "ca",
+		Group:   nodeGroupEndpoint.ID,
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.ca"),
+		Types:   []string{"plakar"},
+	}
 	kwNodeStorePlakarURL = keywords.Keyword{
 		Example:  "/srv/plakar",
 		Option:   "url",
@@ -2351,6 +2403,12 @@ var (
 		&kwNodeStoreSSHPrivateKey,
 		&kwNodeStoreShared,
 		&kwNodeStorePlakarPassphrase,
+		&kwNodeStorePlakarSSHPrivateKey,
+		&kwNodeStorePlakarHostKey,
+		&kwNodeStorePlakarAccessKey,
+		&kwNodeStorePlakarSecretKey,
+		&kwNodeStorePlakarToken,
+		&kwNodeStorePlakarCA,
 		&kwNodeStorePlakarURL,
 		&kwNodeStoreKeep,
 		&kwNodeUXGroupGrant,

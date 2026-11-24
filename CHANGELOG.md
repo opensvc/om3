@@ -474,7 +474,20 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     passphrase = from system/sec/backup key passphrase
     ```
 
-    The `url` is an absolute path or the `fs://` url of one, a directory of the node, or the `<scheme>://` url of a location plakar reaches by itself: a plakar server, `http://` or `https://`, with plakar 1.1.8 alone, the plakar package of the scheme, installed by the operator with `plakar pkg add` as root, for the others: the stores use the data directory plakar installs the packages in for root. A relative path is refused. A directory of the node holds the runs of its node only, the driver not reading the other nodes as the `tar` store does: the store of an object failing over is a directory its nodes share, or a remote location. The driver has no keyword for the credentials of a location yet. A `plakar` store declared in a sec requires the root grant, and is never a directory of the node.
+    The `url` is an absolute path or the `fs://` url of one, a directory of the node, or the `<scheme>://` url of a location plakar reaches by itself: a plakar server, `http://` or `https://`, with plakar 1.1.8 alone, the plakar package of the scheme, installed by the operator with `plakar pkg add` as root, for the others: the stores use the data directory plakar installs the packages in for root. A relative path is refused. A directory of the node holds the runs of its node only, the driver not reading the other nodes as the `tar` store does: the store of an object failing over is a directory its nodes share, or a remote location. A `plakar` store declared in a sec requires the root grant, and is never a directory of the node.
+
+    A `sftp://`, `s3://` or `https://` store never reaches its location with what the node holds for root, its credentials being keys of a sec, read as the object using the store as the passphrase is:
+
+    ```
+    [store#offsite]
+    type = plakar
+    url = sftp://backup@backup.example.com/data/plakar
+    passphrase = from system/sec/backup key passphrase
+    ssh_private_key = from system/sec/backup key ssh_private_key
+    host_key = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBc1nVQ6Ck8M6zKQ1dHoRcgYzBH9Cf2rBG7aJ1LGq2xp
+    ```
+
+    A `sftp://` store requires `ssh_private_key` and `host_key`, as a `tar` store does, `host_key` being a value or `from <datastore> key <key>`. The sftp package of plakar runs the ssh of the node: the driver has it run with the key and the known hosts of the store only, files of its private directory, with no configuration file, no agent, no other identity and no other known hosts, so the keys, the agent, the `~/.ssh/config` and the known hosts of root are neither used nor trusted, and a server presenting another key is refused. A `s3://` store requires `access_key` and `secret_key`, the package otherwise asking the credentials of the node, as the role of its instance. A `https://` store may send the `token` a `plakar server -token` requires, and verify its server with the certificate authorities of `ca`, a PEM key of a cfg or a sec, instead of the ones of the system. A store missing the credentials of its scheme, or holding a credential keyword of another scheme, is refused before plakar is called. A store with another scheme has no credential keyword, plakar reaching it with what its url and the node hold. The key, the known hosts and the certificates are files of the private directory of the store, readable by root only, written again when stale and removed with their keyword, the secret key and the token are in the configuration the driver writes there for plakar: none is on a command line, in the environment nor in a log.
 
     The store is created by the first run written into it, never by a listing, a status, a check, a restore or a deletion, which find no run in a store missing or empty: a node where the shared directory is not mounted creates no store in the mount point to answer a status. The store is never inside a head it backs up, which is refused before the store is created.
 

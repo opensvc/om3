@@ -3,19 +3,30 @@ package storeplakar
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/pkg/sftp"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/core/backup"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/executable"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -152,16 +163,40 @@ func TestWithTheRealPlakar(t *testing.T) {
 	assert.True(t, skipped, "the maintenance under the lock of a backup is skipped, not failed")
 }
 
-// sftpHostEnv names a host the user running the tests reaches by ssh, with
-// no password, for TestWithTheRealPlakarOverSFTP.
-const sftpHostEnv = "OM_TEST_PLAKAR_SFTP_HOST"
+// The environment of TestWithTheRealPlakarOverSFTP: the user and the host of
+// a sftp server, as backup@[fd01::1], a directory of the server the user
+// writes in, the file of a private key the server accepts for the user, and
+// the public key of the server.
+const (
+	sftpHostEnv    = "OM_TEST_PLAKAR_SFTP_HOST"
+	sftpDirEnv     = "OM_TEST_PLAKAR_SFTP_DIR"
+	sftpKeyEnv     = "OM_TEST_PLAKAR_SFTP_KEY"
+	sftpHostKeyEnv = "OM_TEST_PLAKAR_SFTP_HOST_KEY"
+)
+
+// newPrivateKey returns a new ssh private key, which no server accepts, and
+// its public key as ssh-keyscan prints one.
+func newPrivateKey(t *testing.T) ([]byte, string) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	block, err := ssh.MarshalPrivateKey(priv, "")
+	require.NoError(t, err)
+	sshPub, err := ssh.NewPublicKey(pub)
+	require.NoError(t, err)
+	return pem.EncodeToMemory(block), strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub)))
+}
 
 // TestWithTheRealPlakarOverSFTP runs a backup and a restore through the sftp
 // plugin an operator installed, in the data directory plakar installs the
-// plugins in: the stores share it, so the backends installed are theirs. It
-// needs plakar with its sftp plugin, and the name of a host in
-// OM_TEST_PLAKAR_SFTP_HOST, which may be the host running the test: the
-// store is a temporary directory of this host, reached there.
+// plugins in, with the key of a sec and the host key of the section, and
+// pins what the fake cannot: the ssh of the plugin logs in with the key of
+// the store only, and to the server of its host key only.
+//
+// The test runs an ssh agent holding the key the server accepts, as the
+// user running om may: a store whose key the server refuses must fail, the
+// agent not being asked. It needs plakar with its sftp plugin and the
+// variables above, and removes the store it creates.
 func TestWithTheRealPlakarOverSFTP(t *testing.T) {
 	host := os.Getenv(sftpHostEnv)
 	if host == "" {
@@ -171,25 +206,120 @@ func TestWithTheRealPlakarOverSFTP(t *testing.T) {
 	if err != nil {
 		t.Skip("no plakar in the PATH")
 	}
+	keyFile, hostKey, base := os.Getenv(sftpKeyEnv), os.Getenv(sftpHostKeyEnv), os.Getenv(sftpDirEnv)
+	require.NotEmpty(t, keyFile, sftpKeyEnv)
+	require.NotEmpty(t, hostKey, sftpHostKeyEnv)
+	require.NotEmpty(t, base, sftpDirEnv)
+	key, err := os.ReadFile(keyFile)
+	require.NoError(t, err)
+	u, err := url.Parse("sftp://" + host)
+	require.NoError(t, err)
+
 	e := newTestEnv(t)
 	dataDir = defaultDataDir
 	disableSecurityCheck = runDisableSecurityCheck
 	getPath = func(string) string { return bin }
 	t.Cleanup(func() { getPath = capabilities.GetPath })
+	sshPath = func() (string, error) { return exec.LookPath("ssh") }
 	om := filepath.Join(t.TempDir(), "om")
 	require.NoError(t, os.WriteFile(om, []byte("#!/bin/sh\necho "+passphrase+"\n"), 0755))
 	t.Setenv(executable.ExecutableKey, om)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	dir := t.TempDir()
-	e.store = newStore(t, "[store#lab]\ntype = plakar\nurl = sftp://"+host+dir+"\npassphrase = from system/sec/backup key passphrase\n")
-	assert.False(t, e.store.IsLocal())
-	// A remote store is created by hand, as the operator does.
-	_, err = e.store.prepare()
+	// The plugin keeps its ssh connections in the runtime directory of the
+	// user: a short one of the test, a socket path being bounded, whose
+	// connections are closed at the end.
+	runtimeDir, err := os.MkdirTemp("/tmp", "pk")
 	require.NoError(t, err)
-	_, err = e.store.run(ctx, zerolog.InfoLevel, "create")
-	require.NoError(t, err, "the sftp backend of the plugins installed is found")
+	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
+	t.Cleanup(func() {
+		socks, _ := filepath.Glob(filepath.Join(runtimeDir, "plakar", "ssh", "*.sock"))
+		for _, sock := range socks {
+			_ = exec.Command("ssh", "-S", sock, "-O", "exit", "--", u.Hostname()).Run()
+		}
+		_ = os.RemoveAll(runtimeDir)
+	})
+
+	// The agent of the user holds a key the server accepts, which a plain
+	// ssh logs in with.
+	agentSock := filepath.Join(runtimeDir, "agent")
+	out, err := exec.Command("ssh-agent", "-a", agentSock).Output()
+	require.NoError(t, err)
+	for _, line := range strings.Split(string(out), "\n") {
+		if pid, ok := strings.CutPrefix(line, "SSH_AGENT_PID="); ok {
+			pid, _, _ = strings.Cut(pid, ";")
+			t.Cleanup(func() { _ = exec.Command("kill", pid).Run() })
+		}
+	}
+	t.Setenv("SSH_AUTH_SOCK", agentSock)
+	addKey := filepath.Join(runtimeDir, "key")
+	require.NoError(t, os.WriteFile(addKey, key, 0600))
+	b, err := exec.Command("ssh-add", addKey).CombinedOutput()
+	require.NoError(t, err, string(b))
+	require.NoError(t, os.Remove(addKey))
+	knownHosts := filepath.Join(runtimeDir, "known_hosts")
+	line, err := knownHostsLine([]byte(hostKey))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(knownHosts, []byte(line+"\n"), 0600))
+	b, err = exec.Command("ssh", "-F", "/dev/null", "-o", "BatchMode=yes", "-o", "UserKnownHostsFile="+knownHosts,
+		"-o", "GlobalKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=yes", "-l", u.User.Username(), "--", u.Hostname(), "-s", "sftp").CombinedOutput()
+	if err != nil && !bytes.Contains(b, []byte("Permission denied")) {
+		// A server serving sftp only closes a session with no input.
+		err = nil
+	}
+	require.NoError(t, err, "the key of the agent is one the server accepts: %s", string(b))
+
+	p, err := naming.ParsePath("system/sec/backup")
+	require.NoError(t, err)
+	sec, err := object.NewSec(p)
+	require.NoError(t, err)
+	refused, otherHostKey := newPrivateKey(t)
+	require.NoError(t, sec.AddKey("ssh_private_key", key))
+	require.NoError(t, sec.AddKey("refused", refused))
+
+	dir := path.Join(base, "plakar-test-"+uuid.NewString()[:8])
+	store := func(sshKey, hostKey string) *T {
+		config := "[store#lab]\ntype = plakar\nurl = sftp://" + host + dir + "\npassphrase = from system/sec/backup key passphrase\n"
+		if sshKey != "" {
+			config += "ssh_private_key = from system/sec/backup key " + sshKey + "\n"
+		}
+		if hostKey != "" {
+			config += "host_key = " + hostKey + "\n"
+		}
+		return newStore(t, config)
+	}
+	create := func(s *T) error {
+		// A remote store is created by hand, as the operator does.
+		if _, err := s.prepare(); err != nil {
+			return err
+		}
+		_, err := s.run(ctx, zerolog.InfoLevel, "create")
+		return err
+	}
+	t.Cleanup(func() { removeRemote(t, u, key, hostKey, dir) })
+
+	// A store with no key is refused before any plakar call: the agent is
+	// not what logs it in.
+	err = create(store("", hostKey))
+	require.ErrorContains(t, err, "needs ssh_private_key and host_key")
+	err = create(store("ssh_private_key", ""))
+	require.ErrorContains(t, err, "needs ssh_private_key and host_key")
+
+	// A store whose key the server refuses fails, the agent holding the
+	// key it accepts.
+	err = create(store("refused", hostKey))
+	require.Error(t, err, "the key of the agent must not log the store in")
+	assert.Contains(t, err.Error(), "Permission denied")
+
+	// A server presenting another key than host_key is refused.
+	err = create(store("ssh_private_key", otherHostKey))
+	require.Error(t, err, "the server is not the one of host_key")
+	assert.Contains(t, err.Error(), "Host key verification failed")
+
+	e.store = store("ssh_private_key", hostKey)
+	assert.False(t, e.store.IsLocal())
+	require.NoError(t, create(e.store), "the sftp backend of the plugins installed is found, and the key of the sec logs in")
 
 	require.NoError(t, os.WriteFile(filepath.Join(e.src, "a"), []byte("content of a\n"), 0644))
 	require.NoError(t, e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
@@ -198,7 +328,37 @@ func TestWithTheRealPlakarOverSFTP(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, runs, 1)
 	require.NoError(t, e.store.Restore(ctx, runs[0], "fs#1", e.dst))
-	b, err := os.ReadFile(filepath.Join(e.dst, "a"))
+	b, err = os.ReadFile(filepath.Join(e.dst, "a"))
 	require.NoError(t, err)
 	assert.Equal(t, "content of a\n", string(b))
+}
+
+// removeRemote removes the directory of the sftp server the test made its
+// store in.
+func removeRemote(t *testing.T, u *url.URL, key []byte, hostKey, dir string) {
+	t.Helper()
+	signer, err := ssh.ParsePrivateKey(key)
+	require.NoError(t, err)
+	pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(hostKey))
+	require.NoError(t, err)
+	port := u.Port()
+	if port == "" {
+		port = "22"
+	}
+	conn, err := ssh.Dial("tcp", net.JoinHostPort(u.Hostname(), port), &ssh.ClientConfig{
+		User:              u.User.Username(),
+		Auth:              []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		HostKeyCallback:   ssh.FixedHostKey(pk),
+		HostKeyAlgorithms: []string{ssh.KeyAlgoRSASHA512, ssh.KeyAlgoRSASHA256, pk.Type()},
+		Timeout:           10 * time.Second,
+	})
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+	client, err := sftp.NewClient(conn)
+	require.NoError(t, err)
+	defer func() { _ = client.Close() }()
+	if _, err := client.Stat(dir); err != nil {
+		return
+	}
+	require.NoError(t, client.RemoveAll(dir))
 }

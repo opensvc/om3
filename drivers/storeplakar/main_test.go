@@ -793,10 +793,10 @@ func TestPassphraseCmdNamesTheKeyAfterADoubleDash(t *testing.T) {
 // single line passphrase_cmd prints, and errors never holding the passphrase.
 func TestPassphraseOfOneLineOnly(t *testing.T) {
 	for _, s := range []string{"s3cret", "s3cret\n"} {
-		assert.NoError(t, checkPassphrase([]byte(s)), "%q", s)
+		assert.NoError(t, checkOneLine("passphrase", []byte(s)), "%q", s)
 	}
 	for _, s := range []string{"", "\n", "s3cret\n\n", "s3c\nret", "s3cret\r\n", "s3c\rret"} {
-		err := checkPassphrase([]byte(s))
+		err := checkOneLine("passphrase", []byte(s))
 		if assert.Error(t, err, "%q", s) {
 			assert.NotContains(t, err.Error(), "s3c", "%q", s)
 		}
