@@ -1923,7 +1923,11 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Send from the node the Wake-on-LAN magic packets waking the cluster node target, as configured in its wake#<target> section.
+      description: |
+        Wake the cluster node target from the node: through the collector, which starts the
+        container of a virtual machine node on its hypervisor, or else with the Wake-on-LAN magic
+        packets configured in its wake#<target> section. Answered once the wake is requested, so a
+        failure is a 500 with its reason.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - in: query

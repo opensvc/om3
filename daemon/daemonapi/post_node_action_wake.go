@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -27,7 +28,9 @@ func (a *DaemonAPI) PostNodeActionWake(ctx echo.Context, nodename string, params
 	if nodename == a.localhost {
 		return a.localNodeActionWake(ctx, params)
 	}
-	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
+	// The peer answers once the wake ended, later than a client allows an
+	// answer by default.
+	return a.proxyLong(ctx, nodename, func(c *client.T) (*http.Response, error) {
 		return c.PostNodeActionWake(ctx.Request().Context(), nodename, &params)
 	})
 }
@@ -49,6 +52,13 @@ func validateNodeActionWakeParams(params api.PostNodeActionWakeParams, isCluster
 	return errs
 }
 
+// wakeTimeout bounds the wake run from the node: a request to the collector
+// and a few magic packets.
+var wakeTimeout = time.Minute
+
+// localNodeActionWake runs the wake and answers once it ended, so the client
+// learns whether this node failed to wake target, and why, instead of
+// waiting for a node nobody wakes.
 func (a *DaemonAPI) localNodeActionWake(ctx echo.Context, params api.PostNodeActionWakeParams) error {
 	log := LogHandler(ctx, "PostNodeActionWake")
 	var requesterSessionID uuid.UUID
@@ -59,8 +69,9 @@ func (a *DaemonAPI) localNodeActionWake(ctx echo.Context, params api.PostNodeAct
 	if params.SessionID != nil {
 		requesterSessionID = *params.SessionID
 	}
-	if sessionID, execID, err := a.apiExec(ctx, naming.Path{}, requesterSessionID, args, log); err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
+	if sessionID, execID, err := a.apiExecWait(ctx, naming.Path{}, requesterSessionID, args, log, wakeTimeout); err != nil {
+		detail := strings.TrimPrefix(err.Error(), params.Target+": ")
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Wake failed", "%s", detail)
 	} else {
 		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
