@@ -202,6 +202,7 @@ func init() {
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
 		newCmdNodeUpdatepkg(),
+		commoncmd.NewCmdNodeWake(true),
 		newCmdNodeWol(),
 	)
 	cmdNodeConfig.AddCommand(
