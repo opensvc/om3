@@ -23,7 +23,9 @@ a missing object or an api not answering, end it, as a supervisor restarting
 it would have it. After them, a render failing on the api, or a file not
 written, is tried again 5s later. A render reading data the events stream does not follow yet writes
 no file: the stream is opened again, and the templates rendered once it
-replayed the data. SIGHUP reads the templates again.
+replayed the data: at the ReplayDone event ending its replay, or, with a
+daemon not sending one, after a quiet period. SIGHUP reads the templates
+again.
 
 --config renders several templates from one process, sharing its events
 stream and its cluster data. Each template has its file, mode, owner and

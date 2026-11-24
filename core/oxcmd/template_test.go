@@ -122,6 +122,8 @@ func TestCheckReloadCommand(t *testing.T) {
 
 // fakeStream is an events stream a test feeds.
 type fakeStream struct {
+	replayDone bool
+
 	evC      chan *event.Event
 	closed   chan struct{}
 	once     sync.Once
@@ -146,10 +148,18 @@ func (f *fakeStream) GetServedBy() string {
 	return f.servedBy
 }
 
+func (f *fakeStream) ReplayDoneAdvertised() bool {
+	return f.replayDone
+}
+
 // fakeStreams opens fake streams, and records the subscriptions asked.
 type fakeStreams struct {
 	// noServedBy opens streams not telling the node serving them.
 	noServedBy bool
+
+	// replayDone opens streams ending their replay with a ReplayDone
+	// event.
+	replayDone bool
 
 	mu      sync.Mutex
 	streams []*fakeStream
@@ -164,6 +174,7 @@ func (f *fakeStreams) open(_ context.Context, sub tmplrender.Subscription) (even
 	if f.noServedBy {
 		s.servedBy = ""
 	}
+	s.replayDone = f.replayDone
 	f.streams = append(f.streams, s)
 	f.subs = append(f.subs, sub)
 	return s, nil
@@ -820,4 +831,77 @@ func TestTemplateOutputReplacesAWriteOnlyFile(t *testing.T) {
 	b, err := os.ReadFile(p)
 	require.NoError(t, err)
 	assert.Equal(t, "new", string(b))
+}
+
+// sendReplayDone sends the ReplayDone event ending the replay on the last
+// stream, with the next id.
+func (f *fakeStreams) sendReplayDone(t *testing.T) {
+	t.Helper()
+	s, _ := f.last()
+	f.mu.Lock()
+	f.id++
+	id := f.id
+	f.mu.Unlock()
+	s.evC <- &event.Event{Kind: event.KindReplayDone, ID: id, At: time.Now(), Data: []byte(`{"count":1}`)}
+}
+
+func startReplayDoneWatch(t *testing.T, text string) *watchTest {
+	t.Helper()
+	dir := t.TempDir()
+	in := writeFile(t, dir, "in.tpl", text)
+	wt := &watchTest{
+		t:       t,
+		out:     filepath.Join(dir, "out"),
+		reloads: filepath.Join(dir, "reloads"),
+		streams: &fakeStreams{replayDone: true},
+		done:    make(chan error, 1),
+		hupC:    make(chan os.Signal, 1),
+	}
+	wt.run(&CmdTemplate{
+		In:            in,
+		Out:           wt.out,
+		Watch:         true,
+		ReloadCommand: writeScript(t, dir, "reload", "echo >> "+wt.reloads),
+		Delay:         50 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		ReloadTimeout: time.Second,
+	})
+	return wt
+}
+
+// A stream ending its replay with a ReplayDone event is rendered at it: not
+// before, whatever the time the replay takes, not even past --max-delay, and
+// at once, with no quiet period.
+func TestWatchRendersAtTheReplayDone(t *testing.T) {
+	settleQuiet = time.Hour
+	t.Cleanup(func() { settleQuiet = 50 * time.Millisecond })
+	wt := startReplayDoneWatch(t, `{{ avail "prod/svc/web" }}`)
+	wt.eventually(func() bool { return wt.content() == "up" }, "first render")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+
+	// A replay slower than --max-delay: no render from the partial data.
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	time.Sleep(300 * time.Millisecond)
+	assert.Equal(t, "up", wt.content(), "no render before the end of the replay")
+
+	wt.streams.sendReplayDone(t)
+	wt.eventually(func() bool { return wt.content() == "down" }, "render at the end of the replay")
+
+	// The live events after it are rendered as before.
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "up" }, "render of a live event")
+}
+
+// A stream advertising the ReplayDone event not sending it is opened again.
+func TestWatchReopensWithNoReplayDone(t *testing.T) {
+	replayDoneTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { replayDoneTimeout = 30 * time.Second })
+	wt := startReplayDoneWatch(t, `{{ avail "prod/svc/web" }}`)
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n >= 2 }, "stream opened again")
+
+	// The new stream ending its replay renders.
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.streams.sendReplayDone(t)
+	wt.eventually(func() bool { return wt.content() == "down" }, "render at the end of the replay")
 }

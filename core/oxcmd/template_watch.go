@@ -76,6 +76,13 @@ type (
 		dirtySince time.Time
 		timer      *time.Timer
 		reconnect  *time.Timer
+
+		// replayDone is true when the stream ends its replay with a
+		// ReplayDone event: the render waits for it, not for a quiet
+		// period, and watchdog opens the stream again when it does not
+		// come.
+		replayDone bool
+		watchdog   *time.Timer
 	}
 
 	streamEvent struct {
@@ -108,8 +115,13 @@ const (
 	reconnectMax = 5 * time.Second
 )
 
+// replayDoneTimeout is the longest wait for the ReplayDone event of a stream
+// advertising it, before the stream is opened again.
+var replayDoneTimeout = 30 * time.Second
+
 // settleQuiet is the least quiet period after the stream opens, before the
-// replay of the current data is deemed done.
+// replay of the current data is deemed done, with a daemon not telling the
+// end of the replay.
 var settleQuiet = 500 * time.Millisecond
 
 // writeRetry is the delay before a template whose file could not be written
@@ -144,7 +156,8 @@ func (t *CmdTemplate) watch(jobs []*templateJob) error {
 				SetReplay(true).
 				SetRelatives(false).
 				SetFilters(sub.Filters()).
-				SetSelector(sub.Selector)
+				SetSelector(sub.Selector).
+				SetReplayDone(true)
 			if t.Node != "" {
 				getter = getter.SetNodename(t.Node)
 			}
@@ -188,6 +201,8 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 	w.timer.Stop()
 	w.reconnect = time.NewTimer(time.Hour)
 	w.reconnect.Stop()
+	w.watchdog = time.NewTimer(time.Hour)
+	w.watchdog.Stop()
 	defer w.closeStream()
 
 	w.st = tmplrender.NewState(data)
@@ -238,6 +253,9 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 			w.logf("events stream: %s", e.err)
 			w.closeStream()
 			w.reconnect.Reset(w.backoff())
+		case <-w.watchdog.C:
+			w.logf("events stream: no end of replay within %s: open it again", replayDoneTimeout)
+			w.open(ctx)
 		case <-w.reconnect.C:
 			w.open(ctx)
 		case <-w.timer.C:
@@ -303,7 +321,20 @@ func (w *templateWatcher) open(ctx context.Context) {
 	w.pending = nil
 	w.replayed = 0
 	w.dirtySince = time.Now()
-	w.arm(w.quiet())
+	w.replayDone = false
+	if a, ok := reader.(event.ReplayDoneAdvertiser); ok {
+		w.replayDone = a.ReplayDoneAdvertised()
+	}
+	if w.replayDone {
+		// The render waits for the ReplayDone event, whatever the
+		// time the replay takes to start.
+		w.timer.Stop()
+		w.watchdog.Reset(replayDoneTimeout)
+	} else {
+		// An older daemon, or one proxying an older one: the end of
+		// the replay is taken as a quiet period.
+		w.arm(w.quiet())
+	}
 	go func(gen int, reader event.ReadCloser) {
 		for {
 			ev, err := reader.Read()
@@ -324,6 +355,9 @@ func (w *templateWatcher) open(ctx context.Context) {
 }
 
 func (w *templateWatcher) closeStream() {
+	if w.watchdog != nil {
+		w.watchdog.Stop()
+	}
 	if w.reader == nil {
 		return
 	}
@@ -359,6 +393,14 @@ func (w *templateWatcher) onEvent(ctx context.Context, ev *event.Event) {
 	}
 	w.nextID = ev.ID + 1
 	w.retries = 0
+	if ev.Kind == event.KindReplayDone {
+		// The cluster data is complete: render now.
+		w.watchdog.Stop()
+		if w.settling {
+			w.arm(0)
+		}
+		return
+	}
 	msg, err := msgbus.EventToMessage(*ev)
 	if err != nil {
 		w.logf("event %d %s: %s", ev.ID, ev.Kind, err)
@@ -374,6 +416,11 @@ func (w *templateWatcher) onEvent(ctx context.Context, ev *event.Event) {
 	}
 	if w.dirtySince.IsZero() {
 		w.dirtySince = time.Now()
+	}
+	if w.settling && w.replayDone {
+		// No render before the ReplayDone event, not even past
+		// --max-delay: it would be from a partial cluster data.
+		return
 	}
 	w.arm(w.quiet())
 }
