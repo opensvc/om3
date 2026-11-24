@@ -1915,6 +1915,48 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/action/wake:
+    post:
+      operationId: PostNodeActionWake
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Send from the node the Wake-on-LAN magic packets waking the cluster node target, as configured in its wake#<target> section.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: target
+          required: true
+          description: the name of the cluster node to wake
+          schema:
+            type: string
+        - in: query
+          name: mac
+          description: the mac addresses of the node to wake, replacing the wake#<target>.mac ones
+          schema:
+            type: array
+            items:
+              type: string
+              example: "52:54:00:aa:bb:cc"
+        - $ref: '#/components/parameters/inQuerySessionID'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/action/wol:
     post:
       operationId: PostNodeActionWol
