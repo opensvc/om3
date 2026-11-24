@@ -203,15 +203,16 @@ func (t *CmdNodeWake) wakeOne(ctx context.Context, c, wakeClient *client.T, data
 
 	var (
 		accepted []string
-		errs     error
+		failures []relayFailure
 	)
 	for _, relay := range relays {
 		if err := postNodeActionWake(ctx, wakeClient, relay, params); err != nil {
-			errs = errors.Join(errs, err)
+			failures = append(failures, relayFailure{relay: relay, err: err})
 			continue
 		}
 		accepted = append(accepted, relay)
 	}
+	errs := joinRelayFailures(failures)
 	if len(accepted) == 0 {
 		return nil, errs
 	}
@@ -221,24 +222,58 @@ func (t *CmdNodeWake) wakeOne(ctx context.Context, c, wakeClient *client.T, data
 	return accepted, nil
 }
 
+// relayFailure is the error a relay answered to a wake request.
+type relayFailure struct {
+	relay string
+	err   error
+}
+
+// joinRelayFailures returns one error per distinct reason, naming the relays
+// that answered it: the relays of a cluster usually fail to wake a node for
+// the same reason, as when the collector can not wake it and no mac is set.
+func joinRelayFailures(failures []relayFailure) error {
+	var (
+		reasons []string
+		relays  = make(map[string][]string)
+	)
+	for _, f := range failures {
+		reason := f.err.Error()
+		if _, ok := relays[reason]; !ok {
+			reasons = append(reasons, reason)
+		}
+		relays[reason] = append(relays[reason], f.relay)
+	}
+	var errs error
+	for _, reason := range reasons {
+		word := "relay"
+		if len(relays[reason]) > 1 {
+			word = "relays"
+		}
+		errs = errors.Join(errs, fmt.Errorf("%s %s: %s", word, strings.Join(relays[reason], ", "), reason))
+	}
+	return errs
+}
+
+// postNodeActionWake asks relay to wake the node, and returns the reason it
+// failed, without the relay name.
 func postNodeActionWake(ctx context.Context, c *client.T, relay string, params api.PostNodeActionWakeParams) error {
 	response, err := c.PostNodeActionWakeWithResponse(ctx, relay, &params)
 	if err != nil {
-		return fmt.Errorf("relay %s: %w", relay, err)
+		return err
 	}
 	switch {
 	case response.JSON200 != nil:
 		return nil
 	case response.JSON400 != nil:
-		return fmt.Errorf("relay %s: %s", relay, *response.JSON400)
+		return errors.New(response.JSON400.String())
 	case response.JSON401 != nil:
-		return fmt.Errorf("relay %s: %s", relay, *response.JSON401)
+		return errors.New(response.JSON401.String())
 	case response.JSON403 != nil:
-		return fmt.Errorf("relay %s: %s", relay, *response.JSON403)
+		return errors.New(response.JSON403.String())
 	case response.JSON500 != nil:
-		return fmt.Errorf("relay %s: %s", relay, *response.JSON500)
+		return errors.New(response.JSON500.String())
 	default:
-		return fmt.Errorf("relay %s: unexpected response: %s", relay, response.Status())
+		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 }
 

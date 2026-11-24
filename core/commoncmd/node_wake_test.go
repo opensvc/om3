@@ -2,6 +2,7 @@ package commoncmd
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -120,4 +121,37 @@ func TestIsReceiving(t *testing.T) {
 	assert.False(t, isReceiving(data, "n2"), "beating on tx only")
 	assert.True(t, isReceiving(data, "n3"), "beating on rx")
 	assert.False(t, isReceiving(data, "n4"), "unknown")
+}
+
+func TestJoinRelayFailures(t *testing.T) {
+	noMac := errors.New("[500] Wake failed: node w3: no mac")
+	down := errors.New("connection refused")
+	cases := map[string]struct {
+		failures []relayFailure
+		want     string
+	}{
+		"none": {},
+		"one relay": {
+			failures: []relayFailure{{"w1", noMac}},
+			want:     "relay w1: [500] Wake failed: node w3: no mac",
+		},
+		"same reason": {
+			failures: []relayFailure{{"w1", noMac}, {"w2", noMac}, {"w4", noMac}},
+			want:     "relays w1, w2, w4: [500] Wake failed: node w3: no mac",
+		},
+		"distinct reasons, in the order first met": {
+			failures: []relayFailure{{"w1", noMac}, {"w2", down}, {"w4", noMac}},
+			want:     "relays w1, w4: [500] Wake failed: node w3: no mac\nrelay w2: connection refused",
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			err := joinRelayFailures(c.failures)
+			if c.want == "" {
+				assert.NoError(t, err)
+				return
+			}
+			assert.EqualError(t, err, c.want)
+		})
+	}
 }
