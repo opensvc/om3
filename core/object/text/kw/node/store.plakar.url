@@ -31,8 +31,10 @@ hold.
 
 The store is never inside a head it backs up. A store declared in a sec is
 reached over the network: the daemon reads and writes a store as root, and a
-namespace does not choose a directory of the node. Declaring a `plakar`
-store in a sec requires the root grant.
+namespace does not choose a directory of the node. A namespace declares a
+`sftp://` or `s3://` store in a sec, its passphrase and its credentials
+written `from <sec> key <key>`: another scheme, `https://` included, requires
+the root grant.
 
 The retention deletes the snapshots of a run, then runs `plakar
 maintenance`, which frees their space in two passes: the packs no snapshot

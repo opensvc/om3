@@ -302,25 +302,38 @@ var rules = map[string]Group{
 	// the daemon writes and reads as root: a store of a namespace is one it
 	// reaches over the network, an sftp server whose key the namespace keeps
 	// in a sec, never a directory of the node.
+	//
+	// A plakar store is the namespace's too, at a sftp server or a s3
+	// bucket, which its driver reaches with the credentials of the store
+	// alone, never with what the node holds for root: see storeSchemes,
+	// which DeniedByDriver holds the url of each type to.
+	//
+	// The secrets of a store, and the certificate authorities it trusts,
+	// are keys of the sec declaring it, written from . key <key>. The key
+	// is read as the object using the store, not as the one who wrote the
+	// reference: a reference to another datastore would have a store shared
+	// with other namespaces read their keys for them, as a token sent to a
+	// server, or a passphrase of a repository at a url of their choosing.
 	"store": {
 		Rules: map[string]Rule{
 			"type": {
 				Grant:  rbac.GrantRoot,
 				Reason: reasonRoot,
-				Values: []string{"tar"},
+				Values: []string{"plakar", "tar"},
 			},
 			"url": {
 				Grant:  rbac.GrantRoot,
-				Reason: "a store url other than sftp://, a directory of the node, requires the root grant",
-				Denies: valueOnly(func(value string) bool { return !strings.HasPrefix(value, "sftp://") }),
+				Reason: "a store url other than sftp://, or s3:// for a plakar store, as a directory of the node, requires the root grant",
+				Denies: valueOnly(func(value string) bool { return !hasStoreScheme(value, "plakar") }),
 			},
-			"host_key": {},
-			"ssh_private_key": {
-				Grant:  rbac.GrantRoot,
-				Reason: "an ssh private key not written from <sec> key <key> requires the root grant",
-				Denies: valueOnly(func(value string) bool { return !isKeyReference(value) }),
-			},
-			"keep": {},
+			"host_key":        {},
+			"ssh_private_key": storeKeyRule("an ssh private key"),
+			"passphrase":      storeKeyRule("a passphrase"),
+			"access_key":      storeKeyRule("an access key"),
+			"secret_key":      storeKeyRule("a secret key"),
+			"token":           storeKeyRule("a token"),
+			"ca":              storeKeyRule("the certificate authorities"),
+			"keep":            {},
 		},
 		Default: &rootRule,
 	},
@@ -890,10 +903,54 @@ func isNFSOptAllowed(opt string) bool {
 // isTrue reports whether a boolean keyword value is not a false one. A value
 // that does not parse is taken as true: what the driver makes of it is not
 // for the policy to guess.
-// isKeyReference says whether s is written from <datastore> key <key>.
-func isKeyReference(s string) bool {
+// storeSchemes is the schemes of the url a user holding no root grant may
+// give a store of a sec, by store type: the locations the driver reaches
+// over the network with the credentials of the store only.
+//
+// A tar store is a sftp server. A plakar store is a sftp server or a s3
+// bucket, the schemes whose credentials its driver refuses to do without:
+// the ssh setup of root and the role of the instance are not what a
+// namespace logs in with.
+//
+// A plakar server, https://, is root's: its store sends the requests of an
+// http client, with a token and to a server of the namespace's choosing,
+// from the node, to any host the node reaches and the namespace may not.
+// So are http://, in the clear, and the other schemes plakar knows, as the
+// ones of the packages root installed, reached with what the node holds.
+var storeSchemes = map[string][]string{
+	"tar":    {"sftp"},
+	"plakar": {"s3", "sftp"},
+}
+
+// hasStoreScheme says whether the url opens with a scheme of storeSchemes
+// for the store type, written as the drivers read it, in lower case.
+func hasStoreScheme(url, typ string) bool {
+	for _, scheme := range storeSchemes[typ] {
+		if strings.HasPrefix(url, scheme+"://") {
+			return true
+		}
+	}
+	return false
+}
+
+// storeKeyRule is the rule of a keyword of a store naming a secret, or what
+// the store trusts: written from . key <key>, a key of the sec declaring the
+// store, where a value written in the section is one any reader of the
+// configuration of the sec would see, and a key of another datastore one the
+// writer may not read, the key being read as the object using the store.
+func storeKeyRule(what string) Rule {
+	return Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: what + " not written from . key <key>, a key of the sec declaring the store, requires the root grant",
+		Denies: valueOnly(func(value string) bool { return !isOwnKeyReference(value) }),
+	}
+}
+
+// isOwnKeyReference says whether s is written from . key <key>, a key of the
+// datastore holding the section.
+func isOwnKeyReference(s string) bool {
 	words := strings.Fields(s)
-	return len(words) >= 4 && words[0] == "from" && words[2] == "key"
+	return len(words) >= 4 && words[0] == "from" && words[1] == "." && words[2] == "key"
 }
 
 func isTrue(s string) bool {
@@ -1119,6 +1176,11 @@ func DeniedByDriver(grants rbac.Grants, kind naming.Kind, section, option, value
 	}
 	if err := Denied(grants, kind, section, "type", typ, set); err != nil {
 		return fmt.Errorf("a keyword of a section running the %s driver: %w", typ, err)
+	}
+	// The url of a store is held to the schemes of its type: the rule of
+	// the keyword knows the ones of every type, not which the section runs.
+	if group, _, _ := strings.Cut(section, "#"); group == "store" && option == "url" && !hasStoreScheme(value, typ) && !grants.HasGrant(rbac.GrantRoot) {
+		return fmt.Errorf("a url of a %s store other than %s://, as a directory of the node, %s", typ, strings.Join(storeSchemes[typ], ":// or "), reasonRoot)
 	}
 	if typ == "kvm" && deniesKVMKeyword(option, value) && !grants.HasGrant(rbac.GrantRoot) {
 		return fmt.Errorf("this keyword of a kvm section, or this value of it, %s", reasonRoot)
