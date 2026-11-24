@@ -647,6 +647,29 @@ func TestPlakarConfigurationIsWrittenWhole(t *testing.T) {
 	}
 }
 
+// TestTheSecurityCheckIsDisabledAgainWithANewCache pins the marker of the
+// security check disabled kept in the cache, beside the record of plakar:
+// disabled once per store, and again once the cache is removed, which takes
+// the record of plakar with it.
+func TestTheSecurityCheckIsDisabledAgainWithANewCache(t *testing.T) {
+	e := newTestEnv(t)
+	e.createStore(t)
+	calls := 0
+	disableSecurityCheck = func(dirs) error { calls++; return nil }
+	check := func() {
+		s := newStore(t, fmt.Sprintf("[store#lab]\ntype = plakar\nurl = %s\npassphrase = from system/sec/backup key passphrase\n", e.storePath()))
+		require.NoError(t, s.Check(context.Background(), backup.RunFilter{}))
+	}
+	check()
+	check()
+	assert.Equal(t, 1, calls, "once per store")
+	assert.FileExists(t, filepath.Join(e.dirs.cache, securityCheckMarker))
+	assert.NoFileExists(t, filepath.Join(e.dirs.config, securityCheckMarker))
+	require.NoError(t, os.RemoveAll(e.dirs.cache))
+	check()
+	assert.Equal(t, 2, calls, "again with a new cache")
+}
+
 // TestStoresOfOneNameKeepTheirOwnDirectories pins the directories of a
 // store of a sec apart from the ones of the store of the same name of the
 // cluster configuration.

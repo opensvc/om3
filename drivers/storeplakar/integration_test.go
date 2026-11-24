@@ -80,7 +80,7 @@ func TestWithTheRealPlakar(t *testing.T) {
 	require.NoError(t, e.store.Backup(ctx, run, "fs#1", e.src, e.src, nil))
 	require.FileExists(t, filepath.Join(e.storePath(), "CONFIG"))
 	// The plakar of the store no longer calls out for security updates.
-	require.FileExists(t, filepath.Join(e.dirs.config, securityCheckMarker))
+	require.FileExists(t, filepath.Join(e.dirs.cache, securityCheckMarker))
 	cookies, err := filepath.Glob(filepath.Join(e.dirs.cache, "cookies", "*", ".disabled-security-check"))
 	require.NoError(t, err)
 	require.NotEmpty(t, cookies, "plakar records the security check disabled in its cache")

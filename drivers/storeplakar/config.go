@@ -214,16 +214,18 @@ func (t *T) storesYML(location string, options map[string]string) ([]byte, error
 	})
 }
 
-// writeFile writes b as the file name of dir, in place once complete.
-// securityCheckMarker is the file of the configuration directory of a store
-// saying its plakar has its security check disabled.
+// securityCheckMarker is the file of the cache directory of a store saying
+// its plakar has its security check disabled. It lives beside the record
+// plakar keeps of it, in the cache, so a cache removed takes both away and
+// the check is disabled again, where a marker kept elsewhere would outlive
+// the record and leave plakar checking its releases feed.
 const securityCheckMarker = "om3.security-check-disabled"
 
 // disableSecurityCheck has plakar stop checking its releases feed for
 // security updates, which it does once a day by default from each of its
 // configurations, as each store has its own: a node must not call out to the
 // plakar site when it backs up. plakar records it in its cache directory,
-// so it runs once per store, as securityCheckMarker records. Replaced by
+// so it runs once per store and cache, as securityCheckMarker records. Replaced by
 // the tests faking plakar.
 var disableSecurityCheck = runDisableSecurityCheck
 
@@ -303,6 +305,7 @@ func (t *T) warm(d dirs) {
 	t.warmed = true
 }
 
+// writeFile writes b as the file name of dir, in place once complete.
 func writeFile(dir, name string, b []byte) error {
 	return writeFileMode(dir, name, b, filePerm)
 }
@@ -429,10 +432,10 @@ func (t *T) configure(rewrite bool) (string, error) {
 			return "", err
 		}
 	}
-	if _, err := os.Stat(filepath.Join(d.config, securityCheckMarker)); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(d.cache, securityCheckMarker)); errors.Is(err, os.ErrNotExist) {
 		if err := disableSecurityCheck(d); err != nil {
 			t.Log().Warnf("disable the security check of plakar: %s", err)
-		} else if err := writeFile(d.config, securityCheckMarker, nil); err != nil {
+		} else if err := writeFile(d.cache, securityCheckMarker, nil); err != nil {
 			t.Log().Warnf("record the security check of plakar disabled: %s", err)
 		}
 	}
