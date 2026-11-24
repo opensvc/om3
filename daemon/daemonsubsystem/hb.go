@@ -1,6 +1,7 @@
 package daemonsubsystem
 
 import (
+	"strings"
 	"time"
 )
 
@@ -130,6 +131,21 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		"is_beating":      t.IsBeating,
 		"beating":         beatingText,
 	}
+}
+
+// IsReceiving returns whether the heartbeat of peer beats on any of the rx
+// streams.
+//
+// The tx streams are not read: a unicast tx is beating while its writes
+// succeed, and the writes to a connection established to a peer powered
+// off succeed until the kernel gives up retransmitting, many minutes later.
+func (c *Heartbeat) IsReceiving(peer string) bool {
+	for _, stream := range c.Streams {
+		if strings.HasSuffix(stream.ID, ".rx") && stream.Peers[peer].IsBeating {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Heartbeat) Table(nodeName string, isSingleNode bool) HeartbeatStreamPeerStatusTable {

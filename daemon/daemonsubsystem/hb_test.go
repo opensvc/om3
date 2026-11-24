@@ -62,3 +62,17 @@ func TestHeartbeatUnstructuredNamesTheUnknownState(t *testing.T) {
 	assert.Equal(t, "N/A", m["peer"])
 	assert.Equal(t, "N/A", m["desc"])
 }
+
+// A peer powered off without closing its connections is still beating on
+// a tx stream: only the rx streams tell it is awake.
+func TestHeartbeatIsReceiving(t *testing.T) {
+	hb := Heartbeat{Streams: []HeartbeatStream{
+		{Peers: map[string]HeartbeatStreamPeerStatus{"n2": {IsBeating: false}, "n3": {IsBeating: true}}},
+		{Peers: map[string]HeartbeatStreamPeerStatus{"n2": {IsBeating: true}, "n3": {IsBeating: true}}},
+	}}
+	hb.Streams[0].ID = "hb#1.rx"
+	hb.Streams[1].ID = "hb#1.tx"
+	assert.False(t, hb.IsReceiving("n2"), "beating on tx only")
+	assert.True(t, hb.IsReceiving("n3"), "beating on rx")
+	assert.False(t, hb.IsReceiving("n4"), "unknown")
+}

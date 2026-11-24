@@ -394,19 +394,11 @@ func waitNodesAlive(ctx context.Context, evReader event.ReadCloser, nodes []stri
 
 // isReceiving returns whether the api node of data receives the heartbeat
 // of node on any of its rx streams. The api node itself is awake.
-//
-// The tx streams are not read: a unicast tx is beating while its writes
-// succeed, and the writes to a connection established to a peer powered
-// off succeed until the kernel gives up retransmitting, many minutes later.
 func isReceiving(data clusterdump.Data, node string) bool {
 	apiNode := data.Daemon.Nodename
 	if node == apiNode {
 		return true
 	}
-	for _, stream := range data.Cluster.Node[apiNode].Daemon.Heartbeat.Streams {
-		if strings.HasSuffix(stream.ID, ".rx") && stream.Peers[node].IsBeating {
-			return true
-		}
-	}
-	return false
+	hb := data.Cluster.Node[apiNode].Daemon.Heartbeat
+	return hb.IsReceiving(node)
 }
