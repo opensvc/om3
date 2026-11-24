@@ -71,3 +71,38 @@ func TestSendInvalid(t *testing.T) {
 	assert.Error(t, Send("52:54:00:aa:bb:cc", "bad", 9))
 	assert.Error(t, Send("52:54:00:aa:bb:cc", "127.0.0.1", 0))
 }
+
+func TestBroadcastFor(t *testing.T) {
+	saved := interfaceAddrs
+	t.Cleanup(func() { interfaceAddrs = saved })
+	cidr := func(s string) net.Addr {
+		ip, ipnet, err := net.ParseCIDR(s)
+		require.NoError(t, err)
+		ipnet.IP = ip
+		return ipnet
+	}
+	interfaceAddrs = func() ([]net.Addr, error) {
+		return []net.Addr{
+			cidr("127.0.0.1/8"),
+			cidr("10.45.0.11/24"),
+			cidr("10.45.1.11/24"),
+			cidr("172.16.4.1/22"),
+			cidr("192.168.9.1/31"),
+			cidr("fd00::11/64"),
+		}, nil
+	}
+	cases := map[string]string{
+		"10.45.1.12":  "10.45.1.255",
+		"10.45.0.200": "10.45.0.255",
+		"172.16.6.7":  "172.16.7.255",
+	}
+	for ip, want := range cases {
+		got, err := BroadcastFor(net.ParseIP(ip))
+		require.NoError(t, err, ip)
+		assert.Equal(t, want, got.String(), ip)
+	}
+	for _, ip := range []string{"10.45.9.12", "127.0.0.2", "192.168.9.0", "fd00::12"} {
+		_, err := BroadcastFor(net.ParseIP(ip))
+		assert.Error(t, err, ip)
+	}
+}

@@ -112,3 +112,44 @@ func dialBroadcast(addr string) (net.Conn, error) {
 	}
 	return dialer.Dial("udp4", addr)
 }
+
+// interfaceAddrs returns the addresses of the local interfaces, replaced in
+// tests.
+var interfaceAddrs = net.InterfaceAddrs
+
+// BroadcastFor returns the broadcast address of the local interface on the
+// ipv4 subnet of ip, so a magic packet sent to it reaches the lan of ip.
+func BroadcastFor(ip net.IP) (net.IP, error) {
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return nil, fmt.Errorf("%s is not an ipv4 address", ip)
+	}
+	addrs, err := interfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		ipnet, ok := addr.(*net.IPNet)
+		if !ok || ipnet.IP.To4() == nil || ipnet.IP.IsLoopback() {
+			continue
+		}
+		mask := ipnet.Mask
+		if len(mask) == net.IPv6len {
+			mask = mask[12:]
+		}
+		if ones, _ := net.IPMask(mask).Size(); ones >= 31 {
+			// point-to-point subnets have no broadcast address
+			continue
+		}
+		if !ipnet.Contains(ip4) {
+			continue
+		}
+		network := ipnet.IP.To4().Mask(mask)
+		broadcast := make(net.IP, net.IPv4len)
+		for i := range broadcast {
+			broadcast[i] = network[i] | ^mask[i]
+		}
+		return broadcast, nil
+	}
+	return nil, fmt.Errorf("no local interface on the subnet of %s", ip)
+}
