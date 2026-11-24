@@ -1,8 +1,33 @@
-The location of the Kloset store: an absolute path or a `fs://` url for a
-directory of the node, created at first use, or a url plakar reaches by
-itself, as `sftp://` or `s3://`, the plakar package of its scheme installed
-on every node and the store created by hand.
+The location of the Kloset store: an absolute path or a `fs://` url of one
+for a directory of the node, created by the first run written into it, or
+the `<scheme>://` url of a location plakar reaches by itself, where the
+store is created by hand. A relative path is refused.
+
+A directory of the node holds the runs of its node only: unlike a `tar`
+store, it is not read over the nodes of the cluster. The store of an object
+failing over is a directory its nodes share, as an nfs mount, or a remote
+location, so the node taking the object over finds the runs of the other. A
+node where the shared directory is not mounted lists no run, and creates no
+store in the mount point until it writes a run.
+
+plakar 1.1.8 reaches by itself a plakar server, `http://` or `https://`, as
+`plakar server` runs, with `-allow-delete` for the retention to delete runs.
+The other locations, as `sftp://` or `s3://`, need the plakar package of
+their scheme on every node, which plakar loads from the data directory the
+driver gives it for the store, `<var>/plakar/node/<name>/data`, or
+`<var>/plakar/sec/<namespace>/<sec>/<name>/data` for a store of a sec: `plakar
+-datadir <dir> pkg add <package>` installs it there, and a package installed
+for a user is not seen. The driver has no keyword for the credentials of a
+location yet: a location is one plakar reaches with what the url and the
+node hold.
 
 The store is never inside a head it backs up. A store declared in a sec is
 reached over the network: the daemon reads and writes a store as root, and a
-namespace does not choose a directory of the node.
+namespace does not choose a directory of the node. Declaring a `plakar`
+store in a sec requires the root grant.
+
+The retention deletes the snapshots of a run, then runs `plakar
+maintenance`, which frees their space in two passes: the packs no snapshot
+uses are marked, then removed by a maintenance run 7 days later or more. A
+maintenance finding the store locked by a backup is skipped, the next
+deletion running it again.

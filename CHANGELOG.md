@@ -465,6 +465,23 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Share pool**: The `share` pool of v2 is ported: the volumes are directories of a `path` every node mounts from the same server, as a nfs export, `<path>/<name>` for a volume shared by the nodes and `<path>/<name>.<nodename>` for the others, and loop files there for the block volumes. It has every access mode, `rox` and `rwx` included, and the `shared` capability. It bounds no volume, so it has no `quota` capability, and a namespace claiming it is refused the volumes it asks of it, as of any pool not bounding them. The type was offered, and its keyword documented, with no driver: a `pool#<name>.type = share` section was ignored.
 
+* **Plakar store**: A `store#<name>` section of `type = plakar` keeps the runs of the `sync.store` resources in a Kloset store, deduplicated, compressed and encrypted, driven through the plakar binary of the node, which the capabilities scan finds in the `PATH`:
+
+    ```
+    [store#lab]
+    type = plakar
+    url = /srv/plakar
+    passphrase = from system/sec/backup key passphrase
+    ```
+
+    The `url` is an absolute path or the `fs://` url of one, a directory of the node, or the `<scheme>://` url of a location plakar reaches by itself: a plakar server, `http://` or `https://`, with plakar 1.1.8 alone, the plakar package of the scheme installed in the data directory of the store for the others. A relative path is refused. A directory of the node holds the runs of its node only, the driver not reading the other nodes as the `tar` store does: the store of an object failing over is a directory its nodes share, or a remote location. The driver has no keyword for the credentials of a location yet. A `plakar` store declared in a sec requires the root grant, and is never a directory of the node.
+
+    The store is created by the first run written into it, never by a listing, a status, a check, a restore or a deletion, which find no run in a store missing or empty: a node where the shared directory is not mounted creates no store in the mount point to answer a status. The store is never inside a head it backs up, which is refused before the store is created.
+
+    plakar reads the passphrase from `om <sec> key decode -- <key>`, the `passphrase_cmd` of the configuration the driver writes for it: never from a file, a command line nor the environment. Each plakar call derives the key of the store again, a second of work, so the listings of one command or action are read once: the restore of a run of two heads with its configuration and keys runs plakar 5 times, where a listing per member made it 9.
+
+    The retention deletes the snapshots of a run with `plakar rm`, then runs `plakar maintenance`, which frees their space in two passes: the packs no snapshot uses are marked, and removed by a maintenance run 7 days later or more. A maintenance finding the store locked by another plakar, as the backup of another object, is skipped and logged, `maintenance skipped: repository busy`, the next deletion running it again.
+
 * **Light key derivation for the encrypted disks om keys**: A `disk.crypt` resource whose passphrase om generates, `manage_passphrase = true` as by default, formats its volume with `--pbkdf pbkdf2 --iter-time 100`. The default LUKS2 derivation, argon2, takes up to a gigabyte of memory and several threads for seconds at each provision and each start, which stalled a small node long enough for its daemon to miss the systemd watchdog, and makes a random 256-character passphrase no harder to guess. A passphrase the user supplies, `manage_passphrase = false`, keeps the derivation cryptsetup chooses. The new provisioning keywords `pbkdf` (`pbkdf2`, `argon2i` or `argon2id`), `pbkdf_memory` (a count of KiB or a size), `pbkdf_parallel` and `iter_time` (milliseconds) set the derivation of both, `pbkdf_memory` and `pbkdf_parallel` being refused with `pbkdf = pbkdf2`. The volumes formatted already keep their derivation, which the open reads from their header.
 
 ## Breaking Changes

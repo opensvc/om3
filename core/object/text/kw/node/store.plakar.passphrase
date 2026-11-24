@@ -1,7 +1,7 @@
 The passphrase of the Kloset store, written `from <sec> key <key>`: a
 passphrase is never written in the section.
 
-plakar gets it from `om <sec> key decode <key>`, the `passphrase_cmd` of its
+plakar gets it from `om <sec> key decode -- <key>`, the `passphrase_cmd` of its
 configuration: it is never in a file, a command line nor the environment. The
 key holds one line, a trailing newline being ignored. Losing the passphrase
 loses the runs of the store.
