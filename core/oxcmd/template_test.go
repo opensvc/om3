@@ -559,3 +559,54 @@ templates:
 	wt.eventually(func() bool { return read(outWeb) == "down" }, "render of the first template")
 	assert.Equal(t, "up down", read(outBoth), "the file of the failed template is kept")
 }
+
+// SIGHUP reads the config file again: a template added is rendered, a var
+// changed applies, and an invalid file keeps the former templates.
+func TestWatchConfigSIGHUP(t *testing.T) {
+	settleQuiet = 50 * time.Millisecond
+	dir := t.TempDir()
+	wt := &watchTest{
+		t:       t,
+		reloads: filepath.Join(dir, "reloads"),
+		streams: &fakeStreams{},
+		done:    make(chan error, 1),
+		hupC:    make(chan os.Signal, 1),
+	}
+	web := writeFile(t, dir, "web.tpl", `{{ .env }} {{ avail "prod/svc/web" }}`)
+	web2 := writeFile(t, dir, "web2.tpl", `{{ .env }} {{ avail "prod/svc/web2" }}`)
+	outWeb, outWeb2 := filepath.Join(dir, "web"), filepath.Join(dir, "web2")
+	cfg := filepath.Join(dir, "templates.yaml")
+	writeConfig := func(env string, templates ...[2]string) {
+		s := "vars:\n  env: " + env + "\ntemplates:\n"
+		for _, tpl := range templates {
+			s += "  - in: " + tpl[0] + "\n    out: " + tpl[1] + "\n"
+		}
+		require.NoError(t, os.WriteFile(cfg, []byte(s), 0o600))
+	}
+	read := func(p string) string { b, _ := os.ReadFile(p); return string(b) }
+
+	writeConfig("dev", [2]string{web, outWeb})
+	wt.run(&CmdTemplate{Config: cfg, Watch: true, Delay: 50 * time.Millisecond, MaxDelay: time.Second, ReloadTimeout: time.Second})
+	wt.eventually(func() bool { return read(outWeb) == "dev up" }, "first render")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	assert.Equal(t, "prod/svc/web", wt.streams.subs[0].Selector)
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+
+	// A template added, a var changed: the stream is opened again for the
+	// data the new template reads, and both files are rendered from it.
+	writeConfig("prod", [2]string{web, outWeb}, [2]string{web2, outWeb2})
+	wt.hupC <- os.Interrupt
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 2 }, "stream opened again")
+	assert.Equal(t, "prod/svc/web,prod/svc/web2", wt.streams.subs[1].Selector)
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web2", status.Down, time.Now()))
+	wt.eventually(func() bool { return read(outWeb) == "prod up" && read(outWeb2) == "prod down" }, "renders of the new config")
+
+	// An invalid file keeps the former templates.
+	require.NoError(t, os.WriteFile(cfg, []byte("templates:\n  - in: "+web+"\n    oops: 1\n"), 0o600))
+	wt.hupC <- os.Interrupt
+	time.Sleep(200 * time.Millisecond)
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web2", status.Up, time.Now()))
+	wt.eventually(func() bool { return read(outWeb2) == "prod up" }, "the former templates still render")
+}

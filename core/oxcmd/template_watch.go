@@ -33,6 +33,10 @@ type (
 		cmd  *CmdTemplate
 		jobs []*templateJob
 
+		// fetcher fetches the values no event carries, for the
+		// templates of a config file read again too.
+		fetcher tmplrender.Fetcher
+
 		// openStream opens an events stream with replay, asking the
 		// events of sub.
 		openStream func(ctx context.Context, sub tmplrender.Subscription) (event.ReadCloser, error)
@@ -123,12 +127,14 @@ func (t *CmdTemplate) watch(jobs []*templateJob) error {
 	if err != nil {
 		return err
 	}
+	fetcher := &templateFetcher{c: c, debugf: t.debugFunc()}
 	for _, job := range jobs {
-		job.r.Fetcher = &templateFetcher{c: c, debugf: t.debugFunc()}
+		job.r.Fetcher = fetcher
 	}
 	w := &templateWatcher{
-		cmd:  t,
-		jobs: jobs,
+		cmd:     t,
+		jobs:    jobs,
+		fetcher: fetcher,
 		openStream: func(ctx context.Context, sub tmplrender.Subscription) (event.ReadCloser, error) {
 			getter := streamClient.NewGetEvents().
 				SetReplay(true).
@@ -205,15 +211,9 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 			w.logf("stopped")
 			return nil
 		case <-hupC:
-			for _, job := range w.jobs {
-				if err := job.readTemplate(); err != nil {
-					w.logf("template %s not read again, the former is kept: %s", job.in, err)
-					continue
-				}
-				w.logf("template %s read again", job.in)
-			}
+			w.readAgain()
 			w.force = true
-			w.forceReason = "template read again on SIGHUP"
+			w.forceReason = "templates read again on SIGHUP"
 			if !w.settling {
 				// While the stream replays, the render waits for
 				// the end of the replay.
@@ -353,6 +353,48 @@ func (w *templateWatcher) onEvent(ctx context.Context, ev *event.Event) {
 		w.dirtySince = time.Now()
 	}
 	w.arm(w.quiet())
+}
+
+// readAgain reads the templates again, and the config file naming them, on
+// SIGHUP. A template not parsing keeps the former, and a config file not read,
+// or invalid, keeps the former templates.
+//
+// The templates of a config file read again replace the former: a template
+// of the same out keeps the reads of its last render until it renders again,
+// and the file of a template no longer named is left as it is, no longer
+// rendered.
+func (w *templateWatcher) readAgain() {
+	if w.cmd.Config == "" {
+		for _, job := range w.jobs {
+			if err := job.readTemplate(); err != nil {
+				w.logf("template %s not read again, the former is kept: %s", job.in, err)
+				continue
+			}
+			w.logf("template %s read again", job.in)
+		}
+		return
+	}
+	jobs, err := w.cmd.prepareConfig()
+	if err != nil {
+		w.logf("config %s not read again, the former templates are kept: %s", w.cmd.Config, err)
+		return
+	}
+	former := make(map[string]*templateJob, len(w.jobs))
+	for _, job := range w.jobs {
+		former[job.out] = job
+	}
+	for _, job := range jobs {
+		job.r.Fetcher = w.fetcher
+		if f, ok := former[job.out]; ok {
+			job.reads = f.reads
+			delete(former, job.out)
+		}
+	}
+	for out := range former {
+		w.logf("%s is no longer rendered, the file is left as it is", out)
+	}
+	w.jobs = jobs
+	w.logf("config %s read again: %d templates", w.cmd.Config, len(jobs))
 }
 
 // reads returns the reads of the last renders of all the templates.
