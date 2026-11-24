@@ -104,6 +104,14 @@ func SubscriptionOf(reads []Read) Subscription {
 		}
 	}
 	s := Subscription{Kinds: sortedKeys(kinds)}
+	for sel := range selections {
+		if strings.Contains(sel, "!") {
+			// The daemon expands a negation naming an object not
+			// there as an error, or as none: the events of every
+			// object are asked, the reads selecting theirs.
+			all = true
+		}
+	}
 	if !all && len(selections) > 0 {
 		// The selector of the stream is the union of the selections,
 		// each a term, or terms joined by +, of the selector syntax.

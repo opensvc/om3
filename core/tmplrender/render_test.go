@@ -344,3 +344,10 @@ func TestSelectorTerms(t *testing.T) {
 		assert.Equal(t, want, out, sel)
 	}
 }
+
+// A selection with a negation asks the events of every object: the daemon
+// does not expand a negation of an object not there as the reads do.
+func TestSubscriptionOfANegation(t *testing.T) {
+	_, res := doRender(t, newRenderer(`{{ range objects "prod/svc/*+!prod/svc/missing" }}{{ end }}{{ avail "prod/svc/web" }}`, nil), NewState(newData()))
+	assertSubscription(t, objectKinds, "", SubscriptionOf(res.Reads))
+}
