@@ -15,6 +15,10 @@ const (
 	HeaderRelativePath = "OM-relative-path"
 	HeaderServedBy     = "OM-Served-By"
 	HeaderUser         = "OM-User"
+
+	// HeaderReplayDone is "true" on an events stream sending a ReplayDone
+	// event once its replay is written.
+	HeaderReplayDone = "OM-Replay-Done"
 )
 
 // AuditEventPreempted names the server-sent event a daemon audit stream ends

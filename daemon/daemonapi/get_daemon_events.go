@@ -120,6 +120,11 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 		servedBy = nodename
 	}
 	w.Header().Set(api.HeaderServedBy, servedBy)
+	// The peer tells whether it ends its replay with a ReplayDone event,
+	// which is forwarded as the other events.
+	if v := resp.Header.Get(api.HeaderReplayDone); v != "" {
+		w.Header().Set(api.HeaderReplayDone, v)
+	}
 
 	w.WriteHeader(http.StatusOK)
 
@@ -409,7 +414,22 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			pathSelected = selected
 		}
 	}
+	// defines replay from the primary replay option, fallback to the deprecated
+	// cache value if any.
+	var replay bool
+	if params.Replay != nil && *params.Replay {
+		replay = true
+	} else if params.Cache != nil && *params.Cache {
+		replay = true
+	}
+	// replayDone sends a ReplayDone event once the replay is written, which
+	// the response header tells the client before.
+	replayDone := replay && params.ReplayDone != nil && *params.ReplayDone
+
 	w.Header().Add(api.HeaderServedBy, a.localhost)
+	if replayDone {
+		w.Header().Set(api.HeaderReplayDone, "true")
+	}
 	w.WriteHeader(http.StatusOK)
 
 	// don't wait first event to flush response
@@ -439,16 +459,8 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return nil
 	}
 
-	// defines replay from the primary replay option, fallback to the deprecated
-	// cache value if any.
-	var replay bool
-	if params.Replay != nil && *params.Replay {
-		replay = true
-	} else if params.Cache != nil && *params.Cache {
-		replay = true
-	}
-
 	if replay {
+		replayStart := eventCount
 		// Taken once the daemondata manager processed what was published
 		// before the subscription started: a message published then, but
 		// not processed yet, would be in neither the replay nor the
@@ -498,6 +510,24 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 					log.Tracef("reach event count limit")
 					return nil
 				}
+			}
+		}
+		if replayDone {
+			// Written as an event of the stream, after the replayed
+			// ones: a client applying the events in order knows its
+			// cluster dataset is complete when it reads it. It is not
+			// filtered, nor selected: an empty replay ends with it too.
+			b, _ := json.Marshal(event.ReplayDone{Count: eventCount - replayStart})
+			ev := &event.Event{Kind: event.KindReplayDone, ID: eventCount, At: time.Now(), Data: b}
+			eventCount++
+			if _, err := sseWriter.Write(ev); err != nil {
+				log.Tracef("write event %s: %s", ev.Kind, err)
+				return nil
+			}
+			w.Flush()
+			if limit > 0 && eventCount >= limit {
+				log.Tracef("reach event count limit")
+				return nil
 			}
 		}
 	}

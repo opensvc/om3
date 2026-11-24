@@ -49,6 +49,18 @@ type (
 		GetServedBy() string
 	}
 
+	// ReplayDoneAdvertiser tells whether an events stream ends its replay
+	// with a KindReplayDone event, as the daemon answering it said.
+	ReplayDoneAdvertiser interface {
+		ReplayDoneAdvertised() bool
+	}
+
+	// ReplayDone is the data of a KindReplayDone event.
+	ReplayDone struct {
+		// Count is the count of the events replayed.
+		Count uint64 `json:"count"`
+	}
+
 	ContextSetter interface {
 		SetContext(ctx context.Context)
 	}
@@ -69,6 +81,12 @@ type (
 		Time() time.Time
 	}
 )
+
+// KindReplayDone is the kind of the event an events stream asked with
+// replay_done writes after its replay: the events before it rebuild the
+// cluster dataset, the ones after it are live. It is no message of the bus:
+// it is never published, nor filtered on.
+const KindReplayDone = "ReplayDone"
 
 func ToEvent(i any, id uint64) *Event {
 	switch o := i.(type) {

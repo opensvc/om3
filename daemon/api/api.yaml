@@ -2904,6 +2904,7 @@ paths:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/EventFilter'
         - $ref: '#/components/parameters/EventReplay'
+        - $ref: '#/components/parameters/EventReplayDone'
         - $ref: '#/components/parameters/EventCache'
         - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
@@ -2914,6 +2915,13 @@ paths:
               description: The node name of the daemon that served this response.
               schema:
                 type: string
+            OM-Replay-Done:
+              description: |
+                true when the stream sends a ReplayDone event once the replay
+                is written: with replay and replay_done set, by a daemon
+                supporting it.
+              schema:
+                type: boolean
           content:
             text/event-stream:
               schema:
@@ -14231,6 +14239,19 @@ components:
       description: |
         replay the compacted event history that creates the current cluster dataset.
         filtering and selectors are applied to the compacted event history.
+      schema:
+        type: boolean
+        default: false
+
+    EventReplayDone:
+      name: replay_done
+      in: query
+      description: |
+        with replay, send a ReplayDone event once the replay is written,
+        before the live events, so a client keeping the cluster dataset knows
+        it is complete. The event is in the event id sequence, counts toward
+        the limit, and carries the count of the events replayed. The
+        OM-Replay-Done response header tells the event will be sent.
       schema:
         type: boolean
         default: false
