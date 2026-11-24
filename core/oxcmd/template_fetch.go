@@ -58,7 +58,7 @@ func apiError(what string, resp statusCoder, body []byte) error {
 		detail = strings.TrimSpace(problem.Title + ": " + problem.Detail)
 	}
 	if resp.StatusCode() == http.StatusForbidden {
-		detail += " (reading a sec key needs the admin role on its namespace)"
+		detail += " (reading a sec key needs the secreader or the admin role on its namespace)"
 	}
 	return fmt.Errorf("%s: %s", what, detail)
 }

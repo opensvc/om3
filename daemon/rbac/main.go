@@ -35,6 +35,14 @@ const (
 	// the guests do not: the networks, their addresses and their setup
 	// status. It grants nothing else of the api.
 	RoleInspector Role = "inspector"
+
+	// RoleSecReader reads the key values of the sec objects of its
+	// namespace, which an admin of the namespace reads along with the
+	// rest. It grants nothing else of the api: a reader of secrets, as a
+	// template rendering a config file, holds it with a guest grant
+	// rather than the admin one, which writes every object of the
+	// namespace. The keys of the usr objects stay read by root only.
+	RoleSecReader Role = "secreader"
 )
 
 var (
@@ -55,6 +63,7 @@ var (
 		"leave":          RoleLeave,
 		"scraper":        RoleScraper,
 		"inspector":      RoleInspector,
+		"secreader":      RoleSecReader,
 	}
 
 	GrantRoot           = NewGrant("root", "")

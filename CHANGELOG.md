@@ -84,7 +84,7 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     The template reads:
 
-    * the cfg and sec keys: `key`, `keyOr`, `keyExists`, `keyNames`. Reading a sec key needs the admin role on its namespace, and a sec read with a `--mode` letting others read the file is warned about.
+    * the cfg and sec keys: `key`, `keyOr`, `keyExists`, `keyNames`. Reading a sec key needs the `secreader` role on its namespace, or the `admin` one, and a sec read with a `--mode` letting others read the file is warned about.
     * the keywords, evaluated: `config "path" "section.option"`, and `configAs` as another node evaluates them.
     * the objects: `objects`, `objectStatus`, `objectExists`, `avail`, an error for an object missing, and `availOr`.
     * the instances, with their monitor, and their resources: `instances`, `instanceStatus`, `resources`, `ips`, with `.ipaddr`, `.dev`, `.netmask`, `.hostname`, `disks`, `apps`, `resinfo`.
@@ -289,6 +289,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     The collector attachments of an object, held by the collector rather than by an instance, are served by `/api/object/path/{namespace}/{kind}/{name}`, which the node receiving the request asks the collector for: `GET .../compliance/module`, `.../compliance/moduleset`, `.../compliance/moduleset/tree` and `.../compliance/ruleset` for the guest role, `POST` and `DELETE` on `.../compliance/moduleset/attachment` and `.../compliance/ruleset/attachment` for the admin role, `GET .../collector/tag/attachment` for the guest role, `POST` and `DELETE` on `.../collector/tag/name/{tag}/attachment` for the admin role. `GET /api/cluster/collector/tag` lists the tags of the collector for a cluster-wide guest, and `POST` creates one for a cluster-wide admin. The `ox <path> compliance attach|detach|list|show moduleset`, `ox <path> collector tag attach|detach|show` and `ox node collector tag list|create` commands, which did nothing, run through them.
 
 ### Security
+
+* **A role reading the secrets alone**: the `secreader` role, granted on a namespace as `secreader:<namespace>`, reads the key values of the sec objects of the namespace, by `GET /api/object/path/{namespace}/sec/{name}/data/key` and `.../data`, and grants nothing else of the api: a reader of secrets, as `ox template` rendering a config file on a load balancer, holds it with a `guest` grant, which reads the cluster data and the cfg keys, rather than the `admin` one, which writes every object of the namespace. Writing a sec key still takes `admin`, and the usr keys `root`. The daemon logs each read of sec key values at the debug level, by any role, with the names of the keys and the user, never the values: `serve the keys password of prod/sec/db to lb1`.
 
 * **Privilege restrictions for the app and host task commands**: `no_new_privileges` and
     `capability_bounding_set`, on the `app.simple`, `app.forking` and `task.host` resources, are applied

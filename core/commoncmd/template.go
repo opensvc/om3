@@ -57,8 +57,9 @@ Datastore keys (cfg and sec, read through the api):
   keyExists "path" "name"      true when the key exists
   keyNames "path" ["glob"]     the sorted key names
 
-  Reading a sec key needs the admin role on its namespace. A sec read with
-  a --mode letting others read the file is warned about.
+  Reading a sec key needs the secreader role on its namespace, which reads
+  the sec keys and nothing else, or the admin one. A sec read with a --mode
+  letting others read the file is warned about.
 
 Keywords, as a node evaluates them:
   config "path" "section.option"         as the node serving the api

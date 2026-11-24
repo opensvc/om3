@@ -1033,6 +1033,7 @@ const (
 	Prioritizer    Role = "prioritizer"
 	Root           Role = "root"
 	Scraper        Role = "scraper"
+	Secreader      Role = "secreader"
 	Squatter       Role = "squatter"
 )
 
@@ -1060,6 +1061,8 @@ func (e Role) Valid() bool {
 	case Root:
 		return true
 	case Scraper:
+		return true
+	case Secreader:
 		return true
 	case Squatter:
 		return true
