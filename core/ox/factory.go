@@ -5165,8 +5165,11 @@ func newCmdTemplate() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&options.In, "in", "", "the template file, - for the standard input")
 	flags.StringVar(&options.Out, "out", "", "the file to write, - for the standard output. A symbolic link is refused")
+	flags.StringVar(&options.Config, "config", "", "a yaml file naming several templates, rendered by one process, instead of --in and --out")
 	flags.BoolVarP(&options.Watch, "watch", "w", false, "render again each time something the template read changes")
 	flags.StringVar(&options.ReloadCommand, "reload-command", "", "the path of an executable file to run after the file changes, with no argument and no shell")
+	cmd.MarkFlagsMutuallyExclusive("config", "in")
+	cmd.MarkFlagsMutuallyExclusive("config", "out")
 	flags.DurationVar(&options.Delay, "delay", 2*time.Second, "with --watch, the quiet period after a change before a render")
 	flags.DurationVar(&options.MaxDelay, "max-delay", 30*time.Second, "with --watch, the longest wait after a change before a render")
 	flags.DurationVar(&options.ReloadTimeout, "reload-timeout", time.Minute, "kill the reload command after this duration")
@@ -5177,7 +5180,5 @@ func newCmdTemplate() *cobra.Command {
 	flags.StringVar(&options.Node, "node", "", "with --watch, the node serving the events (default: the node serving the api)")
 	flags.StringArrayVar(&options.Vars, "var", nil, "a template data key=value, read as .key (repeatable)")
 	flags.BoolVar(&options.Debug, "debug", false, "log the events subscribed, the events leading to a render, and the api calls")
-	_ = cmd.MarkFlagRequired("in")
-	_ = cmd.MarkFlagRequired("out")
 	return cmd
 }

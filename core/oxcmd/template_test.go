@@ -231,9 +231,17 @@ func startWatch(t *testing.T, text string, opts ...func(*CmdTemplate)) *watchTes
 	for _, opt := range opts {
 		opt(cmd)
 	}
-	r, out, err := cmd.prepare()
+	wt.run(cmd)
+	return wt
+}
+
+// run runs the watch of cmd, with the objects prod/svc/web and web2 up in the
+// first cluster data.
+func (wt *watchTest) run(cmd *CmdTemplate) {
+	t := wt.t
+	jobs, err := cmd.prepare()
 	require.NoError(t, err)
-	w := &templateWatcher{cmd: cmd, r: r, out: out, openStream: wt.streams.open}
+	w := &templateWatcher{cmd: cmd, jobs: jobs, openStream: wt.streams.open}
 	data := clusterdump.NewData("n1")
 	data.Cluster.Object["prod/svc/web"] = objectStatusUpdated("prod/svc/web", status.Up, time.Now()).Value
 	data.Cluster.Object["prod/svc/web2"] = objectStatusUpdated("prod/svc/web2", status.Up, time.Now()).Value
@@ -241,7 +249,6 @@ func startWatch(t *testing.T, text string, opts ...func(*CmdTemplate)) *watchTes
 	wt.cancel = cancel
 	go func() { wt.done <- w.run(ctx, data, wt.hupC) }()
 	t.Cleanup(wt.stop)
-	return wt
 }
 
 func (wt *watchTest) stop() {
@@ -349,17 +356,19 @@ func TestPrepare(t *testing.T) {
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in")
 	require.NoError(t, os.WriteFile(in, []byte(`{{ .a }}`), 0o600))
-	_, _, err := (&CmdTemplate{In: in, Out: "-", Watch: true}).prepare()
+	_, err := (&CmdTemplate{In: in, Out: "-", Watch: true}).prepare()
 	require.Error(t, err)
-	_, _, err = (&CmdTemplate{In: in, Out: "x", Vars: []string{"novalue"}}).prepare()
+	_, err = (&CmdTemplate{In: in, Out: "x", Vars: []string{"novalue"}}).prepare()
 	require.ErrorContains(t, err, "key=value")
-	r, _, err := (&CmdTemplate{In: in, Out: "-", Vars: []string{"a=1=2"}}).prepare()
+	jobs, err := (&CmdTemplate{In: in, Out: "-", Vars: []string{"a=1=2"}}).prepare()
 	require.NoError(t, err)
-	assert.Equal(t, "1=2", r.Data["a"])
+	assert.Equal(t, "1=2", jobs[0].r.Data["a"])
+	_, err = (&CmdTemplate{}).prepare()
+	require.ErrorContains(t, err, "--config")
 
 	bad := filepath.Join(dir, "bad")
 	require.NoError(t, os.WriteFile(bad, []byte(`{{ exec "ls" }}`), 0o600))
-	_, _, err = (&CmdTemplate{In: bad, Out: "-"}).prepare()
+	_, err = (&CmdTemplate{In: bad, Out: "-"}).prepare()
 	require.ErrorContains(t, err, "not defined")
 }
 
@@ -427,4 +436,126 @@ func TestWatchDebug(t *testing.T) {
 	} {
 		assert.Contains(t, log, s)
 	}
+}
+
+func writeFile(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	p := filepath.Join(dir, name)
+	require.NoError(t, os.WriteFile(p, []byte(content), 0o600))
+	return p
+}
+
+func TestPrepareConfig(t *testing.T) {
+	dir := t.TempDir()
+	a := writeFile(t, dir, "a.tpl", `{{ .env }}-{{ .site }}`)
+	b := writeFile(t, dir, "b.tpl", `b`)
+	reload := writeScript(t, dir, "reload", "true")
+	cfg := writeFile(t, dir, "templates.yaml", `
+vars:
+  env: dev
+  site: paris
+templates:
+  - in: `+a+`
+    out: `+filepath.Join(dir, "a")+`
+    mode: 0644
+    reload_command: `+reload+`
+  - in: `+b+`
+    out: `+filepath.Join(dir, "b")+`
+    reload_command: `+reload+`
+    reload_timeout: 5s
+`)
+	jobs, err := (&CmdTemplate{Config: cfg, Vars: []string{"env=prod"}, ReloadTimeout: time.Minute}).prepare()
+	require.NoError(t, err)
+	require.Len(t, jobs, 2)
+	assert.Equal(t, map[string]any{"env": "prod", "site": "paris"}, jobs[0].r.Data, "a --var replaces a var of the config")
+	assert.Equal(t, fs.FileMode(0o644), *jobs[0].output.mode)
+	assert.Equal(t, time.Minute, jobs[0].reloadTimeout, "the --reload-timeout is the default")
+	assert.Equal(t, 5*time.Second, jobs[1].reloadTimeout)
+
+	_, err = (&CmdTemplate{Config: cfg, In: a}).prepare()
+	require.ErrorContains(t, err, "--config names the templates")
+
+	for name, content := range map[string]string{
+		"unknown key": "templates:\n  - in: " + a + "\n    out: x\n    oops: 1\n",
+		"no out":      "templates:\n  - in: " + a + "\n",
+		"stdout":      "templates:\n  - in: " + a + "\n    out: \"-\"\n",
+		"same out":    "templates:\n  - in: " + a + "\n    out: x\n  - in: " + b + "\n    out: ./x\n",
+		"empty":       "",
+		"bad timeout": "templates:\n  - in: " + a + "\n    out: x\n    reload_timeout: soon\n",
+	} {
+		p := writeFile(t, dir, "bad.yaml", content)
+		_, err := (&CmdTemplate{Config: p}).prepare()
+		assert.Error(t, err, name)
+	}
+}
+
+func TestReloadsOf(t *testing.T) {
+	jobs := []*templateJob{
+		{out: "a", reloadCommand: "/r1", reloadTimeout: time.Second},
+		{out: "b"},
+		{out: "c", reloadCommand: "/r2", reloadTimeout: time.Second},
+		{out: "d", reloadCommand: "/r1", reloadTimeout: time.Minute},
+	}
+	l := reloadsOf(jobs)
+	require.Len(t, l, 2)
+	assert.Equal(t, &templateReload{command: "/r1", timeout: time.Minute, outs: []string{"a", "d"}}, l[0])
+	assert.Equal(t, &templateReload{command: "/r2", timeout: time.Second, outs: []string{"c"}}, l[1])
+}
+
+// Two templates sharing a reload command: the command runs once for the
+// files written together, a template failing does not hold back the other.
+func TestWatchConfig(t *testing.T) {
+	settleQuiet = 50 * time.Millisecond
+	dir := t.TempDir()
+	wt := &watchTest{
+		t:       t,
+		out:     filepath.Join(dir, "web"),
+		reloads: filepath.Join(dir, "reloads"),
+		streams: &fakeStreams{},
+		done:    make(chan error, 1),
+		hupC:    make(chan os.Signal, 1),
+	}
+	web := writeFile(t, dir, "web.tpl", `{{ avail "prod/svc/web" }}`)
+	both := writeFile(t, dir, "both.tpl", `{{ avail "prod/svc/web" }} {{ avail "prod/svc/web2" }}`)
+	reload := writeScript(t, dir, "reload", `echo "$OX_TEMPLATE_OUT" >> `+wt.reloads)
+	outWeb, outBoth := filepath.Join(dir, "web"), filepath.Join(dir, "both")
+	cfg := writeFile(t, dir, "templates.yaml", `
+templates:
+  - in: `+web+`
+    out: `+outWeb+`
+    reload_command: `+reload+`
+  - in: `+both+`
+    out: `+outBoth+`
+    reload_command: `+reload+`
+`)
+	wt.run(&CmdTemplate{Config: cfg, Watch: true, Delay: 50 * time.Millisecond, MaxDelay: time.Second, ReloadTimeout: time.Second})
+	read := func(p string) string { b, _ := os.ReadFile(p); return string(b) }
+	reloads := func() []string {
+		return strings.Fields(strings.ReplaceAll(read(wt.reloads), outBoth, "both"))
+	}
+
+	// The first renders write both files, and reload them once.
+	wt.eventually(func() bool { return read(outWeb) == "up" && read(outBoth) == "up up" }, "first renders")
+	wt.eventually(func() bool { return strings.Count(read(wt.reloads), "\n") == 1 }, "one reload")
+	assert.Equal(t, outWeb+" "+outBoth+"\n", read(wt.reloads))
+
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	assert.Equal(t, "prod/svc/web,prod/svc/web2", wt.streams.subs[0].Selector, "one stream for both templates")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web2", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+
+	// web2 changes: only the second file is written and reloaded.
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web2", status.Down, time.Now()))
+	wt.eventually(func() bool { return read(outBoth) == "up down" }, "render of the second template")
+	wt.eventually(func() bool { return strings.Count(read(wt.reloads), "\n") == 2 }, "second reload")
+	assert.Equal(t, "both", reloads()[len(reloads())-1])
+
+	// web2 deleted: the second template fails, its file is kept, and the
+	// first renders on.
+	p, _ := naming.ParsePath("prod/svc/web2")
+	wt.streams.send(t, "ObjectStatusDeleted", &msgbus.ObjectStatusDeleted{Path: p, Node: "n1"})
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.eventually(func() bool { return read(outWeb) == "down" }, "render of the first template")
+	assert.Equal(t, "up down", read(outBoth), "the file of the failed template is kept")
 }

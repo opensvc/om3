@@ -67,6 +67,21 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     The reads are recorded as the template executes, so a read under a condition, in a range, or of a computed path is followed when the data leads the render to it. The cluster data is kept from an events stream replaying the current data first, asking the events of the last render's reads only; the values no event carries, the datastore keys, the keywords as a node evaluates them and the resource informations, are fetched through the api when their checksum changes. A render failing, as on a key removed, keeps the last file, and the command goes on watching, the render recovering once the value is back; a reload failing keeps the new file. `SIGHUP` reads the template again, and `--debug` logs the events subscribed, the reads changed and the events leading to each render, and the api calls, never the values they return.
 
+    `--config <file>` renders several templates from one process, sharing its events stream and its cluster data, instead of `--in` and `--out`: each template has its file, mode, owner and reload command, all the templates changed are rendered before a file is written, a reload command named by several templates runs once after their files are written, and a template failing to render keeps its file while the others are written:
+
+    ```
+    vars:
+      env: prod
+    templates:
+      - in: /etc/ox/haproxy.cfg.tpl
+        out: /etc/haproxy/haproxy.cfg
+        mode: "0644"
+        reload_command: /usr/local/bin/haproxy-reload
+      - in: /etc/ox/certs.pem.tpl
+        out: /etc/haproxy/certs.pem
+        reload_command: /usr/local/bin/haproxy-reload
+    ```
+
     The template reads:
 
     * the cfg and sec keys: `key`, `keyOr`, `keyExists`, `keyNames`. Reading a sec key needs the admin role on its namespace, and a sec read with a `--mode` letting others read the file is warned about.

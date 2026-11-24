@@ -21,24 +21,22 @@ import (
 )
 
 type (
-	// templateWatcher renders a template again each time something it
+	// templateWatcher renders the templates again each time something they
 	// read changes.
 	//
 	// It keeps the cluster data the events of an events stream carry, as
 	// ox monitor does, the stream replaying the current data first. The
-	// stream asks the events of the reads of the last render: a render
-	// reading other things opens a new stream, into new cluster data, so
-	// none is missed between the two.
+	// stream asks the events of the reads of the last renders of all the
+	// templates: a render reading other things opens a new stream, into new
+	// cluster data, so none is missed between the two.
 	templateWatcher struct {
-		cmd *CmdTemplate
-		r   *tmplrender.Renderer
-		out *templateOutput
+		cmd  *CmdTemplate
+		jobs []*templateJob
 
 		// openStream opens an events stream with replay, asking the
 		// events of sub.
 		openStream func(ctx context.Context, sub tmplrender.Subscription) (event.ReadCloser, error)
 
-		reads []tmplrender.Read
 		sub   tmplrender.Subscription
 		st    *tmplrender.State
 		cdata *msgbus.ClusterData
@@ -110,7 +108,7 @@ const (
 // replay of the current data is deemed done.
 var settleQuiet = 500 * time.Millisecond
 
-func (t *CmdTemplate) watch(r *tmplrender.Renderer, out *templateOutput) error {
+func (t *CmdTemplate) watch(jobs []*templateJob) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	hupC := make(chan os.Signal, 1)
@@ -125,11 +123,12 @@ func (t *CmdTemplate) watch(r *tmplrender.Renderer, out *templateOutput) error {
 	if err != nil {
 		return err
 	}
-	r.Fetcher = &templateFetcher{c: c, debugf: t.debugFunc()}
+	for _, job := range jobs {
+		job.r.Fetcher = &templateFetcher{c: c, debugf: t.debugFunc()}
+	}
 	w := &templateWatcher{
-		cmd: t,
-		r:   r,
-		out: out,
+		cmd:  t,
+		jobs: jobs,
 		openStream: func(ctx context.Context, sub tmplrender.Subscription) (event.ReadCloser, error) {
 			getter := streamClient.NewGetEvents().
 				SetReplay(true).
@@ -144,8 +143,8 @@ func (t *CmdTemplate) watch(r *tmplrender.Renderer, out *templateOutput) error {
 			return getter.GetReader(ctx)
 		},
 	}
-	// The first render reads the cluster data of the api: one failing,
-	// as on a typo, ends the command.
+	// The first renders read the cluster data of the api: one failing, as
+	// on a typo, ends the command.
 	data, err := getClusterData(c, t.debugFunc())
 	if err != nil {
 		return err
@@ -168,8 +167,8 @@ func nodeOrLocalhost(node string) string {
 	return node
 }
 
-// run renders the template from data, writes it, and renders it again each
-// time a read changes, until ctx is done.
+// run renders the templates from data, writes them, and renders a template
+// again each time one of its reads changes, until ctx is done.
 func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC <-chan os.Signal) error {
 	w.evC = make(chan streamEvent, 1000)
 	w.errC = make(chan streamError)
@@ -183,12 +182,21 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 
 	w.st = tmplrender.NewState(data)
 	w.debugf("render: first render, from the cluster status")
-	res, err := w.r.Render(ctx, w.st)
-	if err != nil {
-		return err
+	results := make([]tmplrender.Result, len(w.jobs))
+	var errs []error
+	for i, job := range w.jobs {
+		res, err := job.r.Render(ctx, w.st)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		results[i] = res
+		job.reads = res.Reads
 	}
-	w.reads = res.Reads
-	w.apply(res)
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	w.apply(w.jobs, results)
 	w.open(ctx)
 
 	for {
@@ -197,11 +205,13 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 			w.logf("stopped")
 			return nil
 		case <-hupC:
-			if err := w.cmd.readTemplate(w.r); err != nil {
-				w.logf("template not read again, the former is kept: %s", err)
-				continue
+			for _, job := range w.jobs {
+				if err := job.readTemplate(); err != nil {
+					w.logf("template %s not read again, the former is kept: %s", job.in, err)
+					continue
+				}
+				w.logf("template %s read again", job.in)
 			}
-			w.logf("template read again")
 			w.force = true
 			w.forceReason = "template read again on SIGHUP"
 			if !w.settling {
@@ -241,9 +251,9 @@ func (w *templateWatcher) backoff() time.Duration {
 // template reads nothing to watch, and no stream is opened.
 func (w *templateWatcher) open(ctx context.Context) {
 	w.closeStream()
-	w.sub = tmplrender.SubscriptionOf(w.reads)
+	w.sub = tmplrender.SubscriptionOf(w.reads())
 	if len(w.sub.Kinds) == 0 {
-		w.logf("the template reads no cluster data: nothing to watch")
+		w.logf("the templates read no cluster data: nothing to watch")
 		return
 	}
 	reader, err := w.openStream(ctx, w.sub)
@@ -345,6 +355,15 @@ func (w *templateWatcher) onEvent(ctx context.Context, ev *event.Event) {
 	w.arm(w.quiet())
 }
 
+// reads returns the reads of the last renders of all the templates.
+func (w *templateWatcher) reads() []tmplrender.Read {
+	var l []tmplrender.Read
+	for _, job := range w.jobs {
+		l = append(l, job.reads...)
+	}
+	return l
+}
+
 func (w *templateWatcher) onTimer(ctx context.Context) {
 	if w.settling {
 		w.debugf("events stream: replay settled, %d events applied", w.replayed)
@@ -352,67 +371,73 @@ func (w *templateWatcher) onTimer(ctx context.Context) {
 	}
 	w.settling = false
 	w.dirtySince = time.Time{}
-	changed := tmplrender.Changed(w.reads, w.st)
 	if w.cmd.Debug {
-		w.logCauses(changed)
+		w.logCauses(tmplrender.Changed(w.reads(), w.st))
 	}
 	w.pending = nil
-	if !w.force && len(changed) == 0 {
-		return
-	}
+	force := w.force
 	w.force = false
-	res, err := w.r.Render(ctx, w.st)
-	if err == nil {
-		w.reads = res.Reads
-	} else {
-		// A failed render stopped at the error: the reads after it
-		// are kept, so the stream keeps the data they read, and the
-		// render once the error is gone does not miss it.
-		w.reads = mergeReads(w.reads, res.Reads)
+
+	// The templates whose reads changed are rendered, all of them before
+	// a file is written, so a reload command reloading several files
+	// runs once, after they are all written.
+	var (
+		jobs    []*templateJob
+		results []tmplrender.Result
+	)
+	for _, job := range w.jobs {
+		if !force && len(tmplrender.Changed(job.reads, w.st)) == 0 {
+			continue
+		}
+		res, err := job.r.Render(ctx, w.st)
+		if err != nil {
+			// A failed render stopped at the error: the reads
+			// after it are kept, so the stream keeps the data they
+			// read, and the render once the error is gone does not
+			// miss it. The other templates go on.
+			job.reads = mergeReads(job.reads, res.Reads)
+			w.logf("render of %s failed, %s kept: %s", job.in, job.out, err)
+			continue
+		}
+		job.reads = res.Reads
+		jobs = append(jobs, job)
+		results = append(results, res)
 	}
-	if err != nil {
-		w.logf("render failed, %s kept: %s", w.outName(), err)
-	} else {
-		w.apply(res)
-	}
-	if sub := tmplrender.SubscriptionOf(w.reads); !sub.Equal(w.sub) {
-		w.logf("the template reads other data: open the events stream again")
+	w.apply(jobs, results)
+	if sub := tmplrender.SubscriptionOf(w.reads()); !sub.Equal(w.sub) {
+		w.logf("the templates read other data: open the events stream again")
 		w.open(ctx)
 	}
 }
 
-func (w *templateWatcher) outName() string {
-	return w.cmd.Out
+// apply writes the renders, then runs the reload commands of the files
+// changed, each once. A failure is logged: the watch goes on, a file written
+// is kept.
+func (w *templateWatcher) apply(jobs []*templateJob, results []tmplrender.Result) {
+	var written []*templateJob
+	for i, job := range jobs {
+		changed, err := w.cmd.write(job, results[i])
+		if err != nil {
+			w.logf("%s", err)
+			continue
+		}
+		if changed {
+			written = append(written, job)
+		}
+	}
+	if err := w.cmd.reload(written); err != nil {
+		for _, e := range unjoin(err) {
+			w.logf("%s, the new files are kept", e)
+		}
+	}
 }
 
-// apply writes the render, and runs the reload command when the output
-// changed. A failure is logged: the watch goes on.
-func (w *templateWatcher) apply(res tmplrender.Result) {
-	w.cmd.warnMode(w.out, res)
-	changed, err := w.out.write(res.Out)
-	if err != nil {
-		w.logf("write %s: %s", w.outName(), err)
-		return
+// unjoin returns the errors err joins, or err.
+func unjoin(err error) []error {
+	if j, ok := err.(interface{ Unwrap() []error }); ok {
+		return j.Unwrap()
 	}
-	if !changed {
-		return
-	}
-	w.logf("%s written", w.outName())
-	if w.cmd.ReloadCommand == "" {
-		return
-	}
-	// Not cancelled by a stop signal: a reload started finishes, bounded
-	// by its timeout.
-	if err := runReload(context.Background(), w.cmd.ReloadCommand, w.cmd.Out, w.cmd.ReloadTimeout); err != nil {
-		var rerr *reloadError
-		if errors.As(err, &rerr) {
-			w.logf("%s, the new %s is kept", err, w.outName())
-		} else {
-			w.logf("reload: %s", err)
-		}
-		return
-	}
-	w.logf("reloaded by %s", w.cmd.ReloadCommand)
+	return []error{err}
 }
 
 // mergeReads returns the reads of l, the ones of former not in l kept.
@@ -464,8 +489,9 @@ func (w *templateWatcher) logCauses(changed []string) {
 	} else {
 		w.debugf("render: reads changed: %s", strings.Join(changed, ", "))
 	}
-	reads := make(map[string]tmplrender.Read, len(w.reads))
-	for _, r := range w.reads {
+	all := w.reads()
+	reads := make(map[string]tmplrender.Read, len(all))
+	for _, r := range all {
 		reads[r.ID] = r
 	}
 	var causes []pendingEvent
