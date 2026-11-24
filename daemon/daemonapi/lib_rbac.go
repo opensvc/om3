@@ -3,12 +3,13 @@ package daemonapi
 import (
 	"errors"
 	"fmt"
-	"github.com/opensvc/om3/v3/core/instance"
-	"github.com/opensvc/om3/v3/core/network"
 	"net/http"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/network"
 
 	"github.com/labstack/echo/v4"
 
@@ -21,10 +22,12 @@ import (
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/rootless"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // configRbac refuses a configuration write the grants do not allow.
@@ -823,6 +826,34 @@ func assertAdmin(ctx echo.Context, namespace string) (bool, error) {
 		rbac.NewGrant(rbac.RoleAdmin, ""),
 		rbac.GrantRoot,
 	)
+}
+
+// assertSecReader asserts that the authenticated user can read the key values
+// of the sec objects of the namespace: granted the "secreader" or the "admin"
+// role on it, or on all the namespaces, or the "root" role.
+func assertSecReader(ctx echo.Context, namespace string) (bool, error) {
+	return assertGrant(ctx,
+		rbac.NewGrant(rbac.RoleSecReader, namespace),
+		rbac.NewGrant(rbac.RoleAdmin, namespace),
+		rbac.NewGrant(rbac.RoleSecReader, ""),
+		rbac.NewGrant(rbac.RoleAdmin, ""),
+		rbac.GrantRoot,
+	)
+}
+
+// auditSecRead logs, at the debug level, the read of the key values names of
+// the sec p by the authenticated user, never the values: who read a secret
+// can be traced.
+func auditSecRead(ctx echo.Context, log *plog.Logger, p naming.Path, names []string, from string) {
+	username := ""
+	if user, ok := ctx.Get("user").(*daemonauth.Info); ok && user != nil {
+		username = user.Username
+	}
+	if from != "" {
+		log.Debugf("serve the keys %s of %s to %s, read from %s", strings.Join(names, ","), p, username, from)
+	} else {
+		log.Debugf("serve the keys %s of %s to %s", strings.Join(names, ","), p, username)
+	}
 }
 
 // assertNamespaceConfigWriter asserts the authenticated user may write the

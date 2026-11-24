@@ -13493,6 +13493,7 @@ components:
         - prioritizer
         - root
         - scraper
+        - secreader
         - squatter
 
     RunningInfo:
