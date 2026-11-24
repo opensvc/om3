@@ -14,6 +14,8 @@ func New() *T {
 
 func (t T) Get(s string) (interface{}, error) {
 	switch s {
+	case "machine_uuid":
+		return "", ErrIgnore
 	case "sp_version":
 		return "", ErrNotImpl
 	case "enclosure":

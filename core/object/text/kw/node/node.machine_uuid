@@ -1,0 +1,8 @@
+Override for the corresponding `om node push asset` discovery probe, the
+SMBIOS system uuid of the node, `/sys/class/dmi/id/product_uuid`.
+
+A hypervisor sets it to the uuid of the virtual machine, so the collector
+links a guest node to the container resource of its hypervisor running it.
+Set it only when the probe finds none, or a wrong one.
+
+Not to confuse with `node.uuid`, the collector authentication token.

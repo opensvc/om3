@@ -163,6 +163,13 @@ var (
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.serial"),
 	}
+	kwNodeMachineUUID = keywords.Keyword{
+		Example: "c5f98577-2918-4da7-b7c9-0ae24687a572",
+		Option:  "machine_uuid",
+		Group:   nodeGroupAsset.ID,
+		Section: "node",
+		Text:    keywords.NewText(fs, "text/kw/node/node.machine_uuid"),
+	}
 	kwNodeBIOSVersion = keywords.Keyword{
 		Example: "1.025",
 		Option:  "bios_version",
@@ -396,6 +403,7 @@ var (
 		&kwNodeCPUDies,
 		&kwNodeCPUModel,
 		&kwNodeSerial,
+		&kwNodeMachineUUID,
 		&kwNodeBIOSVersion,
 		&kwNodeSPVersion,
 		&kwNodeEnclosure,
