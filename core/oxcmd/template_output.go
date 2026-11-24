@@ -216,6 +216,10 @@ func (t *templateOutput) hardenIfSame(b []byte) (bool, error) {
 		return false, nil
 	} else if errors.Is(err, syscall.ELOOP) {
 		return false, fmt.Errorf("%s is a symbolic link: refused, name the file it points to", t.path)
+	} else if errors.Is(err, fs.ErrPermission) {
+		// A file not readable, as a 0200 one, is replaced as one
+		// holding another content.
+		return false, nil
 	} else if err != nil {
 		return false, err
 	}
