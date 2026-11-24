@@ -11,7 +11,8 @@ import (
 )
 
 // wakeCollectorAnswer is the answer of the collector to a wake: the start of
-// the container running the node, queued on its hypervisor.
+// the container running the node, queued on its hypervisor, or nothing
+// queued for a node up, as the last status of its cluster says, Awake.
 type wakeCollectorAnswer struct {
 	ActionID   int64  `json:"action_id"`
 	Hypervisor string `json:"hypervisor"`
@@ -19,6 +20,7 @@ type wakeCollectorAnswer struct {
 	Path       string `json:"path"`
 	RID        string `json:"rid"`
 	Queued     bool   `json:"queued"`
+	Awake      bool   `json:"awake"`
 }
 
 // wakeByCollector is the wake through the collector, replaced in tests.

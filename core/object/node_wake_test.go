@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -45,15 +46,30 @@ port = nine
 `), 0o600))
 
 	var sent []string
-	savedSend, savedLookup, savedBroadcastFor, savedCollector := wolSend, wakeLookup, wakeBroadcastFor, wakeByCollector
+	savedSend, savedLookup, savedBroadcastFor, savedCollector, savedReceiving := wolSend, wakeLookup, wakeBroadcastFor, wakeByCollector, wakeReceiving
 	t.Cleanup(func() {
-		wolSend, wakeLookup, wakeBroadcastFor, wakeByCollector = savedSend, savedLookup, savedBroadcastFor, savedCollector
+		wolSend, wakeLookup, wakeBroadcastFor, wakeByCollector, wakeReceiving = savedSend, savedLookup, savedBroadcastFor, savedCollector, savedReceiving
 	})
+	// The local daemon receives the heartbeat of nodes beating only, and can
+	// not tell for n5.
+	var beating []string
+	wakeReceiving = func(_ *Node, nodename string) (bool, error) {
+		if nodename == "n5" {
+			return false, errors.New("no daemon")
+		}
+		return slices.Contains(beating, nodename), nil
+	}
 	// The collector knows the virtual machine node n7 only: the others are
-	// physical nodes, woken by magic packets.
-	var asked []string
+	// physical nodes, woken by magic packets. It says the node up is.
+	var (
+		asked []string
+		up    []string
+	)
 	wakeByCollector = func(_ *Node, nodename string) (wakeCollectorAnswer, error) {
 		asked = append(asked, nodename)
+		if slices.Contains(up, nodename) {
+			return wakeCollectorAnswer{Nodename: nodename, Awake: true}, nil
+		}
 		if nodename == "n7" {
 			return wakeCollectorAnswer{ActionID: 630, Hypervisor: "hyper", Nodename: "n7", Path: "lab/svc/kvm", RID: "container#2", Queued: true}, nil
 		}
@@ -134,6 +150,23 @@ port = nine
 		sent = nil
 		require.NoError(t, n.Wake("n2", []string{"22:23:24:2d:00:12"}))
 		assert.Equal(t, []string{"22:23:24:2d:00:12 10.45.1.255 9"}, sent)
+	})
+
+	t.Run("a node whose heartbeat beats is awake: nothing asked, nothing sent", func(t *testing.T) {
+		sent, asked, beating = nil, nil, []string{"n2", "n7"}
+		t.Cleanup(func() { beating = nil })
+		require.NoError(t, n.Wake("n2", nil))
+		require.NoError(t, n.Wake("n7", nil))
+		assert.Empty(t, asked)
+		assert.Empty(t, sent)
+	})
+
+	t.Run("a node the collector says up is awake: no packet sent", func(t *testing.T) {
+		sent, asked, up = nil, nil, []string{"n2"}
+		t.Cleanup(func() { up = nil })
+		require.NoError(t, n.Wake("n2", nil))
+		assert.Equal(t, []string{"n2"}, asked)
+		assert.Empty(t, sent)
 	})
 
 	t.Run("the local node is awake", func(t *testing.T) {

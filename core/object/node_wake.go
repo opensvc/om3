@@ -1,22 +1,26 @@
 package object
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/util/getaddr"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/wakeonlan"
 )
 
-// wakeLookup and wakeBroadcastFor are replaced in tests.
+// wakeLookup, wakeBroadcastFor and wakeReceiving are replaced in tests.
 var (
 	wakeLookup       = getaddr.Lookup
 	wakeBroadcastFor = wakeonlan.BroadcastFor
+	wakeReceiving    = (*Node).wakeReceiving
 )
 
 // Wake wakes the cluster node nodename from the local node.
@@ -32,7 +36,10 @@ var (
 // of the local interface on the subnet of the address nodename resolves to,
 // the cached one when the dns does not answer.
 //
-// Waking the local node does nothing: it is awake.
+// Waking the local node does nothing: it is awake. Nor does waking a node
+// whose heartbeat the local daemon receives, or one the collector says is up:
+// a wake queued while it was down may run once it is back, on a relay just
+// back too.
 func (t *Node) Wake(nodename string, macs []string) error {
 	if nodename == "" {
 		return fmt.Errorf("node name is not set")
@@ -48,12 +55,24 @@ func (t *Node) Wake(nodename string, macs []string) error {
 	if !slices.Contains(nodenames, nodename) {
 		return fmt.Errorf("node %s is not a cluster node", nodename)
 	}
+	// With no daemon to ask, as a wake run while it starts, the wake goes on:
+	// the collector, asked next, still knows a node up.
+	if receiving, err := wakeReceiving(t, nodename); err != nil {
+		t.log.Infof("wake node %s: can not read its heartbeat: %s", nodename, err)
+	} else if receiving {
+		t.log.Infof("node %s is already awake: its heartbeat beats", nodename)
+		return nil
+	}
 	section := "wake#" + nodename
 	if len(macs) == 0 {
 		macs = t.wakeList(section, "mac")
 	}
 	ans, collectorErr := wakeByCollector(t, nodename)
 	if collectorErr == nil {
+		if ans.Awake {
+			t.log.Infof("node %s is already awake: the collector says it is up", nodename)
+			return nil
+		}
 		if ans.Queued {
 			t.log.Infof("wake node %s: the collector queued the start of %s %s on %s (action %d)", nodename, ans.Path, ans.RID, ans.Hypervisor, ans.ActionID)
 		} else {
@@ -79,6 +98,38 @@ func (t *Node) Wake(nodename string, macs []string) error {
 	}
 	t.log.Infof("wake node %s", nodename)
 	return t.Wol(macs, broadcasts, ports)
+}
+
+// wakeReceiving returns whether the local daemon receives the heartbeat of
+// nodename on any of its rx streams.
+func (t *Node) wakeReceiving(nodename string) (bool, error) {
+	c, err := client.New()
+	if err != nil {
+		return false, err
+	}
+	b, err := c.NewGetClusterStatus().Get()
+	if err != nil {
+		return false, err
+	}
+	// The heartbeat of the local node alone, the part of the cluster status
+	// read: the full one would tie this package to the one decoding it.
+	var data struct {
+		Daemon struct {
+			Nodename string `json:"nodename"`
+		} `json:"daemon"`
+		Cluster struct {
+			Node map[string]struct {
+				Daemon struct {
+					Heartbeat daemonsubsystem.Heartbeat `json:"heartbeat"`
+				} `json:"daemon"`
+			} `json:"node"`
+		} `json:"cluster"`
+	}
+	if err := json.Unmarshal(b, &data); err != nil {
+		return false, fmt.Errorf("decode the cluster status: %w", err)
+	}
+	hb := data.Cluster.Node[data.Daemon.Nodename].Daemon.Heartbeat
+	return hb.IsReceiving(nodename), nil
 }
 
 func (t *Node) wakePorts(section string) ([]int, error) {
