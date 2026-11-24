@@ -146,7 +146,10 @@ func (t *templateOutput) write(b []byte) (bool, error) {
 	}
 	if fi != nil {
 		if current, err := os.ReadFile(t.path); err == nil && bytes.Equal(current, b) {
-			return false, nil
+			// The content is the one rendered: the mode and the
+			// owner asked are set still, as a file holding secrets
+			// asked 0600 is not left readable by others.
+			return false, t.harden(fi)
 		}
 	}
 	uid, gid := t.uid, t.gid
@@ -200,6 +203,25 @@ func (t *templateOutput) write(b []byte) (bool, error) {
 	}
 	done = true
 	return true, nil
+}
+
+// harden sets on the existing output, described by fi, the mode and the owner
+// asked, when they differ.
+func (t *templateOutput) harden(fi fs.FileInfo) error {
+	if t.mode != nil && fi.Mode().Perm() != *t.mode {
+		if err := os.Chmod(t.path, *t.mode); err != nil {
+			return err
+		}
+	}
+	if t.uid < 0 && t.gid < 0 {
+		return nil
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		if (t.uid < 0 || int(st.Uid) == t.uid) && (t.gid < 0 || int(st.Gid) == t.gid) {
+			return nil
+		}
+	}
+	return os.Lchown(t.path, t.uid, t.gid)
 }
 
 // checkReloadCommand returns an error when the reload command p is not an

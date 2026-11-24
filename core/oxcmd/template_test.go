@@ -148,6 +148,9 @@ func (f *fakeStream) GetServedBy() string {
 
 // fakeStreams opens fake streams, and records the subscriptions asked.
 type fakeStreams struct {
+	// noServedBy opens streams not telling the node serving them.
+	noServedBy bool
+
 	mu      sync.Mutex
 	streams []*fakeStream
 	subs    []tmplrender.Subscription
@@ -158,6 +161,9 @@ func (f *fakeStreams) open(_ context.Context, sub tmplrender.Subscription) (even
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	s := &fakeStream{evC: make(chan *event.Event, 100), closed: make(chan struct{}), servedBy: "n1"}
+	if f.noServedBy {
+		s.servedBy = ""
+	}
 	f.streams = append(f.streams, s)
 	f.subs = append(f.subs, sub)
 	return s, nil
@@ -609,4 +615,91 @@ func TestWatchConfigSIGHUP(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web2", status.Up, time.Now()))
 	wt.eventually(func() bool { return read(outWeb2) == "prod up" }, "the former templates still render")
+}
+
+// An output holding the content rendered already gets the mode asked still:
+// a secret left readable by others is not left so.
+func TestTemplateOutputHardensAnUnchangedFile(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "out.conf")
+	require.NoError(t, os.WriteFile(p, []byte("secret"), 0o644))
+	out, err := newTemplateOutput(p, "0600", "", "")
+	require.NoError(t, err)
+	changed, err := out.write([]byte("secret"))
+	require.NoError(t, err)
+	assert.False(t, changed)
+	fi, _ := os.Stat(p)
+	assert.Equal(t, fs.FileMode(0o600), fi.Mode().Perm())
+
+	// With no mode asked, the mode of the file is kept.
+	require.NoError(t, os.Chmod(p, 0o640))
+	out, _ = newTemplateOutput(p, "", "", "")
+	_, err = out.write([]byte("secret"))
+	require.NoError(t, err)
+	fi, _ = os.Stat(p)
+	assert.Equal(t, fs.FileMode(0o640), fi.Mode().Perm())
+}
+
+// A stream not telling the node serving it, as a daemon proxying the events
+// of the --node asked, is served by that node: the object statuses it serves
+// are followed.
+func TestWatchServedByFallsBackToNode(t *testing.T) {
+	settleQuiet = 50 * time.Millisecond
+	dir := t.TempDir()
+	in := writeFile(t, dir, "in.tpl", `{{ avail "prod/svc/web" }}`)
+	wt := &watchTest{t: t, out: filepath.Join(dir, "out"), streams: &fakeStreams{noServedBy: true}, done: make(chan error, 1), hupC: make(chan os.Signal, 1)}
+	wt.run(&CmdTemplate{In: in, Out: wt.out, Watch: true, Node: "n1", Delay: 50 * time.Millisecond, MaxDelay: time.Second})
+	wt.eventually(func() bool { return wt.content() == "up" }, "first render")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "down" }, "the status of the node asked is followed")
+}
+
+// A file that could not be written is written again later, with no other
+// change of what the template read.
+func TestWatchRetriesAFailedWrite(t *testing.T) {
+	writeRetry = 100 * time.Millisecond
+	wt := startWatch(t, `{{ avail "prod/svc/web" }}`)
+	wt.eventually(func() bool { return wt.content() == "up" }, "first render")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+
+	// The directory of the file not writable, the write fails.
+	dir := filepath.Dir(wt.out)
+	require.NoError(t, os.Chmod(dir, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	if os.Geteuid() == 0 {
+		// root writes in a directory not writable: make the write
+		// fail on a directory in the way of the temporary file name
+		// instead.
+		require.NoError(t, os.Chmod(dir, 0o700))
+		require.NoError(t, os.Remove(wt.out))
+		require.NoError(t, os.Mkdir(wt.out, 0o700))
+		t.Cleanup(func() { _ = os.Remove(wt.out) })
+	}
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	time.Sleep(300 * time.Millisecond)
+	assert.NotEqual(t, "down", wt.content())
+
+	// The file writable again, it is written with no other event.
+	if os.Geteuid() == 0 {
+		require.NoError(t, os.Remove(wt.out))
+	} else {
+		require.NoError(t, os.Chmod(dir, 0o700))
+	}
+	wt.eventually(func() bool { return wt.content() == "down" }, "the write retried")
+}
+
+// A reload command shared by templates, one asking no timeout, runs with none.
+func TestReloadsOfWithNoTimeout(t *testing.T) {
+	for _, jobs := range [][]*templateJob{
+		{{out: "a", reloadCommand: "/r", reloadTimeout: time.Minute}, {out: "b", reloadCommand: "/r"}},
+		{{out: "a", reloadCommand: "/r"}, {out: "b", reloadCommand: "/r", reloadTimeout: time.Minute}},
+	} {
+		l := reloadsOf(jobs)
+		require.Len(t, l, 1)
+		assert.Equal(t, time.Duration(0), l[0].timeout)
+	}
 }
