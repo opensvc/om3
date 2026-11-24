@@ -206,8 +206,11 @@ func (w *templateWatcher) run(ctx context.Context, data *clusterdump.Data, hupC 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-	w.apply(w.jobs, results)
+	retry := w.apply(w.jobs, results)
 	w.open(ctx)
+	if retry && w.reader == nil {
+		w.arm(writeRetry)
+	}
 
 	for {
 		select {
@@ -439,6 +442,7 @@ func (w *templateWatcher) onTimer(ctx context.Context) {
 	var (
 		jobs    []*templateJob
 		results []tmplrender.Result
+		retry   bool
 	)
 	for _, job := range w.jobs {
 		if !force && !job.retry && len(tmplrender.Changed(job.reads, w.st)) == 0 {
@@ -451,24 +455,49 @@ func (w *templateWatcher) onTimer(ctx context.Context) {
 			// read, and the render once the error is gone does not
 			// miss it. The other templates go on.
 			job.reads = mergeReads(job.reads, res.Reads)
-			w.logf("render of %s failed, %s kept: %s", job.in, job.out, err)
+			if job.retry || isTransient(err) {
+				// No event may come to render it again: an
+				// api not answering, or a file to write again.
+				job.retry = true
+				retry = true
+				w.logf("render of %s failed, %s kept, rendered again in %s: %s", job.in, job.out, writeRetry, err)
+			} else {
+				w.logf("render of %s failed, %s kept: %s", job.in, job.out, err)
+			}
 			continue
 		}
 		job.reads = res.Reads
 		jobs = append(jobs, job)
 		results = append(results, res)
 	}
-	w.apply(jobs, results)
 	if sub := tmplrender.SubscriptionOf(w.reads()); !sub.Equal(w.sub) {
-		w.logf("the templates read other data: open the events stream again")
+		// The renders read data the stream does not serve: rendered
+		// from cluster data missing it, as a range of objects not
+		// followed yet, a file would be written partial. None is
+		// written: the stream is opened again, asking the new reads,
+		// and the templates are rendered once it replayed.
+		w.logf("the templates read other data: open the events stream again, and render once it replayed")
 		w.open(ctx)
+		return
 	}
+	if w.apply(jobs, results) || retry {
+		w.arm(writeRetry)
+	}
+}
+
+// isTransient returns true when a render failed on an api not answering, or
+// answering an error of its own, rather than on a value missing: an error no
+// event follows the end of.
+func isTransient(err error) bool {
+	var t *transientError
+	return errors.As(err, &t)
 }
 
 // apply writes the renders, then runs the reload commands of the files
 // changed, each once. A failure is logged: the watch goes on, a file written
-// is kept.
-func (w *templateWatcher) apply(jobs []*templateJob, results []tmplrender.Result) {
+// is kept. It returns true when a file could not be written, and is to be
+// written again.
+func (w *templateWatcher) apply(jobs []*templateJob, results []tmplrender.Result) bool {
 	var written []*templateJob
 	retry := false
 	for i, job := range jobs {
@@ -487,14 +516,12 @@ func (w *templateWatcher) apply(jobs []*templateJob, results []tmplrender.Result
 			written = append(written, job)
 		}
 	}
-	if retry {
-		w.arm(writeRetry)
-	}
 	if err := w.cmd.reload(written); err != nil {
 		for _, e := range unjoin(err) {
 			w.logf("%s, the new files are kept", e)
 		}
 	}
+	return retry
 }
 
 // unjoin returns the errors err joins, or err.

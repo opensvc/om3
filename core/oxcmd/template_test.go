@@ -201,6 +201,9 @@ func objectStatusUpdated(path string, avail status.T, at time.Time) *msgbus.Obje
 }
 
 type watchTest struct {
+	// fetcher fetches the values of the templates, none when nil.
+	fetcher tmplrender.Fetcher
+
 	t       *testing.T
 	out     string
 	reloads string
@@ -247,7 +250,10 @@ func (wt *watchTest) run(cmd *CmdTemplate) {
 	t := wt.t
 	jobs, err := cmd.prepare()
 	require.NoError(t, err)
-	w := &templateWatcher{cmd: cmd, jobs: jobs, openStream: wt.streams.open}
+	for _, job := range jobs {
+		job.r.Fetcher = wt.fetcher
+	}
+	w := &templateWatcher{cmd: cmd, jobs: jobs, fetcher: wt.fetcher, openStream: wt.streams.open}
 	data := clusterdump.NewData("n1")
 	data.Cluster.Object["prod/svc/web"] = objectStatusUpdated("prod/svc/web", status.Up, time.Now()).Value
 	data.Cluster.Object["prod/svc/web2"] = objectStatusUpdated("prod/svc/web2", status.Up, time.Now()).Value
@@ -344,6 +350,15 @@ func TestWatchFollowsWhatTheTemplateReads(t *testing.T) {
 	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
 	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 2 }, "stream opened again")
 	assert.Equal(t, "prod/svc/db,prod/svc/web", wt.streams.subs[1].Selector)
+
+	// The render reading db was made from cluster data not following db:
+	// it is not written, the file is written once the new stream replayed.
+	assert.Equal(t, "up", wt.content(), "no file written from cluster data missing what the render read")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/db", status.Up, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "up" && wt.reloadCount() == 1 }, "render after the replay")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/db", status.Down, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "down" }, "render of the db status")
 }
 
 func TestWatchReadsTheTemplateAgainOnSIGHUP(t *testing.T) {
@@ -702,4 +717,75 @@ func TestReloadsOfWithNoTimeout(t *testing.T) {
 		require.Len(t, l, 1)
 		assert.Equal(t, time.Duration(0), l[0].timeout)
 	}
+}
+
+// The output swapped for a symbolic link after its check is not followed: the
+// file it points to keeps its mode.
+func TestTemplateOutputHardenDoesNotFollowASymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := writeFile(t, dir, "target", "secret")
+	require.NoError(t, os.Chmod(target, 0o644))
+	link := filepath.Join(dir, "out")
+	require.NoError(t, os.Symlink(target, link))
+	out, err := newTemplateOutput(link, "0600", "", "")
+	require.NoError(t, err)
+	_, err = out.hardenIfSame([]byte("secret"))
+	require.ErrorContains(t, err, "symbolic link")
+	fi, _ := os.Stat(target)
+	assert.Equal(t, fs.FileMode(0o644), fi.Mode().Perm())
+}
+
+// flakyFetcher answers a keyword with an api error the calls of fail, counted
+// from 1, the value v otherwise.
+type flakyFetcher struct {
+	mu    sync.Mutex
+	calls int
+	fail  map[int]bool
+	v     string
+}
+
+func (f *flakyFetcher) DataKey(context.Context, naming.Path, string) ([]byte, error) {
+	return nil, tmplrender.ErrNotFound
+}
+
+func (f *flakyFetcher) DataKeyNames(context.Context, naming.Path) ([]string, error) {
+	return nil, tmplrender.ErrNotFound
+}
+
+func (f *flakyFetcher) ConfigValue(context.Context, naming.Path, string, string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	if f.fail[f.calls] {
+		return "", transient(errors.New("503 Service Unavailable"))
+	}
+	return f.v, nil
+}
+
+func (f *flakyFetcher) ResourceInfo(context.Context, naming.Path, string, string, string) (string, error) {
+	return "", tmplrender.ErrNotFound
+}
+
+// A render failing on an api error is rendered again with no other event, and
+// its retry failing again is retried too.
+func TestWatchRetriesARenderFailingOnTheAPI(t *testing.T) {
+	writeRetry = 100 * time.Millisecond
+	settleQuiet = 50 * time.Millisecond
+	dir := t.TempDir()
+	in := writeFile(t, dir, "in.tpl", `{{ avail "prod/svc/web" }} {{ config "prod/svc/web" "env.port" }}`)
+	f := &flakyFetcher{fail: map[int]bool{3: true, 4: true}, v: "8080"}
+	wt := &watchTest{fetcher: f, t: t, out: filepath.Join(dir, "out"), streams: &fakeStreams{}, done: make(chan error, 1), hupC: make(chan os.Signal, 1)}
+	wt.run(&CmdTemplate{In: in, Out: wt.out, Watch: true, Delay: 50 * time.Millisecond, MaxDelay: time.Second})
+	wt.eventually(func() bool { return wt.content() == "up 8080" }, "first render")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond) // the forced render after the replay: call 2
+
+	// The web svc down: its render fails on the api (call 3), its retry
+	// too (call 4), the next retry writes it, with no other event.
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Down, time.Now()))
+	wt.eventually(func() bool { return wt.content() == "down 8080" }, "the render retried")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	assert.GreaterOrEqual(t, f.calls, 5)
 }
