@@ -24,7 +24,7 @@ func TestNodeWake(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(env.Root, "etc", "cluster.conf"), []byte(`
 [cluster]
 name = test
-nodes = n1 n2 n3 n4 n5 n6
+nodes = n1 n2 n3 n4 n5 n6 n7
 
 [wake#n2]
 mac = 22:23:24:2d:01:12
@@ -45,8 +45,20 @@ port = nine
 `), 0o600))
 
 	var sent []string
-	savedSend, savedLookup, savedBroadcastFor := wolSend, wakeLookup, wakeBroadcastFor
-	t.Cleanup(func() { wolSend, wakeLookup, wakeBroadcastFor = savedSend, savedLookup, savedBroadcastFor })
+	savedSend, savedLookup, savedBroadcastFor, savedCollector := wolSend, wakeLookup, wakeBroadcastFor, wakeByCollector
+	t.Cleanup(func() {
+		wolSend, wakeLookup, wakeBroadcastFor, wakeByCollector = savedSend, savedLookup, savedBroadcastFor, savedCollector
+	})
+	// The collector knows the virtual machine node n7 only: the others are
+	// physical nodes, woken by magic packets.
+	var asked []string
+	wakeByCollector = func(_ *Node, nodename string) (wakeCollectorAnswer, error) {
+		asked = append(asked, nodename)
+		if nodename == "n7" {
+			return wakeCollectorAnswer{ActionID: 630, Hypervisor: "hyper", Nodename: "n7", Path: "lab/svc/kvm", RID: "container#2", Queued: true}, nil
+		}
+		return wakeCollectorAnswer{}, errors.New("POST /api/agent/wake: [404]: no container reports the machine uuid")
+	}
 	wolSend = func(mac, broadcast string, port int) error {
 		sent = append(sent, fmt.Sprintf("%s %s %d", mac, broadcast, port))
 		return nil
@@ -98,6 +110,26 @@ port = nine
 		}, sent)
 	})
 
+	t.Run("a virtual machine node is woken by the collector, no packet sent", func(t *testing.T) {
+		sent, asked = nil, nil
+		require.NoError(t, n.Wake("n7", nil))
+		assert.Equal(t, []string{"n7"}, asked)
+		assert.Empty(t, sent)
+	})
+
+	t.Run("the collector is asked first, then the magic packets", func(t *testing.T) {
+		sent, asked = nil, nil
+		require.NoError(t, n.Wake("n2", nil))
+		assert.Equal(t, []string{"n2"}, asked)
+		assert.Equal(t, []string{"22:23:24:2d:01:12 10.45.1.255 9"}, sent)
+	})
+
+	t.Run("the local node is not asked to the collector", func(t *testing.T) {
+		asked = nil
+		require.NoError(t, n.Wake("n1", nil))
+		assert.Empty(t, asked)
+	})
+
 	t.Run("the macs argument replaces the configured ones", func(t *testing.T) {
 		sent = nil
 		require.NoError(t, n.Wake("n2", []string{"22:23:24:2d:00:12"}))
@@ -116,11 +148,12 @@ port = nine
 			macs     []string
 			want     string
 		}{
-			"not a cluster node":        {"n9", nil, "not a cluster node"},
-			"no mac":                    {"n4", nil, "set wake#n4.mac"},
-			"no local interface on lan": {"n4", []string{"22:23:24:2d:01:14"}, "set wake#n4.broadcast"},
-			"invalid port":              {"n5", nil, "invalid port"},
-			"empty node name":           {"", nil, "not set"},
+			"not a cluster node":         {"n9", nil, "not a cluster node"},
+			"no mac":                     {"n4", nil, "set wake#n4.mac"},
+			"no mac, says the collector": {"n4", nil, "no container reports the machine uuid"},
+			"no local interface on lan":  {"n4", []string{"22:23:24:2d:01:14"}, "set wake#n4.broadcast"},
+			"invalid port":               {"n5", nil, "invalid port"},
+			"empty node name":            {"", nil, "not set"},
 		}
 		for name, c := range cases {
 			sent = nil

@@ -19,9 +19,14 @@ var (
 	wakeBroadcastFor = wakeonlan.BroadcastFor
 )
 
-// Wake sends, from the local node, the magic packets waking the cluster node
-// nodename, as configured in its wake#<nodename> section. The macs, when
-// set, replace the wake#<nodename>.mac addresses.
+// Wake wakes the cluster node nodename from the local node.
+//
+// It asks the collector first, for a virtual machine node: the collector
+// queues the start of the container of its hypervisor running it, found by
+// the machine uuid the node reported. When the collector can not, as for a
+// physical node, it sends the magic packets configured in the
+// wake#<nodename> section. The macs, when set, replace the
+// wake#<nodename>.mac addresses.
 //
 // Without wake#<nodename>.broadcast, the packet goes to the broadcast address
 // of the local interface on the subnet of the address nodename resolves to,
@@ -47,9 +52,19 @@ func (t *Node) Wake(nodename string, macs []string) error {
 	if len(macs) == 0 {
 		macs = t.wakeList(section, "mac")
 	}
-	if len(macs) == 0 {
-		return fmt.Errorf("node %s has no mac address: set %s.mac", nodename, section)
+	ans, collectorErr := wakeByCollector(t, nodename)
+	if collectorErr == nil {
+		if ans.Queued {
+			t.log.Infof("wake node %s: the collector queued the start of %s %s on %s (action %d)", nodename, ans.Path, ans.RID, ans.Hypervisor, ans.ActionID)
+		} else {
+			t.log.Infof("wake node %s: the start of %s %s on %s is already queued (action %d)", nodename, ans.Path, ans.RID, ans.Hypervisor, ans.ActionID)
+		}
+		return nil
 	}
+	if len(macs) == 0 {
+		return fmt.Errorf("node %s: the collector can not wake it: %w, and it has no mac address to send a magic packet to: set %s.mac", nodename, collectorErr, section)
+	}
+	t.log.Infof("wake node %s: the collector can not wake it: %s: send magic packets", nodename, collectorErr)
 	ports, err := t.wakePorts(section)
 	if err != nil {
 		return err
