@@ -956,6 +956,15 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     `.../data/key` are `200` with a `Committed` body, `{"is_changed": ..., "warnings": [...]}`, instead of
     `204 No Content`.
 
+* **A key of an absent datastore is a 404:**
+    `GET /api/object/path/{namespace}/{kind}/{name}/data/key` and `.../data`, for a cfg or sec no node has an
+    instance of, answered `200` with an empty body: a client read an empty value instead of learning the datastore
+    is absent. They now answer `404`, as the key listing does. A peer answering a key of empty content is passed
+    through with its content type, where it was skipped.
+
+    `ox <path> key decode` and `ox <path> key list` fail with exit code 2 for a selector selecting no object, as
+    `om` does, where they printed nothing and succeeded. `--ignore-not-found` silences it.
+
 * **A key is seeded by the install of its resource only:**
     A `source` of an `install` line seeds the key when the resource installs, at its start, provision or task run.
     The refresh the write of another key runs installs what the datastore holds and seeds nothing: a write fetched
