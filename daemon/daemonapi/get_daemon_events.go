@@ -113,6 +113,13 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	if request.Header.Get("accept") == "text/event-stream" {
 		setStreamHeaders(w)
 	}
+	// The events are the peer's: a client keeping the cluster data they
+	// carry needs the node serving them, as the peer tells it.
+	servedBy := resp.Header.Get(api.HeaderServedBy)
+	if servedBy == "" {
+		servedBy = nodename
+	}
+	w.Header().Set(api.HeaderServedBy, servedBy)
 
 	w.WriteHeader(http.StatusOK)
 
