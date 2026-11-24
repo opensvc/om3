@@ -33,10 +33,10 @@ var (
 	getPath = capabilities.GetPath
 )
 
-// commandAt builds one plakar call against a store location: the alias
-// resolved through stores.yml, or a url for create. The output goes raw to w
-// when given, else to the buffer Stdout returns, line by line in the log.
-func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, at, verb string, args ...string) (*command.T, error) {
+// commandAt builds one plakar call against the store alias, resolved
+// through stores.yml with its passphrase_cmd. The output goes raw to w when
+// given, else to the buffer Stdout returns, line by line in the log.
+func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, verb string, args ...string) (*command.T, error) {
 	p := getPath("plakar")
 	if p == "" {
 		return nil, errPlakarNotInstalled
@@ -46,8 +46,7 @@ func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, at,
 		"-configdir", d.config,
 		"-cachedir", d.cache,
 		"-datadir", d.data,
-		"-keyfile", d.keyfile(),
-		"at", at, verb,
+		"at", alias, verb,
 	}
 	argv = append(argv, args...)
 	opts := []funcopt.O{
@@ -77,7 +76,7 @@ func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, at,
 // run runs one plakar verb and returns what it printed. A store plakar
 // cannot resolve gets its stores.yml written again and one retry.
 func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...string) ([]byte, error) {
-	cmd, err := t.commandAt(ctx, level, nil, alias, verb, args...)
+	cmd, err := t.commandAt(ctx, level, nil, verb, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -89,11 +88,15 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 		if err != nil {
 			return nil, err
 		}
-		t.Log().Infof("plakar %s: store unresolved, write stores.yml again and retry", verb)
-		if err := writeFile(t.dirs().config, "stores.yml", storesYML(location)); err != nil {
+		stores, err := t.storesYML(location)
+		if err != nil {
 			return nil, err
 		}
-		cmd, err = t.commandAt(ctx, level, nil, alias, verb, args...)
+		t.Log().Infof("plakar %s: store unresolved, write stores.yml again and retry", verb)
+		if err := writeFile(t.dirs().config, "stores.yml", stores); err != nil {
+			return nil, err
+		}
+		cmd, err = t.commandAt(ctx, level, nil, verb, args...)
 		if err != nil {
 			return nil, err
 		}

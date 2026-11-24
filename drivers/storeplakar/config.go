@@ -9,12 +9,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/rs/zerolog"
+	"gopkg.in/yaml.v3"
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/executable"
 )
 
 const (
@@ -23,17 +26,12 @@ const (
 
 type (
 	// dirs are the private directories of the store on this node: the
-	// plakar configuration (stores.yml) and the passphrase under the run
-	// directory, the cache and the packages under var.
+	// plakar configuration (stores.yml) under the run directory, the cache
+	// and the packages under var.
 	dirs struct {
 		config, cache, data string
 	}
 )
-
-// keyfile is the file holding the passphrase, read whole by plakar.
-func (t dirs) keyfile() string {
-	return filepath.Join(t.config, "passphrase")
-}
 
 // name returns the section declaring the store, without its prefix.
 func (t *T) name() string {
@@ -78,17 +76,14 @@ func (t *T) IsLocal() bool {
 	return dir != ""
 }
 
-// decodeKey returns the content of the key the option designates, written
-// from <datastore> key <key>: a secret is never written in the section.
-//
-// The key of a store declared in a sec is read as the object reading the
-// store, whose namespace the datastore must share with, "from ." naming the
-// sec itself. The key of a store of the cluster configuration is read as
-// root.
-func (t *T) decodeKey(option string) ([]byte, error) {
+// keyMeta returns the key the option designates, written from <datastore>
+// key <key>: a secret is never written in the section. A relative datastore
+// of a store declared in a sec is of its namespace, "from ." naming the sec
+// itself.
+func (t *T) keyMeta(option string) (datarecv.KeyMeta, error) {
 	s := t.Get(option)
 	if s == "" {
-		return nil, fmt.Errorf("no %s: set it to from <sec> key <key>", option)
+		return datarecv.KeyMeta{}, fmt.Errorf("no %s: set it to from <sec> key <key>", option)
 	}
 	var km datarecv.KeyMeta
 	var err error
@@ -98,9 +93,18 @@ func (t *T) decodeKey(option string) ([]byte, error) {
 		km, err = datarecv.ParseKeyMetaRel(s, naming.NsSys)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w: write it from <sec> key <key>", option, err)
+		return datarecv.KeyMeta{}, fmt.Errorf("%s: %w: write it from <sec> key <key>", option, err)
 	}
+	return km, nil
+}
+
+// decodeKey returns the content of the key. The key of a store declared in
+// a sec is read as the object reading the store, whose namespace the
+// datastore must share with. The key of a store of the cluster configuration
+// is read as root.
+func (t *T) decodeKey(option string, km datarecv.KeyMeta) ([]byte, error) {
 	var b []byte
+	var err error
 	if reader := t.Reader(); reader != "" {
 		km.From = reader
 		b, err = km.Decode()
@@ -113,9 +117,54 @@ func (t *T) decodeKey(option string) ([]byte, error) {
 	return b, nil
 }
 
-// storesYML is what plakar store add writes for one store.
-func storesYML(location string) []byte {
-	return []byte("version: v1.0.0\nstores:\n    " + strings.TrimPrefix(alias, "@") + ":\n        location: " + location + "\n")
+// checkPassphrase refuses a passphrase plakar cannot read from the one line
+// passphrase_cmd prints: empty, or holding a line break other than a
+// trailing newline. The error never holds the passphrase.
+func checkPassphrase(b []byte) error {
+	b = bytes.TrimSuffix(b, []byte("\n"))
+	switch {
+	case len(b) == 0:
+		return fmt.Errorf("passphrase: the key is empty")
+	case bytes.ContainsAny(b, "\r\n"):
+		return fmt.Errorf("passphrase: the key holds a line break: plakar reads one line")
+	}
+	return nil
+}
+
+// passphraseCmd is the command plakar runs through /bin/sh to read the
+// passphrase: om printing the key, so the passphrase goes through a pipe
+// only.
+func passphraseCmd(km datarecv.KeyMeta) (string, error) {
+	om, err := executable.Path()
+	if err != nil {
+		return "", err
+	}
+	return shellquote.Join(om, km.Path.String(), "key", "decode", km.Key), nil
+}
+
+// storesYML is what plakar store add writes for one store and its
+// passphrase_cmd.
+func (t *T) storesYML(location string) ([]byte, error) {
+	km, err := t.keyMeta("passphrase")
+	if err != nil {
+		return nil, err
+	}
+	cmd, err := passphraseCmd(km)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(struct {
+		Version string                       `yaml:"version"`
+		Stores  map[string]map[string]string `yaml:"stores"`
+	}{
+		Version: "v1.0.0",
+		Stores: map[string]map[string]string{
+			strings.TrimPrefix(alias, "@"): {
+				"location":       location,
+				"passphrase_cmd": cmd,
+			},
+		},
+	})
 }
 
 // writeFile writes b as the file name of dir, in place once complete.
@@ -145,9 +194,12 @@ func mkdirPrivate(path string) error {
 }
 
 // ensure prepares the node for the store before a call: the private
-// directories, the passphrase and the plakar configuration when missing or
-// stale, and the store itself when it is a local path not created yet.
-// SetConfig has no error path, so every call runs it first.
+// directories and the plakar configuration when missing or stale, and the
+// store itself when it is a local path not created yet. SetConfig has no
+// error path, so every call runs it first.
+//
+// The passphrase is decoded and checked, then dropped: plakar reads it
+// through passphrase_cmd.
 //
 // plakar empties stores.yml when it misses sources.yml or destinations.yml
 // of its configuration directory, so the three are written.
@@ -156,7 +208,18 @@ func (t *T) ensure(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	passphrase, err := t.decodeKey("passphrase")
+	km, err := t.keyMeta("passphrase")
+	if err != nil {
+		return err
+	}
+	passphrase, err := t.decodeKey("passphrase", km)
+	if err != nil {
+		return err
+	}
+	if err := checkPassphrase(passphrase); err != nil {
+		return err
+	}
+	stores, err := t.storesYML(location)
 	if err != nil {
 		return err
 	}
@@ -167,8 +230,7 @@ func (t *T) ensure(ctx context.Context) error {
 		}
 	}
 	for name, b := range map[string][]byte{
-		"passphrase":       passphrase,
-		"stores.yml":       storesYML(location),
+		"stores.yml":       stores,
 		"sources.yml":      []byte("version: v1.0.0\nsources: {}\n"),
 		"destinations.yml": []byte("version: v1.0.0\ndestinations: {}\n"),
 	} {
@@ -189,7 +251,7 @@ func (t *T) ensure(ctx context.Context) error {
 		return nil
 	}
 	t.Log().Infof("create the store at %s", location)
-	cmd, err := t.commandAt(ctx, zerolog.InfoLevel, nil, location, "create")
+	cmd, err := t.commandAt(ctx, zerolog.InfoLevel, nil, "create")
 	if err != nil {
 		return err
 	}

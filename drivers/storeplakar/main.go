@@ -11,10 +11,11 @@
 //
 // Every call runs
 //
-//	plakar -configdir <cfg> -cachedir <cache> -datadir <data> -keyfile <file> at @store ...
+//	plakar -configdir <cfg> -cachedir <cache> -datadir <data> at @store ...
 //
-// with the passphrase in a private file, never in the command line or the
-// environment.
+// with the passphrase_cmd of @store running om <sec> key decode <key>: the
+// passphrase goes through a pipe only, never in a file, the command line or
+// the environment.
 package storeplakar
 
 import (
@@ -181,7 +182,7 @@ func (t *T) Complete(ctx context.Context, run backup.Run) error {
 
 // backupStdin runs plakar backup reading r on its standard input.
 func (t *T) backupStdin(ctx context.Context, r io.Reader, args ...string) error {
-	cmd, err := t.commandAt(ctx, zerolog.InfoLevel, nil, alias, "backup", args...)
+	cmd, err := t.commandAt(ctx, zerolog.InfoLevel, nil, "backup", args...)
 	if err != nil {
 		return err
 	}
@@ -401,7 +402,7 @@ func (t *T) Cat(ctx context.Context, run backup.Run, member string) (io.ReadClos
 		return nil, err
 	}
 	var b bytes.Buffer
-	cmd, err := t.commandAt(ctx, zerolog.TraceLevel, &b, alias, "cat", id+":/"+member)
+	cmd, err := t.commandAt(ctx, zerolog.TraceLevel, &b, "cat", id+":/"+member)
 	if err != nil {
 		return nil, err
 	}

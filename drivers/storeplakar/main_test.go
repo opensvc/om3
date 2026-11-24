@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -25,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/executable"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -170,6 +173,8 @@ func newTestEnv(t *testing.T) testEnv {
 	require.NoError(t, err)
 	require.NoError(t, sec.AddKey("passphrase", []byte(passphrase)))
 
+	t.Setenv(executable.ExecutableKey, "/usr/bin/om")
+
 	e := testEnv{root: env.Root, src: filepath.Join(env.Root, "src"), dst: filepath.Join(env.Root, "dst")}
 	require.NoError(t, os.MkdirAll(e.src, 0755))
 	e.store = newStore(t, fmt.Sprintf("[store#lab]\ntype = plakar\nurl = %s\npassphrase = from system/sec/backup key passphrase\n", e.storePath()))
@@ -185,9 +190,9 @@ func (e testEnv) createStore(t *testing.T) {
 }
 
 // argv is the command line plakar receives in the environment: the private
-// directories and the key file, then the store and the verb.
+// directories, then the store and the verb.
 func (e testEnv) argv(at string, args ...string) []string {
-	return append([]string{"-configdir", e.dirs.config, "-cachedir", e.dirs.cache, "-datadir", e.dirs.data, "-keyfile", e.dirs.keyfile(), "at", at}, args...)
+	return append([]string{"-configdir", e.dirs.config, "-cachedir", e.dirs.cache, "-datadir", e.dirs.data, "at", at}, args...)
 }
 
 var (
@@ -459,12 +464,13 @@ func TestObjectStatsCountTheRunsOfEachObject(t *testing.T) {
 }
 
 // TestLocalStoreIsCreatedOnFirstUse pins the create of an empty local store
-// before the first call, and no create for a store holding something.
+// before the first call, through the alias so plakar reads the passphrase_cmd,
+// and no create for a store holding something.
 func TestLocalStoreIsCreatedOnFirstUse(t *testing.T) {
 	e := newTestEnv(t)
 	require.NoError(t, e.store.Check(context.Background(), backup.RunFilter{}))
 	assert.Equal(t, [][]string{
-		e.argv("fs://"+e.storePath(), "create"),
+		e.argv("@store", "create"),
 		e.argv("@store", "check"),
 	}, calls(t), "create, then check")
 
@@ -492,9 +498,9 @@ func TestPrivateFilesAreOwnerOnly(t *testing.T) {
 	assert.Equal(t, os.FileMode(0600), fi.Mode().Perm())
 	b, err := os.ReadFile(stores)
 	require.NoError(t, err)
-	want := strings.ReplaceAll(string(fixture(t, "70-stores-yml.txt")), "fs:///tmp/fix/store", "fs://"+e.storePath())
-	want = strings.ReplaceAll(want, "    lab:", "    store:")
-	assert.Equal(t, want, string(b), "what plakar store add writes")
+	want := strings.TrimPrefix(string(fixture(t, "106-stores-yml-passphrase-cmd.txt")), "add=0\n")
+	want = strings.ReplaceAll(want, "fs:///tmp/f/store", "fs://"+e.storePath())
+	assert.Equal(t, want, string(b), "what plakar store add writes with the passphrase_cmd")
 }
 
 // TestPlakarConfigurationIsWrittenWhole pins sources.yml and destinations.yml
@@ -575,30 +581,106 @@ func TestExitErrorCarriesTheStderr(t *testing.T) {
 	assert.Len(t, calls(t), 1, "no retry on another error")
 }
 
-// TestPassphraseIsNeverInArgvEnvOrLogs pins the key file as the only way
-// the passphrase reaches plakar, with the exact bytes of the sec key.
-func TestPassphraseIsNeverInArgvEnvOrLogs(t *testing.T) {
+// TestPassphraseIsNeverInArgvEnvFilesOrLogs pins the passphrase_cmd as the
+// only way the passphrase reaches plakar: no -keyfile, no PLAKAR_PASSPHRASE,
+// no file of the store holding it, no log line holding it.
+func TestPassphraseIsNeverInArgvEnvFilesOrLogs(t *testing.T) {
 	e := newTestEnv(t)
 	e.createStore(t)
 	var buf bytes.Buffer
 	e.store.SetLoggerForTest(plog.NewLogger(zerolog.New(&buf).Level(zerolog.TraceLevel)))
 	require.NoError(t, e.store.Backup(context.Background(), run1, "fs#1", e.src, e.src, nil))
-	assert.Contains(t, buf.String(), "-keyfile "+e.dirs.keyfile(), "the command line is logged with the key file path")
+	assert.Contains(t, buf.String(), "-datadir "+e.dirs.data+" at @store backup", "the command line is logged")
+	assert.NotContains(t, buf.String(), "-keyfile")
 	assert.NotContains(t, buf.String(), passphrase, "never the passphrase")
 	for _, name := range []string{"calls", "env.1"} {
 		b, err := os.ReadFile(filepath.Join(fakeDir, name))
 		require.NoError(t, err)
 		assert.NotContains(t, string(b), passphrase, name)
+		assert.NotContains(t, string(b), "-keyfile", name)
 	}
 	env, err := os.ReadFile(filepath.Join(fakeDir, "env.1"))
 	require.NoError(t, err)
 	assert.NotContains(t, string(env), "PLAKAR_PASSPHRASE")
-	fi, err := os.Stat(e.dirs.keyfile())
+	for _, dir := range []string{e.dirs.config, e.dirs.cache, e.dirs.data} {
+		require.NoError(t, filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			b, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.NotContains(t, string(b), passphrase, path)
+			return nil
+		}))
+	}
+	_, err = os.Stat(filepath.Join(e.dirs.config, "passphrase"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+// TestPassphraseCmdRunsOmDecodeQuoted pins the passphrase_cmd of stores.yml,
+// read back as yaml and run by /bin/sh as plakar does: om gets the sec and
+// the key as single words, an om path holding a space and a quote included,
+// and what om prints is what plakar reads.
+func TestPassphraseCmdRunsOmDecodeQuoted(t *testing.T) {
+	e := newTestEnv(t)
+	e.createStore(t)
+	dir := filepath.Join(t.TempDir(), "o'm dir")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	om := filepath.Join(dir, "om")
+	args := filepath.Join(dir, "args")
+	require.NoError(t, os.WriteFile(om, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$(dirname \"$0\")/args\"\necho printed-by-om\n"), 0755))
+	t.Setenv(executable.ExecutableKey, om)
+	require.NoError(t, e.store.Check(context.Background(), backup.RunFilter{}))
+
+	b, err := os.ReadFile(filepath.Join(e.dirs.config, "stores.yml"))
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0600), fi.Mode().Perm())
-	b, err := os.ReadFile(e.dirs.keyfile())
+	var cfg struct {
+		Stores map[string]map[string]string `yaml:"stores"`
+	}
+	require.NoError(t, yaml.Unmarshal(b, &cfg))
+	cmd := cfg.Stores["store"]["passphrase_cmd"]
+	require.NotEmpty(t, cmd)
+	out, err := exec.Command("/bin/sh", "-c", cmd).Output()
 	require.NoError(t, err)
-	assert.Equal(t, passphrase, string(b), "the key file holds the exact bytes of the sec key")
+	assert.Equal(t, "printed-by-om\n", string(out))
+	got, err := os.ReadFile(args)
+	require.NoError(t, err)
+	assert.Equal(t, "system/sec/backup\nkey\ndecode\npassphrase\n", string(got))
+}
+
+// TestPassphraseOfOneLineOnly pins the passphrases plakar can read from the
+// single line passphrase_cmd prints, and errors never holding the passphrase.
+func TestPassphraseOfOneLineOnly(t *testing.T) {
+	for _, s := range []string{"s3cret", "s3cret\n"} {
+		assert.NoError(t, checkPassphrase([]byte(s)), "%q", s)
+	}
+	for _, s := range []string{"", "\n", "s3cret\n\n", "s3c\nret", "s3cret\r\n", "s3c\rret"} {
+		err := checkPassphrase([]byte(s))
+		if assert.Error(t, err, "%q", s) {
+			assert.NotContains(t, err.Error(), "s3c", "%q", s)
+		}
+	}
+}
+
+// TestUnreadablePassphraseIsRefusedBeforeAnyCall pins the refusal of a key
+// plakar cannot read from one line, with no plakar call and no passphrase
+// in the error.
+func TestUnreadablePassphraseIsRefusedBeforeAnyCall(t *testing.T) {
+	e := newTestEnv(t)
+	e.createStore(t)
+	p, err := naming.ParsePath("system/sec/backup")
+	require.NoError(t, err)
+	sec, err := object.NewSec(p)
+	require.NoError(t, err)
+	for key, s := range map[string]string{"empty": "", "lines": "s3c\nret"} {
+		require.NoError(t, sec.AddKey(key, []byte(s)))
+		store := newStore(t, fmt.Sprintf("[store#lab]\ntype = plakar\nurl = %s\npassphrase = from system/sec/backup key %s\n", e.storePath(), key))
+		err := store.Check(context.Background(), backup.RunFilter{})
+		require.Error(t, err, key)
+		assert.Contains(t, err.Error(), "passphrase: ", key)
+		assert.NotContains(t, err.Error(), "s3c", key)
+	}
+	assert.Empty(t, calls(t))
 }
 
 // TestMissingSecIsRefusedBeforeAnyCall pins the refusal of a passphrase
