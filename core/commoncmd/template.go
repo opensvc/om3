@@ -18,14 +18,18 @@ read changes, after a --delay quiet period, at most --max-delay after the
 first change. It follows the events of what the last render read: a read under
 a condition, in a range, or of a computed name, is followed when the data led
 the render to it. A render failing, as on a key removed, keeps the last file,
-and the command goes on watching. SIGHUP reads the templates again.
+and the command goes on watching; the first render failing, as on a typo,
+ends it. A file not written is written again later. SIGHUP reads the
+templates again.
 
 --config renders several templates from one process, sharing its events
 stream and its cluster data. Each template has its file, mode, owner and
 reload command; all the templates changed are rendered before a file is
 written, and a reload command named by several templates runs once, after
 their files are written, with OX_TEMPLATE_OUT naming them, space separated.
-A template failing to render keeps its file, the others are written. --var
+After the first renders, a template failing to render keeps its file, the
+others are written; the first renders, and a render without --watch, write no
+file when one of them fails. --var
 replaces a var of the file. SIGHUP reads the file and the templates again: an
 invalid file keeps the former templates, the file of a template no longer
 named is left as it is:

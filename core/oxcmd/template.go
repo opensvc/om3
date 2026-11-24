@@ -60,6 +60,10 @@ type (
 
 		// reads are the reads of the last render, in a watch.
 		reads []tmplrender.Read
+
+		// retry asks a render at the next timer of a watch, whether a
+		// read changed or not: its last file write failed.
+		retry bool
 	}
 
 	// templateConfig is the config file of --config.
@@ -257,7 +261,8 @@ func (t *CmdTemplate) write(job *templateJob, res tmplrender.Result) (bool, erro
 }
 
 // reloadsOf returns the reload commands of the jobs written, each once, in
-// the order of the jobs, with the longest timeout of its jobs.
+// the order of the jobs, with the longest timeout of its jobs: none when one
+// of them asks none, as a timeout of 0 does.
 func reloadsOf(written []*templateJob) []*templateReload {
 	var l []*templateReload
 	m := make(map[string]*templateReload)
@@ -267,11 +272,12 @@ func reloadsOf(written []*templateJob) []*templateReload {
 		}
 		rl, ok := m[job.reloadCommand]
 		if !ok {
-			rl = &templateReload{command: job.reloadCommand}
+			rl = &templateReload{command: job.reloadCommand, timeout: job.reloadTimeout}
 			m[job.reloadCommand] = rl
 			l = append(l, rl)
+		} else if rl.timeout > 0 && (job.reloadTimeout <= 0 || job.reloadTimeout > rl.timeout) {
+			rl.timeout = max(job.reloadTimeout, 0)
 		}
-		rl.timeout = max(rl.timeout, job.reloadTimeout)
 		rl.outs = append(rl.outs, job.out)
 	}
 	return l

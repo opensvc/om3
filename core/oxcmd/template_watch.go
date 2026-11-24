@@ -112,6 +112,10 @@ const (
 // replay of the current data is deemed done.
 var settleQuiet = 500 * time.Millisecond
 
+// writeRetry is the delay before a template whose file could not be written
+// is rendered and written again.
+var writeRetry = 5 * time.Second
+
 func (t *CmdTemplate) watch(jobs []*templateJob) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -265,6 +269,15 @@ func (w *templateWatcher) open(ctx context.Context) {
 	servedBy := ""
 	if g, ok := reader.(event.ServedByGetter); ok {
 		servedBy = g.GetServedBy()
+	}
+	if servedBy == "" && w.cmd.Node != "" {
+		// A daemon proxying the events of the node asked may not
+		// tell the node serving them: it is the node asked. The cluster
+		// data keeps the object statuses of the node serving them only.
+		servedBy = w.cmd.Node
+	}
+	if servedBy == "" {
+		w.logf("events stream: the node serving the events is not known: the object statuses are not followed")
 	}
 	w.debugf("events stream: subscribed to %s, selector %q, served by %s",
 		strings.Join(w.sub.Kinds, ","), w.sub.Selector, servedBy)
@@ -428,7 +441,7 @@ func (w *templateWatcher) onTimer(ctx context.Context) {
 		results []tmplrender.Result
 	)
 	for _, job := range w.jobs {
-		if !force && len(tmplrender.Changed(job.reads, w.st)) == 0 {
+		if !force && !job.retry && len(tmplrender.Changed(job.reads, w.st)) == 0 {
 			continue
 		}
 		res, err := job.r.Render(ctx, w.st)
@@ -457,15 +470,25 @@ func (w *templateWatcher) onTimer(ctx context.Context) {
 // is kept.
 func (w *templateWatcher) apply(jobs []*templateJob, results []tmplrender.Result) {
 	var written []*templateJob
+	retry := false
 	for i, job := range jobs {
 		changed, err := w.cmd.write(job, results[i])
 		if err != nil {
-			w.logf("%s", err)
+			// The reads of the render are recorded already: the
+			// file is written again later, or it would stay stale
+			// until another read changes.
+			w.logf("%s: written again in %s", err, writeRetry)
+			job.retry = true
+			retry = true
 			continue
 		}
+		job.retry = false
 		if changed {
 			written = append(written, job)
 		}
+	}
+	if retry {
+		w.arm(writeRetry)
 	}
 	if err := w.cmd.reload(written); err != nil {
 		for _, e := range unjoin(err) {
