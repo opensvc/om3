@@ -159,6 +159,10 @@ func newStore(t *testing.T, config string) *T {
 func newTestEnv(t *testing.T) testEnv {
 	t.Helper()
 	resetFake(t)
+	// The fake records every plakar call: the security check, disabled once
+	// per store, is the integration test's to run.
+	disableSecurityCheck = func(dirs) error { return nil }
+	t.Cleanup(func() { disableSecurityCheck = runDisableSecurityCheck })
 	env := testhelper.Setup(t)
 	// Paths.Run is /run/opensvc whatever the root: keep the test in its root.
 	rawconfig.Paths.Run = filepath.Join(env.Root, "run")

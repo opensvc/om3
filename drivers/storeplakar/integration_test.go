@@ -32,6 +32,7 @@ func TestWithTheRealPlakar(t *testing.T) {
 		t.Skip("no plakar in the PATH")
 	}
 	e := newTestEnv(t)
+	disableSecurityCheck = runDisableSecurityCheck
 	getPath = func(string) string { return bin }
 	t.Cleanup(func() { getPath = capabilities.GetPath })
 	// plakar reads the passphrase from om, which the test does not build.
@@ -66,6 +67,11 @@ func TestWithTheRealPlakar(t *testing.T) {
 	// The first write creates it.
 	require.NoError(t, e.store.Backup(ctx, run, "fs#1", e.src, e.src, nil))
 	require.FileExists(t, filepath.Join(e.storePath(), "CONFIG"))
+	// The plakar of the store no longer calls out for security updates.
+	require.FileExists(t, filepath.Join(e.dirs.config, securityCheckMarker))
+	cookies, err := filepath.Glob(filepath.Join(e.dirs.cache, "cookies", "*", ".disabled-security-check"))
+	require.NoError(t, err)
+	require.NotEmpty(t, cookies, "plakar records the security check disabled in its cache")
 	require.NoError(t, e.store.BackupStream(ctx, run, backup.MemberConfig, strings.NewReader("[DEFAULT]\nid = o1\n")))
 	require.NoError(t, e.store.Complete(ctx, run))
 	require.NoError(t, e.store.Backup(ctx, other, "fs#1", e.src, e.src, nil))

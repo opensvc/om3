@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/kballard/go-shellquote"
 	"github.com/rs/zerolog"
@@ -18,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/executable"
 )
 
@@ -204,6 +206,38 @@ func (t *T) storesYML(location string) ([]byte, error) {
 }
 
 // writeFile writes b as the file name of dir, in place once complete.
+// securityCheckMarker is the file of the configuration directory of a store
+// saying its plakar has its security check disabled.
+const securityCheckMarker = "om3.security-check-disabled"
+
+// disableSecurityCheck has plakar stop checking its releases feed for
+// security updates, which it does once a day by default from each of its
+// configurations, as each store has its own: a node must not call out to the
+// plakar site when it backs up. plakar records it in its cache directory,
+// so it runs once per store, as securityCheckMarker records. Replaced by
+// the tests faking plakar.
+var disableSecurityCheck = runDisableSecurityCheck
+
+func runDisableSecurityCheck(d dirs) error {
+	p := getPath("plakar")
+	if p == "" {
+		return errPlakarNotInstalled
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	cmd := command.New(
+		command.WithName(p),
+		command.WithArgs([]string{"-configdir", d.config, "-cachedir", d.cache, "-datadir", d.data, "-disable-security-check"}),
+		command.WithContext(ctx),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+	)
+	if err := cmd.Run(); err != nil {
+		return cmdError("-disable-security-check", cmd, err)
+	}
+	return nil
+}
+
 func writeFile(dir, name string, b []byte) error {
 	f, err := os.CreateTemp(dir, "."+name+".*")
 	if err != nil {
@@ -278,6 +312,13 @@ func (t *T) prepare() (string, error) {
 		}
 		if err := writeFile(d.config, name, b); err != nil {
 			return "", err
+		}
+	}
+	if _, err := os.Stat(filepath.Join(d.config, securityCheckMarker)); errors.Is(err, os.ErrNotExist) {
+		if err := disableSecurityCheck(d); err != nil {
+			t.Log().Warnf("disable the security check of plakar: %s", err)
+		} else if err := writeFile(d.config, securityCheckMarker, nil); err != nil {
+			t.Log().Warnf("record the security check of plakar disabled: %s", err)
 		}
 	}
 	return dir, nil
