@@ -43,7 +43,6 @@ type (
 	// wakeConfig is the wake#<node> section a client reads from the
 	// cluster configuration of the api node.
 	wakeConfig struct {
-		hasMac bool
 		relays []string
 	}
 )
@@ -55,13 +54,17 @@ func NewCmdNodeWake(withLocal bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "wake",
 		Short: "wake cluster nodes on lan",
-		Long: "Wake the --node selected cluster nodes whose heartbeat does not beat, with Wake-on-LAN magic packets" +
-			" sent by the relays up: the wake#<node>.relays nodes, or every peer up when not set." +
+		Long: "Wake the --node selected cluster nodes whose heartbeat does not beat, from the relays up:" +
+			" the wake#<node>.relays nodes, or every peer up when not set." +
 			" The nodes already awake are left as they are. A node just powered off is still seen awake until its heartbeat timeout expires.\n" +
-			"The magic packets go to the wake#<node>.mac addresses, through the wake#<node>.broadcast addresses," +
-			" or, when not set, through the broadcast address of the relay interface on the subnet of the address" +
-			" the node name resolves to. A relay with no interface on that subnet sends nothing.\n" +
-			"The nodes to wake must have Wake-on-LAN enabled in their firmware and network interface.",
+			"A relay asks the collector first: for a virtual machine node, the collector queues the start of the" +
+			" container resource of its hypervisor whose virtual machine has the machine uuid the node reported." +
+			" The hypervisor must run opensvc and report to the same collector, and the node must have pushed its asset.\n" +
+			"When the collector can not, as for a physical node, the relay sends Wake-on-LAN magic packets to the" +
+			" wake#<node>.mac addresses, through the wake#<node>.broadcast addresses, or, when not set, through the" +
+			" broadcast address of the relay interface on the subnet of the address the node name resolves to." +
+			" A relay with no interface on that subnet sends nothing." +
+			" A physical node must have Wake-on-LAN enabled in its firmware and network interface.",
 		Example: "  om node wake --node n2\n" +
 			"  om node wake --node n2,n3 --wait --timeout 10m\n" +
 			"  om node wake --node n2 --mac 22:23:24:2d:01:12",
@@ -177,9 +180,6 @@ func (t *CmdNodeWake) wakeOne(ctx context.Context, c *client.T, data clusterdump
 	if err != nil {
 		return nil, err
 	}
-	if len(t.Macs) == 0 && !cfg.hasMac {
-		return nil, fmt.Errorf("no mac address: set wake#%s.mac", target)
-	}
 	relays := wakeRelays(data, target, cfg.relays)
 	if len(relays) == 0 {
 		if len(cfg.relays) > 0 {
@@ -261,8 +261,6 @@ func getWakeConfig(ctx context.Context, c *client.T, target string) (wakeConfig,
 	for _, item := range response.JSON200.Items {
 		option := item.Keyword[strings.LastIndex(item.Keyword, ".")+1:]
 		switch option {
-		case "mac":
-			cfg.hasMac = strings.TrimSpace(item.Value) != ""
 		case "relays":
 			cfg.relays = splitNodeSelector(item.Value)
 		}
