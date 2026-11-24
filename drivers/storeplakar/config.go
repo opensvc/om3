@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -57,7 +58,10 @@ func validName(s string) error {
 
 // dirs returns the directories of the store: node/<name> for a store of the
 // cluster configuration, sec/<namespace>/<sec>/<name> for a store of a sec,
-// so two stores of the same name never share their directories.
+// so two stores of the same name never share their configuration and cache.
+// The data directory, where plakar finds its plugins, is the one plakar
+// installs them in for the user om runs as: shared by the stores, so the
+// backends an operator installed, as sftp or s3, are the stores' too.
 func (t *T) dirs() (dirs, error) {
 	name := t.name()
 	if err := validName(name); err != nil {
@@ -70,7 +74,7 @@ func (t *T) dirs() (dirs, error) {
 	return dirs{
 		config: filepath.Join(rawconfig.Paths.Run, "store", "plakar", rel),
 		cache:  filepath.Join(rawconfig.Paths.Var, "plakar", rel, "cache"),
-		data:   filepath.Join(rawconfig.Paths.Var, "plakar", rel, "data"),
+		data:   dataDir(),
 	}, nil
 }
 
@@ -256,6 +260,22 @@ func writeFile(dir, name string, b []byte) error {
 
 // mkdirPrivate makes path 0700 whatever the umask, and whether it existed
 // or not: MkdirAll applies the umask and leaves an existing directory as is.
+// dataDir returns the data directory of plakar, replaced by the tests.
+var dataDir = defaultDataDir
+
+// defaultDataDir returns the directory plakar pkg add installs the plugins
+// in for the user om runs as, read from the home of that user rather than
+// from the environment: the daemon, run by systemd, may have no HOME, and
+// the commands and the daemon must find the same plugins. XDG_DATA_HOME is
+// not read for the same reason. A user with no home uses a directory of
+// the agent.
+func defaultDataDir() string {
+	if u, err := user.Current(); err == nil && u.HomeDir != "" {
+		return filepath.Join(u.HomeDir, ".local", "share", "plakar")
+	}
+	return filepath.Join(rawconfig.Paths.Var, "plakar", "data")
+}
+
 func mkdirPrivate(path string) error {
 	if err := os.MkdirAll(path, dirPerm); err != nil {
 		return err
@@ -297,10 +317,15 @@ func (t *T) prepare() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, path := range []string{d.config, d.cache, d.data} {
+	for _, path := range []string{d.config, d.cache} {
 		if err := mkdirPrivate(path); err != nil {
 			return "", err
 		}
+	}
+	// The data directory is the user's: made when missing, its mode left
+	// as the operator set it.
+	if err := os.MkdirAll(d.data, dirPerm); err != nil {
+		return "", err
 	}
 	for name, b := range map[string][]byte{
 		"stores.yml":       stores,

@@ -151,3 +151,54 @@ func TestWithTheRealPlakar(t *testing.T) {
 	require.NoError(t, <-done)
 	assert.True(t, skipped, "the maintenance under the lock of a backup is skipped, not failed")
 }
+
+// sftpHostEnv names a host the user running the tests reaches by ssh, with
+// no password, for TestWithTheRealPlakarOverSFTP.
+const sftpHostEnv = "OM_TEST_PLAKAR_SFTP_HOST"
+
+// TestWithTheRealPlakarOverSFTP runs a backup and a restore through the sftp
+// plugin an operator installed, in the data directory plakar installs the
+// plugins in: the stores share it, so the backends installed are theirs. It
+// needs plakar with its sftp plugin, and the name of a host in
+// OM_TEST_PLAKAR_SFTP_HOST, which may be the host running the test: the
+// store is a temporary directory of this host, reached there.
+func TestWithTheRealPlakarOverSFTP(t *testing.T) {
+	host := os.Getenv(sftpHostEnv)
+	if host == "" {
+		t.Skip("no " + sftpHostEnv)
+	}
+	bin, err := exec.LookPath("plakar")
+	if err != nil {
+		t.Skip("no plakar in the PATH")
+	}
+	e := newTestEnv(t)
+	dataDir = defaultDataDir
+	disableSecurityCheck = runDisableSecurityCheck
+	getPath = func(string) string { return bin }
+	t.Cleanup(func() { getPath = capabilities.GetPath })
+	om := filepath.Join(t.TempDir(), "om")
+	require.NoError(t, os.WriteFile(om, []byte("#!/bin/sh\necho "+passphrase+"\n"), 0755))
+	t.Setenv(executable.ExecutableKey, om)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	dir := t.TempDir()
+	e.store = newStore(t, "[store#lab]\ntype = plakar\nurl = sftp://"+host+dir+"\npassphrase = from system/sec/backup key passphrase\n")
+	assert.False(t, e.store.IsLocal())
+	// A remote store is created by hand, as the operator does.
+	_, err = e.store.prepare()
+	require.NoError(t, err)
+	_, err = e.store.run(ctx, zerolog.InfoLevel, "create")
+	require.NoError(t, err, "the sftp backend of the plugins installed is found")
+
+	require.NoError(t, os.WriteFile(filepath.Join(e.src, "a"), []byte("content of a\n"), 0644))
+	require.NoError(t, e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
+	require.NoError(t, e.store.Complete(ctx, run1))
+	runs, err := e.store.Runs(ctx, backup.RunFilter{})
+	require.NoError(t, err)
+	require.Len(t, runs, 1)
+	require.NoError(t, e.store.Restore(ctx, runs[0], "fs#1", e.dst))
+	b, err := os.ReadFile(filepath.Join(e.dst, "a"))
+	require.NoError(t, err)
+	assert.Equal(t, "content of a\n", string(b))
+}

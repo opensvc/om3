@@ -164,6 +164,8 @@ func newTestEnv(t *testing.T) testEnv {
 	disableSecurityCheck = func(dirs) error { return nil }
 	t.Cleanup(func() { disableSecurityCheck = runDisableSecurityCheck })
 	env := testhelper.Setup(t)
+	dataDir = func() string { return filepath.Join(env.Root, "plakar-data") }
+	t.Cleanup(func() { dataDir = defaultDataDir })
 	// Paths.Run is /run/opensvc whatever the root: keep the test in its root.
 	rawconfig.Paths.Run = filepath.Join(env.Root, "run")
 	// rawconfig.Load points the capabilities at the root: back to the fake.

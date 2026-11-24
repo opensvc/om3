@@ -13,13 +13,12 @@ store in the mount point until it writes a run.
 plakar 1.1.8 reaches by itself a plakar server, `http://` or `https://`, as
 `plakar server` runs, with `-allow-delete` for the retention to delete runs.
 The other locations, as `sftp://` or `s3://`, need the plakar package of
-their scheme on every node, which plakar loads from the data directory the
-driver gives it for the store, `<var>/plakar/node/<name>/data`, or
-`<var>/plakar/sec/<namespace>/<sec>/<name>/data` for a store of a sec: `plakar
--datadir <dir> pkg add <package>` installs it there, and a package installed
-for a user is not seen. The driver has no keyword for the credentials of a
-location yet: a location is one plakar reaches with what the url and the
-node hold.
+their scheme on every node, installed by the operator with `plakar pkg add`
+as the user om runs as, root: the stores use the data directory plakar
+installs the packages in for that user, `~/.local/share/plakar` of its home.
+The driver has no keyword for the credentials of a location yet: a location
+is one plakar reaches with what the url and the node hold, the sftp package
+running the ssh of the node, with the keys and the known hosts of root.
 
 The store is never inside a head it backs up. A store declared in a sec is
 reached over the network: the daemon reads and writes a store as root, and a
