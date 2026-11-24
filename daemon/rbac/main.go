@@ -314,7 +314,7 @@ func Roles() []string {
 
 func IsScopedRole(role Role) bool {
 	switch role {
-	case RoleAdmin, RoleOperator, RoleGuest:
+	case RoleAdmin, RoleOperator, RoleGuest, RoleSecReader:
 		return true
 	default:
 		return false
@@ -349,6 +349,16 @@ func (t Grants) filterRole(role Role) (grants Grants) {
 			return append(grants, grant)
 		}
 		for _, namespace := range t.Namespaces(RoleAdmin) {
+			grants = append(grants, NewGrant(role, namespace))
+		}
+		return
+	}
+	if role == RoleSecReader {
+		// An admin reads the sec keys of its namespaces too.
+		if t.HasRoleOn("", RoleAdmin, RoleSecReader) {
+			return append(grants, grant)
+		}
+		for _, namespace := range t.Namespaces(RoleAdmin, RoleSecReader) {
 			grants = append(grants, NewGrant(role, namespace))
 		}
 		return
@@ -390,6 +400,14 @@ func (t Grants) filterGrant(grant Grant) (grants Grants) {
 			return append(grants, grant)
 		}
 	}
+	if role == RoleSecReader {
+		if t.HasRoleOn(scope, RoleAdmin) {
+			return append(grants, grant)
+		}
+		if t.HasRoleOn("", RoleAdmin, RoleSecReader) {
+			return append(grants, grant)
+		}
+	}
 	return
 }
 
@@ -401,19 +419,21 @@ func (t Grants) filterScope(scope string) (grants Grants) {
 		return
 	}
 	if t.Has(RoleAdmin, scope) || t.Has(RoleAdmin, "") {
+		// An admin reads the sec keys too: no secreader grant to add.
 		grant := NewGrant(RoleAdmin, scope)
 		grants = append(grants, grant)
 		return
 	}
-	if t.Has(RoleOperator, scope) || t.Has(RoleOperator, "") {
-		grant := NewGrant(RoleOperator, scope)
-		grants = append(grants, grant)
-		return
+	switch {
+	case t.Has(RoleOperator, scope) || t.Has(RoleOperator, ""):
+		grants = append(grants, NewGrant(RoleOperator, scope))
+	case t.Has(RoleGuest, scope) || t.Has(RoleGuest, ""):
+		grants = append(grants, NewGrant(RoleGuest, scope))
 	}
-	if t.Has(RoleGuest, scope) || t.Has(RoleGuest, "") {
-		grant := NewGrant(RoleGuest, scope)
-		grants = append(grants, grant)
-		return
+	// The secreader role adds to the others: a guest reading the sec keys
+	// of the namespace holds both.
+	if t.Has(RoleSecReader, scope) || t.Has(RoleSecReader, "") {
+		grants = append(grants, NewGrant(RoleSecReader, scope))
 	}
 	return
 }
