@@ -18,9 +18,10 @@ read changes, after a --delay quiet period, at most --max-delay after the
 first change. It follows the events of what the last render read: a read under
 a condition, in a range, or of a computed name, is followed when the data led
 the render to it. A render failing, as on a key removed, keeps the last file,
-and the command goes on watching; the first render failing, as on a typo,
-ends it. A render failing on the api, or a file not written, is tried again
-5s later. A render reading data the events stream does not follow yet writes
+and the command goes on watching. The first renders failing, as on a typo,
+a missing object or an api not answering, end it, as a supervisor restarting
+it would have it. After them, a render failing on the api, or a file not
+written, is tried again 5s later. A render reading data the events stream does not follow yet writes
 no file: the stream is opened again, and the templates rendered once it
 replayed the data. SIGHUP reads the templates again.
 

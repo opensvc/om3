@@ -261,6 +261,13 @@ func (w *templateWatcher) open(ctx context.Context) {
 	w.sub = tmplrender.SubscriptionOf(w.reads())
 	if len(w.sub.Kinds) == 0 {
 		w.logf("the templates read no cluster data: nothing to watch")
+		w.settling = false
+		if w.force {
+			// A render waiting for the stream, as one of a template
+			// read again on SIGHUP no longer reading cluster data,
+			// needs none: it is done now.
+			w.arm(0)
+		}
 		return
 	}
 	reader, err := w.openStream(ctx, w.sub)
@@ -477,6 +484,8 @@ func (w *templateWatcher) onTimer(ctx context.Context) {
 		// written: the stream is opened again, asking the new reads,
 		// and the templates are rendered once it replayed.
 		w.logf("the templates read other data: open the events stream again, and render once it replayed")
+		w.force = true
+		w.forceReason = "the templates read other data"
 		w.open(ctx)
 		return
 	}

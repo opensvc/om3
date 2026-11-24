@@ -789,3 +789,35 @@ func TestWatchRetriesARenderFailingOnTheAPI(t *testing.T) {
 	defer f.mu.Unlock()
 	assert.GreaterOrEqual(t, f.calls, 5)
 }
+
+// A template read again on SIGHUP no longer reading cluster data is rendered
+// and written at once: no events stream is to replay data for it.
+func TestWatchSIGHUPToATemplateReadingNoClusterData(t *testing.T) {
+	wt := startWatch(t, `{{ avail "prod/svc/web" }}`)
+	wt.eventually(func() bool { return wt.content() == "up" && wt.reloadCount() == 1 }, "first render")
+	wt.eventually(func() bool { _, n := wt.streams.last(); return n == 1 }, "stream opened")
+	wt.streams.send(t, "ObjectStatusUpdated", objectStatusUpdated("prod/svc/web", status.Up, time.Now()))
+	time.Sleep(200 * time.Millisecond)
+
+	in := filepath.Join(filepath.Dir(wt.out), "in.tpl")
+	require.NoError(t, os.WriteFile(in, []byte(`static`), 0o600))
+	wt.hupC <- os.Interrupt
+	wt.eventually(func() bool { return wt.content() == "static" && wt.reloadCount() == 2 }, "render of the static template")
+}
+
+// An output the process can write but not read is replaced.
+func TestTemplateOutputReplacesAWriteOnlyFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a write-only file")
+	}
+	p := filepath.Join(t.TempDir(), "out.conf")
+	require.NoError(t, os.WriteFile(p, []byte("old"), 0o200))
+	out, err := newTemplateOutput(p, "0600", "", "")
+	require.NoError(t, err)
+	changed, err := out.write([]byte("new"))
+	require.NoError(t, err)
+	assert.True(t, changed)
+	b, err := os.ReadFile(p)
+	require.NoError(t, err)
+	assert.Equal(t, "new", string(b))
+}
