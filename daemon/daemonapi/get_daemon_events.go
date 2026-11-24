@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -20,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -206,11 +208,16 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	defer log.Tracef("done")
 
 	getSelectedMap := func() (naming.M, error) {
-		if selected, err := selector.Expand(); err != nil {
+		selected, err := selector.Expand()
+		if errors.Is(err, xerrors.ObjectNotFound) {
+			// A selector naming an object not there yet selects
+			// none: learnPath selects it once created, rather
+			// than the stream failing.
+			return naming.M{}, nil
+		} else if err != nil {
 			return nil, err
-		} else {
-			return selected.StrMap(), nil
 		}
+		return selected.StrMap(), nil
 	}
 
 	// needForwardEvent returns true when event needs to be forwarded to

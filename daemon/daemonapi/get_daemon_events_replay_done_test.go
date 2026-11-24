@@ -29,6 +29,14 @@ import (
 // replayed, and returns its header and its events.
 func serveEvents(t *testing.T, data *clusterdump.Data, params api.GetDaemonEventsParams) (http.Header, []event.Event) {
 	t.Helper()
+	_, header, events := serveEventsCode(t, data, params)
+	return header, events
+}
+
+// serveEventsCode serves an events stream of params, and returns its status
+// code too.
+func serveEventsCode(t *testing.T, data *clusterdump.Data, params api.GetDaemonEventsParams) (int, http.Header, []event.Event) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	bus := pubsub.NewBus(t.Name())
@@ -65,7 +73,7 @@ func serveEvents(t *testing.T, data *clusterdump.Data, params api.GetDaemonEvent
 		}
 		l = append(l, *ev)
 	}
-	return rec.Header(), l
+	return rec.Code, rec.Header(), l
 }
 
 func newReplayData(paths ...string) *clusterdump.Data {
@@ -138,4 +146,22 @@ func TestNoReplayDone(t *testing.T) {
 	})
 	assert.Empty(t, header.Get(api.HeaderReplayDone))
 	assert.Empty(t, events)
+}
+
+// A stream selecting an object not there yet is served, the object selected
+// once created, rather than failing: a template watching an object to come
+// opens its stream.
+func TestEventsSelectingAnAbsentObject(t *testing.T) {
+	for _, sel := range []string{"prod/svc/missing", "!prod/svc/missing"} {
+		code, _, events := serveEventsCode(t, newReplayData("ns1/svc/a"), api.GetDaemonEventsParams{
+			Filter:     &[]string{"ObjectStatusUpdated"},
+			Selector:   pointer(sel),
+			Replay:     pointer(true),
+			ReplayDone: pointer(true),
+			Duration:   pointer("300ms"),
+		})
+		assert.Equal(t, http.StatusOK, code, sel)
+		require.NotEmpty(t, events, sel)
+		assert.Equal(t, event.KindReplayDone, events[len(events)-1].Kind, sel)
+	}
 }
