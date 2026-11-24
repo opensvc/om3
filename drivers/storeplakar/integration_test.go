@@ -44,6 +44,7 @@ func TestWithTheRealPlakar(t *testing.T) {
 	}
 	e := newTestEnv(t)
 	disableSecurityCheck = runDisableSecurityCheck
+	warmUp = runWarmUp
 	getPath = func(string) string { return bin }
 	t.Cleanup(func() { getPath = capabilities.GetPath })
 	// plakar reads the passphrase from om, which the test does not build.
@@ -218,6 +219,7 @@ func TestWithTheRealPlakarOverSFTP(t *testing.T) {
 	e := newTestEnv(t)
 	dataDir = defaultDataDir
 	disableSecurityCheck = runDisableSecurityCheck
+	warmUp = runWarmUp
 	getPath = func(string) string { return bin }
 	t.Cleanup(func() { getPath = capabilities.GetPath })
 	sshPath = func() (string, error) { return exec.LookPath("ssh") }

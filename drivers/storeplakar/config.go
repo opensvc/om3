@@ -247,6 +247,62 @@ func runDisableSecurityCheck(d dirs) error {
 	return nil
 }
 
+// warmUp has plakar do, in a call whose output is dropped, what it does on
+// the first call finding its cache directory not ready, and prints on its
+// standard output: the packages of the data directory unpacked into the
+// cache, a line per file, and its welcome. The call after a package was
+// installed or upgraded, the cache removed or plakar upgraded would otherwise
+// print them before a listing, which is then not read, or before the content
+// of a member, which would be restored with them.
+//
+// plakar alone knows when it has to: no record of the driver, of the
+// packages or of the cache, would follow every reason it has. So the call is
+// made once per driver, a command or an action, before its first call:
+// plakar version, which opens no store and derives no key, a few hundredths
+// of a second against the second of each call opening the store. A call
+// found printing these lines is not one to run again: a stream is read
+// once, and the content of a member is not told from them.
+//
+// Replaced by the tests faking plakar.
+var warmUp = runWarmUp
+
+func runWarmUp(t *T, d dirs) error {
+	p := getPath("plakar")
+	if p == "" {
+		return errPlakarNotInstalled
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := command.New(
+		command.WithName(p),
+		command.WithArgs([]string{"-configdir", d.config, "-cachedir", d.cache, "-datadir", d.data, "version"}),
+		command.WithContext(ctx),
+		command.WithEnv(t.env(d)),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+	)
+	if err := cmd.Run(); err != nil {
+		return cmdError("version", cmd, err)
+	}
+	return nil
+}
+
+// warm runs warmUp before the first plakar call of the driver. A failure is
+// logged and tried again by the next call: the call it precedes says what
+// is wrong with plakar better than its version does.
+func (t *T) warm(d dirs) {
+	t.warmMu.Lock()
+	defer t.warmMu.Unlock()
+	if t.warmed {
+		return
+	}
+	if err := warmUp(t, d); err != nil {
+		t.Log().Warnf("warm the cache of plakar up: %s", err)
+		return
+	}
+	t.warmed = true
+}
+
 func writeFile(dir, name string, b []byte) error {
 	return writeFileMode(dir, name, b, filePerm)
 }
@@ -312,6 +368,8 @@ func mkdirPrivate(path string) error {
 //
 // plakar empties stores.yml when it misses sources.yml or destinations.yml
 // of its configuration directory, so the three are written.
+//
+// The first call of the driver has plakar ready its cache: see warmUp.
 func (t *T) prepare() (string, error) {
 	return t.configure(false)
 }
@@ -378,6 +436,7 @@ func (t *T) configure(rewrite bool) (string, error) {
 			t.Log().Warnf("record the security check of plakar disabled: %s", err)
 		}
 	}
+	t.warm(d)
 	return dir, nil
 }
 

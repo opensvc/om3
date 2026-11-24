@@ -27,6 +27,10 @@
 // writing a run creates a store of the node missing: a read of it finds no
 // run.
 //
+// plakar unpacks its packages into a cache directory not holding them, and
+// prints a line per file on its standard output: the first call of a driver
+// is a plakar version, so no listing nor member is read with these lines.
+//
 // plakar rm unlinks snapshots and frees nothing: plakar maintenance does, in
 // two passes, marking the packs no snapshot uses then removing them once
 // their grace period is over. The driver runs it after a deletion.
@@ -65,6 +69,11 @@ type (
 		// next one.
 		listings   map[string][]snapshot
 		listingsMu sync.Mutex
+
+		// warmed says plakar readied its cache directory in a call of
+		// this driver, whose output was dropped.
+		warmed bool
+		warmMu sync.Mutex
 	}
 
 	// tagValue is a tag a listing is narrowed with, its value not escaped.

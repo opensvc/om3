@@ -163,6 +163,9 @@ func newTestEnv(t *testing.T) testEnv {
 	// per store, is the integration test's to run.
 	disableSecurityCheck = func(dirs) error { return nil }
 	t.Cleanup(func() { disableSecurityCheck = runDisableSecurityCheck })
+	// So is the call readying the cache, the first of each driver.
+	warmUp = func(*T, dirs) error { return nil }
+	t.Cleanup(func() { warmUp = runWarmUp })
 	env := testhelper.Setup(t)
 	dataDir = func() string { return filepath.Join(env.Root, "plakar-data") }
 	t.Cleanup(func() { dataDir = defaultDataDir })
