@@ -187,6 +187,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Security
 
+* **A role reading the secrets alone**: the `secreader` role, granted on a namespace as `secreader:<namespace>`, reads the key values of the sec objects of the namespace, by `GET /api/object/path/{namespace}/sec/{name}/data/key` and `.../data`, and grants nothing else of the api: a reader of secrets, as `ox template` rendering a config file on a load balancer, holds it with a `guest` grant, which reads the cluster data and the cfg keys, rather than the `admin` one, which writes every object of the namespace. Writing a sec key still takes `admin`, and the usr keys `root`. The daemon logs each read of sec key values at the debug level, by any role, with the names of the keys and the user, never the values: `serve the keys password of prod/sec/db to lb1`.
+
 * **Privilege restrictions for the app and host task commands**: `no_new_privileges` and
     `capability_bounding_set`, on the `app.simple`, `app.forking` and `task.host` resources, are applied
     by om exec to every command of the resource. `no_new_privileges = true` sets the no_new_privs flag:

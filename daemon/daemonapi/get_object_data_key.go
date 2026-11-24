@@ -17,7 +17,7 @@ func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind na
 	log := LogHandler(ctx, "GetObjectDataKey")
 
 	// A cfg key is readable by the guests of its namespace, a sec key by its
-	// administrators. A usr key is the password or the certificate private
+	// administrators and its secret readers, each read logged at the debug level. A usr key is the password or the certificate private
 	// key of a user, which authenticates as that user, whatever its grants:
 	// root alone reads it.
 	switch kind {
@@ -26,7 +26,7 @@ func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind na
 			return err
 		}
 	case naming.KindSec:
-		if v, err := assertAdmin(ctx, namespace); !v {
+		if v, err := assertSecReader(ctx, namespace); !v {
 			return err
 		}
 	default:
@@ -56,6 +56,9 @@ func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind na
 		b, err := ks.DecodeKey(params.Name)
 		switch {
 		case err == nil:
+			if kind == naming.KindSec {
+				auditSecRead(ctx, log, p, []string{params.Name}, "")
+			}
 			var contentType string
 			if utf8.Valid(b) {
 				contentType = "text/plain"
@@ -80,6 +83,9 @@ func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind na
 		if resp, err := c.GetObjectDataKeyWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if resp.StatusCode() == http.StatusOK {
+			if kind == naming.KindSec {
+				auditSecRead(ctx, log, p, []string{params.Name}, nodename)
+			}
 			// The value of the key, as the peer answers it: an
 			// empty one is a value too.
 			contentType := resp.HTTPResponse.Header.Get(echo.HeaderContentType)

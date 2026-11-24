@@ -16,7 +16,7 @@ func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind namin
 	log := LogHandler(ctx, "GetObjectData")
 
 	if kind == naming.KindSec {
-		if v, err := assertAdmin(ctx, namespace); !v {
+		if v, err := assertSecReader(ctx, namespace); !v {
 			return err
 		}
 	} else {
@@ -56,6 +56,9 @@ func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind namin
 				result.Items = append(result.Items, api.DataKey{Name: name, Bytes: b})
 			}
 		}
+		if kind == naming.KindSec && len(*params.Names) > 0 {
+			auditSecRead(ctx, log, p, *params.Names, "")
+		}
 		return ctx.JSON(http.StatusOK, result)
 	}
 
@@ -67,6 +70,9 @@ func (a *DaemonAPI) GetObjectData(ctx echo.Context, namespace string, kind namin
 		if resp, err := c.GetObjectDataWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else if len(resp.Body) > 0 {
+			if kind == naming.KindSec && resp.StatusCode() == http.StatusOK && params.Names != nil && len(*params.Names) > 0 {
+				auditSecRead(ctx, log, p, *params.Names, nodename)
+			}
 			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
 		}
 	}
