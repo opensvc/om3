@@ -84,7 +84,7 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     The template reads:
 
-    * the cfg and sec keys: `key`, `keyOr`, `keyExists`, `keyNames`. Reading a sec key needs the admin role on its namespace, and a sec read with a `--mode` letting others read the file is warned about.
+    * the cfg and sec keys: `key`, `keyOr`, `keyExists`, `keyNames`. Reading a sec key needs the `secreader` role on its namespace, or the `admin` one, and a sec read with a `--mode` letting others read the file is warned about.
     * the keywords, evaluated: `config "path" "section.option"`, and `configAs` as another node evaluates them.
     * the objects: `objects`, `objectStatus`, `objectExists`, `avail`, an error for an object missing, and `availOr`.
     * the instances, with their monitor, and their resources: `instances`, `instanceStatus`, `resources`, `ips`, with `.ipaddr`, `.dev`, `.netmask`, `.hostname`, `disks`, `apps`, `resinfo`.
