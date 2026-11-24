@@ -186,6 +186,14 @@ var (
 		Order: 32,
 	}
 
+	// nodeGroupWake holds how the peers wake a node on lan.
+	nodeGroupWake = keywords.Group{
+		ID:    "wake",
+		Name:  "Wake on LAN",
+		Text:  keywords.NewText(fs, "text/group/node/wake"),
+		Order: 36,
+	}
+
 	// nodeGroupQuorum holds what happens when the cluster splits.
 	nodeGroupQuorum = keywords.Group{
 		ID:    "quorum",
@@ -376,6 +384,7 @@ var (
 		nodeGroupVolumes,
 		nodeGroupScheduling,
 		nodeGroupQuorum,
+		nodeGroupWake,
 		nodeGroupDNS,
 		nodeGroupEnv,
 		nodeGroupRetention,

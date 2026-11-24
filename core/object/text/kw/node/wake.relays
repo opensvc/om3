@@ -1,0 +1,3 @@
+The nodes allowed to send the magic packet. Every relay up sends it, as a
+packet sent twice does no harm, and one relay on the lan of the node to wake
+is enough.

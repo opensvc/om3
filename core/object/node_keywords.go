@@ -1229,6 +1229,42 @@ var (
 		Section:   "stonith",
 		Text:      keywords.NewText(fs, "text/kw/node/stonith.command"),
 	}
+	kwNodeWakeMac = keywords.Keyword{
+		Converter: converters.List,
+		Example:   "22:23:24:2d:01:12",
+		Option:    "mac",
+		Group:     nodeGroupWake.ID,
+		Required:  true,
+		Section:   "wake",
+		Text:      keywords.NewText(fs, "text/kw/node/wake.mac"),
+	}
+	kwNodeWakeBroadcast = keywords.Keyword{
+		Converter:   converters.List,
+		DefaultText: keywords.NewText(fs, "text/kw/node/wake.broadcast.default"),
+		Example:     "10.45.1.255",
+		Option:      "broadcast",
+		Group:       nodeGroupWake.ID,
+		Section:     "wake",
+		Text:        keywords.NewText(fs, "text/kw/node/wake.broadcast"),
+	}
+	kwNodeWakePort = keywords.Keyword{
+		Converter: converters.List,
+		Default:   "9",
+		Example:   "7 9",
+		Option:    "port",
+		Group:     nodeGroupWake.ID,
+		Section:   "wake",
+		Text:      keywords.NewText(fs, "text/kw/node/wake.port"),
+	}
+	kwNodeWakeRelays = keywords.Keyword{
+		Converter:   converters.List,
+		DefaultText: keywords.NewText(fs, "text/kw/node/wake.relays.default"),
+		Example:     "n1 n3",
+		Option:      "relays",
+		Group:       nodeGroupWake.ID,
+		Section:     "wake",
+		Text:        keywords.NewText(fs, "text/kw/node/wake.relays"),
+	}
 	kwNodeRebootPre = keywords.Keyword{
 		Example: "yum upgrade -y",
 		Option:  "pre",
@@ -2475,6 +2511,10 @@ var (
 		&kwNodeArbitratorInsecure,
 		&kwNodeArbitratorWeight,
 		&kwNodeStonithCommand,
+		&kwNodeWakeMac,
+		&kwNodeWakeBroadcast,
+		&kwNodeWakePort,
+		&kwNodeWakeRelays,
 		&kwNodeRebootPre,
 		&kwNodeRebootBlockingPre,
 		&kwNodeHBType,
