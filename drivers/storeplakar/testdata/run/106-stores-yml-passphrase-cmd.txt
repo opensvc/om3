@@ -3,4 +3,4 @@ version: v1.0.0
 stores:
     store:
         location: fs:///tmp/f/store
-        passphrase_cmd: /usr/bin/om system/sec/backup key decode passphrase
+        passphrase_cmd: /usr/bin/om system/sec/backup key decode -- passphrase

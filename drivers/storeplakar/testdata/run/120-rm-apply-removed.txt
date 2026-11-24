@@ -1,0 +1,1 @@
+info: rm: removal of 10d34dcf completed successfully

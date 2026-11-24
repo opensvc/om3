@@ -223,3 +223,34 @@ func TestSecDataLimit(t *testing.T) {
 		}
 	}
 }
+
+// TestSecKeyDecodeTakesTheNameAfterADoubleDash pins the key name read after
+// a --, whatever it looks like: the plakar store driver writes the command
+// om <sec> key decode -- <key> for plakar to read a passphrase, and a key
+// named as a flag must not be parsed as one.
+func TestSecKeyDecodeTakesTheNameAfterADoubleDash(t *testing.T) {
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../../testdata/sec_empty.conf", "etc/namespaces/test/sec/sec1.conf")
+
+	run := func(args ...string) (string, error) {
+		t.Helper()
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	for _, name := range []string{"passphrase", "--local", "-h", "--help"} {
+		out, err := run("test/sec/sec1", "key", "add", "--value", "value of "+name, "--", name)
+		require.NoError(t, err, out)
+		out, err = run("test/sec/sec1", "key", "decode", "--", name)
+		require.NoError(t, err, out)
+		assert.Equal(t, "value of "+name, out, name)
+	}
+	out, err := run("test/sec/sec1", "key", "decode", "--local")
+	if err == nil {
+		assert.NotEqual(t, "value of --local", out, "without the --, the name is read as a flag")
+	}
+}

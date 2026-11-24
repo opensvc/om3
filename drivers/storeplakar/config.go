@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/kballard/go-shellquote"
@@ -33,47 +34,81 @@ type (
 	}
 )
 
+// schemeRE matches the scheme opening a url, as plakar names its backends.
+var schemeRE = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*://`)
+
 // name returns the section declaring the store, without its prefix.
 func (t *T) name() string {
 	return strings.TrimPrefix(t.Key("").Section, backup.SectionPrefix)
 }
 
+// validName refuses a store name that is not one path element of its own:
+// the name makes a directory of the private directories of the store, which
+// a separator or a parent directory would move elsewhere on the node.
+func validName(s string) error {
+	switch {
+	case s == "", s == ".", s == "..", strings.ContainsAny(s, "/\\\x00"):
+		return fmt.Errorf("invalid store name %q: a store is named with one path element", s)
+	}
+	return nil
+}
+
 // dirs returns the directories of the store: node/<name> for a store of the
 // cluster configuration, sec/<namespace>/<sec>/<name> for a store of a sec,
 // so two stores of the same name never share their directories.
-func (t *T) dirs() dirs {
-	rel := filepath.Join("node", t.name())
+func (t *T) dirs() (dirs, error) {
+	name := t.name()
+	if err := validName(name); err != nil {
+		return dirs{}, err
+	}
+	rel := filepath.Join("node", name)
 	if owner := t.Owner(); !owner.IsZero() {
-		rel = filepath.Join("sec", owner.Namespace, owner.Name, t.name())
+		rel = filepath.Join("sec", owner.Namespace, owner.Name, name)
 	}
 	return dirs{
 		config: filepath.Join(rawconfig.Paths.Run, "store", "plakar", rel),
 		cache:  filepath.Join(rawconfig.Paths.Var, "plakar", rel, "cache"),
 		data:   filepath.Join(rawconfig.Paths.Var, "plakar", rel, "data"),
-	}
+	}, nil
 }
 
 // location returns the store location plakar understands, a local path
 // becoming a fs:// url, and the directory of a store of the node, empty for
 // a remote store.
+//
+// A url is an absolute path, a fs:// url of one, or the <scheme>:// url of a
+// location plakar reaches by itself. Anything else is refused: plakar reads
+// a relative path from its working directory, the one of the daemon or of
+// the command, a directory of the node no keyword named.
 func (t *T) location() (string, string, error) {
 	s := t.Get("url")
 	switch {
 	case s == "":
 		return "", "", fmt.Errorf("no url")
-	case strings.HasPrefix(s, "/"):
-		return "fs://" + s, s, nil
+	case filepath.IsAbs(s):
+		dir := filepath.Clean(s)
+		return "fs://" + dir, dir, nil
 	case strings.HasPrefix(s, "fs://"):
-		return s, strings.TrimPrefix(s, "fs://"), nil
-	default:
+		dir := strings.TrimPrefix(s, "fs://")
+		if !filepath.IsAbs(dir) {
+			return "", "", fmt.Errorf("url %q is not an absolute path", s)
+		}
+		dir = filepath.Clean(dir)
+		return "fs://" + dir, dir, nil
+	case schemeRE.MatchString(s):
 		return s, "", nil
+	default:
+		return "", "", fmt.Errorf("url %q is neither an absolute path nor a <scheme>:// url", s)
 	}
 }
 
-// IsLocal says whether the store is a directory of the node.
+// IsLocal says whether the store is a directory of the node. A url the
+// driver refuses is reported local: the answer guards the stores of a sec,
+// which are never a directory of the node, and Localer has no error to say
+// the url cannot be judged, so the guard refuses what it cannot tell remote.
 func (t *T) IsLocal() bool {
-	_, dir, _ := t.location()
-	return dir != ""
+	_, dir, err := t.location()
+	return err != nil || dir != ""
 }
 
 // keyMeta returns the key the option designates, written from <datastore>
@@ -133,13 +168,14 @@ func checkPassphrase(b []byte) error {
 
 // passphraseCmd is the command plakar runs through /bin/sh to read the
 // passphrase: om printing the key, so the passphrase goes through a pipe
-// only.
+// only. The key name follows a --, so a key named as a flag is read as a
+// name.
 func passphraseCmd(km datarecv.KeyMeta) (string, error) {
 	om, err := executable.Path()
 	if err != nil {
 		return "", err
 	}
-	return shellquote.Join(om, km.Path.String(), "key", "decode", km.Key), nil
+	return shellquote.Join(om, km.Path.String(), "key", "decode", "--", km.Key), nil
 }
 
 // storesYML is what plakar store add writes for one store and its
@@ -193,40 +229,43 @@ func mkdirPrivate(path string) error {
 	return os.Chmod(path, dirPerm)
 }
 
-// ensure prepares the node for the store before a call: the private
-// directories and the plakar configuration when missing or stale, and the
-// store itself when it is a local path not created yet. SetConfig has no
-// error path, so every call runs it first.
+// prepare makes the node ready to call plakar on the store: the private
+// directories and the plakar configuration, written when missing or stale.
+// SetConfig has no error path, so every call runs it first. It returns the
+// directory of a store of the node, empty for a remote store.
 //
 // The passphrase is decoded and checked, then dropped: plakar reads it
 // through passphrase_cmd.
 //
 // plakar empties stores.yml when it misses sources.yml or destinations.yml
 // of its configuration directory, so the three are written.
-func (t *T) ensure(ctx context.Context) error {
+func (t *T) prepare() (string, error) {
 	location, dir, err := t.location()
 	if err != nil {
-		return err
+		return "", err
+	}
+	d, err := t.dirs()
+	if err != nil {
+		return "", err
 	}
 	km, err := t.keyMeta("passphrase")
 	if err != nil {
-		return err
+		return "", err
 	}
 	passphrase, err := t.decodeKey("passphrase", km)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := checkPassphrase(passphrase); err != nil {
-		return err
+		return "", err
 	}
 	stores, err := t.storesYML(location)
 	if err != nil {
-		return err
+		return "", err
 	}
-	d := t.dirs()
 	for _, path := range []string{d.config, d.cache, d.data} {
 		if err := mkdirPrivate(path); err != nil {
-			return err
+			return "", err
 		}
 	}
 	for name, b := range map[string][]byte{
@@ -238,11 +277,37 @@ func (t *T) ensure(ctx context.Context) error {
 			continue
 		}
 		if err := writeFile(d.config, name, b); err != nil {
-			return err
+			return "", err
 		}
 	}
+	return dir, nil
+}
+
+// open prepares the node for a call reading the store, or deleting from it,
+// and tells whether there is a store to call: a store of the node missing
+// or empty holds no run, and is not created to say so. A status on a node
+// whose shared mount is not mounted would otherwise create a new store in
+// the mount point. A remote store is for plakar to find.
+func (t *T) open() (bool, error) {
+	dir, err := t.prepare()
+	if err != nil {
+		return false, err
+	}
 	if dir == "" {
-		// A remote store is never created by the driver.
+		return true, nil
+	}
+	return storeExists(dir)
+}
+
+// ensure prepares the node for a call writing a run, and creates the store
+// when it is a local path not created yet: only a write makes a store. A
+// remote store is never created by the driver.
+func (t *T) ensure(ctx context.Context) error {
+	dir, err := t.prepare()
+	if err != nil {
+		return err
+	}
+	if dir == "" {
 		return nil
 	}
 	if v, err := storeExists(dir); err != nil {
@@ -250,7 +315,7 @@ func (t *T) ensure(ctx context.Context) error {
 	} else if v {
 		return nil
 	}
-	t.Log().Infof("create the store at %s", location)
+	t.Log().Infof("create the store at %s", dir)
 	cmd, err := t.commandAt(ctx, zerolog.InfoLevel, nil, "create")
 	if err != nil {
 		return err

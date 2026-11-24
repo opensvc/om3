@@ -1,0 +1,3 @@
+maintenance: Coloured 3 packfiles (0 orphaned) for deletion
+Coloured packfiles are scheduled to be removed in 7d
+maintenance: 0 blobs and 0 packfiles were removed

@@ -21,6 +21,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -178,7 +179,8 @@ func newTestEnv(t *testing.T) testEnv {
 	e := testEnv{root: env.Root, src: filepath.Join(env.Root, "src"), dst: filepath.Join(env.Root, "dst")}
 	require.NoError(t, os.MkdirAll(e.src, 0755))
 	e.store = newStore(t, fmt.Sprintf("[store#lab]\ntype = plakar\nurl = %s\npassphrase = from system/sec/backup key passphrase\n", e.storePath()))
-	e.dirs = e.store.dirs()
+	e.dirs, err = e.store.dirs()
+	require.NoError(t, err)
 	return e
 }
 
@@ -246,13 +248,26 @@ func TestBackupAnchorsTheExcludesAtTheSource(t *testing.T) {
 }
 
 // TestBackupRefusesAStoreUnderTheSource pins the refusal of a local store
-// inside the directory it would back up, before any call.
+// inside the directory it would back up, before any call: the store, not
+// created yet, is not created in the head to be refused next.
 func TestBackupRefusesAStoreUnderTheSource(t *testing.T) {
 	e := newTestEnv(t)
-	e.createStore(t)
 	err := e.store.Backup(context.Background(), run1, "fs#1", e.root, e.root, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "a store is never inside a head it backs up")
+	assert.Empty(t, calls(t), "no create, no backup")
+	assert.NoDirExists(t, e.storePath())
+}
+
+// TestBackupRefusesAUrlItCannotJudge pins the url error reaching the caller
+// of a backup, before any call: a url not read is not a store outside the
+// head.
+func TestBackupRefusesAUrlItCannotJudge(t *testing.T) {
+	e := newTestEnv(t)
+	s := newStore(t, "[store#lab]\ntype = plakar\nurl = fs://srv/plakar\npassphrase = from system/sec/backup key passphrase\n")
+	err := s.Backup(context.Background(), run1, "fs#1", e.src, e.src, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `url "fs://srv/plakar" is not an absolute path`)
 	assert.Empty(t, calls(t))
 }
 
@@ -372,7 +387,7 @@ func TestRestoreFindsTheSnapshotOfTheMember(t *testing.T) {
 	setFake(t, "reply.1", []byte(lsLine(t0, "s1", run1, "om3.member=fs%231,om3.kind=dir")))
 	require.NoError(t, e.store.Restore(context.Background(), run1, "fs#1", e.dst))
 	assert.Equal(t, [][]string{
-		e.argv("@store", "ls", "-uuid", "-tags", "-tag", "om3.run=r1,om3.member=fs%231"),
+		e.argv("@store", "ls", "-uuid", "-tags", "-tag", "om3.run=r1"),
 		e.argv("@store", "restore", "-to", e.dst, "s1"),
 	}, calls(t))
 	assert.DirExists(t, e.dst)
@@ -380,7 +395,7 @@ func TestRestoreFindsTheSnapshotOfTheMember(t *testing.T) {
 	resetFake(t)
 	err := e.store.Restore(context.Background(), run1, "fs#2", e.dst)
 	assert.ErrorIs(t, err, backup.ErrNotFound)
-	assert.Len(t, calls(t), 1, "no restore of a member not found")
+	assert.Empty(t, calls(t), "no restore of a member not found, told from the listing of the run already read")
 }
 
 // TestCatReadsAStreamMemberOnly pins the cat of the file of a stream
@@ -404,18 +419,66 @@ func TestCatReadsAStreamMemberOnly(t *testing.T) {
 }
 
 // TestDeleteRemovesEverySnapshotOfTheRuns pins one rm of all the snapshots
-// of each run, its marker too, a run with no snapshot removing nothing.
+// of each run, its marker too, a run with no snapshot removing nothing, then
+// one maintenance reclaiming the space of what was removed.
 func TestDeleteRemovesEverySnapshotOfTheRuns(t *testing.T) {
 	e := newTestEnv(t)
 	e.createStore(t)
+	setFake(t, "reply.1", fixture(t, "120-rm-apply-removed.txt"))
 	setFake(t, "reply.2", fixture(t, "92-rm-apply-nomatch.txt"))
+	setFake(t, "reply.3", fixture(t, "121-maintenance.txt"))
 	run2 := run1
 	run2.ID = "r2"
 	require.NoError(t, e.store.Delete(context.Background(), []backup.Run{run1, run2}))
 	assert.Equal(t, [][]string{
 		e.argv("@store", "rm", "-apply", "-tag", "om3.run=r1"),
 		e.argv("@store", "rm", "-apply", "-tag", "om3.run=r2"),
+		e.argv("@store", "maintenance"),
 	}, calls(t))
+}
+
+// TestDeleteOfNoSnapshotRunsNoMaintenance pins no maintenance, which wants
+// the store for itself, after a deletion removing nothing, as the one of a
+// run failed before its first member.
+func TestDeleteOfNoSnapshotRunsNoMaintenance(t *testing.T) {
+	e := newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply", fixture(t, "92-rm-apply-nomatch.txt"))
+	require.NoError(t, e.store.Delete(context.Background(), []backup.Run{run1}))
+	assert.Equal(t, [][]string{e.argv("@store", "rm", "-apply", "-tag", "om3.run=r1")}, calls(t))
+}
+
+// TestMaintenanceUnderALockIsSkipped pins the maintenance giving up under
+// the lock of another plakar as no error of the deletion, whether plakar
+// exits 0 or not, and said in the log.
+func TestMaintenanceUnderALockIsSkipped(t *testing.T) {
+	for _, status := range []string{"0", "1"} {
+		e := newTestEnv(t)
+		e.createStore(t)
+		var buf bytes.Buffer
+		e.store.SetLoggerForTest(plog.NewLogger(zerolog.New(&buf).Level(zerolog.InfoLevel)))
+		setFake(t, "reply.1", fixture(t, "120-rm-apply-removed.txt"))
+		setFake(t, "reply.2", fixture(t, "122-maintenance-locked.txt"))
+		setFake(t, "status.2", []byte(status))
+		require.NoError(t, e.store.Delete(context.Background(), []backup.Run{run1}), "exit %s", status)
+		assert.Len(t, calls(t), 2, "exit %s", status)
+		assert.Contains(t, buf.String(), "maintenance skipped: repository busy", "exit %s", status)
+	}
+}
+
+// TestMaintenanceFailureIsReported pins the error of a maintenance failing
+// for another reason than a lock: the runs are deleted, their space is not
+// reclaimed, and the store would grow unseen.
+func TestMaintenanceFailureIsReported(t *testing.T) {
+	e := newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply.1", fixture(t, "120-rm-apply-removed.txt"))
+	setFake(t, "status.2", []byte("1"))
+	setFake(t, "stderr.2", []byte("plakar: no space left on device\n"))
+	err := e.store.Delete(context.Background(), []backup.Run{run1})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "the runs are deleted, their space is not reclaimed: plakar maintenance: ")
+	assert.Contains(t, err.Error(), "no space left on device")
 }
 
 // TestCheckVerifiesTheStoreOrTheSnapshotsOfTheRuns pins the whole store
@@ -463,21 +526,80 @@ func TestObjectStatsCountTheRunsOfEachObject(t *testing.T) {
 	assert.Equal(t, "test/svc/app2", stats[1].Path)
 }
 
-// TestLocalStoreIsCreatedOnFirstUse pins the create of an empty local store
-// before the first call, through the alias so plakar reads the passphrase_cmd,
-// and no create for a store holding something.
-func TestLocalStoreIsCreatedOnFirstUse(t *testing.T) {
-	e := newTestEnv(t)
-	require.NoError(t, e.store.Check(context.Background(), backup.RunFilter{}))
-	assert.Equal(t, [][]string{
-		e.argv("@store", "create"),
-		e.argv("@store", "check"),
-	}, calls(t), "create, then check")
+// TestLocalStoreIsCreatedOnFirstWrite pins the create of a missing or empty
+// local store before the first call writing a run, through the alias so
+// plakar reads the passphrase_cmd, and no create for a store holding
+// something.
+func TestLocalStoreIsCreatedOnFirstWrite(t *testing.T) {
+	writes := map[string]func(e testEnv) error{
+		"backup": func(e testEnv) error {
+			return e.store.Backup(context.Background(), run1, "fs#1", e.src, e.src, nil)
+		},
+		"backup stream": func(e testEnv) error {
+			return e.store.BackupStream(context.Background(), run1, "config", strings.NewReader("x"))
+		},
+		"complete": func(e testEnv) error {
+			return e.store.Complete(context.Background(), run1)
+		},
+	}
+	for name, write := range writes {
+		e := newTestEnv(t)
+		require.NoError(t, write(e), name)
+		l := calls(t)
+		require.Len(t, l, 2, name)
+		assert.Equal(t, e.argv("@store", "create"), l[0], name)
+		assert.Equal(t, "backup", l[1][len(e.argv("@store"))], name)
 
-	resetFake(t)
-	e.createStore(t)
-	require.NoError(t, e.store.Check(context.Background(), backup.RunFilter{}))
-	require.Len(t, calls(t), 1, "no create for a store holding something")
+		resetFake(t)
+		e.createStore(t)
+		require.NoError(t, write(e), name)
+		require.Len(t, calls(t), 1, "%s: no create for a store holding something", name)
+	}
+}
+
+// TestReadsNeverCreateTheStore pins a local store missing, or empty as the
+// mount point of a shared directory not mounted, read as a store holding no
+// run, with no plakar call: a listing, a status, a check, a restore or a
+// deletion never creates a store.
+func TestReadsNeverCreateTheStore(t *testing.T) {
+	ctx := context.Background()
+	for _, state := range []string{"missing", "empty"} {
+		e := newTestEnv(t)
+		if state == "empty" {
+			require.NoError(t, os.MkdirAll(e.storePath(), 0700))
+		}
+		runs, err := e.store.Runs(ctx, backup.RunFilter{})
+		require.NoError(t, err, state)
+		assert.Empty(t, runs, state)
+
+		stats, err := e.store.ObjectStats(ctx)
+		require.NoError(t, err, state)
+		assert.Empty(t, stats, state)
+
+		assert.NoError(t, e.store.Check(ctx, backup.RunFilter{ID: "r1"}), "%s: no run to check", state)
+
+		err = e.store.Check(ctx, backup.RunFilter{})
+		require.Error(t, err, state)
+		assert.Contains(t, err.Error(), "no store at "+e.storePath()+" to check", state)
+
+		assert.ErrorIs(t, e.store.Restore(ctx, run1, "fs#1", e.dst), backup.ErrNotFound, state)
+
+		run := run1
+		run.Members = []backup.Member{{Name: "config", Kind: backup.MemberStream}}
+		_, err = e.store.Cat(ctx, run, "config")
+		assert.ErrorIs(t, err, backup.ErrNotFound, state)
+
+		assert.NoError(t, e.store.Delete(ctx, []backup.Run{run1}), "%s: no run to delete", state)
+
+		assert.Empty(t, calls(t), "%s: no create, nor any other call", state)
+		entries, err := os.ReadDir(e.storePath())
+		if state == "missing" {
+			assert.ErrorIs(t, err, os.ErrNotExist)
+		} else {
+			require.NoError(t, err)
+			assert.Empty(t, entries)
+		}
+	}
 }
 
 // TestPrivateFilesAreOwnerOnly pins the 0700 directories and the 0600
@@ -526,7 +648,9 @@ func TestStoresOfOneNameKeepTheirOwnDirectories(t *testing.T) {
 	require.NoError(t, err)
 	s.SetOwner(p)
 	assert.Equal(t, filepath.Join(rawconfig.Paths.Run, "store", "plakar", "node", "lab"), e.dirs.config)
-	assert.Equal(t, filepath.Join(rawconfig.Paths.Run, "store", "plakar", "sec", "test", "backup", "lab"), s.dirs().config)
+	d, err := s.dirs()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(rawconfig.Paths.Run, "store", "plakar", "sec", "test", "backup", "lab"), d.config)
 	assert.True(t, e.store.IsLocal())
 	assert.False(t, s.IsLocal())
 }
@@ -645,7 +769,18 @@ func TestPassphraseCmdRunsOmDecodeQuoted(t *testing.T) {
 	assert.Equal(t, "printed-by-om\n", string(out))
 	got, err := os.ReadFile(args)
 	require.NoError(t, err)
-	assert.Equal(t, "system/sec/backup\nkey\ndecode\npassphrase\n", string(got))
+	assert.Equal(t, "system/sec/backup\nkey\ndecode\n--\npassphrase\n", string(got))
+}
+
+// TestPassphraseCmdNamesTheKeyAfterADoubleDash pins the -- before the key
+// name: om reads a key named as a flag as a name, not as a flag.
+func TestPassphraseCmdNamesTheKeyAfterADoubleDash(t *testing.T) {
+	newTestEnv(t)
+	p, err := naming.ParsePath("system/sec/backup")
+	require.NoError(t, err)
+	cmd, err := passphraseCmd(datarecv.KeyMeta{Path: p, Key: "--local"})
+	require.NoError(t, err)
+	assert.Equal(t, "/usr/bin/om system/sec/backup key decode -- --local", cmd)
 }
 
 // TestPassphraseOfOneLineOnly pins the passphrases plakar can read from the

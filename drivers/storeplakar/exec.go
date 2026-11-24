@@ -41,7 +41,10 @@ func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, ver
 	if p == "" {
 		return nil, errPlakarNotInstalled
 	}
-	d := t.dirs()
+	d, err := t.dirs()
+	if err != nil {
+		return nil, err
+	}
 	argv := []string{
 		"-configdir", d.config,
 		"-cachedir", d.cache,
@@ -93,7 +96,11 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 			return nil, err
 		}
 		t.Log().Infof("plakar %s: store unresolved, write stores.yml again and retry", verb)
-		if err := writeFile(t.dirs().config, "stores.yml", stores); err != nil {
+		d, err := t.dirs()
+		if err != nil {
+			return nil, err
+		}
+		if err := writeFile(d.config, "stores.yml", stores); err != nil {
 			return nil, err
 		}
 		cmd, err = t.commandAt(ctx, level, nil, verb, args...)
