@@ -271,6 +271,7 @@ var (
 	kwNodeStorePlakarPassphrase = keywords.Keyword{
 		Example:      "from system/sec/backup key passphrase",
 		Option:       "passphrase",
+		Group:        nodeGroupCredentials.ID,
 		RedactSecret: true,
 		Required:     true,
 		Section:      "store",
@@ -280,6 +281,7 @@ var (
 	kwNodeStorePlakarURL = keywords.Keyword{
 		Example:  "/srv/plakar",
 		Option:   "url",
+		Group:    nodeGroupEndpoint.ID,
 		Required: true,
 		Section:  "store",
 		Text:     keywords.NewText(fs, "text/kw/node/store.plakar.url"),
