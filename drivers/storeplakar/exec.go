@@ -79,7 +79,8 @@ func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, ver
 }
 
 // run runs one plakar verb and returns what it printed. A store plakar
-// cannot resolve gets its stores.yml written again and one retry.
+// cannot resolve gets its stores.yml written again and one retry. A
+// location plakar answers holds no repository is an errNoRepository.
 func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...string) ([]byte, error) {
 	cmd, err := t.commandAt(ctx, level, nil, verb, args...)
 	if err != nil {
@@ -87,7 +88,7 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 	}
 	if err := cmd.Run(); err != nil {
 		if !strings.Contains(string(cmd.Stderr()), unresolvedMessage) {
-			return nil, t.callError(verb, cmd, err)
+			return nil, t.storeError(verb, cmd, err)
 		}
 		t.Log().Infof("plakar %s: store unresolved, write stores.yml again and retry", verb)
 		if _, err := t.configure(true); err != nil {
@@ -98,9 +99,10 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 			return nil, err
 		}
 		if err := cmd.Run(); err != nil {
-			return nil, t.callError(verb, cmd, err)
+			return nil, t.storeError(verb, cmd, err)
 		}
 	}
+	t.setPresent()
 	return cmd.Stdout(), nil
 }
 
@@ -117,9 +119,11 @@ func (t *T) callError(verb string, cmd *command.T, err error) error {
 	if disableTLS, _ := t.disableTLS(); disableTLS {
 		return err
 	}
-	stderr := string(cmd.Stderr())
+	// plakar says a repository not opened on its standard error, and
+	// what a command fails on, as a create, on its standard output.
+	said := string(cmd.Stderr()) + string(cmd.Stdout())
 	for _, message := range plainHTTPMessages {
-		if strings.Contains(stderr, message) {
+		if strings.Contains(said, message) {
 			return fmt.Errorf("%w: %s", err, plainHTTPHint)
 		}
 	}

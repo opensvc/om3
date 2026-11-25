@@ -23,9 +23,14 @@
 //
 // plakar derives the key of the store from the passphrase at each call, a
 // second of work and 256 MiB: the driver lists the snapshots once and serves
-// the lookups that follow from that listing, until it writes. Only a call
-// writing a run creates a store of the node missing: a read of it finds no
-// run.
+// the lookups that follow from that listing, until it writes.
+//
+// Only a call writing a member of a run creates a store missing: a
+// directory of the node missing or empty, or a sftp:// or s3:// location
+// plakar answers holds no repository, whatever else it says creating none.
+// A read of a store of the node missing finds no run, a read of a remote one
+// fails. The creation is serialized on the node, and the store another node
+// created meanwhile is used as it is: see create.
 //
 // plakar unpacks its packages into a cache directory not holding them, and
 // prints a line per file on its standard output: the first call of a driver
@@ -44,6 +49,7 @@ package storeplakar
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -82,6 +88,14 @@ type (
 		warmed      bool
 		unsupported error
 		warmMu      sync.Mutex
+
+		// present says a call of this driver found the repository of the
+		// store, and created is the id the repository of a remote store
+		// had when this driver created it, or found it created once the
+		// creation lock held, which the write that follows checks.
+		present  bool
+		created  string
+		createMu sync.Mutex
 	}
 
 	// tagValue is a tag a listing is narrowed with, its value not escaped.
@@ -218,8 +232,22 @@ func (t *T) Backup(ctx context.Context, run backup.Run, member, src, head string
 			args = append(args, "-ignore", s)
 		}
 	}
-	_, err = t.run(ctx, zerolog.InfoLevel, "backup", append(args, src)...)
-	return err
+	args = append(args, src)
+	_, err = t.run(ctx, zerolog.InfoLevel, "backup", args...)
+	if t.creates() && errors.Is(err, errNoRepository) {
+		// plakar opens the repository before it reads the head: the
+		// backup of a remote store is the call finding there is none,
+		// at no cost for the ones finding it, and is run again once
+		// the store is created.
+		if err := t.create(ctx, ""); err != nil {
+			return err
+		}
+		_, err = t.run(ctx, zerolog.InfoLevel, "backup", args...)
+	}
+	if err != nil {
+		return err
+	}
+	return t.checkCreated(ctx)
 }
 
 // BackupStream saves what r reads as the file /<member> of a snapshot,
@@ -228,16 +256,28 @@ func (t *T) BackupStream(ctx context.Context, run backup.Run, member string, r i
 	if err := t.ensure(ctx); err != nil {
 		return err
 	}
+	if err := t.ensureRemote(ctx); err != nil {
+		return err
+	}
 	defer t.forget()
 	args := backupArgs(run, tag(tagMember, member), tag(tagKind, string(backup.MemberStream)))
-	return t.backupStdin(ctx, r, append(args, "stdin:///"+member)...)
+	if err := t.backupStdin(ctx, r, append(args, "stdin:///"+member)...); err != nil {
+		return err
+	}
+	return t.checkCreated(ctx)
 }
 
 // Complete writes the marker of the run, an empty snapshot tagged complete,
 // with the path of the object and the name of the cluster as they are now.
+//
+// A marker never creates the store: the members of the run were written
+// before it, and a store missing since holds none of them. A store created
+// here would hold a run told complete with no member to restore.
 func (t *T) Complete(ctx context.Context, run backup.Run) error {
-	if err := t.ensure(ctx); err != nil {
+	if ok, err := t.open(); err != nil {
 		return err
+	} else if !ok {
+		return fmt.Errorf("store %s: no store at %s to complete the run %s in: the members of the run are not there", t.Ref(), t.Get("url"), run.ShortID())
 	}
 	defer t.forget()
 	args := backupArgs(run, tagComplete, tag(tagCompleted, time.Now().UTC().Format(time.RFC3339Nano)))
@@ -252,8 +292,9 @@ func (t *T) backupStdin(ctx context.Context, r io.Reader, args ...string) error 
 	}
 	cmd.Cmd().Stdin = r
 	if err := cmd.Run(); err != nil {
-		return t.callError("backup", cmd, err)
+		return t.storeError("backup", cmd, err)
 	}
+	t.setPresent()
 	return nil
 }
 

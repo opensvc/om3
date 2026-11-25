@@ -42,12 +42,14 @@ const fakeVersion = "plakar/v1.1.8\n"
 // the calls file, copies its stdin to stdin.N, replays reply.N (or reply) on
 // stdout and stderr.N (or stderr) on stderr, and exits with status.N (or
 // status, or 0), N being the call number. A plakar version with no reply.N
-// prints the version of a plakar the driver supports, as fakeVersion.
+// prints the version of a plakar the driver supports, as fakeVersion. A hook
+// file is sourced once the call is recorded, and may answer it and exit. A
+// call is recorded in one write, for the calls made at once.
 const fakePlakar = `#!/bin/sh
 dir=$(dirname "$0")
 touch "$dir/calls"
 n=$(($(wc -l < "$dir/calls") + 1))
-{
+line=$(
 	printf '['
 	first=1
 	for a in "$@"; do
@@ -55,10 +57,12 @@ n=$(($(wc -l < "$dir/calls") + 1))
 		first=0
 		printf '"%s"' "$(printf '%s' "$a" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 	done
-	printf ']\n'
-} >>"$dir/calls"
+	printf ']'
+)
+printf '%s\n' "$line" >>"$dir/calls"
 env >"$dir/env.$n"
 cat >"$dir/stdin.$n"
+if [ -f "$dir/hook" ]; then . "$dir/hook"; fi
 last=
 for a in "$@"; do last=$a; done
 if [ -f "$dir/reply.$n" ]; then cat "$dir/reply.$n"; elif [ "$last" = version ]; then echo plakar/v1.1.8; elif [ -f "$dir/reply" ]; then cat "$dir/reply"; fi
@@ -543,9 +547,9 @@ func TestObjectStatsCountTheRunsOfEachObject(t *testing.T) {
 }
 
 // TestLocalStoreIsCreatedOnFirstWrite pins the create of a missing or empty
-// local store before the first call writing a run, through the alias so
-// plakar reads the passphrase_cmd, and no create for a store holding
-// something.
+// local store before the first call writing a member of a run, through the
+// alias so plakar reads the passphrase_cmd, and no create for a store
+// holding something.
 func TestLocalStoreIsCreatedOnFirstWrite(t *testing.T) {
 	writes := map[string]func(e testEnv) error{
 		"backup": func(e testEnv) error {
@@ -553,9 +557,6 @@ func TestLocalStoreIsCreatedOnFirstWrite(t *testing.T) {
 		},
 		"backup stream": func(e testEnv) error {
 			return e.store.BackupStream(context.Background(), run1, "config", strings.NewReader("x"))
-		},
-		"complete": func(e testEnv) error {
-			return e.store.Complete(context.Background(), run1)
 		},
 	}
 	for name, write := range writes {
@@ -571,6 +572,18 @@ func TestLocalStoreIsCreatedOnFirstWrite(t *testing.T) {
 		require.NoError(t, write(e), name)
 		require.Len(t, calls(t), 1, "%s: no create for a store holding something", name)
 	}
+}
+
+// TestCompleteNeverCreatesTheStore pins the marker of a run refused when
+// the store of the node is missing: its members were written before it, and
+// a store created for it would hold a run told complete with none of them.
+func TestCompleteNeverCreatesTheStore(t *testing.T) {
+	e := newTestEnv(t)
+	err := e.store.Complete(context.Background(), run1)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no store at "+e.storePath()+" to complete the run")
+	assert.Empty(t, calls(t), "no create, no backup")
+	assert.NoDirExists(t, e.storePath())
 }
 
 // TestReadsNeverCreateTheStore pins a local store missing, or empty as the

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/kballard/go-shellquote"
-	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v3"
 
 	"github.com/opensvc/om3/v3/core/backup"
@@ -550,7 +549,8 @@ func (t *T) configure(rewrite bool) (string, error) {
 // and tells whether there is a store to call: a store of the node missing
 // or empty holds no run, and is not created to say so. A status on a node
 // whose shared mount is not mounted would otherwise create a new store in
-// the mount point. A remote store is for plakar to find.
+// the mount point. A remote store is for plakar to find: a read of a
+// location holding none fails with what plakar says, and creates nothing.
 func (t *T) open() (bool, error) {
 	dir, err := t.prepare()
 	if err != nil {
@@ -562,9 +562,10 @@ func (t *T) open() (bool, error) {
 	return storeExists(dir)
 }
 
-// ensure prepares the node for a call writing a run, and creates the store
-// when it is a local path not created yet: only a write makes a store. A
-// remote store is never created by the driver.
+// ensure prepares the node for a call writing a member of a run, and
+// creates the store when it is a local path not created yet: only such a
+// write makes a store. A remote store is created by the write plakar
+// answers there is none to, see create.
 func (t *T) ensure(ctx context.Context) error {
 	dir, err := t.prepare()
 	if err != nil {
@@ -573,20 +574,10 @@ func (t *T) ensure(ctx context.Context) error {
 	if dir == "" {
 		return nil
 	}
-	if v, err := storeExists(dir); err != nil {
-		return err
-	} else if v {
-		return nil
-	}
-	t.Log().Infof("create the store at %s", dir)
-	cmd, err := t.commandAt(ctx, zerolog.InfoLevel, nil, "create")
-	if err != nil {
+	if v, err := storeExists(dir); err != nil || v {
 		return err
 	}
-	if err := cmd.Run(); err != nil {
-		return t.callError("create", cmd, err)
-	}
-	return nil
+	return t.create(ctx, dir)
 }
 
 // storeExists tells whether a local store directory exists and holds

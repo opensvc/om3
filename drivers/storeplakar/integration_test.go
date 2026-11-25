@@ -30,6 +30,7 @@ import (
 	"github.com/opensvc/om3/v3/core/backup"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/executable"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -255,7 +256,8 @@ func TestWithTheRealPlakarOnAPlainHTTPS3Endpoint(t *testing.T) {
 // plugin an operator installed, in the data directory plakar installs the
 // plugins in, with the key of a sec and the host key of the section, and
 // pins what the fake cannot: the ssh of the plugin logs in with the key of
-// the store only, and to the server of its host key only.
+// the store only, and to the server of its host key only, and the store is
+// created by its first writes only, once for the ones made at once.
 //
 // The test runs an ssh agent holding the key the server accepts, as the
 // user running om may: a store whose key the server refuses must fail, the
@@ -344,18 +346,35 @@ func TestWithTheRealPlakarOverSFTP(t *testing.T) {
 	require.NoError(t, sec.AddKey("refused", refused))
 
 	dir := path.Join(base, "plakar-test-"+uuid.NewString()[:8])
-	store := func(sshKey, hostKey string) *T {
-		config := "[store#lab]\ntype = plakar\nurl = sftp://" + host + dir + "\npassphrase = from system/sec/backup key passphrase\n"
+	// The stores log their plakar calls, some at once, the ones reading
+	// the store included, which are logged as traces.
+	level := zerolog.GlobalLevel()
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	t.Cleanup(func() { zerolog.SetGlobalLevel(level) })
+	var logs bytes.Buffer
+	log := plog.NewLogger(zerolog.New(zerolog.SyncWriter(&logs)).Level(zerolog.TraceLevel))
+	named := func(name, dir, sshKey, hostKey string) *T {
+		config := "[store#" + name + "]\ntype = plakar\nurl = sftp://" + host + dir + "\npassphrase = from system/sec/backup key passphrase\n"
 		if sshKey != "" {
 			config += "ssh_private_key = from system/sec/backup key " + sshKey + "\n"
 		}
 		if hostKey != "" {
 			config += "host_key = " + hostKey + "\n"
 		}
-		return newStore(t, config)
+		cfg, err := xconfig.NewObject("", []byte(config))
+		require.NoError(t, err)
+		drv := backup.GetDriver("plakar")
+		drv.SetName(name)
+		drv.SetConfig(cfg)
+		s := drv.(*T)
+		s.SetLoggerForTest(log)
+		return s
+	}
+	store := func(sshKey, hostKey string) *T {
+		return named("lab", dir, sshKey, hostKey)
 	}
 	create := func(s *T) error {
-		// A remote store is created by hand, as the operator does.
+		// A create by hand, as the operator may still do.
 		if _, err := s.prepare(); err != nil {
 			return err
 		}
@@ -382,20 +401,103 @@ func TestWithTheRealPlakarOverSFTP(t *testing.T) {
 	require.Error(t, err, "the server is not the one of host_key")
 	assert.Contains(t, err.Error(), "Host key verification failed")
 
+	// None of the stores refused created anything.
+	removeRemote(t, u, key, hostKey, dir)
+
 	e.store = store("ssh_private_key", hostKey)
 	assert.False(t, e.store.IsLocal())
-	require.NoError(t, create(e.store), "the sftp backend of the plugins installed is found, and the key of the sec logs in")
-
 	require.NoError(t, os.WriteFile(filepath.Join(e.src, "a"), []byte("content of a\n"), 0644))
-	require.NoError(t, e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
+
+	// No read creates the store, nor the marker of a run: each fails on
+	// the answer of the sftp package that the location holds no file.
+	logs.Reset()
+	_, err = e.store.Runs(ctx, backup.RunFilter{})
+	require.ErrorIs(t, err, errNoRepository, "the sftp backend of the plugins installed is found, and the key of the sec logs in")
+	require.ErrorIs(t, e.store.Check(ctx, backup.RunFilter{}), errNoRepository)
+	require.ErrorIs(t, e.store.Delete(ctx, []backup.Run{run1}), errNoRepository)
+	require.ErrorIs(t, e.store.Complete(ctx, run1), errNoRepository)
+	assert.NotContains(t, logs.String(), "at @store create")
+
+	// A location the user of the store cannot write in is not one holding
+	// no repository, and one it cannot create in fails the write.
+	denied := named("lab", "/plakar-test-"+uuid.NewString()[:8]+"/x", "ssh_private_key", hostKey)
+	err = denied.Backup(ctx, run1, "fs#1", e.src, e.src, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "plakar create: ")
+	assert.Contains(t, err.Error(), "permission denied", logs.String())
+
+	// The first writes create the store, once: the ones of two objects of
+	// the node, sharing the private directories of the store and so the
+	// lock of its creation, and the one of another node, here a store of
+	// another name with its own directories, whose create finds the
+	// location taken or the store created.
+	second, third := run1, run1
+	second.ID, second.ObjectID, second.Path = "r2", "o2", "test/svc/app2"
+	third.ID, third.ObjectID, third.Path = "r3", "o3", "test/svc/app3"
+	writers := []*T{e.store, store("ssh_private_key", hostKey), named("lab2", dir, "ssh_private_key", hostKey)}
+	logs.Reset()
+	t0 := time.Now()
+	errs := make(chan error, len(writers))
+	for i, run := range []backup.Run{run1, second, third} {
+		go func() {
+			if i == 1 {
+				// A stream, which looks for the store before it is read.
+				errs <- writers[i].BackupStream(ctx, run, backup.MemberConfig, strings.NewReader("[DEFAULT]\nid = o2\n"))
+				return
+			}
+			errs <- writers[i].Backup(ctx, run, "fs#1", e.src, e.src, nil)
+		}()
+	}
+	for range writers {
+		require.NoError(t, <-errs)
+	}
+	t.Logf("3 first writes at once, the store created: %s", time.Since(t0).Round(10*time.Millisecond))
+	creates := plakarCalls(logs.String(), bin, "create")
+	t.Logf("plakar calls of the 3 first writes: %d, %d of them a create", plakarCalls(logs.String(), bin, ""), creates)
+	assert.GreaterOrEqual(t, creates, 1)
+	assert.LessOrEqual(t, creates, 2, "one create for the two writers of the node, one at most for the other node")
+	ids := make(map[string]bool)
+	for _, s := range writers {
+		id, err := s.repositoryID(ctx)
+		require.NoError(t, err)
+		ids[id] = true
+	}
+	require.Len(t, ids, 1, "one repository, the same for every writer")
+
+	// The store is there: a write is one plakar call.
+	logs.Reset()
+	t0 = time.Now()
+	require.NoError(t, e.store.Backup(ctx, run1, "fs#2", e.src, e.src, nil))
+	t.Logf("a write into the store created: %s", time.Since(t0).Round(10*time.Millisecond))
+	assert.Equal(t, 1, plakarCalls(logs.String(), bin, ""), logs.String())
+
 	require.NoError(t, e.store.Complete(ctx, run1))
+	require.NoError(t, writers[1].Complete(ctx, second))
+	require.NoError(t, writers[2].Complete(ctx, third))
 	runs, err := e.store.Runs(ctx, backup.RunFilter{})
 	require.NoError(t, err)
-	require.Len(t, runs, 1)
+	require.Len(t, runs, 3, "the runs of every writer are read with the key of the one repository")
+	found, err := backup.FindRun(ctx, e.store, backup.RunFilter{ID: second.ID})
+	require.NoError(t, err)
+	b, err = backup.ReadMember(ctx, e.store, found, backup.MemberConfig)
+	require.NoError(t, err)
+	assert.Equal(t, "[DEFAULT]\nid = o2\n", string(b))
 	require.NoError(t, e.store.Restore(ctx, runs[0], "fs#1", e.dst))
 	b, err = os.ReadFile(filepath.Join(e.dst, "a"))
 	require.NoError(t, err)
 	assert.Equal(t, "content of a\n", string(b))
+}
+
+// plakarCalls counts the plakar calls at the store the log holds, the ones
+// of the verb when given.
+func plakarCalls(logs, bin, verb string) int {
+	n := 0
+	for _, line := range strings.Split(logs, "\n") {
+		if strings.Contains(line, "\"run "+bin+" ") && strings.Contains(line, " at @store "+verb) {
+			n++
+		}
+	}
+	return n
 }
 
 // removeRemote removes the directory of the sftp server the test made its
