@@ -13806,7 +13806,7 @@ components:
     StoreItem:
       type: object
       required:
-        - ref
+        - store
         - type
         - url
         - share
@@ -13818,9 +13818,9 @@ components:
           description: The stats of the directory of each node, by node name, for a store keeping its runs in a directory of each node.
           additionalProperties:
             $ref: '#/components/schemas/StoreStats'
-        ref:
+        store:
           type: string
-          description: The reference to the store, as a store keyword names it.
+          description: The reference to the store, as the store keyword of a sync.store resource and the store parameter of the store snapshot requests name it.
         type:
           type: string
         url:

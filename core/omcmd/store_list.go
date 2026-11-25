@@ -19,7 +19,7 @@ func (t *CmdStoreList) Run() error {
 		return err
 	}
 	return output.Renderer{
-		DefaultOutput: "tab=REF:ref,TYPE:type,URL:url,SHARE:share[*]",
+		DefaultOutput: "tab=STORE:store,TYPE:type,URL:url,SHARE:share[*]",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,

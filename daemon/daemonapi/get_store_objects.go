@@ -31,7 +31,7 @@ func (a *DaemonAPI) GetStoreObjects(ctx echo.Context, params api.GetStoreObjects
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New node", "%s", err)
 	}
-	i := slices.IndexFunc(n.ListStores(), func(item object.StoreItem) bool { return item.Ref == params.Store })
+	i := slices.IndexFunc(n.ListStores(), func(item object.StoreItem) bool { return item.Store == params.Store })
 	if i < 0 || !mayReadStore(grants, n.ListStores()[i].Share) {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "store %s: not declared, or not one a namespace you hold a role on may use", params.Store)
 	}
