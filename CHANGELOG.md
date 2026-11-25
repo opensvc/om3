@@ -63,6 +63,109 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Driver catalog**: `om node drivers`, `ox node drivers` and `GET /api/node/name/{nodename}/drivers` describe each driver: a line saying what it does, its features in a documented vocabulary (`provision`, `unprovision`, `start`, `stop`, `run`, `sync`, `snapshot`, `resize`, `signal`, `abort`, `move`, `encap`), the drivers a virtual one selects among, as `container.oci` selects `container.podman` then `container.docker`, the driver an alias names, and whether the node has what it needs.
 
+* **Render files from the cluster data with `ox template`**: `ox template --in <tpl> --out <file>` renders a Go template from the cluster data and the cfg and sec keys, and writes the file only when its content changes, as a whole, its mode and owner set before its content, `0600` for a new file, a symbolic link refused. The `--reload-command`, the path of an executable run with no argument and no shell, killed with its children past `--reload-timeout`, runs after each write, `OX_TEMPLATE_OUT` naming the file. With `--watch`, the command renders again each time something the template read changes, after a `--delay` quiet period, at most `--max-delay` after the first change: a status refresh changing nothing the template read renders nothing, and a key of a cfg changing that the template does not read costs a fetch and no write.
+
+    The reads are recorded as the template executes, so a read under a condition, in a range, or of a computed path is followed when the data leads the render to it. The cluster data is kept from an events stream replaying the current data first, asking the events of the last render's reads only, the templates rendered once the replay ends: `GET /api/node/name/{nodename}/daemon/event` asked with `replay=true&replay_done=true` writes a `ReplayDone` event after the replayed ones, in the event id sequence, counting toward the limit and carrying the count replayed, which the `OM-Replay-Done: true` response header announces, a proxy forwarding both; with a daemon not announcing it, the end of the replay is a quiet period; the values no event carries, the datastore keys, the keywords as a node evaluates them and the resource informations, are fetched through the api when their checksum changes. A render failing, as on a key removed, keeps the last file, and the command goes on watching, the render recovering once the value is back; after the first renders, a render failing on the api, or a file not written, is tried again 5s later, the first renders failing, as on a typo, a missing object or an api not answering, ending the command, as a supervisor restarting it would have it; a reload failing keeps the new file. A render reading data the events stream does not follow yet, as a template read again on `SIGHUP` with a new range, writes no file: the stream is opened again, and the templates are rendered once it replayed the data. `SIGHUP` reads the templates again, and the `--config` file, and `--debug` logs the events subscribed, the reads changed and the events leading to each render, and the api calls, never the values they return.
+
+    `--config <file>` renders several templates from one process, sharing its events stream and its cluster data, instead of `--in` and `--out`: each template has its file, mode, owner and reload command, all the templates changed are rendered before a file is written, a reload command named by several templates runs once after their files are written, and after the first renders a template failing to render keeps its file while the others are written, the first renders and a render without `--watch` writing no file when one of them fails:
+
+    ```
+    vars:
+      env: prod
+    templates:
+      - in: /etc/ox/haproxy.cfg.tpl
+        out: /etc/haproxy/haproxy.cfg
+        mode: "0644"
+        reload_command: /usr/local/bin/haproxy-reload
+      - in: /etc/ox/certs.pem.tpl
+        out: /etc/haproxy/certs.pem
+        reload_command: /usr/local/bin/haproxy-reload
+    ```
+
+    The template reads:
+
+    * the cfg and sec keys: `key`, `keyOr`, `keyExists`, `keyNames`. Reading a sec key needs the `secreader` role on its namespace, or the `admin` one, and a sec read with a `--mode` letting others read the file is warned about.
+    * the keywords, evaluated: `config "path" "section.option"`, and `configAs` as another node evaluates them.
+    * the objects: `objects`, `objectStatus`, `objectExists`, `avail`, an error for an object missing, and `availOr`.
+    * the instances, with their monitor, and their resources: `instances`, `instanceStatus`, `resources`, `ips`, with `.ipaddr`, `.dev`, `.netmask`, `.hostname`, `disks`, `apps`, `resinfo`.
+    * the nodes and the networks: `nodes`, by name pattern or `label=value`, `nodeLabel`, `networks`.
+    * the helpers `contains hasPrefix hasSuffix lower upper trim trimPrefix trimSuffix replace split fields join quote indent nindent default toJSON fromJSON toYAML b64enc b64dec sha256sum reMatch fnMatch sortAlpha`, none reading the environment or running a command.
+
+    A range takes an object selector of path patterns joined by `,`, `+` and `!`, a term naming an object not there selecting none and its negation all, and follows the events of every object of the cluster when it has none. The fields are named as the api names them, in snake case: `.path`, `.node`, `.avail`, `.status`, `.rid`. A path is the full one, `prod/cfg/db`, or relative to `--namespace` in the `.` namespace, `./cfg/db`, `cfg/db` naming one of the root namespace.
+
+    A hosts file of the up ip resources, kept up to date:
+
+    ```
+    {{- $cluster := config "cluster" "cluster.name" -}}
+    # Managed by ox template. Do not edit.
+    {{- range ips }}
+    {{- if and .ipaddr (eq .status "up") }}
+    {{ printf "%-40s" .ipaddr }} {{ .name }}.{{ .namespace }}.svc.{{ $cluster }} {{ .node }}.{{ .name }}.{{ .namespace }}.svc.{{ $cluster }}
+    {{- end }}
+    {{- end }}
+    ```
+
+    ```
+    ox template --in hosts.tpl --out /tmp/hosts --mode 0644 --watch
+    ```
+
+    The haproxy backends of the up instances of a service, haproxy reloaded on a change:
+
+    ```
+    backend web
+        balance roundrobin
+    {{- range ips "prod/svc/web" }}
+    {{- if eq .status "up" }}
+        server {{ .node }}-{{ .rid }} {{ .ipaddr }}:8080 check
+    {{- end }}
+    {{- end }}
+    ```
+
+    ```
+    ox template --in haproxy.cfg.tpl --out /etc/haproxy/haproxy.cfg --watch --reload-command /usr/local/bin/haproxy-reload
+    ```
+
+    The settings of an application from a cfg and a sec:
+
+    ```
+    DB_HOST={{ key "prod/cfg/db" "host" }}
+    DB_PORT={{ keyOr "prod/cfg/db" "port" "5432" }}
+    DB_USER={{ key "prod/sec/db" "user" }}
+    DB_PASSWORD={{ key "prod/sec/db" "password" }}
+    {{- range keyNames "prod/cfg/features" "flag_*" }}
+    {{ upper . }}={{ key "prod/cfg/features" . }}
+    {{- end }}
+    ```
+
+    A fallback while a service is not up, or does not exist:
+
+    ```
+    backend db
+    {{- if eq (availOr "prod/svc/db" "down") "up" }}
+        server db1 {{ key "prod/cfg/db" "host" }}:5432 check
+    {{- else }}
+        server maint 127.0.0.1:8081
+    {{- end }}
+    ```
+
+    The nodes, as a Prometheus file_sd target list:
+
+    ```
+    [
+    {{- range $i, $n := nodes }}{{ if $i }},{{ end }}
+      {"targets": ["{{ $n.name }}:9100"], "labels": {"rack": "{{ index $n.labels "rack" | default "none" }}"}}
+    {{- end }}
+    ]
+    ```
+
+    The instances of a namespace:
+
+    ```
+    {{- range instances "prod/svc/*" }}
+    {{ .path }}@{{ .node }}: {{ .avail }} monitor={{ .monitor.state }}
+    {{- end }}
+    ```
+
 * **Enhanced logging with journald**: All agent logs now integrate with systemd-journald, enabling fast filtering with `journalctl _COMM=om` and adding indexed attributes like `OBJ_PATH` for precise log queries.
 
 ### Orchestration & Management

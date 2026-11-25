@@ -48,6 +48,10 @@ type (
 
 		// SetServedBy is the nodename where we serve events
 		ServedBy string
+
+		// replayDone is true when the daemon answering ends the replay
+		// of the stream with a ReplayDone event.
+		replayDone bool
 	}
 
 	Writer struct {
@@ -104,6 +108,18 @@ func (r *ReadCloser) SetContext(ctx context.Context) {
 // the api nodename from where we serve events.
 func (r *ReadCloser) SetServedBy(s string) {
 	r.ServedBy = s
+}
+
+// SetReplayDone records whether the daemon answering ends the replay of the
+// stream with a ReplayDone event, as its OM-Replay-Done header says.
+func (t *ReadCloser) SetReplayDone(b bool) {
+	t.replayDone = b
+}
+
+// ReplayDoneAdvertised returns true when the stream ends its replay with a
+// ReplayDone event.
+func (t *ReadCloser) ReplayDoneAdvertised() bool {
+	return t.replayDone
 }
 
 func (t *ReadCloser) GetServedBy() string {

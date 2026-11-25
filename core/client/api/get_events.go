@@ -25,8 +25,12 @@ type GetEvents struct {
 	Limit     *uint64
 	Filters   []string
 	Replay    bool
-	Duration  *time.Duration
-	ServedBy  string
+
+	// ReplayDone asks, with Replay, a ReplayDone event once the replay is
+	// written.
+	ReplayDone bool
+	Duration   *time.Duration
+	ServedBy   string
 }
 
 func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
@@ -51,6 +55,14 @@ func (t *GetEvents) SetFilters(filters []string) *GetEvents {
 
 func (t *GetEvents) SetReplay(b bool) *GetEvents {
 	t.Replay = b
+	return t
+}
+
+// SetReplayDone asks, with replay, a ReplayDone event once the replay is
+// written: a daemon supporting it says so by the OM-Replay-Done header, which
+// the reader tells by ReplayDoneAdvertised.
+func (t *GetEvents) SetReplayDone(b bool) *GetEvents {
+	t.ReplayDone = b
 	return t
 }
 
@@ -177,6 +189,7 @@ func (t *GetEvents) GetReader(ctx context.Context) (event.ReadCloser, error) {
 	readCloser := sseevent.NewReadCloser(resp.Body)
 	readCloser.SetContext(ctx)
 	readCloser.SetServedBy(servedBy)
+	readCloser.SetReplayDone(resp.Header.Get(api.HeaderReplayDone) == "true")
 	return readCloser, nil
 }
 
@@ -213,6 +226,9 @@ func (t *GetEvents) eventsBase(ctx context.Context) (*http.Response, error) {
 		Filter:   &t.Filters,
 		Selector: t.selector,
 		Replay:   &t.Replay,
+	}
+	if t.ReplayDone {
+		params.ReplayDone = &t.ReplayDone
 	}
 	if t.Limit != nil {
 		i := int64(*t.Limit)

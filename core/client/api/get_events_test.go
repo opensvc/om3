@@ -43,3 +43,28 @@ func TestGetReaderCancelsAStreamNotAnswering(t *testing.T) {
 		t.Fatal("GetReader did not return once its context was done")
 	}
 }
+
+// SetReplayDone asks the ReplayDone event, and the reader tells whether the
+// daemon answering sends it, as its OM-Replay-Done header says.
+func TestGetReaderReplayDone(t *testing.T) {
+	for _, advertised := range []bool{true, false} {
+		var query string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			query = r.URL.RawQuery
+			if advertised {
+				w.Header().Set(api.HeaderReplayDone, "true")
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		c, err := api.NewClient(server.URL)
+		require.NoError(t, err)
+		reader, err := NewGetEvents(c).SetReplay(true).SetReplayDone(true).GetReader(context.Background())
+		require.NoError(t, err)
+		require.Contains(t, query, "replay_done=true")
+		a, ok := reader.(interface{ ReplayDoneAdvertised() bool })
+		require.True(t, ok)
+		require.Equal(t, advertised, a.ReplayDoneAdvertised())
+		_ = reader.Close()
+		server.Close()
+	}
+}

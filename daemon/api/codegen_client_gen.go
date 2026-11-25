@@ -8795,6 +8795,18 @@ func NewGetDaemonEventsRequest(server string, nodename InPathNodeName, params *G
 
 		}
 
+		if params.ReplayDone != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "replay_done", *params.ReplayDone, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Cache != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cache", *params.Cache, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {

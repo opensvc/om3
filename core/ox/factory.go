@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -5152,5 +5153,32 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdTemplate() *cobra.Command {
+	var options commands.CmdTemplate
+	cmd := commoncmd.NewCmdTemplate()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return options.Run()
+	}
+	flags := cmd.Flags()
+	flags.StringVar(&options.In, "in", "", "the template file, - for the standard input")
+	flags.StringVar(&options.Out, "out", "", "the file to write, - for the standard output. A symbolic link is refused")
+	flags.StringVar(&options.Config, "config", "", "a yaml file naming several templates, rendered by one process, instead of --in and --out")
+	flags.BoolVarP(&options.Watch, "watch", "w", false, "render again each time something the template read changes")
+	flags.StringVar(&options.ReloadCommand, "reload-command", "", "the path of an executable file to run after the file changes, with no argument and no shell")
+	cmd.MarkFlagsMutuallyExclusive("config", "in")
+	cmd.MarkFlagsMutuallyExclusive("config", "out")
+	flags.DurationVar(&options.Delay, "delay", 2*time.Second, "with --watch, the quiet period after a change before a render")
+	flags.DurationVar(&options.MaxDelay, "max-delay", 30*time.Second, "with --watch, the longest wait after a change before a render")
+	flags.DurationVar(&options.ReloadTimeout, "reload-timeout", time.Minute, "kill the reload command after this duration")
+	flags.StringVar(&options.Mode, "mode", "", "the octal mode of the file (default: the mode of the file replaced, or 0600)")
+	flags.StringVar(&options.User, "user", "", "the owner of the file, by name or id (default: the owner of the file replaced)")
+	flags.StringVar(&options.Group, "group", "", "the group of the file, by name or id (default: the group of the file replaced)")
+	flags.StringVar(&options.Namespace, "namespace", "", "the namespace of the paths of the \".\" namespace, as ./cfg/db")
+	flags.StringVar(&options.Node, "node", "", "with --watch, the node serving the events, whose cluster data the files are written from (default: the node serving the api)")
+	flags.StringArrayVar(&options.Vars, "var", nil, "a template data key=value, read as .key (repeatable)")
+	flags.BoolVar(&options.Debug, "debug", false, "log the events subscribed, the events leading to a render, and the api calls")
 	return cmd
 }

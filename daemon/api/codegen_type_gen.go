@@ -4071,6 +4071,9 @@ type EventFilter = []string
 // EventReplay defines model for EventReplay.
 type EventReplay = bool
 
+// EventReplayDone defines model for EventReplayDone.
+type EventReplayDone = bool
+
 // Limit defines model for Limit.
 type Limit = int64
 
@@ -4876,6 +4879,13 @@ type GetDaemonEventsParams struct {
 	// Replay replay the compacted event history that creates the current cluster dataset.
 	// filtering and selectors are applied to the compacted event history.
 	Replay *EventReplay `form:"replay,omitempty" json:"replay,omitempty"`
+
+	// ReplayDone with replay, send a ReplayDone event once the replay is written,
+	// before the live events, so a client keeping the cluster dataset knows
+	// it is complete. The event is in the event id sequence, counts toward
+	// the limit, and carries the count of the events replayed. The
+	// OM-Replay-Done response header tells the event will be sent.
+	ReplayDone *EventReplayDone `form:"replay_done,omitempty" json:"replay_done,omitempty"`
 
 	// Cache deprecated alias of `replay`. Will be removed in a future version.
 	Cache *EventCache `form:"cache,omitempty" json:"cache,omitempty"`
