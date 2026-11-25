@@ -13,6 +13,7 @@ var (
 	_ backup.Pruner   = (*T)(nil)
 	_ backup.Localer  = (*T)(nil)
 	_ backup.Statser  = (*T)(nil)
+	_ backup.Usager   = (*T)(nil)
 )
 
 func init() {

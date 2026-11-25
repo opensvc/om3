@@ -3,10 +3,9 @@ for a directory of the node, created by the first run written into it, or
 the `<scheme>://` url of a location plakar reaches by itself, where the
 store is created by hand. A relative path is refused.
 
-A directory of the node holds the runs of its node only: unlike a `tar`
-store, it is not read over the nodes of the cluster. The store of an object
-failing over is a directory its nodes share, as an nfs mount, or a remote
-location, so the node taking the object over finds the runs of the other. A
+A directory is the same for every node, on storage none of them holds, as
+an nfs mount: the runs kept on the disk of one node are lost with it, when
+they are needed, and the node taking an object over finds none of them. A
 node where the shared directory is not mounted lists no run, and creates no
 store in the mount point until it writes a run.
 
