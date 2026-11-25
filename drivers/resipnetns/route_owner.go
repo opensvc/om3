@@ -51,6 +51,10 @@ func (t *T) routeOwner(ctx context.Context) *T {
 		if selected, known := resource.IsSelected(ctx, o); known && !selected {
 			continue
 		}
+		if o.setsNoDefaultRoute() {
+			// On a layer 2 network with no gateway: it sets none.
+			continue
+		}
 		if o.precedes(owner) {
 			owner = o
 		}

@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/drivers/resip"
 	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/getaddr"
@@ -35,6 +36,7 @@ type (
 		resource.Restart
 
 		Path       naming.Path
+		Topology   topology.T
 		ObjectFQDN string
 		DNS        []string
 
@@ -77,7 +79,7 @@ func New() resource.Driver {
 // keyword names, when it names no address of its own, and keeps.
 func (t *T) kept() *resip.Kept {
 	if t._kept == nil {
-		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.GetObject(), t.Log())
+		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.Topology, t.Log())
 	}
 	return t._kept
 }

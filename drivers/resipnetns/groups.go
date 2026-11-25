@@ -4,6 +4,7 @@ package resipnetns
 
 import (
 	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/drivers/resip"
 )
 
 // The groups of the keywords of an ip.netns resource beside the addressing
@@ -16,6 +17,40 @@ import (
 // unset is the first one of the network the address is drawn from, which
 // the validation of a configuration does not know.
 var (
+	// GroupAddressing is the addressing group of the ip drivers, as an
+	// ip.netns reads it: a static address may name a network too, which
+	// then says the device it is plumbed on, and the netmask and the
+	// gateway the configuration does not set. On a layer 2 network, which
+	// om draws no address from, it is the only way to hold one.
+	//
+	// So the static strategy does not exclude the network, and its device
+	// is not required of a section naming one.
+	GroupAddressing = keywords.Group{
+		ID:       resip.GroupAddressing.ID,
+		Name:     resip.GroupAddressing.Name,
+		Text:     keywords.NewText(fs, "text/group/addressing"),
+		Order:    resip.GroupAddressing.Order,
+		Required: resip.GroupAddressing.Required,
+		Strategies: []keywords.Strategy{
+			{
+				ID:             "static",
+				Name:           "Static address",
+				Text:           keywords.NewText(fs, "text/strategy/addressing/static"),
+				Uses:           []string{"name"},
+				Excludes:       []string{"addr"},
+				Requires:       []string{"dev"},
+				RequiresUnless: []string{"network"},
+			},
+			{
+				ID:       "ipam",
+				Name:     "Address drawn from a network",
+				Text:     keywords.NewText(fs, "text/strategy/addressing/ipam"),
+				Uses:     []string{"network", "addr"},
+				Excludes: []string{"name"},
+			},
+		},
+	}
+
 	// GroupInterface holds the network namespace the address is plumbed
 	// in, the interface it has there, and how that interface is linked to
 	// the device of the node.

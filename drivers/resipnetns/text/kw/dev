@@ -8,3 +8,6 @@ forced to `<n>` instead of the lowest free index.
 
 If the value is expressed as `<name>@<intf>`, a macvtap interface named
 `<name>` is created and attached to `<intf>`.
+
+When not set, it is the device of the network `network` names. On a
+l2_bridge network it is the bridge of the network, and no other is accepted.

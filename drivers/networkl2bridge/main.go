@@ -153,6 +153,13 @@ func (t *T) BackendDevName() string {
 	return t.brName()
 }
 
+// IsLayer2 says the network is a layer 2 segment om neither addresses nor
+// routes: an ip.netns joining it is plugged into the bridge, and holds the
+// address its configuration names, or none.
+func (t *T) IsLayer2() bool {
+	return true
+}
+
 // PortDevNames returns the devices of this node the bridge enslaves, whose
 // link coming up sets the network up again: a port missing at the setup is
 // enslaved once it appears.

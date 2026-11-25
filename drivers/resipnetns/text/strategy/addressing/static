@@ -1,0 +1,11 @@
+The address is the one `name` holds, an address or a DNS name, with the
+netmask `netmask` holds.
+
+It is plumbed on the device `dev` names, or on the one of the om network
+`network` names, which also says the netmask and the gateway the
+configuration does not set. A layer 2 network, as a l2_bridge one, says the
+device only: the netmask is required, and no route is set but through the
+`gateway` the configuration names.
+
+Choose it for an address known in advance, as the one a DNS name of the
+service resolves to.

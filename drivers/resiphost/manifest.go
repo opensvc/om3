@@ -120,6 +120,7 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		manifest.ContextObjectPath,
+		manifest.ContextTopology,
 		manifest.ContextObjectFQDN,
 		manifest.ContextDNS,
 	)

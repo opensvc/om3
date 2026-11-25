@@ -1,5 +1,9 @@
 The DNS name or IP address of the ip resource.
 
+With no `name`, the address is drawn from the network `network` names. A
+l2_bridge network has none to draw: the interface is then left with no
+address, see `network`.
+
 Scoping
 -------
 

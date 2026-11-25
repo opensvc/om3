@@ -15,6 +15,11 @@ import (
 )
 
 func (t *T) startBridge(ctx context.Context) error {
+	if t.onL2() {
+		if err := t.checkL2Bridge(); err != nil {
+			return err
+		}
+	}
 	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
@@ -50,7 +55,13 @@ func (t *T) startBridge(ctx context.Context) error {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDel(hostDev)
 		})
-		if addr := t.ipaddr(); addr != nil && addr.To4() == nil {
+		if t.onL2() {
+			// The node holds no address on a layer 2 segment, and
+			// takes no route advertised there: see makeL2Pair.
+			if err := disableIPv6(hostDev); err != nil {
+				return err
+			}
+		} else if addr := t.ipaddr(); addr != nil && addr.To4() == nil {
 			if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
 				return err
 			}
@@ -62,7 +73,7 @@ func (t *T) startBridge(ctx context.Context) error {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDelIn(guestDev, netns.Path())
 		})
-		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {
+		if err := t.linkSetMacIn(guestDev, t.macAddr(), netns.Path()); err != nil {
 			return err
 		}
 		if err := t.linkSetMaster(hostDev, t.Dev); err != nil {
@@ -70,6 +81,12 @@ func (t *T) startBridge(ctx context.Context) error {
 			return err
 		}
 		t.waitBridgePortForwarding(hostDev)
+	}
+	if t.onL2() && !exists {
+		// An address the interface holds already is the resource's own.
+		if err := t.checkL2Duplicate(netns, guestDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err

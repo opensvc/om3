@@ -218,10 +218,12 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		manifest.ContextObjectPath,
+		manifest.ContextObjectID,
+		manifest.ContextTopology,
 		manifest.ContextObjectFQDN,
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(kws...)
-	m.AddGroups(resip.GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS, resip.GroupPublish)
+	m.AddGroups(GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS, resip.GroupPublish)
 	return m
 }

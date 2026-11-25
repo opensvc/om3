@@ -11248,6 +11248,7 @@ components:
         - uses
         - excludes
         - requires
+        - requiresUnless
         - when
       properties:
         id:
@@ -11273,6 +11274,15 @@ components:
             The options of the keywords a section following the strategy sets
             too, as the dev of a static address: the validation refuses the
             section missing one. They may be of another group.
+          items:
+            type: string
+        requiresUnless:
+          type: array
+          description: >
+            The options of the keywords saying what the required ones would,
+            as the network of an address says the dev it is plumbed on: a
+            section setting one of them misses no required keyword. Empty
+            when the required keywords are required whatever else is set.
           items:
             type: string
         when:

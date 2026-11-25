@@ -17,15 +17,13 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
-// fakeObject is the object of the resource, which says its topology.
-type fakeObject struct {
-	topology topology.T
-}
+// fakeObject is the object of the resource. It says no topology: the one of
+// the resource is the manifest context's.
+type fakeObject struct{}
 
 func (t fakeObject) Log() *plog.Logger                   { return plog.NewLogger(zerolog.New(io.Discard)) }
 func (t fakeObject) VarDir() string                      { return "" }
 func (t fakeObject) ResourceByID(string) resource.Driver { return nil }
-func (t fakeObject) Topology() topology.T                { return t.topology }
 func (t fakeObject) ResourcesByDrivergroups([]driver.Group) resource.Drivers {
 	return nil
 }
@@ -38,7 +36,8 @@ func newPerInstanceTestResource(t *testing.T, topo topology.T, shared bool) *T {
 	r.ResourceID = rid
 	r.Path = naming.Path{Kind: naming.KindSvc, Name: "web"}
 	r.Shared = shared
-	r.SetObject(fakeObject{topology: topo})
+	r.Topology = topo
+	r.SetObject(fakeObject{})
 	return r
 }
 

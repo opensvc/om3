@@ -71,6 +71,12 @@ type (
 		// missing one. They may be of another group.
 		Requires []string
 
+		// RequiresUnless are the options of the keywords saying what the
+		// required ones would, as the network of an address says the
+		// device it is plumbed on: a section setting one of them misses
+		// no required keyword.
+		RequiresUnless []string
+
 		// When are the conditions on a selector keyword choosing the
 		// strategy, as "topology=flex", written as the Depends of a
 		// keyword. Empty when no keyword chooses it, the keywords set

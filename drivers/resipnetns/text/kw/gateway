@@ -5,6 +5,11 @@ the address of the bridge of a bridge or routed_bridge network, the gateway
 keyword of a lan network. With no gateway at all, the default route goes
 through the interface of the resource.
 
+A l2_bridge network knows no router: on such a network, the default route is
+set only through the gateway set here, and the namespace is given none
+through the interface. A resource with no `name` there holds no address, and
+its `gateway` is refused.
+
 Several ip resources may share a namespace, and a namespace has one default
 route. The resource setting it is the one whose gateway is set here, rather
 than taken from its network, rather than none; the lowest resource id among
