@@ -8,12 +8,15 @@ import (
 	"encoding/pem"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -186,6 +189,66 @@ func newPrivateKey(t *testing.T) ([]byte, string) {
 	sshPub, err := ssh.NewPublicKey(pub)
 	require.NoError(t, err)
 	return pem.EncodeToMemory(block), strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub)))
+}
+
+// TestWithTheRealPlakarOnAPlainHTTPS3Endpoint runs the s3 plugin an
+// operator installed against a server of the test answering in plain http,
+// and pins what the fake cannot: the message plakar fails its TLS handshake
+// with is one the driver knows, so its error carries the hint, and the
+// use_tls the driver writes for disable_tls is one the plugin reads, the
+// call then reaching the server, which holds no bucket. It needs plakar
+// with its s3 plugin.
+func TestWithTheRealPlakarOnAPlainHTTPS3Endpoint(t *testing.T) {
+	bin, err := exec.LookPath("plakar")
+	if err != nil {
+		t.Skip("no plakar in the PATH")
+	}
+	if l, _ := filepath.Glob(filepath.Join(defaultDataDir(), "plugins", "*", "s3_*")); len(l) == 0 {
+		t.Skip("no s3 plugin of plakar in " + defaultDataDir())
+	}
+	var requests atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	newTestEnv(t)
+	dataDir = defaultDataDir
+	disableSecurityCheck = runDisableSecurityCheck
+	warmUp = runWarmUp
+	getPath = func(string) string { return bin }
+	t.Cleanup(func() { getPath = capabilities.GetPath })
+	om := filepath.Join(t.TempDir(), "om")
+	require.NoError(t, os.WriteFile(om, []byte("#!/bin/sh\necho "+passphrase+"\n"), 0755))
+	t.Setenv(executable.ExecutableKey, om)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	p, err := naming.ParsePath("system/sec/backup")
+	require.NoError(t, err)
+	sec, err := object.NewSec(p)
+	require.NoError(t, err)
+	require.NoError(t, sec.AddKey("access_key", []byte("AKIDEXAMPLE")))
+	require.NoError(t, sec.AddKey("secret_key", []byte("s3-secret")))
+	store := func(keywords string) *T {
+		return newStore(t, "[store#lab]\ntype = plakar\nurl = s3://"+strings.TrimPrefix(srv.URL, "http://")+"/bucket\npassphrase = from system/sec/backup key passphrase\naccess_key = from system/sec/backup key access_key\nsecret_key = from system/sec/backup key secret_key\n"+keywords)
+	}
+
+	// With TLS, the default, the handshake fails on the http response of
+	// the server, which gets no request, and the error says what to set.
+	err = store("").Check(ctx, backup.RunFilter{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "server gave HTTP response to HTTPS client")
+	assert.Contains(t, err.Error(), plainHTTPHint)
+	assert.Zero(t, requests.Load(), "no request is sent in plain http by itself")
+
+	// Without TLS, the request reaches the server, which has no bucket.
+	err = store("disable_tls = true\n").Check(ctx, backup.RunFilter{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bucket does not exist")
+	assert.NotContains(t, err.Error(), "disable_tls")
+	assert.NotZero(t, requests.Load(), "the request is sent in plain http")
 }
 
 // TestWithTheRealPlakarOverSFTP runs a backup and a restore through the sftp

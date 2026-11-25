@@ -15,6 +15,8 @@ import (
 
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 const (
@@ -50,14 +52,16 @@ type (
 	}
 )
 
-// credentialSchemes are the credential keywords, and the region a s3 store
-// signs for, with the scheme of the locations each is of.
+// credentialSchemes are the credential keywords, the region a s3 store
+// signs for and its disable_tls, with the scheme of the locations each is
+// of.
 var credentialSchemes = map[string]string{
 	"ssh_private_key": "sftp",
 	"host_key":        "sftp",
 	"access_key":      "s3",
 	"secret_key":      "s3",
 	"region":          "s3",
+	"disable_tls":     "s3",
 	"token":           "https",
 	"ca":              "https",
 }
@@ -67,10 +71,49 @@ var sshPath = func() (string, error) {
 	return exec.LookPath("ssh")
 }
 
+// plainHTTPMessages are what the s3 client of plakar says of an endpoint
+// answering in plain http to its TLS handshake, in the stderr of plakar:
+// the first of a server answering the handshake with a http response, as a
+// Go server does, the second of one answering anything else.
+var plainHTTPMessages = []string{
+	"server gave HTTP response to HTTPS client",
+	"first record does not look like a TLS handshake",
+}
+
+// plainHTTPHint is what the driver adds to the error of plakar on a s3
+// store whose endpoint answers in plain http. It is a hint only: the driver
+// never reaches a store without TLS by itself.
+const plainHTTPHint = "the endpoint answers in plain http: set disable_tls = true for a store meant to be reached without TLS (root only)"
+
 // scheme returns the scheme of a location, in lower case.
 func scheme(location string) string {
 	s, _, _ := strings.Cut(location, "://")
 	return strings.ToLower(s)
+}
+
+// isSet tells whether the option is written in the section of the store,
+// whatever it evaluates to: a keyword with a default, as disable_tls, has a
+// value when unset.
+func (t *T) isSet(option string) bool {
+	if cfg := t.Config(); cfg != nil && cfg.Get(t.Key(option)) != "" {
+		return true
+	}
+	if option == "disable_tls" {
+		v, err := t.disableTLS()
+		return v || err != nil
+	}
+	return t.Get(option) != ""
+}
+
+// disableTLS tells whether the store is to be reached without TLS, which
+// its disable_tls says, false when unset.
+func (t *T) disableTLS() (bool, error) {
+	s := t.Get("disable_tls")
+	v, err := converters.Bool.Convert(s)
+	if err != nil {
+		return false, fmt.Errorf("disable_tls %q is not a boolean", s)
+	}
+	return v.(bool), nil
 }
 
 // isKeyReference tells whether a keyword value names a key of a datastore
@@ -174,12 +217,14 @@ func sshWrapper(ref, identity, knownHosts string) ([]byte, error) {
 //     without them the package asks the credentials of the node, as the
 //     role of its instance. Its region, when set, is the one the package
 //     signs for instead of the one its s3 client finds by itself, the one
-//     the server tells for the bucket or us-east-1.
+//     the server tells for the bucket or us-east-1. It is reached with
+//     TLS, as the package does by default, unless its disable_tls is true:
+//     the driver never falls back to plain http by itself.
 //   - a https:// store may send a token, and may trust the certificate
 //     authorities of ca only, instead of the ones of the system.
 //
-// A credential keyword, or a region, of another scheme than the one of the
-// url is refused, rather than silently not used. The other schemes have no
+// A credential keyword, a region or a disable_tls, of another scheme than
+// the one of the url is refused, rather than silently not used. The other schemes have no
 // credential keyword.
 func (t *T) credentials(location string, d dirs) (credentials, error) {
 	c := credentials{
@@ -193,7 +238,7 @@ func (t *T) credentials(location string, d dirs) (credentials, error) {
 	}
 	sort.Strings(options)
 	for _, option := range options {
-		if of := credentialSchemes[option]; t.Get(option) != "" && of != sch {
+		if of := credentialSchemes[option]; of != sch && t.isSet(option) {
 			return c, fmt.Errorf("%s is a keyword of a %s:// store, not of the url %s", option, of, t.Get("url"))
 		}
 	}
@@ -259,6 +304,15 @@ func (t *T) credentials(location string, d dirs) (credentials, error) {
 			return c, fmt.Errorf("region %q is not the name of a region", region)
 		} else if region != "" {
 			c.options["region"] = region
+		}
+		// The use_tls option of the package is a boolean in a string,
+		// true when left out. tls_insecure_no_verify, its option to
+		// accept any certificate, is never given: a store is reached
+		// with a verified TLS, or with none when root says so.
+		if disableTLS, err := t.disableTLS(); err != nil {
+			return c, err
+		} else if disableTLS {
+			c.options["use_tls"] = "false"
 		}
 	case "https":
 		if t.Get("token") != "" {

@@ -318,6 +318,11 @@ var rules = map[string]Group{
 	// The region of a s3 store is a value of the section, no secret: it
 	// names what the requests are signed for, and reaches nothing the url
 	// does not.
+	//
+	// The disable_tls of a s3 store is root's: it has the requests of the
+	// store cross the network with no TLS, to a server not authenticated,
+	// which the administrator of a namespace does not decide for the
+	// network of the cluster.
 	"store": {
 		Rules: map[string]Rule{
 			"type": {
@@ -336,9 +341,13 @@ var rules = map[string]Group{
 			"access_key":      storeKeyRule("an access key"),
 			"secret_key":      storeKeyRule("a secret key"),
 			"region":          {},
-			"token":           storeKeyRule("a token"),
-			"ca":              storeKeyRule("the certificate authorities"),
-			"keep":            {},
+			"disable_tls": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a store reached without TLS requires the root grant",
+			},
+			"token": storeKeyRule("a token"),
+			"ca":    storeKeyRule("the certificate authorities"),
+			"keep":  {},
 		},
 		Default: &rootRule,
 	},

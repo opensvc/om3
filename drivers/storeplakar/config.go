@@ -584,7 +584,7 @@ func (t *T) ensure(ctx context.Context) error {
 		return err
 	}
 	if err := cmd.Run(); err != nil {
-		return cmdError("create", cmd, err)
+		return t.callError("create", cmd, err)
 	}
 	return nil
 }

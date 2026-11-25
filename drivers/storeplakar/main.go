@@ -252,7 +252,7 @@ func (t *T) backupStdin(ctx context.Context, r io.Reader, args ...string) error 
 	}
 	cmd.Cmd().Stdin = r
 	if err := cmd.Run(); err != nil {
-		return cmdError("backup", cmd, err)
+		return t.callError("backup", cmd, err)
 	}
 	return nil
 }
@@ -573,7 +573,7 @@ func (t *T) Cat(ctx context.Context, run backup.Run, member string) (io.ReadClos
 		return nil, err
 	}
 	if err := cmd.Run(); err != nil {
-		return nil, cmdError("cat", cmd, err)
+		return nil, t.callError("cat", cmd, err)
 	}
 	return io.NopCloser(&b), nil
 }
@@ -624,7 +624,7 @@ func (t *T) maintain(ctx context.Context) error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("the runs are deleted, their space is not reclaimed: %w", cmdError("maintenance", cmd, err))
+		return fmt.Errorf("the runs are deleted, their space is not reclaimed: %w", t.callError("maintenance", cmd, err))
 	}
 	return nil
 }

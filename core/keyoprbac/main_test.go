@@ -617,8 +617,14 @@ func TestNamespacePlakarStores(t *testing.T) {
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "region", "eu-west-3", none))
 	assert.NoError(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "region", "eu-west-3", "plakar", none))
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "keep", "7d", none))
+	// A store reached without TLS is root's to decide, whatever the value
+	// written: a namespace administrator sets neither true nor false.
+	for _, value := range []string{"true", "false"} {
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", "disable_tls", value, none), "a store reached without TLS requires the root grant", value)
+		assert.NoError(t, Denied(root, naming.KindSec, "store#remote", "disable_tls", value, none), value)
+	}
 	// What the policy has not weighed stays root's.
-	for _, option := range []string{"schedule", "insecure", "tls_no_verify", "use_tls", "endpoint", "identity", "passphrase_cmd"} {
+	for _, option := range []string{"schedule", "insecure", "tls_no_verify", "use_tls", "tls_insecure_no_verify", "endpoint", "identity", "passphrase_cmd"} {
 		assert.Error(t, Denied(noGrant, naming.KindSec, "store#remote", option, "x", none), option)
 	}
 }

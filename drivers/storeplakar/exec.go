@@ -87,7 +87,7 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 	}
 	if err := cmd.Run(); err != nil {
 		if !strings.Contains(string(cmd.Stderr()), unresolvedMessage) {
-			return nil, cmdError(verb, cmd, err)
+			return nil, t.callError(verb, cmd, err)
 		}
 		t.Log().Infof("plakar %s: store unresolved, write stores.yml again and retry", verb)
 		if _, err := t.configure(true); err != nil {
@@ -98,10 +98,32 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 			return nil, err
 		}
 		if err := cmd.Run(); err != nil {
-			return nil, cmdError(verb, cmd, err)
+			return nil, t.callError(verb, cmd, err)
 		}
 	}
 	return cmd.Stdout(), nil
+}
+
+// callError is the cmdError of a call on the store, with the hint to set
+// disable_tls when the store is a s3 one reached with TLS whose endpoint
+// answers in plain http: plakar then fails on the handshake, with a
+// message of the tls library saying nothing of the keyword.
+func (t *T) callError(verb string, cmd *command.T, err error) error {
+	err = cmdError(verb, cmd, err)
+	location, _, lerr := t.location()
+	if lerr != nil || scheme(location) != "s3" {
+		return err
+	}
+	if disableTLS, _ := t.disableTLS(); disableTLS {
+		return err
+	}
+	stderr := string(cmd.Stderr())
+	for _, message := range plainHTTPMessages {
+		if strings.Contains(stderr, message) {
+			return fmt.Errorf("%w: %s", err, plainHTTPHint)
+		}
+	}
+	return err
 }
 
 // cmdError names the verb that failed and keeps the exit error underneath.

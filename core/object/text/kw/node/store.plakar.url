@@ -27,10 +27,11 @@ what the node holds for root. A `sftp://` store logs in with `ssh_private_key` a
 the driver keeps off the keys, the agent, the configuration and the known
 hosts of root. A `s3://` store signs with `access_key` and `secret_key`,
 both required, never with the role of the instance, for the `region` it is
-given, or the one the s3 package finds by itself. A `https://` store may
+given, or the one the s3 package finds by itself, over TLS unless root set
+its `disable_tls`. A `https://` store may
 send a `token`, and verify its server with the certificate authorities of
-`ca` instead of the ones of the system. A credential keyword, or a `region`,
-of another scheme than the one of the url is refused. A store with another scheme has
+`ca` instead of the ones of the system. A credential keyword, a `region` or
+a `disable_tls`, of another scheme than the one of the url is refused. A store with another scheme has
 no credential keyword: plakar reaches it with what its url and the node
 hold.
 

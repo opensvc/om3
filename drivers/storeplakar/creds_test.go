@@ -248,6 +248,81 @@ func TestS3StoreSignsForItsRegion(t *testing.T) {
 	assert.NotContains(t, entry(t, e.dirs), "region")
 }
 
+// TestS3StoreIsReachedWithTLSUnlessDisabled pins the use_tls option of a
+// s3:// store, the one the s3 package of plakar reads: left out, the
+// package using TLS by default, without the keyword or with it false, and
+// the false the package parses with it true. The option to accept any
+// certificate is never written.
+func TestS3StoreIsReachedWithTLSUnlessDisabled(t *testing.T) {
+	e := newCredsEnv(t)
+	keys := []string{"access_key = from system/sec/backup key access_key", "secret_key = from system/sec/backup key secret_key"}
+	for _, keyword := range []string{"", "disable_tls = false", "disable_tls = no"} {
+		require.NoError(t, e.store(t, "s3://h/bucket", append(keys, keyword)...).Check(context.Background(), backup.RunFilter{}), keyword)
+		got := entry(t, e.dirs)
+		assert.NotContains(t, got, "use_tls", keyword)
+		assert.NotContains(t, got, "tls_insecure_no_verify", keyword)
+	}
+	for _, keyword := range []string{"disable_tls = true", "disable_tls = yes"} {
+		require.NoError(t, e.store(t, "s3://h/bucket", append(keys, keyword)...).Check(context.Background(), backup.RunFilter{}), keyword)
+		got := entry(t, e.dirs)
+		assert.Equal(t, "false", got["use_tls"], keyword)
+		assert.NotContains(t, got, "tls_insecure_no_verify", keyword)
+		assert.Equal(t, "s3://h/bucket", got["location"], keyword)
+		b, err := os.ReadFile(filepath.Join(e.dirs.config, "stores.yml"))
+		require.NoError(t, err)
+		assert.Contains(t, string(b), `use_tls: "false"`, "a string, as the package parses the options of an entry")
+	}
+
+	// The keyword unset, the option leaves the configuration.
+	require.NoError(t, e.store(t, "s3://h/bucket", keys...).Check(context.Background(), backup.RunFilter{}))
+	assert.NotContains(t, entry(t, e.dirs), "use_tls")
+}
+
+// TestPlainHTTPEndpointOfAS3StoreGetsAHint pins the hint added to the error
+// of plakar failing its TLS handshake on a s3 endpoint answering in plain
+// http, with either message of the tls library, as recorded with plakar
+// 1.1.8 and its s3 package 1.1.12: the keyword to set, and that root sets
+// it. The call is not run again without TLS, and the store keeps no
+// use_tls. Another error, a store reached without TLS already, and a store
+// of another scheme get no hint.
+func TestPlainHTTPEndpointOfAS3StoreGetsAHint(t *testing.T) {
+	e := newCredsEnv(t)
+	keys := []string{"access_key = from system/sec/backup key access_key", "secret_key = from system/sec/backup key secret_key"}
+	const (
+		httpResponse = `plakar: failed to open the repository at s3://127.0.0.1:9000/bucket: error checking if bucket exists: Get "https://127.0.0.1:9000/bucket/?location=": http: server gave HTTP response to HTTPS client` + "\n"
+		noHandshake  = `plakar: failed to open the repository at s3://127.0.0.1:9000/bucket: error checking if bucket exists: Get "https://127.0.0.1:9000/bucket/?location=": tls: first record does not look like a TLS handshake` + "\n"
+	)
+	for _, stderr := range []string{httpResponse, noHandshake} {
+		resetFake(t)
+		setFake(t, "status", []byte("66"))
+		setFake(t, "stderr", []byte(stderr))
+		err := e.store(t, "s3://127.0.0.1:9000/bucket", keys...).Check(context.Background(), backup.RunFilter{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), strings.TrimSpace(stderr), "the error of plakar is kept")
+		assert.True(t, strings.HasSuffix(err.Error(), ": the endpoint answers in plain http: set disable_tls = true for a store meant to be reached without TLS (root only)"), err.Error())
+		assert.Len(t, calls(t), 1, "no call run again without TLS")
+		assert.NotContains(t, entry(t, e.dirs), "use_tls", "the driver never falls back to plain http")
+	}
+
+	// A store reached without TLS already has nothing to set.
+	err := e.store(t, "s3://127.0.0.1:9000/bucket", append(keys, "disable_tls = true")...).Check(context.Background(), backup.RunFilter{})
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "disable_tls")
+
+	// Another error of a s3 store is not one of a plain http endpoint.
+	setFake(t, "stderr", []byte("plakar: failed to open the repository at s3://127.0.0.1:9000/bucket: bucket does not exist\n"))
+	err = e.store(t, "s3://127.0.0.1:9000/bucket", keys...).Check(context.Background(), backup.RunFilter{})
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "disable_tls")
+
+	// A store of another scheme has no such keyword to set.
+	setFake(t, "stderr", []byte(httpResponse))
+	err = e.store(t, "https://h:9876/").Check(context.Background(), backup.RunFilter{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "server gave HTTP response to HTTPS client")
+	assert.NotContains(t, err.Error(), "disable_tls")
+}
+
 // TestHTTPSStoreSendsItsTokenAndTrustsItsCA pins the token in the option of
 // the entry, and the certificate authorities of ca alone trusted, through
 // the files the tls library of plakar reads its roots from.
@@ -328,6 +403,12 @@ func TestRemoteStoreWithoutItsCredentialsIsRefusedBeforeAnyCall(t *testing.T) {
 		{"https://h:9876/", []string{"region = eu-west-3"}, "region is a keyword of a s3:// store"},
 		{"http://h:9876/", []string{"region = eu-west-3"}, "region is a keyword of a s3:// store"},
 		{e.storePath(), []string{"region = eu-west-3"}, "region is a keyword of a s3:// store"},
+		{"s3://h/bucket", []string{accessKey, secretKey, "disable_tls = maybe"}, `disable_tls "maybe" is not a boolean`},
+		{"sftp://backup@h/data", []string{sshKey, hostKey, "disable_tls = true"}, "disable_tls is a keyword of a s3:// store, not of the url sftp://backup@h/data"},
+		{"https://h:9876/", []string{"disable_tls = true"}, "disable_tls is a keyword of a s3:// store"},
+		{"http://h:9876/", []string{"disable_tls = true"}, "disable_tls is a keyword of a s3:// store"},
+		{"http://h:9876/", []string{"disable_tls = false"}, "disable_tls is a keyword of a s3:// store"},
+		{e.storePath(), []string{"disable_tls = true"}, "disable_tls is a keyword of a s3:// store"},
 	}
 	for _, tc := range cases {
 		name := fmt.Sprintf("%s %v", tc.url, tc.keywords)

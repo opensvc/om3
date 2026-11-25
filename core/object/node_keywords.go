@@ -321,6 +321,15 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.region"),
 		Types:   []string{"plakar"},
 	}
+	kwNodeStorePlakarDisableTLS = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "disable_tls",
+		Group:     nodeGroupEndpoint.ID,
+		Section:   "store",
+		Text:      keywords.NewText(fs, "text/kw/node/store.plakar.disable_tls"),
+		Types:     []string{"plakar"},
+	}
 	kwNodeStorePlakarToken = keywords.Keyword{
 		Example:      "from system/sec/backup key token",
 		Option:       "token",
@@ -2416,6 +2425,7 @@ var (
 		&kwNodeStorePlakarAccessKey,
 		&kwNodeStorePlakarSecretKey,
 		&kwNodeStorePlakarRegion,
+		&kwNodeStorePlakarDisableTLS,
 		&kwNodeStorePlakarToken,
 		&kwNodeStorePlakarCA,
 		&kwNodeStorePlakarURL,
