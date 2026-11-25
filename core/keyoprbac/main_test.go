@@ -613,9 +613,12 @@ func TestNamespacePlakarStores(t *testing.T) {
 	// The key of the server is public: a value, or a key.
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "host_key", "ssh-ed25519 AAAA", none))
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "host_key", "from . key host_key", none))
+	// The region of a s3 store is no secret either: a value of the section.
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "region", "eu-west-3", none))
+	assert.NoError(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "region", "eu-west-3", "plakar", none))
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "keep", "7d", none))
 	// What the policy has not weighed stays root's.
-	for _, option := range []string{"schedule", "insecure", "tls_no_verify", "identity", "passphrase_cmd"} {
+	for _, option := range []string{"schedule", "insecure", "tls_no_verify", "use_tls", "endpoint", "identity", "passphrase_cmd"} {
 		assert.Error(t, Denied(noGrant, naming.KindSec, "store#remote", option, "x", none), option)
 	}
 }

@@ -313,6 +313,14 @@ var (
 		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.secret_key"),
 		Types:        []string{"plakar"},
 	}
+	kwNodeStorePlakarRegion = keywords.Keyword{
+		Example: "eu-west-3",
+		Option:  "region",
+		Group:   nodeGroupEndpoint.ID,
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.region"),
+		Types:   []string{"plakar"},
+	}
 	kwNodeStorePlakarToken = keywords.Keyword{
 		Example:      "from system/sec/backup key token",
 		Option:       "token",
@@ -2407,6 +2415,7 @@ var (
 		&kwNodeStorePlakarHostKey,
 		&kwNodeStorePlakarAccessKey,
 		&kwNodeStorePlakarSecretKey,
+		&kwNodeStorePlakarRegion,
 		&kwNodeStorePlakarToken,
 		&kwNodeStorePlakarCA,
 		&kwNodeStorePlakarURL,

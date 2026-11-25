@@ -226,6 +226,28 @@ func TestS3StoreSignsWithItsKeysOnly(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(e.dirs.bin, wrapperName))
 }
 
+// TestS3StoreSignsForItsRegion pins the region of a s3:// store in the
+// region option of its entry, the one the s3 package of plakar reads, and
+// no option without the keyword: the package then finds the region itself.
+func TestS3StoreSignsForItsRegion(t *testing.T) {
+	e := newCredsEnv(t)
+	keys := []string{"access_key = from system/sec/backup key access_key", "secret_key = from system/sec/backup key secret_key"}
+	require.NoError(t, e.store(t, "s3://h/bucket", keys...).Check(context.Background(), backup.RunFilter{}))
+	got := entry(t, e.dirs)
+	assert.NotContains(t, got, "region")
+
+	require.NoError(t, e.store(t, "s3://h/bucket", append(keys, "region = eu-west-3")...).Check(context.Background(), backup.RunFilter{}))
+	got = entry(t, e.dirs)
+	assert.Equal(t, "eu-west-3", got["region"])
+	assert.Equal(t, "AKIDEXAMPLE", got["access_key"])
+	assert.Equal(t, s3Secret, got["secret_access_key"])
+	assert.Equal(t, "s3://h/bucket", got["location"])
+
+	// The keyword unset, the option leaves the configuration.
+	require.NoError(t, e.store(t, "s3://h/bucket", keys...).Check(context.Background(), backup.RunFilter{}))
+	assert.NotContains(t, entry(t, e.dirs), "region")
+}
+
 // TestHTTPSStoreSendsItsTokenAndTrustsItsCA pins the token in the option of
 // the entry, and the certificate authorities of ca alone trusted, through
 // the files the tls library of plakar reads its roots from.
@@ -301,6 +323,11 @@ func TestRemoteStoreWithoutItsCredentialsIsRefusedBeforeAnyCall(t *testing.T) {
 		{"http://h:9876/", []string{token}, "token is a keyword of a https:// store"},
 		{"https://h:9876/", []string{hostKey}, "host_key is a keyword of a sftp:// store"},
 		{e.storePath(), []string{accessKey}, "access_key is a keyword of a s3:// store"},
+		{"s3://h/bucket", []string{accessKey, secretKey, "region = eu west"}, `region "eu west" is not the name of a region`},
+		{"sftp://backup@h/data", []string{sshKey, hostKey, "region = eu-west-3"}, "region is a keyword of a s3:// store, not of the url sftp://backup@h/data"},
+		{"https://h:9876/", []string{"region = eu-west-3"}, "region is a keyword of a s3:// store"},
+		{"http://h:9876/", []string{"region = eu-west-3"}, "region is a keyword of a s3:// store"},
+		{e.storePath(), []string{"region = eu-west-3"}, "region is a keyword of a s3:// store"},
 	}
 	for _, tc := range cases {
 		name := fmt.Sprintf("%s %v", tc.url, tc.keywords)

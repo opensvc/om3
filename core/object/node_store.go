@@ -19,7 +19,7 @@ import (
 // The keywords of a store section are the ones of the cluster configuration,
 // in a sec too, where they are in the store group of the objects.
 func init() {
-	for _, kw := range []*keywords.Keyword{&kwNodeStoreType, &kwNodeStoreURL, &kwNodeStoreHostKey, &kwNodeStoreSSHPrivateKey, &kwNodeStorePlakarPassphrase, &kwNodeStorePlakarSSHPrivateKey, &kwNodeStorePlakarHostKey, &kwNodeStorePlakarAccessKey, &kwNodeStorePlakarSecretKey, &kwNodeStorePlakarToken, &kwNodeStorePlakarCA, &kwNodeStorePlakarURL, &kwNodeStoreKeep} {
+	for _, kw := range []*keywords.Keyword{&kwNodeStoreType, &kwNodeStoreURL, &kwNodeStoreHostKey, &kwNodeStoreSSHPrivateKey, &kwNodeStorePlakarPassphrase, &kwNodeStorePlakarSSHPrivateKey, &kwNodeStorePlakarHostKey, &kwNodeStorePlakarAccessKey, &kwNodeStorePlakarSecretKey, &kwNodeStorePlakarRegion, &kwNodeStorePlakarToken, &kwNodeStorePlakarCA, &kwNodeStorePlakarURL, &kwNodeStoreKeep} {
 		c := kw.Clone()
 		c.Kind = naming.NewKinds(naming.KindSec)
 		c.Group = objectGroupStore.ID

@@ -314,6 +314,10 @@ var rules = map[string]Group{
 	// reference: a reference to another datastore would have a store shared
 	// with other namespaces read their keys for them, as a token sent to a
 	// server, or a passphrase of a repository at a url of their choosing.
+	//
+	// The region of a s3 store is a value of the section, no secret: it
+	// names what the requests are signed for, and reaches nothing the url
+	// does not.
 	"store": {
 		Rules: map[string]Rule{
 			"type": {
@@ -331,6 +335,7 @@ var rules = map[string]Group{
 			"passphrase":      storeKeyRule("a passphrase"),
 			"access_key":      storeKeyRule("an access key"),
 			"secret_key":      storeKeyRule("a secret key"),
+			"region":          {},
 			"token":           storeKeyRule("a token"),
 			"ca":              storeKeyRule("the certificate authorities"),
 			"keep":            {},

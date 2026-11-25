@@ -50,13 +50,14 @@ type (
 	}
 )
 
-// credentialSchemes are the credential keywords, with the scheme of the
-// locations each is of.
+// credentialSchemes are the credential keywords, and the region a s3 store
+// signs for, with the scheme of the locations each is of.
 var credentialSchemes = map[string]string{
 	"ssh_private_key": "sftp",
 	"host_key":        "sftp",
 	"access_key":      "s3",
 	"secret_key":      "s3",
+	"region":          "s3",
 	"token":           "https",
 	"ca":              "https",
 }
@@ -171,12 +172,14 @@ func sshWrapper(ref, identity, knownHosts string) ([]byte, error) {
 //     user om runs as, root, and trust its known hosts.
 //   - a s3:// store signs with access_key and secret_key, both required:
 //     without them the package asks the credentials of the node, as the
-//     role of its instance.
+//     role of its instance. Its region, when set, is the one the package
+//     signs for instead of the one its s3 client finds by itself, the one
+//     the server tells for the bucket or us-east-1.
 //   - a https:// store may send a token, and may trust the certificate
 //     authorities of ca only, instead of the ones of the system.
 //
-// A credential keyword of another scheme than the one of the url is
-// refused, rather than silently not used. The other schemes have no
+// A credential keyword, or a region, of another scheme than the one of the
+// url is refused, rather than silently not used. The other schemes have no
 // credential keyword.
 func (t *T) credentials(location string, d dirs) (credentials, error) {
 	c := credentials{
@@ -249,6 +252,14 @@ func (t *T) credentials(location string, d dirs) (credentials, error) {
 		}
 		c.options["access_key"] = accessKey
 		c.options["secret_access_key"] = secretKey
+		// A value of the section, as a region is no secret. The option
+		// is left out when unset: the package then lets its s3 client
+		// find the region.
+		if region := strings.TrimSpace(t.Get("region")); strings.ContainsAny(region, " \t\r\n") {
+			return c, fmt.Errorf("region %q is not the name of a region", region)
+		} else if region != "" {
+			c.options["region"] = region
+		}
 	case "https":
 		if t.Get("token") != "" {
 			token, err := t.oneLine("token")
