@@ -9,7 +9,12 @@ they are needed, and the node taking an object over finds none of them. A
 node where the shared directory is not mounted lists no run, and creates no
 store in the mount point until it writes a run.
 
-plakar 1.1.8 reaches by itself a plakar server, `http://` or `https://`, as
+The plakar of the node is of the 1.1 releases, from 1.1.8: the driver reads
+what plakar prints, which another release, as 1.2, may print otherwise. A
+plakar older or newer is refused, with its version, before the store is
+called.
+
+plakar reaches by itself a plakar server, `http://` or `https://`, as
 `plakar server` runs, with `-allow-delete` for the retention to delete runs.
 The other locations, as `sftp://` or `s3://`, need the plakar package of
 their scheme on every node, installed by the operator with `plakar pkg add`

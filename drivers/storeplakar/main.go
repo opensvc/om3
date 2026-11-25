@@ -31,6 +31,11 @@
 // prints a line per file on its standard output: the first call of a driver
 // is a plakar version, so no listing nor member is read with these lines.
 //
+// The driver reads outputs plakar prints for people, recorded with plakar
+// 1.1.8: the version that first call tells is held to the 1.1 line, from
+// 1.1.8, and a plakar of another release fails every call, before any
+// reaches the store.
+//
 // plakar rm unlinks snapshots and frees nothing: plakar maintenance does, in
 // two passes, marking the packs no snapshot uses then removing them once
 // their grace period is over. The driver runs it after a deletion.
@@ -71,9 +76,12 @@ type (
 		listingsMu sync.Mutex
 
 		// warmed says plakar readied its cache directory in a call of
-		// this driver, whose output was dropped.
-		warmed bool
-		warmMu sync.Mutex
+		// this driver, whose output was not the one of a store, and
+		// unsupported is the refusal of the version it told there, if
+		// any, every call of the driver then fails with.
+		warmed      bool
+		unsupported error
+		warmMu      sync.Mutex
 	}
 
 	// tagValue is a tag a listing is narrowed with, its value not escaped.

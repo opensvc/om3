@@ -34,10 +34,15 @@ import (
 
 const passphrase = "s3cret-passphrase-not-to-be-seen"
 
+// fakeVersion is what plakar version prints, the one of a plakar the driver
+// supports.
+const fakeVersion = "plakar/v1.1.8\n"
+
 // fakePlakar records each call (argv as a json array, the environment) in
 // the calls file, copies its stdin to stdin.N, replays reply.N (or reply) on
 // stdout and stderr.N (or stderr) on stderr, and exits with status.N (or
-// status, or 0), N being the call number.
+// status, or 0), N being the call number. A plakar version with no reply.N
+// prints the version of a plakar the driver supports, as fakeVersion.
 const fakePlakar = `#!/bin/sh
 dir=$(dirname "$0")
 touch "$dir/calls"
@@ -54,7 +59,9 @@ n=$(($(wc -l < "$dir/calls") + 1))
 } >>"$dir/calls"
 env >"$dir/env.$n"
 cat >"$dir/stdin.$n"
-if [ -f "$dir/reply.$n" ]; then cat "$dir/reply.$n"; elif [ -f "$dir/reply" ]; then cat "$dir/reply"; fi
+last=
+for a in "$@"; do last=$a; done
+if [ -f "$dir/reply.$n" ]; then cat "$dir/reply.$n"; elif [ "$last" = version ]; then echo plakar/v1.1.8; elif [ -f "$dir/reply" ]; then cat "$dir/reply"; fi
 if [ -f "$dir/stderr.$n" ]; then cat "$dir/stderr.$n" >&2; elif [ -f "$dir/stderr" ]; then cat "$dir/stderr" >&2; fi
 s=0
 if [ -f "$dir/status.$n" ]; then s=$(cat "$dir/status.$n"); elif [ -f "$dir/status" ]; then s=$(cat "$dir/status"); fi

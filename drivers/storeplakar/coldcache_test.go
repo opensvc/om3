@@ -26,6 +26,10 @@ import (
 // prints.
 const unpacked = "25ff8321: OK ✓ /\n25ff8321: OK ✓ /manifest.yaml\n25ff8321: OK ✓ /sftp-storage\n"
 
+// welcome is what plakar prints on its standard output on a cache directory
+// it has not run on yet, before the lines of the packages it unpacks.
+const welcome = "Welcome to plakar !\n\nBy default, plakar checks for security updates on the releases feed once every 24h.\nIt will notify you if there are important updates that you need to install.\n\nIf you prefer to watch yourself, you can disable this permanently by running:\n\n\tplakar -disable-security-check\n\nIf you change your mind, run:\n\n\tplakar -enable-security-check\n\nEOT\n"
+
 // TestFirstCallReadiesTheCache pins the plakar version run before the first
 // call of a driver, with the directories of the store, its output dropped:
 // the lines plakar prints unpacking its packages reach neither a listing
@@ -36,7 +40,7 @@ func TestFirstCallReadiesTheCache(t *testing.T) {
 	warmUp = runWarmUp
 	version := []string{"-configdir", e.dirs.config, "-cachedir", e.dirs.cache, "-datadir", e.dirs.data, "version"}
 
-	setFake(t, "reply.1", []byte(unpacked))
+	setFake(t, "reply.1", []byte(welcome+unpacked+fakeVersion))
 	setFake(t, "reply.2", []byte(
 		lsLine(t0.Add(2*time.Minute), "s3", run1, "om3.complete,om3.completed=2026-10-27T10%3A02%3A00Z")+
 			lsLine(t0, "s2", run1, "om3.member=config,om3.kind=stream")))
@@ -100,6 +104,74 @@ func TestCacheNotReadiedDoesNotFailTheCall(t *testing.T) {
 	require.Len(t, l, 5, "version failed, check, version, check, check")
 	for i, verb := range []string{"version", "check", "version", "check", "check"} {
 		assert.Equal(t, verb, l[i][len(l[i])-1], i)
+	}
+}
+
+// TestPlakarOfAnotherReleaseIsRefusedBeforeAnyStoreCall pins the version
+// plakar tells in the call readying the cache held to the releases the
+// driver reads the outputs of: the 1.1 line from 1.1.8, read after the lines
+// plakar prints on a cache not ready. Another release, or an output naming
+// none, fails the call and the next ones of the driver, with the version
+// found and the ones supported, after one plakar version and no call of the
+// store.
+func TestPlakarOfAnotherReleaseIsRefusedBeforeAnyStoreCall(t *testing.T) {
+	const supported = "the driver supports plakar >= 1.1.8 and < 1.2.0"
+	cases := []struct {
+		name  string
+		reply string
+		err   string
+	}{
+		{"the oldest supported", "plakar/v1.1.8\n", ""},
+		{"a later release of the line", "plakar/v1.1.12\n", ""},
+		{"a release candidate of a later release of the line", "plakar/v1.1.9-rc.2\n", ""},
+		{"after the welcome and the packages unpacked", welcome + unpacked + "plakar/v1.1.8\n", ""},
+		{"with no newline", "plakar/v1.1.8", ""},
+		{"too old", "plakar/v1.1.7\n", "unsupported plakar version v1.1.7: " + supported},
+		{"too old, of the previous line", "plakar/v1.0.6\n", "unsupported plakar version v1.0.6: " + supported},
+		{"too old, after the packages unpacked", welcome + unpacked + "plakar/v1.1.7\n", "unsupported plakar version v1.1.7: " + supported},
+		{"a pre-release of the oldest supported", "plakar/v1.1.8-rc.1\n", "unsupported plakar version v1.1.8-rc.1: " + supported},
+		{"too new", "plakar/v1.2.0\n", "unsupported plakar version v1.2.0: " + supported},
+		{"too new, a pre-release", "plakar/v1.2.0-beta.1\n", "unsupported plakar version v1.2.0-beta.1: " + supported},
+		{"too new, of the next major", "plakar/v2.1.8\n", "unsupported plakar version v2.1.8: " + supported},
+		{"unparsable", "plakar version 1.1.8\n", `unsupported plakar: plakar version prints no plakar/v<major>.<minor>.<patch> line, its output ending with "plakar version 1.1.8": ` + supported},
+		{"unparsable, the packages unpacked only", unpacked, `its output ending with "25ff8321: OK ✓ /sftp-storage": ` + supported},
+		{"unparsable, a number missing", "plakar/v1.1\n", `its output ending with "plakar/v1.1": ` + supported},
+		{"unparsable, empty", "", `its output ending with "": ` + supported},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newTestEnv(t)
+			e.createStore(t)
+			warmUp = runWarmUp
+			setFake(t, "reply.1", []byte(tc.reply))
+			if tc.err == "" {
+				require.NoError(t, e.store.Check(context.Background(), backup.RunFilter{}))
+				require.NoError(t, e.store.Check(context.Background(), backup.RunFilter{}))
+				l := calls(t)
+				require.Len(t, l, 3, "version, check, check")
+				assert.Equal(t, "version", l[0][len(l[0])-1])
+				return
+			}
+			_, err := e.store.Runs(context.Background(), backup.RunFilter{})
+			require.Error(t, err)
+			assert.ErrorIs(t, err, errUnsupportedPlakar)
+			assert.Contains(t, err.Error(), tc.err)
+			for _, err := range []error{
+				e.store.Check(context.Background(), backup.RunFilter{}),
+				e.store.Backup(context.Background(), run1, "fs#1", e.src, e.src, nil),
+				e.store.Complete(context.Background(), run1),
+				e.store.Delete(context.Background(), []backup.Run{run1}),
+			} {
+				if assert.Error(t, err) {
+					assert.Contains(t, err.Error(), tc.err)
+				}
+			}
+			l := calls(t)
+			require.Len(t, l, 1, "one version, asked once, and no call of the store")
+			assert.Equal(t, "version", l[0][len(l[0])-1])
+			// The store is not the one refused: it keeps its configuration.
+			assert.FileExists(t, filepath.Join(e.dirs.config, "stores.yml"))
+		})
 	}
 }
 

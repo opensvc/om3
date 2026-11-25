@@ -9,6 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -249,13 +250,13 @@ func runDisableSecurityCheck(d dirs) error {
 	return nil
 }
 
-// warmUp has plakar do, in a call whose output is dropped, what it does on
-// the first call finding its cache directory not ready, and prints on its
-// standard output: the packages of the data directory unpacked into the
-// cache, a line per file, and its welcome. The call after a package was
-// installed or upgraded, the cache removed or plakar upgraded would otherwise
-// print them before a listing, which is then not read, or before the content
-// of a member, which would be restored with them.
+// warmUp has plakar do, in a call whose output is not the one of a store,
+// what it does on the first call finding its cache directory not ready, and
+// prints on its standard output: the packages of the data directory unpacked
+// into the cache, a line per file, and its welcome. The call after a package
+// was installed or upgraded, the cache removed or plakar upgraded would
+// otherwise print them before a listing, which is then not read, or before
+// the content of a member, which would be restored with them.
 //
 // plakar alone knows when it has to: no record of the driver, of the
 // packages or of the cache, would follow every reason it has. So the call is
@@ -264,6 +265,9 @@ func runDisableSecurityCheck(d dirs) error {
 // of a second against the second of each call opening the store. A call
 // found printing these lines is not one to run again: a stream is read
 // once, and the content of a member is not told from them.
+//
+// The version it prints, after these lines, is the one the driver is held
+// to: see checkVersion. A plakar refused is an errUnsupportedPlakar.
 //
 // Replaced by the tests faking plakar.
 var warmUp = runWarmUp
@@ -286,23 +290,108 @@ func runWarmUp(t *T, d dirs) error {
 	if err := cmd.Run(); err != nil {
 		return cmdError("version", cmd, err)
 	}
-	return nil
+	return checkVersion(cmd.Stdout())
 }
 
-// warm runs warmUp before the first plakar call of the driver. A failure is
-// logged and tried again by the next call: the call it precedes says what
-// is wrong with plakar better than its version does.
-func (t *T) warm(d dirs) {
+const (
+	// The plakar releases the driver supports are the ones of the
+	// supportedMajor.supportedMinor line, from its supportedPatch.
+	//
+	// The driver reads what plakar prints for people, as the lines of
+	// plakar ls -uuid -tags and the messages of rm and maintenance, and
+	// writes its command lines and its stores.yml: all recorded with plakar
+	// 1.1.8, the oldest release tested. The 1.1.9 release candidates leave
+	// these as they are. plakar 1.2 parses its command lines with another
+	// library and prints the tags of a listing through a filter, so its
+	// releases are refused until the driver is tested with them: a
+	// listing not read as expected is a run not found, or not deleted.
+	supportedMajor = 1
+	supportedMinor = 1
+	supportedPatch = 8
+)
+
+var (
+	// errUnsupportedPlakar is the refusal of the plakar of the node, of a
+	// release the driver was not tested with.
+	errUnsupportedPlakar = errors.New("unsupported plakar")
+
+	// versionRE matches the line plakar version prints, as plakar/v1.1.8
+	// or plakar/v1.2.0-beta.1.
+	versionRE = regexp.MustCompile(`^plakar/v?(\d+)\.(\d+)\.(\d+)([-+].*)?$`)
+)
+
+// supportedVersions names the releases checkVersion accepts in its errors.
+func supportedVersions() string {
+	return fmt.Sprintf("the driver supports plakar >= %d.%d.%d and < %d.%d.0", supportedMajor, supportedMinor, supportedPatch, supportedMajor, supportedMinor+1)
+}
+
+// checkVersion reads the version of plakar in what plakar version printed,
+// and refuses a release out of the ones the driver supports, or an output
+// naming none, with an errUnsupportedPlakar: a call of a store would
+// otherwise fail on the first output it does not read, with a line of a
+// listing for only explanation.
+//
+// The version is the last line of the output naming one: on a cache not
+// ready, plakar prints its welcome and a line per file of the packages it
+// unpacks before it.
+//
+// A pre-release is of the line of its numbers, so 1.1.9-rc.2 is accepted and
+// 1.2.0-beta.1 refused, where an ordering of versions would have the latter
+// before 1.2.0. A pre-release of the oldest release supported is older than
+// it, and refused.
+func checkVersion(out []byte) error {
+	var found []string
+	last := ""
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		last = line
+		if m := versionRE.FindStringSubmatch(line); m != nil {
+			found = m
+		}
+	}
+	if found == nil {
+		if len(last) > 80 {
+			last = last[:80] + "..."
+		}
+		return fmt.Errorf("%w: plakar version prints no plakar/v<major>.<minor>.<patch> line, its output ending with %q: %s", errUnsupportedPlakar, last, supportedVersions())
+	}
+	version := strings.TrimPrefix(found[0], "plakar/")
+	// A number too long to convert is of no release supported.
+	major, err1 := strconv.Atoi(found[1])
+	minor, err2 := strconv.Atoi(found[2])
+	patch, err3 := strconv.Atoi(found[3])
+	if err1 == nil && err2 == nil && err3 == nil && major == supportedMajor && minor == supportedMinor {
+		preRelease := strings.HasPrefix(found[4], "-")
+		if patch > supportedPatch || (patch == supportedPatch && !preRelease) {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w version %s: %s", errUnsupportedPlakar, version, supportedVersions())
+}
+
+// warm runs warmUp before the first plakar call of the driver. A plakar it
+// refuses fails this call and the next ones of the driver, without another
+// plakar version: the plakar of a node does not change under a command or an
+// action. Another failure is logged and tried again by the next call: the
+// call it precedes says what is wrong with plakar better than its version
+// does.
+func (t *T) warm(d dirs) error {
 	t.warmMu.Lock()
 	defer t.warmMu.Unlock()
 	if t.warmed {
-		return
+		return t.unsupported
 	}
-	if err := warmUp(t, d); err != nil {
+	if err := warmUp(t, d); errors.Is(err, errUnsupportedPlakar) {
+		t.unsupported = err
+	} else if err != nil {
 		t.Log().Warnf("warm the cache of plakar up: %s", err)
-		return
+		return nil
 	}
 	t.warmed = true
+	return t.unsupported
 }
 
 // writeFile writes b as the file name of dir, in place once complete.
@@ -372,7 +461,9 @@ func mkdirPrivate(path string) error {
 // plakar empties stores.yml when it misses sources.yml or destinations.yml
 // of its configuration directory, so the three are written.
 //
-// The first call of the driver has plakar ready its cache: see warmUp.
+// The first call of the driver has plakar ready its cache, and tell its
+// version, a release the driver does not support being refused here too:
+// see warmUp.
 func (t *T) prepare() (string, error) {
 	return t.configure(false)
 }
@@ -449,7 +540,9 @@ func (t *T) configure(rewrite bool) (string, error) {
 			t.Log().Warnf("record the security check of plakar disabled: %s", err)
 		}
 	}
-	t.warm(d)
+	if err := t.warm(d); err != nil {
+		return "", err
+	}
 	return dir, nil
 }
 
