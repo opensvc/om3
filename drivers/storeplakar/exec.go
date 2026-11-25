@@ -85,7 +85,8 @@ func (t *T) commandAt(ctx context.Context, level zerolog.Level, w io.Writer, ver
 
 // run runs one plakar verb and returns what it printed. A store plakar
 // cannot resolve gets its stores.yml written again and one retry. A
-// location plakar answers holds no repository is an errNoRepository.
+// location plakar answers holds no repository is an errNoRepository, and a
+// call exiting 0 without running the verb is a failure, see notRunError.
 func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...string) ([]byte, error) {
 	cmd, err := t.commandAt(ctx, level, nil, verb, args...)
 	if err != nil {
@@ -107,7 +108,11 @@ func (t *T) run(ctx context.Context, level zerolog.Level, verb string, args ...s
 			return nil, t.storeError(verb, cmd, err)
 		}
 	}
+	// The repository was opened, its command not run.
 	t.setPresent()
+	if err := notRunError(verb, cmd); err != nil {
+		return nil, err
+	}
 	return cmd.Stdout(), nil
 }
 
@@ -150,27 +155,60 @@ func (t *T) callError(verb string, cmd *command.T, err error) error {
 // the last line opening with the path plakar was run by is taken, which no
 // line of a listing does, cut to reasonMax bytes.
 func reason(cmd *command.T) string {
+	return reasonIn(cmd, cmd.Stdout(), false)
+}
+
+// reasonIn is reason for the output out of the command. With last, only
+// the last line of the output is a reason, not a line before it.
+func reasonIn(cmd *command.T, out []byte, last bool) string {
 	args := cmd.Cmd().Args
 	if len(args) == 0 {
 		return ""
 	}
 	prefix := args[0] + ": "
-	out := strings.TrimRight(string(cmd.Stdout()), "\r\n")
-	for out != "" {
-		i := strings.LastIndexByte(out, '\n')
-		line := strings.TrimRight(out[i+1:], "\r")
+	rest := strings.TrimRight(string(out), "\r\n")
+	for rest != "" {
+		i := strings.LastIndexByte(rest, '\n')
+		line := strings.TrimRight(rest[i+1:], "\r")
 		if s, ok := strings.CutPrefix(line, prefix); ok {
 			if s = strings.TrimSpace(s); len(s) > reasonMax {
 				s = strings.ToValidUTF8(s[:reasonMax], "") + "..."
 			}
 			return s
 		}
-		if i < 0 {
+		if i < 0 || last {
 			break
 		}
-		out = out[:i]
+		rest = rest[:i]
 	}
 	return ""
+}
+
+// notRunError is the error of a plakar call that exited 0 without running
+// its command, and nil for a call that ran it.
+//
+// plakar 1.1.8 rebuilds the state of the repository before it runs a
+// command on it, and a rebuild failing, as on a state the key of the
+// CONFIG does not open or a store no longer answering, skips the command,
+// prints the reason as the one of a failed command and exits with the
+// status it never set: 0. A backup taken for done on its exit code would
+// have written nothing, a check verified nothing.
+//
+// The reason line is the only one plakar opens with the path it was run
+// by, and it prints it of an error only: no command says one when it
+// succeeds, nor its welcome on a cache not ready. The line is looked for
+// last, where plakar prints it after everything else, so a line of the
+// listing of a backup, as a file named to look like one, is not taken for
+// it.
+func notRunError(verb string, cmd *command.T) error {
+	return notRunErrorIn(verb, cmd, cmd.Stdout())
+}
+
+func notRunErrorIn(verb string, cmd *command.T, out []byte) error {
+	if s := reasonIn(cmd, out, true); s != "" {
+		return fmt.Errorf("plakar %s: plakar exited 0 without running the command: %s", verb, s)
+	}
+	return nil
 }
 
 // cmdError names the verb that failed and keeps the exit error underneath,

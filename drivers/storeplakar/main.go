@@ -295,7 +295,7 @@ func (t *T) backupStdin(ctx context.Context, r io.Reader, args ...string) error 
 		return t.storeError("backup", cmd, err)
 	}
 	t.setPresent()
-	return nil
+	return notRunError("backup", cmd)
 }
 
 // String is the tag as plakar holds it, the value escaped.
@@ -616,6 +616,19 @@ func (t *T) Cat(ctx context.Context, run backup.Run, member string) (io.ReadClos
 	if err := cmd.Run(); err != nil {
 		return nil, t.callError("cat", cmd, err)
 	}
+	// A cat exiting 0 without running prints its reason where the content
+	// goes, alone: the command read no member. An output made of this
+	// one line is refused, whatever the member: it is not told from a
+	// member whose whole content would be a line opening with the path
+	// of plakar, which no stream of an object is, and a member not read
+	// is better than the reason of plakar restored as its content. A
+	// content ending with such a line, after others, is a content, and
+	// so is one not ending its line, as plakar does.
+	if out := bytes.TrimSuffix(b.Bytes(), []byte("\n")); len(out) < b.Len() && !bytes.Contains(out, []byte("\n")) {
+		if err := notRunErrorIn("cat", cmd, out); err != nil {
+			return nil, err
+		}
+	}
 	return io.NopCloser(&b), nil
 }
 
@@ -664,8 +677,13 @@ func (t *T) maintain(ctx context.Context) error {
 		t.Log().Infof("maintenance skipped: repository busy")
 		return nil
 	}
+	if err == nil {
+		err = notRunError("maintenance", cmd)
+	} else {
+		err = t.callError("maintenance", cmd, err)
+	}
 	if err != nil {
-		return fmt.Errorf("the runs are deleted, their space is not reclaimed: %w", t.callError("maintenance", cmd, err))
+		return fmt.Errorf("the runs are deleted, their space is not reclaimed: %w", err)
 	}
 	return nil
 }

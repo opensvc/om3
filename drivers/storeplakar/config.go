@@ -289,6 +289,9 @@ func runWarmUp(t *T, d dirs) error {
 	if err := cmd.Run(); err != nil {
 		return cmdError("version", cmd, err)
 	}
+	if err := notRunError("version", cmd); err != nil {
+		return err
+	}
 	return checkVersion(cmd.Stdout())
 }
 

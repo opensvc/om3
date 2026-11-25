@@ -813,6 +813,156 @@ func TestExitErrorCarriesTheReasonOfTheStdout(t *testing.T) {
 	assert.Less(t, len(err.Error()), 200)
 }
 
+// TestACallExitingZeroWithAReasonFailed pins a plakar call exiting 0 with
+// the reason line it prints of a command it did not run as a failure of
+// every call of the driver, saying so with the reason, and the outputs of
+// the calls that ran as left alone: a line opening with the path of plakar
+// that is not the last one, and the content of a member ending with one.
+func TestACallExitingZeroWithAReasonFailed(t *testing.T) {
+	ctx := context.Background()
+	name := filepath.Join(fakeDir, "plakar")
+	said := name + ": integrity check failed - unexpected IV\n"
+	const want = ": plakar exited 0 without running the command: integrity check failed - unexpected IV"
+	stream := run1
+	stream.Members = []backup.Member{{Name: "config", Kind: backup.MemberStream}}
+	listing := lsLine(t0, "s2", run1, "om3.member=config,om3.kind=stream")
+
+	for verb, call := range map[string]func(e testEnv) error{
+		"backup": func(e testEnv) error { return e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil) },
+		"backup of a stream": func(e testEnv) error {
+			return e.store.BackupStream(ctx, run1, "dump", strings.NewReader("x"))
+		},
+		"backup of a marker": func(e testEnv) error { return e.store.Complete(ctx, run1) },
+		"ls": func(e testEnv) error {
+			_, err := e.store.Runs(ctx, backup.RunFilter{})
+			return err
+		},
+		"check":       func(e testEnv) error { return e.store.Check(ctx, backup.RunFilter{}) },
+		"rm":          func(e testEnv) error { return e.store.Delete(ctx, []backup.Run{run1}) },
+		"maintenance": func(e testEnv) error { return e.store.maintain(ctx) },
+		"info": func(e testEnv) error {
+			_, err := e.store.repositoryID(ctx)
+			return err
+		},
+	} {
+		e := newTestEnv(t)
+		e.createStore(t)
+		setFake(t, "reply", []byte("Welcome to plakar !\n"+said))
+		err := call(e)
+		require.Error(t, err, verb)
+		assert.Contains(t, err.Error(), "plakar "+strings.Fields(verb)[0]+want, verb)
+		assert.Len(t, calls(t), 1, "%s: no other call once one did not run", verb)
+	}
+
+	// The maintenance of a deletion, a restore and a cat, after the calls
+	// before them ran.
+	e := newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply.1", fixture(t, "120-rm-apply-removed.txt"))
+	setFake(t, "reply.2", []byte(said))
+	err := e.store.Delete(ctx, []backup.Run{run1})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "their space is not reclaimed: plakar maintenance"+want)
+
+	e = newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply.1", []byte(lsLine(t0, "s1", run1, "om3.member=fs%231,om3.kind=dir")))
+	setFake(t, "reply.2", []byte(said))
+	err = e.store.Restore(ctx, run1, "fs#1", e.dst)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "plakar restore"+want)
+
+	e = newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply.1", []byte(listing))
+	setFake(t, "reply.2", []byte(said))
+	_, err = e.store.Cat(ctx, stream, "config")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "plakar cat"+want)
+
+	// The outputs of the calls that ran.
+	e = newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply", []byte("f902f02e: OK \u2713 /srv/app/a\n"+said+"f902f02e: backup completed without errors in 1ms (in: 0 B, out: 1 B)\n"))
+	require.NoError(t, e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
+	for _, content := range []string{"first line\n" + said, "\n" + said, name + ": no line of its own", ""} {
+		e = newTestEnv(t)
+		e.createStore(t)
+		setFake(t, "reply.1", []byte(listing))
+		setFake(t, "reply.2", []byte(content))
+		rc, err := e.store.Cat(ctx, stream, "config")
+		require.NoError(t, err, content)
+		b, err := io.ReadAll(rc)
+		require.NoError(t, err)
+		assert.Equal(t, content, string(b))
+	}
+}
+
+// TestWithTheRealPlakarNotRunningACommand reproduces, with the plakar of
+// the host, the call the driver must not take for done: the CONFIG of a
+// store replaced by the one of another repository, as two creates racing on
+// a s3 location leave it, has plakar fail to rebuild the state written
+// under the key replaced, skip the command and exit 0. Every call of the
+// driver fails with the reason plakar prints. It is skipped on a host
+// without plakar.
+func TestWithTheRealPlakarNotRunningACommand(t *testing.T) {
+	bin, err := exec.LookPath("plakar")
+	if err != nil {
+		t.Skip("no plakar in the PATH")
+	}
+	e := newTestEnv(t)
+	disableSecurityCheck = runDisableSecurityCheck
+	warmUp = runWarmUp
+	getPath = func(string) string { return bin }
+	t.Cleanup(func() { getPath = capabilities.GetPath })
+	om := filepath.Join(t.TempDir(), "om")
+	require.NoError(t, os.WriteFile(om, []byte("#!/bin/sh\necho "+passphrase+"\n"), 0755))
+	t.Setenv(executable.ExecutableKey, om)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	require.NoError(t, os.WriteFile(filepath.Join(e.src, "a"), []byte("content of a\n"), 0644))
+	require.NoError(t, e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
+	require.NoError(t, e.store.BackupStream(ctx, run1, backup.MemberConfig, strings.NewReader("[DEFAULT]\nid = o1\n")))
+	require.NoError(t, e.store.Complete(ctx, run1))
+	found, err := backup.FindRun(ctx, e.store, backup.RunFilter{ID: run1.ID})
+	require.NoError(t, err)
+	b, err := backup.ReadMember(ctx, e.store, found, backup.MemberConfig)
+	require.NoError(t, err)
+	assert.Equal(t, "[DEFAULT]\nid = o1\n", string(b))
+
+	// Another repository, under the same passphrase, and its CONFIG put
+	// in place of the one of the store.
+	otherDir := filepath.Join(e.root, "other")
+	other := newStore(t, "[store#other]\ntype = plakar\nurl = "+otherDir+"\npassphrase = from system/sec/backup key passphrase\n")
+	other.SetName("other")
+	require.NoError(t, other.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
+	config, err := os.ReadFile(filepath.Join(otherDir, "CONFIG"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(e.storePath(), "CONFIG"), config, 0600))
+
+	const want = "plakar exited 0 without running the command: integrity check failed"
+	second := run1
+	second.ID = "r2"
+	// The listing read before the replacement names the snapshots: the
+	// calls reading a member are the ones failing.
+	_, err = e.store.Cat(ctx, found, backup.MemberConfig)
+	require.ErrorContains(t, err, "plakar cat: "+want)
+	require.ErrorContains(t, e.store.Restore(ctx, found, "fs#1", e.dst), "plakar restore: "+want)
+	assert.NoFileExists(t, filepath.Join(e.dst, "a"))
+	require.ErrorContains(t, e.store.Backup(ctx, second, "fs#1", e.src, e.src, nil), "plakar backup: "+want)
+	require.ErrorContains(t, e.store.BackupStream(ctx, second, backup.MemberConfig, strings.NewReader("x")), "plakar backup: "+want)
+	require.ErrorContains(t, e.store.Complete(ctx, second), "plakar backup: "+want)
+	_, err = e.store.Runs(ctx, backup.RunFilter{})
+	require.ErrorContains(t, err, "plakar ls: "+want)
+	require.ErrorContains(t, e.store.Check(ctx, backup.RunFilter{}), "plakar check: "+want)
+	require.ErrorContains(t, e.store.Check(ctx, backup.RunFilter{ID: run1.ID}), "plakar ls: "+want)
+	require.ErrorContains(t, e.store.Delete(ctx, []backup.Run{found}), "plakar rm: "+want)
+	require.ErrorContains(t, e.store.maintain(ctx), "plakar maintenance: "+want)
+	_, err = e.store.repositoryID(ctx)
+	require.ErrorContains(t, err, "plakar info: "+want)
+}
+
 // TestPassphraseIsNeverInArgvEnvFilesOrLogs pins the passphrase_cmd as the
 // only way the passphrase reaches plakar: no -keyfile, no PLAKAR_PASSPHRASE,
 // no file of the store holding it, no log line holding it.

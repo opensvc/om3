@@ -346,7 +346,16 @@ func TestACreateFailingOtherwiseFailsTheWrite(t *testing.T) {
 	assert.Equal(t, []string{"backup", "info", "create", "info"}, verbs(t))
 	assert.NoFileExists(t, filepath.Join(fakeDir, "repo"))
 
-	// The create of another node won on an error not saying so.
+	// A create exiting 0 with the reason of a command not run failed.
+	e = newCredsEnv(t)
+	s = e.sftpStore(t)
+	setRepo(t, sftpAbsent, "66", sftpTaken)
+	setFake(t, "create.sh", []byte("echo \"$0: integrity check failed\"\nexit 0\n"))
+	err = s.Backup(ctx, run1, "fs#1", e.src, e.src, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "plakar create: plakar exited 0 without running the command: integrity check failed")
+	assert.Equal(t, []string{"backup", "info", "create", "info"}, verbs(t))
+
 	e = newCredsEnv(t)
 	s = e.sftpStore(t)
 	setRepo(t, sftpAbsent, "66", sftpTaken)

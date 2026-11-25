@@ -310,6 +310,10 @@ func (t *T) create(ctx context.Context, dir string) error {
 		if taken = alreadyCreated(cmd.Stdout()); taken {
 			t.Log().Infof("the location of the store was taken while it was created: use the store created there")
 		}
+	} else {
+		// A create that did not run is one that failed: the repository
+		// is looked for as after any other.
+		cerr = notRunError("create", cmd)
 	}
 	if dir != "" {
 		switch {
@@ -363,9 +367,13 @@ func (t *T) ensureRemote(ctx context.Context) error {
 // created the store, and fails the write when it is no longer the one read
 // after the create: another node created the store at the same time, at a
 // location whose package does not make one repository of two creates, and
-// its CONFIG replaced the one this write may have read its key from. What
-// was written is then not read again. The store is left as it is: the next
-// run writes into the repository that stayed.
+// its CONFIG replaced the one this write may have read its key from. The
+// store is left as it is. Replaced before the write opened it, the write
+// went into the repository that stayed, and the next run does too. Replaced
+// after, what was written is under the key of the CONFIG lost: plakar can
+// no longer rebuild its state from the store and runs no command, which
+// fails every call of the store, this read included, until the location is
+// cleared.
 func (t *T) checkCreated(ctx context.Context) error {
 	created := t.takeCreated()
 	if created == "" {
