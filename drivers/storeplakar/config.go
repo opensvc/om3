@@ -379,29 +379,39 @@ func (t *T) prepare() (string, error) {
 
 // configure is prepare, writing stores.yml again when rewrite is set, even
 // when it holds what it should: plakar said it could not resolve the store.
+//
+// A store refused, its url, its passphrase or its credentials, keeps none of
+// the credentials it had on the node: a key unset or deleted from its sec
+// does not stay in its directory until the store is valid again.
 func (t *T) configure(rewrite bool) (string, error) {
-	location, dir, err := t.location()
-	if err != nil {
-		return "", err
-	}
 	d, err := t.dirs()
 	if err != nil {
 		return "", err
 	}
+	refuse := func(err error) (string, error) {
+		if ferr := forget(d); ferr != nil {
+			t.Log().Warnf("remove the credentials of the store refused: %s", ferr)
+		}
+		return "", err
+	}
+	location, dir, err := t.location()
+	if err != nil {
+		return refuse(err)
+	}
 	km, err := t.keyMeta("passphrase")
 	if err != nil {
-		return "", err
+		return refuse(err)
 	}
 	passphrase, err := t.decodeKey("passphrase", km)
 	if err != nil {
-		return "", err
+		return refuse(err)
 	}
 	if err := checkOneLine("passphrase", passphrase); err != nil {
-		return "", err
+		return refuse(err)
 	}
 	creds, err := t.credentials(location, d)
 	if err != nil {
-		return "", err
+		return refuse(err)
 	}
 	stores, err := t.storesYML(location, creds.options)
 	if err != nil {

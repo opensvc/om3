@@ -314,6 +314,20 @@ func upToDate(path string, b []byte, perm os.FileMode) bool {
 	return err == nil && bytes.Equal(got, b)
 }
 
+// forget removes what the store holds of its credentials on the node: the
+// configuration holding their options, as the keys of a s3 store, their
+// files and the ssh command. The configuration is written again by the next
+// call of the store found valid.
+func forget(d dirs) error {
+	if err := os.Remove(filepath.Join(d.config, "stores.yml")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if _, err := os.Stat(d.config); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return credentials{}.install(d)
+}
+
 // install writes the credential files of the store in its configuration
 // directory and its ssh command in its bin directory, the ones missing or
 // stale only, and removes the ones the keywords no longer ask for: the key

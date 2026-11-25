@@ -390,6 +390,49 @@ func TestCredentialFilesFollowTheKeywords(t *testing.T) {
 	assert.NotContains(t, got, "host_key")
 }
 
+// TestRefusedStoreKeepsNoCredential pins a store refused for its
+// credentials keeping none of the ones it had on the node: a sftp store
+// whose key is unset leaves no key, known hosts, ssh command nor entry, and
+// a s3 store whose secret key is unset no entry holding its keys.
+func TestRefusedStoreKeepsNoCredential(t *testing.T) {
+	e := newCredsEnv(t)
+	ctx := context.Background()
+	require.NoError(t, e.sftpStore(t).Check(ctx, backup.RunFilter{}))
+	require.Len(t, identities(t, e.dirs), 1)
+	stores := filepath.Join(e.dirs.config, "stores.yml")
+	require.FileExists(t, stores)
+
+	unset := e.store(t, "sftp://backup@h/data", "host_key = "+e.hostKey)
+	assert.ErrorContains(t, unset.Check(ctx, backup.RunFilter{}), "needs ssh_private_key and host_key")
+	assert.Empty(t, identities(t, e.dirs))
+	assert.NoFileExists(t, filepath.Join(e.dirs.config, knownHostsName))
+	assert.NoFileExists(t, filepath.Join(e.dirs.bin, wrapperName))
+	assert.NoFileExists(t, stores)
+
+	// Valid again: written again.
+	require.NoError(t, e.sftpStore(t).Check(ctx, backup.RunFilter{}))
+	assert.Len(t, identities(t, e.dirs), 1)
+	assert.FileExists(t, stores)
+
+	s3 := e.store(t, "s3://h/bucket", "access_key = from system/sec/backup key access_key", "secret_key = from system/sec/backup key secret_key")
+	require.NoError(t, s3.Check(ctx, backup.RunFilter{}))
+	assert.Contains(t, entry(t, e.dirs), "secret_access_key")
+	unset = e.store(t, "s3://h/bucket", "access_key = from system/sec/backup key access_key")
+	assert.ErrorContains(t, unset.Check(ctx, backup.RunFilter{}), "needs access_key and secret_key")
+	assert.NoFileExists(t, stores)
+
+	// A key deleted from the sec refuses the store too.
+	require.NoError(t, s3.Check(ctx, backup.RunFilter{}))
+	require.FileExists(t, stores)
+	p, err := naming.ParsePath("system/sec/backup")
+	require.NoError(t, err)
+	sec, err := object.NewSec(p)
+	require.NoError(t, err)
+	require.NoError(t, sec.RemoveKey("secret_key"))
+	assert.Error(t, s3.Check(ctx, backup.RunFilter{}))
+	assert.NoFileExists(t, stores)
+}
+
 // TestHostKeyIsAValueOrAKey pins the host key written in the section, with
 // or without the host before it, or read from a key.
 func TestHostKeyIsAValueOrAKey(t *testing.T) {
