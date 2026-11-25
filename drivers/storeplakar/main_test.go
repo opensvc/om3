@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -755,6 +756,61 @@ func TestExitErrorCarriesTheStderr(t *testing.T) {
 	assert.True(t, strings.HasSuffix(err.Error(), ": plakar: failed to unlock repository"), err.Error())
 	assert.Contains(t, err.Error(), "exit code 77")
 	assert.Len(t, calls(t), 1, "no retry on another error")
+}
+
+// TestExitErrorCarriesTheReasonOfTheStdout pins the reason plakar prints of
+// a failed command, the last line of its standard output opening with the
+// path it was run by, in the error of the call, ahead of its standard
+// error, and nothing else of its standard output: not the files a backup
+// lists, nor a line naming plakar otherwise.
+func TestExitErrorCarriesTheReasonOfTheStdout(t *testing.T) {
+	ctx := context.Background()
+	name := filepath.Join(fakeDir, "plakar")
+	listing := "f902f02e: OK \u2713 /srv/app/secret-file-name\nplakar: not the path plakar was run by\ninfo: " + name + ": not opening the line\n"
+
+	// A backup, of a head and of a stream.
+	e := newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "status", []byte("1"))
+	setFake(t, "reply", []byte(listing+name+": failed to commit snapshot: no space left on device\n"))
+	for _, err := range []error{
+		e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil),
+		e.store.BackupStream(ctx, run1, "dump", strings.NewReader("x")),
+	} {
+		require.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "plakar backup: "), err.Error())
+		assert.True(t, strings.HasSuffix(err.Error(), ": failed to commit snapshot: no space left on device"), err.Error())
+		assert.NotContains(t, err.Error(), "secret-file-name")
+		assert.NotContains(t, err.Error(), "not the path")
+		assert.NotContains(t, err.Error(), "not opening the line")
+		assert.NotContains(t, err.Error(), name+": ")
+	}
+
+	// A rm, with what plakar says of each snapshot on its standard error.
+	e = newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "status", []byte("1"))
+	setFake(t, "reply", []byte("info: rm: removal of f902f02e completed successfully\n"+name+": failed to remove 1 snapshots\r\n\n"))
+	setFake(t, "stderr", []byte("error: snapshot 0a1b2c3d: locked\n"))
+	err := e.store.Delete(ctx, []backup.Run{run1})
+	require.Error(t, err)
+	assert.True(t, strings.HasPrefix(err.Error(), "plakar rm: "), err.Error())
+	assert.True(t, strings.HasSuffix(err.Error(), ": failed to remove 1 snapshots: error: snapshot 0a1b2c3d: locked"), err.Error())
+	assert.NotContains(t, err.Error(), "completed successfully")
+
+	// A long reason is cut, and a long output with no reason says none.
+	e = newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "status", []byte("1"))
+	setFake(t, "reply", []byte(listing+name+": "+strings.Repeat("\u00e9", reasonMax)+"\n"))
+	err = e.store.Check(ctx, backup.RunFilter{})
+	require.Error(t, err)
+	assert.True(t, strings.HasSuffix(err.Error(), ": "+strings.Repeat("\u00e9", reasonMax/2)+"..."), err.Error())
+	setFake(t, "reply", []byte(strings.Repeat(listing, 1000)))
+	err = e.store.Check(ctx, backup.RunFilter{})
+	require.Error(t, err)
+	assert.Equal(t, "plakar check: "+errors.Unwrap(err).Error(), err.Error())
+	assert.Less(t, len(err.Error()), 200)
 }
 
 // TestPassphraseIsNeverInArgvEnvFilesOrLogs pins the passphrase_cmd as the

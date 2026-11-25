@@ -23,6 +23,11 @@ const (
 	// the store: the configuration is written again and the call retried
 	// once.
 	unresolvedMessage = "could not resolve repository"
+
+	// reasonMax bounds, in bytes, the reason of a failure quoted from the
+	// standard output of plakar: a line as long as the error of the
+	// command, which may name a path or quote a server.
+	reasonMax = 1024
 )
 
 var (
@@ -130,10 +135,57 @@ func (t *T) callError(verb string, cmd *command.T, err error) error {
 	return err
 }
 
-// cmdError names the verb that failed and keeps the exit error underneath.
-func cmdError(verb string, cmd *command.T, err error) error {
-	if stderr := strings.TrimSpace(string(cmd.Stderr())); stderr != "" {
-		return fmt.Errorf("plakar %s: %w: %s", verb, err, stderr)
+// reason returns why plakar says its command failed, without the name it
+// opens the line with, or nothing when it says none.
+//
+// plakar 1.1.8 prints the error its command returns, whatever the command,
+// as one last line of its standard output, "<argv0>: <error>", argv0 being
+// the path it was run by and the error made one line, its unprintable
+// characters replaced. Its standard error only holds what it says before
+// running a command, as a repository not opened, and the warnings and the
+// per-file errors of the command.
+//
+// The rest of the standard output is never quoted: it is the listing of
+// the files of a backup, the snapshots of a ls, the content of a cat. Only
+// the last line opening with the path plakar was run by is taken, which no
+// line of a listing does, cut to reasonMax bytes.
+func reason(cmd *command.T) string {
+	args := cmd.Cmd().Args
+	if len(args) == 0 {
+		return ""
 	}
-	return fmt.Errorf("plakar %s: %w", verb, err)
+	prefix := args[0] + ": "
+	out := strings.TrimRight(string(cmd.Stdout()), "\r\n")
+	for out != "" {
+		i := strings.LastIndexByte(out, '\n')
+		line := strings.TrimRight(out[i+1:], "\r")
+		if s, ok := strings.CutPrefix(line, prefix); ok {
+			if s = strings.TrimSpace(s); len(s) > reasonMax {
+				s = strings.ToValidUTF8(s[:reasonMax], "") + "..."
+			}
+			return s
+		}
+		if i < 0 {
+			break
+		}
+		out = out[:i]
+	}
+	return ""
+}
+
+// cmdError names the verb that failed and keeps the exit error underneath,
+// followed by the reason plakar printed on its standard output, then by
+// its standard error. Both are said: plakar words most failures on the
+// first only, as a backup, a rm or a create failing, the ones met before
+// the command runs on the second only, and some on both, as a cat saying
+// "errors occurred" of the errors its standard error details.
+func cmdError(verb string, cmd *command.T, err error) error {
+	err = fmt.Errorf("plakar %s: %w", verb, err)
+	if s := reason(cmd); s != "" {
+		err = fmt.Errorf("%w: %s", err, s)
+	}
+	if stderr := strings.TrimSpace(string(cmd.Stderr())); stderr != "" {
+		err = fmt.Errorf("%w: %s", err, stderr)
+	}
+	return err
 }

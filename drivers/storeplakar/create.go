@@ -140,15 +140,6 @@ func alreadyCreated(out []byte) bool {
 	return false
 }
 
-// createError is callError for a create, with what plakar printed on its
-// standard output, where it says why a create failed.
-func (t *T) createError(cmd *command.T, err error) error {
-	if out := strings.TrimSpace(string(cmd.Stdout())); out != "" {
-		return fmt.Errorf("%w: %s", t.callError("create", cmd, err), out)
-	}
-	return t.callError("create", cmd, err)
-}
-
 // storeError is callError for a call at the store, an errNoRepository when
 // plakar answered the location holds no repository.
 func (t *T) storeError(verb string, cmd *command.T, err error) error {
@@ -315,7 +306,7 @@ func (t *T) create(ctx context.Context, dir string) error {
 	var cerr error
 	taken := false
 	if err := cmd.Run(); err != nil {
-		cerr = t.createError(cmd, err)
+		cerr = t.callError("create", cmd, err)
 		if taken = alreadyCreated(cmd.Stdout()); taken {
 			t.Log().Infof("the location of the store was taken while it was created: use the store created there")
 		}

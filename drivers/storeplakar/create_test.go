@@ -19,10 +19,11 @@ import (
 // repo of its directory, its content the id: a call at a store with no
 // repository says the content of the file absent and exits with the one of
 // absent.status, a create makes the repository, or says the content of the
-// file taken when there is one, on its standard output as plakar does, and
-// an info tells the id. A <verb>.sh file is sourced first, to answer
-// otherwise.
-const repoHook = `verb=
+// file taken when there is one, on its standard output and under the path
+// it was run by as plakar does, and an info tells the id. A <verb>.sh file
+// is sourced first, to answer otherwise.
+const repoHook = `said() { sed "s|^plakar: |$0: |" "$1"; }
+verb=
 seen=0
 for a in "$@"; do
 	if [ $seen = 1 ]; then verb=$a; break; fi
@@ -31,7 +32,7 @@ done
 if [ -n "$verb" ] && [ -f "$dir/$verb.sh" ]; then . "$dir/$verb.sh"; fi
 case $verb in
 create)
-	if [ -f "$dir/repo" ]; then cat "$dir/taken"; exit 1; fi
+	if [ -f "$dir/repo" ]; then said "$dir/taken"; exit 1; fi
 	sleep 0.3
 	echo id1 >"$dir/repo"
 	exit 0
@@ -320,11 +321,11 @@ func TestALocationTakenMeanwhileIsUsedAsItIs(t *testing.T) {
 		if name == "s3" {
 			setFake(t, "absent", []byte(s3AbsentConfig))
 		}
-		setFake(t, "create.sh", []byte("cat \"$dir/taken\"\nexit 1\n"))
+		setFake(t, "create.sh", []byte("said \"$dir/taken\"\nexit 1\n"))
 		err = s.Backup(ctx, run1, "fs#1", e.src, e.src, nil)
 		require.Error(t, err, name)
 		assert.Contains(t, err.Error(), "its location holds no store", name)
-		assert.Contains(t, err.Error(), strings.TrimSpace(tc.taken), name)
+		assert.Contains(t, err.Error(), ": "+strings.TrimPrefix(strings.TrimSpace(tc.taken), "plakar: "), name)
 		assert.Equal(t, []string{"backup", "info", "create", "info", "info"}, verbs(t), name)
 	}
 }
@@ -337,7 +338,7 @@ func TestACreateFailingOtherwiseFailsTheWrite(t *testing.T) {
 	e := newCredsEnv(t)
 	s := e.sftpStore(t)
 	setRepo(t, sftpAbsent, "66", sftpTaken)
-	setFake(t, "create.sh", []byte("echo 'plakar: permission denied'\nexit 1\n"))
+	setFake(t, "create.sh", []byte("echo \"$0: permission denied\"\nexit 1\n"))
 	err := s.Backup(ctx, run1, "fs#1", e.src, e.src, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "plakar create: ")
@@ -349,7 +350,7 @@ func TestACreateFailingOtherwiseFailsTheWrite(t *testing.T) {
 	e = newCredsEnv(t)
 	s = e.sftpStore(t)
 	setRepo(t, sftpAbsent, "66", sftpTaken)
-	setFake(t, "create.sh", []byte("echo id9 >\"$dir/repo\"\necho 'plakar: sftp: \"Failure\" (SSH_FX_FAILURE)'\nexit 1\n"))
+	setFake(t, "create.sh", []byte("echo id9 >\"$dir/repo\"\necho \"$0: sftp: \\\"Failure\\\" (SSH_FX_FAILURE)\"\nexit 1\n"))
 	require.NoError(t, s.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
 	assert.Equal(t, []string{"backup", "info", "create", "info", "backup", "info"}, verbs(t))
 }
@@ -436,14 +437,14 @@ func TestADirectoryTakenMeanwhileIsUsedAsItIs(t *testing.T) {
 	shortCreatedWait(t)
 	e := newTestEnv(t)
 	setFake(t, "hook", []byte(repoHook))
-	setFake(t, "create.sh", []byte("mkdir -p '"+e.storePath()+"'\n: >'"+e.storePath()+"/CONFIG'\necho id9 >\"$dir/repo\"\necho 'plakar: directory "+e.storePath()+" is not empty'\nexit 1\n"))
+	setFake(t, "create.sh", []byte("mkdir -p '"+e.storePath()+"'\n: >'"+e.storePath()+"/CONFIG'\necho id9 >\"$dir/repo\"\necho \"$0: directory "+e.storePath()+" is not empty\"\nexit 1\n"))
 	require.NoError(t, e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil))
 	assert.Equal(t, []string{"create", "backup"}, verbs(t))
 
 	// A directory holding something else is not a store.
 	e = newTestEnv(t)
 	setFake(t, "hook", []byte(repoHook))
-	setFake(t, "create.sh", []byte("echo 'plakar: directory "+e.storePath()+" is not empty'\nexit 1\n"))
+	setFake(t, "create.sh", []byte("echo \"$0: directory "+e.storePath()+" is not empty\"\nexit 1\n"))
 	err := e.store.Backup(ctx, run1, "fs#1", e.src, e.src, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "holds no store")
