@@ -220,7 +220,7 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container#1", "dns"))
 	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman, kvm.", Doc(naming.KindSvc, "container", "type"))
 	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
-	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
+	assert.Equal(t, "Requires the root grant, except for a cni address, for a netns address om draws from a cluster network, other than a layer 2 one, and for a host address om draws from a lan network, on the interface and with the netmask the network says.", Doc(naming.KindSvc, "ip", "type"))
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
 	assert.Equal(t, "A network named by a path requires the root grant.", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))

@@ -290,6 +290,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Security
 
+* **Joining a layer 2 bridge requires the root grant**: an `ip.netns` resource naming a `l2_bridge` network plugs its container into a segment om neither addresses nor filters, where it speaks from any address and can answer for the dhcp server or the router of the segment. A write giving a resource such a network, or moving one to it, on any node, is refused to a user holding no root grant, where the type of the network is known, as the network of an `ip.host` is judged. A section root made stays the namespace administrator's to edit, its network left alone.
+
 * **A role reading the secrets alone**: the `secreader` role, granted on a namespace as `secreader:<namespace>`, reads the key values of the sec objects of the namespace, by `GET /api/object/path/{namespace}/sec/{name}/data/key` and `.../data`, and grants nothing else of the api: a reader of secrets, as `ox template` rendering a config file on a load balancer, holds it with a `guest` grant, which reads the cluster data and the cfg keys, rather than the `admin` one, which writes every object of the namespace. Writing a sec key still takes `admin`, and the usr keys `root`. The daemon logs each read of sec key values at the debug level, by any role, with the names of the keys and the user, never the values: `serve the keys password of prod/sec/db to lb1`.
 
 * **Privilege restrictions for the app and host task commands**: `no_new_privileges` and
