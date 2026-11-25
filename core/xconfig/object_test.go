@@ -3,6 +3,7 @@ package xconfig
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -97,4 +98,50 @@ type = flag
 [app#1]
 type = simple
 `, string(b))
+}
+
+// TestCommitGivesANewDefaultSectionItsHeader pins the DEFAULT section the
+// commit creates to hold the id of a configuration with none, as a
+// cluster.conf with no DEFAULT section: it is written under a "[DEFAULT]"
+// header, not as an id floating above the first section header. A DEFAULT
+// section with a header keeps it, and one written with none keeps none.
+func TestCommitGivesANewDefaultSectionItsHeader(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		config string
+		check  func(t *testing.T, b []byte)
+	}{
+		{
+			name:   "no default section",
+			config: "[cluster]\nname = c1\n",
+			check: func(t *testing.T, b []byte) {
+				require.Regexpf(t, `^\[DEFAULT\]\nid = [0-9a-f-]{36}\n\n?\[cluster\]\nname = c1\nsecret = x\n$`, string(b), "in\n%s", b)
+			},
+		},
+		{
+			name:   "a default section header",
+			config: "[DEFAULT]\nid = 1\n\n[cluster]\nname = c1\n",
+			check: func(t *testing.T, b []byte) {
+				require.Equal(t, "[DEFAULT]\nid = 1\n\n[cluster]\nname = c1\nsecret = x\n", string(b))
+			},
+		},
+		{
+			name:   "a default section with no header",
+			config: "id = 1\n\n[cluster]\nname = c1\n",
+			check: func(t *testing.T, b []byte) {
+				require.Equal(t, "id = 1\n\n[cluster]\nname = c1\nsecret = x\n", string(b))
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "cluster.conf")
+			require.NoError(t, os.WriteFile(p, []byte(tc.config), 0o600))
+			cfg, err := NewObject(p, p)
+			require.NoError(t, err)
+			require.NoError(t, cfg.Update(nil, nil, keyop.ParseOps([]string{"cluster.secret=x"})))
+			b, err := cfg.Dump()
+			require.NoError(t, err)
+			tc.check(t, b)
+		})
+	}
 }
