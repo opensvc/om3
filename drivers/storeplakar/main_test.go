@@ -876,9 +876,12 @@ func TestACallExitingZeroWithAReasonFailed(t *testing.T) {
 	e.createStore(t)
 	setFake(t, "reply.1", []byte(listing))
 	setFake(t, "reply.2", []byte(said))
+	setFake(t, "reply.3", []byte(said))
 	_, err = e.store.Cat(ctx, stream, "config")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "plakar cat"+want)
+	assert.Equal(t, e.argv("@store", "cat", "s2:/config", "s2:/config"), calls(t)[2], "the member is asked for twice")
+	assert.Len(t, calls(t), 3)
 
 	// The outputs of the calls that ran.
 	e = newTestEnv(t)
@@ -895,7 +898,52 @@ func TestACallExitingZeroWithAReasonFailed(t *testing.T) {
 		b, err := io.ReadAll(rc)
 		require.NoError(t, err)
 		assert.Equal(t, content, string(b))
+		assert.Len(t, calls(t), 2, "%q: read once", content)
 	}
+
+	// A member whose whole content is the line plakar prints of a command
+	// not run is told from it by a cat asked for the member twice, the
+	// content being the one this cat printed: so is the one of a member
+	// the first cat did not run for.
+	for _, c := range []struct{ first, content string }{
+		{said, said},
+		{said, name + ": \n"},
+		{said, "[DEFAULT]\nid = o1\n"},
+		{said, ""},
+	} {
+		e = newTestEnv(t)
+		e.createStore(t)
+		setFake(t, "reply.1", []byte(listing))
+		setFake(t, "reply.2", []byte(c.first))
+		setFake(t, "reply.3", []byte(c.content+c.content))
+		rc, err := e.store.Cat(ctx, stream, "config")
+		require.NoError(t, err, c.content)
+		b, err := io.ReadAll(rc)
+		require.NoError(t, err)
+		assert.Equal(t, c.content, string(b))
+		assert.Equal(t, [][]string{
+			e.argv("@store", "cat", "s2:/config"),
+			e.argv("@store", "cat", "s2:/config", "s2:/config"),
+		}, calls(t)[1:])
+	}
+
+	// The cat asked twice failing, or not printing twice the same.
+	e = newTestEnv(t)
+	e.createStore(t)
+	setFake(t, "reply.1", []byte(listing))
+	setFake(t, "reply.2", []byte(said))
+	setFake(t, "reply.3", []byte(said+name+": errors occurred\n"))
+	setFake(t, "status.3", []byte("1"))
+	_, err = e.store.Cat(ctx, stream, "config")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "plakar cat: ")
+	assert.Contains(t, err.Error(), "exit code 1")
+	setFake(t, "calls", nil)
+	setFake(t, "reply.1", []byte(said))
+	setFake(t, "reply.2", []byte(said+"other\n"))
+	_, err = e.store.Cat(ctx, stream, "config")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read twice is not twice the same content")
 }
 
 // TestWithTheRealPlakarNotRunningACommand reproduces, with the plakar of
@@ -930,6 +978,15 @@ func TestWithTheRealPlakarNotRunningACommand(t *testing.T) {
 	b, err := backup.ReadMember(ctx, e.store, found, backup.MemberConfig)
 	require.NoError(t, err)
 	assert.Equal(t, "[DEFAULT]\nid = o1\n", string(b))
+	// A member whose content is the line plakar prints of a command not
+	// run is read back.
+	line := bin + ": integrity check failed - unexpected IV\n"
+	require.NoError(t, e.store.BackupStream(ctx, run1, "dump", strings.NewReader(line)))
+	found, err = backup.FindRun(ctx, e.store, backup.RunFilter{ID: run1.ID})
+	require.NoError(t, err)
+	b, err = backup.ReadMember(ctx, e.store, found, "dump")
+	require.NoError(t, err)
+	assert.Equal(t, line, string(b))
 
 	// Another repository, under the same passphrase, and its CONFIG put
 	// in place of the one of the store.
@@ -947,6 +1004,8 @@ func TestWithTheRealPlakarNotRunningACommand(t *testing.T) {
 	// The listing read before the replacement names the snapshots: the
 	// calls reading a member are the ones failing.
 	_, err = e.store.Cat(ctx, found, backup.MemberConfig)
+	require.ErrorContains(t, err, "plakar cat: "+want)
+	_, err = e.store.Cat(ctx, found, "dump")
 	require.ErrorContains(t, err, "plakar cat: "+want)
 	require.ErrorContains(t, e.store.Restore(ctx, found, "fs#1", e.dst), "plakar restore: "+want)
 	assert.NoFileExists(t, filepath.Join(e.dst, "a"))

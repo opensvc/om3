@@ -64,6 +64,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/backup"
+	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -599,7 +600,9 @@ func (t *T) Restore(ctx context.Context, run backup.Run, member string, dst stri
 	return err
 }
 
-// Cat returns the content of a member saved from a stream.
+// Cat returns the content of a member saved from a stream. A content plakar
+// would print as it prints the reason of a command it did not run is read
+// again to tell which it is, see catTwice.
 func (t *T) Cat(ctx context.Context, run backup.Run, member string) (io.ReadCloser, error) {
 	if m, ok := run.Member(member); ok && m.Kind != backup.MemberStream {
 		return nil, fmt.Errorf("member %s of the run %s was saved from a directory, not a stream", member, run.ShortID())
@@ -608,28 +611,65 @@ func (t *T) Cat(ctx context.Context, run backup.Run, member string) (io.ReadClos
 	if err != nil {
 		return nil, err
 	}
+	path := id + ":/" + member
 	var b bytes.Buffer
-	cmd, err := t.commandAt(ctx, zerolog.TraceLevel, &b, "cat", id+":/"+member)
+	cmd, err := t.commandAt(ctx, zerolog.TraceLevel, &b, "cat", path)
 	if err != nil {
 		return nil, err
 	}
 	if err := cmd.Run(); err != nil {
 		return nil, t.callError("cat", cmd, err)
 	}
-	// A cat exiting 0 without running prints its reason where the content
-	// goes, alone: the command read no member. An output made of this
-	// one line is refused, whatever the member: it is not told from a
-	// member whose whole content would be a line opening with the path
-	// of plakar, which no stream of an object is, and a member not read
-	// is better than the reason of plakar restored as its content. A
-	// content ending with such a line, after others, is a content, and
-	// so is one not ending its line, as plakar does.
-	if out := bytes.TrimSuffix(b.Bytes(), []byte("\n")); len(out) < b.Len() && !bytes.Contains(out, []byte("\n")) {
-		if err := notRunErrorIn("cat", cmd, out); err != nil {
-			return nil, err
-		}
+	if !isReasonAlone(cmd, b.Bytes()) {
+		return io.NopCloser(&b), nil
 	}
-	return io.NopCloser(&b), nil
+	return t.catTwice(ctx, path)
+}
+
+// isReasonAlone is true of an output of plakar made of the one line it
+// prints of a command it did not run, ended. A content ending with such a
+// line, after others, is a content, and so is one not ending its line, as
+// plakar does.
+func isReasonAlone(cmd *command.T, out []byte) bool {
+	line := bytes.TrimSuffix(out, []byte("\n"))
+	if len(line) == len(out) || bytes.Contains(line, []byte("\n")) {
+		return false
+	}
+	return notRunErrorIn("cat", cmd, line) != nil
+}
+
+// catTwice returns the content of the member at path, read from a cat
+// asked for it twice.
+//
+// A cat exiting 0 without running prints its reason where the content
+// goes, alone, and this one line is not told from a member whose whole
+// content is a line opening with the path of plakar, which a stream may
+// hold. Nothing else plakar says tells them apart, and another call
+// succeeding after would say nothing of this one, a state failing to
+// rebuild once being rebuilt the next time. The cat asked for the member
+// twice says it of itself: run, it prints the content twice, which is
+// never one ended line, and not run, its reason once. The content is
+// taken from this call, not from the first, and its two halves must be
+// the same. Only a first cat printing such a line pays this second call,
+// which reads a member of one line twice.
+func (t *T) catTwice(ctx context.Context, path string) (io.ReadCloser, error) {
+	var b bytes.Buffer
+	cmd, err := t.commandAt(ctx, zerolog.TraceLevel, &b, "cat", path, path)
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Run(); err != nil {
+		return nil, t.callError("cat", cmd, err)
+	}
+	out := b.Bytes()
+	if isReasonAlone(cmd, out) {
+		return nil, notRunErrorIn("cat", cmd, out)
+	}
+	half := len(out) / 2
+	if len(out)%2 != 0 || !bytes.Equal(out[:half], out[half:]) {
+		return nil, fmt.Errorf("plakar cat: %s read twice is not twice the same content", path)
+	}
+	return io.NopCloser(bytes.NewReader(out[:half])), nil
 }
 
 // Delete removes every snapshot of the runs, their markers too, then has
