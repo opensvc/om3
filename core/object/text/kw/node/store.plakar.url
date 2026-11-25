@@ -1,0 +1,64 @@
+The location of the Kloset store: an absolute path or a `fs://` url of one
+for a directory of the node, or the `<scheme>://` url of a location plakar
+reaches by itself. A relative path is refused.
+
+A directory, a `sftp://` and a `s3://` store are created by the first run
+written into them, never by a listing, a status, a check, a restore or a
+deletion. A remote store is created only when plakar answers that its
+location is reached, with the credentials of the store, and holds no
+repository, the bucket of a `s3://` store being made when missing: a server
+not reached, a login, a host key or a permission refused fails the run and
+creates nothing. The store of another scheme, a plakar server `http://` or
+`https://` included, is created by hand, with `plakar create`: a plakar
+server serves a repository that exists.
+
+A location found empty gets a new store, as a directory does: a server
+whose storage is not mounted, or a url mistyped, shows as a store holding
+none of the earlier runs, which are where they were. Two objects of a node
+writing their first run at once create one store, and so do two nodes: the
+store the other node created meanwhile is used as it is.
+
+A directory is the same for every node, on storage none of them holds, as
+an nfs mount: the runs kept on the disk of one node are lost with it, when
+they are needed, and the node taking an object over finds none of them. A
+node where the shared directory is not mounted lists no run, and creates no
+store in the mount point until it writes a run.
+
+The plakar of the node is of the 1.1 releases, from 1.1.8: the driver reads
+what plakar prints, which another release, as 1.2, may print otherwise. A
+plakar older or newer is refused, with its version, before the store is
+called.
+
+plakar reaches by itself a plakar server, `http://` or `https://`, as
+`plakar server` runs, with `-allow-delete` for the retention to delete runs.
+The other locations, as `sftp://` or `s3://`, need the plakar package of
+their scheme on every node, installed by the operator with `plakar pkg add`
+as the user om runs as, root: the stores use the data directory plakar
+installs the packages in for that user, `~/.local/share/plakar` of its home.
+
+A `sftp://`, `s3://` or `https://` store never reaches its location with
+what the node holds for root. A `sftp://` store logs in with `ssh_private_key` and recognizes its server by
+`host_key`, both required: the sftp package runs the ssh of the node, which
+the driver keeps off the keys, the agent, the configuration and the known
+hosts of root. A `s3://` store signs with `access_key` and `secret_key`,
+both required, never with the role of the instance, for the `region` it is
+given, or the one the s3 package finds by itself, over TLS unless root set
+its `disable_tls`. A `https://` store may
+send a `token`, and verify its server with the certificate authorities of
+`ca` instead of the ones of the system. A credential keyword, a `region` or
+a `disable_tls`, of another scheme than the one of the url is refused. A store with another scheme has
+no credential keyword: plakar reaches it with what its url and the node
+hold.
+
+The store is never inside a head it backs up. A store declared in a sec is
+reached over the network: the daemon reads and writes a store as root, and a
+namespace does not choose a directory of the node. A namespace declares a
+`sftp://` or `s3://` store in a sec, its passphrase and its credentials
+written `from <sec> key <key>`: another scheme, `https://` included, requires
+the root grant.
+
+The retention deletes the snapshots of a run, then runs `plakar
+maintenance`, which frees their space in two passes: the packs no snapshot
+uses are marked, then removed by a maintenance run 7 days later or more. A
+maintenance finding the store locked by a backup is skipped, the next
+deletion running it again.

@@ -537,9 +537,96 @@ func TestNamespaceStores(t *testing.T) {
 	assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#local", "url", "file:///srv/backups", none), "a directory of the node")
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "host_key", "ssh-ed25519 AAAA", none))
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "ssh_private_key", "from . key ssh_private_key", none))
-	assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", "ssh_private_key", "-----BEGIN OPENSSH PRIVATE KEY-----", none), "from <sec> key <key>")
+	assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", "ssh_private_key", "-----BEGIN OPENSSH PRIVATE KEY-----", none), "from . key <key>")
 	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "keep", "7d", none))
 	assert.Error(t, Denied(noGrant, naming.KindSec, "store#remote", "schedule", "@1d", none), "a keyword the policy has not weighed")
+}
+
+// A plakar store of a sec is its namespace's to declare at a sftp server or
+// a s3 bucket, which its driver reaches with the credentials of the store
+// only. Its passphrase and its credentials are keys of a datastore, never
+// values of the section. The other locations, a plakar server over https
+// and a directory of the node among them, and the url of another type than
+// the one of the section, are root's.
+func TestNamespacePlakarStores(t *testing.T) {
+	root := rbac.Grants{rbac.GrantRoot}
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "type", "plakar", none))
+	assert.Error(t, Denied(noGrant, naming.KindSec, "store#remote", "type", "restic", none), "a type the policy has not weighed")
+	for _, url := range []string{"sftp://backup@sftp.example/srv", "s3://s3.example/bucket/prefix"} {
+		assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "url", url, none), url)
+		assert.NoError(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "url", url, "plakar", none), url)
+	}
+	for _, url := range []string{
+		"/srv/plakar",
+		"fs:///srv/plakar",
+		"srv/plakar",
+		"http://plakar.example:9876/",
+		"https://plakar.example:9876/",
+		"https://localhost:1215/",
+		"ftp://ftp.example/srv",
+		"rclone://remote/srv",
+		"stdio://",
+		"ptar:///srv/x.ptar",
+		"SFTP://backup@sftp.example/srv",
+		" sftp://backup@sftp.example/srv",
+		"@store",
+		"",
+	} {
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", "url", url, none), "requires the root grant", url)
+		assert.ErrorContains(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "url", url, "plakar", none), "requires the root grant", url)
+		assert.NoError(t, Denied(root, naming.KindSec, "store#remote", "url", url, none), url)
+		assert.NoError(t, DeniedByDriver(root, naming.KindSec, "store#remote", "url", url, "plakar", none), url)
+	}
+
+	// The url is held to the schemes of the type of its section: a tar
+	// store stays a sftp server.
+	assert.NoError(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "url", "sftp://backup@sftp.example/srv", "tar", none))
+	for _, url := range []string{"https://plakar.example:9876/", "s3://s3.example/bucket", "/srv/backups"} {
+		assert.ErrorContains(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "url", url, "tar", none), "a url of a tar store other than sftp://", url)
+		assert.NoError(t, DeniedByDriver(root, naming.KindSec, "store#remote", "url", url, "tar", none), url)
+	}
+	assert.ErrorContains(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "url", "/srv/plakar", "plakar", none), "a url of a plakar store other than s3:// or sftp://")
+	// A url keyword of another group is not a store url.
+	assert.NoError(t, DeniedByDriver(noGrant, naming.KindSvc, "sync#1", "keep", "3", "store", none))
+
+	// A secret is a key of the sec declaring the store, never a value of
+	// the section, nor a key of another datastore, read as the object using
+	// the store rather than as its writer.
+	for option, secret := range map[string]string{
+		"passphrase":      "s3cret",
+		"ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----",
+		"access_key":      "AKIDEXAMPLE",
+		"secret_key":      "s3cret",
+		"token":           "s3cret",
+		"ca":              "-----BEGIN CERTIFICATE-----",
+	} {
+		assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", option, "from . key "+option, none), option)
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", option, "from ./sec/other key "+option, none), "from . key <key>", option)
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", option, "from tbk/sec/other key "+option, none), "from . key <key>", option)
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", option, "from .. key "+option, none), "from . key <key>", option)
+		assert.NoError(t, Denied(root, naming.KindSec, "store#remote", option, "from tbk/sec/other key "+option, none), option)
+		assert.NoError(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", option, "from . key "+option, "plakar", none), option)
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", option, secret, none), "from . key <key>", option)
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", option, "from .", none), "from . key <key>", option)
+		assert.NoError(t, Denied(root, naming.KindSec, "store#remote", option, secret, none), option)
+	}
+	// The key of the server is public: a value, or a key.
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "host_key", "ssh-ed25519 AAAA", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "host_key", "from . key host_key", none))
+	// The region of a s3 store is no secret either: a value of the section.
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "region", "eu-west-3", none))
+	assert.NoError(t, DeniedByDriver(noGrant, naming.KindSec, "store#remote", "region", "eu-west-3", "plakar", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSec, "store#remote", "keep", "7d", none))
+	// A store reached without TLS is root's to decide, whatever the value
+	// written: a namespace administrator sets neither true nor false.
+	for _, value := range []string{"true", "false"} {
+		assert.ErrorContains(t, Denied(noGrant, naming.KindSec, "store#remote", "disable_tls", value, none), "a store reached without TLS requires the root grant", value)
+		assert.NoError(t, Denied(root, naming.KindSec, "store#remote", "disable_tls", value, none), value)
+	}
+	// What the policy has not weighed stays root's.
+	for _, option := range []string{"schedule", "insecure", "tls_no_verify", "use_tls", "tls_insecure_no_verify", "endpoint", "identity", "passphrase_cmd"} {
+		assert.Error(t, Denied(noGrant, naming.KindSec, "store#remote", option, "x", none), option)
+	}
 }
 
 // A sync resource of the store type is the namespace's, backing the object

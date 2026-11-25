@@ -1,0 +1,13 @@
+Set to true to reach a `s3://` store in plain http, as a S3-compatible
+server of a private network serving no TLS: the `use_tls` option of the s3
+package of plakar, given `false`. The access key of the store, the
+signatures of its requests and its data, encrypted by plakar, then cross the
+network with no TLS, and the server is not authenticated.
+
+Unset or false, the store is reached with TLS, as the package does by
+default, and its certificate verified with the certificate authorities of
+the system. The driver never falls back to plain http by itself: a server
+answering in plain http fails the call, with the hint to set this keyword.
+
+Only root sets it: a namespace administrator may not, on a store declared in
+a sec. Refused with a url of another scheme.

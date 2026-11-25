@@ -1,0 +1,8 @@
+The region a `s3://` store signs its requests with, as `eu-west-3`: the
+`region` option of the s3 package of plakar. A value of the section, not a
+secret. Refused with a url of another scheme.
+
+Unset, the package is given no region and its s3 client finds one by
+itself: the one the server tells for the bucket, or `us-east-1`. Set it for
+a server refusing that discovery, or the requests signed for another region
+than its own, as some S3-compatible providers do.

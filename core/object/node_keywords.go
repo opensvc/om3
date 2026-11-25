@@ -226,7 +226,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/store.schedule"),
 	}
 	kwNodeStoreType = keywords.Keyword{
-		Candidates: []string{"tar"},
+		Candidates: []string{"plakar", "tar"},
 		Option:     "type",
 		Group:      nodeGroupIdentity.ID,
 		Required:   true,
@@ -267,6 +267,94 @@ var (
 		Section:  "store",
 		Text:     keywords.NewText(fs, "text/kw/node/store.tar.url"),
 		Types:    []string{"tar"},
+	}
+	kwNodeStorePlakarPassphrase = keywords.Keyword{
+		Example:      "from system/sec/backup key passphrase",
+		Option:       "passphrase",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Required:     true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.passphrase"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarSSHPrivateKey = keywords.Keyword{
+		Example:      "from system/sec/backup key ssh_private_key",
+		Option:       "ssh_private_key",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.ssh_private_key"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarHostKey = keywords.Keyword{
+		Example: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBc1nVQ6Ck8M6zKQ1dHoRcgYzBH9Cf2rBG7aJ1LGq2xp",
+		Option:  "host_key",
+		Group:   nodeGroupEndpoint.ID,
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.host_key"),
+		Types:   []string{"plakar"},
+	}
+	kwNodeStorePlakarAccessKey = keywords.Keyword{
+		Example:      "from system/sec/backup key access_key",
+		Option:       "access_key",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.access_key"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarSecretKey = keywords.Keyword{
+		Example:      "from system/sec/backup key secret_key",
+		Option:       "secret_key",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.secret_key"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarRegion = keywords.Keyword{
+		Example: "eu-west-3",
+		Option:  "region",
+		Group:   nodeGroupEndpoint.ID,
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.region"),
+		Types:   []string{"plakar"},
+	}
+	kwNodeStorePlakarDisableTLS = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "disable_tls",
+		Group:     nodeGroupEndpoint.ID,
+		Section:   "store",
+		Text:      keywords.NewText(fs, "text/kw/node/store.plakar.disable_tls"),
+		Types:     []string{"plakar"},
+	}
+	kwNodeStorePlakarToken = keywords.Keyword{
+		Example:      "from system/sec/backup key token",
+		Option:       "token",
+		Group:        nodeGroupCredentials.ID,
+		RedactSecret: true,
+		Section:      "store",
+		Text:         keywords.NewText(fs, "text/kw/node/store.plakar.token"),
+		Types:        []string{"plakar"},
+	}
+	kwNodeStorePlakarCA = keywords.Keyword{
+		Example: "from system/cfg/backup key ca",
+		Option:  "ca",
+		Group:   nodeGroupEndpoint.ID,
+		Section: "store",
+		Text:    keywords.NewText(fs, "text/kw/node/store.plakar.ca"),
+		Types:   []string{"plakar"},
+	}
+	kwNodeStorePlakarURL = keywords.Keyword{
+		Example:  "/srv/plakar",
+		Option:   "url",
+		Group:    nodeGroupEndpoint.ID,
+		Required: true,
+		Section:  "store",
+		Text:     keywords.NewText(fs, "text/kw/node/store.plakar.url"),
+		Types:    []string{"plakar"},
 	}
 	kwNodeStoreKeep = keywords.Keyword{
 		Example: "24h 7d 4w 6m",
@@ -2331,6 +2419,16 @@ var (
 		&kwNodeStoreHostKey,
 		&kwNodeStoreSSHPrivateKey,
 		&kwNodeStoreShared,
+		&kwNodeStorePlakarPassphrase,
+		&kwNodeStorePlakarSSHPrivateKey,
+		&kwNodeStorePlakarHostKey,
+		&kwNodeStorePlakarAccessKey,
+		&kwNodeStorePlakarSecretKey,
+		&kwNodeStorePlakarRegion,
+		&kwNodeStorePlakarDisableTLS,
+		&kwNodeStorePlakarToken,
+		&kwNodeStorePlakarCA,
+		&kwNodeStorePlakarURL,
 		&kwNodeStoreKeep,
 		&kwNodeUXGroupGrant,
 		&kwNodeArrayXtremioName,

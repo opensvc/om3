@@ -1,6 +1,10 @@
 The driver of the store, the tool keeping the backups the `sync.store`
 resources of the objects write into it.
 
+`plakar`
+  A Kloset store, driven through the plakar binary of the node. It
+  deduplicates, compresses and encrypts.
+
 `tar`
   A directory holding a gzipped tar archive per member of a run. It
   neither deduplicates nor encrypts: a test and reference store.

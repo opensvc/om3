@@ -1,0 +1,12 @@
+The certificate authorities the server of a `https://` store is verified
+with, written `from <datastore> key <key>`, the key of a cfg or a sec holding
+their certificates in PEM. Refused with another url than `https://`.
+
+Unset, the server is verified with the certificate authorities of the
+system. Set, with these only: a server whose certificate one of the system
+signed is refused.
+
+A namespace administrator writes it `from . key <key>`, a key of the sec
+declaring the store: as the key is read as the object using the store, a key
+of another datastore, which a store shared with other namespaces would read
+for them, requires the root grant.

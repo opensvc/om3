@@ -1,0 +1,8 @@
+The public key of the server of a `sftp://` store, as `ssh-keyscan` prints
+it, with or without the host before it, or `from <datastore> key <key>` for
+the key of a datastore holding it. Required by a `sftp://` url, refused
+with another.
+
+The server must present this key: a store is never written to, nor read from, a
+server it did not recognize. The known hosts of root and of the node are not
+read.
