@@ -468,40 +468,70 @@ func (t *T) waitDAD(netns ns.NetNS, guestDev string) error {
 	}
 	deadline := time.Now().Add(dadTimeout)
 	for {
-		var flags int
-		found := false
-		if err := netns.Do(func(_ ns.NetNS) error {
-			link, err := netlink.LinkByName(guestDev)
-			if err != nil {
-				return err
-			}
-			addrs, err := netlink.AddrList(link, netlink.FAMILY_V6)
-			if err != nil {
-				return err
-			}
-			for _, a := range addrs {
-				if a.IP.Equal(ip) {
-					flags, found = a.Flags, true
-					return nil
-				}
-			}
-			return nil
-		}); err != nil {
+		flags, found, err := addrFlags(netns, guestDev, ip)
+		if err != nil {
 			return err
 		}
-		switch {
-		case !found:
+		if !found {
 			return fmt.Errorf("%s is not on %s once added", ip, guestDev)
-		case flags&unix.IFA_F_DADFAILED != 0:
+		}
+		switch dadState(flags) {
+		case dadFailed:
 			return fmt.Errorf("%s is already held on the segment of network %s: its duplicate address detection failed", ip, t.Network)
-		case flags&unix.IFA_F_TENTATIVE == 0:
+		case dadDone:
 			return nil
-		case time.Now().After(deadline):
+		}
+		if time.Now().After(deadline) {
 			t.Log().Warnf("%s is still tentative on %s after %s: its duplicate address detection did not end", ip, guestDev, dadTimeout)
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+// The states of the duplicate address detection of an ipv6 address, as its
+// flags say it.
+const (
+	dadDone      = "done"
+	dadTentative = "tentative"
+	dadFailed    = "failed"
+)
+
+// dadState returns the state of the duplicate address detection of an ipv6
+// address of flags: failed, the kernel found another host holds it and never
+// uses it; tentative, still asking; done otherwise, as with no detection.
+func dadState(flags int) string {
+	switch {
+	case flags&unix.IFA_F_DADFAILED != 0:
+		return dadFailed
+	case flags&unix.IFA_F_TENTATIVE != 0:
+		return dadTentative
+	default:
+		return dadDone
+	}
+}
+
+// addrFlags returns the flags of the ipv6 address ip on guestDev, in the
+// namespace netns, and whether the interface holds it.
+func addrFlags(netns ns.NetNS, guestDev string, ip net.IP) (flags int, found bool, err error) {
+	err = netns.Do(func(_ ns.NetNS) error {
+		link, err := netlink.LinkByName(guestDev)
+		if err != nil {
+			return err
+		}
+		addrs, err := netlink.AddrList(link, netlink.FAMILY_V6)
+		if err != nil {
+			return err
+		}
+		for _, a := range addrs {
+			if a.IP.Equal(ip) {
+				flags, found = a.Flags, true
+				return nil
+			}
+		}
+		return nil
+	})
+	return
 }
 
 // arpProbeTimeout is how long the probes wait for the answer of another

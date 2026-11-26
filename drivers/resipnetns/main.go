@@ -814,6 +814,19 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 			t.StatusLog().Error("%s is in the namespace, and its peer %s is not a port of %s, the bridge of network %s", guestDev, link.peer, t.Dev, t.Network)
 			return status.Down
 		}
+		// An ipv6 address another host of the segment holds, found so
+		// after the start returned: the kernel never uses it.
+		if ip := t.ipaddr(); ip != nil && ip.To4() == nil {
+			if flags, found, err := addrFlags(netns, guestDev, ip); err == nil && found {
+				switch dadState(flags) {
+				case dadFailed:
+					t.StatusLog().Error("%s is already held on the segment of network %s: its duplicate address detection failed", ip, t.Network)
+					return status.Down
+				case dadTentative:
+					t.StatusLog().Warn("%s is still tentative on %s: its duplicate address detection did not end", ip, guestDev)
+				}
+			}
+		}
 	}
 
 	// The carrier is consulted last, and only for a resource that is

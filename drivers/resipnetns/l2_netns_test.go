@@ -312,7 +312,14 @@ func TestL2StaticInNamespaces(t *testing.T) {
 		r1.StatusLog().Reset()
 		assert.Equal(t, "down", r1.Status(ctx).String())
 		assert.Contains(t, statusErrors(r1), "is not a port of obr_seg, the bridge of network seg")
+		// Plugged back, it is waited for to forward, as a port made by the
+		// start, before the announces.
+		var waited []string
+		prevWait := waitBridgePortForwarding
+		waitBridgePortForwarding = func(_ *T, dev string) { waited = append(waited, dev) }
 		require.NoError(t, r1.Start(ctx), "plugged back")
+		waitBridgePortForwarding = prevWait
+		assert.Equal(t, []string{peer1.Attrs().Name}, waited, "the port plugged back waited for")
 		r1.StatusLog().Reset()
 		assert.Equal(t, "up", r1.Status(ctx).String(), statusErrors(r1))
 
@@ -444,6 +451,11 @@ func TestL2StaticIPv6DuplicateInNamespaces(t *testing.T) {
 		require.NoError(t, dup.Configure())
 		dupCtx := actionrollback.NewContext(context.Background())
 		assert.ErrorContains(t, dup.Start(dupCtx), "fd00::5 is already held on the segment of network seg: its duplicate address detection failed")
+		// Before the rollback, the address the kernel refused is down,
+		// whatever its interface.
+		dup.StatusLog().Reset()
+		assert.Equal(t, "down", dup.Status(ctx).String())
+		assert.Contains(t, statusErrors(dup), "fd00::5 is already held on the segment of network seg: its duplicate address detection failed")
 		require.NoError(t, actionrollback.FromContext(dupCtx).Rollback(dupCtx))
 		links, _, _, _ := guestState(t, c2)
 		assert.Empty(t, links, "rolled back")

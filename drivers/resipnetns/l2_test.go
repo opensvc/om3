@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -331,4 +332,24 @@ func TestMacAddrIsStopToChange(t *testing.T) {
 		}
 	}
 	t.Fatalf("no macaddr keyword")
+}
+
+// The flags of an ipv6 address say its duplicate address detection: failed,
+// still asking, or done, as with no detection at all.
+func TestDadState(t *testing.T) {
+	for _, c := range []struct {
+		flags int
+		want  string
+	}{
+		{0, dadDone},
+		{unix.IFA_F_PERMANENT, dadDone},
+		{unix.IFA_F_TENTATIVE, dadTentative},
+		{unix.IFA_F_TENTATIVE | unix.IFA_F_PERMANENT, dadTentative},
+		{unix.IFA_F_DADFAILED, dadFailed},
+		{unix.IFA_F_DADFAILED | unix.IFA_F_TENTATIVE, dadFailed},
+	} {
+		if got := dadState(c.flags); got != c.want {
+			t.Errorf("dadState(%#x) = %s, want %s", c.flags, got, c.want)
+		}
+	}
 }

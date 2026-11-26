@@ -89,7 +89,7 @@ func (t *T) startBridge(ctx context.Context) error {
 			t.linkDel(tmpGuestDev)
 			return err
 		}
-		t.waitBridgePortForwarding(hostDev)
+		waitBridgePortForwarding(t, hostDev)
 	}
 	if t.onL2() && !exists {
 		// An address the interface holds already is the resource's own.
@@ -123,7 +123,10 @@ func (t *T) startBridge(ctx context.Context) error {
 }
 
 // replugL2 makes the other end of guestDev on the node a port of the bridge
-// of the layer 2 network again, when taken off it.
+// of the layer 2 network again, when taken off it, and waits for the port to
+// forward, as a port made by the start: the announces and the duplicate
+// address detection that follow would be dropped by a port of a bridge
+// running stp, still listening or learning.
 func (t *T) replugL2(netns ns.NetNS, guestDev string) error {
 	link, err := l2GuestLinkByName(netns, guestDev)
 	if err != nil {
@@ -133,7 +136,11 @@ func (t *T) replugL2(netns ns.NetNS, guestDev string) error {
 		return nil
 	}
 	t.Log().Infof("%s is in the namespace, and its peer %s is not a port of %s: plug it back", guestDev, link.peer, t.Dev)
-	return t.linkSetMaster(link.peer, t.Dev)
+	if err := t.linkSetMaster(link.peer, t.Dev); err != nil {
+		return err
+	}
+	waitBridgePortForwarding(t, link.peer)
+	return nil
 }
 
 func (t *T) stopBridge(ctx context.Context) error {
@@ -193,13 +200,17 @@ func (t *T) stopBridge(ctx context.Context) error {
 // forward: twice the default forward delay of a bridge running stp, and more.
 const bridgePortForwardingTimeout = 35 * time.Second
 
-// waitBridgePortForwarding waits for the port of the bridge the host end of
+// waitBridgePortForwarding is waitPortForwardingOf, a variable for the tests:
+// the sysfs of a network namespace of a test is not the one it reads.
+var waitBridgePortForwarding = (*T).waitPortForwardingOf
+
+// waitPortForwardingOf waits for the port of the bridge the host end of
 // the veth pair is, to forward: the gratuitous arp a start sends would be
 // dropped by a port still listening or learning, as one of a bridge running
 // stp is for its forward delay. A port of a bridge not running stp forwards
 // at once. A port blocking or disabled, or a bridge not telling its port
 // state, as an openvswitch one, is not waited for.
-func (t *T) waitBridgePortForwarding(hostDev string) {
+func (t *T) waitPortForwardingOf(hostDev string) {
 	p := filepath.Join("/sys/class/net", hostDev, "brport", "state")
 	read := func() (string, error) {
 		b, err := os.ReadFile(p)
