@@ -304,6 +304,18 @@ func TestL2StaticInNamespaces(t *testing.T) {
 		assert.Equal(t, "up", r1.Status(ctx).String(), statusErrors(r1))
 		assert.Empty(t, statusErrors(r1))
 
+		// The end of the node taken off the bridge: down, and plugged
+		// back by a start, as for no address.
+		peer1, err := netlink.LinkByName(formatHostDevName("eth0", c1.pid))
+		require.NoError(t, err)
+		require.NoError(t, netlink.LinkSetNoMaster(peer1))
+		r1.StatusLog().Reset()
+		assert.Equal(t, "down", r1.Status(ctx).String())
+		assert.Contains(t, statusErrors(r1), "is not a port of obr_seg, the bridge of network seg")
+		require.NoError(t, r1.Start(ctx), "plugged back")
+		r1.StatusLog().Reset()
+		assert.Equal(t, "up", r1.Status(ctx).String(), statusErrors(r1))
+
 		r2 := newL2Resource(t, "ip#2", obj)
 		r2.NetNS = "container#1"
 		r2.Name, r2.Netmask, r2.Gateway = "10.99.0.6", "24", "10.99.0.1"
@@ -352,5 +364,89 @@ func TestL2StaticInNamespaces(t *testing.T) {
 		for _, link := range all {
 			assert.NotEqual(t, "veth", link.Type(), "%s is left on the node", link.Attrs().Name)
 		}
+	})
+}
+
+// A hardware address changed while the interface is in the namespace, from
+// the derived one to one of the macaddr keyword: the interface left under the
+// former is said, a start replaces it rather than add a second one, and a
+// stop deletes it.
+func TestL2OnlyFormerMACInNamespaces(t *testing.T) {
+	inNodeNetns(t, func(t *testing.T) {
+		addBridge(t, "obr_seg")
+		c := startContainer(t)
+		obj := containerObject{containers: map[string]fakeContainer{"container#0": c}}
+		r := newL2Resource(t, "ip#1", obj)
+		require.NoError(t, r.Configure())
+		derived := stableMAC(testObjectID.String(), "ip#1", "").String()
+		ctx := actionrollback.NewContext(context.Background())
+		status := func() status.T {
+			r.StatusLog().Reset()
+			return r.Status(ctx)
+		}
+		require.NoError(t, r.Start(ctx))
+
+		r.MacAddr = "ce:32:cc:ca:41:33"
+		require.NoError(t, r.Configure())
+		assert.Equal(t, "down", status().String())
+		assert.Contains(t, statusErrors(r), "with the former hardware address "+derived+", not ce:32:cc:ca:41:33")
+		holds, err := r.holdsAddr(ctx)
+		require.NoError(t, err)
+		assert.True(t, holds, "the interface under the former address is the resource's")
+
+		require.NoError(t, r.Start(ctx), "replaced")
+		links, _, _, _ := guestState(t, c)
+		require.Len(t, links, 1, "never two")
+		assert.Equal(t, "ce:32:cc:ca:41:33", links[0].Attrs().HardwareAddr.String())
+		assert.Equal(t, "up", status().String(), statusErrors(r))
+
+		// Stopped: nothing left. A macaddr changed or unset while up is
+		// refused by the configuration (StopToChange), no derivation
+		// finding the former value back.
+		require.NoError(t, r.Stop(ctx))
+		links, _, _, _ = guestState(t, c)
+		assert.Empty(t, links)
+		all, err := netlink.LinkList()
+		require.NoError(t, err)
+		for _, link := range all {
+			assert.NotEqual(t, "veth", link.Type(), "%s is left on the node", link.Attrs().Name)
+		}
+	})
+}
+
+// A static ipv6 address another namespace of the segment holds: the
+// duplicate address detection of the kernel fails, so does the start, and
+// the address is rolled back.
+func TestL2StaticIPv6DuplicateInNamespaces(t *testing.T) {
+	if testing.Short() {
+		t.Skip("waits for the duplicate address detection of the kernel")
+	}
+	inNodeNetns(t, func(t *testing.T) {
+		la := netlink.NewLinkAttrs()
+		la.Name = "obr_seg"
+		snooping := false
+		require.NoError(t, netlink.LinkAdd(&netlink.Bridge{LinkAttrs: la, MulticastSnooping: &snooping}))
+		br, err := netlink.LinkByName("obr_seg")
+		require.NoError(t, err)
+		require.NoError(t, netlink.LinkSetUp(br))
+		c1, c2 := startContainer(t), startContainer(t)
+		obj := containerObject{containers: map[string]fakeContainer{"container#0": c1, "container#1": c2}}
+		ctx := actionrollback.NewContext(context.Background())
+
+		r1 := newL2Resource(t, "ip#1", obj)
+		r1.Name, r1.Netmask = "fd00::5", "64"
+		require.NoError(t, r1.Configure())
+		require.NoError(t, r1.Start(ctx), "the first holder passes its detection")
+
+		dup := newL2Resource(t, "ip#2", obj)
+		dup.NetNS = "container#1"
+		dup.Name, dup.Netmask = "fd00::5", "64"
+		require.NoError(t, dup.Configure())
+		dupCtx := actionrollback.NewContext(context.Background())
+		assert.ErrorContains(t, dup.Start(dupCtx), "fd00::5 is already held on the segment of network seg: its duplicate address detection failed")
+		require.NoError(t, actionrollback.FromContext(dupCtx).Rollback(dupCtx))
+		links, _, _, _ := guestState(t, c2)
+		assert.Empty(t, links, "rolled back")
+		require.NoError(t, r1.Stop(ctx))
 	})
 }

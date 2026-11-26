@@ -10,11 +10,13 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/network"
@@ -157,6 +159,38 @@ func (t *T) macAddr() string {
 	return stableMAC(t.ObjectID.String(), t.RID(), nodename).String()
 }
 
+// l2MACs returns the hardware addresses the interface of the resource may
+// hold, the one it is to hold first: the one of the macaddr keyword, and the
+// two the resource derives, of the object and of the instance. A macaddr
+// set, changed or unset, or a topology changed, while the interface is in the
+// namespace leaves it under one of the others, which only this resource
+// derives, of its object id and its resource id.
+func (t *T) l2MACs() []string {
+	l := []string{t.macAddr()}
+	for _, nodename := range []string{"", hostname.Hostname()} {
+		mac := stableMAC(t.ObjectID.String(), t.RID(), nodename).String()
+		if !slices.Contains(l, mac) {
+			l = append(l, mac)
+		}
+	}
+	return l
+}
+
+// l2LinkOf finds the interface of the resource in the namespace under any of
+// the hardware addresses it may hold (l2MACs), and returns the one it holds.
+func (t *T) l2LinkOf(netns ns.NetNS) (*l2Link, string, error) {
+	for _, mac := range t.l2MACs() {
+		link, err := l2GuestLink(netns, mac)
+		if err != nil {
+			return nil, "", err
+		}
+		if link != nil {
+			return link, mac, nil
+		}
+	}
+	return nil, "", nil
+}
+
 // disableIPv6 disables ipv6 on the device dev of the node. A kernel with no
 // ipv6 has nothing to disable. A variable for the tests.
 var disableIPv6 = func(dev string) error {
@@ -204,6 +238,23 @@ func l2GuestLink(netns ns.NetNS, mac string) (*l2Link, error) {
 	if err != nil {
 		return nil, err
 	}
+	return l2GuestLinkBy(netns, func(attrs *netlink.LinkAttrs) bool {
+		return attrs.HardwareAddr.String() == hw.String()
+	})
+}
+
+// l2GuestLinkByName finds the interface name of the namespace, and the other
+// end of its pair on the node, as l2GuestLink does: for an address on a layer
+// 2 network, whose interface is found by its address.
+func l2GuestLinkByName(netns ns.NetNS, name string) (*l2Link, error) {
+	return l2GuestLinkBy(netns, func(attrs *netlink.LinkAttrs) bool {
+		return attrs.Name == name
+	})
+}
+
+// l2GuestLinkBy finds the veth of the namespace match accepts, and the other
+// end of its pair on the node.
+func l2GuestLinkBy(netns ns.NetNS, match func(*netlink.LinkAttrs) bool) (*l2Link, error) {
 	var (
 		found     *l2Link
 		index     int
@@ -216,7 +267,7 @@ func l2GuestLink(netns ns.NetNS, mac string) (*l2Link, error) {
 		}
 		for _, link := range links {
 			attrs := link.Attrs()
-			if link.Type() != "veth" || attrs.HardwareAddr.String() != hw.String() {
+			if link.Type() != "veth" || !match(attrs) {
 				continue
 			}
 			found = &l2Link{name: attrs.Name}
@@ -267,9 +318,18 @@ func (t *T) startL2Only(ctx context.Context) error {
 	}
 	defer func() { _ = netns.Close() }()
 	mac := t.macAddr()
-	link, err := l2GuestLink(netns, mac)
+	link, held, err := t.l2LinkOf(netns)
 	if err != nil {
 		return err
+	}
+	if link != nil && held != mac {
+		// Left under a former hardware address: replaced, rather than
+		// joined by a second interface of the resource.
+		t.Log().Infof("%s is in the namespace with the former hardware address %s of the resource: delete it, to make it again with %s", link.name, held, mac)
+		if err := t.linkDelIn(link.name, netns.Path()); err != nil {
+			return err
+		}
+		link = nil
 	}
 	if link != nil {
 		switch {
@@ -341,12 +401,12 @@ func (t *T) stopL2Only(ctx context.Context) error {
 		return nil
 	}
 	defer func() { _ = netns.Close() }()
-	link, err := l2GuestLink(netns, t.macAddr())
+	link, _, err := t.l2LinkOf(netns)
 	if err != nil {
 		return err
 	}
 	if link == nil {
-		t.Log().Infof("already down: no interface of the hardware address %s in the namespace", t.macAddr())
+		t.Log().Infof("already down: no interface of the hardware address %s in the namespace", strings.Join(t.l2MACs(), " or "))
 		return nil
 	}
 	// Deleting an end deletes the pair.
@@ -369,13 +429,16 @@ func (t *T) statusL2Only(ctx context.Context) status.T {
 		return status.Down
 	}
 	defer func() { _ = netns.Close() }()
-	link, err := l2GuestLink(netns, t.macAddr())
+	link, held, err := t.l2LinkOf(netns)
 	if err != nil {
 		t.StatusLog().Error("guest dev: %s", err)
 		return status.Down
 	}
 	switch {
 	case link == nil:
+		return status.Down
+	case held != t.macAddr():
+		t.StatusLog().Error("%s is in the namespace with the former hardware address %s, not %s: a start makes it again", link.name, held, t.macAddr())
 		return status.Down
 	case link.peer == "":
 		t.StatusLog().Error("%s is in the namespace, and its peer is not found on this node", link.name)
@@ -386,6 +449,59 @@ func (t *T) statusL2Only(ctx context.Context) status.T {
 	}
 	t.StatusLog().Info("%s %s, no address: layer 2 only", link.name, t.macAddr())
 	return status.Up
+}
+
+// dadTimeout is how long a start waits for the kernel to tell whether an
+// ipv6 address another host of a layer 2 segment holds, its duplicate
+// address detection.
+const dadTimeout = 5 * time.Second
+
+// waitDAD waits for the duplicate address detection of the ipv6 address of
+// the resource on guestDev to end, and refuses the address the kernel found
+// another host of the segment holds: the kernel never uses it, the resource
+// would be up with an address answering nothing. An address still tentative
+// at the deadline, as on a segment slow to answer, is warned of and kept.
+func (t *T) waitDAD(netns ns.NetNS, guestDev string) error {
+	ip := t.ipaddr()
+	if ip == nil || ip.To4() != nil {
+		return nil
+	}
+	deadline := time.Now().Add(dadTimeout)
+	for {
+		var flags int
+		found := false
+		if err := netns.Do(func(_ ns.NetNS) error {
+			link, err := netlink.LinkByName(guestDev)
+			if err != nil {
+				return err
+			}
+			addrs, err := netlink.AddrList(link, netlink.FAMILY_V6)
+			if err != nil {
+				return err
+			}
+			for _, a := range addrs {
+				if a.IP.Equal(ip) {
+					flags, found = a.Flags, true
+					return nil
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		switch {
+		case !found:
+			return fmt.Errorf("%s is not on %s once added", ip, guestDev)
+		case flags&unix.IFA_F_DADFAILED != 0:
+			return fmt.Errorf("%s is already held on the segment of network %s: its duplicate address detection failed", ip, t.Network)
+		case flags&unix.IFA_F_TENTATIVE == 0:
+			return nil
+		case time.Now().After(deadline):
+			t.Log().Warnf("%s is still tentative on %s after %s: its duplicate address detection did not end", ip, guestDev, dadTimeout)
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 // arpProbeTimeout is how long the probes wait for the answer of another
@@ -408,7 +524,7 @@ var arpProbe = func(ip net.IP, dev string) (net.HardwareAddr, error) {
 // networks, sent from the node: the node has no address on a layer 2
 // segment, and its ping would ask another network, the one its routes lead
 // to. An ipv6 address is checked by the kernel, its duplicate address
-// detection.
+// detection, which waitDAD reads.
 //
 // A resource tagged nonrouted is not checked, as its start is not aborted by
 // a ping. A probe that can not be sent is warned of, and refuses nothing.

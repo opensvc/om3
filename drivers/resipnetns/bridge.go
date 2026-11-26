@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containernetworking/plugins/pkg/ns"
+
 	"github.com/opensvc/om3/v3/core/actionrollback"
 )
 
@@ -41,6 +43,13 @@ func (t *T) startBridge(ctx context.Context) error {
 	}
 	if exists {
 		t.Log().Infof("device already exists")
+		if t.onL2() {
+			// A port taken off the bridge, as by a network torn down
+			// and set up again: plugged back, as for no address.
+			if err := t.replugL2(netns, guestDev); err != nil {
+				return err
+			}
+		}
 	} else if !t.hasNSDev(netns) {
 		hostDev := formatHostDevName(guestDev, pid)
 
@@ -91,6 +100,13 @@ func (t *T) startBridge(ctx context.Context) error {
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
 	}
+	if t.onL2() {
+		// An ipv6 address another host of the segment holds: the
+		// rollback of startIP removes it.
+		if err := t.waitDAD(netns, guestDev); err != nil {
+			return err
+		}
+	}
 	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
 		return err
 	}
@@ -104,6 +120,20 @@ func (t *T) startBridge(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+// replugL2 makes the other end of guestDev on the node a port of the bridge
+// of the layer 2 network again, when taken off it.
+func (t *T) replugL2(netns ns.NetNS, guestDev string) error {
+	link, err := l2GuestLinkByName(netns, guestDev)
+	if err != nil {
+		return err
+	}
+	if link == nil || link.peer == "" || link.master == t.Dev {
+		return nil
+	}
+	t.Log().Infof("%s is in the namespace, and its peer %s is not a port of %s: plug it back", guestDev, link.peer, t.Dev)
+	return t.linkSetMaster(link.peer, t.Dev)
 }
 
 func (t *T) stopBridge(ctx context.Context) error {

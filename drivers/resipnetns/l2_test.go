@@ -317,3 +317,18 @@ func TestARPProbePacket(t *testing.T) {
 	assert.Nil(t, arpProbeAnswer(reply, net.ParseIP("10.99.0.6")), "a reply of another address")
 	assert.Nil(t, arpProbeAnswer(reply[:20], ip), "a short packet")
 }
+
+// The hardware address of a layer 2 interface is its only handle: macaddr
+// changed while up would leave the interface under a value no start nor stop
+// knows, so a change waits for the resource to be stopped.
+func TestMacAddrIsStopToChange(t *testing.T) {
+	for _, kw := range New().Manifest().Keywords() {
+		if kw.Option == "macaddr" {
+			if !kw.StopToChange {
+				t.Fatalf("macaddr is not StopToChange")
+			}
+			return
+		}
+	}
+	t.Fatalf("no macaddr keyword")
+}

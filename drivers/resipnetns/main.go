@@ -651,7 +651,7 @@ func (t *T) holdsAddr(ctx context.Context) (bool, error) {
 	if t.l2Only() {
 		// No address to look for: the interface of the resource is
 		// found by its hardware address.
-		link, err := l2GuestLink(netns, t.macAddr())
+		link, _, err := t.l2LinkOf(netns)
 		if err != nil {
 			return true, err
 		}
@@ -806,6 +806,14 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	}
 	if guestDev == "" {
 		return status.Down
+	}
+	if t.onL2() {
+		// The address is on the segment only while the other end of its
+		// pair is a port of the bridge.
+		if link, err := l2GuestLinkByName(netns, guestDev); err == nil && link != nil && link.peer != "" && link.master != t.Dev {
+			t.StatusLog().Error("%s is in the namespace, and its peer %s is not a port of %s, the bridge of network %s", guestDev, link.peer, t.Dev, t.Network)
+			return status.Down
+		}
 	}
 
 	// The carrier is consulted last, and only for a resource that is
