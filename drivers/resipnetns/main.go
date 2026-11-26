@@ -815,13 +815,16 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 			return status.Down
 		}
 		// An ipv6 address another host of the segment holds, found so
-		// after the start returned: the kernel never uses it.
+		// after the start returned: the kernel never uses it. Warn, not
+		// down: the address, the pair and the port are still held, which
+		// a down would let the configuration change from under, and a
+		// start repairs nothing; a stop deletes them.
 		if ip := t.ipaddr(); ip != nil && ip.To4() == nil {
 			if flags, found, err := addrFlags(netns, guestDev, ip); err == nil && found {
 				switch dadState(flags) {
 				case dadFailed:
 					t.StatusLog().Error("%s is already held on the segment of network %s: its duplicate address detection failed", ip, t.Network)
-					return status.Down
+					return status.Warn
 				case dadTentative:
 					t.StatusLog().Warn("%s is still tentative on %s: its duplicate address detection did not end", ip, guestDev)
 				}

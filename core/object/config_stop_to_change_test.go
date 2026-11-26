@@ -79,6 +79,7 @@ func TestCheckStopToChange(t *testing.T) {
 	for _, st := range []status.T{status.Down, status.StandbyDown, status.NotApplicable} {
 		assert.NoError(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": st})), st.String())
 	}
+	assert.ErrorIs(t, CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Warn})), ErrStopToChange, "a resource warning holds what it holds")
 	err = CheckStopToChange(p.Kind, from, removed, statuses(map[string]status.T{"node1": status.Undef}))
 	assert.ErrorIs(t, err, ErrStopToChange, "a status not known to be stopped is not stopped")
 	assert.ErrorContains(t, err, "status not known (undef) on node1")

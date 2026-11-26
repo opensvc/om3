@@ -451,10 +451,11 @@ func TestL2StaticIPv6DuplicateInNamespaces(t *testing.T) {
 		require.NoError(t, dup.Configure())
 		dupCtx := actionrollback.NewContext(context.Background())
 		assert.ErrorContains(t, dup.Start(dupCtx), "fd00::5 is already held on the segment of network seg: its duplicate address detection failed")
-		// Before the rollback, the address the kernel refused is down,
-		// whatever its interface.
+		// Before the rollback, the address the kernel refused is a
+		// warning: still held, so not changed from under by the
+		// configuration, as a down would let it.
 		dup.StatusLog().Reset()
-		assert.Equal(t, "down", dup.Status(ctx).String())
+		assert.Equal(t, "warn", dup.Status(ctx).String())
 		assert.Contains(t, statusErrors(dup), "fd00::5 is already held on the segment of network seg: its duplicate address detection failed")
 		require.NoError(t, actionrollback.FromContext(dupCtx).Rollback(dupCtx))
 		links, _, _, _ := guestState(t, c2)
