@@ -68,6 +68,7 @@ func configRbacRefusals(ctx echo.Context, p naming.Path, body []byte) []error {
 	l = append(l,
 		usrRbac(grants, p, from, cfg),
 		hostIPRbac(from, cfg),
+		netnsIPRbac(from, cfg),
 		rootlessRbac(p, from, cfg),
 	)
 	return slices.DeleteFunc(l, func(err error) bool { return err == nil })
@@ -193,6 +194,64 @@ func hostIPRbac(from, to *xconfig.T) error {
 			}
 			if i, ok := nw.(network.ClusterWider); !ok || !i.IsClusterWide() {
 				return refusalOf(kn, fmt.Errorf("%w: %s on %s: a host address drawn from network %s, a %s network rather than a lan one, requires the root grant", ErrDenied, section, nodename, name, nw.Type()))
+			}
+		}
+	}
+	return nil
+}
+
+// netnsIPRbac refuses a write having an ip.netns resource join a layer 2
+// network, as a l2_bridge one.
+//
+// The keyword policy lets a user holding no root grant have an ip.netns draw
+// its address from a network, relying on the driver to refuse a network
+// handing out none. A layer 2 network hands out none and is joined all the
+// same: the container is plugged into a segment om neither addresses nor
+// filters, where it speaks from any address, and answers for the dhcp server
+// or the router of the hosts and guests of the segment. Which containers
+// join such a segment is root's to say. The network type is known here, from
+// the cluster configuration, and not where the keywords are.
+//
+// Only what the write changes is judged: the type or the network of the
+// section, on any node the object runs on.
+func netnsIPRbac(from, to *xconfig.T) error {
+	scopes := rbacScopes(from, to)
+	defaultType := driver.DefaultDriver[driver.NewGroup("ip")]
+	typeOf := func(cfg *xconfig.T, section, nodename string) string {
+		if s := evaluatedOrWrittenAs(cfg, key.New(section, "type"), nodename); s != "" {
+			return s
+		}
+		return defaultType
+	}
+	for _, section := range to.SectionStrings() {
+		group, _, _ := strings.Cut(section, "#")
+		if group != "ip" {
+			continue
+		}
+		kn := key.New(section, "network")
+		for _, nodename := range scopes {
+			if typeOf(to, section, nodename) != "netns" {
+				continue
+			}
+			name := evaluatedOrWrittenAs(to, kn, nodename)
+			if name == "" {
+				continue
+			}
+			if from != nil && len(from.Keys(section)) > 0 &&
+				typeOf(from, section, nodename) == "netns" &&
+				evaluatedOrWrittenAs(from, kn, nodename) == name {
+				continue
+			}
+			nw, err := lookupNetwork(name)
+			if err != nil {
+				return refusalOf(kn, fmt.Errorf("%s: network %s: %w", section, name, err))
+			}
+			if nw == nil {
+				// Not a network: the driver refuses it.
+				continue
+			}
+			if i, ok := nw.(network.Layer2er); ok && i.IsLayer2() {
+				return refusalOf(kn, fmt.Errorf("%w: %s on %s: joining network %s, a %s segment om neither addresses nor filters, requires the root grant", ErrDenied, section, nodename, name, nw.Type()))
 			}
 		}
 	}

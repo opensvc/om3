@@ -565,7 +565,7 @@ var rules = map[string]Group{
 			"type": {
 				Grant: rbac.GrantRoot,
 				Reason: "requires the root grant, except for a cni address, " +
-					"for a netns address om draws from a cluster network, " +
+					"for a netns address om draws from a cluster network, other than a layer 2 one, " +
 					"and for a host address om draws from a lan network, on the interface and with the netmask the network says",
 				Denies: deniesIPType,
 			},
@@ -1032,9 +1032,10 @@ func valueOnly(f func(value string) bool) func(string, Section) bool {
 // resource names one to draw from and no address of its own: naming the
 // address is exactly what a user may not do here. A network that turns out to
 // hand out no address is refused by the driver rather than silently letting
-// the user pick, so the network needs no checking here, which is as well: the
-// networks are the node's, and this runs on whichever node received the
-// configuration.
+// the user pick, but for a layer 2 one, as a l2_bridge, which is joined with
+// no address: that one is root's to join, and is refused where the network
+// is known, the networks being the node's, and this running on whichever
+// node received the configuration.
 func deniesIPType(value string, section Section) bool {
 	switch value {
 	case "cni":

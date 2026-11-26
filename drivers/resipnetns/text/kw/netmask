@@ -6,6 +6,9 @@ netmask of this existing ip.
 `netmask` is mandatory for interfaces dedicated to the object. Dummy interfaces
 are likely to be in this case.
 
+It is required with a `name` on a l2_bridge network, which has no netmask to
+give.
+
 The format is:
 
 * dotted or octal for IPv4, ex: `255.255.252.0` or `22`.

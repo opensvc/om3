@@ -241,13 +241,14 @@ func ConvertKeywordGroups(groups []keywords.DriverGroup) api.KeywordGroupItems {
 		}
 		for _, s := range g.Strategies {
 			strategy := api.KeywordStrategyItem{
-				Id:       s.ID,
-				Name:     s.Name,
-				Text:     s.Text,
-				Uses:     append([]string{}, s.Uses...),
-				Excludes: append([]string{}, s.Excludes...),
-				Requires: append([]string{}, s.Requires...),
-				When:     make([]string, 0, len(s.When)),
+				Id:             s.ID,
+				Name:           s.Name,
+				Text:           s.Text,
+				Uses:           append([]string{}, s.Uses...),
+				Excludes:       append([]string{}, s.Excludes...),
+				Requires:       append([]string{}, s.Requires...),
+				RequiresUnless: append([]string{}, s.RequiresUnless...),
+				When:           make([]string, 0, len(s.When)),
 			}
 			for _, kop := range s.When {
 				strategy.When = append(strategy.When, kop.String())

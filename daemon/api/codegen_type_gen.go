@@ -2565,7 +2565,10 @@ type KeywordStrategyItem struct {
 
 	// Requires The options of the keywords a section following the strategy sets too, as the dev of a static address: the validation refuses the section missing one. They may be of another group.
 	Requires []string `json:"requires"`
-	Text     string   `json:"text"`
+
+	// RequiresUnless The options of the keywords saying what the required ones would, as the network of an address says the dev it is plumbed on: a section setting one of them misses no required keyword. Empty when the required keywords are required whatever else is set.
+	RequiresUnless []string `json:"requiresUnless"`
+	Text           string   `json:"text"`
 
 	// Uses The options of the keywords the strategy sets.
 	Uses []string `json:"uses"`

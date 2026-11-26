@@ -98,12 +98,13 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/nsdev"),
 		},
 		{
-			Attr:     "MacAddr",
-			Example:  "ce:32:cc:ca:41:33",
-			Option:   "macaddr",
-			Group:    GroupInterface.ID,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/macaddr"),
+			Attr:         "MacAddr",
+			Example:      "ce:32:cc:ca:41:33",
+			Option:       "macaddr",
+			Group:        GroupInterface.ID,
+			Scopable:     true,
+			StopToChange: true,
+			Text:         keywords.NewText(fs, "text/kw/macaddr"),
 		},
 		{
 			Attr:      "DelNetRoute",
@@ -218,10 +219,12 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc)
 	m.Add(
 		manifest.ContextObjectPath,
+		manifest.ContextObjectID,
+		manifest.ContextTopology,
 		manifest.ContextObjectFQDN,
 		manifest.ContextDNS,
 	)
 	m.AddKeywords(kws...)
-	m.AddGroups(resip.GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS, resip.GroupPublish)
+	m.AddGroups(GroupAddressing, GroupInterface, GroupRouting, resip.GroupDNS, resip.GroupPublish)
 	return m
 }

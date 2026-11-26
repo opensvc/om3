@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/drivers/resip"
 	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/getaddr"
@@ -27,6 +28,7 @@ import (
 	"github.com/opensvc/om3/v3/util/ping"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/google/uuid"
 )
 
 const (
@@ -42,6 +44,8 @@ type (
 		resource.Restart
 
 		Path       naming.Path
+		ObjectID   uuid.UUID
+		Topology   topology.T
 		ObjectFQDN string
 		DNS        []string
 
@@ -134,8 +138,14 @@ func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
 
 // StatusInfo implements resource.StatusInfoer
 func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
-	netmask, _ := t.ipmask().Size()
 	data := make(map[string]interface{})
+	if t.l2Only() {
+		// No address, so nothing a record or a forwarding is made of.
+		data["dev"] = t.Dev
+		data["macaddr"] = t.macAddr()
+		return data
+	}
+	netmask, _ := t.ipmask().Size()
 	if t.publishIgnored() {
 		data["publish"], data["expose"] = []string{}, resip.ExposeInfo(t.Expose)
 	} else {
@@ -204,6 +214,9 @@ func (t *T) Start(ctx context.Context) error {
 	}
 	if err := t.startRefusal(); err != nil {
 		return err
+	}
+	if t.l2Only() {
+		return t.startL2Only(ctx)
 	}
 	var allocated net.IP
 	switch {
@@ -347,6 +360,10 @@ func (t *T) startIP(ctx context.Context, netns ns.NetNS, guestDev string) error 
 func (t *T) startRoutes(ctx context.Context, netns ns.NetNS, guestDev string) error {
 	if err := t.startNetworkRoute(netns, guestDev); err != nil {
 		return err
+	}
+	if t.setsNoDefaultRoute() {
+		t.Log().Infof("set no default route: network %s is a layer 2 segment, and no gateway is set", t.Network)
+		return nil
 	}
 	if owner := t.routeOwner(ctx); owner != t {
 		t.Log().Infof("leave the default route of the namespace to %s", owner.RID())
@@ -510,6 +527,9 @@ func (t *T) Stop(ctx context.Context) error {
 	if err := resip.StopPublish(ctx, t.Log(), t.publishKey()); err != nil {
 		return err
 	}
+	if t.l2Only() {
+		return t.stopL2Only(ctx)
+	}
 	if err := t.stopMode(ctx); err != nil {
 		return err
 	}
@@ -617,7 +637,8 @@ func (t *T) ConfigError(ctx context.Context) error {
 // holdsAddr says whether the namespace holds the address of the resource,
 // and true when it can not tell: an address not known, as one drawn at a
 // start and released at the stop, may be any the namespace holds. A
-// namespace not running holds none.
+// namespace not running holds none. A resource holding no address on a layer
+// 2 network holds its interface, or nothing.
 func (t *T) holdsAddr(ctx context.Context) (bool, error) {
 	netns, err := t.getNS(ctx)
 	if err != nil {
@@ -627,6 +648,15 @@ func (t *T) holdsAddr(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	defer netns.Close()
+	if t.l2Only() {
+		// No address to look for: the interface of the resource is
+		// found by its hardware address.
+		link, _, err := t.l2LinkOf(netns)
+		if err != nil {
+			return true, err
+		}
+		return link != nil, nil
+	}
 	ip := t.ipaddr()
 	if ip == nil {
 		return true, nil
@@ -665,6 +695,9 @@ func (t *T) Status(ctx context.Context) status.T {
 		// configuration, or the resource can not tell.
 		t.StatusLog().Error("%s", t.netErr)
 		return status.Undef
+	}
+	if t.l2Only() {
+		return t.statusL2Only(ctx)
 	}
 	s := t.statusWithIPAddrCacheTrust(ctx)
 	if t.publishIgnored() {
@@ -723,6 +756,12 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 		t.StatusLog().Warn("dev not set")
 		return status.NotApplicable
 	}
+	if t.onL2() {
+		if err := t.checkL2Bridge(); err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Down
+		}
+	}
 	if _, err := t.netInterface(); err != nil {
 		if t.Mode != "dedicated" {
 			t.StatusLog().Error("%s", err)
@@ -768,6 +807,30 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	if guestDev == "" {
 		return status.Down
 	}
+	if t.onL2() {
+		// The address is on the segment only while the other end of its
+		// pair is a port of the bridge.
+		if link, err := l2GuestLinkByName(netns, guestDev); err == nil && link != nil && link.peer != "" && link.master != t.Dev {
+			t.StatusLog().Error("%s is in the namespace, and its peer %s is not a port of %s, the bridge of network %s", guestDev, link.peer, t.Dev, t.Network)
+			return status.Down
+		}
+		// An ipv6 address another host of the segment holds, found so
+		// after the start returned: the kernel never uses it. Warn, not
+		// down: the address, the pair and the port are still held, which
+		// a down would let the configuration change from under, and a
+		// start repairs nothing; a stop deletes them.
+		if ip := t.ipaddr(); ip != nil && ip.To4() == nil {
+			if flags, found, err := addrFlags(netns, guestDev, ip); err == nil && found {
+				switch dadState(flags) {
+				case dadFailed:
+					t.StatusLog().Error("%s is already held on the segment of network %s: its duplicate address detection failed", ip, t.Network)
+					return status.Warn
+				case dadTentative:
+					t.StatusLog().Warn("%s is still tentative on %s: its duplicate address detection did not end", ip, guestDev)
+				}
+			}
+		}
+	}
 
 	// The carrier is consulted last, and only for a resource that is
 	// otherwise up, which is what v2 does: a stopped resource is stopped, and
@@ -783,8 +846,10 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	}
 	// A rule missing, as on an address set up by a former agent, is said
 	// and repaired by the next start, the status left as it is.
-	if err := t.sourceRoute(guestDev).Check(netns); err != nil {
-		t.StatusLog().Warn("%s", err)
+	if !t.sourceRouteSkipped() {
+		if err := t.sourceRoute(guestDev).Check(netns); err != nil {
+			t.StatusLog().Warn("%s", err)
+		}
 	}
 	return status.Up
 }
@@ -867,6 +932,12 @@ func (t *T) Abort(ctx context.Context) bool {
 	if t.Tags.Has(tagNonRouted) || t.IsActionDisabled() {
 		return false // let start fail with an explicit error message
 	}
+	if t.onL2() {
+		// The node has no address on the segment: its ping would ask
+		// another network. The start asks the segment: see
+		// checkL2Duplicate.
+		return false
+	}
 	if t.ipaddr() == nil {
 		return false // let start fail with an explicit error message
 	}
@@ -936,6 +1007,10 @@ func (t *T) ipnet() *net.IPNet {
 func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
+	}
+	if t.l2Only() {
+		// No address named, and none to draw.
+		return nil
 	}
 	if t.Name == "" && t.Addr != "" && t.keeps() {
 		// The address the resource drew, the same on every node.
@@ -1196,7 +1271,17 @@ func (t *T) sourceRoute(guestDev string) resip.SourceRoute {
 // startSourceRoute sets the policy routing of the address, once its routes
 // in the main table are set: see resip.SourceRoute.
 func (t *T) startSourceRoute(netns ns.NetNS, guestDev string) error {
+	if t.sourceRouteSkipped() {
+		return nil
+	}
 	return t.sourceRoute(guestDev).Apply(netns, t.Log())
+}
+
+// sourceRouteSkipped says the address is given no policy routing: on a layer
+// 2 network with no gateway set, its table would hold the connected route
+// alone, which the main table holds too, and the rule would change nothing.
+func (t *T) sourceRouteSkipped() bool {
+	return t.setsNoDefaultRoute()
 }
 
 func (t *T) ipnetStrict() (*net.IPNet, error) {

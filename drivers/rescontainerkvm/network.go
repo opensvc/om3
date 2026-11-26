@@ -449,7 +449,7 @@ func (t *T) networkUp(ctx context.Context) ([]guestNIC, error) {
 	}
 	defer unlock()
 	for _, n := range nics {
-		if n.static && resip.PerInstance(t.IsShared(), t.GetObject()) {
+		if n.static && resip.PerInstance(t.IsShared(), t.Topology) {
 			// One mac and one address, on the segment every node is on,
 			// for instances running at once.
 			return nil, fmt.Errorf("network %s: a lan holds one guest of a name: it can not serve the instances of a flex object", n.network)

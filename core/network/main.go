@@ -184,6 +184,13 @@ type (
 	HostDever interface {
 		HostDev() (string, error)
 	}
+	// Layer2er is implemented by the network drivers that are a layer 2
+	// segment om neither addresses nor routes, as a l2_bridge: what joins
+	// it is plugged into its bridge and given no address by om, the hosts
+	// of the segment handing them out, or the configuration naming one.
+	Layer2er interface {
+		IsLayer2() bool
+	}
 	// DevNamer is implemented by the network drivers naming the interface
 	// of the node in their configuration. Unlike HostDev, it returns
 	// nothing found on the node, empty when the configuration names none.

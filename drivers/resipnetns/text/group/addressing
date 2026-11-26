@@ -1,0 +1,4 @@
+The address the resource plumbs, and its netmask: written in the
+configuration, or drawn from an om network. On a layer 2 network, as a
+l2_bridge one, om draws none: the interface is left with no address, unless
+the configuration names one.

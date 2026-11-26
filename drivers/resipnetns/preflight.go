@@ -20,6 +20,11 @@ import (
 // of this node checks it again. An address up on the device of the resource
 // is its own, as the abort of a start counts it.
 func (t *T) ProvisionConflicts(ctx context.Context) []string {
+	if t.onL2() {
+		// The node has no address on a layer 2 segment, and its ping
+		// would ask another network: the start asks the segment.
+		return nil
+	}
 	ip := t.ipaddr()
 	if ip == nil {
 		return nil

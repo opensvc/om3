@@ -1,0 +1,11 @@
+The address is drawn from the om network `network` names. On a lan network,
+it is drawn the first time the resource starts and recorded in `addr`, which
+every node then uses. The netmask is the one of the network, unless `netmask`
+is set.
+
+On a layer 2 network, as a l2_bridge one, om has no address to draw: the
+interface joins the segment with no address and a stable hardware address,
+for the container to ask one of a dhcp server of the segment.
+
+Choose it to have om pick a free address of a network declared in the
+cluster configuration, or to join a layer 2 segment.

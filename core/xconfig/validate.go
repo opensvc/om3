@@ -854,7 +854,9 @@ func (t *T) sameValue(k key.T, v1, v2 string) bool {
 // it follows none of the strategies of a required group, an error, and that
 // it misses a keyword a strategy it follows requires, an error too: an ip
 // naming neither an address nor a network, or a static address naming no
-// device of the node, has nothing a start can build.
+// device of the node, has nothing a start can build. A keyword the strategy
+// names as saying what the required ones would, as the network of an address
+// its device, stands for them.
 //
 // A section follows a strategy when it sets a keyword the strategy uses,
 // itself in any scope or by inheriting it from DEFAULT, and the selector
@@ -870,6 +872,10 @@ func (t T) requiredStrategyAlerts(section string, did driver.ID, group keywords.
 			continue
 		}
 		followed = true
+		if slices.ContainsFunc(strategy.RequiresUnless, func(o string) bool { return t.sectionSets(section, did, o, written, emptied) }) {
+			// Another keyword says what the required ones would.
+			continue
+		}
 		for _, required := range strategy.Requires {
 			if t.sectionSets(section, did, required, written, emptied) {
 				continue

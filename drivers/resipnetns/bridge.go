@@ -11,10 +11,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containernetworking/plugins/pkg/ns"
+
 	"github.com/opensvc/om3/v3/core/actionrollback"
 )
 
 func (t *T) startBridge(ctx context.Context) error {
+	if t.onL2() {
+		if err := t.checkL2Bridge(); err != nil {
+			return err
+		}
+	}
 	pid, err := t.getNSPID(ctx)
 	if err != nil {
 		return err
@@ -36,6 +43,13 @@ func (t *T) startBridge(ctx context.Context) error {
 	}
 	if exists {
 		t.Log().Infof("device already exists")
+		if t.onL2() {
+			// A port taken off the bridge, as by a network torn down
+			// and set up again: plugged back, as for no address.
+			if err := t.replugL2(netns, guestDev); err != nil {
+				return err
+			}
+		}
 	} else if !t.hasNSDev(netns) {
 		hostDev := formatHostDevName(guestDev, pid)
 
@@ -50,7 +64,13 @@ func (t *T) startBridge(ctx context.Context) error {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDel(hostDev)
 		})
-		if addr := t.ipaddr(); addr != nil && addr.To4() == nil {
+		if t.onL2() {
+			// The node holds no address on a layer 2 segment, and
+			// takes no route advertised there: see makeL2Pair.
+			if err := disableIPv6(hostDev); err != nil {
+				return err
+			}
+		} else if addr := t.ipaddr(); addr != nil && addr.To4() == nil {
 			if err := t.sysctlDisableIPV6RA(hostDev); err != nil {
 				return err
 			}
@@ -62,17 +82,30 @@ func (t *T) startBridge(ctx context.Context) error {
 		actionrollback.Register(ctx, func(ctx context.Context) error {
 			return t.linkDelIn(guestDev, netns.Path())
 		})
-		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {
+		if err := t.linkSetMacIn(guestDev, t.macAddr(), netns.Path()); err != nil {
 			return err
 		}
 		if err := t.linkSetMaster(hostDev, t.Dev); err != nil {
 			t.linkDel(tmpGuestDev)
 			return err
 		}
-		t.waitBridgePortForwarding(hostDev)
+		waitBridgePortForwarding(t, hostDev)
+	}
+	if t.onL2() && !exists {
+		// An address the interface holds already is the resource's own.
+		if err := t.checkL2Duplicate(netns, guestDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
+	}
+	if t.onL2() {
+		// An ipv6 address another host of the segment holds: the
+		// rollback of startIP removes it.
+		if err := t.waitDAD(netns, guestDev); err != nil {
+			return err
+		}
 	}
 	if err := t.startRoutes(ctx, netns, guestDev); err != nil {
 		return err
@@ -86,6 +119,27 @@ func (t *T) startBridge(ctx context.Context) error {
 	if err := t.startARP(netns, guestDev); err != nil {
 		return err
 	}
+	return nil
+}
+
+// replugL2 makes the other end of guestDev on the node a port of the bridge
+// of the layer 2 network again, when taken off it, and waits for the port to
+// forward, as a port made by the start: the announces and the duplicate
+// address detection that follow would be dropped by a port of a bridge
+// running stp, still listening or learning.
+func (t *T) replugL2(netns ns.NetNS, guestDev string) error {
+	link, err := l2GuestLinkByName(netns, guestDev)
+	if err != nil {
+		return err
+	}
+	if link == nil || link.peer == "" || link.master == t.Dev {
+		return nil
+	}
+	t.Log().Infof("%s is in the namespace, and its peer %s is not a port of %s: plug it back", guestDev, link.peer, t.Dev)
+	if err := t.linkSetMaster(link.peer, t.Dev); err != nil {
+		return err
+	}
+	waitBridgePortForwarding(t, link.peer)
 	return nil
 }
 
@@ -146,13 +200,17 @@ func (t *T) stopBridge(ctx context.Context) error {
 // forward: twice the default forward delay of a bridge running stp, and more.
 const bridgePortForwardingTimeout = 35 * time.Second
 
-// waitBridgePortForwarding waits for the port of the bridge the host end of
+// waitBridgePortForwarding is waitPortForwardingOf, a variable for the tests:
+// the sysfs of a network namespace of a test is not the one it reads.
+var waitBridgePortForwarding = (*T).waitPortForwardingOf
+
+// waitPortForwardingOf waits for the port of the bridge the host end of
 // the veth pair is, to forward: the gratuitous arp a start sends would be
 // dropped by a port still listening or learning, as one of a bridge running
 // stp is for its forward delay. A port of a bridge not running stp forwards
 // at once. A port blocking or disabled, or a bridge not telling its port
 // state, as an openvswitch one, is not waited for.
-func (t *T) waitBridgePortForwarding(hostDev string) {
+func (t *T) waitPortForwardingOf(hostDev string) {
 	p := filepath.Join("/sys/class/net", hostDev, "brport", "state")
 	read := func() (string, error) {
 		b, err := os.ReadFile(p)

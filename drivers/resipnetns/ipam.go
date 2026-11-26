@@ -38,7 +38,7 @@ func (t *T) drawn() *resip.Allocation {
 // kept is the address this resource keeps on a lan network.
 func (t *T) kept() *resip.Kept {
 	if t._kept == nil {
-		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.GetObject(), t.Log())
+		t._kept = resip.NewKept(t.Path, t.RID(), t.Network, t.Shared, t.Topology, t.Log())
 	}
 	return t._kept
 }
@@ -144,6 +144,13 @@ func (t *T) Configure() error {
 	t.configureVLAN(nw)
 	if err != nil {
 		return err
+	}
+	if nw != nil && isLayer2(nw) {
+		// What does not fit a layer 2 network is an error of the
+		// configuration, which the validation of the resources
+		// reports, and the ConfigError of a resource holding nothing.
+		t.netErr = t.configureL2(nw)
+		return t.netErr
 	}
 	if t.netErr != nil {
 		return nil

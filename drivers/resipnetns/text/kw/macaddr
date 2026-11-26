@@ -1,1 +1,9 @@
 The hardware address to set on the interface in the network namespace.
+
+When not set, the interface keeps the address the kernel gave it, a new one
+at each start, except on a l2_bridge network: the address is then derived
+from the id of the object and the id of the resource, locally administered,
+the same at every start and on every node the object runs on. A dhcp server
+of the segment can reserve an address for it, and the neighbors of a static
+address keep the entry they learned. Each instance of a flex object has its
+own, derived from the name of its node too.

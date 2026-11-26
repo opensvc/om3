@@ -36,14 +36,15 @@ type Kept struct {
 	alloc *Allocation
 }
 
-// NewKept returns the address a resource keeps. The object says whether each
+// NewKept returns the address a resource keeps. The topology of the object,
+// as the manifest context of the resource gives it, says whether each
 // instance draws its own.
-func NewKept(p naming.Path, rid, network string, shared bool, obj any, log *plog.Logger) *Kept {
+func NewKept(p naming.Path, rid, network string, shared bool, topo topology.T, log *plog.Logger) *Kept {
 	return &Kept{
 		Path:        p,
 		RID:         rid,
 		Network:     network,
-		PerInstance: PerInstance(shared, obj),
+		PerInstance: PerInstance(shared, topo),
 		Log:         log,
 	}
 }
@@ -55,12 +56,12 @@ func NewKept(p naming.Path, rid, network string, shared bool, obj any, log *plog
 // A failover object runs one instance at a time, which takes the address
 // along when it moves. A shared resource of a flex object is one address for
 // all its instances, should that be the point.
-func PerInstance(shared bool, obj any) bool {
-	if shared {
-		return false
-	}
-	o, ok := obj.(interface{ Topology() topology.T })
-	return ok && o.Topology() == topology.Flex
+//
+// The topology is the one the manifest context hands the resource when it is
+// built, the same source for every driver asking, rather than the object
+// asked again.
+func PerInstance(shared bool, topo topology.T) bool {
+	return !shared && topo == topology.Flex
 }
 
 // Alloc returns the reservation of the address, the one of this instance when

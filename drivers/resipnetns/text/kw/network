@@ -24,6 +24,27 @@ modes are refused, as the hosts of the segment would not reach the address,
 and the `dedicated` mode needs a `dev` of its own, not the interface of the
 node on the segment.
 
+On a l2_bridge network, a layer 2 segment om neither addresses nor routes,
+the namespace is plugged into the bridge of the network by a veth pair, in
+the `bridge` mode, the only one, and `dev` is that bridge:
+
+* With no `name`, the interface is up in the namespace with no address: the
+  container asks one of a dhcp server of the segment, or does what it wants of
+  the segment. om sets no route, announces nothing, and serves no DNS record
+  of the resource. The status is up when the interface is in the namespace and
+  its peer is a port of the bridge. `expose` and `gateway`, which need an
+  address, are refused.
+
+* With a `name` and a `netmask`, the interface holds that address. No route is
+  set but the default route through the `gateway` the configuration names: the
+  network knows no router. The start asks the segment for the address by arp,
+  and refuses one another host answers for, where the start on another
+  network pings it from the node, which has no address on this segment.
+
+`publish` is refused either way: the node, with no address on the segment,
+reaches none it could forward a port to. The interface is given a stable
+hardware address: see `macaddr`.
+
 This keyword used to hold the address of the network, in dotted notation, to
 set the destination of the route removed by `del_net_route`. That destination
 is derived from the address and the netmask now. A value in that form is
