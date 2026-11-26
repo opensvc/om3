@@ -1821,6 +1821,12 @@ func (t *T) MaterializeDefaultSection() {
 	t.changed = true
 }
 
+// initDefaultSection gives the configuration an id, in its DEFAULT section.
+// A DEFAULT section holding no key yet, as the one of a cluster.conf with no
+// DEFAULT section, is given its header first: the id would otherwise be
+// written floating above the first section header, as if a "[DEFAULT]" line
+// had been lost. A DEFAULT section written with keys and no header, above the
+// first section header, keeps its layout.
 func (t T) initDefaultSection() error {
 	defaultSection, err := t.file.GetSection("DEFAULT")
 	if err != nil {
@@ -1828,6 +1834,9 @@ func (t T) initDefaultSection() error {
 		if err != nil {
 			return err
 		}
+	}
+	if len(defaultSection.Keys()) == 0 {
+		t.file.MaterializeDefaultSection()
 	}
 	if !defaultSection.HasKey("id") {
 		_, err = defaultSection.NewKey("id", uuid.New().String())

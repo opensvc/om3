@@ -48,7 +48,7 @@ func (t *CmdStoreSnapshotList) Run() error {
 	if t.Store == "" {
 		refs = refs[:0]
 		for _, item := range n.ListStores() {
-			refs = append(refs, item.Ref)
+			refs = append(refs, item.Store)
 		}
 	}
 	ctx := context.Background()

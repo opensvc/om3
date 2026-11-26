@@ -39,20 +39,20 @@ func (a *DaemonAPI) GetStores(ctx echo.Context) error {
 			continue
 		}
 		i := api.StoreItem{
-			Ref:   item.Ref,
+			Store: item.Store,
 			Type:  item.Type,
 			Url:   item.URL,
 			Share: item.Share,
 		}
-		e := cachedStoreStats(item.Ref, storeStatsFirstWait)
+		e := cachedStoreStats(item.Store, storeStatsFirstWait)
 		if e.stats != nil {
-			stats := apiStoreStats(storeStatsFor(grants, item.Ref, clusterID, *e.stats, e.objects))
+			stats := apiStoreStats(storeStatsFor(grants, item.Store, clusterID, *e.stats, e.objects))
 			i.Stats = &stats
 		}
 		if len(e.nodeStats) > 0 {
 			m := make(map[string]api.StoreStats, len(e.nodeStats))
 			for node, ns := range e.nodeStats {
-				m[node] = apiStoreStats(storeStatsFor(grants, item.Ref, clusterID, ns.Stats, ns.Objects))
+				m[node] = apiStoreStats(storeStatsFor(grants, item.Store, clusterID, ns.Stats, ns.Objects))
 			}
 			i.NodeStats = &m
 		}

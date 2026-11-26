@@ -748,29 +748,39 @@ func (t *T) containerStop(ctx context.Context) error {
 		return err
 	}
 	switch state {
+	case DomStateShutOff, DomStateNone:
+		return nil
 	case DomStateRunning:
 		if err := t.actOrDown(ctx, "shutdown", t.stop); err != nil {
 			return err
 		}
-		if !t.waitForDown(ctx, *t.StopTimeout, 2*time.Second) {
-			// The domain may have gone down since the last look of the wait.
-			if down, err := t.isDown(ctx); err == nil && down {
-				return nil
-			}
-			t.Log().Warnf("waited too long for shutdown")
-			if err := t.actOrDown(ctx, "destroy", t.destroy); err != nil {
-				return err
-			}
-		}
+		return t.waitDownOrDestroy(ctx)
 	case DomStateBlocked, DomStatePaused, DomStateCrashed:
-		if err := t.actOrDown(ctx, "destroy", t.destroy); err != nil {
-			return err
-		}
+		return t.actOrDown(ctx, "destroy", t.destroy)
 	default:
-		t.Log().Infof("skip stop, container state=%s", state)
+		// A state no shutdown applies to, as "in shutdown", a qemu not
+		// ending its power off, or "pmsuspended": waited for down, then
+		// destroyed, as v2 did. Skipped, the stop reported the domain
+		// stopped, and the resources under it were stopped with it up.
+		t.Log().Infof("container state=%s: wait for it to go down", state)
+		return t.waitDownOrDestroy(ctx)
+	}
+}
+
+// waitDownOrDestroy waits for the domain to go down, and destroys it if it
+// does not. The wait leaves the destroy time before the deadline of the
+// action: ending with it, the destroy failed on the context expired, and the
+// domain stayed up.
+func (t *T) waitDownOrDestroy(ctx context.Context) error {
+	if d := rescontainer.ShutdownWait(ctx, *t.StopTimeout); d > 0 && t.waitForDown(ctx, d, 2*time.Second) {
 		return nil
 	}
-	return nil
+	// The domain may have gone down since the last look of the wait.
+	if down, err := t.isDown(ctx); err == nil && down {
+		return nil
+	}
+	t.Log().Warnf("waited too long for shutdown")
+	return t.actOrDown(ctx, "destroy", t.destroy)
 }
 
 func (t *T) isUp(ctx context.Context) (bool, error) {

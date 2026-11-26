@@ -35,11 +35,11 @@ func (a *DaemonAPI) GetStoreSnapshots(ctx echo.Context, params api.GetStoreSnaps
 	clusterID, _ := n.Cluster()
 	refs := make([]string, 0)
 	for _, item := range n.ListStores() {
-		if params.Store != nil && *params.Store != item.Ref {
+		if params.Store != nil && *params.Store != item.Store {
 			continue
 		}
 		if mayReadStore(grants, item.Share) {
-			refs = append(refs, item.Ref)
+			refs = append(refs, item.Store)
 		}
 	}
 	if params.Store != nil && len(refs) == 0 {

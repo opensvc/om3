@@ -443,8 +443,6 @@ func (t *T) containerStart(ctx context.Context) error {
 }
 
 func (t *T) containerStop(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, *t.StopTimeout)
-	defer cancel()
 	state, err := t.domState()
 	if err != nil {
 		return err
@@ -454,8 +452,17 @@ func (t *T) containerStop(ctx context.Context) error {
 		if err := t.stop(); err != nil {
 			return err
 		}
-		t.Log().Infof("wait for %s down", t.Name)
-		if ok, err := waitfor.TrueNoErrorCtx(ctx, 0, 2*time.Second, t.isDown); err != nil {
+		// The wait leaves the poweroff time before the deadline of the
+		// action, the stop_timeout of the object, which the one of the
+		// container inherits: ending with it, the stop failed with the vm
+		// up, the action out of time.
+		wait := rescontainer.ShutdownWait(ctx, *t.StopTimeout)
+		t.Log().Infof("wait for %s down (timeout %s)", t.Name, wait)
+		var ok bool
+		if wait > 0 {
+			ok, err = waitfor.TrueNoErrorCtx(ctx, wait, 2*time.Second, t.isDown)
+		}
+		if err != nil {
 			// TODO: try a destroy instead of ignore t.isDown error ?
 			t.Log().Warnf("wait for %s down failed: %s", t.Name, err)
 		} else if !ok {

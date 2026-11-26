@@ -3750,17 +3750,17 @@ type StoreItem struct {
 	// NodeStats The stats of the directory of each node, by node name, for a store keeping its runs in a directory of each node.
 	NodeStats *map[string]StoreStats `json:"node_stats,omitempty"`
 
-	// Ref The reference to the store, as a store keyword names it.
-	Ref string `json:"ref"`
-
 	// Share The namespaces whose objects may use the store, * for every one.
 	Share []string `json:"share"`
 
 	// Stats The figures of a store, summed from the stats every object of it
 	// records, of every cluster writing it, and cached by the daemon.
 	Stats *StoreStats `json:"stats,omitempty"`
-	Type  string      `json:"type"`
-	Url   string      `json:"url"`
+
+	// Store The reference to the store, as the store keyword of a sync.store resource and the store parameter of the store snapshot requests name it.
+	Store string `json:"store"`
+	Type  string `json:"type"`
+	Url   string `json:"url"`
 }
 
 // StoreList defines model for StoreList.

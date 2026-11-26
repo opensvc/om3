@@ -76,7 +76,7 @@ url = /srv/backups
 	items := n.ListStores()
 	refs := make([]string, len(items))
 	for i, item := range items {
-		refs[i] = item.Ref
+		refs[i] = item.Store
 	}
 	assert.Contains(t, refs, "from backup/sec/stores store#remote")
 }

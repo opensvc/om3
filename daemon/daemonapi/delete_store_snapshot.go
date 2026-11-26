@@ -31,7 +31,7 @@ func (a *DaemonAPI) DeleteStoreSnapshot(ctx echo.Context, params api.DeleteStore
 	}
 	var share []string
 	for _, item := range n.ListStores() {
-		if item.Ref == params.Store {
+		if item.Store == params.Store {
 			share = item.Share
 			break
 		}

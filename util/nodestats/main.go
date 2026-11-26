@@ -187,18 +187,23 @@ type (
 		Timestamp struct {
 			Date string `json:"date"`
 			Time string `json:"time"`
-			UTC  int    `json:"utc"`
+			// UTC is 1 when the time is in UTC, in the timestamps of the
+			// sysstat before 12.7.1.
+			UTC int `json:"utc"`
+			// TZ names the zone of the time, "UTC" unless sadf is given
+			// -t or -T, from sysstat 12.7.1, which has no utc key.
+			TZ string `json:"tz"`
 		} `json:"timestamp"`
 		CPULoad []map[string]any `json:"cpu-load"`
 
 		// CPULoadAll is the cpu-load of a sysstat 10.x, as RHEL 7's,
 		// which names it so when asked -u ALL.
 		CPULoadAll []map[string]any `json:"cpu-load-all"`
-		Memory  map[string]any   `json:"memory"`
-		Queue   map[string]any   `json:"queue"`
-		IO      map[string]any   `json:"io"`
-		Disk    []map[string]any `json:"disk"`
-		Network struct {
+		Memory     map[string]any   `json:"memory"`
+		Queue      map[string]any   `json:"queue"`
+		IO         map[string]any   `json:"io"`
+		Disk       []map[string]any `json:"disk"`
+		Network    struct {
 			NetDev  []map[string]any `json:"net-dev"`
 			NetEdev []map[string]any `json:"net-edev"`
 		} `json:"network"`
@@ -264,8 +269,11 @@ func (stats Stats) addSadf(b []byte, begin, end time.Time) error {
 	}
 	for _, host := range doc.Sysstat.Hosts {
 		for _, sample := range host.Statistics {
+			// sadf is run with neither -t nor -T: its times are in UTC,
+			// as either key says. Any other zone is the local one, its
+			// abbreviation, as "CET", naming no zone Go can load.
 			loc := time.Local
-			if sample.Timestamp.UTC == 1 {
+			if sample.Timestamp.UTC == 1 || sample.Timestamp.TZ == "UTC" {
 				loc = time.UTC
 			}
 			t, err := time.ParseInLocation("2006-01-02 15:04:05", sample.Timestamp.Date+" "+sample.Timestamp.Time, loc)

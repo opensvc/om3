@@ -29,10 +29,11 @@ func init() {
 
 // StoreItem is a store declared in the cluster configuration, or in a sec.
 type StoreItem struct {
-	// Ref is the reference to the store, as a store keyword names it.
-	Ref  string `json:"ref"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	// Store is the reference to the store, as the store keyword of a
+	// sync.store resource and the --store flag of the commands name it.
+	Store string `json:"store"`
+	Type  string `json:"type"`
+	URL   string `json:"url"`
 
 	// Share are the namespaces whose objects may use the store: every
 	// one for a store of the cluster configuration, the namespace of the
@@ -208,7 +209,7 @@ func (t *Node) ListStores() []StoreItem {
 			continue
 		}
 		l = append(l, StoreItem{
-			Ref:   strings.TrimPrefix(s, backup.SectionPrefix),
+			Store:   strings.TrimPrefix(s, backup.SectionPrefix),
 			Type:  config.GetString(key.New(s, "type")),
 			URL:   config.GetString(key.New(s, "url")),
 			Share: []string{"*"},
@@ -232,7 +233,7 @@ func (t *Node) ListStores() []StoreItem {
 				continue
 			}
 			l = append(l, StoreItem{
-				Ref:   fmt.Sprintf("from %s %s", p, s),
+				Store:   fmt.Sprintf("from %s %s", p, s),
 				Type:  config.GetString(key.New(s, "type")),
 				URL:   config.GetString(key.New(s, "url")),
 				Share: sec.Shares(),
