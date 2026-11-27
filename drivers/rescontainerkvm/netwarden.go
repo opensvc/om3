@@ -32,16 +32,16 @@ func (t *T) netDevs() []string {
 // networks its interfaces are on, which the dns rule and the nameservers
 // allowed without a rule name. A guest told none resolves through what it
 // is configured with, which om does not know: none is opened.
-func (t *T) netNameservers() []netip.Addr {
+func (t *T) netNameservers() ([]netip.Addr, error) {
 	l := make([]string, 0)
 	nics, err := t.guestNICs(context.Background(), false)
 	if err != nil {
-		t.Log().Warnf("netwarden: the nameservers of the guest: %s", err)
+		err = fmt.Errorf("the networks of the guest: %w", err)
 	}
 	for _, n := range nics {
 		l = append(l, n.nameservers...)
 	}
-	return netwarden.ParseNameservers(l)
+	return netwarden.ParseNameservers(l), err
 }
 
 // netTarget is what the network filter of the guest is applied to: the

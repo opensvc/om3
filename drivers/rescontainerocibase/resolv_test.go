@@ -133,6 +133,8 @@ func TestNetNameservers(t *testing.T) {
 		bt := newBT(t, cluster[:1], nil)
 		target := bt.netTarget()
 		require.NotNil(t, target.DNS)
-		assert.Equal(t, addrs("10.29.0.11"), target.DNS())
+		dns, err := target.DNS()
+		require.NoError(t, err)
+		assert.Equal(t, addrs("10.29.0.11"), dns)
 	})
 }

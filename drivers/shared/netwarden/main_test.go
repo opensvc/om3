@@ -170,7 +170,7 @@ func TestApplyOfTheServiceCutFromTheClusterAndOpenToTheWorld(t *testing.T) {
 	}
 	// The nameserver is an address of a cluster node, as the ones of
 	// cluster.dns are.
-	target.DNS = func() []netip.Addr { return []netip.Addr{netip.MustParseAddr("10.29.0.12")} }
+	target.DNS = func() ([]netip.Addr, error) { return []netip.Addr{netip.MustParseAddr("10.29.0.12")}, nil }
 	net := T{Rules: `
 		allow namespace .
 		allow dns
@@ -336,6 +336,73 @@ func TestClear(t *testing.T) {
 	require.NoError(t, net.Clear(target))
 	assert.Equal(t, sets, s.sets, "nothing to lift")
 	require.NoError(t, net.Clear(Target{}), "a resource with no process group")
+}
+
+// The nameservers the dns rule names are the ones the resource was told at
+// its start: a running guest or container keeps the resolver it was given.
+// Its networks naming others since, the status says the filter still allows
+// the ones of the start, and how a new one is allowed with no restart. A
+// resource resolving through the nameservers of the node is told none, and
+// warned of nothing.
+func TestStatusWarnsOfNameserversChangedSinceTheStart(t *testing.T) {
+	a, b := netip.MustParseAddr("192.168.100.53"), netip.MustParseAddr("192.168.100.54")
+	net := T{Rules: "allow node n2"}
+	start := func(t *testing.T, dns func() ([]netip.Addr, error)) Target {
+		t.Helper()
+		_, target := setup(t)
+		target.DNS = dns
+		_, err := net.Apply(target)
+		require.NoError(t, err)
+		return target
+	}
+
+	t.Run("changed", func(t *testing.T) {
+		target := start(t, func() ([]netip.Addr, error) { return []netip.Addr{a}, nil })
+		target.DNS = func() ([]netip.Addr, error) { return []netip.Addr{b}, nil }
+		infos, warnings := net.Status(target)
+		require.Len(t, warnings, 1)
+		assert.Equal(t, `netwarden: the nameservers of the resource changed since it started, 192.168.100.54 where it was told 192.168.100.53: the filter allows the ones it was told until it restarts, and a rule "allow address <nameserver>" allows a new one meanwhile, the daemon applying it with no restart`, warnings[0])
+		assert.Len(t, infos, 1, "the filter in force is still told")
+		assert.Contains(t, infos[0], "192.168.100.53/32", "the nameserver of the start is the one allowed")
+	})
+
+	t.Run("one more, and none any more", func(t *testing.T) {
+		target := start(t, func() ([]netip.Addr, error) { return []netip.Addr{a}, nil })
+		target.DNS = func() ([]netip.Addr, error) { return []netip.Addr{a, b}, nil }
+		_, warnings := net.Status(target)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0], "192.168.100.53 192.168.100.54 where it was told 192.168.100.53")
+		target.DNS = func() ([]netip.Addr, error) { return nil, nil }
+		_, warnings = net.Status(target)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0], "none where it was told 192.168.100.53")
+	})
+
+	t.Run("not told", func(t *testing.T) {
+		target := start(t, func() ([]netip.Addr, error) { return []netip.Addr{a}, nil })
+		target.DNS = func() ([]netip.Addr, error) { return nil, errors.New("network lan: not a network name") }
+		_, warnings := net.Status(target)
+		assert.Empty(t, warnings, "nameservers that could not be told are no change of them")
+	})
+
+	t.Run("the same", func(t *testing.T) {
+		target := start(t, func() ([]netip.Addr, error) { return []netip.Addr{a, b}, nil })
+		target.DNS = func() ([]netip.Addr, error) { return []netip.Addr{b, a, b}, nil }
+		_, warnings := net.Status(target)
+		assert.Empty(t, warnings, "the same nameservers, in another order")
+	})
+
+	t.Run("none of its own", func(t *testing.T) {
+		target := start(t, nil)
+		_, warnings := net.Status(target)
+		assert.Empty(t, warnings, "the nameservers of the node, which the record does not hold")
+
+		// A record of a start telling none, read by a driver telling
+		// some: nothing was recorded to compare with.
+		target.DNS = func() ([]netip.Addr, error) { return []netip.Addr{b}, nil }
+		_, warnings = net.Status(target)
+		assert.Empty(t, warnings)
+	})
 }
 
 func TestStatusWarnsOfAFilterThatIsNotTheOneApplied(t *testing.T) {
@@ -516,9 +583,9 @@ func TestApplyOpensTheNameserversOfTheResource(t *testing.T) {
 	assert.Equal(t, []string{"10.29.0.12/32", "127.0.0.0/8", "::1/128"}, s.allow, "the stub of the node is in localhost")
 
 	asked := 0
-	target.DNS = func() []netip.Addr {
+	target.DNS = func() ([]netip.Addr, error) {
 		asked++
-		return []netip.Addr{netip.MustParseAddr("192.168.100.53")}
+		return []netip.Addr{netip.MustParseAddr("192.168.100.53")}, nil
 	}
 	_, err = net.Apply(target)
 	require.NoError(t, err)
@@ -772,7 +839,7 @@ func TestApplyWithoutTheDaemon(t *testing.T) {
 // The record of a container holds its own nameservers, none included.
 func TestApplyRecordsTheNameserversOfTheResource(t *testing.T) {
 	_, target := setup(t)
-	target.DNS = func() []netip.Addr { return nil }
+	target.DNS = func() ([]netip.Addr, error) { return nil, nil }
 	_, err := T{Rules: "allow node n2"}.Apply(target)
 	require.NoError(t, err)
 	rec, err := netrule.LoadRecord(filepath.Join(target.VarDir(), appliedFile))

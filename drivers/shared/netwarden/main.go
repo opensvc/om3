@@ -28,6 +28,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -76,8 +77,10 @@ type (
 		// through, which the dns rule and the nameservers allowed
 		// without a rule name. Not set, they are the ones of the
 		// resolver of the node, as for a command run on it. It is asked
-		// for when the rules are resolved, not before.
-		DNS func() []netip.Addr
+		// for when the rules are resolved, not before. An error says
+		// they could not be told, as for a network the configuration
+		// no longer has, the ones found being returned all the same.
+		DNS func() ([]netip.Addr, error)
 	}
 
 	// Driver is implemented by the drivers taking the keyword, for the
@@ -353,7 +356,11 @@ func (t T) Record(target Target) netrule.Record {
 	if target.DNS != nil {
 		// Never nil: no nameserver of its own is not the ones of
 		// the node.
-		rec.DNS = append([]netip.Addr{}, target.DNS()...)
+		addrs, err := target.DNS()
+		if err != nil && target.Log != nil {
+			target.Log.Warnf("netwarden: the nameservers of the resource: %s", err)
+		}
+		rec.DNS = append([]netip.Addr{}, addrs...)
 	}
 	return rec
 }
@@ -554,6 +561,13 @@ func (t T) record(target Target, rec netrule.Record) error {
 // one of the start, which the daemon writes again each time the rules, or
 // what they name, change, with the filter it sets then.
 //
+// The nameservers the dns rule names are the ones the resource was told at
+// its start, which the daemon resolves over ever since: a running guest or
+// container keeps the resolver it was given, whatever its networks name
+// now. The status warns when they are no longer the ones a start would
+// tell, the filter then allowing nameservers the configuration no longer
+// names, and not the ones it names, until the resource restarts.
+//
 // The addresses the rules naming another namespace resolve to are counted,
 // not shown: who reads the status of the resource is no reader of the
 // objects of that namespace.
@@ -593,6 +607,15 @@ func (t T) Status(target Target) (infos, warnings []string) {
 			warn("%s changed, and the daemon has not applied it yet: the filter in force is the one of the rules before", Option)
 		}
 	}
+	// A resource resolving through the nameservers of the node records
+	// none, and is not told any: nothing to compare. Nameservers that
+	// could not be told are no change of them: the error is the one to
+	// fix, and the start that meets it says it.
+	if rec.DNS != nil && target.DNS != nil {
+		if now, err := target.DNS(); err == nil && !sameAddrs(rec.DNS, now) {
+			warn("the nameservers of the resource changed since it started, %s where it was told %s: the filter allows the ones it was told until it restarts, and a rule \"allow address <nameserver>\" allows a new one meanwhile, the daemon applying it with no restart", describeAddrs(now), describeAddrs(rec.DNS))
+		}
+	}
 	current, err := b.Current()
 	if err != nil {
 		warn("%s", err)
@@ -614,4 +637,35 @@ func (t T) Status(target Target) (infos, warnings []string) {
 		infos = append(infos, fmt.Sprintf("%s%d denied address(es) kept, of objects no longer publishing them", prefix, n))
 	}
 	return
+}
+
+// sameAddrs says the two lists hold the same addresses, in any order, an
+// address listed twice counting once.
+func sameAddrs(a, b []netip.Addr) bool {
+	has := func(l []netip.Addr, addr netip.Addr) bool {
+		return slices.ContainsFunc(l, func(o netip.Addr) bool { return o.Unmap().WithZone("") == addr.Unmap().WithZone("") })
+	}
+	for _, addr := range a {
+		if !has(b, addr) {
+			return false
+		}
+	}
+	for _, addr := range b {
+		if !has(a, addr) {
+			return false
+		}
+	}
+	return true
+}
+
+// describeAddrs says a list of addresses, and none when it is empty.
+func describeAddrs(l []netip.Addr) string {
+	if len(l) == 0 {
+		return "none"
+	}
+	words := make([]string, len(l))
+	for i, addr := range l {
+		words[i] = addr.String()
+	}
+	return strings.Join(words, " ")
 }

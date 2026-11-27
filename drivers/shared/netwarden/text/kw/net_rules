@@ -135,6 +135,12 @@ resolver of what is filtered, and no other:
   resolves through what it is configured with, which om does not know: no
   nameserver is allowed without a rule naming it.
 
+The nameservers of a docker, podman or kvm container are the ones it was
+told at its start, which it keeps while it runs: the `dns` keyword of its
+networks changed since, its status warns, the filter allows the ones of the
+start until the resource restarts, and a rule `allow address <nameserver>`
+allows a new one meanwhile, applied with no restart.
+
 A nameserver allowed is reached on every port. The nameservers of
 `cluster.dns` are addresses of the cluster nodes, so a container resolving
 through them reaches whatever these nodes serve. Naming

@@ -563,7 +563,7 @@ func TestNetdevOfTheServiceCutFromTheClusterAndOpenToTheWorld(t *testing.T) {
 	lookupObjects = func([]naming.Path, []string) (netrule.Objects, netrule.Identities, error) {
 		return netrule.Objects{"test/svc/web": {"ip#1": {netip.MustParseAddr("192.168.0.21")}}}, nil, nil
 	}
-	target.DNS = func() []netip.Addr { return []netip.Addr{netip.MustParseAddr("10.29.0.12")} }
+	target.DNS = func() ([]netip.Addr, error) { return []netip.Addr{netip.MustParseAddr("10.29.0.12")}, nil }
 	net := T{Rules: `
 		allow namespace .
 		allow dns

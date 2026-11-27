@@ -3,6 +3,7 @@ package rescontainerocibase
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"strings"
 
 	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
@@ -154,7 +155,7 @@ func (t *BT) netTarget() netwarden.Target {
 		PG:     t.GetPG(),
 		VarDir: t.VarDir,
 		Log:    t.Log(),
-		DNS:    t.netNameservers,
+		DNS:    func() ([]netip.Addr, error) { return t.netNameservers(), nil },
 	}
 }
 
