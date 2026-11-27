@@ -99,6 +99,10 @@ type (
 	cmdGetZone struct {
 		errC
 		resp chan Zone
+
+		// sees says whether the records of the objects of a namespace
+		// are given, every one's when nil.
+		sees func(namespace string) bool
 	}
 
 	errC draincommand.ErrC
@@ -235,10 +239,19 @@ func (t *Manager) publishSubsystemDnsUpdated() {
 }
 
 func GetZone() Zone {
+	return GetZoneOf(nil)
+}
+
+// GetZoneOf returns the zone with the records of the objects of the
+// namespaces sees says, the records of the cluster, its apex and its
+// nameservers, which name no object, with them. Every object's are given
+// when sees is nil.
+func GetZoneOf(sees func(namespace string) bool) Zone {
 	err := make(chan error, 1)
 	c := cmdGetZone{
 		errC: err,
 		resp: make(chan Zone),
+		sees: sees,
 	}
 	cmdC <- c
 	if <-err != nil {

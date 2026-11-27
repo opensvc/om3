@@ -564,6 +564,21 @@ func (e KeywordReferencesShape) Valid() bool {
 	}
 }
 
+// Defines values for NetworkAddressListKind.
+const (
+	NetworkAddressListKindNetworkAddressList NetworkAddressListKind = "NetworkAddressList"
+)
+
+// Valid indicates whether the value is a known member of the NetworkAddressListKind enum.
+func (e NetworkAddressListKind) Valid() bool {
+	switch e {
+	case NetworkAddressListKindNetworkAddressList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NetworkIPListKind.
 const (
 	NetworkIPListKindNetworkIPList NetworkIPListKind = "NetworkIPList"
@@ -2602,6 +2617,42 @@ type Network struct {
 	Used    big.Int   `json:"used"`
 }
 
+// NetworkAddress The addresses the resources of an object publish, the instances of
+// all the nodes together.
+type NetworkAddress struct {
+	// ObjectId The id of the object publishing the addresses under the path,
+	// absent when its configuration tells none, or is not known.
+	ObjectId *string `json:"object_id,omitempty"`
+
+	// Path the path of the object
+	Path string `json:"path"`
+
+	// Resources The addresses by resource id. A resource publishing none has
+	// an empty list.
+	Resources map[string][]string `json:"resources"`
+
+	// Version The modification time of the configuration of the object, the
+	// newest of the instances publishing an address, or of all its
+	// instances when none does, absent when no configuration is
+	// known. With the id, it says which object published the
+	// addresses, for the record of a delete of the path to be told
+	// from the one of the object created again under it. A daemon
+	// knowing neither field answers without them.
+	Version *time.Time `json:"version,omitempty"`
+}
+
+// NetworkAddressItems defines model for NetworkAddressItems.
+type NetworkAddressItems = []NetworkAddress
+
+// NetworkAddressList defines model for NetworkAddressList.
+type NetworkAddressList struct {
+	Items NetworkAddressItems    `json:"items"`
+	Kind  NetworkAddressListKind `json:"kind"`
+}
+
+// NetworkAddressListKind defines model for NetworkAddressList.Kind.
+type NetworkAddressListKind string
+
 // NetworkClaim defines model for NetworkClaim.
 type NetworkClaim struct {
 	// ExpiresAt when a granted claim stops being counted, should the address it
@@ -4605,6 +4656,17 @@ type GetInstancesParams struct {
 type GetNetworksParams struct {
 	// Name the name of a cluster backend network
 	Name *string `form:"name,omitempty" json:"name,omitempty"`
+}
+
+// GetNetworkAddressParams defines parameters for GetNetworkAddress.
+type GetNetworkAddressParams struct {
+	// Object The path of an object to return the addresses of. Repeat it for
+	// several objects.
+	Object *[]string `form:"object,omitempty" json:"object,omitempty"`
+
+	// Namespace A namespace to return the addresses of the objects of. Repeat
+	// it for several namespaces.
+	Namespace *[]string `form:"namespace,omitempty" json:"namespace,omitempty"`
 }
 
 // GetNetworkIPParams defines parameters for GetNetworkIP.

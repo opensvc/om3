@@ -544,13 +544,25 @@ func (t *Manager) onCmdGet(c cmdGet) {
 
 func (t *Manager) onCmdGetZone(c cmdGetZone) {
 	c.errC <- nil
-	c.resp <- t.zone()
+	c.resp <- t.zoneOf(c.sees)
 }
 
 func (t *Manager) zone() Zone {
+	return t.zoneOf(nil)
+}
+
+// zoneOf returns the records of the cluster, and the ones of the objects of
+// the namespaces sees says, every one's when nil.
+func (t *Manager) zoneOf(sees func(namespace string) bool) Zone {
 	zone := t.clusterRecordZone()
 	seen := make(map[recordKey]bool)
-	for _, recordMap := range t.state {
+	for key, recordMap := range t.state {
+		if sees != nil {
+			p, err := naming.ParsePath(key.path)
+			if err != nil || !sees(p.Namespace) {
+				continue
+			}
+		}
 		for _, record := range recordMap {
 			key := record.Key()
 			if !seen[key] {

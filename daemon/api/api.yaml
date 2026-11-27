@@ -1302,6 +1302,63 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/network/address:
+    get:
+      description: |
+        Return the addresses the resources of objects publish in their
+        status, by object and by resource, the instances of all the nodes
+        together: what the rules of net_rules naming an object or a
+        namespace resolve to, each object with its id and the version of
+        its configuration. An object the cluster does not have is left out,
+        and a request naming neither an object nor a namespace is answered
+        an empty list. The root and inspector grants read it.
+      operationId: GetNetworkAddress
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: object
+          description: |
+            The path of an object to return the addresses of. Repeat it for
+            several objects.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: namespace
+          description: |
+            A namespace to return the addresses of the objects of. Repeat
+            it for several namespaces.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkAddressList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/network/ip:
     get:
       operationId: GetNetworkIP
@@ -2870,7 +2927,7 @@ paths:
   /api/node/name/{nodename}/daemon/dns/dump:
     get:
       description: |
-        Dump the cluster DNS zone content.
+        Dump the cluster DNS zone content: the records of the cluster, and the records of the objects of the namespaces the requester holds the guest, operator or admin role on. The root and inspector roles are given every object's records.
       operationId: GetDaemonDNSDump
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -11535,6 +11592,62 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/NetworkIP'
+
+    NetworkAddress:
+      type: object
+      description: |
+        The addresses the resources of an object publish, the instances of
+        all the nodes together.
+      required:
+        - path
+        - resources
+      properties:
+        path:
+          type: string
+          description: the path of the object
+        object_id:
+          type: string
+          description: |
+            The id of the object publishing the addresses under the path,
+            absent when its configuration tells none, or is not known.
+        version:
+          type: string
+          format: date-time
+          description: |
+            The modification time of the configuration of the object, the
+            newest of the instances publishing an address, or of all its
+            instances when none does, absent when no configuration is
+            known. With the id, it says which object published the
+            addresses, for the record of a delete of the path to be told
+            from the one of the object created again under it. A daemon
+            knowing neither field answers without them.
+        resources:
+          type: object
+          description: |
+            The addresses by resource id. A resource publishing none has
+            an empty list.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    NetworkAddressItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/NetworkAddress'
+
+    NetworkAddressList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - NetworkAddressList
+        items:
+          $ref: '#/components/schemas/NetworkAddressItems'
 
     NetworkIPList:
       type: object
