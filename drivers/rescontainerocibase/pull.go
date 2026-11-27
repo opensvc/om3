@@ -150,3 +150,29 @@ func (t *BT) Prefetch(ctx context.Context) (resource.PrefetchReport, error) {
 	}
 	return report, nil
 }
+
+// warnPrefetchFailed warns, in the status of a resource with no container,
+// or with a stopped one its start removes, of an image the store of the
+// engine does not hold after a prefetch that failed: a failover to this
+// node would pull it first.
+//
+// The outcome of the prefetch drives the warning, not the missing image
+// alone: a prefetch not done yet, as after a deploy, is no fault to report,
+// and its image is not even looked for. One this resource disables is not
+// read, and one its node disables has no outcome left: the worker removes
+// the outcome of a key no resource pulls, and the status then no longer
+// warns. An image missing is told from an engine that does not answer,
+// which says nothing of the image.
+func (t *BT) warnPrefetchFailed(ctx context.Context) {
+	if t.ImagePrefetch == "false" || t.imageEngine == "" || t.executer == nil {
+		return
+	}
+	outcome, ok := resource.ReadPrefetchOutcome(t.pullKey())
+	if !ok || outcome.State != resource.PrefetchFailed {
+		return
+	}
+	if has, _, err := t.executer.HasImage(ctx); err != nil || has {
+		return
+	}
+	t.StatusLog().Warn("image %s is not on this node and its last prefetch failed (%s): a failover here pulls it first, slow or failing if the registry is unreachable", t.Image, outcome.Error)
+}

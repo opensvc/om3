@@ -983,6 +983,7 @@ func (t *BT) Status(ctx context.Context) status.T {
 		return status.Down
 	} else if inspect == nil {
 		t.Log().Tracef("status down on inspect nil")
+		t.warnPrefetchFailed(ctx)
 		return status.Down
 	}
 	if inspectConfig := inspect.Config(); inspectConfig != nil {
@@ -1027,6 +1028,12 @@ func (t *BT) Status(ctx context.Context) status.T {
 	}
 
 	if !inspect.Running() {
+		if t.NeedPreStartRemove() {
+			// A start removes this leftover, then pulls as with no
+			// container. A kept one is started from what the engine
+			// holds, with no pull.
+			t.warnPrefetchFailed(ctx)
+		}
 		return status.Down
 	}
 	t.netStatus()
