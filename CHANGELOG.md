@@ -1762,6 +1762,18 @@ which share the same executor.
 * **The ip.netns driver mode no longer can be set by tags**
     The `mode` keyword must be used for mode setting.
 
+### Pool: drbd
+
+* **Changed behaviour, the filesystem of a volume of a `drbd` pool is shared:**
+    The pool gives the volume a filesystem with `shared = true`, and its
+    zpool for a `zfs` one, whatever the `shared` keyword of the volume
+    says: the drbd device is one filesystem the nodes replicate, formatted
+    by the leader alone. A volume with no `shared = true`, as a
+    `volume#1.pool = drbd` on a service of several nodes, got
+    `fs#1.shared = false`, and its provision failed on the second node, on a
+    mkfs of the drbd secondary. The `shared` keyword of the volume still
+    decides who may claim it.
+
 ### Driver: fs
 
 * **Removed keywords:**
