@@ -48,6 +48,16 @@ var (
 // what its systemd would do of a guest placed in one. A systemd release that
 // can not be read, 0, refuses nothing, the placement being checked after
 // each start.
+//
+// The cgroup v1 hierarchy refuses nothing. The machine of a guest activates
+// the slice units of its resource, of its object and of its namespace, which
+// systemd then realizes from their properties, at the start of the guest and
+// at every daemon-reload: the caps hold since the pg package gives them to
+// systemd as these properties, where the ones written in the files alone were
+// lifted, as seen with a guest on rhel8 and its systemd 239. The pg_vmem_limit,
+// pg_cpus and pg_mems of a group have no property on that hierarchy and stay
+// in its files, which systemd writes none of there, so its realizing the
+// slice leaves them as om wrote them.
 func partitionsRefusal(systemdRelease int) string {
 	if systemdRelease == systemdMisplacingRelease {
 		return fmt.Sprintf("systemd %d places a guest out of the slice asked for it, on and off", systemdRelease)

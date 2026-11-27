@@ -1443,6 +1443,43 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     The previous layout allowed conflicts between different object types (eg. `vol` and `svc`), and conflicts between resourceset names and rid.
 
+* **The caps of a process group on cgroup v1 are given to systemd too:**
+    On a node of the cgroup v1 hierarchy, as rhel7, rhel8 and sles15, or of
+    a hybrid one, om wrote the `pg_*` caps in the files of the group only. A
+    container started in the group activates its systemd slice, which
+    systemd then wrote again from its own properties: a `pg_mem_limit`, a
+    `pg_cpu_quota`, a `pg_cpu_shares`, a `pg_pids_max` or a
+    `pg_blkio_weight` was lifted as the container started, and stayed
+    lifted after a `systemctl daemon-reload`, the container running
+    uncapped while om reported its caps applied. om now also sets them as
+    the runtime properties of the slice, `MemoryLimit`, `CPUQuota`,
+    `CPUShares`, `TasksMax` and `BlockIOWeight`, as it does with the
+    properties of the unified hierarchy, so the start of a container and a
+    daemon-reload no longer drop them. A cap set to `default`, and `pg
+    reset`, unset the properties as they lift the files, and the stop of
+    the object has systemd forget them with its groups, and stops their
+    slices, waiting for systemd to have stopped them. A restart keeps the
+    groups and their properties, its start setting the caps again: a cap
+    whose keyword was removed stays until a stop, or until it is set to
+    `default`. The systemd 219 of rhel7 takes the properties of a loaded unit
+    only: om starts the slice of a capped group there, as the engine
+    starting a container in it does. om gives systemd the properties before
+    it makes the groups: systemd realizing a slice removes its group from
+    the hierarchies its properties do not need, when it holds no process
+    there.
+
+    `pg_cpus`, `pg_mems`, `pg_vmem_limit`, `pg_mem_swappiness` and
+    `pg_mem_oom_control` have no systemd property on these nodes: they stay
+    in the files alone, which systemd does not write there. systemd still
+    removes a group holding neither a process nor a group from a hierarchy
+    it manages, when it realizes its slice, or a slice above, with other
+    controllers: a `pg_mem_swappiness` or a `pg_mem_oom_control` of a group
+    with no `pg_mem_limit`, written while the group is empty, is lost with
+    it, until the next apply of the group writes it again. `pg_cpus` and
+    `pg_mems` are of the cpuset hierarchy, which systemd does not manage.
+    The apply of a group now fails when systemd refuses its caps or can not
+    be reached.
+
 * **The `raw` jsonrpc protocol socket is dropped.**
     For example, this v2.1 API call is no longer supported:
     ```
@@ -1698,6 +1735,20 @@ which share the same executor.
     on being capped is refused at provision and at start, the error
     naming the systemd release, where it ran uncapped one start out of
     two. A guest nothing caps runs as before.
+
+* **`drivers.resource.container.kvm.partitions` on cgroup v1:**
+    The capability is granted on a node of the cgroup v1 hierarchy, or of
+    a hybrid one, as on a node of the unified one, and a guest is placed in
+    the process group of its resource there. The machine of a guest
+    activates the slices of its resource, of its object and of its
+    namespace, which systemd then writes from their properties: the caps
+    hold through the start of the guest and a `systemctl daemon-reload`
+    now that om gives them to systemd too on these nodes, see the caps of a
+    process group on cgroup v1 in Core, as checked with a guest on rhel8.
+    `pg_vmem_limit`, `pg_cpus` and `pg_mems` have no systemd property there
+    and stay in the files of the group, which systemd does not write on
+    this hierarchy. The start reads the group qemu runs in there too, from
+    the hierarchy of systemd, see a guest out of its process group.
 
 ### Driver: disk.lvm
 

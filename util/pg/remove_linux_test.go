@@ -3,12 +3,14 @@
 package pg
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/godbus/dbus/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,17 +24,45 @@ import (
 type fakeNode struct {
 	dir   string
 	calls []string
+
+	// jobs are the starts and stops of units asked of systemd, and
+	// notLoaded the units it has not loaded, which a start loads and a
+	// stop unloads.
+	jobs      []string
+	notLoaded map[string]bool
+}
+
+// errNotLoaded is what systemd answers for a unit it has not loaded.
+func errNotLoaded(unit string) error {
+	return dbus.Error{Name: errNoSuchUnit, Body: []any{"Unit " + unit + " is not loaded."}}
 }
 
 func newFakeNode(t *testing.T, unified bool) *fakeNode {
 	t.Helper()
-	n := &fakeNode{dir: t.TempDir()}
+	n := &fakeNode{dir: t.TempDir(), notLoaded: make(map[string]bool)}
 	savedMount, savedUnified, savedHasSystemd := cgroupMount, isUnified, hasSystemd
 	savedSystemControlDirs, savedUserControlDir, savedSystemctl := systemControlDirs, userControlDir, systemctl
+	savedLegacyRuntimeDir, savedStartUnit, savedStopUnit := legacyRuntimeDir, startUnit, stopUnit
 	t.Cleanup(func() {
+		startUnit, stopUnit = savedStartUnit, savedStopUnit
 		cgroupMount, isUnified, hasSystemd = savedMount, savedUnified, savedHasSystemd
 		systemControlDirs, userControlDir, systemctl = savedSystemControlDirs, savedUserControlDir, savedSystemctl
+		legacyRuntimeDir = savedLegacyRuntimeDir
 	})
+	legacyRuntimeDir = filepath.Join(n.dir, "run/systemd/system")
+	startUnit = func(ctx context.Context, unit string) error {
+		n.jobs = append(n.jobs, "start "+unit)
+		delete(n.notLoaded, unit)
+		return nil
+	}
+	stopUnit = func(ctx context.Context, unit string, wait bool) error {
+		if n.notLoaded[unit] {
+			return errNotLoaded(unit)
+		}
+		n.jobs = append(n.jobs, "stop "+unit)
+		n.notLoaded[unit] = true
+		return nil
+	}
 	cgroupMount = filepath.Join(n.dir, "cgroup")
 	require.NoError(t, os.MkdirAll(cgroupMount, 0755))
 	if unified {
