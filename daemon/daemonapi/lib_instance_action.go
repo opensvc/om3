@@ -1,8 +1,11 @@
 package daemonapi
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -30,9 +34,66 @@ import (
 // command string is published on the bus and kept in the exec store, so an
 // argument is no place for one.
 func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID uuid.UUID, args []string, log *plog.Logger, varEnv ...string) (uuid.UUID, uuid.UUID, error) {
+	sessionID, execID, _, err := a.apiExecStart(ctx, p, requesterSessionID, args, log, nil, varEnv...)
+	return sessionID, execID, err
+}
+
+// apiExecWait runs the command as apiExec does, but waits for its end, up to
+// timeout, for the handlers whose caller must know how it ended. A command
+// that fails returns an error made of what it wrote on stderr, its exit
+// status when it wrote nothing.
+func (a *DaemonAPI) apiExecWait(ctx echo.Context, p naming.Path, requesterSessionID uuid.UUID, args []string, log *plog.Logger, timeout time.Duration, varEnv ...string) (uuid.UUID, uuid.UUID, error) {
+	opts := []funcopt.O{command.WithBufferedStderr(), command.WithTimeout(timeout)}
+	sessionID, execID, done, err := a.apiExecStart(ctx, p, requesterSessionID, args, log, opts, varEnv...)
+	if err != nil {
+		return sessionID, execID, err
+	}
+	r := <-done
+	// The exec store records the end from the published message, later: the
+	// answer waits for it, so a client asking after the exec id answered
+	// finds it ended, not running. Bounded, as a store that never records
+	// it must not hold the answer.
+	waitCtx, cancel := context.WithTimeout(ctx.Request().Context(), execEndRecordTimeout)
+	defer cancel()
+	_, _ = session.WaitExec(waitCtx, execID.String())
+	if r.err != nil {
+		return sessionID, execID, execError(r)
+	}
+	return sessionID, execID, nil
+}
+
+// execEndRecordTimeout bounds the wait of apiExecWait for the exec store to
+// record the end of the exec.
+const execEndRecordTimeout = 5 * time.Second
+
+// execResult is how a command apiExecStart forked ended.
+type execResult struct {
+	err    error
+	stderr []byte
+}
+
+// execError returns the error of a failed command: what it wrote on stderr,
+// without the "Error: " prefix of the command line, or its exit status.
+func execError(r execResult) error {
+	var lines []string
+	for _, line := range strings.Split(string(r.stderr), "\n") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, "Error: "))
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) == 0 {
+		return r.err
+	}
+	return errors.New(strings.Join(lines, "; "))
+}
+
+// apiExecStart forks the command, with the opts added to its options, and
+// returns the ids naming it and a channel receiving how it ended.
+func (a *DaemonAPI) apiExecStart(ctx echo.Context, p naming.Path, requesterSessionID uuid.UUID, args []string, log *plog.Logger, opts []funcopt.O, varEnv ...string) (uuid.UUID, uuid.UUID, <-chan execResult, error) {
 	execname, err := os.Executable()
 	if err != nil {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("can't detect om execname: %w", err)
+		return uuid.Nil, uuid.Nil, nil, fmt.Errorf("can't detect om execname: %w", err)
 	}
 	sessionID := xsession.NewSessionID(requesterSessionID)
 	execID := xsession.NewExecID()
@@ -40,7 +101,7 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 	// logs by that id: a command logging nothing, as a node push, shows
 	// at least its start and its end.
 	log = log.Attr("session_id", sessionID.String())
-	cmd := command.New(
+	cmd := command.New(append([]funcopt.O{
 		command.WithName(execname),
 		command.WithArgs(args),
 		command.WithLogger(log),
@@ -53,7 +114,7 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 			},
 			varEnv...,
 		)...),
-	)
+	}, opts...)...)
 	// The node label is what a subscriber narrows on to hear only what this
 	// node runs, and every other publisher of these messages sets it.
 	labels := []pubsub.Label{labelOriginAPI, {"node", a.localhost}}
@@ -103,12 +164,16 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 			ExecID:    execID,
 		}, labels...)
 		log.Errorf("exec StartProcess: %s", err)
-		return sessionID.UUID(), execID.UUID(), fmt.Errorf("instance action failed: %w", err)
+		return sessionID.UUID(), execID.UUID(), nil, fmt.Errorf("instance action failed: %w", err)
 	}
 	pid := cmd.Cmd().Process.Pid
 	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
+	done := make(chan execResult, 1)
 	go func() {
 		err := cmd.Wait()
+		// Sent once the end is published, so a waiter answers after the
+		// exec is unregistered and its end announced.
+		defer func() { done <- execResult{err: err, stderr: cmd.Stderr()} }()
 		proc.Unregister(pid)
 		duration := time.Now().Sub(startTime)
 		if err != nil {
@@ -138,5 +203,5 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 			a.Bus.Pub(&msg, labels...)
 		}
 	}()
-	return sessionID.UUID(), execID.UUID(), nil
+	return sessionID.UUID(), execID.UUID(), done, nil
 }

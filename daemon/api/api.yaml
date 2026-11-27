@@ -1915,6 +1915,106 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/action/wake:
+    post:
+      operationId: PostNodeActionWake
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Wake the cluster node target from the node: through the collector, which starts the
+        container of a virtual machine node on its hypervisor, or else with the Wake-on-LAN magic
+        packets configured in its wake#<target> section. Answered once the wake is requested, so a
+        failure is a 500 with its reason.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: target
+          required: true
+          description: the name of the cluster node to wake
+          schema:
+            type: string
+        - in: query
+          name: mac
+          description: the mac addresses of the node to wake, replacing the wake#<target>.mac ones
+          schema:
+            type: array
+            items:
+              type: string
+              example: "52:54:00:aa:bb:cc"
+        - $ref: '#/components/parameters/inQuerySessionID'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/action/wol:
+    post:
+      operationId: PostNodeActionWol
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Send Wake-on-LAN magic packets from the node, to each mac address, through each broadcast address and each port.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: mac
+          required: true
+          description: the mac addresses of the nodes to wake
+          schema:
+            type: array
+            items:
+              type: string
+              example: "52:54:00:aa:bb:cc"
+        - in: query
+          name: broadcast
+          required: true
+          description: the ipv4 broadcast addresses of the lan of the nodes to wake
+          schema:
+            type: array
+            items:
+              type: string
+              example: "10.0.0.255"
+        - in: query
+          name: port
+          description: the udp ports to send the magic packets to, 9 when not set
+          schema:
+            type: array
+            items:
+              type: integer
+              example: 9
+        - $ref: '#/components/parameters/inQuerySessionID'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/capabilities:
     get:
       operationId: GetNodeCapabilities

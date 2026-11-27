@@ -1,0 +1,5 @@
+The ipv4 broadcast addresses the relays send the magic packet to, the ones
+of the lan of the `mac` interfaces of the node to wake.
+
+Set it when the `mac` interfaces are not on the lan of the address the node
+name resolves to.

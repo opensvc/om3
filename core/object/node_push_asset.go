@@ -222,6 +222,7 @@ func (t Node) getAsset() (asset.Data, error) {
 	data.Properties.CPUModel = t.assetValueFromDefinedConfigOrProbe("node.cpu_model", "cpu model", probe, nil)
 	data.Properties.BIOSVersion = t.assetValueFromDefinedConfigOrProbe("node.bios_version", "bios version", probe, nil)
 	data.Properties.Serial = t.assetValueFromDefinedConfigOrProbe("node.serial", "serial", probe, nil)
+	data.Properties.MachineUUID = t.assetValueFromDefinedConfigOrProbe("node.machine_uuid", "machine uuid", probe, nil)
 	data.Properties.SPVersion = t.assetValueFromDefinedConfigOrProbe("node.sp_version", "sp version", probe, nil)
 	data.Properties.Enclosure = t.assetValueFromDefinedConfigOrProbe("node.enclosure", "enclosure", probe, nil)
 	data.Properties.TZ = t.assetValueFromDefinedConfigOrProbe("node.tz", "timezone", probe, nil)

@@ -53,6 +53,7 @@ type (
 		CPUDies      Property `json:"cpu_dies"`
 		CPUModel     Property `json:"cpu_model"`
 		Serial       Property `json:"serial"`
+		MachineUUID  Property `json:"machine_uuid"`
 		Model        Property `json:"model"`
 		Manufacturer Property `json:"manufacturer"`
 		BIOSVersion  Property `json:"bios_version"`
@@ -164,6 +165,7 @@ func (t Data) Render() string {
 	_ = node(t.Properties.CPUDies)
 	_ = node(t.Properties.CPUModel)
 	_ = node(t.Properties.Serial)
+	_ = node(t.Properties.MachineUUID)
 	_ = node(t.Properties.Model)
 	_ = node(t.Properties.Manufacturer)
 	_ = node(t.Properties.BIOSVersion)

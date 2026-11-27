@@ -1,0 +1,5 @@
+The mac addresses of the network interfaces of the node named by the section,
+`wake#<nodename>`, the magic packet wakes.
+
+The interfaces must have Wake-on-LAN enabled, in the firmware and in the
+operating system, as `ethtool -s <interface> wol g` on Linux.

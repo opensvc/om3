@@ -63,6 +63,8 @@ func (t T) Get(s string) (interface{}, error) {
 		return sysname, err
 	case "serial":
 		return serial(), nil
+	case "machine_uuid":
+		return machineUUID()
 	case "sp_version":
 		return "", ErrNotImpl
 	case "enclosure":

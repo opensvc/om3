@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/wakeonlan"
 )
 
 func AddFlagsNodeGlobal(flagSet *pflag.FlagSet, p *OptsNodeGlobal) {
@@ -930,4 +931,11 @@ func FlagRedactSecrets(flags *pflag.FlagSet, p *bool) {
 // runs every check of the write and writes nothing.
 func FlagConfigDryRun(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "dry-run", false, "run every check of the write, the rbac policy for your grants, the validation, the claims and the holds, and write nothing: every keyword your grants do not allow is reported at once")
+}
+
+// FlagsWol declares the magic packet options of the node wol command.
+func FlagsWol(flags *pflag.FlagSet, macs, broadcasts *[]string, ports *[]int) {
+	flags.StringSliceVar(macs, "mac", nil, "the comma-separated mac addresses of the nodes to wake")
+	flags.StringSliceVar(broadcasts, "broadcast", nil, "the comma-separated ipv4 broadcast addresses of the lan of the nodes to wake")
+	flags.IntSliceVar(ports, "port", []int{wakeonlan.DefaultPort}, "the comma-separated udp ports to send the magic packets to")
 }

@@ -1,0 +1,3 @@
+How the peers wake a powered off node with a Wake-on-LAN magic packet, on
+`om node wake --node <nodename>`, set in the `wake#<nodename>` section of the
+cluster configuration, readable by the peers while the node is down.
