@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -511,6 +512,11 @@ func (t T) Exec(args []string) {
 	if len(args) == 0 {
 		fail(ErrNoCommand)
 	}
+	// The bounding set, the inheritable set and no_new_privs are
+	// attributes of the thread, not of the process: they must be set on
+	// the thread that calls the execve, which gives them to the command.
+	// Never unlocked, as Exec ends with the execve or the exit.
+	runtime.LockOSThread()
 	prog, err := exec.LookPath(args[0])
 	if err != nil {
 		fail(err)

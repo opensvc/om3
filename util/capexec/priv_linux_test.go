@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,12 +19,15 @@ const privHelperEnv = "OPENSVC_TEST_PRIV_HELPER"
 
 // TestPrivHelper is not a test: run as a child of TestPriv, it applies the
 // restrictions its environment names, as om exec does before the execve,
-// and prints the lines of /proc/self/status that show them. They can not be
-// lifted, so the test process applies them to a child, never to itself.
+// and prints the lines of /proc/thread-self/status that show them. They can
+// not be lifted, so the test process applies them to a child, never to
+// itself. They are attributes of the thread: it is locked, as Exec locks
+// it, and its own status is read, not the one of the main thread.
 func TestPrivHelper(t *testing.T) {
 	if os.Getenv(privHelperEnv) == "" {
 		t.Skip("run by TestPriv")
 	}
+	runtime.LockOSThread()
 	x := T{}
 	if s := os.Getenv("BSET"); s != "" {
 		x.CapabilityBoundingSet = &s
@@ -40,7 +44,7 @@ func TestPrivHelper(t *testing.T) {
 		fmt.Println("error:", err)
 		os.Exit(1)
 	}
-	b, _ := os.ReadFile("/proc/self/status")
+	b, _ := os.ReadFile("/proc/thread-self/status")
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "CapBnd:") || strings.HasPrefix(line, "CapInh:") || strings.HasPrefix(line, "NoNewPrivs:") {
 			fmt.Println(line)

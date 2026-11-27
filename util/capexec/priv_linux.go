@@ -24,8 +24,8 @@ func lastCap() int {
 	return unix.CAP_LAST_CAP
 }
 
-// dropBoundingSet drops from the capability bounding set of the process
-// the capabilities the bounding set asked for does not keep, and from its
+// dropBoundingSet drops from the capability bounding set of the calling
+// thread, which the caller locks, the capabilities the bounding set asked for does not keep, and from its
 // inheritable set too: a capability left there would be passed to the
 // command by the execve whatever the bounding set. The ambient
 // capabilities not in the inheritable set are dropped by the kernel with
