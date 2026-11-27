@@ -114,6 +114,16 @@ func TestLogsArgsPutTheContainerNameLast(t *testing.T) {
 		ea.LogsArgs(false, 0).Get())
 }
 
+// The anonymous volumes of a container are removed with it, or each run of a
+// task whose image declares a VOLUME leaves one more in the store of the
+// engine, where nothing names it any more.
+func TestRemoveArgsRemoveTheAnonymousVolumes(t *testing.T) {
+	ea := &ExecutorArg{BT: &BT{Name: "c1"}}
+	require.Equal(t,
+		[]string{"container", "rm", "-v", "c1"},
+		ea.RemoveArgs().Get())
+}
+
 // A container is given a resolv.conf when a nameserver is named, by the
 // cluster or by its dns keyword, and none otherwise: the search list of the
 // object alone made a file naming no nameserver, and the container resolved

@@ -1,2 +1,6 @@
 If rm=true, the container instance is removed when the resource is stopped.
 If detach=false, the driver automatically behaves as if rm=true.
+
+The anonymous volumes of the container, those the engine creates for a
+`VOLUME` of the image no `volume_mounts` entry covers, are removed with it.
+The named volumes and the bind mounts are kept.

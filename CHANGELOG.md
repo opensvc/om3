@@ -1557,6 +1557,19 @@ which share the same executor.
     ends: they carry an `OSVC_ENTER_SESSION` environment variable naming
     the session.
 
+* **Changed behaviour, the anonymous volumes of a removed container:**
+    A container removed by om, at the stop of a `rm = true` container, at
+    every run of a task, before a start finding a leftover, and at
+    unprovision, is removed with its anonymous volumes, `container rm -v`:
+    those the engine creates for a `VOLUME` of the image no `volume_mounts`
+    entry covers. The named volumes and the bind mounts are kept.
+
+    They were left in the store of the engine, one more at each stop and at
+    each run of a task. The volumes already left there are not removed by
+    om: `docker volume prune` removes the anonymous volumes no container
+    uses, and the named ones too before docker 23, as `podman volume prune`
+    does.
+
 ### Driver: container.docker
 
     * `stop_timeout`

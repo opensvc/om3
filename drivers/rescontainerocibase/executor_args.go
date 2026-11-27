@@ -97,8 +97,12 @@ func (ea *ExecutorArg) PullArgs() *args.T {
 	return args.New("image", "pull", ea.BT.Image)
 }
 
+// RemoveArgs removes the container with its anonymous volumes, those the
+// engine makes for the VOLUME of an image no mount covers: nothing names them
+// once the container is gone, so every run of a task left one in the store of
+// the engine. The named volumes and the binds are not anonymous, and are kept.
 func (ea *ExecutorArg) RemoveArgs() *args.T {
-	return args.New("container", "rm", ea.BT.ContainerName())
+	return args.New("container", "rm", "-v", ea.BT.ContainerName())
 }
 
 func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
