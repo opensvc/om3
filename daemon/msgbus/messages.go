@@ -66,6 +66,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/util/errcontext"
@@ -319,6 +320,8 @@ var (
 		"ContainerUpdated": func() any { return &ContainerUpdated{} },
 
 		"ContainerImageRemoved": func() any { return &ContainerImageRemoved{} },
+
+		"ImagePrefetchUpdated": func() any { return &ImagePrefetchUpdated{} },
 
 		"MdArrayUpdated": func() any { return &MdArrayUpdated{} },
 	}
@@ -1434,6 +1437,23 @@ type (
 		ID         string `json:"id" yaml:"id"`
 	}
 
+	// ImagePrefetchUpdated is published when the outcome of the prefetch
+	// of an image on the node changed to failed, or from failed: the
+	// copy and the pull the daemon ran for the container resources not
+	// started there failed, or the image is in the store of the engine
+	// after a prefetch that had failed. Pull is the image and where it is
+	// fetched to, as the instance configs say it for their resources,
+	// State the outcome, "failed", "pulled" or "present", and Error what
+	// the nodes asked for a copy, then the registry, said of a failed
+	// prefetch.
+	ImagePrefetchUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string        `json:"node" yaml:"node"`
+		Pull       resource.Pull `json:"pull" yaml:"pull"`
+		State      string        `json:"state" yaml:"state"`
+		Error      string        `json:"error" yaml:"error"`
+	}
+
 	// MdArrayUpdated is published when an md array of the node changed
 	// state, as the kernel tells: a resync or a recovery started or ended,
 	// a device failed, was added or removed, an array started or stopped.
@@ -2188,6 +2208,14 @@ func (e *ContainerImageRemoved) Kind() string {
 
 func (e *ContainerImageRemoved) Key() string {
 	return fmt.Sprintf("ContainerImageRemoved,node=%s,type=%s,store=%s,name=%s,id=%s", e.Node, e.Type, e.Store, e.Name, e.ID)
+}
+
+func (e *ImagePrefetchUpdated) Kind() string {
+	return "ImagePrefetchUpdated"
+}
+
+func (e *ImagePrefetchUpdated) Key() string {
+	return fmt.Sprintf("ImagePrefetchUpdated,node=%s,key=%s", e.Node, e.Pull.Hash())
 }
 
 func (e *MdArrayUpdated) Kind() string {

@@ -186,6 +186,22 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Resource group commands**: New per-driver-group command sets for more targeted resource management.
 
+* **Image prefetch**: The nodes of an object not running a `container.docker` or `container.podman` resource get its image ahead of a failover, so a takeover neither waits for the registry nor fails with it.
+
+    The daemon fetches the image the `image` keyword evaluates to on the node, the one its start would run, when the store of the engine does not hold it, and never fetches again one it holds: it is a cache, not a deployment, and does not refresh a moving tag as `latest`. Pin a tag or a digest for the nodes to run the same build. The resources of a node naming the same image, engine and credentials are fetched once.
+
+    The image is copied from another node of the object holding it, and pulled from its registry when none does. The nodes asked are the ones of the `nodes` keyword, the ones where the container is up first, of the architecture of the node, and the image is copied as that node holds it, from engine to engine when its name tells its registry, docker and podman reading the archive of each other. A podman image naming no registry, as `nginx`, is copied from the podman of the other nodes only, then pulled from the registry podman resolves it to: docker reads the same name as an image of the Docker Hub, which may be another one. A cluster with no registry is so served: load the image on a node, start the object there, and its other nodes copy it. The `registry_creds` are not used for a copy. A copy is checked: the image loaded must be found under its name, and with the id the node holding it told when both engines name an image by the same kind of digest, a docker on the containerd image store naming it by its manifest where podman and the other docker stores name it by its config; an image loaded with another id is removed, and the copy counts as failed.
+
+    It is on by default. `node.image_prefetch = false`, in the node or the cluster configuration, turns it off for a node or for all, and the `image_prefetch` keyword of a resource overrides the node, either way. A frozen node or instance is prefetched as another, nothing of the instance being changed. The tasks are not prefetched.
+
+    The prefetch is a best effort, driven by events: a change of the configuration of the object, and an image untagged or removed from the store, as by an `image prune`, after which the missing images are fetched again. A prefetch that failed is tried again after 5 minutes, then less and less often, up to every 4 hours, and at once when the configuration of the object changes, or when the container turns up on another node of the object, which then holds the image. Meanwhile the status of the resource warns, on the nodes where it is down: `image <image> is not on this node and its last prefetch failed (peers: <error>; registry: <error>)`, or `(<error>)` with no node to ask. The store of a `rootless_user` is not watched: its images are fetched on a configuration change, not after a prune.
+
+    The image a start runs is not changed: a start pulls a missing image, and `image_pull_policy = always` still pulls at every start. A start now fails saying the engine does not answer when it does not, as a docker whose daemon is down, instead of trying a pull.
+
+    The instance configs publish the image each resource prefetches, as `pull` in the resource `config`, and two event kinds follow the prefetch: `ContainerImageRemoved`, an image untagged or removed from the store of an engine, and `ImagePrefetchUpdated`, a prefetch failing or failing no more.
+
+    `GET /api/node/name/{nodename}/image/save` sends the archive of an image of a store of an engine of a node, for these copies. It requires the root grant.
+
 * **The master reaches a kvm guest through vsock**:
 
     With a vsock device on the guest, and `listener.vsock_port` set in it, the

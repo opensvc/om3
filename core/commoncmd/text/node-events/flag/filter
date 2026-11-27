@@ -107,6 +107,7 @@ Receive only events matching the filtering expression formatted as:
      ContainerImageRemoved, ContainerUpdated, VirtDomainUpdated
      DrbdResourceUpdated, MdArrayUpdated
      FSMounted, FSRemounted, FSUmounted
+     ImagePrefetchUpdated
 
 ### Event Subscription
 

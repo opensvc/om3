@@ -133,3 +133,37 @@ func TestAnMdEventDuringAnActionIsDeferred(t *testing.T) {
 	m.onEventRefreshTimer()
 	assert.True(t, m.eventRefreshDeferred, "deferred until the peer is done")
 }
+
+// The prefetch of an image failing on the node, or failing no more,
+// refreshes the status of the instance whose resource pulls that image, for
+// its warning to show or clear, and of no other.
+func TestAPrefetchOutcomeRefreshesTheInstancePullingTheImage(t *testing.T) {
+	nginx := resource.Pull{Engine: "podman", Image: "docker.io/library/nginx:latest"}
+	withPull := func() *Manager {
+		m := newResourceEventTestManager()
+		m.instConfig = instance.Config{ActorConfig: &instance.ActorConfig{Resources: instance.ResourceConfigs{
+			"container#2": {Pull: &nginx},
+			"disk#1":      {},
+		}}}
+		return m
+	}
+	m := withPull()
+	m.onImagePrefetchUpdated(&msgbus.ImagePrefetchUpdated{Node: "n1", Pull: resource.Pull{Engine: "docker", Image: nginx.Image}, State: "failed"})
+	assert.False(t, m.eventRefreshScheduled, "the same image of another engine")
+	m.onImagePrefetchUpdated(&msgbus.ImagePrefetchUpdated{Node: "n2", Pull: nginx, State: "failed"})
+	assert.False(t, m.eventRefreshScheduled, "another node")
+	m.onImagePrefetchUpdated(&msgbus.ImagePrefetchUpdated{Node: "n1", Pull: nginx, State: "failed"})
+	assert.True(t, m.eventRefreshScheduled)
+
+	// The prefetch is no doing of an action: its outcome is not dropped
+	// while one runs, the refresh timer deferring it.
+	m = withPull()
+	m.instMonitor = map[string]instance.Monitor{"n2": {State: instance.MonitorStateStopProgress}}
+	m.onImagePrefetchUpdated(&msgbus.ImagePrefetchUpdated{Node: "n1", Pull: nginx, State: "pulled"})
+	assert.True(t, m.eventRefreshScheduled)
+
+	// An instance config of no actor pulls nothing.
+	m = newResourceEventTestManager()
+	m.onImagePrefetchUpdated(&msgbus.ImagePrefetchUpdated{Node: "n1", Pull: nginx, State: "failed"})
+	assert.False(t, m.eventRefreshScheduled)
+}

@@ -2072,6 +2072,28 @@ func (t *Manager) onContainerUpdated(c *msgbus.ContainerUpdated) {
 	t.refreshOnResourceEvent(c.Type, "name", c.Name, "container")
 }
 
+// onImagePrefetchUpdated is called when the prefetch of an image failed on
+// the node, or stopped failing. It refreshes the status when a resource of
+// the instance pulls that image: its status warns of a missing image whose
+// prefetch failed, and the warning shows and clears with the outcome
+// instead of at the next scheduled status.
+//
+// The refresh is scheduled even while an action runs on an instance, as
+// the one of an md array is: the prefetch is no doing of the action, and the
+// refresh timer defers it until no action runs.
+func (t *Manager) onImagePrefetchUpdated(c *msgbus.ImagePrefetchUpdated) {
+	if c.Node != t.localhost || t.instConfig.ActorConfig == nil {
+		return
+	}
+	for rid, rcfg := range t.instConfig.Resources {
+		if rcfg.Pull != nil && *rcfg.Pull == c.Pull {
+			t.log.Infof("the prefetch of %s is %s, matching resource %s - schedule a status refresh", c.Pull, c.State, rid)
+			t.scheduleEventRefresh("the prefetch of " + c.Pull.Image + " is " + c.State)
+			return
+		}
+	}
+}
+
 // onMdArrayUpdated schedules a status refresh when the instance holds the md
 // array of the node that changed state: an md resource whose status info
 // names it, as "md127", or tells its uuid, as for an array assembled outside
