@@ -91,3 +91,10 @@ func (ea *ExecutorArg) isRemoved(ctx context.Context) (bool, error) {
 		return false, err
 	}
 }
+
+// CgroupManagerArgs implements rescontainerocibase.CgroupManagerArgser: the
+// arguments of the command printing the cgroup manager the engine places its
+// containers with.
+func (ea *ExecutorArg) CgroupManagerArgs() []string {
+	return []string{"info", "--format", "{{.CgroupDriver}}"}
+}

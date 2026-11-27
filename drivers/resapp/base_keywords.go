@@ -3,6 +3,7 @@ package resapp
 import (
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/sdunit"
 )
@@ -115,7 +116,11 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/systemd_properties"),
 	}
 
-	BaseKeywords = []*keywords.Keyword{
+	// BaseKeywordsNet is net_rules, which filters the network
+	// of the start command, or of the run command of a task.
+	BaseKeywordsNet = netwarden.Keywords(GroupProcess.ID)
+
+	BaseKeywords = append([]*keywords.Keyword{
 		&BaseKeywordDesc,
 		&BaseKeywordTimeout,
 		&BaseKeywordStopTimeout,
@@ -127,5 +132,5 @@ var (
 		&BaseKeywordNoNewPrivileges,
 		&BaseKeywordCapabilityBoundingSet,
 		&BaseKeywordSystemdProperties,
-	}
+	}, BaseKeywordsNet...)
 )

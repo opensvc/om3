@@ -109,6 +109,7 @@ func (t *T) Stop(ctx context.Context) error {
 	err := t.CommonStop(ctx, t)
 	if t.UnitMode() {
 		err = errors.Join(err, t.UnitTerminate(ctx))
+		t.NetClear()
 	}
 	if err != nil {
 		if !actioncontext.HasResourceSelector(ctx) {
@@ -127,7 +128,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("check is not set")
 		return status.NotApplicable
 	}
-	return t.CommonStatus(ctx)
+	s := t.CommonStatus(ctx)
+	if s == status.Up {
+		t.NetStatus()
+	}
+	return s
 }
 
 // Label implements Label from resource.Driver interface,

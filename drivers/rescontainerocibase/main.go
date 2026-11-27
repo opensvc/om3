@@ -39,6 +39,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/envprovider"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -107,6 +108,10 @@ type (
 		// container unlogged as it comes: a task reads it after the run,
 		// from the logs of the container, when its log keyword asks.
 		QuietRunOutput bool `json:"-"`
+
+		// Net are the rules of net_rules filtering the network
+		// of the container.
+		Net netwarden.T `json:"net"`
 
 		executer   Executer
 		xContainer map[string]containerNamer
@@ -292,6 +297,17 @@ func (t *BT) Configure() error {
 	// options: one starting with a '-' would be read as an option.
 	if strings.HasPrefix(t.Image, "-") {
 		return fmt.Errorf("invalid image %q: an image does not start with a '-'", t.Image)
+	}
+	// A restart policy of the engine would restart the container with no
+	// network filter: it is a configuration error of a container with
+	// one, said before a start is tried.
+	if err := t.netRestartIssue(); err != nil {
+		return err
+	}
+	// So is an option placing the container out of the slice the filter
+	// is set on.
+	if err := t.netPlacementIssue(); err != nil {
+		return err
 	}
 	l := t.T.Log().Attr("container_name", t.ContainerName())
 	t.SetLoggerForTest(l)
@@ -772,6 +788,15 @@ func (t *BT) Start(ctx context.Context) error {
 		return t.logMainAction("start", errors.New("undefined executer"))
 	}
 
+	// The filter is set on the slice the engine places the container in
+	// before it is started: no process of the container runs unfiltered.
+	// A container already running has the filter of its slice set to
+	// what the rules resolve to now.
+	filtered, err := t.netApply(ctx)
+	if err != nil {
+		return logError(err)
+	}
+
 	callAndRegisterRollbackOnSuccess := func(ctx context.Context, f func(context.Context) error) error {
 		if err := t.stageVolumeMounts(); err != nil {
 			return logError(err)
@@ -782,7 +807,18 @@ func (t *BT) Start(ctx context.Context) error {
 			// an empty directory in place of the volume source. The next
 			// start or stop removes them.
 			return logError(err)
-		} else if t.Detach {
+		} else if filtered && t.Detach {
+			// A container that returned, as the one of a task, has no
+			// process left to ask the kernel about: the engine was asked
+			// how it places its containers before it ran.
+			if err := t.netVerify(ctx); err != nil {
+				if serr := t.Stop(ctx); serr != nil {
+					log.Warnf("stop the container started unfiltered: %s", serr)
+				}
+				return logError(err)
+			}
+		}
+		if t.Detach {
 			// rollback needed only for detached containers, not for init containers that exit after start.
 			actionrollback.Register(ctx, func(ctx context.Context) error {
 				return t.Stop(ctx)
@@ -798,6 +834,13 @@ func (t *BT) Start(ctx context.Context) error {
 		return callAndRegisterRollbackOnSuccess(ctx, t.pullAndRun)
 	} else if inspect.Running() {
 		log.Infof("container start %s: already started", name)
+		if filtered {
+			// Started before it had rules, or by an engine placing it
+			// in no unit: said, and left running.
+			if err := t.netVerify(ctx); err != nil {
+				log.Warnf("%s: the container runs unfiltered until it is restarted", err)
+			}
+		}
 		return nil
 	} else {
 		// it is defined
@@ -858,6 +901,9 @@ func (t *BT) Stop(ctx context.Context) error {
 	// The staging mounts go with the container. A container an agent
 	// without staging mounts started has none, and is stopped all the same.
 	defer t.unstageAfterStop(ctx)
+	// The filter goes with the container too, and is kept while its slice
+	// holds one, as a container that did not stop.
+	defer t.netClear()
 	if inspect == nil {
 		log.Infof("already stopped")
 		return nil
@@ -977,6 +1023,7 @@ func (t *BT) Status(ctx context.Context) status.T {
 	if !inspect.Running() {
 		return status.Down
 	}
+	t.netStatus()
 	return status.Up
 }
 

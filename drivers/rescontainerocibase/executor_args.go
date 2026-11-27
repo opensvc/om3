@@ -395,22 +395,10 @@ func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 // mounting it, or an empty string when no nameserver is named: the container
 // then keeps the resolver its engine gives it, the host's on the host network.
 //
-// The nameservers are the ones of the cluster, then the ones the dns keyword
-// adds. The search list is the domain of the object and each of its parents,
-// preceded by the domains the dns_search keyword adds.
-//
 // The file is written on every start, and a container reads it for as long as
 // it runs: a container adapts to a cluster layout change by being restarted.
 func (ea *ExecutorArg) resolvConfMount() (string, error) {
-	nameservers := ea.BT.DNS
-	if l := ea.BT.networkNameservers(); len(l) > 0 {
-		nameservers = l
-	}
-	resolvConf := rescontainer.ResolvConf{
-		Nameservers: rescontainer.Nameservers(nameservers, ea.BT.DNSExtra),
-		Searches:    rescontainer.SearchDomains(ea.BT.ObjectDomain, ea.BT.DNSSearch),
-		Options:     rescontainer.ResolvConfOptions,
-	}
+	resolvConf := ea.BT.resolvConf()
 	if resolvConf.IsZero() {
 		return "", nil
 	}

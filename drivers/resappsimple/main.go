@@ -233,6 +233,11 @@ func (t *T) Stop(ctx context.Context) error {
 		// cleared the resource identity from their environment.
 		err = errors.Join(err, t.UnitTerminate(ctx))
 	}
+	if t.UnitMode() {
+		// Kept while the unit holds processes, as the ones kill=parent
+		// leaves running.
+		t.NetClear()
+	}
 	if err != nil {
 		if !actioncontext.HasResourceSelector(ctx) {
 			// compat b2.1: ignore app resource stop error
@@ -356,10 +361,16 @@ func sameStartAs(l proc.L) func(proc.T) bool {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	var s status.T
 	if t.CheckCmd != "" {
-		return t.CommonStatus(ctx)
+		s = t.CommonStatus(ctx)
+	} else {
+		s = t.status(ctx)
 	}
-	return t.status(ctx)
+	if s == status.Up {
+		t.NetStatus()
+	}
+	return s
 }
 
 // Label implements Label from resource.Driver interface,

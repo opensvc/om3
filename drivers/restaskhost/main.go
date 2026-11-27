@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resapp"
 	"github.com/opensvc/om3/v3/drivers/restask"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -52,6 +53,10 @@ type T struct {
 	NoNewPrivileges       string `json:"no_new_privileges"`
 	CapabilityBoundingSet string `json:"capability_bounding_set"`
 	SystemdProperties     string `json:"systemd_properties"`
+
+	// Net are the rules of net_rules filtering the network of
+	// the command, which runs in a unit for them too.
+	Net netwarden.T `json:"net"`
 
 	// From resapp.T
 	Path    naming.Path   `json:"path"`
@@ -92,6 +97,7 @@ func (t *T) App() *resapp.T {
 			NoNewPrivileges:       t.NoNewPrivileges,
 			CapabilityBoundingSet: t.CapabilityBoundingSet,
 			SystemdProperties:     t.SystemdProperties,
+			Net:                   t.Net,
 		},
 		Path:    t.Path,
 		Nodes:   t.Nodes,
@@ -102,6 +108,21 @@ func (t *T) App() *resapp.T {
 		Limit:   t.Limit,
 		StopCmd: t.StopCmd,
 	}
+}
+
+// NetRules implements netwarden.Driver, for the command of a run in
+// progress, which the unit of the run holds.
+func (t *T) NetRules() (netwarden.T, netwarden.Target) {
+	return t.App().NetRules()
+}
+
+// NetLiveIssue implements netwarden.Driver. A command run in a container is
+// filtered by the rules of that container, and takes none of its own.
+func (t *T) NetLiveIssue(ctx context.Context) error {
+	if t.Container != "" {
+		return fmt.Errorf("%s filters a command run on the node: the network of a command run in %s is filtered by the %s of that container", netwarden.Option, t.Container, netwarden.Option)
+	}
+	return t.App().NetLiveIssue(ctx)
 }
 
 func (t *T) Run(ctx context.Context) error {
@@ -129,9 +150,14 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		}
 	}
 	if t.Container != "" {
+		if t.Net.Enabled() {
+			// The command runs in the cgroup of the container, which
+			// its own filter restricts, and no other.
+			return fmt.Errorf("%s filters a command run on the node: the network of a command run in %s is filtered by the %s of that container", netwarden.Option, t.Container, netwarden.Option)
+		}
 		return t.lockedRunInContainer(ctx)
 	}
-	if t.SystemdProperties != "" {
+	if t.App().UnitMode() {
 		return t.lockedRunInUnit(ctx)
 	}
 	var opts []funcopt.O
@@ -256,6 +282,7 @@ func (t *T) lockedRunInUnit(ctx context.Context) error {
 	if terr := app.UnitTerminate(ctx); terr != nil {
 		t.Log().Warnf("%s", terr)
 	}
+	app.NetClear()
 	if err := t.WriteLastRun(exitCode); err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/drivers/restask"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/converters"
 )
 
@@ -30,7 +31,7 @@ var (
 		rescontainer.GroupGuest,
 	}, restask.Groups...)
 
-	Keywords = []*keywords.Keyword{
+	Keywords = append([]*keywords.Keyword{
 		{
 			Attr:        "Name",
 			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
@@ -307,5 +308,5 @@ var (
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/configs_environment"),
 		},
-	}
+	}, netwarden.Keywords(rescontainerocibase.GroupIsolation.ID)...)
 )

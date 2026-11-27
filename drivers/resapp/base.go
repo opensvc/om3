@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/envprovider"
 )
 
@@ -41,6 +42,10 @@ type BaseT struct {
 	// service unit the start command runs in, as systemd-run -p takes
 	// them, kept as written: empty, the command runs in no unit.
 	SystemdProperties string `json:"systemd_properties"`
+
+	// Net are the rules of net_rules filtering the network of
+	// the start command, which runs in the unit for them too.
+	Net netwarden.T `json:"net"`
 }
 
 func (t *T) getEnv(ctx context.Context, onIgnoreCallback func(err error)) (env []string, err error) {

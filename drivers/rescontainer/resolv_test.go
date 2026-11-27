@@ -172,3 +172,12 @@ func TestNetworkNameservers(t *testing.T) {
 	assert.Equal(t, []string{"2001:db8::53", "192.0.2.53", "198.51.100.53"}, NetworkNameservers("container#0", addrs))
 	assert.Empty(t, NetworkNameservers("container#5", addrs))
 }
+
+// The nameservers written are the first ones named, as many as a resolver
+// reads: what the file holds, and what a network filter opens for it.
+func TestWrittenNameservers(t *testing.T) {
+	assert.Equal(t, []string{"10.29.0.11", "10.29.0.12", "10.29.0.13"},
+		ResolvConf{Nameservers: []string{"10.29.0.11", "10.29.0.12", "10.29.0.13", "9.9.9.9"}}.WrittenNameservers())
+	assert.Equal(t, []string{"10.29.0.11"}, ResolvConf{Nameservers: []string{"10.29.0.11"}}.WrittenNameservers())
+	assert.Empty(t, ResolvConf{}.WrittenNameservers())
+}

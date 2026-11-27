@@ -33,7 +33,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
-	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/envprovider"
 	"github.com/opensvc/om3/v3/util/file"
@@ -86,6 +86,10 @@ type (
 		StartTimeout             *time.Duration `json:"start_timeout"`
 		EncapNodes               []string       `json:"encapnodes"`
 		StopTimeout              *time.Duration `json:"stop_timeout"`
+
+		// Net holds the rules of net_rules, the network
+		// filter of the container.
+		Net netwarden.T `json:"net"`
 
 		cache map[string]interface{}
 	}
@@ -154,6 +158,7 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	} else if v {
 		t.Log().Infof("container %s is already up", t.Name)
+		t.netAdopt(ctx)
 		return nil
 	}
 	if err := t.startCgroup(); err != nil {
@@ -162,9 +167,23 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.installCF(ctx); err != nil {
 		return err
 	}
+	// The filter is set on the slice before the container is started in
+	// a scope of it: no process of the container runs unfiltered.
+	filtered, err := t.netApply()
+	if err != nil {
+		return err
+	}
 	started := time.Now()
 	if err := t.start(ctx); err != nil {
 		return err
+	}
+	if filtered {
+		if err := t.netVerify(ctx); err != nil {
+			if serr := t.Stop(ctx); serr != nil {
+				t.Log().Warnf("stop the container started unfiltered: %s", serr)
+			}
+			return err
+		}
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.Stop(ctx)
@@ -186,6 +205,8 @@ func (t *T) Stop(ctx context.Context) error {
 		return err
 	} else if !v {
 		t.Log().Infof("container %s is already down", t.Name)
+		// The filter a container that ended by itself left.
+		t.netClear()
 		return nil
 	}
 	links := t.getLinks(ctx)
@@ -198,6 +219,10 @@ func (t *T) Stop(ctx context.Context) error {
 	if err := t.stopCgroup(); err != nil {
 		return err
 	}
+	// The filter goes with the container, once its scope ended: it is
+	// kept while the slice holds a unit.
+	t.scopeEnd(ctx)
+	t.netClear()
 	return nil
 }
 
@@ -230,6 +255,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
+		t.netStatus()
 		return status.Up
 	}
 	return status.Down
@@ -963,7 +989,7 @@ func (t *T) cgroupDir() string {
 }
 
 func (t *T) cgroupDirCapable() bool {
-	return capabilities.Has(drvID.Cap() + ".cgroup_dir")
+	return hasCgroupDir()
 }
 
 func (t *T) createCgroup(p string) error {
@@ -1174,24 +1200,33 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 	return t.isUpInfo(ctx), nil
 }
 
-func (t *T) start(ctx context.Context) error {
-	cgroupDir := t.cgroupDir()
-	cf, err := t.configFile(ctx)
-	if err != nil {
-		return err
-	}
+// lxcStartArgs returns the arguments of the lxc-start command starting the
+// container with the configuration file cf, in the lxc directory the
+// dataDirArgs name.
+func (t *T) lxcStartArgs(cf string, dataDirArgs []string) []string {
 	outFile := fmt.Sprintf("/var/tmp/svc_%s_lxc_start.log", t.Name)
 	args := []string{"-d", "-n", t.Name, "-o", outFile}
 	if t.cgroupDirCapable() {
-		args = append(args, "-s", "lxc.cgroup.dir="+cgroupDir)
+		args = append(args, "-s", "lxc.cgroup.dir="+t.lxcCgroupDir())
 	}
 	if cf != "" {
 		args = append(args, "-f", cf)
 	}
-	args = append(args, t.dataDirArgs(ctx)...)
+	return append(args, dataDirArgs...)
+}
+
+func (t *T) start(ctx context.Context) error {
+	cf, err := t.configFile(ctx)
+	if err != nil {
+		return err
+	}
+	if err := t.scopePrepare(ctx); err != nil {
+		return err
+	}
+	name, args := t.startCommand(t.lxcStartArgs(cf, t.dataDirArgs(ctx)))
 	cmd := command.New(
 		command.WithContext(ctx),
-		command.WithName("lxc-start"),
+		command.WithName(name),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),

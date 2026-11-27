@@ -107,3 +107,78 @@ func TestKeywordSystemdPropertiesValidates(t *testing.T) {
 	assert.Error(t, BaseKeywordSystemdProperties.Validate("ExecStartPre=/bin/sh"))
 	assert.True(t, slices.Contains(BaseKeywords, &BaseKeywordSystemdProperties))
 }
+
+// TestNetRulesTurnUnitModeOn pins that net_rules makes the start command
+// run in the unit, as systemd_properties does: systemd filters the
+// units of the slice of the process group, and no process outside one.
+func TestNetRulesTurnUnitModeOn(t *testing.T) {
+	r := newUnitT(t)
+	r.SystemdProperties = ""
+	assert.False(t, r.UnitMode())
+
+	r.Net.Rules = "allow node n2"
+	assert.True(t, r.UnitMode())
+	assert.Equal(t, "net_rules", r.unitKeywords())
+	assert.Equal(t, "opensvc-ns.prod-svc.web-app.main.service", r.UnitName())
+
+	r.Net.Rules = "deny any"
+	assert.True(t, r.UnitMode())
+
+	r.SystemdProperties = "PrivateTmp=yes"
+	assert.Equal(t, "systemd_properties, net_rules", r.unitKeywords())
+
+	r.Net.Rules = " \n"
+	assert.True(t, r.UnitMode())
+	assert.Equal(t, "systemd_properties", r.unitKeywords())
+}
+
+// TestUnitRunRefusesNetRulesItCanNotApply pins that a start whose filter
+// could not be enforced is refused before anything is made, rather than run
+// unfiltered: on a node without systemd, for a process group that is no
+// slice or is delegated to a user, and for rules the grammar refuses.
+func TestUnitRunRefusesNetRulesItCanNotApply(t *testing.T) {
+	defer func(f func() bool) { hasSystemd = f }(hasSystemd)
+	run := func(r *T) error {
+		_, cleanup, err := r.UnitRun(context.Background(), r.StartCmd, "start", sdunit.Run{Type: "notify"})
+		cleanup()
+		return err
+	}
+	netT := func() *T {
+		r := newUnitT(t)
+		r.SystemdProperties = ""
+		r.Net.Rules = "allow node n2"
+		return r
+	}
+
+	hasSystemd = func() bool { return false }
+	assert.EqualError(t, run(netT()), "net_rules: the node does not run systemd")
+
+	hasSystemd = func() bool { return true }
+	r := netT()
+	r.SetPG(&pg.Config{})
+	err := run(r)
+	assert.ErrorIs(t, err, pg.ErrNoSlice)
+	assert.EqualError(t, err, "netwarden: net_rules can not be applied: the process group is no systemd slice")
+
+	r = netT()
+	r.SetPG(r.GetPG().Delegated(pg.Delegation{Root: "/user.slice/user-1001.slice/user@1001.service", UID: 1001, GID: 1001}))
+	assert.ErrorIs(t, run(r), pg.ErrDelegated)
+
+	r = netT()
+	r.Net.Rules = "allow node n2\ndeny node n3 port 22 proto tcp"
+	assert.ErrorContains(t, run(r), "netwarden: net_rules line 2: \"deny node n3 port 22 proto tcp\": port 22: the cgroup filter")
+
+	r = netT()
+	r.Net.Rules = "allow address from ./svc/acl key k"
+	assert.ErrorContains(t, run(r), "./svc/acl is no datastore, a cfg or a sec")
+}
+
+// The command of an app, as the one of a task run on the node, resolves
+// through the resolver of the node: its filter is given no nameservers of
+// its own, so it opens the ones the resolv.conf of the node names, and not
+// the ones of cluster.dns a container is given.
+func TestNetTargetNamesNoNameservers(t *testing.T) {
+	r := newUnitT(t)
+	r.Net.Rules = "allow node n2"
+	assert.Nil(t, r.NetTarget().DNS)
+}
