@@ -3351,16 +3351,16 @@ func newCmdObjectInstanceBoot(kind string) *cobra.Command {
 	return cmd
 }
 
-// newCmdObjectInstancePrefetch is the command the daemon runs to pull the
-// images of an instance ahead of a failover. It takes no lock flag: it takes
-// no lock.
+// newCmdObjectInstancePrefetch is the command the daemon runs to get the
+// images of an instance ahead of a failover, from a node of the object or
+// from their registry. It takes no lock flag: it takes no lock.
 func newCmdObjectInstancePrefetch(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePrefetch
 	cmd := &cobra.Command{
 		Use:    "prefetch",
 		Hidden: true,
-		Short:  "pull the missing images of the container resources",
-		Long:   "Pull the images of the container resources the engine store does not hold, and record the outcome for the resource status. Run by the daemon on the nodes not running the instance.",
+		Short:  "get the missing images of the container resources",
+		Long:   "Get the images of the container resources the engine store does not hold, copied from a node of the object holding them, or pulled from their registry, and record the outcome for the resource status. Run by the daemon on the nodes not running the instance.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},

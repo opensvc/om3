@@ -2,6 +2,7 @@ package rescontainerocibase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -210,14 +211,19 @@ func (t *BT) pullKey() resource.Pull {
 	return newPull(t.imageEngine, t.imageStore, t.Image, t.RegistryCreds, t.Path)
 }
 
-// Prefetch implements resource.Prefetcher: it pulls the image when the store
-// of the engine does not hold it, and never pulls again one it holds,
+// Prefetch implements resource.Prefetcher: it gets the image when the store
+// of the engine does not hold it, and never gets again one it holds,
 // whatever image_pull_policy says of the starts.
+//
+// The image is copied from the first of the sources holding it, and pulled
+// from its registry when none does, or when none is given: the nodes of a
+// cluster with no registry hold the images loaded on one of them by hand.
+// The outcome tells the source, and a failure what both said.
 //
 // The outcome is recorded on the node, by the agent and not by the user of a
 // rootless container. An engine that does not answer records none, and is
 // the error returned: nothing is known of the image.
-func (t *BT) Prefetch(ctx context.Context) (resource.PrefetchReport, error) {
+func (t *BT) Prefetch(ctx context.Context, sources []resource.ImageSource) (resource.PrefetchReport, error) {
 	report := resource.PrefetchReport{RID: t.RID()}
 	if t.executer == nil {
 		return report, fmt.Errorf("prefetch: undefined executer")
@@ -234,11 +240,24 @@ func (t *BT) Prefetch(ctx context.Context) (resource.PrefetchReport, error) {
 		report.State = resource.PrefetchPresent
 		report.ImageID = id
 	default:
+		node, id, peersErr := t.copyImage(ctx, report.Key, sources)
+		if node != "" {
+			report.State = resource.PrefetchPulled
+			report.Source = resource.PrefetchSourcePeer(node)
+			report.ImageID = id
+			break
+		}
+		if err := ctx.Err(); err != nil {
+			// The copies were cut with the command: a pull would be
+			// too, and its failure say nothing of the registry.
+			return report, fmt.Errorf("prefetch: %w", err)
+		}
 		if err := t.pull(ctx); err != nil {
 			report.State = resource.PrefetchFailed
-			report.Error = err.Error()
+			report.Error = prefetchError(peersErr, err)
 		} else {
 			report.State = resource.PrefetchPulled
+			report.Source = resource.PrefetchSourceRegistry
 			if _, id, err := t.executer.HasImage(ctx); err == nil {
 				report.ImageID = id
 			}
@@ -249,6 +268,181 @@ func (t *BT) Prefetch(ctx context.Context) (resource.PrefetchReport, error) {
 		return report, fmt.Errorf("prefetch: record the outcome: %w", err)
 	}
 	return report, nil
+}
+
+// prefetchError is the error of a prefetch whose pull failed with pullErr,
+// after the nodes it asked for a copy, when it asked some, failed with
+// peersErr.
+func prefetchError(peersErr, pullErr error) string {
+	if peersErr == nil {
+		return pullErr.Error()
+	}
+	return fmt.Sprintf("peers: %s; registry: %s", peersErr, pullErr)
+}
+
+// nodePlatform is the platform of this node, replaced by the tests.
+var nodePlatform = resource.NodePlatform
+
+// copyImage copies the image of key from the first of the sources holding
+// it, and returns the node it came from, with the id of the image. With no
+// node to return, the error says why of each source asked, and is nil when
+// none was.
+//
+// The sources are asked in their order for the image in the store of the
+// engine of the key, then for the one in the store of the system of the
+// other engines, which save an archive this one loads: a node holding the
+// image the same way is preferred, having it as a start here would. A node
+// of another platform is asked once: its images are built for it.
+//
+// The other engines are asked only for an image naming its registry, which
+// they all read the same. A name with no registry, as podman keeps it in
+// its key, is resolved by each engine its own way: the docker of a node
+// holds under "nginx:latest" the image of its hub, where the podman of
+// this one may resolve it to another registry, and the ids of the two
+// stores would agree on the wrong image. Such an image is copied from the
+// nodes of its engine, then pulled from the registry its engine resolves.
+//
+// No credentials are used: the nodes hand the image they hold to the
+// agent of a node of their cluster.
+func (t *BT) copyImage(ctx context.Context, key resource.Pull, sources []resource.ImageSource) (string, string, error) {
+	if len(sources) == 0 {
+		return "", "", nil
+	}
+	engines := []string{key.Engine}
+	if resource.ImageNamesRegistry(key.Image) {
+		for _, engine := range resource.ImageStoreEngines() {
+			if engine != key.Engine {
+				engines = append(engines, engine)
+			}
+		}
+	}
+	reasons := make(map[string]error)
+	foreign := make(map[string]bool)
+	for _, engine := range engines {
+		ask := resource.Pull{Engine: engine, Image: key.Image}
+		if engine == key.Engine {
+			ask.Store = key.Store
+		}
+		for _, source := range sources {
+			node := source.Node()
+			if foreign[node] {
+				continue
+			}
+			id, err := t.copyImageFrom(ctx, source, ask, key)
+			if err == nil {
+				t.Log().Infof("image %s copied from the %s store of %s", t.Image, engine, node)
+				return node, id, nil
+			}
+			if ctx.Err() != nil {
+				return "", "", ctx.Err()
+			}
+			var platformErr *platformError
+			if errors.As(err, &platformErr) {
+				foreign[node] = true
+			}
+			// What a node says of the store of the engine of the
+			// key is kept, unless it only said it does not hold
+			// the image, and says more of another store.
+			if former, ok := reasons[node]; !ok || (errors.Is(former, resource.ErrImageNotFound) && !errors.Is(err, resource.ErrImageNotFound)) {
+				reasons[node] = err
+			}
+			t.Log().Debugf("image %s not copied from the %s store of %s: %s", t.Image, engine, node, err)
+		}
+	}
+	l := make([]string, 0, len(sources))
+	for _, source := range sources {
+		if err, ok := reasons[source.Node()]; ok {
+			l = append(l, fmt.Sprintf("%s: %s", source.Node(), err))
+			delete(reasons, source.Node())
+		}
+	}
+	return "", "", errors.New(strings.Join(l, ", "))
+}
+
+// platformError is the error of a copy from a node of another platform.
+type platformError struct {
+	platform string
+}
+
+func (t *platformError) Error() string {
+	return fmt.Sprintf("a %s node, this one is %s", t.platform, nodePlatform())
+}
+
+// imageIDKind says what the ids of the store of key are the digest of, and
+// nothing when the engine does not tell. It is replaced by the tests.
+var imageIDKind = func(ctx context.Context, key resource.Pull) string {
+	store := resource.ImageStoreOf(key.Engine)
+	if store == nil {
+		return ""
+	}
+	kind, err := store.IDKind(ctx, key)
+	if err != nil {
+		return ""
+	}
+	return kind
+}
+
+// copyImageFrom loads the archive of the image ask names, as source sends
+// it, and returns the id of the image. The archive goes from the node to
+// the engine as it comes, and is kept nowhere.
+//
+// The store is then asked for the image of the resource, which is what a
+// start would run: the archive loaded has to have brought it, or the copy
+// failed. Its id has to be the one the node announced, when the two stores
+// name an image the same: the archive of another image, as of a reference
+// the node gave another image while it saved, is not what was asked for.
+// The name the load gave that image is then removed, for no start to run
+// it, and the error says so. An archive cut short is refused by the engine.
+//
+// Two stores not naming an image the same, as a docker keeping its images
+// in containerd and one that does not, or one of them not telling, have no
+// ids to compare: the image under its name is the copy.
+//
+// The copy is bound by the pull_timeout, as a pull is: a node that stalls
+// leaves their time to the others, and to the registry.
+func (t *BT) copyImageFrom(ctx context.Context, source resource.ImageSource, ask, key resource.Pull) (string, error) {
+	if t.PullTimeout != nil && *t.PullTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *t.PullTimeout)
+		defer cancel()
+	}
+	archive, err := source.Save(ctx, ask)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = archive.Body.Close() }()
+	if archive.Platform != nodePlatform() {
+		return "", &platformError{platform: archive.Platform}
+	}
+	if err := t.executer.LoadImage(ctx, archive.Body); err != nil {
+		return "", fmt.Errorf("load: %w", err)
+	}
+	has, id, err := t.executer.HasImage(ctx)
+	switch {
+	case err != nil:
+		return "", err
+	case !has:
+		return "", fmt.Errorf("the archive loaded did not bring image %s", t.Image)
+	}
+	if kind := imageIDKind(ctx, key); kind == "" || kind != archive.IDKind {
+		return id, nil
+	}
+	if sameImageID(id, archive.ID) {
+		return id, nil
+	}
+	if err := t.executer.RemoveImage(ctx); err != nil {
+		return "", fmt.Errorf("the image loaded is %s, not the %s announced, and its removal failed: %w", id, archive.ID, err)
+	}
+	return "", fmt.Errorf("the image loaded is %s, not the %s announced: removed", id, archive.ID)
+}
+
+// sameImageID says whether two ids, as two engines print them, are the id
+// of one image: docker prefixes the digest with its algorithm, and podman
+// does not.
+func sameImageID(a, b string) bool {
+	const prefix = "sha256:"
+	a, b = strings.TrimPrefix(a, prefix), strings.TrimPrefix(b, prefix)
+	return a != "" && a == b
 }
 
 // warnPrefetchFailed warns, in the status of a resource with no container,

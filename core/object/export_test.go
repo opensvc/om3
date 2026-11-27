@@ -50,3 +50,21 @@ func SetNetRuleView(fn func() (netrule.View, error)) func() {
 	netRuleView = fn
 	return func() { netRuleView = saved }
 }
+
+// ImageSourceClient is what the prefetch asks the daemon of the node, for
+// the tests to answer in its place.
+type ImageSourceClient = imageSourceClient
+
+// SetImageSourceClient replaces the client the prefetch asks the daemon of
+// the node with, and returns the function restoring it.
+func SetImageSourceClient(c ImageSourceClient) func() {
+	former := newImageSourceClient
+	newImageSourceClient = func() (imageSourceClient, error) { return c, nil }
+	return func() { newImageSourceClient = former }
+}
+
+// OrderImageSourceNodes exposes to the tests the order the nodes are asked
+// for an image in.
+func OrderImageSourceNodes(nodes []string, up map[string]bool) []string {
+	return orderImageSourceNodes(nodes, up)
+}

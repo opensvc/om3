@@ -21,7 +21,7 @@ type (
 // Run prefetches the images of the local instances selected, and prints
 // what each prefetch did, a json list per object.
 //
-// A pull that failed is an outcome, printed and recorded for the daemon and
+// A prefetch that failed is an outcome, printed and recorded for the daemon and
 // the resource status: the command fails only when a prefetch could not be
 // tried.
 func (t *CmdObjectInstancePrefetch) Run(kind string) error {

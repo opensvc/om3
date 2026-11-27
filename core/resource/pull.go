@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -69,8 +71,44 @@ type (
 	// does not hold it. The outcome is in the report, and recorded on
 	// the node for the status of the resource and for the daemon: an
 	// error is returned only for what prevented the try.
+	//
+	// The image is copied from the first of the sources holding it, in
+	// their order, and pulled from its registry when none does: a
+	// cluster with no registry has its images loaded on a node by hand,
+	// and the others get them from that node.
 	Prefetcher interface {
-		Prefetch(context.Context) (PrefetchReport, error)
+		Prefetch(context.Context, []ImageSource) (PrefetchReport, error)
+	}
+
+	// ImageSource is a node a prefetch may copy an image from.
+	ImageSource interface {
+		// Node is the name of the node.
+		Node() string
+
+		// Save asks the node for the archive of the image the Pull
+		// names, in the store it names. A node whose store does not
+		// hold the image answers ErrImageNotFound.
+		Save(context.Context, Pull) (*ImageArchive, error)
+	}
+
+	// ImageArchive is the archive of an image, as a node sends it.
+	ImageArchive struct {
+		// ID is the id of the image in the store of the node sending
+		// it: the one the image has once loaded.
+		ID string
+
+		// IDKind is what ID is the digest of in that store,
+		// ImageIDConfig or ImageIDManifest, and is empty when the
+		// node does not tell.
+		IDKind string
+
+		// Platform is the platform of the node sending it, as
+		// NodePlatform says it.
+		Platform string
+
+		// Body is the archive, for the load of an engine to read. It
+		// is closed by who asked for it, read or not.
+		Body io.ReadCloser
 	}
 
 	// PrefetchReport is what a prefetch of the image of a resource did.
@@ -90,7 +128,14 @@ type (
 		// ImageID is the id of the image in the store, when there.
 		ImageID string `json:"image_id,omitempty"`
 
-		// Error is why the prefetch failed.
+		// Source is where a prefetch got the image it pulled from:
+		// PrefetchSourceRegistry, or what PrefetchSourcePeer says of
+		// a node.
+		Source string `json:"source,omitempty"`
+
+		// Error is why the prefetch failed: what the registry said,
+		// after what the nodes asked first for a copy said, when some
+		// were, as "peers: <error>; registry: <error>".
 		Error string `json:"error,omitempty"`
 
 		// UpdatedAt is when the outcome was recorded, by the clock of
@@ -152,13 +197,22 @@ const (
 	// the store.
 	PrefetchPresent = "present"
 
-	// PrefetchPulled is the outcome of a prefetch that pulled the image.
+	// PrefetchPulled is the outcome of a prefetch that pulled the image,
+	// or copied it from a node: its source says which.
 	PrefetchPulled = "pulled"
 
-	// PrefetchFailed is the outcome of a prefetch that could not pull the
-	// image.
+	// PrefetchFailed is the outcome of a prefetch that could neither copy
+	// the image from a node nor pull it.
 	PrefetchFailed = "failed"
 )
+
+// PrefetchSourceRegistry is the source of an image pulled from its registry.
+const PrefetchSourceRegistry = "registry"
+
+// PrefetchSourcePeer is the source of an image copied from a node.
+func PrefetchSourcePeer(node string) string {
+	return "peer " + node
+}
 
 var (
 	imageStoresMu sync.RWMutex
@@ -179,6 +233,14 @@ func ImageStoreOf(engine string) ImageStore {
 	imageStoresMu.RLock()
 	defer imageStoresMu.RUnlock()
 	return imageStores[engine]
+}
+
+// ImageStoreEngines returns the engines an image store is registered for,
+// sorted.
+func ImageStoreEngines() []string {
+	imageStoresMu.RLock()
+	defer imageStoresMu.RUnlock()
+	return slices.Sorted(maps.Keys(imageStores))
 }
 
 // NodePlatform is the operating system and the architecture of the node, as
@@ -248,6 +310,10 @@ func NormalizeQualifiedImage(s string) string {
 // registry, as the engines tell one from the first component of a path: it
 // has a '.' or a ':', is "localhost", or has an upper case letter, which a
 // repository can not have.
+//
+// A reference naming its registry is the same image for every engine. One
+// naming none is not: docker reads it as an image of its hub, and podman
+// resolves it with its registries.conf.
 func ImageNamesRegistry(s string) bool {
 	i := strings.IndexByte(s, '/')
 	if i < 0 {
