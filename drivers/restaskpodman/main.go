@@ -96,6 +96,7 @@ func (t *T) container() *rescontainerpodman.T {
 			UTSNS:                     t.UTSNS,
 			ReadOnly:                  t.ReadOnly,
 			Sysctl:                    t.Sysctl,
+			Limit:                     t.Limit,
 			StopTimeout:               t.StopTimeout,
 			RegistryCreds:             t.RegistryCreds,
 			PullTimeout:               t.PullTimeout,

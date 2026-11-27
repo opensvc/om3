@@ -1,0 +1,8 @@
+The limit on the size of the core dump a process of the container can produce (unit byte).
+
+The engine sets the soft and the hard limit to this value, as `--ulimit
+core=<value>:<value>`, which overrides its default ulimit and the `--ulimit core`
+of `run_args`. Unset, the container runs with the default of the engine.
+
+Setting this keyword requires the root grant, where the other `limit_*`
+keywords of a container are open to the administrator of the namespace.

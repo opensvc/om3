@@ -1,0 +1,2 @@
+The limits the engine sets on the processes of the container, as their cpu
+time, their memory and their open files, in place of its default ulimits.

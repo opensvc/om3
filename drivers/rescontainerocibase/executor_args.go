@@ -215,6 +215,7 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	}
 	a.Append(ea.runArgsCGroupParent()...)
 	a.Append(ea.runArgsSysctl()...)
+	a.Append(ea.runArgsUlimit(runArgs)...)
 
 	for _, v := range bt.Devices {
 		runArgs.DropOptionAndExactValue("--device", v)

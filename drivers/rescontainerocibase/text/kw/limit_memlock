@@ -1,0 +1,8 @@
+The limit on how much memory a process of the container can lock with mlock(2) (unit byte).
+
+The engine sets the soft and the hard limit to this value, as `--ulimit
+memlock=<value>:<value>`, which overrides its default ulimit and the `--ulimit memlock`
+of `run_args`. Unset, the container runs with the default of the engine.
+
+Setting this keyword requires the root grant, where the other `limit_*`
+keywords of a container are open to the administrator of the namespace.

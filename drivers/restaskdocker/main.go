@@ -81,6 +81,7 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			UTSNS:                     t.UTSNS,
 			ReadOnly:                  t.ReadOnly,
 			Sysctl:                    t.Sysctl,
+			Limit:                     t.Limit,
 			StopTimeout:               t.StopTimeout,
 			RegistryCreds:             t.RegistryCreds,
 			PullTimeout:               t.PullTimeout,

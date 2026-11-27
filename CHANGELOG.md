@@ -1615,6 +1615,28 @@ which share the same executor.
     ends: they carry an `OSVC_ENTER_SESSION` environment variable naming
     the session.
 
+* **New keywords, `limit_*`:**
+    The `limit_cpu`, `limit_core`, `limit_data`, `limit_fsize`,
+    `limit_memlock`, `limit_nofile`, `limit_nproc`, `limit_rss`,
+    `limit_stack`, `limit_vmem` and `limit_as` keywords of the `app` and
+    `task.host` resources are keywords of the docker, podman and oci
+    containers and tasks too: the ulimits of the processes of the container,
+    passed to the engine as `--ulimit <name>=<value>:<value>`, the soft and
+    the hard limit set to the value. `limit_vmem` and `limit_as` are both
+    the `as` ulimit, the larger kept when both are set.
+
+    A keyword overrides the default ulimit of the engine, as the
+    `nofile` of 1073741816 a container inherits from a containerd with
+    `LimitNOFILE=infinity`, and the `--ulimit` of the same name in
+    `run_args`, which is dropped. The limits no keyword sets are left to
+    `run_args` and to the engine.
+
+* **New rbac, the `limit_*` keywords of a container or a task:**
+    The administrator of a namespace sets them without the root grant
+    `run_args`, and so its `--ulimit`, requires, whatever the value.
+    `limit_core` and `limit_memlock` are the exception, and require the
+    root grant.
+
 * **Changed behaviour, the anonymous volumes of a removed container:**
     A container removed by om, at the stop of a `rm = true` container, at
     every run of a task, before a start finding a leftover, and at

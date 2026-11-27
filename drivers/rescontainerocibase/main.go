@@ -45,6 +45,7 @@ import (
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/stringslice"
+	"github.com/opensvc/om3/v3/util/ulimit"
 )
 
 type (
@@ -102,6 +103,7 @@ type (
 		ResumeInput     string         `json:"resume_input"`
 		QuiesceTimeout  *time.Duration `json:"quiesce_timeout"`
 		Sysctl          []string       `json:"sysctl"`
+		Limit           ulimit.Config  `json:"limit"`
 		LogOutputs      bool           `json:"log_outputs"`
 		UXGrant         []string       `json:"uxgrant"`
 

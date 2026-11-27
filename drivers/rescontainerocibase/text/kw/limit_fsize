@@ -1,0 +1,5 @@
+The limit on the size of the files a process of the container can create (unit byte).
+
+The engine sets the soft and the hard limit to this value, as `--ulimit
+fsize=<value>:<value>`, which overrides its default ulimit and the `--ulimit fsize`
+of `run_args`. Unset, the container runs with the default of the engine.

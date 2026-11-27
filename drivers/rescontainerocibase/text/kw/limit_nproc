@@ -1,0 +1,6 @@
+The limit on the number of processes the user of a process of the container can have at one time.
+The kernel counts the processes of the user on the whole node, not in the container.
+
+The engine sets the soft and the hard limit to this value, as `--ulimit
+nproc=<value>:<value>`, which overrides its default ulimit and the `--ulimit nproc`
+of `run_args`. Unset, the container runs with the default of the engine.

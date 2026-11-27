@@ -407,6 +407,7 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddKeywords(LimitKeywords...)
 	m.AddKeywords(netKeywords...)
 	m.AddGroups(Groups...)
 	return m
