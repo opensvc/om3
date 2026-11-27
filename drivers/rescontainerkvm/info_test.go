@@ -2,6 +2,7 @@ package rescontainerkvm
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -51,4 +52,12 @@ func TestInfoUUID(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, keys)
 	})
+}
+
+func TestIsDomainNotFound(t *testing.T) {
+	notFound := errors.New("virsh dumpxml --inactive k2: exit status 1: error: failed to get domain 'k2'")
+	noDaemon := errors.New("virsh dumpxml --inactive k2: exit status 1: error: failed to connect to the hypervisor")
+	assert.True(t, isDomainNotFound(notFound), "a domain not defined adds no key")
+	assert.False(t, isDomainNotFound(noDaemon), "a failed lookup is returned, the cached uuid kept")
+	assert.False(t, isDomainNotFound(nil))
 }
