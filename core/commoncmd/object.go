@@ -294,6 +294,40 @@ func NewCmdObjectGroupStop(kind, group string) *cobra.Command {
 	return cmd
 }
 
+// NewCmdObjectGroupUnstop returns the command that lowers the flags a stop
+// raised on resources, without its flags and run function, which om and ox
+// set. It is also mounted where no group filters the resources, as
+// "resource unstop".
+func NewCmdObjectGroupUnstop(kind, group string) *cobra.Command {
+	subject, parent, rid := group+" resources", group, "1"
+	equiv := fmt.Sprintf("'instance unstop --rid %s#<ID>'", group)
+	scope := "Only the flags of the resources selected are lowered: the flag a stop of\nthe whole instance raised stays, until an instance start or unstop."
+	if group == "" {
+		subject, parent, rid = "resources", "resource", "app#1"
+		equiv = "'instance unstop --rid <PATTERN>'"
+		scope = "With a PATTERN, only the flags of the resources selected are lowered, and\nthe flag a stop of the whole instance raised stays. Without, the flags of\nall resources and the one of the instance are lowered, as instance unstop\ndoes."
+	}
+	cmd := &cobra.Command{
+		Use:   "unstop [PATTERN]...",
+		Short: "lower the flags a stop raised on resources, without starting",
+		Long: fmt.Sprintf(`Lower the flags a stop raised on %s, as a start does, and start
+nothing. Equivalent to %s.
+
+A stop of a resource alone raises a flag on it, and the daemon does not
+restart a flagged resource. A start lowers the flag. Unstop lowers it and
+leaves the restart to the daemon.
+
+%s`, subject, equiv, scope),
+		Example: ForProgram(fmt.Sprintf(`  # let the daemon restart a resource stopped alone
+  om svc1 %s unstop %s
+
+  # on another node
+  om svc1 %s unstop %s --node n2`, parent, rid, parent, rid)),
+	}
+	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
+	return cmd
+}
+
 func NewCmdObjectGroupRestart(kind, group string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restart [PATTERN]...",

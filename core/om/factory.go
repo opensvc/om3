@@ -2561,6 +2561,7 @@ func newCmdObjectContainer(kind string) *cobra.Command {
 		newCmdObjectGroupStartStandby(kind, "container"),
 		newCmdObjectGroupShutdown(kind, "container"),
 		newCmdObjectGroupStop(kind, "container"),
+		newCmdObjectGroupUnstop(kind, "container"),
 		newCmdObjectGroupRestart(kind, "container"),
 		newCmdObjectGroupProvision(kind, "container"),
 		newCmdObjectGroupUnprovision(kind, "container"),
@@ -2578,6 +2579,7 @@ func newCmdObjectIP(kind string) *cobra.Command {
 		newCmdObjectGroupStartStandby(kind, "ip"),
 		newCmdObjectGroupShutdown(kind, "ip"),
 		newCmdObjectGroupStop(kind, "ip"),
+		newCmdObjectGroupUnstop(kind, "ip"),
 		newCmdObjectGroupRestart(kind, "ip"),
 		newCmdObjectGroupUnprovision(kind, "ip"),
 	)
@@ -2599,6 +2601,7 @@ func newCmdObjectFS(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, "fs"),
 		newCmdObjectGroupStartStandby(kind, "fs"),
 		newCmdObjectGroupStop(kind, "fs"),
+		newCmdObjectGroupUnstop(kind, "fs"),
 		newCmdObjectGroupUnprovision(kind, "fs"),
 	)
 	return cmd
@@ -2619,6 +2622,7 @@ func newCmdObjectVolume(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, "volume"),
 		newCmdObjectGroupStartStandby(kind, "volume"),
 		newCmdObjectGroupStop(kind, "volume"),
+		newCmdObjectGroupUnstop(kind, "volume"),
 		newCmdObjectGroupUnprovision(kind, "volume"),
 	)
 	return cmd
@@ -2636,6 +2640,7 @@ func newCmdObjectDisk(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, "disk"),
 		newCmdObjectGroupStartStandby(kind, "disk"),
 		newCmdObjectGroupStop(kind, "disk"),
+		newCmdObjectGroupUnstop(kind, "disk"),
 		newCmdObjectGroupResize(kind, "disk"),
 		newCmdObjectGroupRestart(kind, "disk"),
 		newCmdObjectGroupUnprovision(kind, "disk"),
@@ -2657,6 +2662,7 @@ func newCmdObjectShare(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, "share"),
 		newCmdObjectGroupStartStandby(kind, "share"),
 		newCmdObjectGroupStop(kind, "share"),
+		newCmdObjectGroupUnstop(kind, "share"),
 		newCmdObjectGroupRestart(kind, "share"),
 		newCmdObjectGroupProvision(kind, "share"),
 		newCmdObjectGroupUnprovision(kind, "share"),
@@ -2674,6 +2680,7 @@ func newCmdObjectApp(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, "app"),
 		newCmdObjectGroupStartStandby(kind, "app"),
 		newCmdObjectGroupStop(kind, "app"),
+		newCmdObjectGroupUnstop(kind, "app"),
 	)
 	return cmd
 }
@@ -2703,6 +2710,7 @@ func newCmdObjectResource(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, ""),
 		newCmdObjectGroupStartStandby(kind, ""),
 		newCmdObjectGroupStop(kind, ""),
+		newCmdObjectGroupUnstop(kind, ""),
 
 		// sync
 		newCmdObjectGroupFull(kind, ""),
@@ -2794,6 +2802,21 @@ func newCmdObjectGroupStop(kind, group string) *cobra.Command {
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectGroupUnstop(kind, group string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnstop
+	cmd := commoncmd.NewCmdObjectGroupUnstop(kind, group)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, group, group)
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
