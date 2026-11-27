@@ -633,6 +633,95 @@ func TestApplyRecordsTheObjectsHoldingTheAddresses(t *testing.T) {
 	assert.True(t, holder.IsDeletedBy(tombstone.Record{Path: "test/svc/db", ObjectID: "db-id", Version: version}))
 }
 
+// The daemon tells the object publishing each address, which the start
+// records: a path names two objects while a node still tells its instance
+// of the object deleted beside the object created again under it. The
+// address of the first is recorded as its own, for the record of its delete
+// to lift it, and not as one of the object the path is told with. An
+// address the daemon tells no object of is recorded with its path alone.
+func TestApplyRecordsTheObjectPublishingEachAddress(t *testing.T) {
+	_, target := setup(t)
+	lookupObjects = func([]naming.Path, []string) (netrule.Objects, netrule.Identities, error) {
+		return answered(t, `{"kind": "NetworkAddressList", "items": [
+			{"path": "test/svc/db", "object_id": "id2", "version": "2026-11-20T11:00:00Z", "holders": [
+				{"object_id": "id1", "version": "2026-11-20T10:00:00Z", "addresses": ["10.0.1.5"]},
+				{"object_id": "id2", "version": "2026-11-20T11:00:00Z", "addresses": ["10.0.1.6", "::ffff:10.0.1.8"]}
+			], "resources": {"ip#1": ["10.0.1.5", "10.0.1.6", "10.0.1.7", "10.0.1.8"]}},
+			{"path": "test/svc/none", "object_id": "id3", "version": "2026-11-20T11:00:00Z", "holders": [], "resources": {"ip#1": ["10.0.1.9"]}}
+		]}`)
+	}
+	_, err := T{Rules: "allow object ./svc/db\nallow object ./svc/none"}.Apply(target)
+	require.NoError(t, err)
+
+	rec, err := netrule.LoadRecord(filepath.Join(target.VarDir(), appliedFile))
+	require.NoError(t, err)
+	older := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
+	newer := older.Add(time.Hour)
+	want := netrule.Memory{
+		"allow object ./svc/db": {
+			netip.MustParseAddr("10.0.1.5"): {Path: "test/svc/db", ObjectID: "id1", Version: older},
+			netip.MustParseAddr("10.0.1.6"): {Path: "test/svc/db", ObjectID: "id2", Version: newer},
+			netip.MustParseAddr("10.0.1.7"): {Path: "test/svc/db"},
+			netip.MustParseAddr("10.0.1.8"): {Path: "test/svc/db", ObjectID: "id2", Version: newer},
+		},
+		"allow object ./svc/none": {netip.MustParseAddr("10.0.1.9"): {Path: "test/svc/none"}},
+	}
+	assert.True(t, want.Equal(rec.Held), "each address is held by the object the daemon told of it: %+v", rec.Held)
+
+	// The record of the delete of the object deleted is the one of its
+	// address, and none of the address of the object created again.
+	deleted := tombstone.Record{Path: "test/svc/db", ObjectID: "id1", Version: older}
+	held := rec.Held["allow object ./svc/db"]
+	assert.True(t, held[netip.MustParseAddr("10.0.1.5")].IsDeletedBy(deleted))
+	assert.False(t, held[netip.MustParseAddr("10.0.1.6")].IsDeletedBy(deleted))
+}
+
+// What the daemon answers is read with the objects of the addresses where
+// it tells them, and with the object of the path alone where it does not,
+// as a daemon not upgraded yet: every address is then the one of that
+// object.
+func TestIdentitiesOf(t *testing.T) {
+	version := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
+	_, identities, err := answered(t, `{"kind": "NetworkAddressList", "items": [
+		{"path": "test/svc/told", "object_id": "id2", "version": "2026-11-20T11:00:00Z", "holders": [
+			{"object_id": "id1", "version": "2026-11-20T10:00:00Z", "addresses": ["10.0.1.5", "not an address"]}
+		], "resources": {"ip#1": ["10.0.1.5", "10.0.1.6"]}},
+		{"path": "test/svc/empty", "holders": [], "resources": {"ip#1": ["10.0.1.7"]}},
+		{"path": "test/svc/older", "object_id": "id3", "version": "2026-11-20T10:00:00Z", "resources": {"ip#1": ["10.0.1.8"]}},
+		{"path": "test/svc/anon", "resources": {"ip#1": ["10.0.1.9"]}}
+	]}`)
+	require.NoError(t, err)
+	assert.Equal(t, netrule.Identities{
+		"test/svc/told": {ObjectID: "id2", Version: version.Add(time.Hour), Publishers: map[netip.Addr]netrule.Publisher{
+			netip.MustParseAddr("10.0.1.5"): {ObjectID: "id1", Version: version},
+		}},
+		"test/svc/empty": {Publishers: map[netip.Addr]netrule.Publisher{}},
+		"test/svc/older": {ObjectID: "id3", Version: version},
+	}, identities, "a path told nothing of is not there")
+
+	p := func(s string) naming.Path {
+		path, err := naming.ParsePath(s)
+		require.NoError(t, err)
+		return path
+	}
+	view := netrule.WithAddrIdentities(netrule.Data{}, identities).(netrule.AddrIdentifier)
+	for _, tc := range []struct {
+		path, addr, id string
+		version        time.Time
+		msg            string
+	}{
+		{"test/svc/told", "10.0.1.5", "id1", version, "the object told of the address"},
+		{"test/svc/told", "10.0.1.6", "", time.Time{}, "no object told of the address, not the one of the path"},
+		{"test/svc/empty", "10.0.1.7", "", time.Time{}, "no object told of any address"},
+		{"test/svc/older", "10.0.1.8", "id3", version, "the object of the path, the daemon telling no other"},
+		{"test/svc/anon", "10.0.1.9", "", time.Time{}, "nothing told"},
+	} {
+		id, got := view.AddrIdentity(p(tc.path), netip.MustParseAddr(tc.addr))
+		assert.Equal(t, tc.id, id, tc.msg)
+		assert.True(t, tc.version.Equal(got), "%s: got %s", tc.msg, got)
+	}
+}
+
 // A daemon not upgraded yet tells the addresses of the objects, and neither
 // their id nor the version of their configuration: the start sets the same
 // filter, and records the addresses with the path of their object alone,

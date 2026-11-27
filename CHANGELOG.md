@@ -388,8 +388,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     started with `systemd_properties`, in a unit of the slice; the command of an app started with
     neither runs in no unit, and its rules apply at its next start, its status warning until then. The
     addresses of the objects are served by `GET /api/network/address`, each object with its id and the
-    version of its configuration, which a start records with the addresses, to the root and
-    inspector grants. The start command of an app, or the
+    version of its configuration, and each address with the ones of the object publishing it, which a
+    start records with the addresses, to the root and inspector grants. The start command of an app, or the
     run command of a task, runs in a transient systemd service unit of the slice, as with
     `systemd_properties`, and om exec refuses to run it if the filter is not attached. A container is
     filtered in the scope its engine makes with the systemd cgroup driver, and verified once started. A

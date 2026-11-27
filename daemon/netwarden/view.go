@@ -414,51 +414,32 @@ func Objects(objects []naming.Path, namespaces []string) netrule.Objects {
 // has the configuration of its instances: what the view of the daemon
 // following the events tells, see heard.identity, read once.
 func Identity(p naming.Path) (id string, version time.Time) {
-	return newestConfig(instance.ConfigData.GetByPath(p), nil)
+	return heardOf(p).identity(p)
 }
 
-// newestConfig returns the id and the version of the newest of the
-// configurations of the instances of an object, by node, of the nodes
-// given, or of every node when none is.
-func newestConfig(configs map[string]*instance.Config, nodes []string) (id string, version time.Time) {
-	for nodename, cfg := range configs {
-		if cfg == nil || (nodes != nil && !slices.Contains(nodes, nodename)) {
-			continue
-		}
-		if version.IsZero() || cfg.UpdatedAt.After(version) {
-			id, version = cfg.ID, cfg.UpdatedAt
+// heardOf returns what the data of the daemon has of the instances of an
+// object, as the daemon following the events heard it: the view the api
+// tells the objects of the addresses from is the one the filters are kept
+// current over, read once.
+func heardOf(p naming.Path) heard {
+	h := make(heard)
+	for nodename, cfg := range instance.ConfigData.GetByPath(p) {
+		if cfg != nil {
+			h.setConfig(p, nodename, cfg.Scope, cfg.ID, cfg.UpdatedAt)
 		}
 	}
-	return id, version
-}
-
-// publishedIdentity returns which object publishes the addresses of the
-// path, as the data of the daemon has its instances: the id and the version
-// of the newest configuration of the instances whose status holds an
-// address, each zero when the configuration of none is known. An object no
-// instance publishes an address of is the one its path names, see Identity:
-// it holds no address to tell the object of.
-//
-// It is what heard.addrIdentity tells of each address, told once for the
-// object: an instance a node still tells of an object deleted, publishing
-// nothing, does not have its addresses given to it, and the configuration
-// of the object created again, told by a node publishing nothing yet, does
-// not have the addresses of the object deleted given to it.
-func publishedIdentity(p naming.Path) (id string, version time.Time) {
-	publishers := make([]string, 0)
 	for nodename, st := range instance.StatusData.GetByPath(p) {
-		if len(objectAddrs(map[string]*instance.Status{nodename: st}).All("")) > 0 {
-			publishers = append(publishers, nodename)
+		if st != nil {
+			h.setStatus(p, nodename, st)
 		}
 	}
-	if len(publishers) == 0 {
-		return Identity(p)
-	}
-	return newestConfig(instance.ConfigData.GetByPath(p), publishers)
+	return h
 }
 
 // Identities returns which objects publish the addresses of the paths of
-// the objects given, a path no configuration is known of left out.
+// the objects given, each address with its own, see heard.addrIdentity: an
+// address no configuration of the instances publishing it is known of is
+// told no object.
 //
 // It is what the api hands to a driver starting a resource with the
 // addresses of the objects, for the start to record each address with the
@@ -466,19 +447,40 @@ func publishedIdentity(p naming.Path) (id string, version time.Time) {
 // since would else lift the addresses of a holder known by its path alone,
 // until the daemon resolves the rules again.
 //
-// The object is told once for a path, not for each address: the daemon
-// resolves the rules again as it finds the record of the start, and then
-// gives each address the object publishing it.
+// The object is told for each address, as the daemon resolving the rules
+// tells it, and by the same code: a path names two objects while a node
+// back from a delete still tells its instance of the object deleted, beside
+// the object created again. Told once for the path, the address of the
+// first was recorded as one of the second, and kept allowed while that node
+// was lost before the daemon found the record of the start.
+//
+// The object of the path is told too, for an om knowing no object by
+// address: the newest of the ones publishing an address, and the one the
+// path names, see heard.identity, when no address is published.
 func Identities(objects netrule.Objects) netrule.Identities {
 	identities := make(netrule.Identities)
-	for s := range objects {
+	for s, addrs := range objects {
 		p, err := naming.ParsePath(s)
 		if err != nil {
 			continue
 		}
-		if id, version := publishedIdentity(p); id != "" || !version.IsZero() {
-			identities[s] = netrule.Identity{ObjectID: id, Version: version}
+		h := heardOf(p)
+		identity := netrule.Identity{Publishers: make(map[netip.Addr]netrule.Publisher)}
+		published := addrs.All("")
+		for _, addr := range published {
+			id, version := h.addrIdentity(p, addr)
+			if id == "" && version.IsZero() {
+				continue
+			}
+			identity.Publishers[addr] = netrule.Publisher{ObjectID: id, Version: version}
+			if identity.Version.IsZero() || version.After(identity.Version) {
+				identity.ObjectID, identity.Version = id, version
+			}
 		}
+		if len(published) == 0 {
+			identity.ObjectID, identity.Version = h.identity(p)
+		}
+		identities[s] = identity
 	}
 	return identities
 }

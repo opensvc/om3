@@ -2620,6 +2620,16 @@ type Network struct {
 // NetworkAddress The addresses the resources of an object publish, the instances of
 // all the nodes together.
 type NetworkAddress struct {
+	// Holders The objects publishing the addresses, each with the addresses
+	// it publishes: a path names two objects while a node still
+	// tells its instance of the object deleted beside the object
+	// created again under it, each publishing its own addresses. An
+	// address no holder lists is one no configuration of the
+	// instances publishing it is known of. A daemon not knowing the
+	// field answers without it, and every address is then taken as
+	// one of the object object_id and version tell.
+	Holders *[]NetworkAddressHolder `json:"holders,omitempty"`
+
 	// ObjectId The id of the object publishing the addresses under the path,
 	// absent when its configuration tells none, or is not known.
 	ObjectId *string `json:"object_id,omitempty"`
@@ -2638,6 +2648,21 @@ type NetworkAddress struct {
 	// addresses, for the record of a delete of the path to be told
 	// from the one of the object created again under it. A daemon
 	// knowing neither field answers without them.
+	Version *time.Time `json:"version,omitempty"`
+}
+
+// NetworkAddressHolder An object publishing addresses under a path, as the configuration
+// of the instances publishing them tells it.
+type NetworkAddressHolder struct {
+	// Addresses The addresses the object publishes, sorted.
+	Addresses []string `json:"addresses"`
+
+	// ObjectId The id of the object, absent when its configuration tells
+	// none.
+	ObjectId *string `json:"object_id,omitempty"`
+
+	// Version The modification time of the configuration of the object, the
+	// newest of the instances publishing the addresses.
 	Version *time.Time `json:"version,omitempty"`
 }
 

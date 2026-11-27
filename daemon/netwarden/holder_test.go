@@ -215,6 +215,34 @@ func TestAStatusOfTheObjectDeletedIsNotTheOneOfTheConfigurationHeardSince(t *tes
 	}
 }
 
+// A resource starts while a node back from a delete still tells its
+// instance of the object deleted, publishing its address, beside the object
+// created again under the path, publishing another: the start records each
+// address with the object publishing it, as the daemon told it, not both
+// with the newest configuration of the path. The node lost before the daemon
+// finds the record of the start, the record of the delete lifts the address
+// of the object deleted, where it was kept allowed for as long as the node
+// was away.
+func TestAStartRecordsTheObjectPublishingEachAddress(t *testing.T) {
+	older, newer := netip.MustParseAddr("10.0.1.5"), netip.MustParseAddr("10.0.1.6")
+	w := newWorld(t)
+	w.runs("test/svc/db", "n2", "id1", v1, "10.0.1.5")
+	w.runs("test/svc/db", "n1", "id2", v2, "10.0.1.6")
+	w.tombstone("n1", deleteRecord("o1", "test/svc/db", "id1", v1))
+
+	// The record of the start, which the daemon has not found yet.
+	fs := w.record("test/svc/web", "object ./svc/db", "")
+	held := allowedOf(w.loaded("test/svc/web").Held)
+	assert.Equal(t, netrule.Holder{Path: "test/svc/db", ObjectID: "id1", Version: v1}, held[older], "the address of the object deleted")
+	assert.Equal(t, netrule.Holder{Path: "test/svc/db", ObjectID: "id2", Version: v2}, held[newer], "the address of the object created again")
+
+	// Lost before the daemon resolves the rules of the start again.
+	w.lost("n2")
+	w.m.onEvent(&msgbus.InstanceStatusUpdated{Path: path(t, "test/svc/web"), Node: "n1"})
+	assert.Equal(t, "10.0.1.6/32 "+implicit, fs.allowed(), "the record is the delete of the object that published the address")
+	assert.Empty(t, allowedOf(w.loaded("test/svc/web").Kept))
+}
+
 // An address the instances of two nodes publish is the one of the newest
 // of their configurations: a node holding the older one is about to fetch
 // the other, and the record of the delete of the older is not the one of

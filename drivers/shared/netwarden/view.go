@@ -104,12 +104,15 @@ func ObjectsOf(items api.NetworkAddressItems) netrule.Objects {
 }
 
 // IdentitiesOf returns which objects the api answered with the addresses
-// of: their id and the version of their configuration.
+// of: their id and the version of their configuration, and the ones of the
+// object publishing each address, where the daemon tells them.
 //
-// A daemon knowing neither field, as one not upgraded yet, tells none: the
+// A daemon telling the object of a path and not the ones of its addresses,
+// as one not upgraded yet, has every address of the path recorded with that
+// object, as before. One knowing no identity at all tells none: the
 // addresses are then recorded with the path of their object alone, and the
 // daemon gives them the object it knows under the path when it resolves the
-// rules again, as before.
+// rules again.
 func IdentitiesOf(items api.NetworkAddressItems) netrule.Identities {
 	identities := make(netrule.Identities, len(items))
 	for _, item := range items {
@@ -120,7 +123,26 @@ func IdentitiesOf(items api.NetworkAddressItems) netrule.Identities {
 		if item.Version != nil {
 			identity.Version = *item.Version
 		}
-		if identity.ObjectID != "" || !identity.Version.IsZero() {
+		if item.Holders != nil {
+			// Never nil: a daemon telling the objects by address and
+			// none of an address knows no configuration of the
+			// instances publishing it, which is not the address
+			// being the one of the object of the path.
+			identity.Publishers = make(map[netip.Addr]netrule.Publisher)
+			for _, holder := range *item.Holders {
+				var publisher netrule.Publisher
+				if holder.ObjectId != nil {
+					publisher.ObjectID = *holder.ObjectId
+				}
+				if holder.Version != nil {
+					publisher.Version = *holder.Version
+				}
+				for _, addr := range ParseNameservers(holder.Addresses) {
+					identity.Publishers[addr] = publisher
+				}
+			}
+		}
+		if identity.ObjectID != "" || !identity.Version.IsZero() || identity.Publishers != nil {
 			identities[item.Path] = identity
 		}
 	}

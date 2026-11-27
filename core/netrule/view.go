@@ -58,12 +58,32 @@ type (
 	Identity struct {
 		ObjectID string
 		Version  time.Time
+
+		// Publishers are the objects publishing the addresses of the
+		// path, by address: a path names two objects while a node still
+		// tells its instance of the one deleted beside the one created
+		// again, each publishing its own addresses.
+		//
+		// Nil when the daemon tells the object of the path alone, as one
+		// not upgraded yet: every address is then the one of that
+		// object. Not nil, an address it does not hold is one no
+		// configuration of the instances publishing it is known of, and
+		// no object is told of it, not the one of the path.
+		Publishers map[netip.Addr]Publisher
 	}
 
-	// Identities are which objects the paths name, by path, as the
-	// daemon tells them with the addresses of the objects: a path it
-	// tells nothing of, as every path told by a daemon knowing no
-	// identity, is not there.
+	// Publisher is the object publishing an address of a path: its id,
+	// and the version of its configuration, the newest of the instances
+	// publishing the address.
+	Publisher struct {
+		ObjectID string
+		Version  time.Time
+	}
+
+	// Identities are which objects the paths name, and which publish
+	// their addresses, by path, as the daemon tells them with the
+	// addresses of the objects: a path it tells nothing of, as every
+	// path told by a daemon knowing no identity, is not there.
 	Identities map[string]Identity
 
 	// DataNetwork is a cluster network of a Data view.
@@ -306,25 +326,45 @@ func WithObjects(view View, objects Objects) View {
 	return objectsView{View: view, objects: objects}
 }
 
-// identitiesView is a view whose objects are known as the ones given.
-type identitiesView struct {
+// addrIdentitiesView is a view whose objects are known as the ones given,
+// each address by the object publishing it.
+type addrIdentitiesView struct {
 	View
 	identities Identities
 }
 
 // Identity implements Identifier.
-func (t identitiesView) Identity(path naming.Path) (string, time.Time) {
+func (t addrIdentitiesView) Identity(path naming.Path) (string, time.Time) {
 	i := t.identities[path.String()]
 	return i.ObjectID, i.Version
 }
 
-// WithIdentities returns the view telling which objects the paths name, as
-// the daemon told them with their addresses: the view a driver reads from
-// the configuration of its node knows none, and the addresses a start
-// records are then held by the objects that published them, not by their
-// paths alone, see Holder.
-func WithIdentities(view View, identities Identities) View {
-	return identitiesView{View: view, identities: identities}
+// AddrIdentity implements AddrIdentifier: the object the daemon told of the
+// address, none when it told the objects by address and none of this one,
+// and the object of the path when it told that one alone.
+func (t addrIdentitiesView) AddrIdentity(path naming.Path, addr netip.Addr) (string, time.Time) {
+	i := t.identities[path.String()]
+	if i.Publishers == nil {
+		return i.ObjectID, i.Version
+	}
+	publisher := i.Publishers[addr.Unmap().WithZone("")]
+	return publisher.ObjectID, publisher.Version
+}
+
+// WithAddrIdentities returns the view telling which objects publish the
+// addresses of the paths, as the daemon told them with their addresses: the
+// view a driver reads from the configuration of its node knows none, and the
+// addresses a start records are then held by the objects that published
+// them, not by their paths alone, see Holder.
+//
+// The object is the one of each address, as the daemon resolving the rules
+// tells it, see AddrIdentifier: a start made while a node still tells its
+// instance of an object deleted, beside the object created again under the
+// path, would else record the address of the first as one of the second,
+// which the record of the delete does not lift when that node is lost
+// before the daemon resolves the rules of the start again.
+func WithAddrIdentities(view View, identities Identities) View {
+	return addrIdentitiesView{View: view, identities: identities}
 }
 
 // Object returns the addresses of an object, and false for one not held.

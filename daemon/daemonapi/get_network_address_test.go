@@ -87,12 +87,15 @@ func TestGetNetworkAddress(t *testing.T) {
 	for _, grants := range []rbac.Grants{{rbac.GrantRoot}, {rbac.GrantInspector}} {
 		rec, list := getNetworkAddress(t, grants, params)
 		require.Equal(t, http.StatusOK, rec.Code, "%v", grants)
+		// No configuration tells an id or a version here: no address
+		// is told an object, in a list told all the same.
+		none := &[]api.NetworkAddressHolder{}
 		assert.Equal(t, api.NetworkAddressList{
 			Kind: "NetworkAddressList",
 			Items: api.NetworkAddressItems{
-				{Path: "prod/svc/db", Resources: map[string][]string{"ip#1": {"10.0.2.5"}, "fs#1": {}}},
-				{Path: "prod/svc/down", Resources: map[string][]string{"ip#1": {}, "fs#1": {}}},
-				{Path: "test/svc/db", Resources: map[string][]string{"ip#1": {"10.0.1.5", "fd00::5"}, "fs#1": {}}},
+				{Path: "prod/svc/db", Holders: none, Resources: map[string][]string{"ip#1": {"10.0.2.5"}, "fs#1": {}}},
+				{Path: "prod/svc/down", Holders: none, Resources: map[string][]string{"ip#1": {}, "fs#1": {}}},
+				{Path: "test/svc/db", Holders: none, Resources: map[string][]string{"ip#1": {"10.0.1.5", "fd00::5"}, "fs#1": {}}},
 			},
 		}, list, "%v: the objects asked for and no other, sorted, the absent ones left out", grants)
 	}
@@ -179,4 +182,62 @@ func TestGetNetworkAddressTellsWhichObjectEachPathNames(t *testing.T) {
 	assert.NotContains(t, raw.Items[0], "version")
 	assert.Contains(t, raw.Items[1], "object_id")
 	assert.Contains(t, raw.Items[1], "version")
+}
+
+// Each address is told with the object publishing it: a path names two
+// objects while a node back from a delete still tells its instance of the
+// object deleted, publishing its address, beside the object created again
+// under the path, publishing another. The object told for the path, which
+// an om knowing no object by address reads, is the newest of them.
+func TestGetNetworkAddressTellsWhichObjectPublishesEachAddress(t *testing.T) {
+	instance.InitData()
+	cluster.InitData()
+	cluster.ConfigData.Set(&cluster.Config{Nodes: []string{"node1", "node2", "node3"}})
+	t.Cleanup(func() {
+		instance.InitData()
+		cluster.InitData()
+	})
+	older := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
+	newer := older.Add(time.Hour)
+	db, err := naming.ParsePath("test/svc/db")
+	require.NoError(t, err)
+	set := func(nodename string, cfg *instance.Config, addrs ...string) {
+		if cfg != nil {
+			instance.ConfigData.Set(db, nodename, cfg)
+		}
+		instance.StatusData.Set(db, nodename, &instance.Status{Resources: instance.ResourceStatuses{
+			"ip#1": resource.Status{Status: status.Up, Info: map[string]any{resource.IPAddrsInfoKey: addrs}},
+		}})
+	}
+	set("node1", &instance.Config{ID: "new-id", UpdatedAt: newer}, "10.0.1.6", "fd00::6", "10.0.1.7")
+	set("node2", &instance.Config{ID: "old-id", UpdatedAt: older}, "10.0.1.5", "10.0.1.7")
+	// An instance whose configuration is not known: its address is told
+	// no object, not the one of the path.
+	set("node3", nil, "10.0.1.8")
+
+	objects := []string{"test/svc/db"}
+	rec, list := getNetworkAddress(t, rbac.Grants{rbac.GrantRoot}, api.GetNetworkAddressParams{Object: &objects})
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Len(t, list.Items, 1)
+	item := list.Items[0]
+	assert.ElementsMatch(t, []string{"10.0.1.5", "10.0.1.6", "10.0.1.7", "10.0.1.8", "fd00::6"}, item.Resources["ip#1"])
+
+	require.NotNil(t, item.Holders)
+	holders := *item.Holders
+	require.Len(t, holders, 2, "an object per configuration publishing, the address of no known one in none: %s", rec.Body.String())
+	require.NotNil(t, holders[0].ObjectId)
+	require.NotNil(t, holders[0].Version)
+	assert.Equal(t, "old-id", *holders[0].ObjectId)
+	assert.True(t, older.Equal(*holders[0].Version))
+	assert.Equal(t, []string{"10.0.1.5"}, holders[0].Addresses, "the address the instance of the object deleted publishes alone")
+	require.NotNil(t, holders[1].ObjectId)
+	require.NotNil(t, holders[1].Version)
+	assert.Equal(t, "new-id", *holders[1].ObjectId)
+	assert.True(t, newer.Equal(*holders[1].Version))
+	assert.Equal(t, []string{"10.0.1.6", "10.0.1.7", "fd00::6"}, holders[1].Addresses, "its own, and the one both publish, which is of the newest")
+
+	require.NotNil(t, item.ObjectId)
+	require.NotNil(t, item.Version)
+	assert.Equal(t, "new-id", *item.ObjectId, "the object of the path, for an om knowing no holder")
+	assert.True(t, newer.Equal(*item.Version))
 }

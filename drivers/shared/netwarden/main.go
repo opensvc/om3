@@ -445,11 +445,13 @@ func (t T) view(target Target) (netrule.View, bool, error) {
 		target.Log.Warnf("%sthe daemon does not tell the addresses of the objects: %s: the rules naming objects and namespaces resolve to nothing until it does", prefix, err)
 		return netrule.WithObjects(view, nil), false, nil
 	}
-	// The addresses are recorded with the objects publishing them, as
-	// the daemon knows them: a holder of its path alone would be lifted
-	// by the record of a delete of an object the path named before,
-	// until the daemon resolves the rules again.
-	return netrule.WithIdentities(netrule.WithObjects(view, data), identities), true, nil
+	// The addresses are recorded with the objects publishing them, each
+	// its own, as the daemon knows them: a holder of its path alone would
+	// be lifted by the record of a delete of an object the path named
+	// before, and one given the newest object of the path kept allowed
+	// past the delete of the object publishing it, until the daemon
+	// resolves the rules again.
+	return netrule.WithAddrIdentities(netrule.WithObjects(view, data), identities), true, nil
 }
 
 // shown says the filter of a record as the status and the logs of the

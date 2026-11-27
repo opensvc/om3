@@ -264,9 +264,11 @@ func (w *world) record(s, allow, deny string) *fakeSlice {
 	rec := netrule.Record{NetRules: netrule.TextsOf(listOf(allow, deny)), Namespace: p.Namespace, PG: id}
 	base, err := localView()
 	require.NoError(w.t, err)
-	// A start asks the daemon the objects, and has no memory.
+	// A start asks the daemon the objects, with the objects publishing
+	// their addresses, and has no memory.
 	objects, namespaces := netrule.References(p.Namespace, mustParse(w.t, listOf(allow, deny)))
-	rec, _, err = rec.Refresh(netrule.WithObjects(base, Objects(objects, namespaces)))
+	data := Objects(objects, namespaces)
+	rec, _, err = rec.Refresh(netrule.WithAddrIdentities(netrule.WithObjects(base, data), Identities(data)))
 	require.NoError(w.t, err)
 	file := filepath.Join(w.dir, strings.ReplaceAll(s, "/", "."), "app#1", recordName)
 	require.NoError(w.t, rec.Save(file))
