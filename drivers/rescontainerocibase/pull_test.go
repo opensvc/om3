@@ -256,7 +256,8 @@ func TestCLIImageStore(t *testing.T) {
 	assert.True(t, present)
 	assert.Equal(t, "sha256:def", id)
 
-	// The store of a user is not read by the agent as itself.
+	// The store of a user is not read by the agent as itself, and an
+	// engine with none serves none.
 	_, _, err = CLIImageStore{Bin: "podman"}.Has(context.Background(), resource.Pull{Engine: "podman", Store: "app", Image: "x"})
 	require.Error(t, err)
 	_, _, err = CLIImageStore{Bin: "podman"}.Has(context.Background(), resource.Pull{Engine: "podman", Image: "--help"})

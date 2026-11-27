@@ -33,7 +33,7 @@ var (
 func init() {
 	driver.Register(DrvID, New)
 	driver.SetDoc(DrvID, "Runs a container with docker.")
-	resource.RegisterImageStore(engine, rescontainerocibase.CLIImageStore{Bin: engine})
+	resource.RegisterImageStore(engine, rescontainerocibase.CLIImageStore{Bin: engine, ManifestIDs: rescontainerocibase.DockerManifestIDs})
 }
 
 func (t *T) DriverID() driver.ID {

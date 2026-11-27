@@ -53,7 +53,7 @@ var (
 func init() {
 	driver.Register(DrvID, New)
 	driver.SetDoc(DrvID, "Runs a container with podman.")
-	resource.RegisterImageStore(engine, rescontainerocibase.CLIImageStore{Bin: engine})
+	resource.RegisterImageStore(engine, rescontainerocibase.CLIImageStore{Bin: engine, Credential: storeCredential})
 }
 
 func (t *T) DriverID() driver.ID {

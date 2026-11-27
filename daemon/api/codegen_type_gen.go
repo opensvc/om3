@@ -5120,6 +5120,20 @@ type PostNodeDRBDSecondaryParams struct {
 	Name DRBDResourceName `form:"name" json:"name"`
 }
 
+// GetNodeImageSaveParams defines parameters for GetNodeImageSave.
+type GetNodeImageSaveParams struct {
+	// Engine the engine holding the image, as docker or podman
+	Engine string `form:"engine" json:"engine"`
+
+	// Store the store of the engine holding the image, as the driver names
+	// it: the user of a rootless podman. Not set for the store of the
+	// system.
+	Store *string `form:"store,omitempty" json:"store,omitempty"`
+
+	// Ref the reference of the image, as docker.io/library/nginx:latest
+	Ref string `form:"ref" json:"ref"`
+}
+
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
 type PostInstanceActionBootParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`

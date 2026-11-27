@@ -333,3 +333,19 @@ func TestPGPathFollowsTheDelegation(t *testing.T) {
 
 	assert.Equal(t, "", (&T{}).PGPath(), "no process group")
 }
+
+// The image store of a user is reached as that user, in their own group:
+// the store is theirs whatever the group a container of theirs runs as. The
+// store of root is the one of the system, which no user names.
+func TestStoreCredential(t *testing.T) {
+	c, err := storeCredential("nobody")
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	assert.Equal(t, uint32(65534), c.UID)
+	assert.Contains(t, c.Env, "XDG_RUNTIME_DIR=/run/user/65534")
+
+	_, err = storeCredential("root")
+	assert.ErrorContains(t, err, "is root")
+	_, err = storeCredential("omtest-no-such-user")
+	assert.Error(t, err)
+}

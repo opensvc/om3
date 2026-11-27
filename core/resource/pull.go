@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -103,15 +105,46 @@ type (
 	// configuration of a resource: the daemon asks it whether a prefetch
 	// has anything to pull before running the command of an object.
 	//
-	// It reads the stores, and nothing else: it needs no credentials, and
-	// changes nothing.
+	// It reads the stores, and loads in them what another store saved: it
+	// needs no credentials, and asks no registry.
 	ImageStore interface {
 		// Has says whether the store the Pull names holds its image,
 		// and the id of the image. An engine that does not answer is
 		// an error, not a missing image.
 		Has(context.Context, Pull) (present bool, id string, err error)
+
+		// Save writes the image of the Pull, as an archive carrying
+		// the name it is saved by, and returns the id of the image
+		// saved. A store that does not hold the image writes nothing,
+		// and the error is ErrImageNotFound.
+		Save(context.Context, Pull, io.Writer) (id string, err error)
+
+		// IDKind says what the ids of the images of the store the
+		// Pull names are: ImageIDConfig or ImageIDManifest. Two ids
+		// of an image are compared only when of the same kind.
+		IDKind(context.Context, Pull) (string, error)
+
+		// Load reads an archive a Save wrote into the store the Pull
+		// names, where the image has the name it was saved by. The
+		// image of the Pull is not looked for in the archive: the
+		// caller asks Has what the load made of it.
+		Load(context.Context, Pull, io.Reader) error
 	}
 )
+
+// The kinds of the id of an image in a store. The stores of podman and of
+// docker name an image by the digest of its configuration, and the one of a
+// docker keeping its images in containerd by the digest of its manifest: an
+// image copied from a store to another of the other kind is the same image
+// under another id.
+const (
+	ImageIDConfig   = "config"
+	ImageIDManifest = "manifest"
+)
+
+// ErrImageNotFound is the error of a Save asked of a store that does not
+// hold the image.
+var ErrImageNotFound = errors.New("image not found")
 
 // The states of a prefetch outcome.
 const (
@@ -146,6 +179,13 @@ func ImageStoreOf(engine string) ImageStore {
 	imageStoresMu.RLock()
 	defer imageStoresMu.RUnlock()
 	return imageStores[engine]
+}
+
+// NodePlatform is the operating system and the architecture of the node, as
+// "linux/amd64": what the images its engines run are built for. An image
+// saved on a node of another platform is of no use to this one.
+func NodePlatform() string {
+	return runtime.GOOS + "/" + runtime.GOARCH
 }
 
 // NormalizeImage returns the image reference s as docker reads it, with the

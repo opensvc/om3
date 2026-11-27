@@ -151,6 +151,14 @@ type (
 	ExecuteImager interface {
 		HasImage(context.Context) (bool, string, error)
 		Pull(context.Context) error
+
+		// LoadImage loads in the store the archive of an image, as
+		// the save of an engine wrote it.
+		LoadImage(context.Context, io.Reader) error
+
+		// RemoveImage removes from the store the name the container
+		// runs its image by.
+		RemoveImage(context.Context) error
 	}
 
 	// ExecuteInspecter interface defines the functions used to retrieve container
@@ -230,6 +238,7 @@ type (
 	// image operations.
 	ExecutorImageArgser interface {
 		PullArgs() *args.T
+		RemoveImageArgs() *args.T
 	}
 
 	// ExecutorArgser defines interfaces for container executor args.

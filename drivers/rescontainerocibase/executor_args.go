@@ -76,6 +76,10 @@ func (ea *ExecutorArg) Log() *plog.Logger {
 	return ea.BT.Log()
 }
 
+func (ea *ExecutorArg) RemoveImageArgs() *args.T {
+	return args.New(imageRemoveArgs(ea.BT.Image)...)
+}
+
 func (ea *ExecutorArg) PullArgs() *args.T {
 	return args.New("image", "pull", ea.BT.Image)
 }

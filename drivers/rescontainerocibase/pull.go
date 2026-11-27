@@ -3,6 +3,7 @@ package rescontainerocibase
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -13,29 +14,128 @@ import (
 
 // CLIImageStore is the image store of an engine reached with its command,
 // as "docker" or "podman": the one of the system, which the agent reads as
-// itself.
+// itself, and the ones of the users Credential knows.
 type CLIImageStore struct {
 	// Bin is the command of the engine.
 	Bin string
+
+	// ManifestIDs says how to tell whether the engine names its images
+	// by the digest of their manifest, from the output of an engine
+	// command: see DockerManifestIDs. It is nil for an engine naming
+	// them by the digest of their configuration, always.
+	ManifestIDs func(run func(a ...string) ([]byte, error)) (bool, error)
+
+	// Credential returns who the commands of the engine run as to reach
+	// the store named, which is not the one of the system: the user of
+	// a rootless podman. It is nil for an engine with no such store.
+	Credential func(store string) (*Credential, error)
 }
 
 var _ resource.ImageStore = CLIImageStore{}
 
+// command returns the engine command a, run as who reaches the store of
+// pull, and refuses an image the engine would read as an option.
+func (t CLIImageStore) command(ctx context.Context, pull resource.Pull, a ...string) (*exec.Cmd, error) {
+	if !isImageOperand(pull.Image) {
+		return nil, fmt.Errorf("invalid image %q", pull.Image)
+	}
+	var cred *Credential
+	if pull.Store != "" {
+		// The store of a user is read as that user: the agent reading
+		// it as itself would read the one of the system.
+		if t.Credential == nil {
+			return nil, fmt.Errorf("the %s store of %s is not the one of the system", t.Bin, pull.Store)
+		}
+		var err error
+		if cred, err = t.Credential(pull.Store); err != nil {
+			return nil, err
+		} else if cred == nil {
+			return nil, fmt.Errorf("the %s store of %s is not the one of the system", t.Bin, pull.Store)
+		}
+	}
+	cmd := exec.CommandContext(ctx, t.Bin, a...)
+	cred.Demote(cmd)
+	return cmd, nil
+}
+
 // Has implements resource.ImageStore, with the image inspect of the engine,
 // read as Executor.HasImage reads it.
 func (t CLIImageStore) Has(ctx context.Context, pull resource.Pull) (bool, string, error) {
-	if pull.Store != "" {
-		// The store of a user is read as that user, which is what the
-		// command of the object does.
-		return false, "", fmt.Errorf("the %s store of %s is not the one of the system", t.Bin, pull.Store)
-	}
-	if !isImageOperand(pull.Image) {
-		return false, "", fmt.Errorf("invalid image %q", pull.Image)
+	if _, err := t.command(ctx, pull); err != nil {
+		return false, "", err
 	}
 	run := func(ctx context.Context, a ...string) ([]byte, error) {
-		return exec.CommandContext(ctx, t.Bin, a...).Output()
+		cmd, err := t.command(ctx, pull, a...)
+		if err != nil {
+			return nil, err
+		}
+		return cmd.Output()
 	}
 	return hasImage(ctx, run, imageInspectArgs(pull.Image))
+}
+
+// Save implements resource.ImageStore, with the image save of the engine.
+// The store is asked for the image first: a save failing says a missing
+// image its own way in each engine, and what was written by then can not be
+// taken back.
+func (t CLIImageStore) Save(ctx context.Context, pull resource.Pull, w io.Writer) (string, error) {
+	present, id, err := t.Has(ctx, pull)
+	if err != nil {
+		return "", err
+	} else if !present {
+		return "", resource.ErrImageNotFound
+	}
+	cmd, err := t.command(ctx, pull, imageSaveArgs(pull.Image)...)
+	if err != nil {
+		return "", err
+	}
+	return id, saveImage(ctx, cmd, w)
+}
+
+// IDKind implements resource.ImageStore.
+func (t CLIImageStore) IDKind(ctx context.Context, pull resource.Pull) (string, error) {
+	if t.ManifestIDs == nil {
+		return resource.ImageIDConfig, nil
+	}
+	manifest, err := t.ManifestIDs(func(a ...string) ([]byte, error) {
+		cmd, err := t.command(ctx, pull, a...)
+		if err != nil {
+			return nil, err
+		}
+		return cmd.Output()
+	})
+	switch {
+	case err != nil:
+		return "", err
+	case manifest:
+		return resource.ImageIDManifest, nil
+	}
+	return resource.ImageIDConfig, nil
+}
+
+// containerdSnapshotter is what the storage driver status of a docker
+// keeping its images in containerd names: the type of its driver, as
+// "io.containerd.snapshotter.v1".
+const containerdSnapshotter = "io.containerd.snapshotter"
+
+// DockerManifestIDs says whether a docker names its images by the digest of
+// their manifest, which the one keeping its images in containerd does, and
+// no other: it asks the daemon the status of its storage driver.
+func DockerManifestIDs(run func(a ...string) ([]byte, error)) (bool, error) {
+	b, err := run("info", "--format", "{{.DriverStatus}}")
+	if err != nil {
+		return false, fmt.Errorf("the storage driver of the engine is not known: %s", engineErrorMessage(err))
+	}
+	return strings.Contains(string(b), containerdSnapshotter), nil
+}
+
+// Load implements resource.ImageStore, with the image load of the engine.
+func (t CLIImageStore) Load(ctx context.Context, pull resource.Pull, r io.Reader) error {
+	cmd, err := t.command(ctx, pull, imageLoadArgs()...)
+	if err != nil {
+		return err
+	}
+	return loadImage(ctx, cmd, r)
 }
 
 // imageInspectArgs are the arguments of the engine command printing the id
