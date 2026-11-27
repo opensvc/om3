@@ -68,6 +68,13 @@ type (
 		// execve: the unit, of type notify, is started then, and a
 		// failure before is a failure to start it.
 		SdNotify *bool
+
+		// NetFilter refuses to run the command unless a network filter
+		// is attached to the cgroup om exec runs in, and not to the one
+		// above it: the filter of the systemd unit om exec is the main
+		// process of, which systemd runs unfiltered, with a warning in
+		// its journal, where it can not attach one.
+		NetFilter *bool
 	}
 )
 
@@ -162,6 +169,9 @@ func (t T) Argv() []string {
 	}
 	if t.SdNotify != nil && *t.SdNotify {
 		argv = append(argv, "--sd-notify")
+	}
+	if t.NetFilter != nil && *t.NetFilter {
+		argv = append(argv, "--net-filter")
 	}
 	return argv
 }
@@ -406,6 +416,7 @@ func (t *T) FlagSet(flags *pflag.FlagSet) {
 	t.Umask = flags.String("umask", "", "the umask of the command, in octal, as 022")
 	t.NoNewPrivileges = flags.Bool("no-new-privileges", false, "set the no_new_privs flag of the command, so it gains no privilege by executing a setuid, setgid or file capability program")
 	t.SdNotify = flags.Bool("sd-notify", false, "tell the systemd service unit om exec is the main process of that the command takes over, last before it is executed")
+	t.NetFilter = flags.Bool("net-filter", false, "refuse to run the command unless a network filter is attached to the cgroup om exec runs in, as the one of a systemd unit with IPAddressDeny set")
 	t.CapabilityBoundingSet = flags.String("capability-bounding-set", "", "the capabilities the command keeps in its bounding set, all others dropped, or, prefixed with ~, the ones dropped, as \"CAP_NET_BIND_SERVICE CAP_CHOWN\"")
 }
 
@@ -519,6 +530,12 @@ func (t T) Exec(args []string) {
 		if err := t.toPG().Apply(); err != nil {
 			fail(err)
 		}
+	}
+	// Before the demotion too: the kernel answers the query to root
+	// only, and after the group is joined, the filter being the one of
+	// the cgroup the command runs in.
+	if err := t.checkNetFilter(); err != nil {
+		fail(err)
 	}
 	// Before the demotion: dropping from the bounding set needs
 	// CAP_SETPCAP, which a process demoted from root no longer has. A
