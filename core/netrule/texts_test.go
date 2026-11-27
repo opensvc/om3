@@ -43,9 +43,10 @@ func TestRecordWritesTheRulesAsAList(t *testing.T) {
 	require.NoError(t, err)
 	var raw map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(b, &raw))
-	assert.JSONEq(t, `["allow object system/svc/haproxy", "allow object system/svc/vip", "deny network default"]`, string(raw["net_rules"]))
+	assert.JSONEq(t, `["allow object system/svc/haproxy", "allow object system/svc/vip", "deny network default"]`, string(raw["rules"]))
 	assert.NotContains(t, raw, "net_allow")
 	assert.NotContains(t, raw, "net_deny")
+	assert.NotContains(t, raw, "net_rules")
 
 	loaded, err := LoadRecord(file)
 	require.NoError(t, err)
@@ -54,14 +55,14 @@ func TestRecordWritesTheRulesAsAList(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, read, 3)
 	assert.Equal(t, KindNetwork, read[2].Kind)
-	assert.Equal(t, VerbDeny, read[2].Verb)
+	assert.Equal(t, ActionDeny, read[2].Action)
 	assert.Equal(t, "default", read[2].Network)
 	assert.Equal(t, 3, read[2].Line, "the entry of the list")
 
 	require.NoError(t, Record{}.Save(file))
 	b, err = os.ReadFile(file)
 	require.NoError(t, err)
-	assert.Contains(t, string(b), `"net_rules":[]`, "no rule is an empty list")
+	assert.Contains(t, string(b), `"rules":[]`, "no rule is an empty list")
 }
 
 // A record an om knowing net_allow and net_deny wrote is read as the list
@@ -158,7 +159,7 @@ func TestRecordReadsTheRulesOfTheTwoKeywords(t *testing.T) {
 	require.NoError(t, next.Save(file))
 	b, err := os.ReadFile(file)
 	require.NoError(t, err)
-	assert.Contains(t, string(b), `"net_rules":["deny node n2","allow cluster"]`)
+	assert.Contains(t, string(b), `"rules":["deny node n2","allow cluster"]`)
 	assert.NotContains(t, string(b), "net_allow")
 	again, err := LoadRecord(file)
 	require.NoError(t, err)
@@ -238,4 +239,25 @@ func TestTheErrorsOfARecordNameTheRule(t *testing.T) {
 	next, err = rec.WithRules("\n   allow node n1 allow dns\n   deny network lan")
 	require.NoError(t, err)
 	assert.Equal(t, Texts{"allow node n1", "allow dns", "deny network lan"}, next.NetRules)
+}
+
+// A record of an om naming the list of its rules net_rules, and the action
+// of the steps of its filter verb, reads as one naming them rules and
+// action.
+func TestARecordOfTheNamesBeforeReadsTheSame(t *testing.T) {
+	now := `{"rules":["allow node n2"],"filter":{"steps":[{"action":"allow","ranges":["10.29.0.12/32"]},{"action":"deny","ranges":["0.0.0.0/0"]}]}}`
+	before := `{"net_rules":["allow node n2"],"filter":{"steps":[{"verb":"allow","ranges":["10.29.0.12/32"]},{"verb":"deny","ranges":["0.0.0.0/0"]}]}}`
+	var a, b Record
+	require.NoError(t, json.Unmarshal([]byte(now), &a))
+	require.NoError(t, json.Unmarshal([]byte(before), &b))
+	assert.Equal(t, Texts{"allow node n2"}, a.NetRules)
+	assert.Equal(t, a, b)
+	assert.Equal(t, ActionAllow, b.Filter.Steps[0].Action)
+
+	out, err := json.Marshal(b)
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `"rules":["allow node n2"]`)
+	assert.Contains(t, string(out), `"action":"allow"`)
+	assert.NotContains(t, string(out), `"net_rules"`)
+	assert.NotContains(t, string(out), `"verb"`)
 }

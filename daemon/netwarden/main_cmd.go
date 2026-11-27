@@ -406,7 +406,7 @@ func (t *Manager) refresh(e *entry) bool {
 // not listed, a filter holding the addresses of a namespace at times.
 func memory(rec netrule.Record) string {
 	return fmt.Sprintf("%d allowed and %d denied address(es) of objects held, %d and %d kept",
-		rec.Held.Count(netrule.VerbAllow), rec.Held.Count(netrule.VerbDeny), rec.Kept.Count(netrule.VerbAllow), rec.Kept.Count(netrule.VerbDeny))
+		rec.Held.Count(netrule.ActionAllow), rec.Held.Count(netrule.ActionDeny), rec.Kept.Count(netrule.ActionAllow), rec.Kept.Count(netrule.ActionDeny))
 }
 
 // save writes the record of a resource, unless its stop removed it since,

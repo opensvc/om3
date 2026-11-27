@@ -483,7 +483,7 @@ func TestStatusDoesNotWarnOfALayoutOnlyChangeOfTheRules(t *testing.T) {
 	file := filepath.Join(target.VarDir(), appliedFile)
 	b, err := os.ReadFile(file)
 	require.NoError(t, err)
-	const recorded = `"net_rules":["deny address 192.168.0.7","allow node n2","allow network lan"]`
+	const recorded = `"rules":["deny address 192.168.0.7","allow node n2","allow network lan"]`
 	assert.Contains(t, string(b), recorded)
 
 	changed := []string{"netwarden: net_rules changed, and the daemon has not applied it yet: the filter in force is the one of the rules before"}
@@ -638,8 +638,8 @@ func TestApplyAsksTheDaemonTheObjectsTheRulesName(t *testing.T) {
 	assert.Equal(t, testGroup, rec.PG)
 	assert.Equal(t, netrule.Texts{"deny object prod/svc/api", "allow object ./svc/db rid ip#1", "allow object ./svc/nope", "allow namespace prod", "allow node n2"}, rec.NetRules, "a rule per entry, in their order")
 	assert.Nil(t, rec.DNS, "the nameservers of the node, read again when the rules are")
-	assert.Equal(t, 3, rec.Held.Count(netrule.VerbAllow), "the denied address of the namespace allowed is one its rule resolves to")
-	assert.Equal(t, 1, rec.Held.Count(netrule.VerbDeny))
+	assert.Equal(t, 3, rec.Held.Count(netrule.ActionAllow), "the denied address of the namespace allowed is one its rule resolves to")
+	assert.Equal(t, 1, rec.Held.Count(netrule.ActionDeny))
 	assert.Len(t, rec.Held["allow namespace prod"], 2, "the addresses are held with their rule")
 
 	// The status shows the addresses of the namespace of the object, and

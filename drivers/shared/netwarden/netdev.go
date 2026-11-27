@@ -148,9 +148,9 @@ type netdevSet struct {
 // filter to set is one whose chains are to be written again.
 func netdevSetName(i int, step netrule.Step, family int) string {
 	if step.HasPort() {
-		return fmt.Sprintf("s%d_%s_%s_%d_%d_%d", i, step.Verb, step.Proto, step.Min, step.Max, family)
+		return fmt.Sprintf("s%d_%s_%s_%d_%d_%d", i, step.Action, step.Proto, step.Min, step.Max, family)
 	}
-	return fmt.Sprintf("s%d_%s_%d", i, step.Verb, family)
+	return fmt.Sprintf("s%d_%s_%d", i, step.Action, family)
 }
 
 // parseNetdevSetName reads the place, the step and the family the name of
@@ -166,8 +166,8 @@ func parseNetdevSetName(name string) (i int, step netrule.Step, family int, err 
 	if i, err = strconv.Atoi(words[0][1:]); err != nil || i < 0 {
 		return bad()
 	}
-	step.Verb = netrule.Verb(words[1])
-	if step.Verb != netrule.VerbAllow && step.Verb != netrule.VerbDeny {
+	step.Action = netrule.Action(words[1])
+	if step.Action != netrule.ActionAllow && step.Action != netrule.ActionDeny {
 		return bad()
 	}
 	if len(words) == 6 {
@@ -322,7 +322,7 @@ func netdevChain(dev string, toGuest bool, filter netrule.Filter) []string {
 	}
 	for i, step := range filter.Steps {
 		verdict := "drop"
-		if step.Verb == netrule.VerbAllow {
+		if step.Action == netrule.ActionAllow {
 			verdict = "accept"
 		}
 		ports := ""

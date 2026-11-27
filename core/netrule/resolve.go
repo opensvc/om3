@@ -99,8 +99,8 @@ type (
 	// source port. So a rule opens, or closes, a service of what it
 	// names.
 	Step struct {
-		// Verb says the packets matching are let through, or dropped.
-		Verb Verb `json:"verb"`
+		// Action says the packets matching are let through, or dropped.
+		Action Action `json:"action"`
 
 		// Ranges are the addresses the rule resolved to, none for a
 		// rule resolving to nothing for now.
@@ -167,7 +167,7 @@ func (t Step) isAny() bool {
 
 // equal says the two steps judge the same packets the same way.
 func (t Step) equal(o Step) bool {
-	return t.Verb == o.Verb && t.Proto == o.Proto && t.Min == o.Min && t.Max == o.Max &&
+	return t.Action == o.Action && t.Proto == o.Proto && t.Min == o.Min && t.Max == o.Max &&
 		slices.Equal(Normalize(t.Ranges), Normalize(o.Ranges))
 }
 
@@ -178,7 +178,7 @@ func (t Step) describe() string {
 	if t.Implicit {
 		words = append(words, "implicit")
 	}
-	words = append(words, string(t.Verb))
+	words = append(words, string(t.Action))
 	ports := ""
 	if t.HasPort() {
 		ports = fmt.Sprintf("%s/%d@", t.Proto, t.Min)
@@ -282,7 +282,7 @@ func (t Filter) Flat() (allow, deny []netip.Prefix) {
 		if step.HasPort() {
 			continue
 		}
-		if step.Verb == VerbAllow {
+		if step.Action == ActionAllow {
 			if step.isAny() {
 				break
 			}
@@ -316,8 +316,8 @@ func (t Filter) Flattened() Filter {
 // allowed step comes first.
 func FlatFilter(allow, deny []netip.Prefix) Filter {
 	return Filter{Steps: []Step{
-		{Verb: VerbAllow, Ranges: Normalize(allow)},
-		{Verb: VerbDeny, Ranges: Normalize(deny)},
+		{Action: ActionAllow, Ranges: Normalize(allow)},
+		{Action: ActionDeny, Ranges: Normalize(deny)},
 	}}
 }
 
@@ -352,15 +352,33 @@ func (t *Filter) UnmarshalJSON(b []byte) error {
 	if len(v.Allow) == 0 && len(v.Deny) == 0 && len(v.AllowPorts) == 0 && len(v.DenyPorts) == 0 {
 		return nil
 	}
-	on := func(verb Verb, l []ports) {
+	on := func(verb Action, l []ports) {
 		for _, p := range l {
-			t.Steps = append(t.Steps, Step{Verb: verb, Ranges: []netip.Prefix{p.Prefix}, Proto: p.Proto, Min: p.Min, Max: p.Max})
+			t.Steps = append(t.Steps, Step{Action: verb, Ranges: []netip.Prefix{p.Prefix}, Proto: p.Proto, Min: p.Min, Max: p.Max})
 		}
 	}
-	on(VerbDeny, v.DenyPorts)
-	t.Steps = append(t.Steps, Step{Verb: VerbAllow, Ranges: Normalize(v.Allow)})
-	on(VerbAllow, v.AllowPorts)
-	t.Steps = append(t.Steps, Step{Verb: VerbDeny, Ranges: Normalize(v.Deny)})
+	on(ActionDeny, v.DenyPorts)
+	t.Steps = append(t.Steps, Step{Action: ActionAllow, Ranges: Normalize(v.Allow)})
+	on(ActionAllow, v.AllowPorts)
+	t.Steps = append(t.Steps, Step{Action: ActionDeny, Ranges: Normalize(v.Deny)})
+	return nil
+}
+
+// UnmarshalJSON reads a step, and the one an om naming its action verb
+// wrote.
+func (t *Step) UnmarshalJSON(b []byte) error {
+	type step Step
+	var v struct {
+		step
+		Verb Action `json:"verb"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*t = Step(v.step)
+	if t.Action == "" {
+		t.Action = v.Verb
+	}
 	return nil
 }
 
@@ -463,7 +481,7 @@ func (t resolver) resolve(rules Rules) (Filter, Notes) {
 	var filter Filter
 	notes := make(Notes, 0)
 	for _, rule := range rules.WithImplicit() {
-		step := Step{Verb: rule.Verb, Implicit: rule.Implicit, Ranges: []netip.Prefix{}}
+		step := Step{Action: rule.Action, Implicit: rule.Implicit, Ranges: []netip.Prefix{}}
 		if rule.HasPort {
 			step.Proto, step.Min, step.Max = rule.Proto, rule.PortMin, rule.PortMax
 		}

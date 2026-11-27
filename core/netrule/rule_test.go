@@ -53,11 +53,11 @@ func TestParseReadsARulePerLine(t *testing.T) {
 		"allow address from ./cfg/acl key allowed_cidrs",
 		"deny any",
 	}, texts)
-	assert.Equal(t, Rule{Verb: VerbAllow, Kind: KindNetwork, Line: 4, Text: "allow network backend3 node dev2n2", Network: "backend3", Node: "dev2n2"}, rules[3])
-	assert.Equal(t, Rule{Verb: VerbDeny, Kind: KindObject, Line: 6, Text: "deny object ./svc/db rid ip#1", Object: "./svc/db", RID: "ip#1"}, rules[5])
+	assert.Equal(t, Rule{Action: ActionAllow, Kind: KindNetwork, Line: 4, Text: "allow network backend3 node dev2n2", Network: "backend3", Node: "dev2n2"}, rules[3])
+	assert.Equal(t, Rule{Action: ActionDeny, Kind: KindObject, Line: 6, Text: "deny object ./svc/db rid ip#1", Object: "./svc/db", RID: "ip#1"}, rules[5])
 	assert.Equal(t, netip.MustParsePrefix("10.1.2.3/32"), rules[12].Prefix)
 	assert.Equal(t, netip.MustParsePrefix("fd00::1/128"), rules[13].Prefix)
-	assert.Equal(t, Rule{Verb: VerbAllow, Kind: KindAddress, Line: 15, Text: "allow address from ./cfg/acl key allowed_cidrs", From: "./cfg/acl", Key: "allowed_cidrs"}, rules[14])
+	assert.Equal(t, Rule{Action: ActionAllow, Kind: KindAddress, Line: 15, Text: "allow address from ./cfg/acl key allowed_cidrs", From: "./cfg/acl", Key: "allowed_cidrs"}, rules[14])
 }
 
 func TestParseReadsSeveralRulesOfALine(t *testing.T) {
@@ -77,8 +77,8 @@ func TestParseReadsSeveralRulesOfALine(t *testing.T) {
 	rules, err = Parse(Keyword, "allow network backend allow node n2")
 	require.NoError(t, err)
 	require.Len(t, rules, 2)
-	assert.Equal(t, Rule{Verb: VerbAllow, Kind: KindNetwork, Line: 1, Text: "allow network backend", Network: "backend"}, rules[0])
-	assert.Equal(t, Rule{Verb: VerbAllow, Kind: KindNode, Line: 1, Text: "allow node n2", Node: "n2"}, rules[1])
+	assert.Equal(t, Rule{Action: ActionAllow, Kind: KindNetwork, Line: 1, Text: "allow network backend", Network: "backend"}, rules[0])
+	assert.Equal(t, Rule{Action: ActionAllow, Kind: KindNode, Line: 1, Text: "allow node n2", Node: "n2"}, rules[1])
 
 	// A word a rule takes is taken, a verb included: a node may be named
 	// allow.
@@ -104,7 +104,7 @@ func TestParseReadsThePortQualifier(t *testing.T) {
 	assert.Equal(t, "tcp", rules[0].Proto)
 	assert.Equal(t, [2]uint16{8000, 8099}, [2]uint16{rules[1].PortMin, rules[1].PortMax})
 	assert.Equal(t, "udp", rules[1].Proto)
-	assert.Equal(t, VerbDeny, rules[1].Verb)
+	assert.Equal(t, ActionDeny, rules[1].Action)
 }
 
 func TestParseErrorsNameTheKeywordTheLineAndTheWords(t *testing.T) {

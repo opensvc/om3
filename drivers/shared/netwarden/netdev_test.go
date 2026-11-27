@@ -194,11 +194,11 @@ func ranges(l ...string) []netip.Prefix {
 // deny any.
 func testFilter() netrule.Filter {
 	return netrule.Filter{Steps: []netrule.Step{
-		{Verb: netrule.VerbDeny, Ranges: netrule.Any(), Proto: "tcp", Min: 25, Max: 25},
-		{Verb: netrule.VerbAllow, Ranges: ranges("127.0.0.0/8", "10.29.0.12/32", "::1/128")},
-		{Verb: netrule.VerbAllow, Ranges: ranges("192.168.0.0/24", "fd00::5/128"), Proto: "udp", Min: 8000, Max: 8099},
-		{Verb: netrule.VerbDeny},
-		{Verb: netrule.VerbDeny, Ranges: netrule.Any(), Implicit: true},
+		{Action: netrule.ActionDeny, Ranges: netrule.Any(), Proto: "tcp", Min: 25, Max: 25},
+		{Action: netrule.ActionAllow, Ranges: ranges("127.0.0.0/8", "10.29.0.12/32", "::1/128")},
+		{Action: netrule.ActionAllow, Ranges: ranges("192.168.0.0/24", "fd00::5/128"), Proto: "udp", Min: 8000, Max: 8099},
+		{Action: netrule.ActionDeny},
+		{Action: netrule.ActionDeny, Ranges: netrule.Any(), Implicit: true},
 	}}
 }
 
@@ -414,13 +414,13 @@ func TestNetdevUpdateWritesTheChainsAgainWhenTheRulesChange(t *testing.T) {
 
 	for name, change := range map[string]func(*netrule.Filter){
 		"a rule added": func(filter *netrule.Filter) {
-			filter.Steps = append([]netrule.Step{{Verb: netrule.VerbAllow, Ranges: ranges("10.0.0.1/32")}}, filter.Steps...)
+			filter.Steps = append([]netrule.Step{{Action: netrule.ActionAllow, Ranges: ranges("10.0.0.1/32")}}, filter.Steps...)
 		},
 		"a rule removed": func(filter *netrule.Filter) { filter.Steps = filter.Steps[1:] },
 		"two rules swapped": func(filter *netrule.Filter) {
 			filter.Steps[0], filter.Steps[1] = filter.Steps[1], filter.Steps[0]
 		},
-		"the verb of a rule":  func(filter *netrule.Filter) { filter.Steps[3].Verb = netrule.VerbAllow },
+		"the verb of a rule":  func(filter *netrule.Filter) { filter.Steps[3].Action = netrule.ActionAllow },
 		"the ports of a rule": func(filter *netrule.Filter) { filter.Steps[2].Max = 8100 },
 		"a rule given a port": func(filter *netrule.Filter) {
 			filter.Steps[1].Proto, filter.Steps[1].Min, filter.Steps[1].Max = "tcp", 22, 22

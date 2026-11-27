@@ -630,10 +630,10 @@ func (t T) Status(target Target) (infos, warnings []string) {
 		return
 	}
 	infos = append(infos, prefix+shown(rec))
-	if n := rec.Kept.Count(netrule.VerbAllow); n > 0 {
+	if n := rec.Kept.Count(netrule.ActionAllow); n > 0 {
 		infos = append(infos, fmt.Sprintf("%s%d allowed address(es) kept, of objects whose status is not known for now", prefix, n))
 	}
-	if n := rec.Kept.Count(netrule.VerbDeny); n > 0 {
+	if n := rec.Kept.Count(netrule.ActionDeny); n > 0 {
 		infos = append(infos, fmt.Sprintf("%s%d denied address(es) kept, of objects no longer publishing them", prefix, n))
 	}
 	return

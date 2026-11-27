@@ -389,14 +389,14 @@ func netReferences(namespace, option, value string) []netReference {
 				// none, which the validation refuses.
 				continue
 			}
-			ref = netReference{text: string(rule.Verb) + " address from " + other.String() + " key " + rule.Key, datastore: other}
+			ref = netReference{text: string(rule.Action) + " address from " + other.String() + " key " + rule.Key, datastore: other}
 		case rule.Kind != netrule.KindObject && rule.Kind != netrule.KindNamespace:
 			continue
 		case strings.ContainsAny(rule.Object+rule.Namespace, "{}"):
 			// No namespace: no grant on one is enough.
 			ref = netReference{text: rule.Text}
 		case rule.Foreign(namespace):
-			ref = netReference{text: string(rule.Verb) + " " + rule.Reference(namespace), namespace: rule.NamespaceName(namespace)}
+			ref = netReference{text: string(rule.Action) + " " + rule.Reference(namespace), namespace: rule.NamespaceName(namespace)}
 			if rule.Kind == netrule.KindObject {
 				if p, err := rule.ObjectPath(namespace); err == nil {
 					ref.namespace = p.Namespace

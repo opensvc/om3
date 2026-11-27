@@ -172,11 +172,11 @@ func TestResolveKinds(t *testing.T) {
 		{"cluster", []string{"10.29.0.11/32", "10.29.0.12/32", "fd01::11/128"}},
 	}
 	for _, c := range cases {
-		for _, verb := range []Verb{VerbAllow, VerbDeny} {
+		for _, verb := range []Action{ActionAllow, ActionDeny} {
 			filter, notes := resolve(t, string(verb)+" "+c.rule)
 			assert.Empty(t, notes, c.rule)
 			require.Len(t, filter.Steps, 4, c.rule)
-			assert.Equal(t, verb, filter.Steps[0].Verb, c.rule)
+			assert.Equal(t, verb, filter.Steps[0].Action, c.rule)
 			assert.Equal(t, c.want, Strings(filter.Steps[0].Ranges), c.rule)
 		}
 	}
@@ -442,7 +442,7 @@ func TestResolveAPortOpensThePortAlone(t *testing.T) {
 	assert.True(t, filter.HasPorts())
 	assert.Equal(t, "allow tcp/22@10.29.0.12/32, allow udp/8000-8099@192.168.0.0/24, "+implicitSteps, filter.Describe(),
 		"a rule qualified by a port allows its port, not the address")
-	assert.Equal(t, Step{Verb: VerbAllow, Ranges: prefixes("192.168.0.0/24"), Proto: "udp", Min: 8000, Max: 8099}, filter.Steps[1])
+	assert.Equal(t, Step{Action: ActionAllow, Ranges: prefixes("192.168.0.0/24"), Proto: "udp", Min: 8000, Max: 8099}, filter.Steps[1])
 	assert.True(t, firstMatchPort(filter, "10.29.0.12", "tcp", 22))
 	assert.False(t, firstMatchPort(filter, "10.29.0.12", "tcp", 23))
 	assert.False(t, firstMatchPort(filter, "10.29.0.12", "udp", 22))
@@ -483,15 +483,15 @@ func TestFilterEqual(t *testing.T) {
 	b := FlatFilter(prefixes("10.0.0.0/24", "127.0.0.0/8"), prefixes("::/0", "0.0.0.0/0"))
 	assert.True(t, a.Equal(b), "whatever the order and the split of the ranges")
 	assert.False(t, a.Equal(FlatFilter(nil, Any())))
-	step := Step{Verb: VerbAllow, Ranges: prefixes("10.0.0.0/24"), Proto: "tcp", Min: 80, Max: 85}
+	step := Step{Action: ActionAllow, Ranges: prefixes("10.0.0.0/24"), Proto: "tcp", Min: 80, Max: 85}
 	other := step
 	other.Proto = "udp"
 	assert.False(t, Filter{Steps: []Step{step}}.Equal(Filter{Steps: []Step{other}}))
 	other = step
-	other.Verb = VerbDeny
+	other.Action = ActionDeny
 	assert.False(t, Filter{Steps: []Step{step}}.Equal(Filter{Steps: []Step{other}}))
 	assert.False(t, Filter{Steps: []Step{step}}.Equal(Filter{Steps: []Step{step, step}}), "the steps are compared one by one")
-	assert.True(t, Filter{Steps: []Step{{Verb: VerbDeny}}}.IsZero())
+	assert.True(t, Filter{Steps: []Step{{Action: ActionDeny}}}.IsZero())
 	assert.False(t, Filter{Steps: []Step{step}}.IsZero())
 }
 
@@ -580,7 +580,7 @@ func firstMatchPort(filter Filter, addr, proto string, port uint16) bool {
 		}
 		for _, prefix := range step.Ranges {
 			if prefix.Contains(a) {
-				return step.Verb == VerbAllow
+				return step.Action == ActionAllow
 			}
 		}
 	}
@@ -632,9 +632,9 @@ func TestTheFlatFilterLetsThroughWhatTheFirstMatchDoes(t *testing.T) {
 	for n := 0; n < 3000; n++ {
 		var filter Filter
 		for i, steps := 0, rng.Intn(7); i < steps; i++ {
-			step := Step{Verb: VerbAllow}
+			step := Step{Action: ActionAllow}
 			if rng.Intn(2) == 0 {
-				step.Verb = VerbDeny
+				step.Action = ActionDeny
 			}
 			switch rng.Intn(10) {
 			case 0:
@@ -650,8 +650,8 @@ func TestTheFlatFilterLetsThroughWhatTheFirstMatchDoes(t *testing.T) {
 		if rng.Intn(4) > 0 {
 			// As a filter made of rules ends.
 			filter.Steps = append(filter.Steps,
-				Step{Verb: VerbAllow, Ranges: localhost, Implicit: true},
-				Step{Verb: VerbDeny, Ranges: Any(), Implicit: true})
+				Step{Action: ActionAllow, Ranges: localhost, Implicit: true},
+				Step{Action: ActionDeny, Ranges: Any(), Implicit: true})
 		}
 		for _, addr := range world {
 			if want, got := firstMatch(filter, addr), flatPass(filter, addr); want != got {

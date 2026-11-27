@@ -24,7 +24,7 @@ type (
 		// them, or the daemon since, in a configuration changed under
 		// the running resource: a rule per entry, not the text of the
 		// keyword, whose layout is none of the record, see Texts.
-		NetRules Texts `json:"net_rules"`
+		NetRules Texts `json:"rules"`
 
 		// Namespace is the namespace of the object of the resource,
 		// which ./ and . stand for in the rules.
@@ -77,6 +77,7 @@ func (t *Record) UnmarshalJSON(b []byte) error {
 	type record Record
 	var v struct {
 		record
+		Rules    *Texts          `json:"rules"`
 		NetRules *Texts          `json:"net_rules"`
 		NetAllow json.RawMessage `json:"net_allow"`
 		NetDeny  json.RawMessage `json:"net_deny"`
@@ -87,9 +88,14 @@ func (t *Record) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*t = Record(v.record)
-	if v.NetRules != nil || (v.NetAllow == nil && v.NetDeny == nil) {
-		if v.NetRules != nil {
-			t.NetRules = *v.NetRules
+	if v.Rules == nil {
+		// Written by an om naming the list of the record as the
+		// keyword it comes of.
+		v.Rules = v.NetRules
+	}
+	if v.Rules != nil || (v.NetAllow == nil && v.NetDeny == nil) {
+		if v.Rules != nil {
+			t.NetRules = *v.Rules
 		}
 		for raw, memory := range map[*json.RawMessage]*Memory{&v.Held: &t.Held, &v.Kept: &t.Kept} {
 			if *raw == nil {
@@ -111,13 +117,13 @@ func (t *Record) UnmarshalJSON(b []byte) error {
 	}
 	t.NetRules = nil
 	for _, text := range deny {
-		t.NetRules = append(t.NetRules, string(VerbDeny)+" "+text)
+		t.NetRules = append(t.NetRules, string(ActionDeny)+" "+text)
 	}
 	for _, text := range allow {
-		t.NetRules = append(t.NetRules, string(VerbAllow)+" "+text)
+		t.NetRules = append(t.NetRules, string(ActionAllow)+" "+text)
 	}
 	if len(allow) == 0 && len(deny) > 0 {
-		t.NetRules = append(t.NetRules, string(VerbAllow)+" "+string(KindAny))
+		t.NetRules = append(t.NetRules, string(ActionAllow)+" "+string(KindAny))
 	}
 	rules, err := parse(Keyword, unitRule, t.NetRules)
 	if err != nil {
@@ -136,8 +142,8 @@ func (t *Record) UnmarshalJSON(b []byte) error {
 			}
 		}
 		*memory = make(Memory)
-		memory.adopt(rules, t.Namespace, VerbAllow, sides.Allow)
-		memory.adopt(rules, t.Namespace, VerbDeny, sides.Deny)
+		memory.adopt(rules, t.Namespace, ActionAllow, sides.Allow)
+		memory.adopt(rules, t.Namespace, ActionDeny, sides.Deny)
 	}
 	return nil
 }
@@ -162,7 +168,7 @@ func formerTexts(raw json.RawMessage) ([]string, error) {
 	for _, line := range lines {
 		words := strings.Fields(line)
 		for len(words) > 0 {
-			_, rest, err := parseRule(append([]string{string(VerbAllow)}, words...))
+			_, rest, err := parseRule(append([]string{string(ActionAllow)}, words...))
 			if err != nil {
 				l = append(l, strings.Join(words, " "))
 				break
@@ -269,7 +275,7 @@ func (t Record) Refresh(view View) (Record, Notes, error) {
 			if !ok {
 				continue
 			}
-			if kept := was.Keep(next.Held[rule.Text], witness, rule.Verb == VerbDeny); len(kept) > 0 {
+			if kept := was.Keep(next.Held[rule.Text], witness, rule.Action == ActionDeny); len(kept) > 0 {
 				next.Kept[rule.Text] = kept
 			}
 		}

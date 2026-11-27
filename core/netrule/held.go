@@ -314,9 +314,9 @@ func (t Held) Equal(o Held) bool {
 }
 
 // verbOf returns the verb of the text of a rule.
-func verbOf(text string) Verb {
+func verbOf(text string) Action {
 	verb, _, _ := strings.Cut(text, " ")
-	return Verb(verb)
+	return Action(verb)
 }
 
 // prefixes returns the addresses held of the rule, as ranges of one
@@ -330,7 +330,7 @@ func (t Memory) prefixes(rule Rule) []netip.Prefix {
 
 // Count returns the number of addresses held of the rules of the verb
 // given, an address held of two of them counted once.
-func (t Memory) Count(verb Verb) int {
+func (t Memory) Count(verb Action) int {
 	seen := make(map[netip.Addr]bool)
 	for text, held := range t {
 		if verbOf(text) != verb {
@@ -401,14 +401,14 @@ func (t Memory) with(o Memory) Memory {
 // ones still naming its objects, and how the addresses a record written
 // before the rules were ordered held, of all its allow rules together and
 // of all its deny rules, are given to the rules of each verb.
-func (t Memory) adopt(rules Rules, namespace string, verb Verb, held Held) {
+func (t Memory) adopt(rules Rules, namespace string, verb Action, held Held) {
 	for addr, holder := range held {
 		p, err := naming.ParsePath(holder.Path)
 		if err != nil {
 			continue
 		}
 		for _, rule := range rules {
-			if rule.Verb != verb || !rule.Names(p, namespace) {
+			if rule.Action != verb || !rule.Names(p, namespace) {
 				continue
 			}
 			if t[rule.Text] == nil {

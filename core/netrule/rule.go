@@ -29,17 +29,18 @@ import (
 )
 
 type (
-	// Verb is the word a rule starts with: what becomes of a packet the
-	// rule is the first to match.
-	Verb string
+	// Action is what becomes of a packet a rule is the first to match,
+	// allow or deny: the word the rule starts with, its verb, and the
+	// action of a step of the filter, as the firewalls name it.
+	Action string
 
 	// Kind is the noun of a rule, after its verb.
 	Kind string
 
 	// Rule is a line of the net_rules keyword.
 	Rule struct {
-		// Verb says the rule lets through, or drops, what it names.
-		Verb Verb
+		// Action says the rule lets through, or drops, what it names.
+		Action Action
 
 		// Kind is the noun of the rule.
 		Kind Kind
@@ -108,8 +109,8 @@ const (
 	// Keyword is the option of the keyword holding the rules.
 	Keyword = "net_rules"
 
-	VerbAllow Verb = "allow"
-	VerbDeny  Verb = "deny"
+	ActionAllow Action = "allow"
+	ActionDeny  Action = "deny"
 )
 
 const (
@@ -156,7 +157,7 @@ func kindsString() string {
 
 // isVerb says the word is one a rule starts with.
 func isVerb(s string) bool {
-	return s == string(VerbAllow) || s == string(VerbDeny)
+	return s == string(ActionAllow) || s == string(ActionDeny)
 }
 
 // Parse returns the rules of the value of the keyword named.
@@ -237,9 +238,9 @@ func ParseKeyword(value string, backend Backend) (Rules, error) {
 
 // implicit are the rules ending every list, which no keyword writes.
 var implicit = Rules{
-	{Verb: VerbAllow, Kind: KindLocalhost, Implicit: true, Text: "allow localhost"},
-	{Verb: VerbAllow, Kind: KindDNS, Implicit: true, Text: "allow dns"},
-	{Verb: VerbDeny, Kind: KindAny, Implicit: true, Text: "deny any"},
+	{Action: ActionAllow, Kind: KindLocalhost, Implicit: true, Text: "allow localhost"},
+	{Action: ActionAllow, Kind: KindDNS, Implicit: true, Text: "allow dns"},
+	{Action: ActionDeny, Kind: KindAny, Implicit: true, Text: "deny any"},
 }
 
 // WithImplicit returns the rules followed by the ones ending every list:
@@ -342,9 +343,9 @@ func parseRule(words []string) (Rule, []string, error) {
 		}
 		return refuse("expected allow or deny to start a rule, as allow node n1")
 	}
-	rule.Verb = Verb(words[0])
+	rule.Action = Action(words[0])
 	if len(words) == 1 {
-		return refuse("expected what to %s, one of %s", rule.Verb, kindsString())
+		return refuse("expected what to %s, one of %s", rule.Action, kindsString())
 	}
 	noun, rest := words[1], words[2:]
 	// arg takes the word a noun or a qualifier needs after it.

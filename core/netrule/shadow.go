@@ -47,7 +47,7 @@ func Shadowed(rules Rules, namespace string) Notes {
 // list of deny rules being ended by an allow any to deny them alone.
 func (t Rules) HasAllow() bool {
 	for _, rule := range t {
-		if rule.Verb == VerbAllow {
+		if rule.Action == ActionAllow {
 			return true
 		}
 	}

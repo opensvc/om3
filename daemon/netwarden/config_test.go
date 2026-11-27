@@ -205,7 +205,7 @@ func TestALayoutOnlyChangeOfTheRulesSetsNothing(t *testing.T) {
 	file := w.files[path(t, "test/svc/web")][0]
 	before, err := os.ReadFile(file)
 	require.NoError(t, err)
-	assert.Contains(t, string(before), `"net_rules":["deny address 192.168.0.7","allow node n2","allow network lan"]`)
+	assert.Contains(t, string(before), `"rules":["deny address 192.168.0.7","allow node n2","allow network lan"]`)
 	*told = nil
 
 	for _, value := range []string{
@@ -269,7 +269,7 @@ func TestARecordOfTheTwoKeywordsIsFollowed(t *testing.T) {
 		file := w.files[path(t, "test/svc/web")][0]
 		b, err := os.ReadFile(file)
 		require.NoError(t, err)
-		old := strings.Replace(string(b), `"net_rules":["deny address 192.168.0.7","allow node n2","allow network lan"]`, former, 1)
+		old := strings.Replace(string(b), `"rules":["deny address 192.168.0.7","allow node n2","allow network lan"]`, former, 1)
 		require.NotEqual(t, string(b), old, name)
 		require.NoError(t, os.WriteFile(file, []byte(old), 0o600))
 		w.m.onEvent(&msgbus.InstanceStatusUpdated{Path: path(t, "test/svc/web"), Node: "n1"})
@@ -285,7 +285,7 @@ func TestARecordOfTheTwoKeywordsIsFollowed(t *testing.T) {
 		assert.Equal(t, 1, web.sets, name)
 		b, err = os.ReadFile(file)
 		require.NoError(t, err)
-		assert.Contains(t, string(b), `"net_rules":["allow node n2"]`, name)
+		assert.Contains(t, string(b), `"rules":["allow node n2"]`, name)
 		assert.NotContains(t, string(b), "net_allow", name)
 		assert.NotContains(t, string(b), "net_deny", name)
 	}

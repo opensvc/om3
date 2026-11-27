@@ -108,7 +108,7 @@ func TestTheFilterOfAGuestFollowsTheAddressesOfTheObjectsItNames(t *testing.T) {
 	// Its node lost, the address is kept, on its port alone.
 	w.lost("n2")
 	assert.Equal(t, "deny tcp/25@0.0.0.0/0 tcp/25@::/0, allow tcp/5432@10.0.1.6/32, allow 10.29.0.12/32, "+implicitSteps, g.filter.Describe())
-	assert.Equal(t, 1, w.loaded("test/svc/vm").Kept.Count(netrule.VerbAllow))
+	assert.Equal(t, 1, w.loaded("test/svc/vm").Kept.Count(netrule.ActionAllow))
 }
 
 func TestAChangeOfTheRulesIsSetUnderTheRunningGuest(t *testing.T) {

@@ -455,7 +455,7 @@ func TestTheHoldersAreRecorded(t *testing.T) {
 		"the addresses are recorded with their rule")
 
 	// The holder of a path alone, as an om knowing no holder wrote it.
-	old := `{"net_rules":["allow object ./svc/db"],"namespace":"test","held":{"allow object ./svc/db":{"10.0.1.5":"test/svc/db"}},"kept":{}}`
+	old := `{"rules":["allow object ./svc/db"],"namespace":"test","held":{"allow object ./svc/db":{"10.0.1.5":"test/svc/db"}},"kept":{}}`
 	require.NoError(t, os.WriteFile(file, []byte(old), 0o600))
 	loaded, err = LoadRecord(file)
 	require.NoError(t, err)
@@ -504,8 +504,8 @@ func TestRecordRefresh(t *testing.T) {
 	assert.Equal(t, "10.0.1.5/32 10.0.2.5/32 "+implicitAllowed, allowed(rec.Filter))
 	assert.Equal(t, "10.0.1.5/32 "+implicitAllowed, allowed(rec.Public))
 	assert.Equal(t, Foreign{Rules: 1, Addrs: 1}, rec.Foreign)
-	assert.Equal(t, 2, rec.Held.Count(VerbAllow))
-	assert.Equal(t, 1, rec.Held.Count(VerbDeny))
+	assert.Equal(t, 2, rec.Held.Count(ActionAllow))
+	assert.Equal(t, 1, rec.Held.Count(ActionDeny))
 	assert.True(t, rec.Kept.IsZero())
 
 	// The same view again: the same record.
@@ -608,8 +608,8 @@ func TestAnAddressKeptIsKeptAtThePlaceOfItsRule(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, stopped.Held.IsZero())
 	assert.Equal(t, Memory{denyAdmin: {db1: {Path: "test/svc/db"}, db2: {Path: "test/svc/db"}}}, stopped.Kept)
-	assert.Equal(t, 0, stopped.Kept.Count(VerbAllow))
-	assert.Equal(t, 2, stopped.Kept.Count(VerbDeny))
+	assert.Equal(t, 0, stopped.Kept.Count(ActionAllow))
+	assert.Equal(t, 2, stopped.Kept.Count(ActionDeny))
 	assert.False(t, pass(stopped, db1))
 	assert.False(t, pass(stopped, db2))
 	assert.True(t, pass(stopped, netip.MustParseAddr("10.0.1.9")))
