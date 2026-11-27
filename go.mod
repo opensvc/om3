@@ -26,6 +26,7 @@ require (
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/go-acme/lego/v4 v4.35.2
 	github.com/goccy/go-json v0.10.2
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/mock v1.5.0
@@ -104,7 +105,6 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/goombaio/orderedmap v0.0.0-20180924084748-ba921b7e2419 // indirect

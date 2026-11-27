@@ -107,16 +107,22 @@ func Nameservers(cluster, extra []string) []string {
 	return l
 }
 
+// WrittenNameservers returns the nameservers the file holds: the first ones
+// named, as many as a resolver reads.
+func (t ResolvConf) WrittenNameservers() []string {
+	if len(t.Nameservers) > MaxNameservers {
+		return t.Nameservers[:MaxNameservers]
+	}
+	return t.Nameservers
+}
+
 // String returns the file content.
 func (t ResolvConf) String() string {
 	var sb strings.Builder
 	if len(t.Searches) > 0 {
 		sb.WriteString("search " + strings.Join(t.Searches, " ") + "\n")
 	}
-	for i, nameserver := range t.Nameservers {
-		if i >= MaxNameservers {
-			break
-		}
+	for _, nameserver := range t.WrittenNameservers() {
 		sb.WriteString("nameserver " + nameserver + "\n")
 	}
 	if len(t.Options) > 0 {

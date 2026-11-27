@@ -206,6 +206,9 @@ type ClientInterface interface {
 	// GetNetworks request
 	GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetNetworkAddress request
+	GetNetworkAddress(ctx context.Context, params *GetNetworkAddressParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNetworkClaimWithBody request with any body
 	PostNetworkClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1364,6 +1367,18 @@ func (c *Client) PostInstanceStatus(ctx context.Context, namespace InPathNamespa
 
 func (c *Client) GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNetworksRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNetworkAddress(ctx context.Context, params *GetNetworkAddressParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNetworkAddressRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5654,6 +5669,72 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 		if params.Name != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", *params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNetworkAddressRequest generates requests for GetNetworkAddress
+func NewGetNetworkAddressRequest(server string, params *GetNetworkAddressParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/network/address")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Object != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "object", *params.Object, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Namespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "namespace", *params.Namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -22217,6 +22298,9 @@ type ClientWithResponsesInterface interface {
 	// GetNetworksWithResponse request
 	GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error)
 
+	// GetNetworkAddressWithResponse request
+	GetNetworkAddressWithResponse(ctx context.Context, params *GetNetworkAddressParams, reqEditors ...RequestEditorFn) (*GetNetworkAddressResponse, error)
+
 	// PostNetworkClaimWithBodyWithResponse request with any body
 	PostNetworkClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNetworkClaimResponse, error)
 
@@ -24004,6 +24088,40 @@ func (r GetNetworksResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNetworksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNetworkAddressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NetworkAddressList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNetworkAddressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNetworkAddressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNetworkAddressResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31656,6 +31774,15 @@ func (c *ClientWithResponses) GetNetworksWithResponse(ctx context.Context, param
 	return ParseGetNetworksResponse(rsp)
 }
 
+// GetNetworkAddressWithResponse request returning *GetNetworkAddressResponse
+func (c *ClientWithResponses) GetNetworkAddressWithResponse(ctx context.Context, params *GetNetworkAddressParams, reqEditors ...RequestEditorFn) (*GetNetworkAddressResponse, error) {
+	rsp, err := c.GetNetworkAddress(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNetworkAddressResponse(rsp)
+}
+
 // PostNetworkClaimWithBodyWithResponse request with arbitrary body returning *PostNetworkClaimResponse
 func (c *ClientWithResponses) PostNetworkClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNetworkClaimResponse, error) {
 	rsp, err := c.PostNetworkClaimWithBody(ctx, contentType, body, reqEditors...)
@@ -35479,6 +35606,60 @@ func ParseGetNetworksResponse(rsp *http.Response) (*GetNetworksResponse, error) 
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNetworkAddressResponse parses an HTTP response from a GetNetworkAddressWithResponse call
+func ParseGetNetworkAddressResponse(rsp *http.Response) (*GetNetworkAddressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNetworkAddressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NetworkAddressList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

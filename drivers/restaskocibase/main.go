@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/drivers/restask"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/signalrelay"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -72,6 +73,10 @@ type (
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		Timeout         *time.Duration `json:"timeout"`
 
+		// Net are the rules of net_rules filtering the network
+		// of the container of a run.
+		Net netwarden.T `json:"net"`
+
 		containerDetachedGetter ContainerDetachedGetter
 
 		// runName is the name of the container of the run in progress,
@@ -115,6 +120,34 @@ func (t *T) parallelRuns() bool {
 
 func (t *T) SetContainerGetter(c ContainerDetachedGetter) {
 	t.containerDetachedGetter = c
+}
+
+// netDriver returns the container of a run as what takes the network rules
+// of the task, nil when it takes none.
+func (t *T) netDriver() netwarden.Driver {
+	if t.containerDetachedGetter == nil {
+		return nil
+	}
+	d, _ := t.containerDetachedGetter.GetContainerDetached().(netwarden.Driver)
+	return d
+}
+
+// NetRules implements netwarden.Driver, for the container of a run in
+// progress, which the slice of the task holds.
+func (t *T) NetRules() (netwarden.T, netwarden.Target) {
+	if d := t.netDriver(); d != nil {
+		return d.NetRules()
+	}
+	return t.Net, netwarden.Target{Path: t.Path, PG: t.GetPG(), VarDir: t.VarDir, Log: t.Log()}
+}
+
+// NetLiveIssue implements netwarden.Driver, as the container of a run
+// answers it.
+func (t *T) NetLiveIssue(ctx context.Context) error {
+	if d := t.netDriver(); d != nil {
+		return d.NetLiveIssue(ctx)
+	}
+	return fmt.Errorf("the task has no container to filter")
 }
 
 func (t *T) Run(ctx context.Context) error {

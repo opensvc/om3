@@ -187,6 +187,9 @@ func keySourceNodes(cfg *xconfig.T) []string {
 //   - a key of a datastore of another namespace is refused: a datastore
 //     sharing its keys with the namespace of the object lets it read them,
 //     and writing one is not the reader's to do.
+//
+// It also warns of the rules of net_rules naming what the cluster
+// does not have, see netRuleAlerts.
 func (t *actor) ValidateSections(cfg *xconfig.T) xconfig.Alerts {
 	type seen struct {
 		source  string
@@ -228,6 +231,7 @@ func (t *actor) ValidateSections(cfg *xconfig.T) xconfig.Alerts {
 			alerts = append(alerts, cfg.NewAlertKeySource(ks.Keyword, sectionDriverID(cfg, ks.Keyword.Section), comment))
 		}
 	}
+	alerts = append(alerts, netRuleAlerts(cfg, t.path.Namespace)...)
 	return alerts
 }
 

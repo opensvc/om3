@@ -7,3 +7,12 @@ keyword of a container adds its own nameservers after them.
 Unset, the containers are given the nameservers of the cluster. A container
 with addresses on several networks naming nameservers is given the ones of
 each, in the order of its ip resources.
+
+The nameservers a container is given are the ones its `net_rules` opens
+without a rule, and its `dns` rule names. The cgroup filter of a docker,
+podman, oci or lxc container has no ports, so an address dedicated to the
+dns on the network, named here, is all a filtered container of the
+network reaches for its lookups, where the nameservers of the cluster are
+addresses of its nodes, opened on every port.
+An address that is also one of a node, where services are bound to every
+address, still reaches them.

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/sdunit"
@@ -23,10 +24,79 @@ import (
 // hasSystemd says the node runs systemd, replaced by the tests.
 var hasSystemd = systemd.HasSystemd
 
+// unitState returns the state of a unit, replaced by the tests.
+var unitState = sdunit.GetState
+
 // UnitMode says the start command of the resource runs in a transient
-// systemd service unit, sandboxed by the properties systemd_properties sets.
+// systemd service unit: sandboxed by the properties systemd_properties sets,
+// or for net_rules, whose filter systemd enforces on the units
+// of the slice of the process group, and on no process outside a unit.
 func (t *T) UnitMode() bool {
-	return strings.TrimSpace(t.SystemdProperties) != ""
+	return strings.TrimSpace(t.SystemdProperties) != "" || t.Net.Enabled()
+}
+
+// unitKeywords names the keywords that make the command run in a unit, for
+// an error to say what asks for one.
+func (t *T) unitKeywords() string {
+	l := make([]string, 0, 2)
+	if strings.TrimSpace(t.SystemdProperties) != "" {
+		l = append(l, "systemd_properties")
+	}
+	if t.Net.Enabled() {
+		l = append(l, netwarden.Option)
+	}
+	return strings.Join(l, ", ")
+}
+
+// NetTarget is what the network filter of the resource is applied to: the
+// slice of its process group.
+//
+// It says no nameservers of its own: the command runs in the network
+// namespace of the node and resolves through its resolver, whose nameservers
+// are the ones the filter opens then.
+func (t *T) NetTarget() netwarden.Target {
+	return netwarden.Target{
+		Path:   t.Path,
+		PG:     t.GetPG(),
+		VarDir: t.VarDir,
+		Log:    t.Log(),
+	}
+}
+
+// NetRules implements netwarden.Driver.
+func (t *T) NetRules() (netwarden.T, netwarden.Target) {
+	return t.Net, t.NetTarget()
+}
+
+// NetLiveIssue implements netwarden.Driver: what refuses the unit of a
+// start its filter. Whether the command already running is in a unit, having
+// started with systemd_properties, or in none, is for the daemon to see in
+// the slice.
+func (t *T) NetLiveIssue(context.Context) error {
+	if !hasSystemd() {
+		return fmt.Errorf("%s: the node does not run systemd", t.unitKeywords())
+	}
+	return t.Net.Check(t.NetTarget())
+}
+
+// NetClear lifts the network filter of the resource, once its stop ended
+// the processes of the unit. A failure is warned of: the resource stopped.
+func (t *T) NetClear() {
+	if err := t.Net.Clear(t.NetTarget()); err != nil {
+		t.Log().Warnf("%s", err)
+	}
+}
+
+// NetStatus adds what the status of the running resource says of its
+// network filter to its status log.
+func (t *T) NetStatus() {
+	infos, warnings := t.Net.Status(t.NetTarget())
+	for _, s := range infos {
+		t.StatusLog().Info("%s", s)
+	}
+	for _, s := range warnings {
+		t.StatusLog().Warn("%s", s)
+	}
 }
 
 // UnitName returns the name of the service unit the start command runs in:
@@ -70,7 +140,7 @@ func (t *T) unitEnvFile() string {
 func (t *T) UnitRun(ctx context.Context, s, action string, r sdunit.Run) ([]funcopt.O, func(), error) {
 	cleanup := func() {}
 	if !hasSystemd() {
-		return nil, cleanup, fmt.Errorf("systemd_properties: the node does not run systemd")
+		return nil, cleanup, fmt.Errorf("%s: the node does not run systemd", t.unitKeywords())
 	}
 	props, err := sdunit.Parse(t.SystemdProperties)
 	if err != nil {
@@ -78,6 +148,11 @@ func (t *T) UnitRun(ctx context.Context, s, action string, r sdunit.Run) ([]func
 	}
 	if err := sdunit.Validate(t.SystemdProperties); err != nil {
 		return nil, cleanup, fmt.Errorf("systemd_properties: %w", err)
+	}
+	// Before anything is written or made: a filter that can not be
+	// applied refuses the command, which would run unfiltered.
+	if err := t.Net.Check(t.NetTarget()); err != nil {
+		return nil, cleanup, err
 	}
 	cmdArgs, cred, err := t.CmdArgs(ctx, s, action)
 	if err != nil || cmdArgs == nil {
@@ -117,6 +192,15 @@ func (t *T) UnitRun(ctx context.Context, s, action string, r sdunit.Run) ([]func
 			return nil, func() {}, err
 		}
 		r.Slice = slice
+	}
+	// The filter is set on the slice before the unit is made in it, so no
+	// process of the unit runs unfiltered, and om exec refuses to run the
+	// command if systemd did not attach it.
+	if filtered, err := t.Net.Apply(t.NetTarget()); err != nil {
+		cleanup()
+		return nil, func() {}, err
+	} else if filtered {
+		cmdArgs = slices.Insert(cmdArgs, 2, "--net-filter")
 	}
 	r.Unit = t.UnitName()
 	r.Description = t.Path.String() + " " + t.RID()
@@ -168,11 +252,27 @@ func (t *T) UnitFailure(ctx context.Context, err error) error {
 	return fmt.Errorf("unit %s: %w", unit, err)
 }
 
+// UnitHolds says a stop of the resource ends its unit: the start runs in
+// one, or ran in one under a configuration since changed, as net_rules
+// the daemon took away from the running resource, and the unit still runs
+// processes. The configuration of now does not say where the
+// command of the start runs.
+func (t *T) UnitHolds(ctx context.Context) bool {
+	if !hasSystemd() {
+		return false
+	}
+	if t.UnitMode() {
+		return true
+	}
+	st, err := unitState(ctx, t.UnitName())
+	return err == nil && st.IsActive()
+}
+
 // UnitTerminate ends the processes the unit of the resource still runs,
 // given the stop timeout to end, and forgets the unit if it failed. No stop
 // job is queued.
 func (t *T) UnitTerminate(ctx context.Context) error {
-	if !t.UnitMode() || !hasSystemd() {
+	if !t.UnitHolds(ctx) {
 		return nil
 	}
 	return sdunit.Terminate(ctx, t.Log(), t.UnitName(), t.GetTimeout("stop"))

@@ -1,0 +1,355 @@
+The rules saying what the resource may exchange network packets with, and
+what it may not, in both directions. One rule per line: `allow` or `deny`,
+a noun, then what qualifies the noun:
+
+    net_rules =
+        allow node n2
+        deny network backend node n3
+        allow network backend
+        allow object ./svc/db
+        allow object ./svc/{name}-db rid ip#1
+        allow namespace .
+        deny address 192.168.10.5
+        allow address 192.168.10.0/24
+        allow address fd00:10::5
+        allow address from ./cfg/acl key allowed
+        allow object ./svc/db port 5432 proto tcp
+
+The rules are an ordered list, and the first one matching a packet decides
+of it, from the top: a packet from or to an address an `allow` rule names
+passes, one from or to an address a `deny` rule names is dropped, and the
+rules after the one that matched are not read. So an exception is written
+before the rule it is carved out of: `deny network backend node n3` before
+`allow network backend` allows the network but the part of the node n3, and
+written after it would decide of nothing.
+
+Every list ends with three rules nobody writes, in this order:
+
+    allow localhost
+    allow dns
+    deny any
+
+What no rule matches is denied: a list says what is let through, and a list
+with no `allow` rule lets through the loopback addresses and the nameservers
+alone, which the validation warns of. A last `allow any` turns it around:
+the list then says what is denied, and the rest passes.
+
+`localhost` and `dns` are allowed without a rule saying so: a filter written
+for the peers of an application is not meant to cut it from its own node,
+nor from the names it resolves. They come last, just before the `deny any`,
+so a written rule matching them wins: `deny localhost` or `deny dns` takes
+them away, and so does a `deny` of what holds them, as `deny cluster` where
+the nameservers are the ones of `cluster.dns`, addresses of the cluster
+nodes, unless `allow dns` is written before it. The node itself is reached
+over the loopback addresses only: its other addresses, as the one its om
+listener is on, need a `node` or `cluster` rule. The om socket, a file, is
+not filtered. `deny any` alone cuts the resource from the network, its own
+node included.
+
+No rule, the keyword unset or empty, is no filter at all.
+
+A service with an address on the `lan` network, reaching the objects of its
+namespace, the nameservers and the world, and nothing else of the cluster,
+its nodes and its networks:
+
+    net_rules =
+        allow namespace .
+        allow dns
+        deny cluster
+        deny network lan
+        allow any
+
+The nouns:
+
+* `localhost`: the loopback addresses, `127.0.0.0/8` and `::1`.
+* `dns`: the nameservers what the resource runs resolves through, see
+  below.
+* `any`: every address.
+* `address <address or range>`: an ipv4 or ipv6 address, or a range.
+* `address from <datastore> key <key>`: the addresses and ranges a key of a
+  cfg or a sec holds, one per line, as `./cfg/acl` or `./sec/acl`, of the
+  namespace of this object or of a datastore another namespace shares with
+  it, see below.
+* `network <name>`: the range of a cluster network. Followed by `node
+  <nodename>`, the part of it that node hands out.
+* `node <nodename>`: a cluster node, the address of its listener and the
+  ones its name resolves to.
+* `cluster`: every cluster node.
+* `object <path>`: the addresses the resources of an object publish in
+  their status, as its ip resources, the instances of all the nodes
+  together. `./svc/db` is the object of the namespace of this one,
+  `prod/svc/db` one of another namespace, and `{name}` and `{namespace}`
+  are expanded. Followed by `rid <resource id>`, the addresses of that
+  resource alone.
+* `namespace <name>`: the addresses of every object of a namespace, `.`
+  being the one of this object.
+
+Any rule may end with `port <port> proto tcp|udp`, or `port <first>-<last>
+proto tcp|udp`, on a kvm container, see below: it then names that port of
+what it names, and no other.
+
+A value written on one line holds several rules, as a command sets it: a
+verb starts a rule where the one before it is complete, so `allow network
+backend allow node n2` is two rules, and `allow network backend node n2`
+one, the part of the network the node hands out. A rule has one verb and
+one noun: `allow node n1 node n2` is refused, the verb being written again
+for each.
+
+    om <path> config update --set 'container#1.net_rules=allow namespace . deny cluster allow any'
+
+A rule added with `net_rules+=` is added after the others, so after a last
+`allow any`, where it decides of nothing: the validation warns of it. The
+order being what the rules mean, a list is changed by writing its value
+again, whole, or by editing the configuration.
+
+The validation warns of a rule that can never match, a rule before it
+matching all it names whatever the cluster holds: any rule after an `allow
+any` or a `deny any`, a `node` after `cluster`, an `object` after its
+`namespace`, a network narrowed to a node after the network, an address
+after a range holding it, a rule written twice. It judges the rules as
+written, and resolves nothing: two rules resolving to the same addresses on
+this cluster are not warned of. These are warnings: the configuration is
+committed, and the filter is the one of the rules as written.
+
+`dns`, written or allowed without a rule, is the nameservers of the
+resolver of what is filtered, and no other:
+
+* An app, and a task running a command on the node: the nameservers the
+  `/etc/resolv.conf` of the node names. Where it names a local stub, as the
+  `127.0.0.53` of systemd-resolved, the command talks to the stub alone,
+  and the servers the stub forwards to, the ones of `cluster.dns` among
+  them, are not opened.
+* A docker or podman container, and a task running one: the nameservers om
+  writes in the `/etc/resolv.conf` of the container, which are the ones of
+  the `dns` keyword of the networks its addresses are on, else the ones of
+  `cluster.dns`, then the ones its `dns` keyword adds, the first three, as
+  many as a resolver reads. A container om writes no resolver for, no
+  nameserver being named, keeps the one of its engine: the nameservers the
+  `/etc/resolv.conf` of the node names are allowed.
+* A lxc container: the nameservers the `/etc/resolv.conf` of the node
+  names, om writing no resolver for it. A container resolving through
+  others, as the ones its own `/etc/resolv.conf` names, needs a rule naming
+  them.
+* A kvm container: the nameservers of the `dns` keyword of the networks its
+  `network` keyword names, which om tells the guest. A guest told none
+  resolves through what it is configured with, which om does not know: no
+  nameserver is allowed without a rule naming it.
+
+The nameservers of a docker, podman or kvm container are the ones it was
+told at its start, which it keeps while it runs: the `dns` keyword of its
+networks changed since, its status warns, the filter allows the ones of the
+start until the resource restarts, and a rule `allow address <nameserver>`
+allows a new one meanwhile, applied with no restart.
+
+A nameserver allowed is reached on every port. The nameservers of
+`cluster.dns` are addresses of the cluster nodes, so a container resolving
+through them reaches whatever these nodes serve. Naming
+in the `dns` keyword of a network an address dedicated to the dns on that
+network opens that address alone to the containers of the network. An
+address that is also one of a node, where services are bound to every
+address, still reaches them.
+
+A rule naming a network, a node, an object, a resource or a namespace the
+cluster does not have, or an object not started yet, resolves to nothing,
+and matches nothing until what it names exists: an `allow` rule lets
+nothing more through, and a `deny` rule denies nothing, leaving the packets
+to the rules after it. The validation of the
+configuration warns of what does not exist, naming the object as resolved,
+`./svc/db` being `test/svc/db` in the `test` namespace. It says nothing of
+the objects of another namespace: the logs of the start do.
+
+The rules are resolved when the resource starts: the networks and the nodes
+from the configuration of the node, the objects from the daemon. With the
+daemon down, the resource starts all the same, its `object` and `namespace`
+rules resolving to nothing, with a warning, until the daemon is back.
+
+The daemon then keeps the filter of the running resource current. When an
+object named starts, stops, moves or changes address, when an object joins
+or leaves a namespace named, when a node joins or a network changes, it
+resolves the rules again and sets the filter, which applies at once to what
+the resource runs, without a restart. An address every instance of an
+object publishes, as a failover address, is the same wherever the object
+runs: its failover changes nothing. A daemon starting sets the filters
+again.
+
+The filter fails closed, on the side letting less through when the daemon
+does not know:
+
+* An address of an `allow` rule is taken away when the status of its
+  object no longer publishes it, or the object is deleted. An address drawn from a network
+  is released when its resource stops, where an address the configuration
+  names is published started or not. It is kept while that status is not
+  known, the daemon of a node of the object being down or restarting, which
+  stops nothing of what the object runs.
+  The delete of the object takes it away at once, a node of the object
+  being down or not: a node back without the object says nothing of it.
+* An address of a `deny` rule stays denied when its object stops
+  publishing it, as what answers there may still be the object, until the
+  object is deleted.
+* Either is forgotten as soon as another object publishes the address.
+
+An address kept is kept by the rule that resolved to it, at the place of
+that rule in the list and on its ports: an object named by an `allow` rule
+and by a `deny` rule has its addresses followed by each, and one a `deny`
+rule keeps is still denied before the rules written after it.
+
+A change of the rules themselves, of `net_rules`, their order included, is
+applied by the daemon to the resource as it runs, on the node running it, within
+seconds and without a restart: the one change of the configuration it
+applies with no action asked, a filter being a security setting. Rules
+tightened, loosened or removed are set as the configuration is written, and
+a daemon starting applies the ones changed while it was down. Rules the
+validation refuses change nothing: the filter in force is kept, and the
+status of the resource warns until they are fixed.
+
+Rules given to a resource running with none are set under it when what it
+runs is in a systemd unit of its slice: a container, and an app started
+with `systemd_properties`. The start command of an app started with neither
+rules nor `systemd_properties` runs in no unit, where nothing is filtered:
+the rules apply at its next start, and its status warns until then. So do
+the rules given to a container its start would have been refused with, as
+one whose engine places it with the cgroupfs driver, and to a lxc container
+started by an agent that made no scope of it, before its upgrade. A run of a task in
+progress is given the rules as a running app or container is.
+
+The status of the resource shows the filter in force: what each rule
+resolves to, in the order of the rules, the implicit ones included, up to
+the rule matching every address, which ends the list. The addresses of the
+rules naming another namespace are counted there, not listed.
+
+The key of an `address from <datastore> key <key>` rule holds one address
+or range per line, ipv4 or ipv6. An empty line, and a line starting with
+`#`, is skipped. A line that is neither is left out, the others applying,
+and warned of by the validation and by the start, by its number, and by its
+text for a cfg. The datastore is one of the namespace of the object, `./`
+or the namespace spelled out, or one of another namespace sharing its keys
+with it, as `infra/cfg/acl` with `share = <namespace>` or `share = *`, the
+keys a resource installs being read the same way: the `share` keyword is
+the consent of who administers the datastore, and no grant on its namespace
+is asked of who writes the rule. A rule naming a datastore of another
+namespace that does not share its keys is an error of the validation, for
+root too, and resolves to nothing, in an `allow` rule and in a `deny` rule
+alike.
+A datastore or a key that does not exist resolves to nothing too, with a
+warning, until it does.
+
+The key is read when the resource starts, on its node, and the daemon keeps
+the filter current: a key added, changed or removed, as by `om <datastore>
+key change`, changes the configuration of the datastore, and the daemon of
+the node resolves the rules reading it again when it has it, and sets the
+filter under the running resource, with no restart. A line removed is an
+address taken away at once. The `share` keyword is read with the key, each
+time: a datastore that stops sharing its keys with the namespace of the
+object has its addresses taken out of the running filters, the daemon
+warning of it, as if its key was removed.
+
+The key of a sec is read by om, as root on the node, as the keys a resource
+installs are. Its addresses are in the filter, and not in the status of the
+resource, which counts them as it counts the ones of the rules naming
+another namespace: who reads the status of a resource does not read the
+keys of a sec. The addresses of a cfg are shown, its keys being read by who
+reads its namespace, and the ones of a cfg of another namespace too, its
+`share` keyword having given them to the namespace of the object. The logs
+of the daemon, root's, show the whole filter.
+
+The filter of an app, a task and a docker, podman or lxc container knows
+no port: a rule with a `port` qualifier is refused there, by the validation
+and at the start, and only a kvm container takes it.
+
+A port is the one of what the rule names, not one of the guest: `allow
+object ./svc/db port 5432 proto tcp` lets the guest talk to the port 5432 of
+the addresses of the object, from any port of its own, and `deny any port
+25 proto tcp`, written first, keeps it from every smtp server, the ones the
+rules after it open whole included. The filter follows no
+connection: a packet sent to the address passes by its destination port,
+and one received from it by its source port. A guest serving a port to
+clients is opened to them by a rule with no port. The other protocols of an
+address opened on a port only, as the icmp of a ping, do not pass. The
+first rule matching decides there too: a rule on a port matches the packets
+of that port alone, and leaves the others to the rules after it.
+
+The filter of an app, a task and a docker, podman or lxc container is the
+`IPAddressAllow` and `IPAddressDeny` of the systemd slice of the process
+group of the resource, enforced by the kernel on its cgroup, whatever
+network namespace its processes are in. systemd knows no order, an allowed
+range winning over a denied one: it is given the two lists letting through
+exactly what the ordered rules do, each `allow` rule less what the `deny`
+rules before it name, so `systemctl show` tells ranges carved around the
+exceptions, where the status of the resource tells the rules in their
+order. A list may be thousands of ranges, as a wide range allowed after
+tens of ipv6 addresses denied one by one inside it, each carving it in up
+to 128 ranges: a last `allow any` carves nothing, the addresses denied
+before it being the denied list as they are. A filter systemd does not
+take, as when it can not be reached, is an error: the start fails, and a
+running resource keeps the filter in force, the daemon logging the error.
+It needs systemd, the
+unified cgroup hierarchy and a kernel attaching BPF programs to the cgroups:
+the resource refuses to start where one is missing, rather than run
+unfiltered, and so does a rootless container, whose group is delegated to
+the systemd instance of a user. The `IPAddressAllow` and `IPAddressDeny` of
+`systemd_properties` are still taken, and a packet passes when both let it.
+
+What is filtered:
+
+* An app, and a task running a command on the node: the start command, or
+  the run command, run in a transient systemd service unit of the slice, as
+  with `systemd_properties`. The check, info, stop, quiesce and resume
+  commands run outside the unit, and are not filtered.
+* A docker or podman container, and a task running one: the container, which
+  the engine places in a scope of the slice with its systemd cgroup driver.
+  With the cgroupfs driver the container is in no unit, and the resource
+  refuses to start. A `--restart` option in `run_args` is refused too: om
+  passes none and restarts the containers itself, the filter set first,
+  where the engine would restart one unfiltered, at boot or when it exits.
+  So is a `--cgroup-parent` or a `--cgroups` option in `run_args`, read
+  after the placement of om: the engine would place the container out of
+  the slice, unfiltered, which nothing verifies of a container run in the
+  foreground, as the one of a task.
+* A lxc container: the container and its monitor, which om starts in a
+  transient systemd scope of the slice, `<slice>-lxc.scope`, lxc making its
+  groups under the one of the scope. Every lxc container is started so, with
+  rules or not, on a node running systemd on the unified cgroup hierarchy,
+  so rules given later apply at once. The commands `lxc-attach` runs in the
+  container join its group, and are filtered. A lxc taking no
+  `lxc.cgroup.dir`, 2.1 or older, places the container out of the scope:
+  with rules, the resource refuses to start.
+* A kvm container: what the guest sends and what is sent to it, through
+  the interfaces om makes for the networks of its `network` keyword. The
+  filter is a nftables table of the `netdev` family by interface, named
+  `osvc_netwarden_<interface>`: a pair of sets by rule, holding the
+  addresses it resolves to, and two chains reading them in the order of the
+  rules, a line by rule. It is loaded before the interface is plugged, and
+  after the rules of `network_filter`, which keep the guest to its own
+  addresses. Under the running guest, the addresses moving replace the
+  elements of the sets, and a change of the list of rules replaces the
+  table, each in one transaction. It needs `nft` and
+  a kernel filtering what an interface sends to a guest, Linux 5.16 or
+  later: the guest refuses to start where one is missing, and so does a
+  guest with rules and no `network`, whose interfaces libvirt makes, as the
+  ones of `bridge` or of a `virtinst` command. With rules, a guest
+  exchanges arp, ipv4 and ipv6 frames only. What an interface needs to hold
+  its address passes whatever the rules: arp, the ipv6 neighbour discovery,
+  the dhcp exchange of the guest, and the icmp errors sent to it.
+
+What is not:
+
+* A command run by `om <path> exec` or entering a container, which is the
+  operator's.
+* A published port of a docker container served by its userland proxy: the
+  packets reach the container from the gateway of its bridge, not from the
+  client, so the filter sees the gateway. Allowing the gateway allows every
+  client of the port.
+* A vbox container, whose traffic the cgroup of its processes does not
+  carry, and a kvm container with no `network`.
+* What no socket of the processes filtered sends or receives. The filter of
+  a cgroup judges the packets of the sockets of its processes, in whatever
+  network namespace: what the kernel answers by itself in the network
+  namespace of a container, as the reply to a ping, passes, and so does
+  what that namespace forwards.
+* A container whose root may configure its network. The filter keeps an
+  application to its peers: it is no confinement of the root of a lxc
+  container, or of a docker or podman container given `NET_ADMIN` or run
+  privileged, who administers the network namespace the packets leave
+  through, and is not to be relied on against it. A container to hold
+  against its own root is run without that capability, in a user namespace,
+  or as a kvm guest, whose filter is on the interfaces of the node.

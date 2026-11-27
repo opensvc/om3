@@ -3,6 +3,8 @@ package object
 import (
 	"context"
 
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/netrule"
 	"github.com/opensvc/om3/v3/core/resource"
 )
 
@@ -31,4 +33,20 @@ func ResizeShortfall(o any, r resource.Driver) string {
 	default:
 		panic("ResizeShortfall: not an actor")
 	}
+}
+
+// SetNetRuleObjects replaces who tells the validation the objects the
+// rules of net_rules name, and returns the function restoring it.
+func SetNetRuleObjects(fn func(objects []naming.Path, namespaces []string) (netrule.Objects, error)) func() {
+	saved := netRuleObjects
+	netRuleObjects = fn
+	return func() { netRuleObjects = saved }
+}
+
+// SetNetRuleView replaces what tells the validation the networks and the
+// nodes the rules of net_rules name, and returns the function restoring it.
+func SetNetRuleView(fn func() (netrule.View, error)) func() {
+	saved := netRuleView
+	netRuleView = fn
+	return func() { netRuleView = saved }
 }

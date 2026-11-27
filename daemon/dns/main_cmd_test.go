@@ -514,3 +514,37 @@ func TestAResourceHoldingSeveralAddresses(t *testing.T) {
 	require.Equal(t, []string{"10.100.0.19"}, aRecords(m, "1.vm1.root.svc.cluster1."))
 	require.Equal(t, []string{"fd01::213"}, aaaaRecords(m, "1.vm1.root.svc.cluster1."))
 }
+
+// The zone of a reader of some namespaces holds the records of their objects,
+// and of the cluster, and none of the objects of the others.
+func TestTheZoneOfAReaderHoldsTheObjectsOfItsNamespaces(t *testing.T) {
+	m := dnsManager(t)
+	for ns, addr := range map[string]string{"root": "10.29.0.11", "prod": "10.29.0.12"} {
+		c := scopedStandbyIP(status.Up, addr)
+		c.Path.Namespace = ns
+		c.Node = "node1"
+		update(m, c)
+	}
+	names := func(zone Zone) (l []string) {
+		for _, record := range zone {
+			if record.Type == "A" {
+				l = append(l, record.Name)
+			}
+		}
+		sort.Strings(l)
+		return l
+	}
+	require.Equal(t, []string{
+		"0.svc11.prod.svc.cluster1.", "0.svc11.prod.svc.node1.node.cluster1.",
+		"0.svc11.root.svc.cluster1.", "0.svc11.root.svc.node1.node.cluster1.",
+		"svc11.prod.svc.cluster1.", "svc11.prod.svc.node1.node.cluster1.",
+		"svc11.root.svc.cluster1.", "svc11.root.svc.node1.node.cluster1.",
+	}, names(m.zoneOf(nil)))
+	require.Equal(t, []string{
+		"0.svc11.prod.svc.cluster1.", "0.svc11.prod.svc.node1.node.cluster1.",
+		"svc11.prod.svc.cluster1.", "svc11.prod.svc.node1.node.cluster1.",
+	}, names(m.zoneOf(func(ns string) bool { return ns == "prod" })))
+	require.Empty(t, names(m.zoneOf(func(string) bool { return false })))
+	require.Equal(t, len(m.clusterRecordZone()), len(m.zoneOf(func(string) bool { return false })),
+		"the records of the cluster name no object, and are every reader's")
+}

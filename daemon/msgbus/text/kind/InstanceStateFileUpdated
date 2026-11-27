@@ -1,3 +1,3 @@
-A peer wrote a state file of a local instance.
+A peer, or the daemon, wrote a state file of a local instance.
 
-Published by the api, as the source of a sync writes the last sync record of a peer it synced: the status of the instance read the file, and is outdated.
+Published by the api, as the source of a sync writes the last sync record of a peer it synced, and by the daemon when it sets the network filter of a running resource, whose record it writes: the status of the instance read the file, and is outdated.

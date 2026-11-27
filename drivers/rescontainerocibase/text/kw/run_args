@@ -1,2 +1,10 @@
 Extra arguments to pass to the docker run command, like volume and port
 mappings.
+
+A `--restart` option is refused with `net_rules`: the engine
+would restart the container by itself, with no network filter. om passes no
+restart policy, and restarts the containers.
+
+A `--cgroup-parent` or a `--cgroups` option is refused with it too: the
+engine would place the container out of the slice om sets the network filter
+on. om places the container in the slice of its process group.

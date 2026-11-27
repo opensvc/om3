@@ -219,6 +219,8 @@ func (t *T) waitReady(r *os.File) error {
 // processes it was started as, and the resource would stay up. A stop
 // command set to false does nothing.
 func (t *T) Stop(ctx context.Context) error {
+	// Read before the stop ends what the unit runs.
+	inUnit := t.UnitHolds(ctx)
 	var err error
 	switch {
 	case t.StopCmd == "":
@@ -228,10 +230,15 @@ func (t *T) Stop(ctx context.Context) error {
 	default:
 		err = errors.Join(t.CommonStop(ctx, t), t.stop(ctx, true))
 	}
-	if t.UnitMode() && t.Kill != killParent {
+	if inUnit && t.Kill != killParent {
 		// The processes the stop left in the unit, as the ones that
 		// cleared the resource identity from their environment.
 		err = errors.Join(err, t.UnitTerminate(ctx))
+	}
+	if inUnit {
+		// Kept while the unit holds processes, as the ones kill=parent
+		// leaves running.
+		t.NetClear()
 	}
 	if err != nil {
 		if !actioncontext.HasResourceSelector(ctx) {
@@ -356,10 +363,16 @@ func sameStartAs(l proc.L) func(proc.T) bool {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	var s status.T
 	if t.CheckCmd != "" {
-		return t.CommonStatus(ctx)
+		s = t.CommonStatus(ctx)
+	} else {
+		s = t.status(ctx)
 	}
-	return t.status(ctx)
+	if s == status.Up {
+		t.NetStatus()
+	}
+	return s
 }
 
 // Label implements Label from resource.Driver interface,

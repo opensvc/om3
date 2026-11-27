@@ -59,6 +59,7 @@ func (t *T) container() *rescontainerpodman.T {
 			Detach:                    false, // don't hide the detach value
 			SCSIPersistentReservation: t.SCSIPersistentReservation,
 			PG:                        t.PG,
+			Net:                       t.Net,
 			Path:                      t.Path,
 			ObjectID:                  t.ObjectID,
 			SCSIReserv:                t.SCSIReserv,

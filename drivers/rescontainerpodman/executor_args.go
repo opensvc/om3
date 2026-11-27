@@ -139,3 +139,10 @@ func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 func (ea *ExecutorArg) ExecBaseArgs() []string {
 	return ea.baseArgs
 }
+
+// CgroupManagerArgs implements rescontainerocibase.CgroupManagerArgser: the
+// arguments of the command printing the cgroup manager the engine places its
+// containers with.
+func (ea *ExecutorArg) CgroupManagerArgs() []string {
+	return []string{"info", "--format", "{{.Host.CgroupManager}}"}
+}

@@ -199,6 +199,7 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddKeywords(netKeywords...)
 	m.AddGroups(
 		rescontainer.GroupIdentity,
 		rescontainer.GroupMachine,

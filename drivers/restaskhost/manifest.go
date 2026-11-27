@@ -92,6 +92,7 @@ func (t *T) Manifest() *manifest.T {
 		&resapp.UnixKeywordLimitVmem,
 		&resapp.UnixKeywordLimitAS,
 	)
+	m.AddKeywords(resapp.BaseKeywordsNet...)
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(kws...)
 	m.AddGroups(GroupProcess, resapp.GroupEnvironment, resapp.GroupLimits)
