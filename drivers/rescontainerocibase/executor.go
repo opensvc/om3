@@ -244,8 +244,11 @@ func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 	}
 }
 
+// Pull pulls the image of the container. Its output is logged, and what the
+// engine says of a failure is kept for the error too: the error of a
+// prefetch is read in the status of the resource, far from the logs.
 func (e *Executor) Pull(ctx context.Context) error {
-	return e.doExecRun(ctx, nil, e.args.PullArgs().Get()...)
+	return e.doExec(ctx, true, true, nil, e.args.PullArgs().Get()...)
 }
 
 func (e *Executor) Remove(ctx context.Context) error {
@@ -390,6 +393,12 @@ func (e *Executor) doExecRun(ctx context.Context, environ map[string]string, a .
 // stderr line, what the engine says of a failure, is kept for the error:
 // that line only, a container writing on stderr for as long as it runs.
 func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map[string]string, a ...string) error {
+	return e.doExec(ctx, logOutput, !logOutput, environ, a...)
+}
+
+// doExec is doExecRunLog, with the last stderr line kept for the error when
+// keepReason is true, whether the output is logged or not.
+func (e *Executor) doExec(ctx context.Context, logOutput, keepReason bool, environ map[string]string, a ...string) error {
 	cmdArgs := e.getArgs(a...)
 	opts, err := e.commandOpts(ctx, environ, cmdArgs)
 	if err != nil {
@@ -402,7 +411,8 @@ func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map
 			command.WithStdoutLogLevel(zerolog.InfoLevel),
 			command.WithStderrLogLevel(zerolog.WarnLevel),
 		)
-	} else {
+	}
+	if keepReason {
 		opts = append(opts, command.WithOnStderrLine(func(s string) {
 			if s = strings.TrimSpace(s); s != "" {
 				last = s

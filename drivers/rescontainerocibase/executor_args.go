@@ -56,7 +56,7 @@ func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string, interactive bool
 }
 
 func (ea *ExecutorArg) HasImageArgs() *args.T {
-	return args.New("image", "inspect", "--format", "{{.ID}}", ea.BT.Image)
+	return args.New(imageInspectArgs(ea.BT.Image)...)
 }
 
 func (ea *ExecutorArg) InspectArgs() *args.T {

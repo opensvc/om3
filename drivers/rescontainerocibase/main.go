@@ -114,6 +114,11 @@ type (
 		// of the container.
 		Net netwarden.T `json:"net"`
 
+		// imageEngine and imageStore are the engine of the container
+		// and the store its image is pulled to: see SetImageStore.
+		imageEngine string
+		imageStore  string
+
 		executer   Executer
 		xContainer map[string]containerNamer
 	}

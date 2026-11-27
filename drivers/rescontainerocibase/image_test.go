@@ -33,6 +33,16 @@ func fakeEngine(t *testing.T, inspect, version string) string {
 	return p
 }
 
+// fakeEngineScript writes an engine whose version fails, and doing script, a
+// shell command, of anything else.
+func fakeEngineScript(t *testing.T, script string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "engine")
+	script = "#!/bin/sh\nif test \"$1\" = version; then exit 1; fi\n" + script + "\n"
+	require.NoError(t, os.WriteFile(p, []byte(script), 0o755))
+	return p
+}
+
 // A missing image and an engine that does not answer exit the same: the
 // first is pulled by a start, the second fails it, and a prefetch retries it
 // later rather than recording a missing image.
