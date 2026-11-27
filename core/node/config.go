@@ -33,6 +33,14 @@ type (
 		SSHKey                 string            `json:"sshkey"`
 		PRKey                  string            `json:"prkey"`
 
+		// OCI is the engine the oci container and task resources of
+		// the node run with, and ImagePrefetch whether the node pulls
+		// the images of its container resources ahead of a failover,
+		// when they do not say. Both change the images the instances
+		// of the node prefetch, with no change of their configuration.
+		OCI           string `json:"oci"`
+		ImagePrefetch bool   `json:"image_prefetch"`
+
 		// Issues are the configuration faults found on this node that
 		// a human has to correct, as the cluster configuration has its
 		// own. They are found by the node they name, and travel with
@@ -97,7 +105,9 @@ func (c Config) Equal(other Config) bool {
 		c.RejoinGracePeriod != other.RejoinGracePeriod ||
 		c.SplitAction != other.SplitAction ||
 		c.SSHKey != other.SSHKey ||
-		c.PRKey != other.PRKey {
+		c.PRKey != other.PRKey ||
+		c.OCI != other.OCI ||
+		c.ImagePrefetch != other.ImagePrefetch {
 		return false
 	}
 

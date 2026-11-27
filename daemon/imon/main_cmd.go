@@ -337,10 +337,18 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 }
 
 func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpdated) {
-	if !srcCmd.Value.UpdatedAt.After(t.instConfig.UpdatedAt) {
+	if srcCmd.Value.UpdatedAt.Before(t.instConfig.UpdatedAt) || (srcCmd.Value.UpdatedAt.Equal(t.instConfig.UpdatedAt) && instance.ConfigEqual(&t.instConfig, &srcCmd.Value)) {
 		// drop already loaded localhost instance config (during worker init loads local instance config cache)
 		// we don't want to run an extra instance status evaluation.
 		// omon use both local instance config cache or event to start imon.
+		//
+		// A config of the same date is dropped when it says the same only:
+		// the date is the one of the config file, and the node changes
+		// what the file evaluates to without touching it, as the images
+		// its resources prefetch with the engine or the prefetch default
+		// of the node. Dropped, the outcome of a prefetch would be matched
+		// with the images of the config before, and the status not
+		// refreshed.
 		t.log.Tracef("ignore already loaded local instance config update")
 		return
 	}

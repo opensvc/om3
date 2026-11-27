@@ -12054,6 +12054,17 @@ components:
         prkey:
           type: string
           x-go-name: PRKey
+        oci:
+          description: |
+            the engine the oci container and task resources of the node run
+            with, podman or docker
+          type: string
+          x-go-name: OCI
+        image_prefetch:
+          description: |
+            the node pulls the images of its container resources ahead of a
+            failover, when their image_prefetch keyword does not say
+          type: boolean
         issues:
           type: array
           description: |
@@ -13393,6 +13404,8 @@ components:
           type: boolean
         is_standby:
           type: boolean
+        pull:
+          $ref: '#/components/schemas/ResourcePull'
         restart:
           type: integer
         restart_delay:
@@ -13406,6 +13419,41 @@ components:
           type: array
           items:
             type: string
+
+    ResourcePull:
+      x-go-type: resource.Pull
+      x-go-type-import:
+        path: github.com/opensvc/om3/v3/core/resource
+      description: |
+        the image the node publishing the configuration prefetches for the
+        resource, ahead of a failover: none for a resource with no image,
+        disabled, or whose prefetch is disabled
+      type: object
+      required:
+        - engine
+        - image
+      properties:
+        creds:
+          description: |
+            the identity of the credentials the pull logs in the registry
+            with, as the path of a secret, none for the ones of the node
+          type: string
+        engine:
+          description: the engine holding the image, as docker or podman
+          type: string
+        image:
+          description: |
+            the image reference, normalized as docker reads it, as
+            docker.io/library/nginx:latest, except a podman image named
+            with no registry, kept as written with its tag, as nginx:latest,
+            for podman to resolve it
+          type: string
+        store:
+          description: |
+            the store of the engine the image is pulled to, as the driver
+            names it, none for the one of the system: the user of a rootless
+            podman container
+          type: string
 
     ResourceFile:
       type: object

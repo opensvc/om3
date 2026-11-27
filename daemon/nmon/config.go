@@ -26,6 +26,7 @@ func (t *Manager) getNodeConfig() node.Config {
 		keyPRKey                  = key.New("node", "prkey")
 		keyMinAvailMem            = key.New("node", "min_avail_mem")
 		keyMinAvailSwap           = key.New("node", "min_avail_swap")
+		keyImagePrefetch          = key.New("node", "image_prefetch")
 	)
 	cfg := node.Config{}
 	cfg.Labels = t.config.SectionMap("labels")
@@ -53,6 +54,7 @@ func (t *Manager) getNodeConfig() node.Config {
 	cfg.SplitAction = t.config.GetString(keySplitAction)
 	cfg.SSHKey = t.config.GetString(keySSHKey)
 	cfg.PRKey = t.config.GetString(keyPRKey)
+	cfg.ImagePrefetch = t.config.GetBool(keyImagePrefetch)
 
 	if cfg.MaxParallel == 0 {
 		cfg.MaxParallel = runtime.NumCPU()
@@ -95,6 +97,7 @@ func (t *Manager) getNodeConfig() node.Config {
 			cfg.Schedules = append(cfg.Schedules, e.Config)
 		}
 		cfg.Collector = node.CollectorRawConfig().AsConfig()
+		cfg.OCI = node.OCIEngine()
 	}
 
 	return cfg
