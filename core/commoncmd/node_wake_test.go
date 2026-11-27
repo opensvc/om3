@@ -166,6 +166,10 @@ func TestNodeWakeFlags(t *testing.T) {
 		assert.Contains(t, err.Error(), "local")
 		assert.Contains(t, err.Error(), "wait")
 	})
+	t.Run("a wait needs a positive timeout", func(t *testing.T) {
+		err := (&CmdNodeWake{Nodes: "n2", Wait: true}).Run()
+		assert.EqualError(t, err, "--timeout must be positive with --wait")
+	})
 	t.Run("ox has no local wake", func(t *testing.T) {
 		assert.Nil(t, NewCmdNodeWake(false).Flags().Lookup("local"))
 	})

@@ -23,6 +23,10 @@ import (
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
+// wakeRequestTimeout bounds the requests of a wake without --wait: longer
+// than the minute a relay gives its wake.
+const wakeRequestTimeout = 2 * time.Minute
+
 type (
 	CmdNodeWake struct {
 		// Nodes is the selector of the cluster nodes to wake.
@@ -81,7 +85,7 @@ func NewCmdNodeWake(withLocal bool) *cobra.Command {
 	}
 	flags.StringSliceVar(&options.Macs, "mac", nil, "the comma-separated mac addresses of the node to wake, replacing the wake#<node>.mac ones")
 	flags.BoolVar(&options.Wait, "wait", false, "wait for the heartbeat of the woken nodes to beat")
-	flags.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "maximum duration to wait for the woken nodes heartbeat, with --wait")
+	flags.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "maximum duration of the wake with --wait, the wait for the woken nodes heartbeat included")
 	if withLocal {
 		flags.BoolVar(&options.Local, "local", false, "wake from the local node as a relay does, asking the collector then sending the magic packets, and without asking the other relays")
 		// A relay returns once it asked: it does not watch the heartbeat.
@@ -112,11 +116,21 @@ func (t *CmdNodeWake) runLocal() error {
 }
 
 func (t *CmdNodeWake) runRemote() error {
+	// --timeout bounds the whole wake with --wait only. Without, the
+	// requests are bounded by wakeRequestTimeout: a relay answers once its
+	// wake ended, which it bounds itself.
+	timeout := wakeRequestTimeout
+	if t.Wait {
+		if t.Timeout <= 0 {
+			return fmt.Errorf("--timeout must be positive with --wait")
+		}
+		timeout = t.Timeout
+	}
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	// The reader has to be opened before the cluster status is read: a node
