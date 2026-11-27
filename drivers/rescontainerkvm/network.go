@@ -427,7 +427,16 @@ func lockGuestNet() (func(), error) {
 //
 // A filter is bound to a device: the tap has to exist for the rules to load,
 // and it has to be filtered before it is plugged and the guest runs.
+//
+// The rules of net_rules are one more filter of the taps,
+// loaded as the one keeping the guest to its addresses is: once every tap is
+// made, and before any is plugged.
 func (t *T) networkUp(ctx context.Context) ([]guestNIC, error) {
+	// Refused before anything is made: a guest with rules is not started
+	// unfiltered.
+	if err := t.netIssue(); err != nil {
+		return nil, err
+	}
 	if len(t.Network) == 0 {
 		return nil, nil
 	}
@@ -458,6 +467,20 @@ func (t *T) networkUp(ctx context.Context) ([]guestNIC, error) {
 			return nil, fmt.Errorf("network %s: %w", n.network, err)
 		}
 		t.unplug(ctx, n)
+	}
+	// What an earlier run of the guest left of a filter goes with its
+	// taps: the tables are loaded anew for the ones made now, and a guest
+	// with no rule any more has none.
+	t.netClear()
+	for _, n := range nics {
+		if err := t.tap(ctx, n); err != nil {
+			return nil, fmt.Errorf("network %s: %w", n.network, err)
+		}
+	}
+	if err := t.netApply(); err != nil {
+		return nil, err
+	}
+	for _, n := range nics {
 		if err := t.plug(ctx, n); err != nil {
 			return nil, fmt.Errorf("network %s: %w", n.network, err)
 		}
@@ -471,7 +494,9 @@ func (t *T) networkUp(ctx context.Context) ([]guestNIC, error) {
 	return nics, nil
 }
 
-func (t *T) plug(ctx context.Context, n guestNIC) error {
+// tap makes the interface of the guest, kept to its addresses, and plugged
+// into nothing yet.
+func (t *T) tap(ctx context.Context, n guestNIC) error {
 	if err := t.runNet(ctx, "ip", "tuntap", "add", "dev", n.dev, "mode", "tap"); err != nil {
 		return err
 	}
@@ -486,6 +511,11 @@ func (t *T) plug(ctx context.Context, n guestNIC) error {
 			return fmt.Errorf("load the filter of %s: %w: %s", n.dev, err, b)
 		}
 	}
+	return nil
+}
+
+// plug plugs the interface of the guest, made and filtered, into its bridge.
+func (t *T) plug(ctx context.Context, n guestNIC) error {
 	if master, err := net.InterfaceByName(n.master); err != nil {
 		return err
 	} else if err := t.runNet(ctx, "ip", "link", "set", n.dev, "mtu", strconv.Itoa(master.MTU)); err != nil {
@@ -629,6 +659,7 @@ func (t *T) networkDown(ctx context.Context) error {
 		}
 		errs = errors.Join(errs, t.stopDHCP(n), t.allocationOf(n.network).Free())
 	}
+	t.netClear()
 	return errs
 }
 
@@ -636,6 +667,7 @@ func (t *T) networkDown(ctx context.Context) error {
 // gone: the guest runs on, its neighbours no longer protected from it, and
 // nothing else would tell.
 func (t *T) statusNetwork(ctx context.Context) {
+	t.netStatus()
 	if len(t.Network) == 0 {
 		return
 	}

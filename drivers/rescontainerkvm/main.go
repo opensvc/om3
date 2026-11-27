@@ -38,6 +38,7 @@ import (
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/core/vsockauth"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
+	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
@@ -98,6 +99,10 @@ type (
 		VirtInstArgs        []string       `json:"virtinst_args"`
 		Network             []string       `json:"network"`
 		NetworkFilter       bool           `json:"network_filter"`
+
+		// Net is the rules restricting the network traffic of the
+		// guest, net_rules.
+		Net netwarden.T `json:"net"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 

@@ -10,6 +10,9 @@
 // order: it is given the two lists letting through what the ordered rules
 // do, see netrule.Filter.Flat.
 //
+// A guest sends its packets through network interfaces no cgroup carries
+// the traffic of: its filter is applied on them, by nftables, see Netdev.
+//
 // systemd attaches the filter to the units, never to the slice: a process
 // written into the group, in no unit, is not filtered. And where it can not
 // attach it, it runs the unit unfiltered. So a driver setting a filter runs
@@ -140,6 +143,11 @@ type (
 		id string
 	}
 
+	// netdevBackend is the netdev backend: the interfaces of a guest.
+	netdevBackend struct {
+		Netdev
+	}
+
 	// slice is what the filter asks of the systemd slice of a process
 	// group, which a pg.Config answers.
 	slice interface {
@@ -208,6 +216,9 @@ func (t Target) appliedFile() string {
 // backend returns what applies the filter of the resource, nil for one with
 // no process group to set it on.
 func (t Target) backend() backend {
+	if t.Backend == netrule.BackendNetdev {
+		return netdevBackend{Netdev{Devs: t.Devs}}
+	}
 	if t.PG == nil {
 		return nil
 	}
@@ -256,6 +267,13 @@ func (t sliceBackend) HasFilter() bool { return t.HasIPFilter() }
 func (t sliceBackend) Name() string    { return filepath.Base(t.id) }
 func (t sliceBackend) Subject() string { return "the slice " + t.Name() }
 func (t sliceBackend) Busy() string    { return "the slice still holds processes" }
+
+func (t netdevBackend) Set(filter netrule.Filter) error           { return t.Load(filter) }
+func (t netdevBackend) Form(filter netrule.Filter) netrule.Filter { return filter }
+func (t netdevBackend) HasProcs() bool                            { return false }
+func (t netdevBackend) Name() string                              { return strings.Join(t.Devs, " ") }
+func (t netdevBackend) Subject() string                           { return "the nft filter of " + t.Name() }
+func (t netdevBackend) Busy() string                              { return "its interfaces are still there" }
 
 // Keywords returns the definition of the keyword, in the keyword group
 // given, for a resource whose filter the cgroup backend applies: each driver
