@@ -55,6 +55,19 @@ func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string, interactive bool
 	return append(l, args...)
 }
 
+// EnterCmdArgs returns the exec running shell in the container, with a
+// terminal when tty, its session marked by marker, a NAME=VALUE environment
+// variable the shell and what it starts inherit: the engine runs the shell
+// with the capabilities, the profiles and in the cgroup of the container, and
+// the marker finds what is left of it when the client of the exec ends.
+func (ea *ExecutorArg) EnterCmdArgs(shell, marker string, tty bool) []string {
+	l := []string{"exec", "-i"}
+	if tty {
+		l = append(l, "-t")
+	}
+	return append(l, "--env", marker, ea.BT.ContainerName(), shell)
+}
+
 func (ea *ExecutorArg) HasImageArgs() *args.T {
 	return args.New(imageInspectArgs(ea.BT.Image)...)
 }

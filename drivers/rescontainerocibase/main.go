@@ -202,6 +202,7 @@ type (
 	ExecutorContainerArgser interface {
 		CpCmdArgs(string, string) []string
 		ExecCmdArgs([]string, []string, bool) []string
+		EnterCmdArgs(shell, marker string, tty bool) []string
 		RemoveArgs() *args.T
 		RunArgsBase(ctx context.Context) (*args.T, error)
 		RunArgsImage() (*args.T, error)

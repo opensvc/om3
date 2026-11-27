@@ -1,17 +1,19 @@
 package rescontainerocibase
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/term"
 
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/command"
@@ -78,54 +80,80 @@ func (e *Executor) EncapCp(ctx context.Context, src, dst string) error {
 	return e.doExecRun(ctx, nil, args...)
 }
 
+// Enter runs a shell in the container, through the exec of the engine: the
+// shell has the capabilities, the seccomp and security profiles, and the
+// cgroup of the container, as the processes of the container, and no more.
+//
+// The client of an exec ending, as the hang up of the terminal of a console
+// session ends it, leaves the shell it started running in the container: the
+// shell and what it starts carry the environment variable marking the
+// session, and are ended when the terminal hangs up.
 func (e *Executor) Enter(ctx context.Context) error {
 	var enterCmd string
 	candidates := []string{"/bin/bash", "/bin/sh"}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	inspect, err := e.Inspect(ctx)
+	cancel()
 	if err != nil {
-		cancel()
 		return err
 	}
 	if inspect == nil {
-		cancel()
 		return fmt.Errorf("the container is not running")
 	}
 	pid := inspect.PID()
 	if pid == 0 {
 		// A container that exists and does not run has no process to
-		// enter the namespaces of.
-		cancel()
+		// run a shell beside.
 		return fmt.Errorf("the container is not running")
-	}
-	env, err := enterEnv(inspect, pid)
-	if err != nil {
-		cancel()
-		return err
 	}
 
 	// The shell is looked for in the files of the container, not run to
-	// see whether it exists: nsenter tells a missing program by its exit
-	// code 127 from util-linux 2.41, by 1 as other failures in 2.23, as
-	// rhel7's, which had /bin/bash taken in an image of /bin/sh alone.
+	// see whether it exists: the exec of an engine tells a missing program
+	// by an exit code it also gives other failures.
 	for _, candidate := range candidates {
 		if containerHasExecutable(pid, candidate) {
 			enterCmd = candidate
 			break
 		}
 	}
-	cancel()
 	if enterCmd == "" {
 		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
-	args := append(nsenterArgs(pid), "-w", enterCmd)
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = env
+	marker, err := newEnterMarker()
+	if err != nil {
+		return err
+	}
+	tty := term.IsTerminal(int(os.Stdin.Fd()))
+	cmd, err := e.command(nil, e.args.EnterCmdArgs(enterCmd, marker, tty)...)
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+
+	hangup := make(chan os.Signal, 1)
+	signal.Notify(hangup, syscall.SIGHUP, syscall.SIGTERM)
+	defer signal.Stop(hangup)
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	exited := make(chan error, 1)
+	go func() { exited <- cmd.Wait() }()
+
+	select {
+	case err = <-exited:
+	case <-hangup:
+		endEnterSession(pid, marker, enterKillGrace)
+		select {
+		case err = <-exited:
+		case <-time.After(enterKillGrace):
+			_ = cmd.Process.Kill()
+			err = <-exited
+		}
+	}
 	if err != nil {
 		switch cmd.ProcessState.ExitCode() {
 		case 130:
@@ -134,43 +162,6 @@ func (e *Executor) Enter(ctx context.Context) error {
 		return err
 	}
 	return nil
-}
-
-// enterEnv is the environment of a shell entering the container: the one the
-// container is configured with, as docker exec gives. The environment of the
-// main process is only read when the configuration has none: a process may
-// rewrite it, as redis-server writes its title over it, and a shell entered
-// with it may find no PATH.
-func enterEnv(inspect Inspecter, pid int) ([]string, error) {
-	if cfg := inspect.Config(); cfg != nil && len(cfg.Env) > 0 {
-		return cfg.Env, nil
-	}
-	return pidEnv(pid)
-}
-
-func pidEnv(pid int) ([]string, error) {
-	envPath := fmt.Sprintf("/proc/%d/environ", pid)
-
-	data, err := os.ReadFile(envPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse NUL-separated environment
-	raw := bytes.Split(data, []byte{0})
-
-	env := make([]string, 0, len(raw))
-	for _, kv := range raw {
-		if len(kv) == 0 {
-			continue
-		}
-		// must contain '=' and not start with '='
-		if i := bytes.IndexByte(kv, '='); i <= 0 {
-			continue
-		}
-		env = append(env, string(kv))
-	}
-	return env, nil
 }
 
 // HasImage says whether the store of the engine holds the image of the

@@ -1537,6 +1537,26 @@ which share the same executor.
     `auto` or `keep-id`. Only `netns = host` was refused before, and the
     other namespace keywords were open.
 
+* **Changed behaviour, `container enter`:**
+    The shell runs through the exec of the engine, `docker exec` or
+    `podman exec`, as in v2, with the capabilities, the seccomp and
+    security profiles and the cgroup of the container, and no more.
+
+    It ran through `nsenter`, as the agent: in the namespaces of the
+    container, with every capability of the node, none of its profiles,
+    out of its cgroup. A namespace admin, who may open a console, had a
+    root shell of the node, the container of `netns = host` in the network
+    of the node, any other able to mount the disks of the node.
+
+    A shell confined as the container is counts in its `pids_max` and its
+    memory, and the engine refuses it in a paused container. The root of
+    the node debugging a container past its limits runs `nsenter` itself.
+
+    A console session hung up ends the shell and what it started in the
+    container, which the exec of an engine leaves running when its client
+    ends: they carry an `OSVC_ENTER_SESSION` environment variable naming
+    the session.
+
 ### Driver: container.docker
 
     * `stop_timeout`
