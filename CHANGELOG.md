@@ -1644,6 +1644,49 @@ which share the same executor.
     partitions, refuses the start of a guest counted on to be capped, as it
     refused its provision.
 
+* **Changed behaviour, a guest out of its process group:**
+    om asks libvirt to place a guest in the process group of its resource,
+    so the `pg_*` caps of the resource, of its object and of its namespace
+    hold it, and libvirt asks systemd. The start now reads the group qemu
+    runs in, from the unified cgroup hierarchy, or from the `name=systemd`
+    one on a node of the v1 hierarchy, which has no unified one. Out of the
+    one asked, the start fails and is rolled back when
+    a cap of the groups holding the resource, a cpu or memory claim of the
+    namespace, or a `pg_*` keyword of the configuration of the namespace,
+    counts on the placement, and the status of the guest warns when none
+    does. Only a guest whose definition holds the partition om writes, one
+    under `/opensvc`, is so checked: om writes it at the start, and with
+    `virt-install` at the provision. A guest defined and started by hand,
+    with no such partition, runs where libvirt places it, as in
+    `machine.slice`: its status does not warn, and nothing fails for its
+    placement.
+
+* **Changed behaviour, a guest on a node that can not place it:**
+    A node with no systemd, or without the
+    `drivers.resource.container.kvm.partitions` capability, runs a guest in
+    the partition of libvirt, out of the process groups. A guest is refused
+    there, at provision and at start, when a `pg_*` keyword of the
+    configuration of its namespace is set, as it was for a cap of its own
+    groups or a claim of its namespace: the slice of the namespace would
+    not hold it. The `pg_*` keywords of the root namespace configuration
+    refuse a guest of the root namespace only, whose namespace it is: for
+    the others they cap the whole tree of the agent, and a guest out of it
+    is still under the limits of the node.
+
+    The start removes from the definition of the guest the partition
+    written by a node that can place it, or by this one before an upgrade:
+    libvirt kept asking for a placement nothing checked there. A partition
+    out of `/opensvc`, set by a sysadmin, is kept.
+
+* **Changed capability, `drivers.resource.container.kvm.partitions` on systemd 249:**
+    The capability is not granted on a node running systemd 249, as ubuntu
+    22.04: this release places the machine of a guest in the slice asked
+    for it or in `machine.slice`, out of every cap, on and off. A guest is
+    not placed in its process group there, and one a cap or a claim counts
+    on being capped is refused at provision and at start, the error
+    naming the systemd release, where it ran uncapped one start out of
+    two. A guest nothing caps runs as before.
+
 ### Driver: disk.lvm
 
 * **Removed feature:**

@@ -335,3 +335,86 @@ func TestTheNamespaceMemCapIsTheSmallerOfTheNamespaceAndTheRootOnes(t *testing.T
 		})
 	}
 }
+
+// A pg_* keyword of the configuration of the namespace of an object is
+// written on a slice above the groups of the object: a driver that can not
+// place its processes under that slice is told one is set. A keyword set to
+// "default" lifts a cap, and is none. The root namespace configuration is
+// the one of the objects of the root namespace, and is asked for them only:
+// for the others it caps the whole tree of the agent, not their namespace.
+func TestTheNamespacePGCapNamesAKeywordTheNamespaceConfigurationSets(t *testing.T) {
+	cases := map[string]struct {
+		namespace string
+		nscfg     map[string]string
+		want      string
+	}{
+		"no namespace configuration": {
+			namespace: "ci",
+		},
+		"a namespace configuration with no pg keyword": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\n\n[claim#1]\ntype = pool\nname = p1\nlimit = 1g\n"},
+		},
+		"the namespace sets a memory cap": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\npg_mem_limit = 2g\n"},
+			want:      "pg_mem_limit",
+		},
+		"the namespace sets a cap that is not of the memory": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\npg_pids_max = 100\n"},
+			want:      "pg_pids_max",
+		},
+		"the root namespace sets one": {
+			namespace: "ci",
+			nscfg:     map[string]string{"root": "[DEFAULT]\npg_cpu_quota = 200%\n"},
+		},
+		"both do, the one of the namespace of the object is named": {
+			namespace: "ci",
+			nscfg: map[string]string{
+				"ci":   "[DEFAULT]\npg_mem_limit = 2g\n",
+				"root": "[DEFAULT]\npg_cpu_quota = 200%\n",
+			},
+			want: "pg_mem_limit",
+		},
+		"another namespace does": {
+			namespace: "ci",
+			nscfg:     map[string]string{"prod": "[DEFAULT]\npg_mem_limit = 1g\n"},
+		},
+		"a cap lifted with default": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\npg_mem_limit = default\n"},
+		},
+		"an object of the root namespace": {
+			namespace: "root",
+			nscfg:     map[string]string{"root": "[DEFAULT]\npg_mem_limit = 1g\n"},
+			want:      "pg_mem_limit",
+		},
+		"an object of the root namespace, another namespace capped": {
+			namespace: "root",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\npg_mem_limit = 1g\n"},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			testhelper.Setup(t)
+			for namespace, config := range tc.nscfg {
+				p := naming.Path{Namespace: namespace, Kind: naming.KindNscfg, Name: "namespace"}
+				require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0755))
+				require.NoError(t, os.WriteFile(p.ConfigFile(), []byte(config), 0644))
+			}
+			p := naming.Path{Namespace: tc.namespace, Kind: naming.KindSvc, Name: "vm"}
+			// The caps of the object itself are not the namespace's.
+			o, err := object.NewSvc(p, object.WithConfigData([]byte("[DEFAULT]\npg_mem_limit = 8g\n")))
+			require.NoError(t, err)
+			var i any = o
+			capper, ok := i.(interface {
+				NamespacePGCap() (string, error)
+			})
+			require.True(t, ok)
+			keyword, err := capper.NamespacePGCap()
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, keyword)
+		})
+	}
+}

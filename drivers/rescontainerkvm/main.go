@@ -411,10 +411,17 @@ func defaultName(p naming.Path, rid string) string {
 // libvirt places a guest in a partition of its own whatever the group of the
 // command starting it, so the capping of the object would bound nothing of
 // the guest, nor would the one of its namespace, without this.
+//
+// On a node that can not place a guest, the partition a node that can, or
+// this one before it lost the partitions capability, wrote in the definition
+// is removed: left there, libvirt would go on asking systemd for a placement
+// om counts for nothing here, the guest landing in its group or out of it
+// with no check of which. Without it, the guest runs in the partition of
+// libvirt, and one counted on to be capped is refused before it starts.
 func (t *T) doPartitions() error {
 	partition := t.partition()
 	if partition == "" {
-		return nil
+		return unsetPartition(t.configFile())
 	}
 	return setPartition(t.configFile(), partition)
 }
@@ -456,7 +463,19 @@ func (t *T) ProvisionStart(ctx context.Context) error {
 		t.Log().Tracef("skip the start of the provision off the placement leader")
 		return nil
 	}
-	return t.Start(ctx)
+	if err := t.Start(ctx); err != nil {
+		return err
+	}
+	// The guest virt-install started is up already, which the start checks
+	// nothing of: out of the caps counted on to hold it, it is stopped as a
+	// failed start is rolled back, rather than left running uncapped.
+	if err := t.placementError(); err != nil {
+		if stopErr := t.Stop(ctx); stopErr != nil {
+			t.Log().Warnf("stop the guest placed out of its process group: %s", stopErr)
+		}
+		return err
+	}
+	return nil
 }
 
 func (t *T) Start(ctx context.Context) error {
@@ -487,6 +506,11 @@ func (t *T) Start(ctx context.Context) error {
 	})
 	if !t.waitForUp(ctx, *t.StartTimeout, 2*time.Second) {
 		return fmt.Errorf("waited too long for up")
+	}
+	// The start fails, and is rolled back, on a guest systemd placed out
+	// of the caps counted on to hold it.
+	if err := t.placementError(); err != nil {
+		return err
 	}
 	if !t.hasEncap() {
 		// No need to wait for ping exec access if we don't need to
@@ -975,7 +999,7 @@ func (t *T) ConfigError(ctx context.Context) error {
 // hasGuestPIDFile says whether libvirt holds a pid file for the guest, which it
 // does while the guest runs, and true when it can not tell.
 func (t *T) hasGuestPIDFile() bool {
-	for _, dir := range []string{"/run/libvirt/qemu", "/var/run/libvirt/qemu"} {
+	for _, dir := range guestPIDDirs {
 		_, err := os.Stat(filepath.Join(dir, t.Name+".pid"))
 		if !errors.Is(err, os.ErrNotExist) {
 			return true
@@ -1006,6 +1030,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	switch {
 	case isUpFromState(state):
 		t.statusNetwork(ctx)
+		if group := t.misplacedIn(); group != "" {
+			t.StatusLog().Warn("the guest runs in %s, out of its process group: no cap holds it", group)
+		}
 		return status.Up
 	case isDownFromState(state):
 		return status.Down

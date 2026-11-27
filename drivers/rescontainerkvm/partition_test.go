@@ -23,22 +23,35 @@ func (t fakeCapper) ResourceCap(string, string) (int64, error) { return t.limit,
 
 // A node libvirt places the guests of out of the process groups is refused a
 // guest the object caps, not only one the namespace claims for.
-func TestCappedError(t *testing.T) {
-	assert.NoError(t, cappedError(nil, "container#1", claim.TypeMemory), "no object to ask")
-	assert.NoError(t, cappedError(fakeCapper{limit: claim.Unbounded}, "container#1", claim.TypeMemory))
+func TestCappedOn(t *testing.T) {
+	what, err := cappedOn(nil, "container#1", claim.TypeMemory)
+	assert.NoError(t, err)
+	assert.Empty(t, what, "no object to ask")
 
-	err := cappedError(fakeCapper{limit: 1024}, "container#1", claim.TypeCPU)
-	assert.ErrorContains(t, err, "container#1 is capped on the "+claim.TypeCPU)
+	what, err = cappedOn(fakeCapper{limit: claim.Unbounded}, "container#1", claim.TypeMemory)
+	assert.NoError(t, err)
+	assert.Empty(t, what)
+
+	what, err = cappedOn(fakeCapper{limit: 1024}, "container#1", claim.TypeCPU)
+	assert.NoError(t, err)
+	assert.Equal(t, "container#1 is capped on the "+claim.TypeCPU, what)
 
 	failed := errors.New("failed")
-	assert.ErrorIs(t, cappedError(fakeCapper{err: failed}, "container#1", claim.TypeMemory), failed)
+	_, err = cappedOn(fakeCapper{err: failed}, "container#1", claim.TypeMemory)
+	assert.ErrorIs(t, err, failed)
 }
 
 // fakeGuestObject is an object capping its guest and its namespace as told.
 type fakeGuestObject struct {
 	memCap       int64
 	namespaceCap int64
+
+	// pgCapKeyword is a pg_* keyword the configuration of the namespace
+	// sets.
+	pgCapKeyword string
 }
+
+func (t fakeGuestObject) NamespacePGCap() (string, error) { return t.pgCapKeyword, nil }
 
 func (t fakeGuestObject) Log() *plog.Logger                                       { return plog.NewDefaultLogger() }
 func (t fakeGuestObject) VarDir() string                                          { return "" }
@@ -61,7 +74,7 @@ func newCappedGuest(t *testing.T, memCap, namespaceCap int64) (*T, string) {
 	r.ResourceID = &resourceid.T{Name: "container#1"}
 	memory := int64(256 << 20)
 	r.Memory = &memory
-	r.SetPG(&pg.Config{ID: "/opensvc.slice/opensvc-ns.ns1.slice/opensvc-ns.ns1-svc.vm.slice/opensvc-ns.ns1-svc.vm-container.1.slice"})
+	r.SetPG(&pg.Config{ID: testGuestGroup})
 	r.SetObject(fakeGuestObject{memCap: memCap, namespaceCap: namespaceCap})
 	return r, callsFile
 }
@@ -117,3 +130,5 @@ func TestAMemoryCapHoldingTheGuestIsNoError(t *testing.T) {
 		})
 	}
 }
+
+func (t fakeGuestObject) ResourceCap(string, string) (int64, error) { return t.memCap, nil }
