@@ -1,0 +1,23 @@
+Pull the image on the nodes of the object not running the container, so a
+failover finds it in the store of the engine, and neither waits for the
+registry nor fails with it.
+
+If not set, the `node.image_prefetch` keyword of the node decides, `true`
+by default.
+
+The image prefetched by a node is the `image` keyword as this node
+evaluates it, the one its start would run. It is pulled when the store of
+the engine does not hold it, and never pulled again once there: a prefetch
+does not refresh a moving tag as `latest`, which the nodes may then hold
+different builds of. Pin a tag that does not move, or a digest, for the
+nodes to run the same build.
+
+The prefetch is a best effort, done by the daemon when the configuration
+of the object changes. A pull that failed is tried again later, less and
+less often, and the resource status warns of the missing image meanwhile.
+An image removed from the store, as by an `image prune`, is pulled again,
+except from the store of a `rootless_user`, which the daemon does not
+watch: that one is pulled again on the next change of the configuration.
+
+A start is not changed by the prefetch: it pulls a missing image, and
+`image_pull_policy = always` still pulls at every start.

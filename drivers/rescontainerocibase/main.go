@@ -65,6 +65,7 @@ type (
 		Hostname        string         `json:"hostname"`
 		Image           string         `json:"image"`
 		ImagePullPolicy string         `json:"image_pull_policy"`
+		ImagePrefetch   string         `json:"image_prefetch"`
 		CWD             string         `json:"cwd"`
 		User            string         `json:"user"`
 		Command         []string       `json:"command"`

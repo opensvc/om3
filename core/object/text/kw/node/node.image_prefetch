@@ -1,0 +1,10 @@
+Pull the images of the `container.docker` and `container.podman` resources
+on this node while it does not run them, so a failover to it finds them in
+the store of the engine.
+
+This is the default of the resources of the node: the `image_prefetch`
+keyword of a resource overrides it. Set in the cluster configuration, it
+is the default of every node not setting its own.
+
+See the `image_prefetch` keyword of the container resources for what is
+pulled, and when.

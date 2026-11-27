@@ -413,6 +413,15 @@ var (
 		Text:   keywords.NewText(fs, "text/kw/core/comment"),
 	}
 
+	kwNodeImagePrefetch = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "true",
+		Option:    "image_prefetch",
+		Group:     nodeGroupContainers.ID,
+		Section:   "node",
+		Since:     "v3.0.0-rc73",
+		Text:      keywords.NewText(fs, "text/kw/node/node.image_prefetch"),
+	}
 	kwNodeSecureFetch = keywords.Keyword{
 		Converter: converters.Bool,
 		Default:   "true",
@@ -2357,6 +2366,7 @@ var (
 	nodeCommonKeywords = []*keywords.Keyword{
 		&kwNodeComment,
 		&kwNodeSecureFetch,
+		&kwNodeImagePrefetch,
 		&kwNodeMinAvailMem,
 		&kwNodeMinAvailSwap,
 		&kwNodeEnv,
