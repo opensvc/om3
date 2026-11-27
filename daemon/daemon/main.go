@@ -47,6 +47,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/mntmon"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/netmon"
+	"github.com/opensvc/om3/v3/daemon/netwarden"
 	"github.com/opensvc/om3/v3/daemon/nmon"
 	"github.com/opensvc/om3/v3/daemon/pgmetrics"
 	"github.com/opensvc/om3/v3/daemon/runner"
@@ -308,6 +309,12 @@ func (t *T) Start(ctx context.Context) error {
 		mdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		// It follows the configuration and the status of every
+		// instance of every node, where the dns follows the statuses
+		// only: twice the events, which a daemon starting publishes
+		// in one go, faster than a subscription hands them over
+		// whatever its reader does. The queue is sized for them.
+		netwarden.NewManager(qsLarge),
 		pgmetrics.New(),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).

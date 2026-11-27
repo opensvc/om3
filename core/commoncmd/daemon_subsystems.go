@@ -48,6 +48,7 @@ var AuditSubsystems = []string{
 	"istat",
 	"mntmon",
 	"netmon",
+	"netwarden",
 	"nmon",
 	"omon",
 	"omon:",

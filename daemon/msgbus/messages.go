@@ -1225,8 +1225,10 @@ type (
 
 	// InstanceStateFileUpdated is emitted by the api when a peer wrote a
 	// state file of a local instance, as the source of a sync writes the
-	// last sync record of a peer it synced. The status of the instance
-	// read the file, and is outdated.
+	// last sync record of a peer it synced, and by the daemon when it
+	// wrote one itself, as the record of the network filter it set under
+	// a running resource. The status of the instance read the file, and
+	// is outdated.
 	InstanceStateFileUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
