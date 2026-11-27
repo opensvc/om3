@@ -6271,6 +6271,10 @@ paths:
         The series of the subsets and the resources of an object, the subset and
         resource scopes, are reported for the objects named by the path
         parameters only.
+
+        The cgroups are read in the unified hierarchy only: a node of the
+        cgroup v1 hierarchy, or a hybrid one, is not supported and reports no
+        series.
       operationId: GetNodeMetricsPG
       tags:
         - node

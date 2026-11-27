@@ -1410,6 +1410,18 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
           - targets: ['n1:1215', 'n2:1215']
     ```
 
+* **`/metrics/pg` and the `opensvc_pg_*` series on cgroup v1:**
+    The metrics of the process groups are read in the unified cgroup
+    hierarchy only. A node of the v1 hierarchy, as rhel7, rhel8 and sles15,
+    or a hybrid one, is not supported: it reports no `opensvc_pg_*` series
+    on `/metrics` and `/metrics/pg`, where it reported `opensvc_pg_cgroups 0`
+    and `opensvc_pg_cgroup_exists 0` for groups that existed and were
+    capped. The caps are applied on these nodes all the same.
+
+    The `opensvc_pg_cgroup_cpu_shares` series, the `cpu.shares` of cgroup
+    v1, is removed with the reading of the v1 files, which no node reached:
+    `opensvc_pg_cgroup_cpu_weight` is the weight on the unified hierarchy.
+
 ### Core
 
 * **Object Names policy change:**

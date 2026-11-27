@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -46,6 +47,7 @@ func partsTree(t *testing.T) naming.Path {
 	host := t.TempDir()
 	wasHost := HostCgroupRoot
 	HostCgroupRoot = host
+	withUnified(t, true)
 	t.Cleanup(func() { HostCgroupRoot = wasHost })
 	object := "/opensvc.slice/opensvc-ns.ns1.slice/opensvc-ns.ns1-svc.s1.slice"
 	subset := object + "/opensvc-ns.ns1-svc.s1-subset.g1.slice"
@@ -106,4 +108,16 @@ func TestHandlerReportsThePartsAskedFor(t *testing.T) {
 
 	code, _ = get("?path=" + strings.Repeat("/", 3))
 	assert.Equal(t, http.StatusBadRequest, code)
+}
+
+// The parts of an object are not read on a cgroup v1 node: the page says
+// nothing of them, where it said the groups of its resources did not exist.
+func TestACgroupV1NodeReportsNoParts(t *testing.T) {
+	p := partsTree(t)
+	withUnified(t, false)
+	reg := prometheus.NewRegistry()
+	require.NoError(t, reg.Register(partsCollector{paths: naming.Paths{p}}))
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	assert.Empty(t, families)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/metricsreg"
+	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/systemd"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,6 +42,17 @@ var (
 	HostCgroupRoot = "/sys/fs/cgroup"
 	ProcRoot       = "/proc"
 	CPUOnlineFile  = "/sys/devices/system/cpu/online"
+
+	// isUnified says the node holds the unified cgroup hierarchy and
+	// nothing else, the only one these metrics are read in.
+	//
+	// A node of the v1 hierarchy, or a hybrid one, keeps the groups om caps
+	// in a directory per controller, /sys/fs/cgroup/memory/opensvc.slice
+	// and its like, which nothing here reads: such a node is not
+	// supported, and reports no pg series at all, where it said its
+	// groups did not exist, opensvc_pg_cgroup_exists 0, and counted none,
+	// while they existed and were capped. A var for the tests.
+	isUnified = pg.IsUnified
 )
 
 // The scope label values: the cgroup a series is of.
@@ -138,8 +150,6 @@ var (
 		"Current memory usage in bytes for the cgroup", cgroupLabels, nil)
 	memoryMaxDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_max_bytes",
 		"Memory max limit in bytes for the cgroup (+Inf = unlimited)", cgroupLabels, nil)
-	cpuSharesDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_shares",
-		"CPU shares for the cgroup (cgroup v1, 2-262144, 1024 by default)", cgroupLabels, nil)
 	cpuWeightDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_weight",
 		"CPU weight for the cgroup (cgroup v2, 1-10000, 100 by default)", cgroupLabels, nil)
 	cpuQuotaDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_quota",
@@ -172,7 +182,7 @@ var (
 	// detailDescs is what /metrics/pg answers with.
 	detailDescs = []*prometheus.Desc{
 		cgroupExistsDesc, cpuUsageDesc, cpuUserUsageDesc, cpuSystemUsageDesc,
-		memoryCurrentDesc, memoryMaxDesc, cpuSharesDesc, cpuWeightDesc,
+		memoryCurrentDesc, memoryMaxDesc, cpuWeightDesc,
 		cpuQuotaDesc, cpuPeriodDesc, cpuCpusDesc, blkioWeightDesc,
 		memoryStatDesc, memoryStatPagesDesc, cpuStatDesc,
 		ioReadBytesDesc, ioWriteBytesDesc, ioReadIOsDesc, ioWriteIOsDesc,
@@ -283,6 +293,11 @@ func (c hintCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c hintCollector) Collect(ch chan<- prometheus.Metric) {
+	if !isUnified() {
+		// A count of 0 would say the node has no group, not that they
+		// are not read.
+		return
+	}
 	s := c.m.snapshot(false)
 	ch <- prometheus.MustNewConstMetric(cgroupsDesc, prometheus.GaugeValue, float64(s.cgroups))
 	ch <- prometheus.MustNewConstMetric(objectsWithoutCgroupDesc, prometheus.GaugeValue, float64(s.withoutCgroup))
@@ -303,6 +318,10 @@ func (m *Manager) snapshot(full bool) *snapshot {
 
 func (m *Manager) walk(full bool) *snapshot {
 	s := &snapshot{at: time.Now(), full: full}
+	if !isUnified() {
+		m.log.Tracef("the node does not hold the unified cgroup hierarchy alone, skipping collection")
+		return s
+	}
 	if _, err := os.Stat(CgroupRoot); os.IsNotExist(err) {
 		m.log.Tracef("cgroup root %s does not exist, skipping collection", CgroupRoot)
 		return s
@@ -566,37 +585,20 @@ func collectCgroupMetrics(e *emitter, full bool, cgroupPath string, labels ...st
 		parseMemoryStat(e, memStat, labels...)
 	}
 
-	// Read cpu.weight (cgroup v2) or cpu.shares (cgroup v1), into their
-	// own metrics, the two not being the same scale.
+	// Read cpu.weight. The files read here are those of the unified
+	// hierarchy alone, the only one collected: see isUnified.
 	if cpuWeight, err := readFile(cgroupPath, "cpu.weight"); err == nil {
 		if val, err := parseUint(cpuWeight); err == nil {
 			e.gauge(cpuWeightDesc, float64(val), labels...)
 		}
 	}
-	if cpuShares, err := readFile(cgroupPath, "cpu.shares"); err == nil {
-		if val, err := parseUint(cpuShares); err == nil {
-			e.gauge(cpuSharesDesc, float64(val), labels...)
-		}
-	}
 
-	// Read cpu.max (cgroup v2), which carries the quota and the period in
-	// one file, or the pair of cgroup v1 files that hold them separately.
-	// Both are microseconds, so they feed the same two metrics.
+	// Read cpu.max, which carries the quota and the period in one file,
+	// both in microseconds.
 	if cpuMax, err := readFile(cgroupPath, "cpu.max"); err == nil {
 		if quota, period, err := parseCPUMax(cpuMax); err == nil {
 			e.gauge(cpuQuotaDesc, quota, labels...)
 			e.gauge(cpuPeriodDesc, period, labels...)
-		}
-	} else {
-		if cpuQuota, err := readFile(cgroupPath, "cpu.cfs_quota_us"); err == nil {
-			if val, err := parseInt(cpuQuota); err == nil {
-				e.gauge(cpuQuotaDesc, cfsQuota(val), labels...)
-			}
-		}
-		if cpuPeriod, err := readFile(cgroupPath, "cpu.cfs_period_us"); err == nil {
-			if val, err := parseUint(cpuPeriod); err == nil {
-				e.gauge(cpuPeriodDesc, float64(val), labels...)
-			}
 		}
 	}
 
@@ -626,13 +628,9 @@ func collectCgroupMetrics(e *emitter, full bool, cgroupPath string, labels ...st
 		}
 	}
 
-	// Read io.weight (for cgroup v2) or blkio.weight (for cgroup v1)
+	// Read io.weight
 	if ioWeight, err := readFile(cgroupPath, "io.weight"); err == nil {
 		if val, err := parseIOWeight(ioWeight); err == nil {
-			e.gauge(blkioWeightDesc, float64(val), labels...)
-		}
-	} else if blkioWeight, err := readFile(cgroupPath, "blkio.weight"); err == nil {
-		if val, err := parseUint(blkioWeight); err == nil {
 			e.gauge(blkioWeightDesc, float64(val), labels...)
 		}
 	}
@@ -858,33 +856,15 @@ func parseCPUMax(s string) (quota, period float64, err error) {
 	return quota, period, nil
 }
 
-// cfsQuota converts a cgroup v1 cpu.cfs_quota_us value, which uses -1 for
-// no throttling, to the +Inf cgroup v2 and every other limit here report,
-// so that one query works whichever version the node runs.
-func cfsQuota(v int64) float64 {
-	if v < 0 {
-		return math.Inf(1)
-	}
-	return float64(v)
-}
-
-// parseIOWeight reads the default weight out of io.weight, whose cgroup
-// v2 form is "default $WEIGHT" followed by optional per device lines,
-// where the cgroup v1 blkio.weight is a bare number.
+// parseIOWeight reads the default weight out of io.weight, whose form is
+// "default $WEIGHT" followed by optional per device lines.
 func parseIOWeight(s string) (uint64, error) {
 	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
 	fields := strings.Fields(line)
-	switch {
-	case len(fields) == 2 && fields[0] == "default":
+	if len(fields) == 2 && fields[0] == "default" {
 		return parseUint(fields[1])
-	case len(fields) == 1:
-		return parseUint(fields[0])
 	}
 	return 0, fmt.Errorf("io.weight: no default weight in %q", line)
-}
-
-func parseInt(s string) (int64, error) {
-	return strconv.ParseInt(strings.TrimSpace(s), 10, 64)
 }
 
 // countCPUs counts the number of CPUs in a cpuset.cpus string
