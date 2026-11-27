@@ -256,3 +256,82 @@ start = /bin/true
 	assert.Equal(t, claim.Unbounded, m[claim.TypeCPU])
 	assert.Equal(t, claim.Unbounded, m[claim.TypeMemory])
 }
+
+// The pg_mem_limit of a namespace configuration is the memory.max of the
+// slice holding the objects of the namespace, and the one of the root
+// namespace the memory.max of the slice holding them all: no process group
+// of an object takes more than the smaller, which ResourceCap leaves out as
+// it is no term of what a claim counts.
+func TestTheNamespaceMemCapIsTheSmallerOfTheNamespaceAndTheRootOnes(t *testing.T) {
+	const gi = int64(1024 * 1024 * 1024)
+	cases := map[string]struct {
+		namespace string
+		nscfg     map[string]string
+		want      int64
+	}{
+		"no namespace configuration": {
+			namespace: "ci",
+			want:      claim.Unbounded,
+		},
+		"a namespace configuration with no cap": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\n"},
+			want:      claim.Unbounded,
+		},
+		"the namespace is capped": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\npg_mem_limit = 2g\n"},
+			want:      2 * gi,
+		},
+		"the root namespace caps every namespace": {
+			namespace: "ci",
+			nscfg:     map[string]string{"root": "[DEFAULT]\npg_mem_limit = 1g\n"},
+			want:      gi,
+		},
+		"the smaller of both": {
+			namespace: "ci",
+			nscfg: map[string]string{
+				"ci":   "[DEFAULT]\npg_mem_limit = 2g\n",
+				"root": "[DEFAULT]\npg_mem_limit = 3g\n",
+			},
+			want: 2 * gi,
+		},
+		"the cap of another namespace is not one": {
+			namespace: "ci",
+			nscfg:     map[string]string{"prod": "[DEFAULT]\npg_mem_limit = 1g\n"},
+			want:      claim.Unbounded,
+		},
+		"an object of the root namespace": {
+			namespace: "root",
+			nscfg:     map[string]string{"root": "[DEFAULT]\npg_mem_limit = 1g\n"},
+			want:      gi,
+		},
+		"a cap lifted with default": {
+			namespace: "ci",
+			nscfg:     map[string]string{"ci": "[DEFAULT]\npg_mem_limit = default\n"},
+			want:      claim.Unbounded,
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			testhelper.Setup(t)
+			for namespace, config := range tc.nscfg {
+				p := naming.Path{Namespace: namespace, Kind: naming.KindNscfg, Name: "namespace"}
+				require.NoError(t, os.MkdirAll(filepath.Dir(p.ConfigFile()), 0755))
+				require.NoError(t, os.WriteFile(p.ConfigFile(), []byte(config), 0644))
+			}
+			p := naming.Path{Namespace: tc.namespace, Kind: naming.KindSvc, Name: "vm"}
+			o, err := object.NewSvc(p, object.WithConfigData([]byte("[DEFAULT]\npg_mem_limit = 8g\n")))
+			require.NoError(t, err)
+			var i any = o
+			capper, ok := i.(interface {
+				NamespaceMemCap() (int64, error)
+				MemCap(rid string) (int64, error)
+			})
+			require.True(t, ok)
+			v, err := capper.NamespaceMemCap()
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, v)
+		})
+	}
+}

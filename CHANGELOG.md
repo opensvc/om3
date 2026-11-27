@@ -1613,6 +1613,28 @@ which share the same executor.
     Updated the default value for the stop_timeout keyword from 120 seconds to 
     10 seconds to align with the default behavior of Docker and Podman.
 
+### Driver: container.kvm
+
+* **Changed behaviour, a guest its memory cap can not hold no longer starts:**
+    A guest needs its memory and 384 MiB, what qemu takes on top. A
+    `pg_mem_limit` below that, on its resource, its subset or its object,
+    was refused at provision and reported in the status of the guest down,
+    `memory cap 512mi: the guest needs 640mi`, but the start went on, and the
+    guest ran under a cap that kills it the day it touches its memory. The
+    start is now refused with the error of the status, the start of a
+    failover and of a restart included: raise the cap, or lower the memory
+    of the guest.
+
+    The `pg_mem_limit` of the namespace configuration, and the one of the
+    root namespace, bound each guest the same way, at provision, in the
+    status and at start: they are the `memory.max` of slices holding the
+    guest. Each guest is held against them alone, not the guests of the
+    namespace together.
+
+    A node that can not cap a guest, with no systemd or a libvirt without
+    partitions, refuses the start of a guest counted on to be capped, as it
+    refused its provision.
+
 ### Driver: disk.lvm
 
 * **Removed feature:**

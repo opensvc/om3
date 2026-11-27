@@ -233,11 +233,28 @@ func cappedError(o resourceCapper, rid, claimType string) error {
 	return nil
 }
 
-// memCapError says the process group of the resource can not hold the guest.
+// memCapError says the process group of the resource can not hold the guest,
+// or that the node can not put the caps it is counted on to put.
+//
+// It is what ConfigError reports in the status of a guest down, and what a
+// provision and a start refuse: a start going on where the status says the
+// error would run the guest under a cap that kills it.
 func (t *T) memCapError() error {
 	if t.partition() == "" {
 		return t.uncappableError()
 	}
+	return t.memLimitError()
+}
+
+// memLimitError says a memory cap above the guest is below what it needs,
+// its memory and claim.GuestMemoryMargin: the cap of its resource, its subset
+// or its object, then the one of its namespace or of the root one.
+//
+// The namespace caps are a memory.max of the slices holding the group of the
+// guest, so no guest takes more, whatever the others of the namespace take:
+// each guest is held against them alone, not the guests of the namespace
+// together, which is what a memory claim counts.
+func (t *T) memLimitError() error {
 	o, ok := t.GetObject().(interface {
 		MemCap(rid string) (int64, error)
 	})
@@ -248,9 +265,21 @@ func (t *T) memCapError() error {
 	if err != nil {
 		return err
 	}
-	need := t.guestMemory() + claim.GuestMemoryMargin
-	if limit != claim.Unbounded && t.guestMemory() != 0 && limit < need {
+	memory := t.guestMemory()
+	need := memory + claim.GuestMemoryMargin
+	if limit != claim.Unbounded && memory != 0 && limit < need {
 		return fmt.Errorf("memory cap %s: the guest needs %s, its memory and what qemu takes", sizeconv.BSizeCompact(float64(limit)), sizeconv.BSizeCompact(float64(need)))
+	}
+	if n, ok := t.GetObject().(interface {
+		NamespaceMemCap() (int64, error)
+	}); ok {
+		limit, err := n.NamespaceMemCap()
+		if err != nil {
+			return err
+		}
+		if limit != claim.Unbounded && memory != 0 && limit < need {
+			return fmt.Errorf("memory cap %s of the namespace: the guest needs %s, its memory and what qemu takes", sizeconv.BSizeCompact(float64(limit)), sizeconv.BSizeCompact(float64(need)))
+		}
 	}
 	return t.sharedMemCapError()
 }

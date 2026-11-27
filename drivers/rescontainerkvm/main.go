@@ -419,11 +419,17 @@ func (t *T) doPartitions() error {
 	return setPartition(t.configFile(), partition)
 }
 
+// partitionCapable says the node can place a guest in a partition: it runs
+// systemd, and its libvirt takes partitions. A variable for the tests.
+var partitionCapable = func() bool {
+	return systemd.HasSystemd() && capabilities.Has(drvID.Cap()+".partitions")
+}
+
 // partition returns the libvirt partition of the process group of the
 // resource, empty when the node can not place the guest in it.
 func (t *T) partition() string {
 	pg := t.GetPG()
-	if pg == nil || pg.ID == "" || !systemd.HasSystemd() || !capabilities.Has(drvID.Cap()+".partitions") {
+	if pg == nil || pg.ID == "" || !partitionCapable() {
 		return ""
 	}
 	return partitionOf(pg.ID)
@@ -459,6 +465,12 @@ func (t *T) Start(ctx context.Context) error {
 	} else if v {
 		t.Log().Infof("container %s is already up", t.Name)
 		return nil
+	}
+	// The start refuses what the status of the guest down says is wrong,
+	// before it sets anything up: started all the same, the guest would
+	// run under a cap that kills it, its status up and the error gone.
+	if err := t.memCapError(); err != nil {
+		return err
 	}
 	// A guest down is past its installer, which a start does not resume.
 	if err := t.removeCDROM(); err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -172,6 +173,43 @@ func (t *core) ObjectMemCap() (int64, error) {
 // node, see ResourceCap.
 func (t *core) MemCap(rid string) (int64, error) {
 	return t.ResourceCap(rid, claim.TypeMemory)
+}
+
+// NamespaceMemCap is the most memory the slices of the namespaces holding the
+// object let its processes take on this node: the smaller of the pg_mem_limit
+// of the configuration of its namespace and of the root one, whose slice
+// holds every namespace, claim.Unbounded when neither says one.
+//
+// It bounds each process group of the object alone, as a memory.max of an
+// ancestor does, and is no part of ResourceCap: what a claim counts is what
+// the objects of a namespace add up to, which its cap is not one term of.
+//
+// The configurations are read on this node, where a namespace configuration
+// is on every node, and one this node does not hold caps nothing.
+func (t *core) NamespaceMemCap() (int64, error) {
+	limit := claim.Unbounded
+	namespaces := []string{naming.NsRoot}
+	if t.path.Namespace != naming.NsRoot {
+		namespaces = append(namespaces, t.path.Namespace)
+	}
+	for _, namespace := range namespaces {
+		p := naming.Path{Namespace: namespace, Kind: naming.KindNscfg, Name: "namespace"}
+		if !file.Exists(p.ConfigFile()) {
+			continue
+		}
+		o, err := NewNscfg(p, WithVolatile(true))
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", p, err)
+		}
+		v, ok, err := o.capAs("DEFAULT", claim.TypeMemory, hostname.Hostname())
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", p, err)
+		}
+		if ok {
+			limit = capMin(limit, v)
+		}
+	}
+	return limit, nil
 }
 
 // ResourceCap is the most of a compute claim type the process group of a
