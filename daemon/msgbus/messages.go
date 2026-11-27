@@ -318,6 +318,8 @@ var (
 
 		"ContainerUpdated": func() any { return &ContainerUpdated{} },
 
+		"ContainerImageRemoved": func() any { return &ContainerImageRemoved{} },
+
 		"MdArrayUpdated": func() any { return &MdArrayUpdated{} },
 	}
 )
@@ -1414,6 +1416,24 @@ type (
 		Name       string `json:"name" yaml:"name"`
 	}
 
+	// ContainerImageRemoved is published when an image was untagged or
+	// removed from the store of an engine the node watches the events of,
+	// as by an image rm or an image prune. Type is the driver type of the
+	// resources of the engine, as "container.podman". Store is the store
+	// of the engine the image was in, as the image prefetch names it,
+	// empty for the one of the system. Name and ID are the image as the
+	// engine tells it, either or both: docker tells the id alone. Both are
+	// empty when the event stream of the engine started, or started
+	// again, and removals may have been missed meanwhile.
+	ContainerImageRemoved struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Type       string `json:"type" yaml:"type"`
+		Store      string `json:"store" yaml:"store"`
+		Name       string `json:"name" yaml:"name"`
+		ID         string `json:"id" yaml:"id"`
+	}
+
 	// MdArrayUpdated is published when an md array of the node changed
 	// state, as the kernel tells: a resync or a recovery started or ended,
 	// a device failed, was added or removed, an array started or stopped.
@@ -2160,6 +2180,14 @@ func (e *ContainerUpdated) Kind() string {
 
 func (e *ContainerUpdated) Key() string {
 	return fmt.Sprintf("ContainerUpdated,node=%s,type=%s,name=%s", e.Node, e.Type, e.Name)
+}
+
+func (e *ContainerImageRemoved) Kind() string {
+	return "ContainerImageRemoved"
+}
+
+func (e *ContainerImageRemoved) Key() string {
+	return fmt.Sprintf("ContainerImageRemoved,node=%s,type=%s,store=%s,name=%s,id=%s", e.Node, e.Type, e.Store, e.Name, e.ID)
 }
 
 func (e *MdArrayUpdated) Kind() string {

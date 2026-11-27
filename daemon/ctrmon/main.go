@@ -20,6 +20,10 @@
 // The containers a podman of a user runs, rootless, are in the storage of
 // that user, which the event stream of root does not see: they are seen at
 // the scheduled status, as before.
+//
+// The same streams tell the images untagged or removed from the store of an
+// engine, as an image prune does, published for the image prefetch to pull
+// again the ones the node is meant to hold.
 package ctrmon
 
 import (
@@ -88,6 +92,12 @@ type (
 		// changed state.
 		parse func(string) (string, bool)
 
+		// parseImage returns the image an event line says was untagged
+		// or removed from the store of the engine, and onImage is
+		// called with each.
+		parseImage func(string) (imageRemoval, bool)
+		onImage    func(imageRemoval)
+
 		// path is the path of the command, found at the check.
 		path string
 	}
@@ -123,19 +133,25 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 
 // sources returns the event source of each engine, with the driver type of
 // the container resources it runs.
+//
+// The two filters of a stream are of the same key, which both engines read
+// as either: one process per engine tells the events of its containers and
+// of its images.
 func (t *Manager) sources() map[string]*source {
 	return map[string]*source{
 		"container.podman": {
-			log:     t.log,
-			command: "podman",
-			args:    []string{"events", "--format", "json", "--filter", "type=container"},
-			parse:   parsePodmanEvent,
+			log:        t.log,
+			command:    "podman",
+			args:       []string{"events", "--format", "json", "--filter", "type=container", "--filter", "type=image"},
+			parse:      parsePodmanEvent,
+			parseImage: parsePodmanImageEvent,
 		},
 		"container.docker": {
-			log:     t.log,
-			command: "docker",
-			args:    []string{"events", "--format", "{{json .}}", "--filter", "type=container"},
-			parse:   parseDockerEvent,
+			log:        t.log,
+			command:    "docker",
+			args:       []string{"events", "--format", "{{json .}}", "--filter", "type=container", "--filter", "type=image"},
+			parse:      parseDockerEvent,
+			parseImage: parseDockerImageEvent,
 		},
 	}
 }
@@ -149,7 +165,8 @@ func (t *Manager) Start(parent context.Context) error {
 	for driverType, src := range t.sources() {
 		e := &engine{driverType: driverType, counter: evwatch.NewCounter()}
 		e.debouncer = evwatch.NewDebouncer(debounceDelay, func(name string) { t.publish(e.driverType, name) })
-		e.runner = evwatch.NewRunner(src, evwatch.DefaultPolicy, t.log, func() { e.resync() }, func(name string) { e.onEvent(name) })
+		src.onImage = func(image imageRemoval) { t.publishImageRemoved(e.driverType, image) }
+		e.runner = evwatch.NewRunner(src, evwatch.DefaultPolicy, t.log, func() { t.onStreamReady(e) }, func(name string) { e.onEvent(name) })
 		e.runner.Start(t.ctx)
 		t.engines = append(t.engines, e)
 	}
@@ -269,6 +286,27 @@ func (t *Manager) publish(driverType, name string) {
 	t.publisher.Pub(&msgbus.ContainerUpdated{Node: t.localhost, Type: driverType, Name: name}, t.labelLocalhost)
 }
 
+// onStreamReady is called when the event stream of an engine runs: what
+// changed while it did not was told by no event, the containers the local
+// instances hold as the images removed.
+func (t *Manager) onStreamReady(e *engine) {
+	e.resync()
+	t.publishImageRemoved(e.driverType, imageRemoval{})
+}
+
+// publishImageRemoved publishes the removal of an image from the store of
+// the engine of the resources of driverType: the store of the system, the
+// one its stream tells the events of. An image naming nothing says removals
+// may have been missed.
+//
+// Every removal is published, whatever the images the local instances run:
+// the node may be meant to hold an image none of its containers runs yet,
+// which is what a prefetch is.
+func (t *Manager) publishImageRemoved(driverType string, image imageRemoval) {
+	t.log.Debugf("%s image removed: name=%q id=%q", driverType, image.name, image.id)
+	t.publisher.Pub(&msgbus.ContainerImageRemoved{Node: t.localhost, Type: driverType, Name: image.name, ID: image.id}, t.labelLocalhost)
+}
+
 // Name implements evwatch.Source.
 func (t *source) Name() string {
 	return t.command + " events"
@@ -292,8 +330,8 @@ func (t *source) Check(ctx context.Context) error {
 	return nil
 }
 
-// Run implements evwatch.Source: it reads the container events of the
-// engine, ready once the stream ran readyDelay.
+// Run implements evwatch.Source: it reads the container and image events
+// of the engine, ready once the stream ran readyDelay.
 func (t *source) Run(ctx context.Context, ready func(), emit func(string)) error {
 	t.log.Infof("watch %s events", t.path)
 	ended := make(chan struct{})
@@ -309,6 +347,10 @@ func (t *source) Run(ctx context.Context, ready func(), emit func(string)) error
 	stderr, err := evwatch.StreamLines(ctx, nil, func(line string) {
 		if name, ok := t.parse(line); ok {
 			emit(name)
+		} else if t.parseImage != nil && t.onImage != nil {
+			if image, ok := t.parseImage(line); ok {
+				t.onImage(image)
+			}
 		}
 	}, t.path, t.args...)
 	if ctx.Err() != nil {
