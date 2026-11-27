@@ -441,7 +441,7 @@ func (t *App) Run() error {
 	}
 	go t.runEventReader()
 	t.initContext()
-	return t.app.Run()
+	return explainTermError(t.app.Run())
 }
 
 func (t *App) initContext() {
