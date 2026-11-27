@@ -106,6 +106,7 @@ type (
 		Enter(context.Context, string) error
 		ContainerLogs(context.Context, string, bool, int) error
 		ContainerLogsStream(context.Context, string, bool, int) (<-chan []byte, error)
+		Prefetch(context.Context, string) ([]resource.PrefetchReport, error)
 
 		Schedules() schedule.Table
 		RefreshResInfo(context.Context) (resource.Infos, error)
