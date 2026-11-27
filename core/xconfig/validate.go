@@ -56,6 +56,8 @@ const (
 	alertKindMissingKeyword
 	alertKindIgnoredKeyword
 	alertKindSchedules
+	alertKindNetRule
+	alertKindNetRuleOrder
 )
 
 var (
@@ -89,6 +91,8 @@ var (
 	alertKindMissingStrategyStr = "missing strategy"
 	alertKindMissingKeywordStr  = "missing keyword"
 	alertKindIgnoredKeywordStr  = "ignored keyword"
+	alertKindNetRuleStr         = "unresolved network rule"
+	alertKindNetRuleOrderStr    = "ineffective network rules"
 	alertKindNames              = map[AlertKind]string{
 		alertKindScoping:         alertKindScopingStr,
 		alertKindUnknown:         alertKindUnknownStr,
@@ -110,6 +114,8 @@ var (
 		alertKindMissingStrategy: alertKindMissingStrategyStr,
 		alertKindMissingKeyword:  alertKindMissingKeywordStr,
 		alertKindIgnoredKeyword:  alertKindIgnoredKeywordStr,
+		alertKindNetRule:         alertKindNetRuleStr,
+		alertKindNetRuleOrder:    alertKindNetRuleOrderStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
 		alertKindScopingStr:         alertKindScoping,
@@ -132,6 +138,8 @@ var (
 		alertKindMissingStrategyStr: alertKindMissingStrategy,
 		alertKindMissingKeywordStr:  alertKindMissingKeyword,
 		alertKindIgnoredKeywordStr:  alertKindIgnoredKeyword,
+		alertKindNetRuleStr:         alertKindNetRule,
+		alertKindNetRuleOrderStr:    alertKindNetRuleOrder,
 	}
 )
 
@@ -220,6 +228,43 @@ func (t T) NewAlertKeySource(k key.T, did driver.ID, comment string) Alert {
 		Path:    t.Path,
 		Kind:    alertKindKeySource,
 		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertNetRule says a rule of a net_rules keyword names a
+// network, a node, an object, a resource or a namespace the cluster does not
+// have, so it resolves to no address:
+// what an allow rule would let through is filtered, and a deny rule denies
+// nothing.
+//
+// It is a warning, as a configuration may be written before what it names
+// exists, the rule resolving once it does.
+func (t T) NewAlertNetRule(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindNetRule,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertNetRuleOrder says the rules of a net_rules keyword do not say
+// what their writer most likely means, by their order or their verbs: a
+// rule a rule written before it matches all of, which never decides of a
+// packet, or a list with no allow rule, which lets nothing through.
+//
+// It is a warning: the list is one the filter is made of as it is written,
+// and rules are written ahead of the ones they will be exceptions of.
+func (t T) NewAlertNetRuleOrder(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindNetRuleOrder,
+		Level:   alertLevelWarn,
 		Key:     k,
 		Driver:  did,
 		Comment: comment,
