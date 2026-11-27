@@ -748,6 +748,60 @@ func (t T) DoAsync() error {
 	return errs
 }
 
+// selectedNodes returns the cluster nodes a node selector names, and an
+// error when it names none, as a node the cluster does not know.
+func selectedNodes(selector string, opts ...funcopt.O) (map[string]any, error) {
+	l, err := nodeselector.New(selector, opts...).Expand()
+	if err != nil {
+		return nil, err
+	}
+	if len(l) == 0 {
+		return nil, fmt.Errorf("no node matching %s", selector)
+	}
+	nodenames := make(map[string]any)
+	for _, s := range l {
+		nodenames[s] = nil
+	}
+	return nodenames, nil
+}
+
+// selectInstances returns the instances of an object an action is asked to,
+// among the nodes selected.
+//
+// A node of the object whose instance this daemon has not heard of yet, as
+// right after the object is created on another node, is asked all the same:
+// its daemon has the configuration, and skipping it did nothing and said
+// nothing.
+//
+// A namespace configuration is on every node of the cluster, and the daemon
+// lists no instance of it nor a scope: every node selected is asked, where
+// an action as "instance pg update --node <peer>" did nothing, said "no
+// instance", and exited 0, the cap of the namespace taken as applied there.
+func selectInstances(p naming.Path, core api.ObjectCore, nodenames map[string]any) api.InstanceMap {
+	selected := make(api.InstanceMap)
+	for n, i := range core.Instances {
+		if _, ok := nodenames[n]; ok {
+			selected[n] = i
+		}
+	}
+	scope := core.Scope
+	if p.Kind == naming.KindNscfg {
+		scope = make([]string, 0, len(nodenames))
+		for n := range nodenames {
+			scope = append(scope, n)
+		}
+	}
+	for _, n := range scope {
+		if _, ok := nodenames[n]; !ok {
+			continue
+		}
+		if _, ok := selected[n]; !ok {
+			selected[n] = api.Instance{}
+		}
+	}
+	return selected
+}
+
 // DoRemote posts the action to a peer node agent API, for synchronous
 // execution.
 func (t T) DoRemote() error {
@@ -778,16 +832,9 @@ func (t T) DoRemote() error {
 		return fmt.Errorf("unexpected GET /objects status: %s", resp.Status())
 	}
 
-	nodenames := make(map[string]any)
-	if l, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand(); err != nil {
+	nodenames, err := selectedNodes(t.NodeSelector, nodeselector.WithClient(c))
+	if err != nil {
 		return err
-	} else {
-		for _, s := range l {
-			nodenames[s] = nil
-		}
-	}
-	if len(nodenames) == 0 {
-		return fmt.Errorf("no node matching %s", t.NodeSelector)
 	}
 
 	results := make([]actionrouter.Result, 0)
@@ -822,29 +869,17 @@ func (t T) DoRemote() error {
 	}
 
 	for i, item := range resp.JSON200.Items {
-		selectedInstances := make(api.InstanceMap)
 		core, err := item.Data.AsObjectCore()
 		if err != nil {
 			return err
 		}
-		for n, i := range core.Instances {
-			if _, ok := nodenames[n]; ok {
-				selectedInstances[n] = i
-				followNodes[n] = nil
-			}
+		p, err := naming.ParsePath(item.Meta.Object)
+		if err != nil {
+			return err
 		}
-		// A node of the object whose instance this daemon has not heard
-		// of yet, as right after the object is created on another node,
-		// is asked all the same: its daemon has the configuration, and
-		// skipping it did nothing and said nothing.
-		for _, n := range core.Scope {
-			if _, ok := nodenames[n]; !ok {
-				continue
-			}
-			if _, ok := selectedInstances[n]; !ok {
-				selectedInstances[n] = api.Instance{}
-				followNodes[n] = nil
-			}
+		selectedInstances := selectInstances(p, core, nodenames)
+		for n := range selectedInstances {
+			followNodes[n] = nil
 		}
 		if t.Target == "started" {
 			actor, err := item.Data.AsObjectActor()

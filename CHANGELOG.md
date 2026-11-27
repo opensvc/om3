@@ -1336,6 +1336,15 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     objects, the exit code is the one of all the runs. The scheduled `compliance_auto` job accepts 2, and a node
     not compliant after it is a failed job.
 
+* **`om|ox <namespace>/nscfg/namespace instance ... --node` runs on the nodes selected:**
+    A namespace configuration is on every node of the cluster, so `--node`
+    selects cluster nodes for every instance action of one: `instance pg
+    update`, `instance pg reset`, `instance boot`, `instance clear` and
+    `instance delete`. `--node '*'` runs the action on every node, as to
+    apply a changed `pg_*` cap of the namespace to all of them, and a node
+    the cluster does not know is an error. The action ran on no node,
+    printed `no instance of <namespace>/ on <node>` and exited 0.
+
 ### API access to secrets
 
 * **The cluster configuration is read by root only:**
