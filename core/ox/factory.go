@@ -2136,6 +2136,7 @@ func newCmdObjectResource(kind string) *cobra.Command {
 		newCmdObjectGroupRun(kind, ""),
 		newCmdObjectGroupStart(kind, ""),
 		newCmdObjectGroupStartStandby(kind, ""),
+		newCmdObjectGroupShutdown(kind, ""),
 		newCmdObjectGroupStop(kind, ""),
 		newCmdObjectGroupUnstop(kind, ""),
 

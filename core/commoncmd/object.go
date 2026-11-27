@@ -371,10 +371,16 @@ func NewCmdObjectGroupStartStandby(kind, group string) *cobra.Command {
 }
 
 func NewCmdObjectGroupShutdown(kind, group string) *cobra.Command {
+	long := "Shutdown resources."
+	if group == "" {
+		// The resource group selects by rid, and with no PATTERN by none:
+		// the whole instance is shut down.
+		long += "\n\nWithout a PATTERN, the whole instance is shut down, as instance shutdown\ndoes."
+	}
 	cmd := &cobra.Command{
 		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown resources",
-		Long:  "Shutdown resources.",
+		Long:  long,
 	}
 	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	return cmd
