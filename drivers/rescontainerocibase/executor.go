@@ -173,8 +173,10 @@ func pidEnv(pid int) ([]string, error) {
 	return env, nil
 }
 
+// HasImage says whether the store of the engine holds the image of the
+// container, and its id. An engine that does not answer is an error, not a
+// missing image: see hasImage.
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
-	a := e.getArgs(e.args.HasImageArgs().Get()...)
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
@@ -182,18 +184,20 @@ func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
 		default:
 		}
 	}
-	cmd, err := e.command(ctx, a...)
-	if err != nil {
-		return false, "", err
+	run := func(ctx context.Context, a ...string) ([]byte, error) {
+		a = e.getArgs(a...)
+		cmd, err := e.command(ctx, a...)
+		if err != nil {
+			return nil, err
+		}
+		e.log().Tracef("call %s %s", e.bin, a)
+		b, err := cmd.Output()
+		if err != nil {
+			e.log().Tracef("call %s %s failed: %s", e.bin, a, err)
+		}
+		return b, err
 	}
-	e.log().Tracef("call %s %s", e.bin, a)
-	if b, err := cmd.Output(); err != nil {
-		e.log().Tracef("call %s %s failed: %s", e.bin, a, err)
-		return false, "", nil
-	} else {
-		imageID := strings.TrimSuffix(string(b), "\n")
-		return true, imageID, nil
-	}
+	return hasImage(ctx, run, e.args.HasImageArgs().Get())
 }
 
 // Inspect returns Inspecter from cache. On cache miss a new Inspecter is
