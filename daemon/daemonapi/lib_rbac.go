@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/netrule"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/rootless"
@@ -71,6 +72,7 @@ func configRbacRefusals(ctx echo.Context, p naming.Path, body []byte) []error {
 		netnsIPRbac(from, cfg),
 		rootlessRbac(p, from, cfg),
 	)
+	l = append(l, netRuleRbac(grants, p, from, cfg)...)
 	return slices.DeleteFunc(l, func(err error) bool { return err == nil })
 }
 
@@ -356,6 +358,105 @@ func rootlessRbac(p naming.Path, from, to *xconfig.T) error {
 		}
 	}
 	return nil
+}
+
+// netRuleRbac refuses a write adding, to a net_rules keyword, a rule
+// allowing or denying, naming an object of another namespace than the one of the object,
+// or another namespace, as keyoprbac.DeniedNetRules says.
+//
+// The keyword policy judges a value by itself, and what is another
+// namespace depends on the one of the object, known here. The rules are
+// judged as the keywords evaluate, on every node of the object, their
+// references expanded, and a section taking them from DEFAULT is judged as
+// one writing them. Only what the write adds is refused: a section root
+// wrote such a rule in can still be edited, the rule left as it is.
+//
+// A rule reading its addresses from a datastore of another namespace is
+// refused unless the datastore shares its keys with the namespace of the
+// object, see netDatastoreShared: the keyword policy sees values only, and
+// the datastores are known here.
+func netRuleRbac(grants rbac.Grants, p naming.Path, from, to *xconfig.T) []error {
+	var errs []error
+	localhost := hostname.Hostname()
+	// The node of the request is weighed first: a rule refused on every
+	// node, as one of DEFAULT, is refused as written, whatever the names
+	// of the other nodes sort before.
+	scopes := []string{localhost}
+	for _, nodename := range rbacScopes(from, to) {
+		if nodename != localhost {
+			scopes = append(scopes, nodename)
+		}
+	}
+	valueAs := func(cfg *xconfig.T, k key.T, nodename string) string {
+		if cfg.Referrer != nil {
+			if kw := cfg.Referrer.KeywordLookup(k, cfg.SectionType(k)); kw != nil {
+				if v, err := cfg.EvalKeywordAs(k, kw, nodename); err == nil {
+					return xconfig.EvaluatedString(v)
+				}
+			}
+		}
+		// As written, in the section or in DEFAULT: a reference that
+		// does not evaluate is judged as one to another namespace.
+		if s := cfg.Get(k); s != "" {
+			return s
+		}
+		return cfg.Get(key.New("DEFAULT", k.Option))
+	}
+	for _, section := range to.SectionStrings() {
+		group, _, _ := strings.Cut(section, "#")
+		if group != "app" && group != "task" && group != "container" {
+			continue
+		}
+		existed := from != nil && slices.Contains(from.SectionStrings(), section)
+		for _, option := range []string{netrule.Keyword} {
+			k := key.New(section, option)
+			for _, nodename := range scopes {
+				after := valueAs(to, k, nodename)
+				if after == "" {
+					continue
+				}
+				before := ""
+				if existed {
+					before = valueAs(from, k, nodename)
+				}
+				err := keyoprbac.DeniedNetRules(grants, p.Namespace, option, before, after, netDatastoreShared)
+				if err == nil {
+					continue
+				}
+				if nodename == localhost {
+					errs = append(errs, refusalOf(k, fmt.Errorf("%w: %s: %w", ErrDenied, k, err)))
+				} else {
+					errs = append(errs, refusalOf(k, fmt.Errorf("%w: %s on %s: %w", ErrDenied, k, nodename, err)))
+				}
+				break
+			}
+		}
+	}
+	return errs
+}
+
+// netDatastoreShared says a datastore shares its keys with a namespace, as
+// the node holds its configuration: its share keyword names the namespace,
+// or every namespace. It is replaced by the tests.
+//
+// It is the consent of the administrator of the datastore to the objects of
+// that namespace reading its keys, the one the keys a resource installs are
+// read under: a rule reading the addresses of such a key asks for no grant
+// on the namespace of the datastore. A datastore the node does not hold, or
+// can not read, shares nothing: a consent not read is none.
+//
+// The sharing may be taken back after the rule is written: the rule then
+// resolves to nothing, the sharing being read again at every resolution,
+// see netrule.View.Key. What is judged here is only who may write the rule.
+var netDatastoreShared = func(datastore naming.Path, namespace string) bool {
+	if !datastore.Exists() {
+		return false
+	}
+	ds, err := object.NewDataStore(datastore, object.WithVolatile(true))
+	if err != nil {
+		return false
+	}
+	return ds.Allow(namespace)
 }
 
 // currentConfig is the configuration the object holds before the write, and

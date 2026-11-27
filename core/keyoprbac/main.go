@@ -19,6 +19,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/netrule"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -141,7 +142,13 @@ var guestTypes = append(slices.Clone(containerTypes), "kvm")
 // what reaches past the guest: virtinst and virtinst_args say any device of
 // the node, the bridge a segment no filter guards, network_filter the guard
 // itself, and rcmd and osvc_root_path run commands.
+//
+// net_rules is in: a filter only narrows what the guest reaches, on the
+// interfaces of the networks it was given, and takes nothing of the node.
+// Its rules naming another namespace, or a datastore of one, are judged by
+// DeniedNetRules, as on any section taking them.
 var kvmKeywords = map[string]func(string) bool{
+	"net_rules":     nil,
 	"cloud_init":    nil,
 	"start_timeout": nil,
 	"stop_timeout":  nil,
@@ -274,6 +281,201 @@ var squatterRule = Rule{Grant: rbac.GrantSquatter, Reason: reasonSquatter}
 
 const reasonSquatter = "requires the squatter grant"
 
+// netKeywords is the keyword restricting the network traffic of what a
+// resource runs, net_rules, which the administrator of a namespace sets on
+// the app, task and container resources of its objects, whichever driver
+// they run, the kvm one included.
+//
+// It takes nothing of the node: a filter only narrows what the processes of
+// the resource reach, or its guest, and its rules name addresses, cluster
+// networks, cluster nodes, the objects of the namespace and the keys of its
+// datastores. So it is open on a section whose other keywords are root's,
+// as an app, which runs a command of the node, or a task of the host type.
+//
+// A rule naming an object of another namespace, or another namespace, asks
+// for a grant on that namespace, and one reading its addresses from a
+// datastore of another namespace for the datastore to share its keys with
+// the namespace of the object: see netRule.
+//
+// Lifting a filter root wrote is open with it: a filter the administrator
+// of a namespace may not loosen is a policy of the namespace, which this
+// keyword is not.
+var netKeywords = map[string]bool{
+	netrule.Keyword: true,
+}
+
+// reasonNet is the reason of the rules of net_rules a user
+// holding no root grant may not write.
+const reasonNet = "a rule naming an object of another namespace than the one of the object, or another namespace, requires the guest, operator or admin grant on that namespace, or the root grant"
+
+// reasonNetDatastore is the reason of the rules reading their addresses
+// from a datastore a user holding no root grant may not write.
+const reasonNetDatastore = "a rule reading its addresses from a datastore of another namespace than the one of the object requires the datastore to share its keys with the namespace of the object, by its share keyword"
+
+// reasonNetDatastoreRoot is the reason of the rules whose datastore is not
+// known until its references are evaluated.
+const reasonNetDatastoreRoot = "a rule reading its addresses from a datastore named by a reference that does not evaluate requires the root grant"
+
+// netRule is the rule of net_rules.
+//
+// A rule naming an object, or a namespace, resolves to the addresses its
+// resources publish, which the status of the resource counts, and the
+// warnings of its start tell whether they exist: what a user may be told of
+// the objects of a namespace it reads, and not of the ones of another. So
+// such a rule, allowing or denying, asks for a grant reading the namespace it names, guest,
+// operator or admin, or the root grant, where ./ and . , the namespace of the
+// object, and a path spelling it, ask for none. No more is asked: a filter
+// only narrows what the resource reaches, and the namespace named keeps its
+// say on what reaches its objects with filters of its own.
+//
+// A rule reading its addresses from a key of a datastore, address from, is
+// held to the datastores of the namespace of the object and to the ones of
+// another namespace sharing their keys with it, as the keys a resource
+// installs or is seeded from are: a filter reading the keys of a namespace
+// that did not consent to it would tell them, address by address, to who
+// may not decode them. The share keyword of the datastore is the consent
+// of its administrator: a datastore sharing its keys with the namespace of
+// the object asks for no grant on its own namespace, and one that does not
+// is refused whatever the grants held there, a guest role on a namespace
+// reading none of the keys of its sec. The validation refuses such a rule
+// for root too, and it resolves to nothing, the sharing being read again
+// each time the rule is resolved: the guard here is what holds should
+// either be loosened. A datastore named by a reference that does not
+// evaluate may be any, and asks for the root grant.
+//
+// The value alone does not say it: what is another namespace depends on
+// the one of the object, and what is asked for is what the write adds, not
+// what root wrote there before. So the rule here holds the sentence, for the
+// documentation of the keyword, and denies nothing: the api judges the
+// change with DeniedNetRules, which knows the object.
+var netRule = Rule{
+	Grant:  rbac.GrantRoot,
+	Reason: reasonNet + ", " + reasonNetDatastore + ", and " + reasonNetDatastoreRoot,
+	Denies: func(string, Section) bool { return false },
+}
+
+// netReferences returns the references of the rules of a net_rules value
+// to another namespace than the one given, as they resolve for an object of
+// it, each with the verb of its rule: "allow object prod/svc/db", "deny
+// namespace prod".
+//
+// The verb is of the reference: a namespace an allow rule names is not one
+// a deny rule may name for it, each rule telling its writer, by what it
+// lets through or drops, of the addresses of that namespace. So is the
+// place of a rule not: a rule moved in the list adds no reference.
+//
+// A value the grammar refuses names nothing: the validation refuses it. An
+// object or a namespace still holding a reference of the configuration, one
+// that did not evaluate, may resolve to anything where it does: it is taken
+// for another namespace.
+func netReferences(namespace, option, value string) []netReference {
+	rules, err := netrule.Parse(option, value)
+	if err != nil {
+		return nil
+	}
+	l := make([]netReference, 0)
+	for _, rule := range rules {
+		var ref netReference
+		switch {
+		case rule.Kind == netrule.KindAddress && rule.From != "":
+			if strings.ContainsAny(rule.From, "{}") {
+				// May expand to any datastore.
+				ref = netReference{text: rule.Text, root: true}
+				break
+			}
+			other, err := rule.Datastore(namespace)
+			if err != nil || other.Namespace == namespace {
+				// A datastore of the namespace of the object, or
+				// none, which the validation refuses.
+				continue
+			}
+			ref = netReference{text: string(rule.Verb) + " address from " + other.String() + " key " + rule.Key, datastore: other}
+		case rule.Kind != netrule.KindObject && rule.Kind != netrule.KindNamespace:
+			continue
+		case strings.ContainsAny(rule.Object+rule.Namespace, "{}"):
+			// No namespace: no grant on one is enough.
+			ref = netReference{text: rule.Text}
+		case rule.Foreign(namespace):
+			ref = netReference{text: string(rule.Verb) + " " + rule.Reference(namespace), namespace: rule.NamespaceName(namespace)}
+			if rule.Kind == netrule.KindObject {
+				if p, err := rule.ObjectPath(namespace); err == nil {
+					ref.namespace = p.Namespace
+				}
+			}
+		default:
+			continue
+		}
+		if !slices.Contains(l, ref) {
+			l = append(l, ref)
+		}
+	}
+	return l
+}
+
+// netReference is a reference of a rule to another namespace, as it
+// resolves, and the namespace it names, empty for one that did not
+// evaluate. root says no grant on a namespace is enough for it: the
+// reference is one to a datastore not known until it evaluates. datastore
+// is the datastore of another namespace the rule reads, which no grant on a
+// namespace is enough for either: its sharing is what is asked.
+type netReference struct {
+	text      string
+	namespace string
+	root      bool
+	datastore naming.Path
+}
+
+// netReaderRoles are the roles on a namespace letting a rule name it.
+var netReaderRoles = []rbac.Role{rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin}
+
+// DeniedNetRules returns the reason these grants are not enough to change a
+// net_rules keyword of an object of the namespace given from the value
+// before to the value after, or nil when they are.
+//
+// What is judged is what the change adds to the references to another
+// namespace, as they resolve: a rule written another way, moved, or left
+// where root wrote it adds none, and neither does a rule taken away. A
+// reference added asks for a grant reading the namespace it names, or the
+// root grant. One to a datastore of another namespace asks for the
+// datastore to share its keys with the namespace of the object, and for no
+// grant then, and one to a datastore not known until its references
+// evaluate for the root grant. See netRule.
+//
+// shared says a datastore shares its keys with a namespace, as the node
+// holds it. The values judged here do not say it, so who knows the
+// datastores does: nil, nobody does, and no datastore of another namespace
+// is taken for shared.
+func DeniedNetRules(grants rbac.Grants, namespace, option, before, after string, shared func(datastore naming.Path, namespace string) bool) error {
+	option, _, _ = strings.Cut(option, "@")
+	if !netKeywords[option] || grants.HasGrant(rbac.GrantRoot) {
+		return nil
+	}
+	held := netReferences(namespace, option, before)
+	for _, ref := range netReferences(namespace, option, after) {
+		if slices.Contains(held, ref) {
+			continue
+		}
+		if ref.root {
+			return fmt.Errorf("%s: %s", ref.text, reasonNetDatastoreRoot)
+		}
+		if !ref.datastore.IsZero() {
+			if shared != nil && shared(ref.datastore, namespace) {
+				continue
+			}
+			return fmt.Errorf("%s: %s", ref.text, reasonNetDatastore)
+		}
+		if ref.namespace != "" && grants.AssertRoleOn(ref.namespace, netReaderRoles...) {
+			continue
+		}
+		return fmt.Errorf("%s: %s", ref.text, reasonNet)
+	}
+	return nil
+}
+
+// appGroupRule is the rule of the keywords of an app, which run commands of
+// the user's choosing on the node, as root unless told otherwise.
+var appGroupRule = Rule{Grant: rbac.GrantRoot, Reason: reasonGroup}
+
 // rules is the policy, by driver group then by keyword.
 //
 // A driver group absent from here needs the root grant whatever the keyword: a
@@ -377,6 +579,15 @@ var rules = map[string]Group{
 		},
 		Default: &rootRule,
 	},
+	// An app runs commands on the node, so its keywords are root's, as
+	// those of a group the policy does not name. The filter of its network
+	// is the exception, see netKeywords.
+	"app": {
+		Rules: map[string]Rule{
+			netrule.Keyword: netRule,
+		},
+		Default: &appGroupRule,
+	},
 	"task": {Rules: map[string]Rule{
 		"type": {
 			Grant:  rbac.GrantRoot,
@@ -410,6 +621,8 @@ var rules = map[string]Group{
 		"utsns":         namespaceRule,
 		"userns":        namespaceRule,
 		"environment":   environmentSourceRule,
+		// The filter of the network of the task, see netKeywords.
+		netrule.Keyword: netRule,
 	}},
 	"container": {Rules: map[string]Rule{
 		"type": {
@@ -457,6 +670,8 @@ var rules = map[string]Group{
 		// requires the root grant already, is held to the same rule as
 		// the environment of the other types.
 		"create_environment": environmentSourceRule,
+		// The filter of the network of the container, see netKeywords.
+		netrule.Keyword: netRule,
 	}},
 	// A volume section of a service is the consumer asking a pool for storage,
 	// which is what an object administrator is for. The same section of a
@@ -1181,12 +1396,19 @@ func Denied(grants rbac.Grants, kind naming.Kind, section, option, value string,
 // A kvm section is opened by its type, and answers keyword by keyword: see
 // kvmKeywords.
 //
+// The keywords filtering the network of the resource are the other
+// exception, on a kvm section as on any other: see netKeywords.
+//
 // typ is the driver the section runs where the keyword changed, the one its
 // group falls back to when it names none, and "" when it runs none. value is
 // what the keyword takes there.
 func DeniedByDriver(grants rbac.Grants, kind naming.Kind, section, option, value, typ string, set Section) error {
 	option, _, _ = strings.Cut(option, "@")
 	if typ == "" || option == "type" || commonKeywords[option] {
+		return nil
+	}
+	if group, _, _ := strings.Cut(section, "#"); netKeywords[option] && (group == "app" || group == "task" || group == "container") {
+		// Open whatever the driver, see netKeywords.
 		return nil
 	}
 	if err := Denied(grants, kind, section, "type", typ, set); err != nil {
