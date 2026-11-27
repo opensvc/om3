@@ -31,8 +31,10 @@ type (
 		// Macs replace the wake#<node>.mac addresses.
 		Macs []string
 
-		// Local sends the magic packets from the local node, without
-		// checking the heartbeat of the nodes to wake nor asking relays.
+		// Local wakes the nodes from the local node, as a relay does: it
+		// asks the collector, else sends the magic packets, without asking
+		// the other relays. It is what a relay runs when asked to wake a
+		// node.
 		Local bool
 
 		// Wait for the woken nodes heartbeat to beat, up to Timeout.
@@ -81,7 +83,9 @@ func NewCmdNodeWake(withLocal bool) *cobra.Command {
 	flags.BoolVar(&options.Wait, "wait", false, "wait for the heartbeat of the woken nodes to beat")
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "maximum duration to wait for the woken nodes heartbeat, with --wait")
 	if withLocal {
-		flags.BoolVar(&options.Local, "local", false, "send the magic packets from the local node, without checking the heartbeat of the nodes to wake")
+		flags.BoolVar(&options.Local, "local", false, "wake from the local node as a relay does, asking the collector then sending the magic packets, and without asking the other relays")
+		// A relay returns once it asked: it does not watch the heartbeat.
+		cmd.MarkFlagsMutuallyExclusive("local", "wait")
 	}
 	return cmd
 }

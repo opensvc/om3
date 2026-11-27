@@ -155,3 +155,18 @@ func TestJoinRelayFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestNodeWakeFlags(t *testing.T) {
+	t.Run("a relay does not wait", func(t *testing.T) {
+		cmd := NewCmdNodeWake(true)
+		cmd.SetArgs([]string{"--node", "n2", "--local", "--wait"})
+		cmd.SilenceUsage, cmd.SilenceErrors = true, true
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "local")
+		assert.Contains(t, err.Error(), "wait")
+	})
+	t.Run("ox has no local wake", func(t *testing.T) {
+		assert.Nil(t, NewCmdNodeWake(false).Flags().Lookup("local"))
+	})
+}
