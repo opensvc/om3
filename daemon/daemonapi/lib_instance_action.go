@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -47,11 +48,23 @@ func (a *DaemonAPI) apiExecWait(ctx echo.Context, p naming.Path, requesterSessio
 	if err != nil {
 		return sessionID, execID, err
 	}
-	if r := <-done; r.err != nil {
+	r := <-done
+	// The exec store records the end from the published message, later: the
+	// answer waits for it, so a client asking after the exec id answered
+	// finds it ended, not running. Bounded, as a store that never records
+	// it must not hold the answer.
+	waitCtx, cancel := context.WithTimeout(ctx.Request().Context(), execEndRecordTimeout)
+	defer cancel()
+	_, _ = session.WaitExec(waitCtx, execID.String())
+	if r.err != nil {
 		return sessionID, execID, execError(r)
 	}
 	return sessionID, execID, nil
 }
+
+// execEndRecordTimeout bounds the wait of apiExecWait for the exec store to
+// record the end of the exec.
+const execEndRecordTimeout = 5 * time.Second
 
 // execResult is how a command apiExecStart forked ended.
 type execResult struct {
@@ -158,7 +171,9 @@ func (a *DaemonAPI) apiExecStart(ctx echo.Context, p naming.Path, requesterSessi
 	done := make(chan execResult, 1)
 	go func() {
 		err := cmd.Wait()
-		done <- execResult{err: err, stderr: cmd.Stderr()}
+		// Sent once the end is published, so a waiter answers after the
+		// exec is unregistered and its end announced.
+		defer func() { done <- execResult{err: err, stderr: cmd.Stderr()} }()
 		proc.Unregister(pid)
 		duration := time.Now().Sub(startTime)
 		if err != nil {
