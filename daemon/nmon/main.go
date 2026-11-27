@@ -97,6 +97,10 @@ type (
 		// which a config change wakes through poolC.
 		loadPoolInterval atomic.Int64
 
+		// volumeFootprints is what the local instance of each vol object
+		// was last seen taking in its pool, a change loading the pools.
+		volumeFootprints map[naming.Path]string
+
 		databus      *daemondata.T
 		publisher    pubsub.Publisher
 		log          *plog.Logger
@@ -448,6 +452,8 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.HeartbeatMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.HeartbeatRotateRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecHb.String()})
+	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecCert.String()}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecCa.String()}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
@@ -507,8 +513,9 @@ func (t *Manager) touchLastShutdown() {
 }
 
 // poolWorker loads the pools status every node.load_pool_interval, and on
-// demand through poolC, as on a config change, which also applies a new
-// interval.
+// demand through poolC: on a config change, which also applies a new
+// interval, and when the local instance of a vol object changes what it
+// takes in its pool.
 func (t *Manager) poolWorker() {
 	interval := t.getLoadPoolInterval()
 	ticker := time.NewTicker(interval)
@@ -630,6 +637,10 @@ func (t *Manager) worker() {
 				} else {
 					t.onInstanceConfigUpdated(c)
 				}
+			case *msgbus.InstanceStatusDeleted:
+				t.onInstanceStatusDeleted(c)
+			case *msgbus.InstanceStatusUpdated:
+				t.onInstanceStatusUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
@@ -1059,10 +1070,7 @@ func (t *Manager) loadConfigAndPublish() error {
 	// cluster config.
 	t.updateSpeakerAndPublish()
 
-	select {
-	case t.poolC <- nil:
-	default:
-	}
+	t.requestLoadPools()
 	return nil
 }
 
