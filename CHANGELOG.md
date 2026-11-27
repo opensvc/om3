@@ -292,6 +292,8 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Joining a layer 2 bridge requires the root grant**: an `ip.netns` resource naming a `l2_bridge` network plugs its container into a segment om neither addresses nor filters, where it speaks from any address and can answer for the dhcp server or the router of the segment. A write giving a resource such a network, or moving one to it, on any node, is refused to a user holding no root grant, where the type of the network is known, as the network of an `ip.host` is judged. A section root made stays the namespace administrator's to edit, its network left alone.
 
+* **The DNS zone dump is filtered by namespace**: `om|ox daemon dns dump` and `GET /api/node/name/{nodename}/daemon/dns/dump`, root's only, now answer a user holding the guest, operator or admin role on a namespace, with the records of the cluster and the ones of the objects of the namespaces it reads. Root and the `inspector` role are given every object's records. The addresses of a namespace are told to the users reading it only, as the status of a `net_rules` rule naming another namespace only counts them.
+
 * **A role reading the secrets alone**: the `secreader` role, granted on a namespace as `secreader:<namespace>`, reads the key values of the sec objects of the namespace, by `GET /api/object/path/{namespace}/sec/{name}/data/key` and `.../data`, and grants nothing else of the api: a reader of secrets, as `ox template` rendering a config file on a load balancer, holds it with a `guest` grant, which reads the cluster data and the cfg keys, rather than the `admin` one, which writes every object of the namespace. Writing a sec key still takes `admin`, and the usr keys `root`. The daemon logs each read of sec key values at the debug level, by any role, with the names of the keys and the user, never the values: `serve the keys password of prod/sec/db to lb1`.
 
 * **Privilege restrictions for the app and host task commands**: `no_new_privileges` and
@@ -333,6 +335,158 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     start = /usr/bin/myapp --listen :8080
     user = myapp
     systemd_properties = {env.sandbox} ReadWritePaths=/srv/myapp/data
+    ```
+
+* **Network filter for what a resource runs**: `net_rules`, on the `app.simple`,
+    `app.forking`, `task.host`, `container.docker`, `container.podman`, `container.oci`, `container.lxc`, `container.kvm` resources and
+    the tasks running these containers, restricts the network traffic of the resource, in both directions,
+    to what its rules say, one per line: `allow` or `deny`, then `localhost`, `dns`, `any`, `cluster`, `node <nodename>`,
+    `network <name>`, `network <name> node <nodename>`, `object <path> [rid <resource id>]`,
+    `namespace <name>` or `address <address or range>`, ipv4 and ipv6. The rules are an ordered list, and
+    the first one matching a packet decides of it: an exception is written before the rule it is carved
+    out of, as `deny network backend node n3` before `allow network backend`. Every list ends with three
+    rules nobody writes, `allow localhost`, `allow dns` then `deny any`: what no rule matches is denied,
+    a last `allow any` turning the list into one of what is denied, and a written rule matching the
+    loopback addresses or the nameservers wins over the implicit ones, as `deny cluster` takes away the
+    nameservers of `cluster.dns` unless `allow dns` is written before it. No rule is no filter. The validation warns, without
+    refusing the configuration, of a rule that can never match, a rule written before it matching all it
+    names, as one added after a last `allow any`, and of a list with no `allow` rule. A value
+    written on one line holds several rules, a verb starting each: `allow network backend allow node n2`
+    is two rules, `allow network backend node n2` one. An `object` rule is the addresses
+    the resources of the object publish in their status, the instances of all the nodes together, so the
+    failover of an address changes nothing, `./svc/db` naming an object of the namespace of this one, and
+    a `namespace` rule the addresses of every object of the namespace, `.` being the one of this object.
+    `dns` is
+    the nameservers what is filtered resolves through, and no other: the ones the `/etc/resolv.conf` of
+    the node names for an app or a task running a command on the node, a local stub as `127.0.0.53`
+    opening none of the servers it forwards to, and the ones om writes in the `/etc/resolv.conf` of a
+    container, from the `dns` of its networks, else `cluster.dns`, then its `dns` keyword, or the ones of
+    the node for a container om writes no resolver for. The cgroup filter has no ports: an address dedicated to
+    the dns, named in the `dns` keyword of a network, is all a filtered container of that network reaches
+    for its lookups, where the nameservers of `cluster.dns` are node addresses, opened on every port.
+    The rules are resolved at the start of the
+    resource to the `IPAddressAllow` and `IPAddressDeny` of the systemd slice of its process group, which
+    the kernel enforces on the cgroup, whatever the network namespace: systemd knowing no order, it is
+    given the two lists letting through exactly what the ordered rules do, each `allow` rule less what
+    the `deny` rules before it name. The daemon then keeps the filter of
+    the running resource current, without a restart: it resolves the rules again when an object or a
+    namespace they name changes address, starts, stops or is deleted, and when the nodes or the networks
+    of the cluster change, sets the slice when the filter differs, and sets the filters again when it
+    starts. The filter fails closed: an address of an `allow` rule is taken away when the status of its object says
+    it is gone, and kept while that status is not known, as while the daemon of its node restarts; an
+    address of a `deny` rule stays denied until its object is deleted; either is forgotten when another object
+    publishes the address. An address kept is kept by the rule that resolved to it, at its place in the
+    list and on its ports. The delete of an object, its tombstone, takes its addresses away at once, a
+    node of the object away or not, and none of the object created again under its path, or restored, since. With the daemon down, a resource starts with its `object` and `namespace`
+    rules resolving to nothing, until the daemon is back. A change of the rules themselves, of `net_rules`,
+    their order included, is applied by the daemon to the resource as it runs, on its node, within seconds and
+    without a restart: rules tightened, loosened or removed, and the ones changed while the daemon was
+    down as it starts, the rules being compared, in their order, and not the text of the keyword: the same rules laid
+    out another way, on one line or several, set no filter again. It is the one configuration change the daemon applies with no action asked, a
+    filter being a security setting. Rules the validation refuses keep the filter in force, with a
+    warning. Rules given to a resource running with none are set under a container, and under an app
+    started with `systemd_properties`, in a unit of the slice; the command of an app started with
+    neither runs in no unit, and its rules apply at its next start, its status warning until then. The
+    addresses of the objects are served by `GET /api/network/address`, each object with its id and the
+    version of its configuration, which a start records with the addresses, to the root and
+    inspector grants. The start command of an app, or the
+    run command of a task, runs in a transient systemd service unit of the slice, as with
+    `systemd_properties`, and om exec refuses to run it if the filter is not attached. A container is
+    filtered in the scope its engine makes with the systemd cgroup driver, and verified once started. A
+    resource refuses to start, rather than run unfiltered, on a node without systemd, the unified cgroup
+    hierarchy or a kernel attaching BPF programs to the cgroups (the `node.x.net_filter` capability), with
+    an engine using the cgroupfs driver, for a rootless container, and for a container whose `run_args`
+    hold a `--restart` option, which is a configuration error with `net_rules`: om passes
+    no restart policy and restarts the containers itself, the filter set first, where the engine would
+    restart one unfiltered. A `--cgroup-parent` or a `--cgroups` option in `run_args` is refused with it
+    as well: read after the placement of om, it would have the engine place the container out of the slice
+    the filter is set on. The status of the resource shows
+    the filter in force, what each rule resolves to in the order of the rules, the implicit ones included, the addresses of the rules naming another namespace counted and not listed, and
+    warns when it is not the one applied, and of the rules the daemon does not apply to what runs: refused,
+    given to a command in no unit, or not applied yet. A rule naming a
+    network, a node, an object, a resource or a namespace the cluster does not have is a warning of the
+    validation, naming the object as resolved, and resolves to nothing. Not filtered: the other commands of an app, `om <path> exec`, the
+    vbox containers, a kvm container with no `network`, what no socket of the processes filtered sends or
+    receives, as the reply of the kernel to a ping or what a container forwards, and the clients of a port a docker container publishes through its userland proxy,
+    which the container sees as the gateway of its bridge. An `address from <datastore> key <key>` rule
+    is the addresses and ranges a key of a cfg or a sec holds, one per line, the empty lines and the ones
+    starting with `#` skipped: the datastore is one of the namespace of the object, `./cfg/acl`, or one
+    of another namespace sharing its keys with it, `infra/cfg/acl` with `share = <namespace>` or
+    `share = *`, as the keys a resource installs are read. A rule naming a datastore of another namespace
+    that does not share its keys is an error of the validation and resolves to nothing, in an `allow` rule
+    and in a `deny` rule alike. The key is read at the start of the resource, and the
+    daemon resolves the rules again when the configuration of the datastore changes on its node, as when
+    a key is added, changed or removed, and sets the filter under the running resource: a `share` that
+    stops naming the namespace of the object takes the addresses of the datastore out of the running
+    filters, the daemon warning of it. The addresses of a shared cfg are shown by the status, as the ones
+    of a cfg of the namespace. A datastore or a
+    key that does not exist resolves to nothing, and a line that is no address is left out, both warned
+    of by the validation and the start. The addresses read from a sec are in the filter and not in the
+    status of the resource, which counts them, as the ones of another namespace. A `container.kvm` resource takes the keyword too, for the
+    guests on om networks, the ones of its `network` keyword: its filter is a nftables table
+    of the `netdev` family by interface om makes, `osvc_netwarden_<interface>`, holding a pair of sets by
+    rule and two chains reading them in the order of the rules, a line by rule, on the ingress
+    hook for what the guest sends and on the egress hook for what is sent to it, loaded before the
+    interface is plugged and after the rules of `network_filter`. The daemon keeps it current as the
+    filter of a slice, under the running guest and in one nft transaction: the addresses moving replace
+    the elements of the sets, and a change of the list of rules replaces the table. The status warns
+    when the sets are not the ones applied. It needs `nft` and Linux
+    5.16 or later, for the egress hook: a guest with rules refuses to start where one is missing, or with
+    no `network`. Arp, the ipv6 neighbour discovery, the dhcp exchange of the guest and the icmp errors
+    sent to it pass whatever the rules, and any other frame that is neither ipv4 nor ipv6 is dropped.
+    `dns` is there the nameservers of the networks of the guest. On a kvm container, any rule may end
+    with `port <port>[-<last>] proto tcp|udp`: the port is the one of what the rule names, matched as
+    the destination of what the guest sends and the source of what it receives, with no connection
+    followed, the first rule matching deciding there too, a rule on a port matching the packets of that
+    port alone. The cgroup filter of the other resources knows no port:
+    a rule with one is refused there, by the validation and at the start. The administrator of a namespace sets the keyword, also on the resources whose
+    other keywords need the root grant, as an app or a task of the host type, and names in it the
+    objects of its namespace and the namespace itself, `./svc/db`, `.`, or a path spelling the namespace.
+    A rule naming an object of another namespace, or another namespace, allowing or denying, requires the guest, operator or
+    admin grant on that namespace, or the root grant, judged as the rule resolves, references expanded,
+    and on what a write adds, a rule moved in the list adding nothing: the rules root wrote stay when the administrator of the namespace edits
+    the others. A filter only narrows what the resource reaches: the namespace named keeps its say on
+    what reaches its objects with filters of its own. A reference that does not evaluate requires the
+    root grant. The keyword is among the ones the administrator of a namespace sets on a kvm
+    container, whose other keywords stay weighed one by one, `network_filter` being root's. A rule
+    reading its addresses from a datastore of another namespace requires the datastore to share its
+    keys with the namespace of the object, and no grant on the namespace of the datastore then, its
+    `share` keyword being the consent of who administers it: one not shared is refused whatever is held
+    on that namespace, a role on a namespace being no grant to read the keys of its sec, and the
+    validation refuses it for root too. A datastore named by a reference that does not evaluate requires
+    the root grant. A `container.lxc` resource takes the keyword too, with the cgroup filter and its
+    limits, no port: om now starts every lxc container in a transient systemd scope of the slice of its
+    process group, `<slice>-lxc.scope`, ordered before the om daemon, lxc making its groups under the one
+    of the scope, on the nodes running systemd on the unified cgroup hierarchy, with rules or not, so rules
+    given to a running container apply at once. The groups of a lxc container move from
+    `<slice>/lxc.payload.<name>` to `<slice>/<slice>-lxc.scope/lxc.payload.<name>` at its next start. A
+    container started before the upgrade, in no scope, is given rules at its next start, its status
+    warning until then. `dns` is there the nameservers of the node. The filter is no confinement of the
+    root of a container who may configure its network, as the one of a lxc container, or of a docker or
+    podman container given `NET_ADMIN`.
+
+    ```
+    [app#web]
+    type = simple
+    start = /usr/bin/myapp --listen :8080
+    net_rules =
+        deny address 192.168.10.5
+        allow node n2
+        allow network backend
+        allow object ./svc/db
+        allow address 192.168.10.0/24
+    ```
+
+    A service on the `lan` network reaching the objects of its namespace, the nameservers and the world,
+    and nothing else of the cluster:
+
+    ```
+    net_rules =
+        allow namespace .
+        allow dns
+        deny cluster
+        deny network lan
+        allow any
     ```
 
 * **SSRF protection for HTTP fetches**: 
