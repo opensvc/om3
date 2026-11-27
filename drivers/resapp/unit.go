@@ -24,6 +24,9 @@ import (
 // hasSystemd says the node runs systemd, replaced by the tests.
 var hasSystemd = systemd.HasSystemd
 
+// unitState returns the state of a unit, replaced by the tests.
+var unitState = sdunit.GetState
+
 // UnitMode says the start command of the resource runs in a transient
 // systemd service unit: sandboxed by the properties systemd_properties sets,
 // or for net_rules, whose filter systemd enforces on the units
@@ -249,11 +252,27 @@ func (t *T) UnitFailure(ctx context.Context, err error) error {
 	return fmt.Errorf("unit %s: %w", unit, err)
 }
 
+// UnitHolds says a stop of the resource ends its unit: the start runs in
+// one, or ran in one under a configuration since changed, as net_rules
+// the daemon took away from the running resource, and the unit still runs
+// processes. The configuration of now does not say where the
+// command of the start runs.
+func (t *T) UnitHolds(ctx context.Context) bool {
+	if !hasSystemd() {
+		return false
+	}
+	if t.UnitMode() {
+		return true
+	}
+	st, err := unitState(ctx, t.UnitName())
+	return err == nil && st.IsActive()
+}
+
 // UnitTerminate ends the processes the unit of the resource still runs,
 // given the stop timeout to end, and forgets the unit if it failed. No stop
 // job is queued.
 func (t *T) UnitTerminate(ctx context.Context) error {
-	if !t.UnitMode() || !hasSystemd() {
+	if !t.UnitHolds(ctx) {
 		return nil
 	}
 	return sdunit.Terminate(ctx, t.Log(), t.UnitName(), t.GetTimeout("stop"))

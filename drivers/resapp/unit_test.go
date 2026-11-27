@@ -182,3 +182,34 @@ func TestNetTargetNamesNoNameservers(t *testing.T) {
 	r.Net.Rules = "allow node n2"
 	assert.Nil(t, r.NetTarget().DNS)
 }
+
+// TestUnitHoldsFollowsTheUnitRunning pins what a stop ends: the unit of a
+// resource whose start runs in one, and the unit still running a command
+// started in one under a configuration since changed, as rules the daemon
+// took away from the running resource, whatever the configuration says
+// now. A resource whose unit runs nothing, or a node without systemd, ends
+// none.
+func TestUnitHoldsFollowsTheUnitRunning(t *testing.T) {
+	defer func(f func() bool) { hasSystemd = f }(hasSystemd)
+	defer func(f func(context.Context, string) (sdunit.State, error)) { unitState = f }(unitState)
+	hasSystemd = func() bool { return true }
+	active := false
+	unitState = func(context.Context, string) (sdunit.State, error) {
+		if active {
+			return sdunit.State{ActiveState: "active"}, nil
+		}
+		return sdunit.State{ActiveState: "inactive"}, nil
+	}
+	ctx := context.Background()
+	r := newUnitT(t)
+	r.SystemdProperties = "PrivateTmp=yes"
+	assert.True(t, r.UnitHolds(ctx), "the start runs in a unit")
+
+	r.SystemdProperties = ""
+	assert.False(t, r.UnitHolds(ctx), "no unit, and none running")
+	active = true
+	assert.True(t, r.UnitHolds(ctx), "a unit still running the command, its keywords gone")
+
+	hasSystemd = func() bool { return false }
+	assert.False(t, r.UnitHolds(ctx), "no systemd")
+}

@@ -106,8 +106,10 @@ func (t *T) startUnit(ctx context.Context) error {
 // Stop runs the stop command, then, for a start command run in a unit,
 // ends the processes it left in the unit.
 func (t *T) Stop(ctx context.Context) error {
+	// Read before the stop ends what the unit runs.
+	inUnit := t.UnitHolds(ctx)
 	err := t.CommonStop(ctx, t)
-	if t.UnitMode() {
+	if inUnit {
 		err = errors.Join(err, t.UnitTerminate(ctx))
 		t.NetClear()
 	}
