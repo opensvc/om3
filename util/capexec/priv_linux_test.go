@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,13 +19,17 @@ import (
 const privHelperEnv = "OPENSVC_TEST_PRIV_HELPER"
 
 // TestPrivHelper is not a test: run as a child of TestPriv, it applies the
-// restrictions its environment names, as om exec does before the execve,
-// and prints the lines of /proc/self/status that show them. They can not be
+// restrictions its environment names, as om exec does, and execs cat of
+// /proc/self/status, which shows the ones the command got. They can not be
 // lifted, so the test process applies them to a child, never to itself.
+//
+// They are thread attributes: applied on the thread locked, the one of the
+// execve, as om exec does.
 func TestPrivHelper(t *testing.T) {
 	if os.Getenv(privHelperEnv) == "" {
 		t.Skip("run by TestPriv")
 	}
+	runtime.LockOSThread()
 	x := T{}
 	if s := os.Getenv("BSET"); s != "" {
 		x.CapabilityBoundingSet = &s
@@ -40,13 +46,14 @@ func TestPrivHelper(t *testing.T) {
 		fmt.Println("error:", err)
 		os.Exit(1)
 	}
-	b, _ := os.ReadFile("/proc/self/status")
-	for _, line := range strings.Split(string(b), "\n") {
-		if strings.HasPrefix(line, "CapBnd:") || strings.HasPrefix(line, "CapInh:") || strings.HasPrefix(line, "NoNewPrivs:") {
-			fmt.Println(line)
-		}
+	cat, err := exec.LookPath("cat")
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
 	}
-	os.Exit(0)
+	err = syscall.Exec(cat, []string{"cat", "/proc/self/status"}, os.Environ())
+	fmt.Println("error:", err)
+	os.Exit(1)
 }
 
 // status runs the helper with env and returns the fields it printed.
