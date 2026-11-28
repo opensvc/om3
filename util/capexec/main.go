@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -500,6 +501,11 @@ func (t T) setUmask() error {
 }
 
 func (t T) Exec(args []string) {
+	// The bounding set, the inheritable set and no_new_privs are thread
+	// attributes: applied and exec'd from the same thread, the one the
+	// goroutine is locked on, never unlocked, or the command could be
+	// exec'd from a thread they were not applied to.
+	runtime.LockOSThread()
 	ready := readyFile()
 	fail := func(err error) {
 		fmt.Fprintln(os.Stderr, err)
