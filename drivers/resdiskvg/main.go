@@ -352,21 +352,46 @@ func (t *T) Label(_ context.Context) string {
 	return t.VGName
 }
 
-// existsFresh says the volume group exists, a vg found checked again once
-// the lvm cache refreshed: with lvmetad, the cache of a node keeps listing
-// a vg of a shared storage another node removed, as the leader of its
-// unprovision, after the followers, and the next provision would refuse it,
-// or adopt a vg gone.
+// existsFresh says the volume group exists, checked once the lvm cache is
+// refreshed, as a provision decides to create it or not. The cache is stale
+// both ways:
+//
+//   - with lvmetad, the cache of a node keeps listing a vg of a shared
+//     storage another node removed, as the leader of its unprovision, after
+//     the followers, and the next provision would refuse it, or adopt a vg
+//     gone;
+//   - the vgs listing of the action, kept in its session cache, misses a vg
+//     on a device attached since it was taken, as a loop disk of the same
+//     provision: the provision would run vgcreate over the vg, refused.
 func (t *T) existsFresh(ctx context.Context) (bool, error) {
-	exists, err := t.vg().Exists(ctx)
-	if err != nil || !exists {
-		return exists, err
+	return existsFreshOf(ctx, t.vg(), func() error { return lvm2.PVScanContext(ctx, t.Log()) }, t.Log().Debugf)
+}
+
+// existsFreshOf says the volume group vg exists, once rescan refreshed the
+// lvm cache.
+//
+// A rescan failing is logged by debugf, and the answer fails closed: the vg
+// exists when it was listed before the rescan, or is listed after. A vg the
+// cache listed is not taken for absent on the word of a scan failing, which
+// would have the provision create it again, over its metadata. A ctx done is
+// an error, no decision made.
+func existsFreshOf(ctx context.Context, vg VGDriver, rescan func() error, debugf func(string, ...any)) (bool, error) {
+	before, err := vg.Exists(ctx)
+	if err != nil {
+		return false, err
 	}
-	if err := lvm2.PVScan(t.Log()); err != nil {
-		t.Log().Debugf("refresh the lvm cache: %s", err)
-		return exists, nil
+	if err := rescan(); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return false, ctxErr
+		}
+		debugf("refresh the lvm cache: %s", err)
+		after, err := vg.Exists(ctx)
+		if err != nil {
+			return false, err
+		}
+		return before || after, nil
 	}
-	return t.vg().Exists(ctx)
+	return vg.Exists(ctx)
 }
 
 func (t *T) ProvisionAsFollower(ctx context.Context) error {
