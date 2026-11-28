@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -88,8 +89,10 @@ func use() error {
 		cancel()
 		if errors.Is(err, fs.ErrNotExist) {
 			// The directory purged meanwhile.
+			closeLock(l)
 			continue
 		} else if err != nil {
+			closeLock(l)
 			return err
 		}
 		// The file locked is the one of the path still: a process
@@ -103,7 +106,7 @@ func use() error {
 				return nil
 			}
 		}
-		_ = l.Close()
+		closeLock(l)
 	}
 	return fmt.Errorf("lock the users of the session cache %s: the cache is purged repeatedly", dir)
 }
@@ -119,7 +122,7 @@ func PurgeCache() error {
 	}
 	l := users
 	users = nil
-	defer func() { _ = l.Close() }()
+	defer closeLock(l)
 	cacheDir := cacheDir()
 	if !strings.Contains(cacheDir, "/cache/") {
 		return fmt.Errorf("unexpected cachedir %s", cacheDir)
@@ -133,7 +136,25 @@ func PurgeCache() error {
 		}
 		return err
 	}
-	return fcache.Purge(cacheDir)
+	// The directory is renamed first, under the lock: a process starting
+	// to use the cache meanwhile makes a new one, rather than one being
+	// removed, and one waiting on the users file of this one finds it no
+	// longer at its path, and makes a new one too.
+	purged := cacheDir + ".purge." + strconv.Itoa(os.Getpid())
+	if err := os.Rename(cacheDir, purged); errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	return fcache.Purge(purged)
+}
+
+// closeLock closes the file of the lock l, if it has one open: a lock failing
+// closes the file it opened itself.
+func closeLock(l *fcntllock.Lock) {
+	if l.ReadWriteSeekCloser != nil {
+		_ = l.Close()
+	}
 }
 
 func outputLockP(name string) fcache.Locker {

@@ -152,3 +152,43 @@ func TestOutputOfACacheRemovedMeanwhile(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []byte("out"), out)
 }
+
+// The purge renames the cache before removing it, and leaves nothing behind.
+func TestPurgeLeavesNothing(t *testing.T) {
+	assert.Nil(t, PurgeCache())
+	rawconfig.Load(map[string]string{"OSVC_ROOT_PATH": t.TempDir()})
+	defer rawconfig.Load(map[string]string{})
+	_, err := Output(outputterFunc(func() ([]byte, error) { return []byte("a"), nil }), "sig")
+	assert.Nil(t, err)
+	assert.Nil(t, PurgeCache())
+	l, err := filepath.Glob(cacheDir() + "*")
+	assert.Nil(t, err)
+	assert.Empty(t, l)
+}
+
+// A users file that can not be locked is a cache not used, with no file left
+// open by the attempts: the outputs are the commands'.
+func TestUseFailingLeaksNoFile(t *testing.T) {
+	if _, err := os.Stat("/proc/self/fd"); err != nil {
+		t.Skip("no /proc/self/fd")
+	}
+	assert.Nil(t, PurgeCache())
+	rawconfig.Load(map[string]string{"OSVC_ROOT_PATH": t.TempDir()})
+	defer rawconfig.Load(map[string]string{})
+	defer func() { _ = PurgeCache() }()
+	// A directory in place of the users file: opening it to lock fails.
+	assert.Nil(t, os.MkdirAll(filepath.Join(cacheDir(), usersFileName), 0700))
+
+	countFDs := func() int {
+		l, err := os.ReadDir("/proc/self/fd")
+		assert.Nil(t, err)
+		return len(l)
+	}
+	before := countFDs()
+	for range 50 {
+		out, err := Output(outputterFunc(func() ([]byte, error) { return []byte("out"), nil }), "sig")
+		assert.Nil(t, err)
+		assert.Equal(t, []byte("out"), out)
+	}
+	assert.LessOrEqual(t, countFDs(), before+2, "no file left open by the failed locks")
+}
