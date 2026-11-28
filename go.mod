@@ -53,7 +53,7 @@ require (
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/opensvc/fcache v1.1.0
-	github.com/opensvc/fcntllock v1.0.3
+	github.com/opensvc/fcntllock v1.0.4
 	github.com/opensvc/flock v1.1.1
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pkg/sftp v1.13.10
@@ -67,7 +67,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/ssrathi/go-attr v1.3.0
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	github.com/subosito/gotenv v1.6.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
@@ -98,7 +98,6 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-iptables v0.5.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
@@ -122,7 +121,6 @@ require (
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
@@ -130,6 +128,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
