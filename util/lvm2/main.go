@@ -3,15 +3,16 @@
 package lvm2
 
 import (
+	"context"
 	"errors"
 	"os/exec"
 
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/util/command"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 )
 
 type (
@@ -62,7 +63,17 @@ func IsCapable() bool {
 }
 
 func PVScan(log *plog.Logger) error {
+	return PVScanContext(context.Background(), log)
+}
+
+// PVScanContext refreshes the lvm cache, as PVScan, stopped when ctx is done.
+// A ctx done before the scan starts runs none, and clears nothing.
+func PVScanContext(ctx context.Context, log *plog.Logger) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("pvscan"),
 		command.WithVarArgs("--cache"),
 		command.WithLogger(log),

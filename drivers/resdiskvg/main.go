@@ -364,15 +364,32 @@ func (t *T) Label(_ context.Context) string {
 //     on a device attached since it was taken, as a loop disk of the same
 //     provision: the provision would run vgcreate over the vg, refused.
 func (t *T) existsFresh(ctx context.Context) (bool, error) {
-	return existsFreshOf(ctx, t.vg(), func() error { return lvm2.PVScan(t.Log()) }, t.Log().Debugf)
+	return existsFreshOf(ctx, t.vg(), func() error { return lvm2.PVScanContext(ctx, t.Log()) }, t.Log().Debugf)
 }
 
 // existsFreshOf says the volume group vg exists, once rescan refreshed the
-// lvm cache. A rescan failing is logged by debugf: the vg is checked still,
-// the session cache dropped by the rescan anyway.
+// lvm cache.
+//
+// A rescan failing is logged by debugf, and the answer fails closed: the vg
+// exists when it was listed before the rescan, or is listed after. A vg the
+// cache listed is not taken for absent on the word of a scan failing, which
+// would have the provision create it again, over its metadata. A ctx done is
+// an error, no decision made.
 func existsFreshOf(ctx context.Context, vg VGDriver, rescan func() error, debugf func(string, ...any)) (bool, error) {
+	before, err := vg.Exists(ctx)
+	if err != nil {
+		return false, err
+	}
 	if err := rescan(); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return false, ctxErr
+		}
 		debugf("refresh the lvm cache: %s", err)
+		after, err := vg.Exists(ctx)
+		if err != nil {
+			return false, err
+		}
+		return before || after, nil
 	}
 	return vg.Exists(ctx)
 }
