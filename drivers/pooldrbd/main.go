@@ -283,6 +283,15 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	return kws, err
 }
 
+// Translate returns the keywords of a volume holding a filesystem on a drbd
+// device of the pool.
+//
+// The filesystem, and the zpool of a zfs one, are shared whatever the volume
+// asks: the drbd device is one filesystem the nodes replicate, formatted once
+// on the primary. Not shared, each node provisioning its instance formats its
+// own, and the mkfs fails on a secondary, which can not be written. What the
+// volume says of shared still decides who may claim it, which is not the
+// pool's to change.
 func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	rid, kws, err := t.commonTranslate(name, size, shared)
 	if err != nil {
@@ -291,7 +300,7 @@ func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	fs := pool.FS{
 		Pool:      t,
 		Name:      name,
-		Shared:    shared,
+		Shared:    true,
 		FsIndex:   1,
 		DiskIndex: 0,
 		OnDisk:    rid,

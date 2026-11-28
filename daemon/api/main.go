@@ -19,6 +19,16 @@ const (
 	// HeaderReplayDone is "true" on an events stream sending a ReplayDone
 	// event once its replay is written.
 	HeaderReplayDone = "OM-Replay-Done"
+
+	// HeaderImageID is the id of the image whose archive is the body
+	// of an image save response, in the store of the node sending it,
+	// and HeaderPlatform the operating system and the architecture of
+	// that node, as "linux/amd64". HeaderImageIDKind is what the id is
+	// the digest of, "config" or "manifest": the stores do not all
+	// name an image the same.
+	HeaderImageID     = "OM-Image-Id"
+	HeaderImageIDKind = "OM-Image-Id-Kind"
+	HeaderPlatform    = "OM-Platform"
 )
 
 // AuditEventPreempted names the server-sent event a daemon audit stream ends

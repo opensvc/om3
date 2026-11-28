@@ -18,6 +18,7 @@ func TestOriginPredicates(t *testing.T) {
 		{origin: string(ActionOriginDaemonMonitor), daemon: true, monitor: true, scheduler: false},
 		{origin: string(ActionOriginDaemonAPI), daemon: true, monitor: false, scheduler: false},
 		{origin: string(ActionOriginDaemonScheduler), daemon: true, monitor: false, scheduler: true},
+		{origin: string(ActionOriginDaemonPrefetch), daemon: true, monitor: false, scheduler: false},
 
 		// The daemon never sets these, and none of them is a daemon origin.
 		{origin: "daemon", daemon: false, monitor: false, scheduler: false},

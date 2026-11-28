@@ -318,11 +318,40 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		return
 	}
 
+	// The v1 hierarchy is given to systemd as the properties of the slice,
+	// as the unified one is, then written in the files of the groups.
+	//
+	// The properties are what makes the caps hold: an engine starting a
+	// container with the slice as its cgroup parent activates the unit, as
+	// the machine of a kvm guest does of the slices holding it, and systemd
+	// then realizes it from its properties over the files, at that start
+	// and at every daemon-reload. With no property, a container of the
+	// group ran uncapped, its caps reported applied.
+	//
+	// They are given first, because systemd realizing a slice makes its
+	// group in the hierarchies of the controllers its properties need, and
+	// removes it from the other ones it manages when it holds neither a
+	// process nor a group there, as it does of the groups under a slice
+	// above whose controllers change. The systemd 219 of rhel7 realizes
+	// the slice as it takes the properties, the slice having to be started
+	// there: a group made before lost its directory of the pids hierarchy
+	// with a pg_mem_limit and no pg_pids_max, and the pid could not be
+	// added to it. Made after, the groups are in every hierarchy for the
+	// files and for the pid, and a group holding a process is not removed.
+	//
+	// The files cap the group at once, a slice nothing was started in
+	// being, on the other releases, an inactive unit systemd writes nothing
+	// of. The cappings systemd has no property for on this hierarchy are
+	// in the files alone, see systemdV1Properties: systemd manages none of
+	// them, and leaves them as written in a group it does not remove.
 	if !c.fullReset {
 		c.warnDefaultsIgnoredOnV1(resets)
 	}
 	v1Writes := v1ResetsFor(c.fullReset, resets)
-	control, err := cgroup1.New(cgroup1.StaticPath(c.ID), &r)
+	if !invalid {
+		errs = errors.Join(errs, c.setSystemdProperties())
+	}
+	control, err := newV1Group(c.ID, &r)
 	if err != nil {
 		errs = errors.Join(errs, fmt.Errorf("create: %w", err))
 		return
@@ -337,6 +366,13 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		errs = errors.Join(errs, fmt.Errorf("add pid %d: %w", pid, err))
 	}
 	return
+}
+
+// newV1Group makes the group id in the v1 hierarchies of the node, capped
+// as r says, and is replaced by the tests, which have no such hierarchy to
+// make a group in.
+var newV1Group = func(id string, r *specs.LinuxResources) (cgroup1.Cgroup, error) {
+	return cgroup1.New(cgroup1.StaticPath(id), r)
 }
 
 // warnDefaultsIgnoredOnV1 says which keywords set to DefaultValue the v1

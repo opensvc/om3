@@ -337,10 +337,18 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 }
 
 func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpdated) {
-	if !srcCmd.Value.UpdatedAt.After(t.instConfig.UpdatedAt) {
+	if srcCmd.Value.UpdatedAt.Before(t.instConfig.UpdatedAt) || (srcCmd.Value.UpdatedAt.Equal(t.instConfig.UpdatedAt) && instance.ConfigEqual(&t.instConfig, &srcCmd.Value)) {
 		// drop already loaded localhost instance config (during worker init loads local instance config cache)
 		// we don't want to run an extra instance status evaluation.
 		// omon use both local instance config cache or event to start imon.
+		//
+		// A config of the same date is dropped when it says the same only:
+		// the date is the one of the config file, and the node changes
+		// what the file evaluates to without touching it, as the images
+		// its resources prefetch with the engine or the prefetch default
+		// of the node. Dropped, the outcome of a prefetch would be matched
+		// with the images of the config before, and the status not
+		// refreshed.
 		t.log.Tracef("ignore already loaded local instance config update")
 		return
 	}
@@ -2062,6 +2070,28 @@ func (t *Manager) onContainerUpdated(c *msgbus.ContainerUpdated) {
 		return
 	}
 	t.refreshOnResourceEvent(c.Type, "name", c.Name, "container")
+}
+
+// onImagePrefetchUpdated is called when the prefetch of an image failed on
+// the node, or stopped failing. It refreshes the status when a resource of
+// the instance pulls that image: its status warns of a missing image whose
+// prefetch failed, and the warning shows and clears with the outcome
+// instead of at the next scheduled status.
+//
+// The refresh is scheduled even while an action runs on an instance, as
+// the one of an md array is: the prefetch is no doing of the action, and the
+// refresh timer defers it until no action runs.
+func (t *Manager) onImagePrefetchUpdated(c *msgbus.ImagePrefetchUpdated) {
+	if c.Node != t.localhost || t.instConfig.ActorConfig == nil {
+		return
+	}
+	for rid, rcfg := range t.instConfig.Resources {
+		if rcfg.Pull != nil && *rcfg.Pull == c.Pull {
+			t.log.Infof("the prefetch of %s is %s, matching resource %s - schedule a status refresh", c.Pull, c.State, rid)
+			t.scheduleEventRefresh("the prefetch of " + c.Pull.Image + " is " + c.State)
+			return
+		}
+	}
 }
 
 // onMdArrayUpdated schedules a status refresh when the instance holds the md

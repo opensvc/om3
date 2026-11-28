@@ -621,6 +621,18 @@ var rules = map[string]Group{
 		"utsns":         namespaceRule,
 		"userns":        namespaceRule,
 		"environment":   environmentSourceRule,
+		// The limits of the processes of the container, see limitRootRule.
+		"limit_as":      {},
+		"limit_core":    limitRootRule,
+		"limit_cpu":     {},
+		"limit_data":    {},
+		"limit_fsize":   {},
+		"limit_memlock": limitRootRule,
+		"limit_nofile":  {},
+		"limit_nproc":   {},
+		"limit_rss":     {},
+		"limit_stack":   {},
+		"limit_vmem":    {},
 		// The filter of the network of the task, see netKeywords.
 		netrule.Keyword: netRule,
 	}},
@@ -670,6 +682,18 @@ var rules = map[string]Group{
 		// requires the root grant already, is held to the same rule as
 		// the environment of the other types.
 		"create_environment": environmentSourceRule,
+		// The limits of the processes of the container, see limitRootRule.
+		"limit_as":      {},
+		"limit_core":    limitRootRule,
+		"limit_cpu":     {},
+		"limit_data":    {},
+		"limit_fsize":   {},
+		"limit_memlock": limitRootRule,
+		"limit_nofile":  {},
+		"limit_nproc":   {},
+		"limit_rss":     {},
+		"limit_stack":   {},
+		"limit_vmem":    {},
 		// The filter of the network of the container, see netKeywords.
 		netrule.Keyword: netRule,
 	}},
@@ -1026,6 +1050,18 @@ var (
 		Grant:  rbac.GrantRoot,
 		Reason: "a privileged container requires the root grant",
 		Denies: valueOnly(isTrue),
+	}
+	// limitRootRule is the rule of the two limit_* keywords of a container
+	// or a task the administrator of a namespace may not set, whatever the
+	// value: limit_core, a core dump being handed to the core handler of
+	// the node, and limit_memlock, locked memory being memory the node can
+	// not reclaim. The other limit_* keywords bound what the processes of
+	// the container take of what the container is already given, and are
+	// open: the --ulimit of run_args, the only way to set one before,
+	// requires the root grant as all of run_args does.
+	limitRootRule = Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: "the core dump and locked memory limits of a container require the root grant",
 	}
 	// namespaceRule is the rule of the keywords choosing the namespaces a
 	// container or a task joins: netns, pidns, ipcns, utsns and userns.

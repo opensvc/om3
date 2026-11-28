@@ -50,6 +50,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/netwarden"
 	"github.com/opensvc/om3/v3/daemon/nmon"
 	"github.com/opensvc/om3/v3/daemon/pgmetrics"
+	"github.com/opensvc/om3/v3/daemon/prefetch"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/daemon/scheduler"
 	"github.com/opensvc/om3/v3/daemon/session"
@@ -315,6 +316,9 @@ func (t *T) Start(ctx context.Context) error {
 		// in one go, faster than a subscription hands them over
 		// whatever its reader does. The queue is sized for them.
 		netwarden.NewManager(qsLarge),
+		// It follows the configuration of every instance of the
+		// node, which a daemon starting publishes in one go.
+		prefetch.NewManager(qsLarge),
 		pgmetrics.New(),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).

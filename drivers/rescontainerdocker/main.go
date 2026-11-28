@@ -24,13 +24,28 @@ type (
 	}
 )
 
+// engine is the engine of the driver, as resource.Pull names it.
+const engine = "docker"
+
+var (
+	_ resource.PullDescriber = (*T)(nil)
+	_ resource.Prefetcher    = (*T)(nil)
+)
+
 func New() resource.Driver {
 	return &T{}
 }
 
 func (t *T) Configure() error {
+	t.SetImageStore(engine, "")
 	t.configure(t.executorArg())
 	return nil
+}
+
+// PullOf implements resource.PullDescriber: the image is pulled to the
+// store of dockerd, the one store docker has.
+func (t *T) PullOf(src resource.HoldSource) (resource.Pull, bool) {
+	return rescontainerocibase.PullOf(engine, "", src)
 }
 
 func (t *T) configure(ea *ExecutorArg) {

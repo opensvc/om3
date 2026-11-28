@@ -45,6 +45,7 @@ import (
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/stringslice"
+	"github.com/opensvc/om3/v3/util/ulimit"
 )
 
 type (
@@ -65,6 +66,7 @@ type (
 		Hostname        string         `json:"hostname"`
 		Image           string         `json:"image"`
 		ImagePullPolicy string         `json:"image_pull_policy"`
+		ImagePrefetch   string         `json:"image_prefetch"`
 		CWD             string         `json:"cwd"`
 		User            string         `json:"user"`
 		Command         []string       `json:"command"`
@@ -101,6 +103,7 @@ type (
 		ResumeInput     string         `json:"resume_input"`
 		QuiesceTimeout  *time.Duration `json:"quiesce_timeout"`
 		Sysctl          []string       `json:"sysctl"`
+		Limit           ulimit.Config  `json:"limit"`
 		LogOutputs      bool           `json:"log_outputs"`
 		UXGrant         []string       `json:"uxgrant"`
 
@@ -112,6 +115,11 @@ type (
 		// Net are the rules of net_rules filtering the network
 		// of the container.
 		Net netwarden.T `json:"net"`
+
+		// imageEngine and imageStore are the engine of the container
+		// and the store its image is pulled to: see SetImageStore.
+		imageEngine string
+		imageStore  string
 
 		executer   Executer
 		xContainer map[string]containerNamer
@@ -145,6 +153,14 @@ type (
 	ExecuteImager interface {
 		HasImage(context.Context) (bool, string, error)
 		Pull(context.Context) error
+
+		// LoadImage loads in the store the archive of an image, as
+		// the save of an engine wrote it.
+		LoadImage(context.Context, io.Reader) error
+
+		// RemoveImage removes from the store the name the container
+		// runs its image by.
+		RemoveImage(context.Context) error
 	}
 
 	// ExecuteInspecter interface defines the functions used to retrieve container
@@ -188,6 +204,7 @@ type (
 	ExecutorContainerArgser interface {
 		CpCmdArgs(string, string) []string
 		ExecCmdArgs([]string, []string, bool) []string
+		EnterCmdArgs(shell, marker string, tty bool) []string
 		RemoveArgs() *args.T
 		RunArgsBase(ctx context.Context) (*args.T, error)
 		RunArgsImage() (*args.T, error)
@@ -224,6 +241,7 @@ type (
 	// image operations.
 	ExecutorImageArgser interface {
 		PullArgs() *args.T
+		RemoveImageArgs() *args.T
 	}
 
 	// ExecutorArgser defines interfaces for container executor args.
@@ -977,6 +995,7 @@ func (t *BT) Status(ctx context.Context) status.T {
 		return status.Down
 	} else if inspect == nil {
 		t.Log().Tracef("status down on inspect nil")
+		t.warnPrefetchFailed(ctx)
 		return status.Down
 	}
 	if inspectConfig := inspect.Config(); inspectConfig != nil {
@@ -1021,6 +1040,12 @@ func (t *BT) Status(ctx context.Context) status.T {
 	}
 
 	if !inspect.Running() {
+		if t.NeedPreStartRemove() {
+			// A start removes this leftover, then pulls as with no
+			// container. A kept one is started from what the engine
+			// holds, with no pull.
+			t.warnPrefetchFailed(ctx)
+		}
 		return status.Down
 	}
 	t.netStatus()

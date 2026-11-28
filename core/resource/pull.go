@@ -1,0 +1,453 @@
+package resource
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"io"
+	"maps"
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/distribution/reference"
+
+	"github.com/opensvc/om3/v3/core/rawconfig"
+)
+
+type (
+	// Pull is the image a resource pulls on a node before it runs its
+	// container, and where to: the key of a prefetch. Two resources
+	// saying the same Pull on a node need one pull, whatever their
+	// objects.
+	//
+	// It names things and holds none: the daemon reads it to decide what
+	// to prefetch, and the pull itself is run by the command of an
+	// object, the only one reading its credentials.
+	Pull struct {
+		// Engine is the engine holding the image, as "docker" or
+		// "podman".
+		Engine string `json:"engine"`
+
+		// Store tells the stores of an engine apart, as the driver
+		// names them, and is empty for the store of the system. For
+		// podman, it is the user of a rootless container, whose
+		// images are in a store of their own.
+		Store string `json:"store,omitempty"`
+
+		// Image is the image reference, normalized as docker reads it:
+		// "docker.io/library/nginx:latest" for "nginx". See
+		// NormalizeImage.
+		//
+		// An engine resolving the names with no registry its own way,
+		// as podman, keeps such a name as written, with its tag:
+		// "nginx:latest" for "nginx". See NormalizeQualifiedImage.
+		Image string `json:"image"`
+
+		// Creds is the identity of the credentials the pull logs in
+		// the registry with, as the path of a secret, and is empty
+		// for the credentials of the node. It is not the credentials:
+		// two resources pulling the same image with different ones
+		// are two pulls, one of which may be refused.
+		Creds string `json:"creds,omitempty"`
+	}
+
+	// PullDescriber is implemented by the drivers whose resources pull an
+	// image. It is called on a driver allocated and not configured, as
+	// Holder is: the Pull comes from the source alone, and nothing runs.
+	// It returns false for a resource whose image does not evaluate.
+	PullDescriber interface {
+		PullOf(HoldSource) (Pull, bool)
+	}
+
+	// Prefetcher is implemented by the drivers able to pull the image of
+	// their resource ahead of its start, when the store of the engine
+	// does not hold it. The outcome is in the report, and recorded on
+	// the node for the status of the resource and for the daemon: an
+	// error is returned only for what prevented the try.
+	//
+	// The image is copied from the first of the sources holding it, in
+	// their order, and pulled from its registry when none does: a
+	// cluster with no registry has its images loaded on a node by hand,
+	// and the others get them from that node.
+	Prefetcher interface {
+		Prefetch(context.Context, []ImageSource) (PrefetchReport, error)
+	}
+
+	// ImageSource is a node a prefetch may copy an image from.
+	ImageSource interface {
+		// Node is the name of the node.
+		Node() string
+
+		// Save asks the node for the archive of the image the Pull
+		// names, in the store it names. A node whose store does not
+		// hold the image answers ErrImageNotFound.
+		Save(context.Context, Pull) (*ImageArchive, error)
+	}
+
+	// ImageArchive is the archive of an image, as a node sends it.
+	ImageArchive struct {
+		// ID is the id of the image in the store of the node sending
+		// it: the one the image has once loaded.
+		ID string
+
+		// IDKind is what ID is the digest of in that store,
+		// ImageIDConfig or ImageIDManifest, and is empty when the
+		// node does not tell.
+		IDKind string
+
+		// Platform is the platform of the node sending it, as
+		// NodePlatform says it.
+		Platform string
+
+		// Body is the archive, for the load of an engine to read. It
+		// is closed by who asked for it, read or not.
+		Body io.ReadCloser
+	}
+
+	// PrefetchReport is what a prefetch of the image of a resource did.
+	PrefetchReport struct {
+		RID string `json:"rid"`
+		PrefetchOutcome
+	}
+
+	// PrefetchOutcome is the outcome of the last prefetch of a Pull on
+	// the node, as recorded in its file.
+	PrefetchOutcome struct {
+		Key Pull `json:"key"`
+
+		// State is PrefetchPresent, PrefetchPulled or PrefetchFailed.
+		State string `json:"state"`
+
+		// ImageID is the id of the image in the store, when there.
+		ImageID string `json:"image_id,omitempty"`
+
+		// Source is where a prefetch got the image it pulled from:
+		// PrefetchSourceRegistry, or what PrefetchSourcePeer says of
+		// a node.
+		Source string `json:"source,omitempty"`
+
+		// Error is why the prefetch failed: what the registry said,
+		// after what the nodes asked first for a copy said, when some
+		// were, as "peers: <error>; registry: <error>".
+		Error string `json:"error,omitempty"`
+
+		// UpdatedAt is when the outcome was recorded, by the clock of
+		// the node. It is read by humans, and compared to the one of
+		// the outcome read before a prefetch only, by the daemon, to
+		// tell the outcome this prefetch recorded from the former one
+		// left in the file: never to another clock, nor to now.
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+
+	// ImageStore answers for the image stores of an engine, without the
+	// configuration of a resource: the daemon asks it whether a prefetch
+	// has anything to pull before running the command of an object.
+	//
+	// It reads the stores, and loads in them what another store saved: it
+	// needs no credentials, and asks no registry.
+	ImageStore interface {
+		// Has says whether the store the Pull names holds its image,
+		// and the id of the image. An engine that does not answer is
+		// an error, not a missing image.
+		Has(context.Context, Pull) (present bool, id string, err error)
+
+		// Save writes the image of the Pull, as an archive carrying
+		// the name it is saved by, and returns the id of the image
+		// saved. A store that does not hold the image writes nothing,
+		// and the error is ErrImageNotFound.
+		Save(context.Context, Pull, io.Writer) (id string, err error)
+
+		// IDKind says what the ids of the images of the store the
+		// Pull names are: ImageIDConfig or ImageIDManifest. Two ids
+		// of an image are compared only when of the same kind.
+		IDKind(context.Context, Pull) (string, error)
+
+		// Load reads an archive a Save wrote into the store the Pull
+		// names, where the image has the name it was saved by. The
+		// image of the Pull is not looked for in the archive: the
+		// caller asks Has what the load made of it.
+		Load(context.Context, Pull, io.Reader) error
+	}
+)
+
+// The kinds of the id of an image in a store. The stores of podman and of
+// docker name an image by the digest of its configuration, and the one of a
+// docker keeping its images in containerd by the digest of its manifest: an
+// image copied from a store to another of the other kind is the same image
+// under another id.
+const (
+	ImageIDConfig   = "config"
+	ImageIDManifest = "manifest"
+)
+
+// ErrImageNotFound is the error of a Save asked of a store that does not
+// hold the image.
+var ErrImageNotFound = errors.New("image not found")
+
+// The states of a prefetch outcome.
+const (
+	// PrefetchPresent is the outcome of a prefetch finding the image in
+	// the store.
+	PrefetchPresent = "present"
+
+	// PrefetchPulled is the outcome of a prefetch that pulled the image,
+	// or copied it from a node: its source says which.
+	PrefetchPulled = "pulled"
+
+	// PrefetchFailed is the outcome of a prefetch that could neither copy
+	// the image from a node nor pull it.
+	PrefetchFailed = "failed"
+)
+
+// PrefetchSourceRegistry is the source of an image pulled from its registry.
+const PrefetchSourceRegistry = "registry"
+
+// PrefetchSourcePeer is the source of an image copied from a node.
+func PrefetchSourcePeer(node string) string {
+	return "peer " + node
+}
+
+var (
+	imageStoresMu sync.RWMutex
+	imageStores   = make(map[string]ImageStore)
+)
+
+// RegisterImageStore sets the image store of an engine, as the drivers of
+// the engine do when registered.
+func RegisterImageStore(engine string, store ImageStore) {
+	imageStoresMu.Lock()
+	defer imageStoresMu.Unlock()
+	imageStores[engine] = store
+}
+
+// ImageStoreOf returns the image store of an engine, nil when no driver
+// registered one.
+func ImageStoreOf(engine string) ImageStore {
+	imageStoresMu.RLock()
+	defer imageStoresMu.RUnlock()
+	return imageStores[engine]
+}
+
+// ImageStoreEngines returns the engines an image store is registered for,
+// sorted.
+func ImageStoreEngines() []string {
+	imageStoresMu.RLock()
+	defer imageStoresMu.RUnlock()
+	return slices.Sorted(maps.Keys(imageStores))
+}
+
+// NodePlatform is the operating system and the architecture of the node, as
+// "linux/amd64": what the images its engines run are built for. An image
+// saved on a node of another platform is of no use to this one.
+func NodePlatform() string {
+	return runtime.GOOS + "/" + runtime.GOARCH
+}
+
+// NormalizeImage returns the image reference s as docker reads it, with the
+// registry, the namespace and the tag it defaults to: "nginx" is
+// "docker.io/library/nginx:latest". A reference with a digest loses its tag,
+// which the digest overrides.
+//
+// A string that is no docker reference, as one naming a transport of podman,
+// is returned as it is: the engine has the last word on what it pulls.
+func NormalizeImage(s string) string {
+	s = strings.TrimSpace(s)
+	named, err := reference.ParseDockerRef(s)
+	if err != nil {
+		return s
+	}
+	return named.String()
+}
+
+// NormalizeQualifiedImage returns the image reference s as NormalizeImage
+// does when it names its registry, and with its name as written when it
+// names none: "ghcr.io/opensvc/pause" is "ghcr.io/opensvc/pause:latest",
+// and "nginx" is "nginx:latest".
+//
+// It is the normalization of the engines that do not read a name with no
+// registry as one of the docker hub. Podman resolves it with the aliases
+// and the search registries of its registries.conf, where "nginx" may be
+// the image of another registry: a key saying "docker.io/library/nginx"
+// would name an image the store does not hold, and a start does not run.
+// The name as written is resolved by the engine, as a start resolves it.
+//
+// The tag and the digest are the ones the engines read: the "latest" tag
+// for a reference with none, and the digest alone for a reference with
+// both.
+func NormalizeQualifiedImage(s string) string {
+	s = strings.TrimSpace(s)
+	if ImageNamesRegistry(s) {
+		return NormalizeImage(s)
+	}
+	named, err := reference.ParseDockerRef(s)
+	if err != nil {
+		return s
+	}
+	name := s
+	if i := strings.IndexByte(name, '@'); i >= 0 {
+		name = name[:i]
+	}
+	if i := strings.LastIndexByte(name, ':'); i > strings.LastIndexByte(name, '/') {
+		name = name[:i]
+	}
+	switch ref := named.(type) {
+	case reference.Digested:
+		return name + "@" + ref.Digest().String()
+	case reference.Tagged:
+		return name + ":" + ref.Tag()
+	}
+	return s
+}
+
+// ImageNamesRegistry says whether the image reference s starts with a
+// registry, as the engines tell one from the first component of a path: it
+// has a '.' or a ':', is "localhost", or has an upper case letter, which a
+// repository can not have.
+//
+// A reference naming its registry is the same image for every engine. One
+// naming none is not: docker reads it as an image of its hub, and podman
+// resolves it with its registries.conf.
+func ImageNamesRegistry(s string) bool {
+	i := strings.IndexByte(s, '/')
+	if i < 0 {
+		return false
+	}
+	host := s[:i]
+	return strings.ContainsAny(host, ".:") || host == "localhost" || strings.ToLower(host) != host
+}
+
+// IsZero says whether the Pull names no image.
+func (t Pull) IsZero() bool {
+	return t.Image == ""
+}
+
+// String describes the Pull for a log line.
+func (t Pull) String() string {
+	s := t.Engine + " image " + t.Image
+	if t.Store != "" {
+		s += " in the store of " + t.Store
+	}
+	if t.Creds != "" {
+		s += " with the credentials of " + t.Creds
+	}
+	return s
+}
+
+// Hash returns a name for the Pull, the same on every node and safe in a
+// file name.
+func (t Pull) Hash() string {
+	h := sha256.New()
+	for _, s := range []string{t.Engine, t.Store, t.Image, t.Creds} {
+		h.Write([]byte(s))
+		h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// PrefetchDir is where the node records the outcomes of its prefetches.
+func PrefetchDir() string {
+	return filepath.Join(rawconfig.NodeVarDir(), "prefetch")
+}
+
+// prefetchOutcomeFile is the file of the outcome of the last prefetch of
+// pull. The engine is a word of the configuration: its base name alone is
+// used.
+func prefetchOutcomeFile(pull Pull) string {
+	engine := filepath.Base(filepath.Clean("/" + pull.Engine))
+	return filepath.Join(PrefetchDir(), engine, pull.Hash()+".json")
+}
+
+// ReadPrefetchOutcome returns the outcome of the last prefetch of pull on
+// the node, and false when none is recorded.
+func ReadPrefetchOutcome(pull Pull) (PrefetchOutcome, bool) {
+	outcome, err := readPrefetchOutcomeFile(prefetchOutcomeFile(pull))
+	if err != nil || outcome.Key != pull {
+		return PrefetchOutcome{}, false
+	}
+	return outcome, true
+}
+
+func readPrefetchOutcomeFile(path string) (PrefetchOutcome, error) {
+	var outcome PrefetchOutcome
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return outcome, err
+	}
+	err = json.Unmarshal(b, &outcome)
+	return outcome, err
+}
+
+// Write records the outcome on the node, in the place of the former outcome
+// of its Pull. The file is written whole then renamed: its readers, the
+// status of the resources and the daemon, never read half of it.
+func (t PrefetchOutcome) Write() error {
+	path := prefetchOutcomeFile(t.Key)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	b, err := json.Marshal(t)
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err := tmp.Write(b); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
+}
+
+// RemovePrefetchOutcome forgets the outcome of the last prefetch of pull.
+func RemovePrefetchOutcome(pull Pull) error {
+	err := os.Remove(prefetchOutcomeFile(pull))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+// PrefetchOutcomes returns the outcomes recorded on the node. A file that
+// does not read as an outcome is reported with the zero Pull, for its
+// removal by RemovePrefetchOutcomeFile.
+func PrefetchOutcomes() map[string]PrefetchOutcome {
+	m := make(map[string]PrefetchOutcome)
+	paths, _ := filepath.Glob(filepath.Join(PrefetchDir(), "*", "*"))
+	for _, path := range paths {
+		if strings.HasPrefix(filepath.Base(path), ".") {
+			// An outcome being written, see Write.
+			continue
+		}
+		outcome, err := readPrefetchOutcomeFile(path)
+		if err != nil || path != prefetchOutcomeFile(outcome.Key) {
+			outcome = PrefetchOutcome{}
+		}
+		m[path] = outcome
+	}
+	return m
+}
+
+// RemovePrefetchOutcomeFile removes a file PrefetchOutcomes reported.
+func RemovePrefetchOutcomeFile(path string) error {
+	if filepath.Dir(filepath.Dir(path)) != PrefetchDir() {
+		return errors.New("not a prefetch outcome file: " + path)
+	}
+	err := os.Remove(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}

@@ -20,7 +20,10 @@ func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	if _, err := exec.LookPath("virsh"); err == nil {
 		l = append(l, drvCap)
 	}
-	if isPartitionsCapable(ctx) {
+	// The partitions capability says a guest placed in the process group
+	// of its resource is held by its caps, which takes a libvirt with
+	// partitions and a systemd that puts the machine where libvirt asks.
+	if isPartitionsCapable(ctx) && partitionsRefusal(systemdVersion()) == "" {
 		l = append(l, drvCap+".partitions")
 	}
 	if isHVMCapable(ctx) {

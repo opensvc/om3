@@ -66,6 +66,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/tombstone"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/util/errcontext"
@@ -317,6 +318,10 @@ var (
 		"VirtDomainUpdated": func() any { return &VirtDomainUpdated{} },
 
 		"ContainerUpdated": func() any { return &ContainerUpdated{} },
+
+		"ContainerImageRemoved": func() any { return &ContainerImageRemoved{} },
+
+		"ImagePrefetchUpdated": func() any { return &ImagePrefetchUpdated{} },
 
 		"MdArrayUpdated": func() any { return &MdArrayUpdated{} },
 	}
@@ -1414,6 +1419,41 @@ type (
 		Name       string `json:"name" yaml:"name"`
 	}
 
+	// ContainerImageRemoved is published when an image was untagged or
+	// removed from the store of an engine the node watches the events of,
+	// as by an image rm or an image prune. Type is the driver type of the
+	// resources of the engine, as "container.podman". Store is the store
+	// of the engine the image was in, as the image prefetch names it,
+	// empty for the one of the system. Name and ID are the image as the
+	// engine tells it, either or both: docker tells the id alone. Both are
+	// empty when the event stream of the engine started, or started
+	// again, and removals may have been missed meanwhile.
+	ContainerImageRemoved struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Type       string `json:"type" yaml:"type"`
+		Store      string `json:"store" yaml:"store"`
+		Name       string `json:"name" yaml:"name"`
+		ID         string `json:"id" yaml:"id"`
+	}
+
+	// ImagePrefetchUpdated is published when the outcome of the prefetch
+	// of an image on the node changed to failed, or from failed: the
+	// copy and the pull the daemon ran for the container resources not
+	// started there failed, or the image is in the store of the engine
+	// after a prefetch that had failed. Pull is the image and where it is
+	// fetched to, as the instance configs say it for their resources,
+	// State the outcome, "failed", "pulled" or "present", and Error what
+	// the nodes asked for a copy, then the registry, said of a failed
+	// prefetch.
+	ImagePrefetchUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string        `json:"node" yaml:"node"`
+		Pull       resource.Pull `json:"pull" yaml:"pull"`
+		State      string        `json:"state" yaml:"state"`
+		Error      string        `json:"error" yaml:"error"`
+	}
+
 	// MdArrayUpdated is published when an md array of the node changed
 	// state, as the kernel tells: a resync or a recovery started or ended,
 	// a device failed, was added or removed, an array started or stopped.
@@ -2160,6 +2200,22 @@ func (e *ContainerUpdated) Kind() string {
 
 func (e *ContainerUpdated) Key() string {
 	return fmt.Sprintf("ContainerUpdated,node=%s,type=%s,name=%s", e.Node, e.Type, e.Name)
+}
+
+func (e *ContainerImageRemoved) Kind() string {
+	return "ContainerImageRemoved"
+}
+
+func (e *ContainerImageRemoved) Key() string {
+	return fmt.Sprintf("ContainerImageRemoved,node=%s,type=%s,store=%s,name=%s,id=%s", e.Node, e.Type, e.Store, e.Name, e.ID)
+}
+
+func (e *ImagePrefetchUpdated) Kind() string {
+	return "ImagePrefetchUpdated"
+}
+
+func (e *ImagePrefetchUpdated) Key() string {
+	return fmt.Sprintf("ImagePrefetchUpdated,node=%s,key=%s", e.Node, e.Pull.Hash())
 }
 
 func (e *MdArrayUpdated) Kind() string {

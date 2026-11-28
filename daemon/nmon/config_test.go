@@ -42,3 +42,39 @@ func TestLoadPoolInterval(t *testing.T) {
 	}
 	assert.Equal(t, node.DefaultLoadPoolInterval, (&Manager{}).getLoadPoolInterval(), "before the config is loaded")
 }
+
+// The node config publishes the engine of the oci resources and the
+// prefetch default of the node, read from its configuration merged over the
+// cluster one: the instance configs evaluate the images they prefetch with
+// them, and are refreshed when either changes.
+func TestNodeConfigSaysTheEngineAndThePrefetchDefault(t *testing.T) {
+	for name, tc := range map[string]struct {
+		node     string
+		cluster  string
+		oci      string
+		prefetch bool
+	}{
+		"the defaults":                    {oci: "docker", prefetch: true},
+		"set by the node":                 {node: "[node]\noci = podman\nimage_prefetch = false\n", oci: "podman"},
+		"set by the cluster":              {cluster: "[node]\nimage_prefetch = false\n", oci: "docker"},
+		"the node overriding the cluster": {node: "[node]\nimage_prefetch = true\n", cluster: "[node]\nimage_prefetch = false\n", oci: "docker", prefetch: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			testhelper.Setup(t)
+			t.Cleanup(func() { rawconfig.Load(map[string]string{}) })
+			require.NoError(t, os.WriteFile(rawconfig.NodeConfigFile(), []byte(tc.node), 0600))
+			require.NoError(t, os.WriteFile(rawconfig.ClusterConfigFile(), []byte("[cluster]\nname = cluster1\n"+tc.cluster), 0600))
+			n, err := object.NewNode(object.WithVolatile(true))
+			require.NoError(t, err)
+			m := &Manager{log: plog.NewDefaultLogger()}
+			m.config = n.MergedConfig()
+			cfg := m.getNodeConfig()
+			assert.Equal(t, tc.oci, cfg.OCI)
+			assert.Equal(t, tc.prefetch, cfg.ImagePrefetch)
+		})
+	}
+	cfg := node.Config{OCI: "docker", ImagePrefetch: true}
+	assert.True(t, cfg.Equal(node.Config{OCI: "docker", ImagePrefetch: true}))
+	assert.False(t, cfg.Equal(node.Config{OCI: "podman", ImagePrefetch: true}))
+	assert.False(t, cfg.Equal(node.Config{OCI: "docker"}))
+}

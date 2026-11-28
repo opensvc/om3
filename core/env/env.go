@@ -16,6 +16,7 @@ var (
 	ActionOriginDaemonAPI       ActionOrigin = "daemon/api"
 	ActionOriginDaemonMonitor   ActionOrigin = "daemon/monitor"
 	ActionOriginDaemonScheduler ActionOrigin = "daemon/scheduler"
+	ActionOriginDaemonPrefetch  ActionOrigin = "daemon/prefetch"
 
 	NameVar      = "OSVC_NAME"
 	NamespaceVar = "OSVC_NAMESPACE"
@@ -64,12 +65,12 @@ func IsResourceRestart() bool {
 }
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
-// is set to one of the daemon origins: "daemon/monitor", "daemon/api" or
-// "daemon/scheduler". The opensvc daemon sets this variable on every command
-// it executes.
+// is set to one of the daemon origins: "daemon/monitor", "daemon/api",
+// "daemon/scheduler" or "daemon/prefetch". The opensvc daemon sets this
+// variable on every command it executes.
 func HasDaemonOrigin() bool {
 	switch Origin() {
-	case ActionOriginDaemonMonitor, ActionOriginDaemonAPI, ActionOriginDaemonScheduler:
+	case ActionOriginDaemonMonitor, ActionOriginDaemonAPI, ActionOriginDaemonScheduler, ActionOriginDaemonPrefetch:
 		return true
 	default:
 		return false

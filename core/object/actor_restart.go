@@ -6,12 +6,25 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 )
 
-func (t *actor) stopForRestart(ctx context.Context) error {
+// stopForRestartProps are the properties of the stop half of a restart.
+func stopForRestartProps() actioncontext.Properties {
 	ac := actioncontext.Stop
 	// the stop half of a restart is not a stop the operator wants to stick:
 	// the start that follows is the point.
 	ac.MarksStopped = false
-	ctx = actioncontext.WithProps(ctx, ac)
+	// The process groups are kept, and the systemd properties of their
+	// slices with them: the start makes them again a moment later, and
+	// sets every cap of the configuration. Removing them is wasted work,
+	// and on the cgroup v1 hierarchy it stops their slices, which a start
+	// coming before systemd has run the stop loses file-only caps to.
+	// A cap whose keyword was removed stays until a stop, as it stays
+	// under a running instance: the default value lifts it.
+	ac.RemovesPG = false
+	return ac
+}
+
+func (t *actor) stopForRestart(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, stopForRestartProps())
 	return t.stopWithContext(ctx)
 }
 

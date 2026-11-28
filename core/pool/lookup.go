@@ -246,7 +246,12 @@ func (t Lookup) ConfigureVolume(ctx context.Context, volume Volumer, obj interfa
 // volume hands out, unless the pool holds it in something else.
 //
 // The figures come from the daemon, which is where the peers report theirs,
-// and are a few seconds old. A node reporting the pools it has, this one
+// and are as old as the last load of the pools by each node: one per
+// node.load_pool_interval, a minute by default, and one when a volume of the
+// node is seen provisioned, unprovisioned, deleted, or of another filesystem
+// size, in the status of its instance. A change with no such status, as the
+// resize of a volume that is down, or one the node has not loaded and
+// reported yet, is not in them. A node reporting the pools it has, this one
 // among them not, is a node the volume cannot be held on, and is refused: the
 // volume would be provisioned there, and what it takes would be found out
 // afterwards.

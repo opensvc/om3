@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
@@ -49,6 +50,12 @@ type (
 		lastMtime    time.Time
 		localhost    string
 		forceRefresh bool
+
+		// nodePullConfig is what the images the resources prefetch
+		// were evaluated with, of the config of the node: nil for an
+		// object with no container resource, which no change of the
+		// node config refreshes.
+		nodePullConfig *nodePullConfig
 
 		// pubLabel is the list of labels for this icfg publications (path and node)
 		pubLabel  []pubsub.Label
@@ -183,6 +190,13 @@ func (t *Manager) startSubscriptions() {
 		filters.Add(&msgbus.InstanceConfigUpdated{}, labelPathCluster, labelLocalhost)
 		filters.Add(&msgbus.NodeLabelsCommited{})
 
+		// the images the resources prefetch depend on the engine of
+		// the node and on its prefetch default, so we must also watch
+		// for the config updates of the local node.
+		if t.path.Kind == naming.KindSvc {
+			filters.Add(&msgbus.NodeConfigUpdated{}, labelLocalhost)
+		}
+
 		// what an object claims of the cpu and memory depends on the
 		// default caps of its namespace claims, so we must also watch for
 		// its namespace config updates.
@@ -242,6 +256,8 @@ func (t *Manager) worker() {
 				}
 			case *msgbus.NodeLabelsCommited:
 				t.onNodeLabelsCommited()
+			case *msgbus.NodeConfigUpdated:
+				t.onLocalNodeConfigUpdated(c)
 			}
 		}
 	}
@@ -294,6 +310,26 @@ func (t *Manager) onLocalNamespaceInstanceConfigUpdated() {
 func (t *Manager) onNodeLabelsCommited() {
 	t.log.Tracef("node labels changed => refresh")
 	_ = t.configFileCheckRefresh(true)
+}
+
+// onLocalNodeConfigUpdated refreshes the instance config when the node
+// changed what the images its resources prefetch are evaluated with: its
+// engine, or its prefetch default. The other changes of the node config, and
+// the ones of the peers, change nothing of an instance config.
+func (t *Manager) onLocalNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
+	if c.Node != t.localhost || !t.nodeConfigChangesPulls(c.Value) {
+		return
+	}
+	t.log.Tracef("node engine or prefetch default changed => refresh")
+	_ = t.configFileCheckRefresh(true)
+}
+
+// nodeConfigChangesPulls says whether the images the resources prefetch are
+// to be evaluated again with the config of the node: the object has
+// container resources, and the config is not the one they were evaluated
+// with.
+func (t *Manager) nodeConfigChangesPulls(cfg node.Config) bool {
+	return t.nodePullConfig != nil && *t.nodePullConfig != nodePullConfigOf(cfg)
 }
 
 func (t *Manager) onConfigFileRemoved() {
@@ -459,6 +495,7 @@ func (t *Manager) configFileCheck() error {
 			}
 		}
 		t.setHolds(cfg.ActorConfig.Resources)
+		t.setPulls(cfg.ActorConfig.Resources)
 		for _, e := range actor.Schedules() {
 			cfg.ActorConfig.Schedules = append(cfg.ActorConfig.Schedules, e.Config)
 		}
@@ -566,6 +603,64 @@ func (t *Manager) setHolds(m instance.ResourceConfigs) {
 		rcfg.Holds = append(rcfg.Holds, h.Hold)
 		rcfg.IsShared = rcfg.IsShared || h.Cluster
 		m[h.RID] = rcfg
+	}
+}
+
+// keyNodeImagePrefetch is the prefetch default of the node, in its config
+// merged over the one of the cluster.
+var keyNodeImagePrefetch = key.New("node", "image_prefetch")
+
+// nodePullConfig is what the images the resources prefetch are evaluated
+// with, of the config of the node.
+type nodePullConfig struct {
+	oci           string
+	imagePrefetch bool
+}
+
+func nodePullConfigOf(cfg node.Config) nodePullConfig {
+	return nodePullConfig{oci: cfg.OCI, imagePrefetch: cfg.ImagePrefetch}
+}
+
+// setPulls sets the images the container resources of the object prefetch
+// on this node, the ones their start would run: evaluated as an action
+// evaluates them, with the engine and the prefetch default of the node. A
+// resource whose image evaluates to none prefetches none, and is logged.
+func (t *Manager) setPulls(m instance.ResourceConfigs) {
+	t.nodePullConfig = nil
+	hasContainer := false
+	for rid := range m {
+		if strings.HasPrefix(rid, "container#") {
+			hasContainer = true
+			break
+		}
+	}
+	if !hasContainer {
+		// No resource to read the config of the node for, and no
+		// update of it to follow.
+		return
+	}
+	n, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		t.log.Warnf("pulls: %s", err)
+		return
+	}
+	// The node config the pulls were evaluated with, as the node monitor
+	// publishes it: an update saying the same refreshes nothing.
+	t.nodePullConfig = &nodePullConfig{
+		oci:           n.OCIEngine(),
+		imagePrefetch: n.MergedConfig().GetBool(keyNodeImagePrefetch),
+	}
+	pulls, unevaluated := object.Pulls(t.path, t.configure, n)
+	for rid, pull := range pulls {
+		rcfg, ok := m[rid]
+		if !ok {
+			continue
+		}
+		rcfg.Pull = &pull
+		m[rid] = rcfg
+	}
+	if len(unevaluated) > 0 {
+		t.log.Warnf("no image prefetch for %s: the image keyword evaluates to no image on this node", strings.Join(unevaluated, ", "))
 	}
 }
 

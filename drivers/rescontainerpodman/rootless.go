@@ -52,24 +52,30 @@ func (t *T) rootlessUser() (*rootlessUser, error) {
 	if t.RootlessUser == "" {
 		return nil, nil
 	}
-	u, err := usergroup.LookupUser(t.RootlessUser)
+	return lookupRootlessUser(t.RootlessUser, t.RootlessGroup)
+}
+
+// lookupRootlessUser returns the unprivileged user name, running as the
+// group named, or as its own when none is.
+func lookupRootlessUser(name, group string) (*rootlessUser, error) {
+	u, err := usergroup.LookupUser(name)
 	if err != nil {
-		return nil, fmt.Errorf("rootless_user %s: %w", t.RootlessUser, err)
+		return nil, fmt.Errorf("rootless_user %s: %w", name, err)
 	}
 	uid, err := strconv.ParseUint(u.Uid, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("rootless_user %s: uid %s: %w", t.RootlessUser, u.Uid, err)
+		return nil, fmt.Errorf("rootless_user %s: uid %s: %w", name, u.Uid, err)
 	}
 	if uid == 0 {
-		return nil, fmt.Errorf("rootless_user %s is root: a rootless container is run by an unprivileged user", t.RootlessUser)
+		return nil, fmt.Errorf("rootless_user %s is root: a rootless container is run by an unprivileged user", name)
 	}
 	gid, err := strconv.ParseUint(u.Gid, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("rootless_user %s: gid %s: %w", t.RootlessUser, u.Gid, err)
+		return nil, fmt.Errorf("rootless_user %s: gid %s: %w", name, u.Gid, err)
 	}
-	if t.RootlessGroup != "" {
-		if g, err := usergroup.GIDFromString(t.RootlessGroup); err != nil {
-			return nil, fmt.Errorf("rootless_group %s: %w", t.RootlessGroup, err)
+	if group != "" {
+		if g, err := usergroup.GIDFromString(group); err != nil {
+			return nil, fmt.Errorf("rootless_group %s: %w", group, err)
 		} else {
 			gid = uint64(g)
 		}
@@ -77,7 +83,7 @@ func (t *T) rootlessUser() (*rootlessUser, error) {
 	if gid == 0 {
 		// The root group reaches every file of the node it owns: a container
 		// run as it is not rootless, whoever configured it.
-		return nil, fmt.Errorf("rootless_user %s runs as the root group: a rootless container is run by an unprivileged group, set rootless_group", t.RootlessUser)
+		return nil, fmt.Errorf("rootless_user %s runs as the root group: a rootless container is run by an unprivileged group, set rootless_group", name)
 	}
 	return &rootlessUser{
 		Name: u.Username,
@@ -85,6 +91,18 @@ func (t *T) rootlessUser() (*rootlessUser, error) {
 		GID:  uint32(gid),
 		Home: u.HomeDir,
 	}, nil
+}
+
+// storeCredential returns who reaches the image store named, as
+// resource.Pull names the stores of podman: the user of the rootless
+// containers running from it, as its own group. The store is the user's,
+// whatever the group a container of theirs runs as.
+func storeCredential(store string) (*rescontainerocibase.Credential, error) {
+	u, err := lookupRootlessUser(store, "")
+	if err != nil {
+		return nil, err
+	}
+	return u.credential(), nil
 }
 
 // runtimeDir is the runtime directory of the user, where podman keeps what it

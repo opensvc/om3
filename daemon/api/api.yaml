@@ -3900,6 +3900,92 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/image/save:
+    get:
+      operationId: GetNodeImageSave
+      description: |
+        For internal use only.
+
+        Used by the prefetch of the image of a container resource to copy
+        the image from a node holding it, with no registry: the response
+        body is the archive of the image as the save of the engine writes
+        it, sent as it is made, for the load of an engine to read.
+
+        The image is the one the store of the engine holds under the
+        reference, whatever brought it there. The id of the image, what the
+        id is the digest of, and the platform of the node are in the
+        response headers, for the requester to verify what it loaded, and
+        to leave the body unread when the node is of another architecture.
+        A store that does not hold the reference is a 404.
+
+        An archive cut short, by a save failing once the response is
+        started, is one the load of an engine refuses.
+
+        The root grant is required: the images of a store are not told
+        apart by namespace.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: engine
+          description: the engine holding the image, as docker or podman
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: store
+          description: |
+            the store of the engine holding the image, as the driver names
+            it: the user of a rootless podman. Not set for the store of the
+            system.
+          schema:
+            type: string
+        - in: query
+          name: ref
+          description: the reference of the image, as docker.io/library/nginx:latest
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          headers:
+            OM-Image-Id:
+              description: the id of the image saved, in the store of the node
+              schema:
+                type: string
+            OM-Image-Id-Kind:
+              description: |
+                what the id of the image is the digest of in the store of
+                the node, config or manifest. Not set when the engine does
+                not tell.
+              schema:
+                type: string
+            OM-Platform:
+              description: the operating system and the architecture of the node, as linux/amd64
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+      x-internal: true
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}:
     get:
       operationId: GetInstance
@@ -6185,6 +6271,10 @@ paths:
         The series of the subsets and the resources of an object, the subset and
         resource scopes, are reported for the objects named by the path
         parameters only.
+
+        The cgroups are read in the unified hierarchy only: a node of the
+        cgroup v1 hierarchy, or a hybrid one, is not supported and reports no
+        series.
       operationId: GetNodeMetricsPG
       tags:
         - node
@@ -11968,6 +12058,17 @@ components:
         prkey:
           type: string
           x-go-name: PRKey
+        oci:
+          description: |
+            the engine the oci container and task resources of the node run
+            with, podman or docker
+          type: string
+          x-go-name: OCI
+        image_prefetch:
+          description: |
+            the node pulls the images of its container resources ahead of a
+            failover, when their image_prefetch keyword does not say
+          type: boolean
         issues:
           type: array
           description: |
@@ -13307,6 +13408,8 @@ components:
           type: boolean
         is_standby:
           type: boolean
+        pull:
+          $ref: '#/components/schemas/ResourcePull'
         restart:
           type: integer
         restart_delay:
@@ -13320,6 +13423,41 @@ components:
           type: array
           items:
             type: string
+
+    ResourcePull:
+      x-go-type: resource.Pull
+      x-go-type-import:
+        path: github.com/opensvc/om3/v3/core/resource
+      description: |
+        the image the node publishing the configuration prefetches for the
+        resource, ahead of a failover: none for a resource with no image,
+        disabled, or whose prefetch is disabled
+      type: object
+      required:
+        - engine
+        - image
+      properties:
+        creds:
+          description: |
+            the identity of the credentials the pull logs in the registry
+            with, as the path of a secret, none for the ones of the node
+          type: string
+        engine:
+          description: the engine holding the image, as docker or podman
+          type: string
+        image:
+          description: |
+            the image reference, normalized as docker reads it, as
+            docker.io/library/nginx:latest, except a podman image named
+            with no registry, kept as written with its tag, as nginx:latest,
+            for podman to resolve it
+          type: string
+        store:
+          description: |
+            the store of the engine the image is pulled to, as the driver
+            names it, none for the one of the system: the user of a rootless
+            podman container
+          type: string
 
     ResourceFile:
       type: object

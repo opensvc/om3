@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/shared/netwarden"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/signalrelay"
+	"github.com/opensvc/om3/v3/util/ulimit"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -68,6 +69,7 @@ type (
 		UTSNS           string         `json:"utsns"`
 		ReadOnly        string         `json:"read_only"`
 		Sysctl          []string       `json:"sysctl"`
+		Limit           ulimit.Config  `json:"limit"`
 		StopTimeout     *time.Duration `json:"stop_timeout"`
 		RegistryCreds   string         `json:"registry_creds"`
 		PullTimeout     *time.Duration `json:"pull_timeout"`

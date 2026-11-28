@@ -44,6 +44,15 @@ var (
 		Order: 70,
 	}
 
+	// GroupLimits holds the limits the engine sets on the processes of the
+	// container, the ulimits, in place of its defaults.
+	GroupLimits = keywords.Group{
+		ID:    "limits",
+		Name:  "Limits",
+		Text:  keywords.NewText(fs, "text/group/limits"),
+		Order: 72,
+	}
+
 	// GroupQuiesce holds how the writes of the container are suspended
 	// for a run of a sync resource. Its strategies are the two ways the
 	// quiesce keyword says: pause, freezing the processes, reads none of
@@ -86,6 +95,7 @@ var (
 		rescontainer.GroupStorage,
 		rescontainer.GroupNetwork,
 		GroupIsolation,
+		GroupLimits,
 		GroupQuiesce,
 		rescontainer.GroupGuest,
 		rescontainer.GroupTimeouts,

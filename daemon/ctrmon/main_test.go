@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/daemon/evwatch"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // The lines podman 4.9.3 prints, captured on a dev cluster node for a
@@ -59,6 +61,99 @@ func TestParseDockerEvent(t *testing.T) {
 	assert.False(t, ok, "not a container")
 }
 
+// The lines podman 4.9.3 prints, captured on a dev cluster node for the rmi
+// of a tag, the rmi of the last tag of an image, a prune and an rmi by id:
+// an image untagged or removed is read, with its name when the line has
+// one, and the events of an image pulled or tagged are not.
+func TestParsePodmanImageEvent(t *testing.T) {
+	const id = "e2ac70e7319a02c5a477f5825259bd118b94e8b02c279c67afa63adab6d8685b"
+	for line, want := range map[string]*imageRemoval{
+		`{"ID":"` + id + `","Name":"docker.io/library/hello-world:linux","Status":"pull","Time":"2026-11-27T09:19:43.323944404+01:00","Type":"image","Attributes":null}`:                                        nil,
+		`{"ID":"` + id + `","Name":"prefetch-probe:t1","Status":"tag","Time":"2026-11-27T09:19:43.375529841+01:00","Type":"image","Attributes":null}`:                                                           nil,
+		`{"ID":"` + id + `","Name":"localhost/prefetch-probe:t1","Status":"untag","Time":"2026-11-27T09:19:43.413558671+01:00","Type":"image","Attributes":null}`:                                               {name: "localhost/prefetch-probe:t1", id: id},
+		`{"ID":"` + id + `","Name":"docker.io/library/hello-world:linux","Status":"remove","Time":"2026-11-27T09:19:43.447694786+01:00","Type":"image","Attributes":null}`:                                      {name: "docker.io/library/hello-world:linux", id: id},
+		`{"ID":"` + id + `","Status":"remove","Time":"2026-11-27T09:19:43.641610976+01:00","Type":"image","Attributes":null}`:                                                                                   {id: id},
+		`{"ID":"` + id + `","Name":"e2ac70e7319a","Status":"remove","Time":"2026-11-27T09:19:43.871376749+01:00","Type":"image","Attributes":null}`:                                                             {id: id},
+		`{"ID":"52fb2cff203e","Image":"docker.io/library/busybox:latest","Name":"prefetch-probe-ctr","Status":"remove","Time":"2026-11-27T09:19:44.593842191+01:00","Type":"container","Attributes":{"x":"1"}}`: nil,
+		`Error: unable to connect`: nil,
+	} {
+		image, ok := parsePodmanImageEvent(line)
+		if want == nil {
+			assert.False(t, ok, line)
+			continue
+		}
+		require.True(t, ok, line)
+		assert.Equal(t, *want, image, line)
+	}
+	_, ok := parsePodmanEvent(`{"ID":"` + id + `","Name":"docker.io/library/hello-world:linux","Status":"remove","Type":"image","Attributes":null}`)
+	assert.False(t, ok, "the remove of an image is not the one of a container")
+}
+
+// The lines docker 29.1.3 prints, captured on a dev cluster node for the
+// rmi of a tag, the rmi of an image and a prune: docker names the image
+// untagged or deleted by its id alone, and the prune ending a prune names
+// none.
+func TestParseDockerImageEvent(t *testing.T) {
+	const id = "sha256:e2ac70e7319a02c5a477f5825259bd118b94e8b02c279c67afa63adab6d8685b"
+	for line, want := range map[string]*imageRemoval{
+		`{"Type":"image","Action":"pull","Actor":{"ID":"hello-world:linux","Attributes":{"name":"hello-world"}},"scope":"local","time":1795767566,"timeNano":1795767566148049881}`:               nil,
+		`{"Type":"image","Action":"tag","Actor":{"ID":"` + id + `","Attributes":{"name":"prefetch-probe:t1"}},"scope":"local","time":1795767566,"timeNano":1795767566169657242}`:                 nil,
+		`{"Type":"image","Action":"untag","Actor":{"ID":"` + id + `","Attributes":{"name":"` + id + `"}},"scope":"local","time":1795767566,"timeNano":1795767566186500480}`:                      {id: id},
+		`{"Type":"image","Action":"delete","Actor":{"ID":"` + id + `","Attributes":{"name":"` + id + `"}},"scope":"local","time":1795767566,"timeNano":1795767566208524747}`:                     {id: id},
+		`{"Type":"image","Action":"untag","Actor":{"ID":"` + id + `","Attributes":{"name":"` + id + `","prefetch-probe":"1"}},"scope":"local","time":1795767566,"timeNano":1795767566274008837}`: {id: id},
+		`{"Type":"image","Action":"untag","Actor":{"ID":"` + id + `","Attributes":{"name":"registry.example.com/app:1"}},"scope":"local"}`:                                                       {name: "registry.example.com/app:1", id: id},
+		`{"Type":"image","Action":"prune","Actor":{"ID":"","Attributes":{"reclaimed":"6"}},"scope":"local","time":1795767566,"timeNano":1795767566279771647}`:                                    nil,
+		`{"Type":"container","Action":"destroy","Actor":{"ID":"56bccc0e5817","Attributes":{"image":"nginx:1.30-alpine","name":"omtest-evt-d"}},"scope":"local"}`:                                 nil,
+	} {
+		image, ok := parseDockerImageEvent(line)
+		if want == nil {
+			assert.False(t, ok, line)
+			continue
+		}
+		require.True(t, ok, line)
+		assert.Equal(t, *want, image, line)
+	}
+}
+
+// pubSpy records the messages published.
+type pubSpy struct {
+	mu   sync.Mutex
+	msgs []pubsub.Messager
+}
+
+func (t *pubSpy) Pub(m pubsub.Messager, _ ...pubsub.Label) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.msgs = append(t.msgs, m)
+}
+
+func (t *pubSpy) imagesRemoved() []msgbus.ContainerImageRemoved {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	l := make([]msgbus.ContainerImageRemoved, 0)
+	for _, m := range t.msgs {
+		if removed, ok := m.(*msgbus.ContainerImageRemoved); ok {
+			l = append(l, msgbus.ContainerImageRemoved{Node: removed.Node, Type: removed.Type, Store: removed.Store, Name: removed.Name, ID: removed.ID})
+		}
+	}
+	return l
+}
+
+// A stream that starts, or starts again, may have missed removals: it says
+// so with a removal naming no image, for the images the node is meant to
+// hold to be checked.
+func TestAStreamReadyPublishesARemovalNamingNoImage(t *testing.T) {
+	m := NewManager(0, nil)
+	m.log = plog.NewDefaultLogger()
+	spy := &pubSpy{}
+	m.publisher = spy
+	e := &engine{driverType: "container.docker", counter: evwatch.NewCounter()}
+	e.debouncer = evwatch.NewDebouncer(time.Hour, func(string) {})
+	defer e.debouncer.Stop()
+	m.onStreamReady(e)
+	assert.Equal(t, []msgbus.ContainerImageRemoved{{Node: m.localhost, Type: "container.docker"}}, spy.imagesRemoved())
+}
+
 // systemPath is the PATH the tests start with, which the scripts of a test
 // run their commands from, whatever an earlier test case set.
 var systemPath = os.Getenv("PATH")
@@ -89,19 +184,28 @@ func TestSourceCheck(t *testing.T) {
 }
 
 // The stream of an engine is ready once it ran a while, and emits the
-// containers its events say changed state.
+// containers its events say changed state, and the images they say were
+// removed.
 func TestSourceRun(t *testing.T) {
+	var mu sync.Mutex
 	installEngine(t, "podman", `[ "$2" = "--help" ] && { echo "--format"; exit 0; }
-[ "$1 $2 $3 $4 $5" = "events --format json --filter type=container" ] || exit 2
+[ "$*" = "events --format json --filter type=container --filter type=image" ] || exit 2
 echo '{"Name":"c1","Status":"create","Type":"container"}'
 echo '{"Name":"c1","Status":"start","Type":"container"}'
+echo '{"ID":"e2ac","Name":"docker.io/library/nginx:latest","Status":"pull","Type":"image"}'
+echo '{"ID":"e2ac","Name":"docker.io/library/nginx:latest","Status":"remove","Type":"image"}'
 sleep 60`)
 	m := NewManager(0, nil)
 	m.log = plog.NewDefaultLogger()
 	src := m.sources()["container.podman"]
+	var images []imageRemoval
+	src.onImage = func(image imageRemoval) {
+		mu.Lock()
+		images = append(images, image)
+		mu.Unlock()
+	}
 	require.NoError(t, src.Check(context.Background()))
 	ctx, cancel := context.WithCancel(context.Background())
-	var mu sync.Mutex
 	var readies int
 	var names []string
 	done := make(chan error, 1)
@@ -119,7 +223,7 @@ sleep 60`)
 	require.Eventually(t, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
-		return readies == 1 && len(names) == 1
+		return readies == 1 && len(names) == 1 && len(images) == 1
 	}, 5*time.Second, 10*time.Millisecond)
 	cancel()
 	select {
@@ -128,4 +232,5 @@ sleep 60`)
 		t.Fatal("the stream did not stop with its context")
 	}
 	assert.Equal(t, []string{"c1"}, names, "the create changes nothing")
+	assert.Equal(t, []imageRemoval{{name: "docker.io/library/nginx:latest", id: "e2ac"}}, images, "the pull removes nothing")
 }

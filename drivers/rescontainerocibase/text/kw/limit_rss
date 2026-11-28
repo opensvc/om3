@@ -1,0 +1,6 @@
+The limit on the physical memory a process of the container can use (unit byte).
+The Linux kernel does not enforce it: cap the memory of the container with `pg_mem_limit`.
+
+The engine sets the soft and the hard limit to this value, as `--ulimit
+rss=<value>:<value>`, which overrides its default ulimit and the `--ulimit rss`
+of `run_args`. Unset, the container runs with the default of the engine.

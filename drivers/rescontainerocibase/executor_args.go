@@ -55,8 +55,21 @@ func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string, interactive bool
 	return append(l, args...)
 }
 
+// EnterCmdArgs returns the exec running shell in the container, with a
+// terminal when tty, its session marked by marker, a NAME=VALUE environment
+// variable the shell and what it starts inherit: the engine runs the shell
+// with the capabilities, the profiles and in the cgroup of the container, and
+// the marker finds what is left of it when the client of the exec ends.
+func (ea *ExecutorArg) EnterCmdArgs(shell, marker string, tty bool) []string {
+	l := []string{"exec", "-i"}
+	if tty {
+		l = append(l, "-t")
+	}
+	return append(l, "--env", marker, ea.BT.ContainerName(), shell)
+}
+
 func (ea *ExecutorArg) HasImageArgs() *args.T {
-	return args.New("image", "inspect", "--format", "{{.ID}}", ea.BT.Image)
+	return args.New(imageInspectArgs(ea.BT.Image)...)
 }
 
 func (ea *ExecutorArg) InspectArgs() *args.T {
@@ -76,12 +89,20 @@ func (ea *ExecutorArg) Log() *plog.Logger {
 	return ea.BT.Log()
 }
 
+func (ea *ExecutorArg) RemoveImageArgs() *args.T {
+	return args.New(imageRemoveArgs(ea.BT.Image)...)
+}
+
 func (ea *ExecutorArg) PullArgs() *args.T {
 	return args.New("image", "pull", ea.BT.Image)
 }
 
+// RemoveArgs removes the container with its anonymous volumes, those the
+// engine makes for the VOLUME of an image no mount covers: nothing names them
+// once the container is gone, so every run of a task left one in the store of
+// the engine. The named volumes and the binds are not anonymous, and are kept.
 func (ea *ExecutorArg) RemoveArgs() *args.T {
-	return args.New("container", "rm", ea.BT.ContainerName())
+	return args.New("container", "rm", "-v", ea.BT.ContainerName())
 }
 
 func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
@@ -194,6 +215,7 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	}
 	a.Append(ea.runArgsCGroupParent()...)
 	a.Append(ea.runArgsSysctl()...)
+	a.Append(ea.runArgsUlimit(runArgs)...)
 
 	for _, v := range bt.Devices {
 		runArgs.DropOptionAndExactValue("--device", v)

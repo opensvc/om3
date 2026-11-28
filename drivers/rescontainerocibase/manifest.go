@@ -74,6 +74,15 @@ var (
 			Text:       keywords.NewText(fs, "text/kw/image_pull_policy"),
 		},
 		{
+			Option:    "image_prefetch",
+			Group:     GroupImage.ID,
+			Attr:      "ImagePrefetch",
+			Scopable:  true,
+			Converter: converters.Tristate,
+			Since:     "v3.0.0-rc73",
+			Text:      keywords.NewText(fs, "text/kw/image_prefetch"),
+		},
+		{
 			Option:   "cwd",
 			Group:    GroupProcess.ID,
 			Attr:     "CWD",
@@ -398,6 +407,7 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 	)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.AddKeywords(kws...)
+	m.AddKeywords(LimitKeywords...)
 	m.AddKeywords(netKeywords...)
 	m.AddGroups(Groups...)
 	return m

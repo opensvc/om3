@@ -16,7 +16,14 @@ import (
 )
 
 var (
-	partitionRe  = regexp.MustCompile(`<partition>[^<]*</partition>`)
+	partitionRe = regexp.MustCompile(`<partition>[^<]*</partition>`)
+
+	// omPartitionRe is a partition om wrote, the one of a process group,
+	// with the indent of its line, and emptyResourceRe the resource
+	// element it leaves empty when removed.
+	omPartitionRe   = regexp.MustCompile(`[ \t]*<partition>/opensvc(?:/[^<]*)?</partition>\n?`)
+	emptyResourceRe = regexp.MustCompile(`[ \t]*<resource>\s*</resource>\n?`)
+
 	memoryRe     = regexp.MustCompile(`<memory(?: unit='([A-Za-z]+)')?>(\d+)</memory>`)
 	systemdHexRe = regexp.MustCompile(`\\x([0-9a-f]{2})`)
 
@@ -63,6 +70,23 @@ func definitionWithPartition(b []byte, partition string) ([]byte, error) {
 		return nil, fmt.Errorf("no domain in the definition")
 	}
 	return []byte(s[:i] + "  <resource>\n    " + string(tag) + "\n  </resource>\n" + s[i:]), nil
+}
+
+// definitionWithoutPartition returns the definition of a domain without the
+// partition om wrote in it, one under /opensvc, and without the resource
+// element left empty by it. A partition of another tree is the sysadmin's,
+// and is kept.
+func definitionWithoutPartition(b []byte) []byte {
+	b = omPartitionRe.ReplaceAllLiteral(b, nil)
+	return emptyResourceRe.ReplaceAllLiteral(b, nil)
+}
+
+// unsetPartition removes the partition om wrote from the definition file of
+// a domain, if it has one.
+func unsetPartition(file string) error {
+	return rewriteDefinition(file, func(b []byte) ([]byte, error) {
+		return definitionWithoutPartition(b), nil
+	})
 }
 
 // setPartition writes the partition in the definition file of a domain, which
@@ -198,18 +222,46 @@ func (t *T) guestMemory() int64 {
 // can not put on a guest: libvirt places it in a partition of its own, out of
 // them all.
 func (t *T) uncappableError() error {
+	what, err := t.cappedBy()
+	if err != nil || what == "" {
+		return err
+	}
+	return fmt.Errorf("%s, and this node can not cap a guest: %s", what, uncappableReason())
+}
+
+// cappedBy says what counts on the guest being capped: a compute claim of
+// its namespace, which counts the caps of its objects, a cap of the groups
+// holding the resource, or a pg_* keyword of the configuration of its
+// namespace, set on the slice above them. Empty when nothing does.
+//
+// The configuration of the root namespace is one for a guest of the root
+// namespace only: for the others it caps the whole tree of the agent, and a
+// guest out of the slice of its namespace is still under the limits of the
+// node.
+func (t *T) cappedBy() (string, error) {
 	o, _ := t.GetObject().(resourceCapper)
 	for _, claimType := range claim.ComputeTypes {
 		if _, capped, err := claim.Limit(t.Path.Namespace, claimType, ""); err != nil {
-			return err
+			return "", err
 		} else if capped {
-			return fmt.Errorf("the %s namespace claims the %s, and this node can not cap a guest: it needs systemd and a libvirt with partitions", t.Path.Namespace, claimType)
+			return fmt.Sprintf("the %s namespace claims the %s", t.Path.Namespace, claimType), nil
 		}
-		if err := cappedError(o, t.RID(), claimType); err != nil {
-			return err
+		if what, err := cappedOn(o, t.RID(), claimType); err != nil || what != "" {
+			return what, err
 		}
 	}
-	return nil
+	if n, ok := t.GetObject().(interface {
+		NamespacePGCap() (string, error)
+	}); ok {
+		keyword, err := n.NamespacePGCap()
+		if err != nil {
+			return "", err
+		}
+		if keyword != "" {
+			return fmt.Sprintf("the %s namespace sets %s", t.Path.Namespace, keyword), nil
+		}
+	}
+	return "", nil
 }
 
 // resourceCapper says the cap of the groups holding a resource.
@@ -217,27 +269,44 @@ type resourceCapper interface {
 	ResourceCap(rid, claimType string) (int64, error)
 }
 
-// cappedError says the groups holding a resource cap what this node can not
-// cap on a guest.
-func cappedError(o resourceCapper, rid, claimType string) error {
+// cappedOn says the groups holding a resource cap it on a compute claim
+// type, and nothing when they do not.
+func cappedOn(o resourceCapper, rid, claimType string) (string, error) {
 	if o == nil {
-		return nil
+		return "", nil
 	}
 	limit, err := o.ResourceCap(rid, claimType)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if limit != claim.Unbounded {
-		return fmt.Errorf("%s is capped on the %s, and this node can not cap a guest: it needs systemd and a libvirt with partitions", rid, claimType)
+		return fmt.Sprintf("%s is capped on the %s", rid, claimType), nil
 	}
-	return nil
+	return "", nil
 }
 
-// memCapError says the process group of the resource can not hold the guest.
+// memCapError says the process group of the resource can not hold the guest,
+// or that the node can not put the caps it is counted on to put.
+//
+// It is what ConfigError reports in the status of a guest down, and what a
+// provision and a start refuse: a start going on where the status says the
+// error would run the guest under a cap that kills it.
 func (t *T) memCapError() error {
 	if t.partition() == "" {
 		return t.uncappableError()
 	}
+	return t.memLimitError()
+}
+
+// memLimitError says a memory cap above the guest is below what it needs,
+// its memory and claim.GuestMemoryMargin: the cap of its resource, its subset
+// or its object, then the one of its namespace or of the root one.
+//
+// The namespace caps are a memory.max of the slices holding the group of the
+// guest, so no guest takes more, whatever the others of the namespace take:
+// each guest is held against them alone, not the guests of the namespace
+// together, which is what a memory claim counts.
+func (t *T) memLimitError() error {
 	o, ok := t.GetObject().(interface {
 		MemCap(rid string) (int64, error)
 	})
@@ -248,9 +317,21 @@ func (t *T) memCapError() error {
 	if err != nil {
 		return err
 	}
-	need := t.guestMemory() + claim.GuestMemoryMargin
-	if limit != claim.Unbounded && t.guestMemory() != 0 && limit < need {
+	memory := t.guestMemory()
+	need := memory + claim.GuestMemoryMargin
+	if limit != claim.Unbounded && memory != 0 && limit < need {
 		return fmt.Errorf("memory cap %s: the guest needs %s, its memory and what qemu takes", sizeconv.BSizeCompact(float64(limit)), sizeconv.BSizeCompact(float64(need)))
+	}
+	if n, ok := t.GetObject().(interface {
+		NamespaceMemCap() (int64, error)
+	}); ok {
+		limit, err := n.NamespaceMemCap()
+		if err != nil {
+			return err
+		}
+		if limit != claim.Unbounded && memory != 0 && limit < need {
+			return fmt.Errorf("memory cap %s of the namespace: the guest needs %s, its memory and what qemu takes", sizeconv.BSizeCompact(float64(limit)), sizeconv.BSizeCompact(float64(need)))
+		}
 	}
 	return t.sharedMemCapError()
 }

@@ -1,1 +1,5 @@
-The docker image pull, and run the container with.
+The image the container is run from, pulled by a start when the store of
+the engine does not hold it.
+
+The nodes not running the container get it too, ahead of a failover: see
+`image_prefetch`.

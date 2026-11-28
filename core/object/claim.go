@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -172,6 +173,97 @@ func (t *core) ObjectMemCap() (int64, error) {
 // node, see ResourceCap.
 func (t *core) MemCap(rid string) (int64, error) {
 	return t.ResourceCap(rid, claim.TypeMemory)
+}
+
+// NamespaceMemCap is the most memory the slices of the namespaces holding the
+// object let its processes take on this node: the smaller of the pg_mem_limit
+// of the configuration of its namespace and of the root one, whose slice
+// holds every namespace, claim.Unbounded when neither says one.
+//
+// It bounds each process group of the object alone, as a memory.max of an
+// ancestor does, and is no part of ResourceCap: what a claim counts is what
+// the objects of a namespace add up to, which its cap is not one term of.
+//
+// The configurations are read on this node, where a namespace configuration
+// is on every node, and one this node does not hold caps nothing.
+func (t *core) NamespaceMemCap() (int64, error) {
+	limit := claim.Unbounded
+	for _, p := range t.namespaceConfigs() {
+		o, err := NewNscfg(p, WithVolatile(true))
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", p, err)
+		}
+		v, ok, err := o.capAs("DEFAULT", claim.TypeMemory, hostname.Hostname())
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", p, err)
+		}
+		if ok {
+			limit = capMin(limit, v)
+		}
+	}
+	return limit, nil
+}
+
+// namespaceConfigs returns the namespace configurations this node holds
+// whose slices hold the object: the root one, whose slice holds every
+// namespace, then the one of its namespace.
+func (t *core) namespaceConfigs() []naming.Path {
+	namespaces := []string{naming.NsRoot}
+	if t.path.Namespace != naming.NsRoot {
+		namespaces = append(namespaces, t.path.Namespace)
+	}
+	l := make([]naming.Path, 0, len(namespaces))
+	for _, namespace := range namespaces {
+		p := naming.Path{Namespace: namespace, Kind: naming.KindNscfg, Name: "namespace"}
+		if file.Exists(p.ConfigFile()) {
+			l = append(l, p)
+		}
+	}
+	return l
+}
+
+// NamespacePGCap names a pg_* keyword the configuration of the namespace of
+// the object sets on this node, and is empty when it sets none.
+//
+// These keywords are written on the slice of the namespace, above the groups
+// of the object, and say nothing of the object itself: they are what a
+// driver unable to place its processes under that slice, as kvm for a guest
+// on some nodes, has to know of, the processes running out of it. A keyword
+// set to "default" lifts a cap, and is none.
+//
+// The root namespace configuration is the one of an object of the root
+// namespace, and is asked for such an object only: for the others, it caps
+// the whole tree of the agent, not their namespace, and a process out of
+// that tree is still under the limits of the node itself.
+func (t *core) NamespacePGCap() (string, error) {
+	p := naming.Path{Namespace: t.path.Namespace, Kind: naming.KindNscfg, Name: "namespace"}
+	if !file.Exists(p.ConfigFile()) {
+		return "", nil
+	}
+	o, err := NewNscfg(p, WithVolatile(true))
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", p, err)
+	}
+	for _, option := range namespacePGOptions() {
+		s, _ := o.config.EvalNoConvAs(key.New("DEFAULT", option), hostname.Hostname())
+		if s != "" && s != pg.DefaultValue {
+			return option, nil
+		}
+	}
+	return "", nil
+}
+
+// namespacePGOptions returns the pg_* keywords of a namespace configuration,
+// sorted by name.
+func namespacePGOptions() []string {
+	l := make([]string, 0)
+	for _, kw := range keywordStore.WithKind(naming.KindNscfg) {
+		if strings.HasPrefix(kw.Option, "pg_") && !slices.Contains(l, kw.Option) {
+			l = append(l, kw.Option)
+		}
+	}
+	slices.Sort(l)
+	return l
 }
 
 // ResourceCap is the most of a compute claim type the process group of a

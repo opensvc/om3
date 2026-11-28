@@ -1,0 +1,6 @@
+The limit on the virtual memory, the address space, a process of the container can use (unit byte).
+Same as `limit_vmem`: when both are set, the larger value is used.
+
+The engine sets the soft and the hard limit to this value, as `--ulimit
+as=<value>:<value>`, which overrides its default ulimit and the `--ulimit as`
+of `run_args`. Unset, the container runs with the default of the engine.

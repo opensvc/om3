@@ -2847,6 +2847,10 @@ type NodeConfig struct {
 	Env       string               `json:"env"`
 	Hooks     []NodeConfigHook     `json:"hooks"`
 
+	// ImagePrefetch the node pulls the images of its container resources ahead of a
+	// failover, when their image_prefetch keyword does not say
+	ImagePrefetch *bool `json:"image_prefetch,omitempty"`
+
 	// Issues The configuration faults found on this node that a human has
 	// to correct, as the cluster configuration has its own.
 	Issues                 *[]string         `json:"issues,omitempty"`
@@ -2856,11 +2860,15 @@ type NodeConfig struct {
 	MaxParallel            int               `json:"max_parallel"`
 	MinAvailMemPct         int               `json:"min_avail_mem_pct"`
 	MinAvailSwapPct        int               `json:"min_avail_swap_pct"`
-	PRKey                  string            `json:"prkey"`
-	ReadyPeriod            time.Duration     `json:"ready_period"`
-	RejoinGracePeriod      time.Duration     `json:"rejoin_grace_period"`
-	SplitAction            string            `json:"split_action"`
-	SSHKey                 string            `json:"sshkey"`
+
+	// OCI the engine the oci container and task resources of the node run
+	// with, podman or docker
+	OCI               *string       `json:"oci,omitempty"`
+	PRKey             string        `json:"prkey"`
+	ReadyPeriod       time.Duration `json:"ready_period"`
+	RejoinGracePeriod time.Duration `json:"rejoin_grace_period"`
+	SplitAction       string        `json:"split_action"`
+	SSHKey            string        `json:"sshkey"`
 }
 
 // NodeConfigCollector defines model for NodeConfigCollector.
@@ -3679,6 +3687,11 @@ type ResourceProvisionStatus struct {
 	// State service, instance or resource provisioned state
 	State Provisioned `json:"state"`
 }
+
+// ResourcePull the image the node publishing the configuration prefetches for the
+// resource, ahead of a failover: none for a resource with no image,
+// disabled, or whose prefetch is disabled
+type ResourcePull = resource.Pull
 
 // ResourceStatus defines model for ResourceStatus.
 type ResourceStatus = resource.Status
@@ -5118,6 +5131,20 @@ type PostNodeDRBDPrimaryParams struct {
 type PostNodeDRBDSecondaryParams struct {
 	// Name drbd resource name
 	Name DRBDResourceName `form:"name" json:"name"`
+}
+
+// GetNodeImageSaveParams defines parameters for GetNodeImageSave.
+type GetNodeImageSaveParams struct {
+	// Engine the engine holding the image, as docker or podman
+	Engine string `form:"engine" json:"engine"`
+
+	// Store the store of the engine holding the image, as the driver names
+	// it: the user of a rootless podman. Not set for the store of the
+	// system.
+	Store *string `form:"store,omitempty" json:"store,omitempty"`
+
+	// Ref the reference of the image, as docker.io/library/nginx:latest
+	Ref string `form:"ref" json:"ref"`
 }
 
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.

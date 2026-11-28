@@ -90,3 +90,27 @@ func TestContainerAppArmorProfileNeedsRoot(t *testing.T) {
 		assert.NoErrorf(t, Denied(root, naming.KindSvc, "container#1", "apparmor_profile", v, none), "root sets %s", v)
 	}
 }
+
+// The limit_* keywords of a container and of a task are the ulimits the
+// engine sets on its processes, which the administrator of a namespace sets
+// without the root grant the --ulimit of run_args requires. The limits on the
+// core dumps and on the locked memory are the exception, whatever the value.
+func TestTheLimitsOfAContainerAreOpenButCoreAndMemlock(t *testing.T) {
+	root := rbac.Grants{rbac.GrantRoot}
+	for _, section := range []string{"container#1", "task#1"} {
+		for _, option := range []string{"limit_as", "limit_cpu", "limit_data", "limit_fsize", "limit_nofile", "limit_nproc", "limit_rss", "limit_stack", "limit_vmem"} {
+			for _, value := range []string{"1024", "1g", "unlimited", ""} {
+				assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, section, option, value, none), "%s.%s=%s", section, option, value)
+			}
+			assert.Emptyf(t, Doc(naming.KindSvc, "container", option), "%s documents a grant", option)
+		}
+		for _, option := range []string{"limit_core", "limit_memlock"} {
+			for _, value := range []string{"0", "1g", "unlimited"} {
+				err := Denied(noGrant, naming.KindSvc, section, option, value, none)
+				assert.EqualErrorf(t, err, "the core dump and locked memory limits of a container require the root grant", "%s.%s=%s", section, option, value)
+				assert.NoErrorf(t, Denied(root, naming.KindSvc, section, option, value, none), "%s.%s=%s as root", section, option, value)
+			}
+		}
+		assert.Error(t, Denied(noGrant, naming.KindSvc, section, "run_args", "--ulimit nofile=1024:1024", none), "run_args stays root's")
+	}
+}

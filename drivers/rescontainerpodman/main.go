@@ -26,13 +26,30 @@ type (
 	}
 )
 
+// engine is the engine of the driver, as resource.Pull names it.
+const engine = "podman"
+
+var (
+	_ resource.PullDescriber = (*T)(nil)
+	_ resource.Prefetcher    = (*T)(nil)
+)
+
 func New() resource.Driver {
 	return &T{}
 }
 
 func (t *T) Configure() error {
+	t.SetImageStore(engine, t.RootlessUser)
 	t.configure(t.executorArg())
 	return nil
+}
+
+// PullOf implements resource.PullDescriber: the image of a rootless
+// container is pulled to the store of its user, and the one of the others to
+// the store of root.
+func (t *T) PullOf(src resource.HoldSource) (resource.Pull, bool) {
+	store, _ := src.Get("rootless_user")
+	return rescontainerocibase.PullOf(engine, store, src)
 }
 
 func (t *T) configure(ea *ExecutorArg) {

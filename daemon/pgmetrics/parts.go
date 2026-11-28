@@ -34,6 +34,11 @@ func (c partsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c partsCollector) Collect(ch chan<- prometheus.Metric) {
+	if !isUnified() {
+		// The groups of the resources are not read on the v1 hierarchy:
+		// nothing is said of them, rather than that they do not exist.
+		return
+	}
 	var e emitter
 	e.gauge(collectedAtDesc, epochSeconds(time.Now()), "parts")
 	for _, p := range c.paths {

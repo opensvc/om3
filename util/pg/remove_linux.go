@@ -3,6 +3,7 @@
 package pg
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -18,6 +19,10 @@ import (
 // set with systemctl set-property, at runtime and for good. They are
 // replaced by the tests.
 var systemControlDirs = []string{"/run/systemd/system.control", "/etc/systemd/system.control"}
+
+// legacyRuntimeDir is where a systemd older than 236 keeps the properties
+// set at runtime, among the runtime units. It is replaced by the tests.
+var legacyRuntimeDir = "/run/systemd/system"
 
 // userControlDir is where the systemd instance of a user keeps the
 // properties set at runtime. It is replaced by the tests.
@@ -45,7 +50,11 @@ var userControlDir = func(uid int) string {
 // The properties are reverted for the slices whose group is gone, and kept
 // for the ones still there, with their group: removing one without the other
 // leaves a capping, the group keeping its files, or systemd writing the
-// properties again in the group it makes for the slice the next time.
+// properties again in the group it makes for the slice the next time. A
+// systemd too old to revert is made to forget them, see forgetV1Properties.
+//
+// On the v1 hierarchy, the slices that had properties and whose group is
+// gone are stopped too, see stopSlices.
 //
 // Only the group and the ones under it are touched. The groups above it,
 // those of the namespace and the one holding every object of the node, are
@@ -58,7 +67,17 @@ func (c Config) RemoveTree() error {
 	for _, root := range hierarchyRoots() {
 		c.removeGroups(filepath.Join(root, c.ID), kept)
 	}
+	// The slices to stop are read before the revert, which removes what
+	// they are found from.
+	units := make([]string, 0)
+	if !isUnified() {
+		units = c.slicesWithDropIns(systemControlDirs, kept)
+	}
 	errs := c.revertProperties(nil, systemControlDirs, kept)
+	if !isUnified() {
+		forgotten, err := c.forgetV1Properties(kept)
+		errs = errors.Join(errs, err, c.stopSlices(append(units, forgotten...)))
+	}
 	if isUnified() {
 		for _, d := range userDelegations() {
 			userKept := make(map[string]bool)
@@ -131,12 +150,33 @@ func (c Config) removeGroups(top string, kept map[string]bool) {
 // nested in the one of the group is named after it, followed by a dash: the
 // name of an object escapes its own dashes.
 func (c Config) revertProperties(d *Delegation, dirs []string, kept map[string]bool) error {
-	unit := c.unit()
-	if unit == "" {
+	units := c.slicesWithDropIns(dirs, kept)
+	if len(units) == 0 || !hasSystemd() {
 		return nil
 	}
-	prefix := strings.TrimSuffix(unit, ".slice") + "-"
+	sort.Strings(units)
+	path := c.ID
+	if d != nil {
+		path = d.Root + c.ID
+	}
+	if err := runSystemctl(d, append([]string{"revert"}, units...)); err != nil {
+		return fmt.Errorf("pg %s: %w", path, err)
+	}
+	if c.log != nil {
+		c.log.Infof("reverted the systemd properties of %s", strings.Join(units, " "))
+	}
+	return nil
+}
+
+// slicesWithDropIns are the slice of the group and the slices nested in it
+// having a drop-in directory in dirs, but the kept ones.
+func (c Config) slicesWithDropIns(dirs []string, kept map[string]bool) []string {
 	units := make([]string, 0)
+	unit := c.unit()
+	if unit == "" {
+		return units
+	}
+	prefix := strings.TrimSuffix(unit, ".slice") + "-"
 	for _, dir := range dirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -156,22 +196,123 @@ func (c Config) revertProperties(d *Delegation, dirs []string, kept map[string]b
 			units = append(units, name)
 		}
 	}
+	return units
+}
+
+// forgetV1Properties has a systemd older than 236 forget the cappings set
+// on the slice of the group and on the slices nested in it, but the slices
+// whose group is kept.
+//
+// Such a systemd, as the 219 of rhel7, has no revert, and keeps the runtime
+// properties in files named after them among the runtime units, where a
+// later one keeps them in a control directory revertProperties reads. Each
+// slice holding one of these files is given every property unset, so the
+// unit systemd may still hold in memory is uncapped, then the files are
+// removed, so the unit loaded again is not capped by them. A later systemd
+// has no such file, and nothing is done. The slices made to forget are
+// returned.
+func (c Config) forgetV1Properties(kept map[string]bool) ([]string, error) {
+	forgotten := make([]string, 0)
+	if !hasSystemd() {
+		return forgotten, nil
+	}
+	var errs error
+	units := c.slicesWithDropIns([]string{legacyRuntimeDir}, kept)
+	sort.Strings(units)
+	for _, unit := range units {
+		dir := filepath.Join(legacyRuntimeDir, unit+".d")
+		props := make([]v1Property, 0)
+		for _, p := range v1PropertyKinds {
+			if _, err := os.Stat(filepath.Join(dir, p.dropIn)); err == nil {
+				p.value = v1PropertyUnset
+				props = append(props, p)
+			}
+		}
+		if len(props) == 0 {
+			continue
+		}
+		forgotten = append(forgotten, unit)
+		if err := c.setUnitV1Properties(unit, props, false); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg %s: %w", c.ID, err))
+		}
+		for _, p := range props {
+			if err := os.Remove(filepath.Join(dir, p.dropIn)); err != nil && !errors.Is(err, os.ErrNotExist) {
+				errs = errors.Join(errs, fmt.Errorf("pg %s: %w", c.ID, err))
+			}
+		}
+		// The directory is left when it holds the file of another
+		// property, which is not one of the cappings.
+		_ = os.Remove(dir)
+		if c.log != nil {
+			c.log.Infof("unset the systemd properties of %s", unit)
+		}
+	}
+	return forgotten, errs
+}
+
+// stopSlices stops the slices units of the systemd of the system, the
+// nested ones first.
+//
+// A slice a container was started in, or one om started for a systemd 219
+// to take its properties, stays an active unit when its last process ends,
+// and systemd makes the groups of an active unit again, in the hierarchies
+// of the controllers it accounts, when its properties are reverted: the
+// groups om had just removed were back, empty and uncapped. They are the
+// slices whose group is gone from every hierarchy, the one systemd keeps its
+// units in included, so no unit is left in one to be stopped with it. A
+// slice systemd has not loaded is not running.
+//
+// Each stop is waited for, see stopUnitJob, all of them within
+// stopSlicesTimeout. A stop not seen done by then is reported and is no
+// error, the job being queued: the slices left are then stopped without
+// waiting, as systemd no longer answers in time.
+func (c Config) stopSlices(units []string) error {
 	if len(units) == 0 || !hasSystemd() {
 		return nil
 	}
-	sort.Strings(units)
-	path := c.ID
-	if d != nil {
-		path = d.Root + c.ID
+	// A nested slice is named after the one holding it, so it is the
+	// longer of the two.
+	sort.Slice(units, func(i, j int) bool {
+		if len(units[i]) != len(units[j]) {
+			return len(units[i]) > len(units[j])
+		}
+		return units[i] < units[j]
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), stopSlicesTimeout)
+	defer cancel()
+	var errs error
+	wait := true
+	stopped := make([]string, 0, len(units))
+	for _, unit := range units {
+		err := stopUnit(ctx, unit, wait)
+		switch {
+		case err == nil:
+		case isNoSuchUnit(err):
+			continue
+		case errors.Is(err, errUnitStopPending):
+			if c.log != nil {
+				c.log.Warnf("the stop of the systemd slice %s was not seen done in %s: a start coming before it may lose caps", unit, stopSlicesTimeout)
+			}
+			// The time of the calls is spent too: the stops left
+			// are given the one they had before the waits.
+			unwaited, cancelUnwaited := context.WithTimeout(context.Background(), stopSlicesTimeout)
+			defer cancelUnwaited()
+			ctx, wait = unwaited, false
+		default:
+			errs = errors.Join(errs, fmt.Errorf("pg %s: stop %s: %w", c.ID, unit, err))
+			continue
+		}
+		stopped = append(stopped, unit)
 	}
-	if err := runSystemctl(d, append([]string{"revert"}, units...)); err != nil {
-		return fmt.Errorf("pg %s: %w", path, err)
+	if len(stopped) > 0 && c.log != nil {
+		c.log.Infof("stopped the systemd slices %s", strings.Join(stopped, " "))
 	}
-	if c.log != nil {
-		c.log.Infof("reverted the systemd properties of %s", strings.Join(units, " "))
-	}
-	return nil
+	return errs
 }
+
+// stopSlicesTimeout is the time systemd is given to stop the slices of a
+// group removed. It is replaced by the tests.
+var stopSlicesTimeout = ipFilterTimeout
 
 // userDelegations are the trees systemd delegates to the users whose systemd
 // instance runs, as podman places a rootless container in.

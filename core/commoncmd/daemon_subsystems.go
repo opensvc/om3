@@ -52,6 +52,7 @@ var AuditSubsystems = []string{
 	"nmon",
 	"omon",
 	"omon:",
+	"prefetch",
 	"pubsub",
 	"runner",
 	"scheduler",

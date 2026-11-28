@@ -48,7 +48,8 @@ var (
 // and no set of rules a man wrote comes near.
 const maxIPFilterRanges = 1 << 19
 
-// ipFilterTimeout is the time systemd is given to take a filter.
+// ipFilterTimeout is the time systemd is given to take a filter, or the
+// cappings of a group of the v1 hierarchy.
 const ipFilterTimeout = 2 * time.Minute
 
 // ipFilterDropIns are the files systemd keeps the two runtime properties
@@ -163,15 +164,24 @@ func ipFilterProperties(allow, deny []string) ([]sddbus.Property, error) {
 // root alone may open and which needs no message bus running, then on the
 // system bus.
 var setUnitProperties = func(ctx context.Context, unit string, props ...sddbus.Property) error {
+	conn, err := systemdConn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.SetUnitPropertiesContext(ctx, unit, true, props...)
+}
+
+// systemdConn reaches the systemd of the system, see setUnitProperties.
+func systemdConn(ctx context.Context) (*sddbus.Conn, error) {
 	conn, err := sddbus.NewSystemdConnectionContext(ctx)
 	if err != nil {
 		var busErr error
 		if conn, busErr = sddbus.NewSystemConnectionContext(ctx); busErr != nil {
-			return fmt.Errorf("systemd is not reachable: on its socket: %w, on the system bus: %w", err, busErr)
+			return nil, fmt.Errorf("systemd is not reachable: on its socket: %w, on the system bus: %w", err, busErr)
 		}
 	}
-	defer conn.Close()
-	return conn.SetUnitPropertiesContext(ctx, unit, true, props...)
+	return conn, nil
 }
 
 // SetIPFilter sets the network filter of the group: the units of its slice,

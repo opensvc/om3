@@ -2,6 +2,7 @@ package restaskocibase
 
 import (
 	"embed"
+	"slices"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -28,6 +29,7 @@ var (
 		rescontainer.GroupStorage,
 		rescontainer.GroupNetwork,
 		rescontainerocibase.GroupIsolation,
+		rescontainerocibase.GroupLimits,
 		rescontainer.GroupGuest,
 	}, restask.Groups...)
 
@@ -308,5 +310,5 @@ var (
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/configs_environment"),
 		},
-	}, netwarden.Keywords(rescontainerocibase.GroupIsolation.ID)...)
+	}, slices.Concat(rescontainerocibase.LimitKeywords, netwarden.Keywords(rescontainerocibase.GroupIsolation.ID))...)
 )

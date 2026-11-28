@@ -148,6 +148,14 @@ type (
 		// datastores it starts using even when another resource of the
 		// object uses them already.
 		Uses []string `json:"uses,omitempty"`
+
+		// Pull is the image the node publishing the configuration
+		// prefetches for the resource, the one its start would run
+		// there: none for a resource with no image, disabled, or
+		// whose prefetch is disabled by its image_prefetch keyword or
+		// by the node. Two resources of a node saying the same Pull
+		// need one pull.
+		Pull *resource.Pull `json:"pull,omitempty"`
 	}
 	SubsetConfig struct {
 		Parallel bool `json:"parallel,omitempty"`
@@ -166,6 +174,10 @@ func (m ResourceConfigs) DeepCopy() ResourceConfigs {
 		}
 		newCfg.Holds = slices.Clone(cfg.Holds)
 		newCfg.Uses = slices.Clone(cfg.Uses)
+		if cfg.Pull != nil {
+			pull := *cfg.Pull
+			newCfg.Pull = &pull
+		}
 		newM[rid] = newCfg
 	}
 	return newM
@@ -247,7 +259,8 @@ func (cfg *ActorConfig) UsesObject(p naming.Path) bool {
 //
 // The objects the instance and its resources use are compared: they are
 // evaluated for the node, and change with what a reference names, as a
-// node label, while the file does not.
+// node label, while the file does not. So are the images its resources
+// pull, which change with the engine and the prefetch default of the node.
 func ConfigEqual(a, b *Config) bool {
 	if a.UpdatedAt != b.UpdatedAt {
 		return false
@@ -263,6 +276,34 @@ func ConfigEqual(a, b *Config) bool {
 	}
 	if !usesEqual(a.ActorConfig, b.ActorConfig) {
 		return false
+	}
+	if !pullsEqual(a.ActorConfig, b.ActorConfig) {
+		return false
+	}
+	return true
+}
+
+// pullsEqual says whether the resources of two actor configurations pull
+// the same images.
+func pullsEqual(a, b *ActorConfig) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	pullOf := func(m ResourceConfigs, rid string) resource.Pull {
+		if pull := m[rid].Pull; pull != nil {
+			return *pull
+		}
+		return resource.Pull{}
+	}
+	for rid := range a.Resources {
+		if pullOf(a.Resources, rid) != pullOf(b.Resources, rid) {
+			return false
+		}
+	}
+	for rid := range b.Resources {
+		if pullOf(a.Resources, rid) != pullOf(b.Resources, rid) {
+			return false
+		}
 	}
 	return true
 }
@@ -358,6 +399,19 @@ func (t ResourceConfig) Unstructured() map[string]any {
 	}
 	if len(t.Uses) > 0 {
 		m["uses"] = t.Uses
+	}
+	if t.Pull != nil {
+		pull := map[string]any{
+			"engine": t.Pull.Engine,
+			"image":  t.Pull.Image,
+		}
+		if t.Pull.Store != "" {
+			pull["store"] = t.Pull.Store
+		}
+		if t.Pull.Creds != "" {
+			pull["creds"] = t.Pull.Creds
+		}
+		m["pull"] = pull
 	}
 	return m
 }

@@ -186,6 +186,22 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Resource group commands**: New per-driver-group command sets for more targeted resource management.
 
+* **Image prefetch**: The nodes of an object not running a `container.docker` or `container.podman` resource get its image ahead of a failover, so a takeover neither waits for the registry nor fails with it.
+
+    The daemon fetches the image the `image` keyword evaluates to on the node, the one its start would run, when the store of the engine does not hold it, and never fetches again one it holds: it is a cache, not a deployment, and does not refresh a moving tag as `latest`. Pin a tag or a digest for the nodes to run the same build. The resources of a node naming the same image, engine and credentials are fetched once.
+
+    The image is copied from another node of the object holding it, and pulled from its registry when none does. The nodes asked are the ones of the `nodes` keyword, the ones where the container is up first, of the architecture of the node, and the image is copied as that node holds it, from engine to engine when its name tells its registry, docker and podman reading the archive of each other. A podman image naming no registry, as `nginx`, is copied from the podman of the other nodes only, then pulled from the registry podman resolves it to: docker reads the same name as an image of the Docker Hub, which may be another one. A cluster with no registry is so served: load the image on a node, start the object there, and its other nodes copy it. The `registry_creds` are not used for a copy. A copy is checked: the image loaded must be found under its name, and with the id the node holding it told when both engines name an image by the same kind of digest, a docker on the containerd image store naming it by its manifest where podman and the other docker stores name it by its config; an image loaded with another id is removed, and the copy counts as failed.
+
+    It is on by default. `node.image_prefetch = false`, in the node or the cluster configuration, turns it off for a node or for all, and the `image_prefetch` keyword of a resource overrides the node, either way. A frozen node or instance is prefetched as another, nothing of the instance being changed. The tasks are not prefetched.
+
+    The prefetch is a best effort, driven by events: a change of the configuration of the object, and an image untagged or removed from the store, as by an `image prune`, after which the missing images are fetched again. A prefetch that failed is tried again after 5 minutes, then less and less often, up to every 4 hours, and at once when the configuration of the object changes, or when the container turns up on another node of the object, which then holds the image. Meanwhile the status of the resource warns, on the nodes where it is down: `image <image> is not on this node and its last prefetch failed (peers: <error>; registry: <error>)`, or `(<error>)` with no node to ask. The store of a `rootless_user` is not watched: its images are fetched on a configuration change, not after a prune.
+
+    The image a start runs is not changed: a start pulls a missing image, and `image_pull_policy = always` still pulls at every start. A start now fails saying the engine does not answer when it does not, as a docker whose daemon is down, instead of trying a pull.
+
+    The instance configs publish the image each resource prefetches, as `pull` in the resource `config`, and two event kinds follow the prefetch: `ContainerImageRemoved`, an image untagged or removed from the store of an engine, and `ImagePrefetchUpdated`, a prefetch failing or failing no more.
+
+    `GET /api/node/name/{nodename}/image/save` sends the archive of an image of a store of an engine of a node, for these copies. It requires the root grant.
+
 * **The master reaches a kvm guest through vsock**:
 
     With a vsock device on the guest, and `listener.vsock_port` set in it, the
@@ -1320,6 +1336,15 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     objects, the exit code is the one of all the runs. The scheduled `compliance_auto` job accepts 2, and a node
     not compliant after it is a failed job.
 
+* **`om|ox <namespace>/nscfg/namespace instance ... --node` runs on the nodes selected:**
+    A namespace configuration is on every node of the cluster, so `--node`
+    selects cluster nodes for every instance action of one: `instance pg
+    update`, `instance pg reset`, `instance boot`, `instance clear` and
+    `instance delete`. `--node '*'` runs the action on every node, as to
+    apply a changed `pg_*` cap of the namespace to all of them, and a node
+    the cluster does not know is an error. The action ran on no node,
+    printed `no instance of <namespace>/ on <node>` and exited 0.
+
 ### API access to secrets
 
 * **The cluster configuration is read by root only:**
@@ -1385,6 +1410,18 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
           - targets: ['n1:1215', 'n2:1215']
     ```
 
+* **`/metrics/pg` and the `opensvc_pg_*` series on cgroup v1:**
+    The metrics of the process groups are read in the unified cgroup
+    hierarchy only. A node of the v1 hierarchy, as rhel7, rhel8 and sles15,
+    or a hybrid one, is not supported: it reports no `opensvc_pg_*` series
+    on `/metrics` and `/metrics/pg`, where it reported `opensvc_pg_cgroups 0`
+    and `opensvc_pg_cgroup_exists 0` for groups that existed and were
+    capped. The caps are applied on these nodes all the same.
+
+    The `opensvc_pg_cgroup_cpu_shares` series, the `cpu.shares` of cgroup
+    v1, is removed with the reading of the v1 files, which no node reached:
+    `opensvc_pg_cgroup_cpu_weight` is the weight on the unified hierarchy.
+
 ### Core
 
 * **Object Names policy change:**
@@ -1405,6 +1442,43 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     <cgroupmnt>/opensvc.slice/<kind>.<name>.slice/subset.<name>/<rid>.slice
 
     The previous layout allowed conflicts between different object types (eg. `vol` and `svc`), and conflicts between resourceset names and rid.
+
+* **The caps of a process group on cgroup v1 are given to systemd too:**
+    On a node of the cgroup v1 hierarchy, as rhel7, rhel8 and sles15, or of
+    a hybrid one, om wrote the `pg_*` caps in the files of the group only. A
+    container started in the group activates its systemd slice, which
+    systemd then wrote again from its own properties: a `pg_mem_limit`, a
+    `pg_cpu_quota`, a `pg_cpu_shares`, a `pg_pids_max` or a
+    `pg_blkio_weight` was lifted as the container started, and stayed
+    lifted after a `systemctl daemon-reload`, the container running
+    uncapped while om reported its caps applied. om now also sets them as
+    the runtime properties of the slice, `MemoryLimit`, `CPUQuota`,
+    `CPUShares`, `TasksMax` and `BlockIOWeight`, as it does with the
+    properties of the unified hierarchy, so the start of a container and a
+    daemon-reload no longer drop them. A cap set to `default`, and `pg
+    reset`, unset the properties as they lift the files, and the stop of
+    the object has systemd forget them with its groups, and stops their
+    slices, waiting for systemd to have stopped them. A restart keeps the
+    groups and their properties, its start setting the caps again: a cap
+    whose keyword was removed stays until a stop, or until it is set to
+    `default`. The systemd 219 of rhel7 takes the properties of a loaded unit
+    only: om starts the slice of a capped group there, as the engine
+    starting a container in it does. om gives systemd the properties before
+    it makes the groups: systemd realizing a slice removes its group from
+    the hierarchies its properties do not need, when it holds no process
+    there.
+
+    `pg_cpus`, `pg_mems`, `pg_vmem_limit`, `pg_mem_swappiness` and
+    `pg_mem_oom_control` have no systemd property on these nodes: they stay
+    in the files alone, which systemd does not write there. systemd still
+    removes a group holding neither a process nor a group from a hierarchy
+    it manages, when it realizes its slice, or a slice above, with other
+    controllers: a `pg_mem_swappiness` or a `pg_mem_oom_control` of a group
+    with no `pg_mem_limit`, written while the group is empty, is lost with
+    it, until the next apply of the group writes it again. `pg_cpus` and
+    `pg_mems` are of the cpuset hierarchy, which systemd does not manage.
+    The apply of a group now fails when systemd refuses its caps or can not
+    be reached.
 
 * **The `raw` jsonrpc protocol socket is dropped.**
     For example, this v2.1 API call is no longer supported:
@@ -1521,6 +1595,61 @@ which share the same executor.
     `auto` or `keep-id`. Only `netns = host` was refused before, and the
     other namespace keywords were open.
 
+* **Changed behaviour, `container enter`:**
+    The shell runs through the exec of the engine, `docker exec` or
+    `podman exec`, as in v2, with the capabilities, the seccomp and
+    security profiles and the cgroup of the container, and no more.
+
+    It ran through `nsenter`, as the agent: in the namespaces of the
+    container, with every capability of the node, none of its profiles,
+    out of its cgroup. A namespace admin, who may open a console, had a
+    root shell of the node, the container of `netns = host` in the network
+    of the node, any other able to mount the disks of the node.
+
+    A shell confined as the container is counts in its `pids_max` and its
+    memory, and the engine refuses it in a paused container. The root of
+    the node debugging a container past its limits runs `nsenter` itself.
+
+    A console session hung up ends the shell and what it started in the
+    container, which the exec of an engine leaves running when its client
+    ends: they carry an `OSVC_ENTER_SESSION` environment variable naming
+    the session.
+
+* **New keywords, `limit_*`:**
+    The `limit_cpu`, `limit_core`, `limit_data`, `limit_fsize`,
+    `limit_memlock`, `limit_nofile`, `limit_nproc`, `limit_rss`,
+    `limit_stack`, `limit_vmem` and `limit_as` keywords of the `app` and
+    `task.host` resources are keywords of the docker, podman and oci
+    containers and tasks too: the ulimits of the processes of the container,
+    passed to the engine as `--ulimit <name>=<value>:<value>`, the soft and
+    the hard limit set to the value. `limit_vmem` and `limit_as` are both
+    the `as` ulimit, the larger kept when both are set.
+
+    A keyword overrides the default ulimit of the engine, as the
+    `nofile` of 1073741816 a container inherits from a containerd with
+    `LimitNOFILE=infinity`, and the `--ulimit` of the same name in
+    `run_args`, which is dropped. The limits no keyword sets are left to
+    `run_args` and to the engine.
+
+* **New rbac, the `limit_*` keywords of a container or a task:**
+    The administrator of a namespace sets them without the root grant
+    `run_args`, and so its `--ulimit`, requires, whatever the value.
+    `limit_core` and `limit_memlock` are the exception, and require the
+    root grant.
+
+* **Changed behaviour, the anonymous volumes of a removed container:**
+    A container removed by om, at the stop of a `rm = true` container, at
+    every run of a task, before a start finding a leftover, and at
+    unprovision, is removed with its anonymous volumes, `container rm -v`:
+    those the engine creates for a `VOLUME` of the image no `volume_mounts`
+    entry covers. The named volumes and the bind mounts are kept.
+
+    They were left in the store of the engine, one more at each stop and at
+    each run of a task. The volumes already left there are not removed by
+    om: `docker volume prune` removes the anonymous volumes no container
+    uses, and the named ones too before docker 23, as `podman volume prune`
+    does.
+
 ### Driver: container.docker
 
     * `stop_timeout`
@@ -1563,6 +1692,85 @@ which share the same executor.
     * `stop_timeout`
     Updated the default value for the stop_timeout keyword from 120 seconds to 
     10 seconds to align with the default behavior of Docker and Podman.
+
+### Driver: container.kvm
+
+* **Changed behaviour, a guest its memory cap can not hold no longer starts:**
+    A guest needs its memory and 384 MiB, what qemu takes on top. A
+    `pg_mem_limit` below that, on its resource, its subset or its object,
+    was refused at provision and reported in the status of the guest down,
+    `memory cap 512mi: the guest needs 640mi`, but the start went on, and the
+    guest ran under a cap that kills it the day it touches its memory. The
+    start is now refused with the error of the status, the start of a
+    failover and of a restart included: raise the cap, or lower the memory
+    of the guest.
+
+    The `pg_mem_limit` of the namespace configuration, and the one of the
+    root namespace, bound each guest the same way, at provision, in the
+    status and at start: they are the `memory.max` of slices holding the
+    guest. Each guest is held against them alone, not the guests of the
+    namespace together.
+
+    A node that can not cap a guest, with no systemd or a libvirt without
+    partitions, refuses the start of a guest counted on to be capped, as it
+    refused its provision.
+
+* **Changed behaviour, a guest out of its process group:**
+    om asks libvirt to place a guest in the process group of its resource,
+    so the `pg_*` caps of the resource, of its object and of its namespace
+    hold it, and libvirt asks systemd. The start now reads the group qemu
+    runs in, from the unified cgroup hierarchy, or from the `name=systemd`
+    one on a node of the v1 hierarchy, which has no unified one. Out of the
+    one asked, the start fails and is rolled back when
+    a cap of the groups holding the resource, a cpu or memory claim of the
+    namespace, or a `pg_*` keyword of the configuration of the namespace,
+    counts on the placement, and the status of the guest warns when none
+    does. Only a guest whose definition holds the partition om writes, one
+    under `/opensvc`, is so checked: om writes it at the start, and with
+    `virt-install` at the provision. A guest defined and started by hand,
+    with no such partition, runs where libvirt places it, as in
+    `machine.slice`: its status does not warn, and nothing fails for its
+    placement.
+
+* **Changed behaviour, a guest on a node that can not place it:**
+    A node with no systemd, or without the
+    `drivers.resource.container.kvm.partitions` capability, runs a guest in
+    the partition of libvirt, out of the process groups. A guest is refused
+    there, at provision and at start, when a `pg_*` keyword of the
+    configuration of its namespace is set, as it was for a cap of its own
+    groups or a claim of its namespace: the slice of the namespace would
+    not hold it. The `pg_*` keywords of the root namespace configuration
+    refuse a guest of the root namespace only, whose namespace it is: for
+    the others they cap the whole tree of the agent, and a guest out of it
+    is still under the limits of the node.
+
+    The start removes from the definition of the guest the partition
+    written by a node that can place it, or by this one before an upgrade:
+    libvirt kept asking for a placement nothing checked there. A partition
+    out of `/opensvc`, set by a sysadmin, is kept.
+
+* **Changed capability, `drivers.resource.container.kvm.partitions` on systemd 249:**
+    The capability is not granted on a node running systemd 249, as ubuntu
+    22.04: this release places the machine of a guest in the slice asked
+    for it or in `machine.slice`, out of every cap, on and off. A guest is
+    not placed in its process group there, and one a cap or a claim counts
+    on being capped is refused at provision and at start, the error
+    naming the systemd release, where it ran uncapped one start out of
+    two. A guest nothing caps runs as before.
+
+* **`drivers.resource.container.kvm.partitions` on cgroup v1:**
+    The capability is granted on a node of the cgroup v1 hierarchy, or of
+    a hybrid one, as on a node of the unified one, and a guest is placed in
+    the process group of its resource there. The machine of a guest
+    activates the slices of its resource, of its object and of its
+    namespace, which systemd then writes from their properties: the caps
+    hold through the start of the guest and a `systemctl daemon-reload`
+    now that om gives them to systemd too on these nodes, see the caps of a
+    process group on cgroup v1 in Core, as checked with a guest on rhel8.
+    `pg_vmem_limit`, `pg_cpus` and `pg_mems` have no systemd property there
+    and stay in the files of the group, which systemd does not write on
+    this hierarchy. The start reads the group qemu runs in there too, from
+    the hierarchy of systemd, see a guest out of its process group.
 
 ### Driver: disk.lvm
 
@@ -1681,6 +1889,18 @@ which share the same executor.
 
 * **The ip.netns driver mode no longer can be set by tags**
     The `mode` keyword must be used for mode setting.
+
+### Pool: drbd
+
+* **Changed behaviour, the filesystem of a volume of a `drbd` pool is shared:**
+    The pool gives the volume a filesystem with `shared = true`, and its
+    zpool for a `zfs` one, whatever the `shared` keyword of the volume
+    says: the drbd device is one filesystem the nodes replicate, formatted
+    by the leader alone. A volume with no `shared = true`, as a
+    `volume#1.pool = drbd` on a service of several nodes, got
+    `fs#1.shared = false`, and its provision failed on the second node, on a
+    mkfs of the drbd secondary. The `shared` keyword of the volume still
+    decides who may claim it.
 
 ### Driver: fs
 

@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
@@ -52,6 +53,7 @@ var (
 func init() {
 	driver.Register(DrvID, New)
 	driver.SetDoc(DrvID, "Runs a container with podman.")
+	resource.RegisterImageStore(engine, rescontainerocibase.CLIImageStore{Bin: engine, Credential: storeCredential})
 }
 
 func (t *T) DriverID() driver.ID {

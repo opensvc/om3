@@ -51,6 +51,8 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 				MinAvailSwapPct:        config.Value.MinAvailSwapPct,
 				Issues:                 &config.Value.Issues,
 				PRKey:                  config.Value.PRKey,
+				OCI:                    &config.Value.OCI,
+				ImagePrefetch:          &config.Value.ImagePrefetch,
 				SSHKey:                 config.Value.SSHKey,
 				ReadyPeriod:            config.Value.ReadyPeriod,
 				RejoinGracePeriod:      config.Value.RejoinGracePeriod,

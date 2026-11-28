@@ -1,0 +1,39 @@
+Get the image on the nodes of the object not running the container, so a
+failover finds it in the store of the engine, and neither waits for the
+registry nor fails with it.
+
+If not set, the `node.image_prefetch` keyword of the node decides, `true`
+by default.
+
+The image prefetched by a node is the `image` keyword as this node
+evaluates it, the one its start would run. It is fetched when the store of
+the engine does not hold it, and never fetched again once there.
+
+The image is copied from another node of the object holding it, and pulled
+from its registry when none does. The nodes asked are the ones of the
+`nodes` keyword, the ones where the container is up first, of the
+architecture of the node. A cluster with no registry is so served: load
+the image on a node, start the object there, and the other nodes copy it.
+The `registry_creds` are not used for a copy.
+
+A node holding the image in the store of another engine is asked too,
+docker and podman reading the archive of each other, when the image names
+its registry. A podman image naming none, as `nginx`, is copied from the
+podman of the other nodes only: docker reads that name as an image of the
+Docker Hub, where podman resolves it with its `registries.conf`.
+
+A copy is the image as the other node holds it: a moving tag as `latest`
+is not refreshed from the registry, neither by a copy nor once the image
+is there, and the nodes may hold different builds of it. Pin a tag that
+does not move, or a digest, for the nodes to run the same build.
+
+The prefetch is a best effort, done by the daemon when the configuration
+of the object changes. A prefetch that failed is tried again later, less
+and less often, and the resource status warns of the missing image
+meanwhile. An image removed from the store, as by an `image prune`, is
+fetched again, except from the store of a `rootless_user`, which the
+daemon does not watch: that one is fetched again on the next change of
+the configuration.
+
+A start is not changed by the prefetch: it pulls a missing image, and
+`image_pull_policy = always` still pulls at every start.

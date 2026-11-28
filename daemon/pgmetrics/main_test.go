@@ -93,13 +93,6 @@ func TestParseCPUMax(t *testing.T) {
 	assert.Error(t, err, "one field is not a cpu.max")
 }
 
-func TestCFSQuota(t *testing.T) {
-	// cgroup v1 says -1 for no throttling where v2 says max. Both come
-	// out +Inf so a query does not have to know which node it is on.
-	assert.True(t, math.IsInf(cfsQuota(-1), 1))
-	assert.Equal(t, float64(200000), cfsQuota(200000))
-}
-
 func TestParseIOWeight(t *testing.T) {
 	// cgroup v2, which is what made cgroup_blkio_weight empty: the bare
 	// number parse rejected the "default " prefix.
@@ -111,10 +104,9 @@ func TestParseIOWeight(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint64(250), v, "per device lines follow the default and are not it")
 
-	// cgroup v1 blkio.weight is a bare number.
-	v, err = parseIOWeight("500\n")
-	require.NoError(t, err)
-	assert.Equal(t, uint64(500), v)
+	// A bare number is the blkio.weight of cgroup v1, which is not read.
+	_, err = parseIOWeight("500\n")
+	assert.Error(t, err)
 
 	_, err = parseIOWeight("default\n")
 	assert.Error(t, err)
@@ -162,6 +154,7 @@ func withFakeCgroupTree(t testing.TB, paths []string, withCgroup []string) *Mana
 	wasRoot, wasData := CgroupRoot, object.StatusData
 	wasHost, wasProc, wasOnline := HostCgroupRoot, ProcRoot, CPUOnlineFile
 	CgroupRoot, HostCgroupRoot = root, host
+	withUnified(t, true)
 	ProcRoot = t.TempDir()
 	CPUOnlineFile = filepath.Join(ProcRoot, "online")
 	object.StatusData = object.NewData[object.Status]()
@@ -584,4 +577,41 @@ func valuesWithAllLabels(metrics []prometheus.Metric, name string) []string {
 		l = append(l, fmt.Sprintf("%s=%g", strings.Join(values, ","), pb.GetGauge().GetValue()))
 	}
 	return l
+}
+
+// withUnified has the collectors read the node as holding the unified cgroup
+// hierarchy, or not, whatever the node the tests run on holds.
+func withUnified(t testing.TB, unified bool) {
+	t.Helper()
+	was := isUnified
+	isUnified = func() bool { return unified }
+	t.Cleanup(func() { isUnified = was })
+}
+
+// A node of the cgroup v1 hierarchy keeps its groups in a directory per
+// controller, which the collectors do not read. It reports no pg series:
+// neither a count of 0 groups on /metrics, nor anything on /metrics/pg,
+// where a group existing and capped was said not to exist.
+func TestACgroupV1NodeReportsNoPGSeries(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/s1"}, []string{"ns1/svc/s1"})
+
+	gather := func(c prometheus.Collector) []string {
+		reg := prometheus.NewRegistry()
+		require.NoError(t, reg.Register(c))
+		families, err := reg.Gather()
+		require.NoError(t, err)
+		names := make([]string, 0, len(families))
+		for _, family := range families {
+			names = append(names, family.GetName())
+		}
+		return names
+	}
+
+	assert.Contains(t, gather(hintCollector{m: m}), "opensvc_pg_cgroups", "the unified hierarchy is read")
+	assert.Contains(t, gather(detailCollector{m: m}), "opensvc_pg_cgroup_exists", "the unified hierarchy is read")
+
+	withUnified(t, false)
+	m.snap = nil
+	assert.Empty(t, gather(hintCollector{m: m}))
+	assert.Empty(t, gather(detailCollector{m: m}))
 }
